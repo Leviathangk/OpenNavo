@@ -1,6 +1,22 @@
 """ Verify MCP boundaries with production configuration, invoked only by the isolated prod-verify project."""
 import json
+import struct
+import urllib.parse
 import uuid
+import zlib
+
+
+def icon_upload(size=256):
+    """ Build a multipart body holding one solid PNG icon, without third-party image libraries."""
+    def chunk(kind, data):
+        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data))
+    rows = b''.join(b'\x00' + b'\x24\x68\xac' * size for _ in range(size))
+    image = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0))
+             + chunk(b'IDAT', zlib.compress(rows)) + chunk(b'IEND', b''))
+    boundary = uuid.uuid4().hex
+    body = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="icon.png"\r\n'
+            f'Content-Type: image/png\r\n\r\n').encode() + image + f'\r\n--{boundary}--\r\n'.encode()
+    return body, f'multipart/form-data; boundary={boundary}'
 
 
 def validate_config(config):
@@ -74,7 +90,7 @@ def verify(verification):
             'clientInfo': {'name': 'opennavo-deployment-check', 'version': '1'}})
         assert status == 200 and initialized['serverInfo']['name'] == 'OpenNavo'
         status, listed = rpc(verification, token, 'tools/list')
-        assert status == 200 and len(listed['tools']) == 60
+        assert status == 200 and len(listed['tools']) == 61
         status, resources = rpc(verification, token, 'resources/list')
         assert status == 200 and len(resources['resources']) == 7
         status, guide = rpc(verification, token, 'resources/read', {'uri': 'opennavo://guide/daily-routine'})
@@ -90,6 +106,21 @@ def verify(verification):
         status, packages = rpc(verification, token, 'tools/call', {'name': 'packages_search', 'arguments': {'size': 1}})
         assert status == 200 and not packages.get('isError', False)
         assert len(packages['structuredContent']['untrusted']['records']) == 1
+        # Local files bypass MCP: the single-use URL must route through Caddy's admin origin to the API.
+        status, issued = rpc(verification, token, 'tools/call', {'name': 'asset_upload_ticket', 'arguments': {'kind': 'icon'}})
+        assert status == 200 and not issued.get('isError', False)
+        upload_url = issued['structuredContent']['untrusted']['uploadUrl']
+        assert upload_url.startswith(verification.ENV['ADMIN_ORIGIN'] + '/admin-api/assets/upload-tickets/onvu_')
+        ticket = upload_url.rsplit('/', 1)[1]
+        target = urllib.parse.urlsplit(upload_url)
+        body, content_type = icon_upload()
+        uploads = []
+        for _ in range(2):
+            status, _, raw = verification.http(target.path, target.hostname, 'POST', body,
+                                               extra_headers={'Content-Type': content_type})
+            assert status == 200, 'ticket upload must reach the API through the admin origin'
+            uploads.append(json.loads(raw)['code'])
+        assert uploads == ['0000', '8888'], 'ticket uploads must succeed once and then be rejected'
         # Pass credentials through stdin to the owned container's verifier, never command arguments or raw response output.
         code = '''import json, os, sys, urllib.request, uuid
 payload = json.load(sys.stdin)
@@ -117,9 +148,9 @@ print(json.dumps({'codes': results, 'uid': os.getuid()}))
     assert status == 401 or (status == 200 and revoked.get('isError') is True)
     assert rpc(verification, token, 'tools/list')[0] == 401, 'revocation must invalidate discovery cache'
     logs = verification.compose('logs', '--no-color', 'api', 'mcp', 'caddy').stdout
-    assert all(secret.encode() not in logs for secret in [token, jwt, verification.ENV['AGENT_GATEWAY_SECRET']]), 'credential appeared in container logs'
-    print('MCP production route/auth/tools/resources/IP/body-limit/non-root/log checks: passed', flush=True)
-    return {'tools': 60, 'resources': 7, 'grantablePermissions': 21, 'publicMissingToken': 401,
+    assert all(secret.encode() not in logs for secret in [token, jwt, ticket, verification.ENV['AGENT_GATEWAY_SECRET']]), 'credential appeared in container logs'
+    print('MCP production route/auth/tools/resources/IP/body-limit/ticket-upload/non-root/log checks: passed', flush=True)
+    return {'tools': 61, 'resources': 7, 'grantablePermissions': 21, 'publicMissingToken': 401,
             'publicAgentRoute': 404, 'internalMissingGateway': '1004', 'internalMissingToken': '8888',
             'containerUID': internal['uid'], 'spoofedClientIPRejected': True, 'oversizeBody': 413,
-            'revokedTokenRejected': True, 'credentialLogMatches': 0}
+            'ticketUploads': uploads, 'revokedTokenRejected': True, 'credentialLogMatches': 0}

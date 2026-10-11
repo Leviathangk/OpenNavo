@@ -48,3 +48,11 @@ func TestAdminLoopbackAliasIsOnlyAvailableForDevelopment(t *testing.T) {
 	cfg := Config{AppEnv: "dev", AdminOrigin: "https://admin.opennavo.example"}
 	require.Equal(t, []string{cfg.AdminOrigin}, cfg.AdminOrigins())
 }
+
+func TestAdminAPIBaseURLFollowsDeploymentRouting(t *testing.T) {
+	// Deployed proxies expose /admin-api only on the admin origin; development serves it from the API process.
+	for environment, expected := range map[string]string{"dev": "http://localhost:8080/admin-api", "staging": "https://admin.opennavo.example/admin-api", "prod": "https://admin.opennavo.example/admin-api"} {
+		cfg := Config{AppEnv: environment, PublicBaseURL: "http://localhost:8080/", AdminOrigin: "https://admin.opennavo.example/"}
+		require.Equal(t, expected, cfg.AdminAPIBaseURL(), environment)
+	}
+}

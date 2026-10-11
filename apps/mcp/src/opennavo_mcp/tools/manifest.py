@@ -62,6 +62,7 @@ TOOLS = (
         "package_refresh", "catalog:package:resync", "resyncPackage listAdminPackages", write=True
     ),
     tool("asset_upload_from_url", "catalog:asset:upload", "uploadAsset", write=True),
+    tool("asset_upload_ticket", "catalog:asset:upload", "createAssetUploadTicket", write=True),
     tool("assets_list", "catalog:asset:upload", "listAssets"),
     tool(
         "package_set_icon",

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """ G: reuse port 18082 and simulate Hermes on owned port 8790; do not restart the API or read development configuration."""
 import asyncio
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -20,6 +21,9 @@ BASE = 'http://127.0.0.1:18082'
 MCP = 'http://127.0.0.1:8790/mcp'
 OUT = ROOT / 'apps/server/tmp/hermes-g'
 ICON = 'https://raw.githubusercontent.com/github/explore/main/topics/python/python.png'
+_checks = importlib.util.spec_from_file_location('mcp_verification', ROOT / 'ops/verify-mcp.py')
+CHECKS = importlib.util.module_from_spec(_checks)
+_checks.loader.exec_module(CHECKS)
 
 
 class VerificationError(RuntimeError):
@@ -251,8 +255,28 @@ class Verification:
             self.step(12, 'Deny within 30 seconds of revocation')
         assert self.passed == {x.name for x in TOOLS}, 'tool coverage incomplete: ' + str(sorted({x.name for x in TOOLS} - self.passed))
 
+    def upload(self, url, expected='0000'):
+        # Post the file the way an Agent shell would; the image bytes never pass through MCP.
+        body, content_type = CHECKS.icon_upload()
+        req = urllib.request.Request(url, data=body, method='POST', headers={'Content-Type': content_type})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as reply:
+                result = json.load(reply)
+        except urllib.error.HTTPError as error:
+            result = json.load(error)
+        if result.get('code') != expected:
+            raise VerificationError(f'ticket upload: expected {expected}, got {result.get("code")}')
+        return result.get('data')
+
     async def remaining(self, client, pid, aid, cid, coid, fid):
         await self.tool(client, 'assets_list', kind='icon')
+        ticket = await self.tool(client, 'asset_upload_ticket', kind='screenshot', source_url=ICON)
+        self.secrets.append(ticket['uploadUrl'].rsplit('/', 1)[1])
+        local = self.upload(ticket['uploadUrl'])
+        self.upload(ticket['uploadUrl'], expected='8888')
+        self.denials.append('Upload ticket reuse')
+        await self.tool(client, 'package_screenshot_add', package=pid, asset_id=local['id'], theme='dark',
+                        source_locale='zh-CN', i18n={'zh-CN': {'caption': self.prefix + ' local'}})
         shot_asset = await self.tool(client, 'asset_upload_from_url', url=ICON, kind='screenshot')
         shot = await self.tool(client, 'package_screenshot_add', package=pid, asset_id=shot_asset['id'], theme='light',
                                source_locale='zh-CN', i18n={'zh-CN': {'caption': self.prefix}})
@@ -334,7 +358,6 @@ async def main():
     verification = Verification()
     verification.http('GET', '/readyz')
     # Fixture preparation belongs to the test driver; the MCP service itself calls only /agent-api.
-    import importlib.util
     spec = importlib.util.spec_from_file_location('g_e2e_environment', ROOT / 'ops/e2e.py')
     e2e = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(e2e)
@@ -383,7 +406,7 @@ async def main():
                 (OUT / 'report.json').write_text(json.dumps(verification.report, ensure_ascii=False, indent=2))
                 if matches:
                     raise VerificationError('credential detected in API/MCP logs; content withheld')
-    print('G MCP verification passed; 12 steps, 60 tools; credentials revoked; owned MCP stopped', flush=True)
+    print('G MCP verification passed; 12 steps, 61 tools; credentials revoked; owned MCP stopped', flush=True)
 
 
 if __name__ == '__main__':

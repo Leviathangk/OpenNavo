@@ -20,8 +20,9 @@ names, summaries and introductions, defaulting new source text to English; use
 translation_fix for missing or incorrect translations, including Chinese names.
 Use package_set_categories and package_update_meta for primary categories, tags,
 developers and repositories. Maintain icons with asset_upload_from_url + package_set_icon
-and screenshots with package_screenshot_*. Wait for automatic download-size probing
-and fill only missing values.
+and screenshots with package_screenshot_*. For local image files, call asset_upload_ticket
+and POST the file to its single-use uploadUrl instead of encoding images into tool calls.
+Wait for automatic download-size probing and fill only missing values.
 3. Prioritize the 1,000 most popular apps for version updates. package_versions /
 releases_list show recorded versions. Hermes must consult reliable upstream sources;
 old source text from release_get is reference data only. Write this version's changes

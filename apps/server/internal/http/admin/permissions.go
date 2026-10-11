@@ -108,6 +108,8 @@ var Permissions = map[string]string{
 	"PUT /admin-api/feedback/:id":                              "ops:feedback:handle",
 	"GET /admin-api/assets":                                    "catalog:asset:upload",
 	"POST /admin-api/assets":                                   "catalog:asset:upload",
+	"POST /admin-api/assets/upload-tickets":                    "catalog:asset:upload",
+	"POST /admin-api/assets/upload-tickets/:ticket":            "catalog:asset:upload",
 	"GET /admin-api/desktop-releases":                          "release:desktop:edit",
 	"POST /admin-api/desktop-releases":                         "release:desktop:edit",
 	"GET /admin-api/desktop-releases/:id":                      "release:desktop:edit",

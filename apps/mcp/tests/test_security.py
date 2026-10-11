@@ -70,7 +70,7 @@ async def test_cache_isolation_and_expiry(backend: Backend) -> None:
             CURRENT_TOKEN.reset(marker)
 
     full, readonly = await asyncio.gather(listed("test-only-full"), listed("test-only-read"))
-    assert len(full) == 60 and "package_set_text" not in readonly
+    assert len(full) == 61 and "package_set_text" not in readonly
     assert len(backend.auth.cache) == 2
     assert all("test-only" not in key[0] for key in backend.auth.cache)
     backend.client.http = httpx2.AsyncClient(transport=httpx2.MockTransport(backend.handle))
@@ -166,6 +166,27 @@ async def test_all_write_dry_runs_passed_through(backend: Backend) -> None:
         and b"https://example.com/icon.png" in upload.content
     )
     assert b'name="file"' not in upload.content
+
+
+async def test_upload_ticket_keeps_image_bytes_out_of_mcp(backend: Backend) -> None:
+    async with Client(backend.server) as client:
+        tool = next(x for x in await client.list_tools() if x.name == "asset_upload_ticket")
+        assert set(tool.input_schema["properties"]) == {"kind", "source_url", "dry_run"}
+        assert "curl -sS -F file=@icon.png '<uploadUrl>'" in (tool.description or "")
+        result = await client.call_tool(
+            "asset_upload_ticket",
+            {"kind": "screenshot", "source_url": "https://example.com/screen.png"},
+        )
+    assert result.structured_content is not None
+    assert result.structured_content["untrusted"]["uploadUrl"].startswith("https://")
+    operation, request = backend.calls[-1]
+    # Only the small JSON grant request crosses MCP; the file goes straight to the returned URL.
+    assert operation == "createAssetUploadTicket" and "dryRun" not in request.url.params
+    assert request.headers["content-type"] == "application/json"
+    assert json.loads(request.content) == {
+        "kind": "screenshot",
+        "sourceUrl": "https://example.com/screen.png",
+    }
 
 
 async def test_category_read_merge_conflict(backend: Backend) -> None:

@@ -519,6 +519,36 @@ class Asset(BaseModel):
     createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
 
 
+class AssetUploadTicketKind(RootModel[Literal['icon', 'screenshot', 'cover']]):
+    root: Annotated[Literal['icon', 'screenshot', 'cover'], Field(description='Kinds Agents may upload directly; og images remain admin-only.', examples=['icon'])]
+
+
+class AssetUploadTicketCreate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    kind: AssetUploadTicketKind
+    sourceUrl: Annotated[AnyUrl | None, Field(description='Optional provenance recorded on the uploaded asset; never downloaded.', examples=['https://code.visualstudio.com/'])] = None
+
+
+class AssetUploadTicket(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    uploadUrl: Annotated[AnyUrl, Field(description='Single-use bearer URL; treat it as a secret.', examples=['https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000'])]
+    method: Annotated[Literal['POST'], Field(examples=['POST'])]
+    fileField: Annotated[Literal['file'], Field(examples=['file'])]
+    kind: AssetUploadTicketKind
+    maxBytes: Annotated[int, Field(examples=[5242880])]
+    expiresAt: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:10:00+00:00'])]
+
+
+class AssetUploadTicketResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: AssetUploadTicket | None = None
+
+
 class DesktopArtifact(BaseModel):
     target: Annotated[Literal['darwin-aarch64', 'darwin-x86_64', 'dmg-universal'], Field(examples=['darwin-aarch64'])]
     url: Annotated[str, Field(examples=['https://cdn.opennavo.example/desktop/stable/0.3.0/OpenNavo_darwin-aarch64.app.tar.gz'])]
@@ -2447,6 +2477,14 @@ class UploadAssetInput(BaseModel):
     body: Body | Body1
 
 
+class CreateAssetUploadTicketInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: AssetUploadTicketCreate
+
+
 class ListDesktopReleasesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -3073,6 +3111,10 @@ class TranslationQueueItem(BaseModel):
     updatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-09-30 08:00:00+00:00'])] = None
     locale: Locale | None = None
     sourceLocale: Locale | None = None
+
+
+class AssetUploadTicketResponseResult(RootModel[AssetUploadTicketResponse | BusinessErrorResponse | AgentDryRunResponse]):
+    root: Annotated[AssetUploadTicketResponse | BusinessErrorResponse | AgentDryRunResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'uploadUrl': 'https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000', 'method': 'POST', 'fileField': 'file', 'kind': 'icon', 'maxBytes': 5242880, 'expiresAt': '2026-09-30 08:10:00+00:00'}}])]
 
 
 class DesktopRelease(BaseModel):

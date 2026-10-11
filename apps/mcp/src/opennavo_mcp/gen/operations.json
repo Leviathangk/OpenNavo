@@ -22,6 +22,27 @@
     },
     "summary": "Add screenshot"
   },
+  "createAssetUploadTicket": {
+    "body": {
+      "$ref": "#/components/schemas/AssetUploadTicketCreate"
+    },
+    "method": "POST",
+    "model": "CreateAssetUploadTicketInput",
+    "parameters": {
+      "path": [],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/assets/upload-tickets",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:asset:upload"
+      ]
+    },
+    "summary": "Create a single-use asset upload URL"
+  },
   "createCategory": {
     "body": {
       "$ref": "#/components/schemas/CategoryUpsert"

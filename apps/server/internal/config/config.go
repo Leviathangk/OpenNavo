@@ -253,3 +253,13 @@ func (c Config) AdminOrigins() []string {
 	}
 	return result
 }
+
+// AdminAPIBaseURL is where clients outside the admin UI reach /admin-api: development serves it from the API itself,
+// while deployments route it only through the admin origin.
+func (c Config) AdminAPIBaseURL() string {
+	base := c.AdminOrigin
+	if c.AppEnv == "dev" {
+		base = c.PublicBaseURL
+	}
+	return strings.TrimRight(base, "/") + "/admin-api"
+}

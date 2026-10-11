@@ -133,7 +133,7 @@ func New(cfg config.Config, logger *slog.Logger, ready Readiness, deps ...Depend
 		return nil, err
 	}
 	adminGroup := engine.Group("/admin-api", func(c *gin.Context) {
-		if c.Request.Method == "POST" && c.Request.URL.Path == "/admin-api/assets" {
+		if c.Request.Method == "POST" && (c.Request.URL.Path == "/admin-api/assets" || c.FullPath() == "/admin-api/assets/upload-tickets/:ticket") {
 			if c.Request.ContentLength > 6*1024*1024 {
 				respond.Error(c, &domain.AppError{Code: domain.CodeInvalidUpload, HTTPStatus: 400}, true)
 				c.Abort()

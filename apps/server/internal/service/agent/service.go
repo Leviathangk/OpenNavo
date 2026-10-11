@@ -63,13 +63,20 @@ func Hash(plain string) string {
 	return hex.EncodeToString(sum[:])
 }
 func (s *Service) Authenticate(ctx context.Context, gateway, token, ip string) (Identity, error) {
-	var out Identity
 	if len(s.GatewaySecret) < 32 || subtle.ConstantTimeCompare([]byte(gateway), []byte(s.GatewaySecret)) != 1 {
-		return out, Error(domain.CodeForbidden)
+		return Identity{}, Error(domain.CodeForbidden)
 	}
 	if !strings.HasPrefix(token, "onv_") || len(token) != 47 {
-		return out, Error(domain.CodeUnauthenticated)
+		return Identity{}, Error(domain.CodeUnauthenticated)
 	}
+	return s.identity(ctx, "t.token_hash", Hash(token), ip)
+}
+
+const identityQuery = `SELECT t.id,t.client_id,c.user_id,c.name client_name,t.token_prefix,to_jsonb(t.permissions) permissions,to_jsonb(t.ip_allowlist) ip_allowlist,t.allow_delete,t.expires_at,t.revoked_at,c.enabled client_enabled,(u.status='1' AND u.is_machine) user_enabled,s.enabled,s.calls_per_minute,s.writes_per_day,s.llm_ops_per_day,s.batch_limit FROM agent_tokens t JOIN agent_clients c ON c.id=t.client_id JOIN admin_users u ON u.id=c.user_id CROSS JOIN agent_settings s WHERE `
+
+// identity applies every token, client, account, switch and IP allowlist check; column is a constant lookup key.
+func (s *Service) identity(ctx context.Context, column string, key any, ip string) (Identity, error) {
+	var out Identity
 	var row struct {
 		ID, ClientID, UserID                                   int64
 		ClientName, TokenPrefix                                string
@@ -78,7 +85,7 @@ func (s *Service) Authenticate(ctx context.Context, gateway, token, ip string) (
 		ExpiresAt, RevokedAt                                   *time.Time
 		CallsPerMinute, WritesPerDay, LLMOpsPerDay, BatchLimit int
 	}
-	err := s.Store.DB.WithContext(ctx).Raw(`SELECT t.id,t.client_id,c.user_id,c.name client_name,t.token_prefix,to_jsonb(t.permissions) permissions,to_jsonb(t.ip_allowlist) ip_allowlist,t.allow_delete,t.expires_at,t.revoked_at,c.enabled client_enabled,(u.status='1' AND u.is_machine) user_enabled,s.enabled,s.calls_per_minute,s.writes_per_day,s.llm_ops_per_day,s.batch_limit FROM agent_tokens t JOIN agent_clients c ON c.id=t.client_id JOIN admin_users u ON u.id=c.user_id CROSS JOIN agent_settings s WHERE t.token_hash=?`, Hash(token)).Scan(&row).Error
+	err := s.Store.DB.WithContext(ctx).Raw(identityQuery+column+"=?", key).Scan(&row).Error
 	if err != nil {
 		return out, err
 	}
@@ -128,6 +135,77 @@ func (s *Service) Authenticate(ctx context.Context, gateway, token, ip string) (
 		}
 	}
 	return out, nil
+}
+
+// UploadTicketTTL bounds a direct upload URL; tokens that expire sooner shorten it.
+const UploadTicketTTL = 10 * time.Minute
+
+const uploadTicketPrefix = "onvu_"
+
+// UploadGrant is what one ticket authorizes. Redis keys it by the ticket hash, never by the ticket itself.
+type UploadGrant struct {
+	TokenID   int64  `json:"tokenId"`
+	Kind      string `json:"kind"`
+	SourceURL string `json:"sourceUrl,omitempty"`
+	Tool      string `json:"tool"`
+	RequestID string `json:"requestId"`
+}
+
+func uploadKey(ticket string) string { return "agent:upload:" + Hash(ticket) }
+
+func (s *Service) IssueUploadTicket(ctx context.Context, id Identity, grant UploadGrant) (string, time.Time, error) {
+	if s.Store.Redis == nil {
+		return "", time.Time{}, errors.New("agent upload store unavailable")
+	}
+	now := s.now()
+	expires := now.Add(UploadTicketTTL)
+	if id.ExpiresAt != nil && id.ExpiresAt.Before(expires) {
+		expires = id.ExpiresAt.UTC()
+	}
+	if !expires.After(now) {
+		return "", time.Time{}, Error(domain.CodeUnauthenticated)
+	}
+	var b [32]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", time.Time{}, err
+	}
+	ticket := uploadTicketPrefix + base64.RawURLEncoding.EncodeToString(b[:])
+	grant.TokenID = id.ID
+	value, err := json.Marshal(grant)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	if err := s.Store.Redis.Set(ctx, uploadKey(ticket), value, expires.Sub(now)).Err(); err != nil {
+		return "", time.Time{}, err
+	}
+	return ticket, expires, nil
+}
+
+// RedeemUploadTicket consumes the ticket atomically, then reapplies every token check for the uploading IP,
+// so revocation, pausing or permission changes after issue still take effect.
+func (s *Service) RedeemUploadTicket(ctx context.Context, ticket, ip string) (UploadGrant, Identity, error) {
+	var grant UploadGrant
+	if len(s.GatewaySecret) < 32 {
+		return grant, Identity{}, Error(domain.CodeForbidden)
+	}
+	if !strings.HasPrefix(ticket, uploadTicketPrefix) || len(ticket) != 48 {
+		return grant, Identity{}, Error(domain.CodeUnauthenticated)
+	}
+	if s.Store.Redis == nil {
+		return grant, Identity{}, errors.New("agent upload store unavailable")
+	}
+	raw, err := s.Store.Redis.GetDel(ctx, uploadKey(ticket)).Bytes()
+	if errors.Is(err, redis.Nil) {
+		return grant, Identity{}, Error(domain.CodeUnauthenticated)
+	}
+	if err != nil {
+		return grant, Identity{}, err
+	}
+	if err := json.Unmarshal(raw, &grant); err != nil {
+		return grant, Identity{}, err
+	}
+	id, err := s.identity(ctx, "t.id", grant.TokenID, ip)
+	return grant, id, err
 }
 
 var quotaScript = redis.NewScript(`

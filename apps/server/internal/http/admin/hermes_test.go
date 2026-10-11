@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"crypto/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/opennavo/opennavo/server/gen/adminapi"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/service/assets"
+	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/seeds"
 	"github.com/stretchr/testify/require"
 )
@@ -27,6 +30,36 @@ func TestHermesAdminIntrospectionAlwaysDenied(t *testing.T) {
 	var appError *domain.AppError
 	require.ErrorAs(t, err, &appError)
 	require.Equal(t, domain.CodeForbidden, appError.Code)
+}
+
+func TestUploadTicketRoutesNeverAcceptAdminOrCICredentials(t *testing.T) {
+	h := &Handler{CIToken: rand.Text()}
+	r := gin.New()
+	r.Use(h.Middleware(nil))
+	for _, path := range []string{"/admin-api/assets/upload-tickets", "/admin-api/assets/upload-tickets/:ticket"} {
+		r.POST(path, func(c *gin.Context) { t.Error("ticket route reached handler: " + c.FullPath()) })
+	}
+	for _, path := range []string{"/admin-api/assets/upload-tickets", "/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000"} {
+		for _, bearer := range []string{"", h.CIToken} {
+			w := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodPost, path, nil)
+			request.Header.Set("Authorization", "Bearer "+bearer)
+			r.ServeHTTP(w, request)
+			require.Equal(t, http.StatusOK, w.Code)
+			require.Contains(t, w.Body.String(), `"code":"1004"`, path)
+		}
+	}
+	// Handlers deny independently of Middleware: issuing needs an Agent identity, uploading needs a redeemed ticket.
+	h.Management, h.Assets = &management.Service{}, &assets.Service{}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/admin-api/assets/upload-tickets", nil).WithContext(domain.WithOperation(context.Background(), &domain.Operation{RequestID: "admin-session"}))
+	_, err := h.CreateAssetUploadTicket(c, adminapi.CreateAssetUploadTicketRequestObject{Body: &adminapi.AssetUploadTicketCreate{Kind: adminapi.AssetUploadTicketKindIcon}})
+	var appError *domain.AppError
+	require.ErrorAs(t, err, &appError)
+	require.Equal(t, domain.CodeForbidden, appError.Code)
+	_, err = h.UploadAssetWithTicket(c, adminapi.UploadAssetWithTicketRequestObject{})
+	require.ErrorAs(t, err, &appError)
+	require.Equal(t, domain.CodeUnauthenticated, appError.Code)
 }
 
 func TestHermesAgentSeedExactlyMatchesGrantableContract(t *testing.T) {
@@ -50,9 +83,12 @@ func TestAgentRouteWhitelistCountAndForbiddenSurfaces(t *testing.T) {
 	spec, err := adminapi.GetSpec()
 	require.NoError(t, err)
 	policies := AgentPolicies(spec)
-	require.Len(t, policies, 79)
+	require.Len(t, policies, 80)
 	require.Contains(t, policies, "POST /introspect")
 	require.Equal(t, []string{"dashboard:view"}, policies["GET /dashboard/llm-usage"].Permissions)
+	require.Equal(t, []string{"catalog:asset:upload"}, policies["POST /assets/upload-tickets"].Permissions)
+	// Tickets are redeemed only through the public admin path; the internal entry point never accepts uploads by ticket.
+	require.NotContains(t, policies, "POST /assets/upload-tickets/:ticket")
 	for _, key := range []string{"GET /app-config", "PUT /app-config/:key", "GET /mirrors", "POST /desktop-releases", "PUT /desktop-releases/:id", "POST /desktop-releases/:id/publish", "POST /desktop-releases/:id/rollback", "POST /agent/clients", "GET /system/users"} {
 		require.NotContains(t, policies, key)
 	}

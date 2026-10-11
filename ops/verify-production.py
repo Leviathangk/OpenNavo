@@ -100,7 +100,8 @@ def http(path='/', host='api.opennavo.localhost', method='GET', data=None, autho
     headers = {'Host': host, **(extra_headers or {})}
     if authorization:
         headers['Authorization'] = authorization
-    if data is not None:
+    # Raw bytes (such as multipart uploads) are sent as-is with the caller's Content-Type.
+    if data is not None and not isinstance(data, bytes):
         headers['Content-Type'] = 'application/json'
         data = json.dumps(data).encode()
     req = urllib.request.Request(f'http://127.0.0.1:{port}{path}', headers=headers, method=method, data=data)

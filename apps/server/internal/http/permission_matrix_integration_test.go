@@ -69,6 +69,8 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups["agent:manage"] = "getAgentSettings updateAgentSettings listAgentClients createAgentClient getAgentClient updateAgentClient listAgentTokens createAgentToken updateAgentToken revokeAgentToken introspectAgentToken"
 	groups["agent:log:view"] = "listContentRevisions getContentRevision listTrash getTrashItem listAgentCalls getAgentCall listTranslationLogs getTranslationLog"
 	groups["content:revision:restore"] = "restoreRevision restoreTrash revertRequest"
+	// Upload tickets are issued only to Agents and redeemed only with the ticket itself.
+	groups["catalog:asset:upload"] += " createAssetUploadTicket uploadAssetWithTicket"
 	operations := map[string]string{}
 	for permission, names := range groups {
 		for _, name := range strings.Fields(names) {
@@ -170,6 +172,10 @@ func TestEveryAdminRouteFiveRolePermissionMatrix(t *testing.T) {
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &envelope))
 		require.Equal(t, expected, envelope.Code, method+" "+path)
 	}
+	// Agent entry points never accept admin JWTs or CI tokens; without configured Agent access they deny like introspection.
+	agentOnly := func(operation string) bool {
+		return slices.ContainsFunc([]string{"introspectAgentToken", "createAssetUploadTicket", "uploadAssetWithTicket"}, func(name string) bool { return strings.EqualFold(name, operation) })
+	}
 	allowedCount, deniedCount := 0, 0
 	for _, account := range seeds.E2EAccounts() {
 		pair, err := authentication.Login(ctx, account.Username, password, store.AuditActor{})
@@ -177,7 +183,7 @@ func TestEveryAdminRouteFiveRolePermissionMatrix(t *testing.T) {
 		for _, route := range routes {
 			t.Run(account.Role+"/"+route.operation, func(t *testing.T) {
 				allowed := route.anonymous || account.Role == "R_SUPER" || slices.Contains(roles[route.permission], account.Role)
-				if strings.EqualFold(route.operation, "introspectAgentToken") {
+				if agentOnly(route.operation) {
 					allowed = false
 				}
 				expected := domain.CodeForbidden
@@ -207,7 +213,7 @@ func TestEveryAdminRouteFiveRolePermissionMatrix(t *testing.T) {
 		}
 		check(probe, route.method, route.actual, handler.CIToken, expected)
 		anonymousCode := domain.CodeUnauthenticated
-		if strings.EqualFold(route.operation, "introspectAgentToken") {
+		if agentOnly(route.operation) {
 			anonymousCode = domain.CodeForbidden
 		}
 		check(probe, route.method, route.actual, "", anonymousCode)

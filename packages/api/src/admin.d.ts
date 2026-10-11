@@ -1094,6 +1094,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/assets/upload-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a single-use asset upload URL
+         * @description POST /agent-api/assets/upload-tickets only; not mounted at /admin-api. Requires catalog:asset:upload. Lets Agents upload local files without passing image bytes through MCP: the ticket expires after 10 minutes (never after the token) and is bound to the calling token and kind; Redis stores only its hash. Issuing counts as the write, so uploading with it consumes no further quota. Then POST exactly one multipart file field (PNG/JPEG/WebP, at most 5 MB) to uploadUrl without Authorization; the reply matches uploadAsset. dryRun validates without issuing a ticket.
+         */
+        post: operations["createAssetUploadTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/upload-tickets/{ticket}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload an asset with a single-use ticket
+         * @description Mounted at /admin-api only; the ticket from createAssetUploadTicket replaces Authorization. The ticket is consumed before the body is read, then token state, catalog:asset:upload and the IP allowlist are rechecked for the uploading IP. Send exactly one file field (PNG/JPEG/WebP, at most 5 MB); kind and sourceUrl come from the ticket. Unknown, expired or reused tickets return 8888. Calls appear in Agent call logs.
+         */
+        post: operations["uploadAssetWithTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/desktop-releases": {
         parameters: {
             query?: never;
@@ -7186,6 +7226,100 @@ export interface components {
              */
             createTime: string;
         };
+        /**
+         * @description Kinds Agents may upload directly; og images remain admin-only.
+         * @example icon
+         * @enum {string}
+         */
+        AssetUploadTicketKind: "icon" | "screenshot" | "cover";
+        /**
+         * @example {
+         *       "kind": "icon"
+         *     }
+         */
+        AssetUploadTicketCreate: {
+            kind: components["schemas"]["AssetUploadTicketKind"];
+            /**
+             * Format: uri
+             * @description Optional provenance recorded on the uploaded asset; never downloaded.
+             * @example https://code.visualstudio.com/
+             */
+            sourceUrl?: string;
+        };
+        /**
+         * @example {
+         *       "uploadUrl": "https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000",
+         *       "method": "POST",
+         *       "fileField": "file",
+         *       "kind": "icon",
+         *       "maxBytes": 5242880,
+         *       "expiresAt": "2026-09-30T08:10:00Z"
+         *     }
+         */
+        AssetUploadTicket: {
+            /**
+             * Format: uri
+             * @description Single-use bearer URL; treat it as a secret.
+             * @example https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000
+             */
+            uploadUrl: string;
+            /**
+             * @example POST
+             * @enum {string}
+             */
+            method: "POST";
+            /**
+             * @example file
+             * @enum {string}
+             */
+            fileField: "file";
+            kind: components["schemas"]["AssetUploadTicketKind"];
+            /**
+             * Format: int64
+             * @example 5242880
+             */
+            maxBytes: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-30T08:10:00Z
+             */
+            expiresAt: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "uploadUrl": "https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000",
+         *         "method": "POST",
+         *         "fileField": "file",
+         *         "kind": "icon",
+         *         "maxBytes": 5242880,
+         *         "expiresAt": "2026-09-30T08:10:00Z"
+         *       }
+         *     }
+         */
+        AssetUploadTicketResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data?: components["schemas"]["AssetUploadTicket"] | null;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "uploadUrl": "https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000",
+         *         "method": "POST",
+         *         "fileField": "file",
+         *         "kind": "icon",
+         *         "maxBytes": 5242880,
+         *         "expiresAt": "2026-09-30T08:10:00Z"
+         *       }
+         *     }
+         */
+        AssetUploadTicketResponseResult: components["schemas"]["AssetUploadTicketResponse"] | components["schemas"]["BusinessErrorResponse"] | components["schemas"]["AgentDryRunResponse"];
         /**
          * @example {
          *       "target": "darwin-aarch64",
@@ -19290,6 +19424,86 @@ export interface operations {
                     downloadUrl?: string;
                     sourceUrl?: string;
                 } & (unknown | unknown);
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetResponseResult"];
+                };
+            };
+        };
+    };
+    createAssetUploadTicket: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "kind": "icon",
+                 *       "sourceUrl": "https://code.visualstudio.com/"
+                 *     }
+                 */
+                "application/json": components["schemas"]["AssetUploadTicketCreate"];
+            };
+        };
+        responses: {
+            /** @description Both business success and business errors use HTTP 200 */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetUploadTicketResponseResult"];
+                };
+            };
+        };
+    };
+    uploadAssetWithTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Single-use bearer secret; never log it. */
+                ticket: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
             };
         };
         responses: {

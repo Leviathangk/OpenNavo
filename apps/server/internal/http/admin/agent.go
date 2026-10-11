@@ -3,6 +3,7 @@ package admin
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -99,32 +100,11 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 			respond.Error(c, domain.Validation(), true)
 			return
 		}
-		c.Request = c.Request.WithContext(domain.WithOperation(c.Request.Context(), op))
-		c.Set("agentIdentity", id)
-		c.Set("adminActor", store.AuditActor{ID: &id.UserID, IP: c.GetHeader("X-Agent-Client-IP"), UserAgent: c.GetHeader("User-Agent")})
-		c.Set("userId", id.UserID)
-		// Reserve request IDs first, before business commits can hide conflicts; summaries include field names only, never bodies or credentials.
-		var callID int64
-		if err := svc.Store.DB.WithContext(c.Request.Context()).Raw(`INSERT INTO agent_call_logs(request_id,client_id,client_name,token_id,token_prefix,tool,operation_id,code,dry_run,is_write) VALUES(?,?,?,?,?,?,?,'5000',?,?) ON CONFLICT(request_id) DO NOTHING RETURNING id`, op.RequestID, id.ClientID, id.ClientName, id.ID, id.Prefix, op.Tool, p.Operation, op.DryRun, c.Request.Method != "GET" && !p.Introspection).Scan(&callID).Error; err != nil {
-			respond.Error(c, err, true)
+		callID, finish, ok := beginAgentCall(c, svc, id, op, c.GetHeader("X-Agent-Client-IP"), c.Request.Method != "GET" && !p.Introspection)
+		if !ok {
 			return
 		}
-		if callID == 0 {
-			respond.Error(c, agent.Error(domain.CodeConflict), true)
-			return
-		}
-		w := &agentWriter{ResponseWriter: c.Writer}
-		c.Writer = w
-		start := time.Now()
-		defer func() {
-			code := domain.CodeInternal
-			if m := responseCode.FindSubmatch(w.prefix); len(m) > 1 {
-				code = string(m[1])
-			}
-			ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), 5*time.Second)
-			defer cancel()
-			_ = svc.Store.DB.WithContext(ctx).Exec(`UPDATE agent_call_logs SET code=?,duration_ms=?,objects=COALESCE((SELECT jsonb_agg(DISTINCT jsonb_build_object('entity',entity,'objectKey',object_key)) FROM content_revisions WHERE request_id=?),'[]'::jsonb),result_summary=jsonb_build_object('revisionIds',COALESCE((SELECT jsonb_agg(id ORDER BY id) FROM content_revisions WHERE request_id=?),'[]'::jsonb)) WHERE id=?`, code, time.Since(start).Milliseconds(), op.RequestID, op.RequestID, callID).Error
-		}()
+		defer finish()
 		for _, permission := range p.Permissions {
 			if !op.Allowed(permission) {
 				respond.Error(c, agent.Error(domain.CodeForbidden), true)
@@ -171,12 +151,90 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 			respond.Error(c, err, true)
 			return
 		}
-		if err := svc.Store.DB.WithContext(c.Request.Context()).Exec("UPDATE agent_tokens SET last_used_at=now(),last_used_ip=?::inet WHERE id=?", c.GetHeader("X-Agent-Client-IP"), id.ID).Error; err != nil {
-			respond.Error(c, err, true)
+		if !touchAgentToken(c, svc, id, c.GetHeader("X-Agent-Client-IP")) {
 			return
 		}
 		c.Next()
 	}
+}
+
+// agentUpload admits POST /admin-api/assets/upload-tickets/:ticket. The single-use ticket replaces the bearer
+// credential and is consumed before the body is read, so unauthenticated uploads never reach multipart decoding.
+func (h *Handler) agentUpload(c *gin.Context) {
+	svc := h.agentService()
+	if svc == nil {
+		respond.Error(c, agent.Error(domain.CodeForbidden), true)
+		return
+	}
+	ip := c.ClientIP()
+	grant, id, err := svc.RedeemUploadTicket(c.Request.Context(), c.Param("ticket"), ip)
+	if err != nil {
+		respond.Error(c, err, true)
+		return
+	}
+	// Choose the request ID server-side so a direct upload cannot collide with or join another call's audit trail.
+	requestID := rand.Text()
+	c.Set("requestId", requestID)
+	c.Header("X-Request-ID", requestID)
+	op := &domain.Operation{RequestID: requestID, Name: "uploadAssetWithTicket", Tool: grant.Tool, ActorName: id.ClientName, ActorID: &id.UserID, AgentClientID: id.ClientID, AgentTokenID: id.ID, Permissions: id.Permissions, RequiredPermissions: []string{"catalog:asset:upload"}, AllowDelete: id.AllowDelete}
+	callID, finish, ok := beginAgentCall(c, svc, id, op, ip, true)
+	if !ok {
+		return
+	}
+	defer finish()
+	if !op.Allowed("catalog:asset:upload") {
+		respond.Error(c, agent.Error(domain.CodeForbidden), true)
+		return
+	}
+	// Issuing the ticket already reserved the write quota; link this upload to that call instead of charging again.
+	summary, _ := json.Marshal(map[string]any{"fields": []string{"file"}, "kind": grant.Kind, "ticketRequestId": grant.RequestID})
+	if err := svc.Store.DB.WithContext(c.Request.Context()).Exec(`UPDATE agent_call_logs SET params_summary=?::jsonb WHERE id=?`, string(summary), callID).Error; err != nil {
+		respond.Error(c, err, true)
+		return
+	}
+	if !touchAgentToken(c, svc, id, ip) {
+		return
+	}
+	c.Set("agentUpload", grant)
+	c.Next()
+}
+
+// beginAgentCall binds the identity to the request and reserves its request ID first, before business commits can
+// hide conflicts. finish records the outcome; summaries include field names only, never bodies or credentials.
+func beginAgentCall(c *gin.Context, svc *agent.Service, id agent.Identity, op *domain.Operation, ip string, write bool) (int64, func(), bool) {
+	c.Request = c.Request.WithContext(domain.WithOperation(c.Request.Context(), op))
+	c.Set("agentIdentity", id)
+	c.Set("adminActor", store.AuditActor{ID: &id.UserID, IP: ip, UserAgent: c.GetHeader("User-Agent")})
+	c.Set("userId", id.UserID)
+	var callID int64
+	if err := svc.Store.DB.WithContext(c.Request.Context()).Raw(`INSERT INTO agent_call_logs(request_id,client_id,client_name,token_id,token_prefix,tool,operation_id,code,dry_run,is_write) VALUES(?,?,?,?,?,?,?,'5000',?,?) ON CONFLICT(request_id) DO NOTHING RETURNING id`, op.RequestID, id.ClientID, id.ClientName, id.ID, id.Prefix, op.Tool, op.Name, op.DryRun, write).Scan(&callID).Error; err != nil {
+		respond.Error(c, err, true)
+		return 0, nil, false
+	}
+	if callID == 0 {
+		respond.Error(c, agent.Error(domain.CodeConflict), true)
+		return 0, nil, false
+	}
+	w := &agentWriter{ResponseWriter: c.Writer}
+	c.Writer = w
+	start := time.Now()
+	return callID, func() {
+		code := domain.CodeInternal
+		if m := responseCode.FindSubmatch(w.prefix); len(m) > 1 {
+			code = string(m[1])
+		}
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), 5*time.Second)
+		defer cancel()
+		_ = svc.Store.DB.WithContext(ctx).Exec(`UPDATE agent_call_logs SET code=?,duration_ms=?,objects=COALESCE((SELECT jsonb_agg(DISTINCT jsonb_build_object('entity',entity,'objectKey',object_key)) FROM content_revisions WHERE request_id=?),'[]'::jsonb),result_summary=jsonb_build_object('revisionIds',COALESCE((SELECT jsonb_agg(id ORDER BY id) FROM content_revisions WHERE request_id=?),'[]'::jsonb)) WHERE id=?`, code, time.Since(start).Milliseconds(), op.RequestID, op.RequestID, callID).Error
+	}, true
+}
+
+func touchAgentToken(c *gin.Context, svc *agent.Service, id agent.Identity, ip string) bool {
+	if err := svc.Store.DB.WithContext(c.Request.Context()).Exec("UPDATE agent_tokens SET last_used_at=now(),last_used_ip=?::inet WHERE id=?", ip, id.ID).Error; err != nil {
+		respond.Error(c, err, true)
+		return false
+	}
+	return true
 }
 func consumesLLM(op string, body map[string]any) bool {
 	if body["clear"] == true {

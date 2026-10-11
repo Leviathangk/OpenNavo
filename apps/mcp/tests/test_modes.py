@@ -146,7 +146,7 @@ async def test_display_preview_fallback(backend: Backend) -> None:
         assert locales["ja-JP"]["textLocale"] == "en-US"
 
 
-async def test_all_79_operations_reached_by_tools(backend: Backend) -> None:
+async def test_all_80_operations_reached_by_tools(backend: Backend) -> None:
     from opennavo_mcp.contracts import OPERATIONS
     from opennavo_mcp.tools.manifest import TOOLS
 

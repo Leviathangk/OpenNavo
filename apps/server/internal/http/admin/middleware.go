@@ -18,9 +18,14 @@ func (h *Handler) Middleware(limiter *middleware.RateLimiter) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		key := c.Request.Method + " " + c.FullPath()
-		// The generator shares the introspection path, but it must never be accessible through the admin entry point.
-		if key == "POST /admin-api/introspect" {
+		// The generator shares the introspection and ticket-issuing paths, but they must never be accessible through the admin entry point.
+		if key == "POST /admin-api/introspect" || key == "POST /admin-api/assets/upload-tickets" {
 			respond.Error(c, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: 403}, true)
+			return
+		}
+		// Ticket uploads authenticate only by the ticket; admin JWTs and CI tokens never apply to this route.
+		if key == "POST /admin-api/assets/upload-tickets/:ticket" {
+			h.agentUpload(c)
 			return
 		}
 		if key == "POST /admin-api/auth/login" || key == "POST /admin-api/auth/refreshToken" {

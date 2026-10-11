@@ -4358,6 +4358,139 @@ paths:
         - $ref: "#/components/parameters/AgentRequestId"
         - $ref: "#/components/parameters/AgentClientIP"
         - $ref: "#/components/parameters/DryRun"
+  /assets/upload-tickets:
+    post:
+      tags:
+        - assets
+      operationId: createAssetUploadTicket
+      summary: "Create a single-use asset upload URL"
+      description: "POST /agent-api/assets/upload-tickets only; not mounted at /admin-api. Requires catalog:asset:upload. Lets Agents upload local files without passing image bytes through MCP: the ticket expires after 10 minutes (never after the token) and is bound to the calling token and kind; Redis stores only its hash. Issuing counts as the write, so uploading with it consumes no further quota. Then POST exactly one multipart file field (PNG/JPEG/WebP, at most 5 MB) to uploadUrl without Authorization; the reply matches uploadAsset. dryRun validates without issuing a ticket."
+      x-permissions:
+        - catalog:asset:upload
+      parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetUploadTicketCreate"
+            example:
+              kind: icon
+              sourceUrl: https://code.visualstudio.com/
+      responses:
+        "200":
+          description: "Both business success and business errors use HTTP 200"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetUploadTicketResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AssetUploadTicketResponseResultSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AssetUploadTicketResponseResultSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AssetUploadTicketResponseResultSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AssetUploadTicketResponseResultSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AssetUploadTicketResponseResultSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AssetUploadTicketResponseResultSixLocales"
+                dry-run:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      dryRun: true
+                      requestId: demo-preview-001
+                      changes:
+                        - object:
+                            entity: asset
+                            objectKey: new
+                          action: create
+                          before: null
+                          after:
+                            kind: icon
+                      affectedUrls: []
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-agent-access:
+        permissions:
+          - catalog:asset:upload
+        deleteAction: never
+      servers:
+        - url: http://api:8080/agent-api
+      security:
+        - agentToken: []
+          agentGateway: []
+  /assets/upload-tickets/{ticket}:
+    post:
+      tags:
+        - assets
+      operationId: uploadAssetWithTicket
+      summary: "Upload an asset with a single-use ticket"
+      description: "Mounted at /admin-api only; the ticket from createAssetUploadTicket replaces Authorization. The ticket is consumed before the body is read, then token state, catalog:asset:upload and the IP allowlist are rechecked for the uploading IP. Send exactly one file field (PNG/JPEG/WebP, at most 5 MB); kind and sourceUrl come from the ticket. Unknown, expired or reused tickets return 8888. Calls appear in Agent call logs."
+      x-permissions:
+        - catalog:asset:upload
+      security: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          description: "Single-use bearer secret; never log it."
+          schema:
+            type: string
+            pattern: "^onvu_[A-Za-z0-9_-]{43}$"
+            example: onvu_0000000000000000000000000000000000000000000
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AssetResponseResultSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AssetResponseResultSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AssetResponseResultSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AssetResponseResultSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AssetResponseResultSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AssetResponseResultSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-agent-access: false
   /desktop-releases:
     get:
       tags:
@@ -12971,6 +13104,115 @@ components:
         bytes: 12000
         sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         createTime: 2026-09-30T08:00:00Z
+    AssetUploadTicketKind:
+      type: string
+      description: "Kinds Agents may upload directly; og images remain admin-only."
+      enum:
+        - icon
+        - screenshot
+        - cover
+      example: icon
+    AssetUploadTicketCreate:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+      properties:
+        kind:
+          $ref: "#/components/schemas/AssetUploadTicketKind"
+        sourceUrl:
+          type: string
+          format: uri
+          pattern: "^https?://"
+          maxLength: 2048
+          description: "Optional provenance recorded on the uploaded asset; never downloaded."
+          example: https://code.visualstudio.com/
+      example:
+        kind: icon
+    AssetUploadTicket:
+      type: object
+      additionalProperties: false
+      required:
+        - uploadUrl
+        - method
+        - fileField
+        - kind
+        - maxBytes
+        - expiresAt
+      properties:
+        uploadUrl:
+          type: string
+          format: uri
+          description: "Single-use bearer URL; treat it as a secret."
+          example: https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000
+        method:
+          type: string
+          enum:
+            - POST
+          example: POST
+        fileField:
+          type: string
+          enum:
+            - file
+          example: file
+        kind:
+          $ref: "#/components/schemas/AssetUploadTicketKind"
+        maxBytes:
+          type: integer
+          format: int64
+          example: 5242880
+        expiresAt:
+          type: string
+          format: date-time
+          example: 2026-09-30T08:10:00Z
+      example:
+        uploadUrl: https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000
+        method: POST
+        fileField: file
+        kind: icon
+        maxBytes: 5242880
+        expiresAt: 2026-09-30T08:10:00Z
+    AssetUploadTicketResponse:
+      type: object
+      required:
+        - code
+        - msg
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/AssetUploadTicket"
+          nullable: true
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          uploadUrl: https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000
+          method: POST
+          fileField: file
+          kind: icon
+          maxBytes: 5242880
+          expiresAt: 2026-09-30T08:10:00Z
+    AssetUploadTicketResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/AssetUploadTicketResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+        - $ref: "#/components/schemas/AgentDryRunResponse"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          uploadUrl: https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000
+          method: POST
+          fileField: file
+          kind: icon
+          maxBytes: 5242880
+          expiresAt: 2026-09-30T08:10:00Z
     DesktopArtifact:
       type: object
       required:
@@ -24410,6 +24652,18 @@ components:
           bytes: 12000
           sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           createTime: 2026-09-30T08:00:00Z
+    AssetUploadTicketResponseResultSixLocales:
+      summary: Six-language fields and translation status
+      value:
+        code: "0000"
+        msg: ok
+        data:
+          uploadUrl: https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000
+          method: POST
+          fileField: file
+          kind: icon
+          maxBytes: 5242880
+          expiresAt: 2026-09-30T08:10:00Z
     DesktopReleasePageResponseResultSixLocales:
       summary: Six-language fields and translation status
       value:
