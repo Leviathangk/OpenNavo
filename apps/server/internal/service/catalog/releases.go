@@ -12,7 +12,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 )
 
-func (s *PublicService) ReleasePage(ctx context.Context, kind, token, locale string, current, size int) (publicapi.ReleasePage, error) {
+func (s *PublicService) ReleasePage(ctx context.Context, kind, token, locale string, current, size int, onlyWithNotes bool) (publicapi.ReleasePage, error) {
 	out := publicapi.ReleasePage{Current: current, Size: size, Records: []publicapi.ReleaseEntry{}}
 	if !ValidPage(current, size, 100) {
 		return out, domain.Validation()
@@ -25,7 +25,6 @@ func (s *PublicService) ReleasePage(ctx context.Context, kind, token, locale str
 	if err != nil {
 		return out, err
 	}
-	out.Total = len(all)
 	dates, brew := []*time.Time{}, []*time.Time{}
 	for _, entry := range all {
 		dates = append(dates, entry.PublishedAt)
@@ -37,9 +36,20 @@ func (s *PublicService) ReleasePage(ctx context.Context, kind, token, locale str
 	out.Stats.BrewLag.Compared = stats.Compared
 	out.Stats.BrewLag.EarlierCount = stats.EarlierCount
 	out.Stats.BrewLag.MedianMinutes = stats.MedianMinutes
-	start, found := domain.PageOffset(current, size, int64(len(all)))
+	// Stats always describe the whole timeline; the notes filter only narrows the listed versions and their total.
+	entries := all
+	if onlyWithNotes {
+		entries = make([]publicapi.ReleaseEntry, 0, len(all))
+		for _, entry := range all {
+			if entry.HasNotes {
+				entries = append(entries, entry)
+			}
+		}
+	}
+	out.Total = len(entries)
+	start, found := domain.PageOffset(current, size, int64(len(entries)))
 	if found {
-		out.Records = all[start:min(start+size, len(all))]
+		out.Records = entries[start:min(start+size, len(entries))]
 	}
 	return out, nil
 }

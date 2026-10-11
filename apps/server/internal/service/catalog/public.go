@@ -261,7 +261,7 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 		if err = json.Unmarshal(shots, &d.Screenshots); err != nil {
 			return d, err
 		}
-		releases, err := s.ReleasePage(ctx, kind, token, locale, 1, 1)
+		releases, err := s.ReleasePage(ctx, kind, token, locale, 1, 1, false)
 		if err != nil {
 			return d, err
 		}
@@ -594,7 +594,7 @@ func (s *PublicService) Lookup(ctx context.Context, items []publicapi.PackageRef
 			row.AutoUpdates = &p.AutoUpdates
 			row.Deprecated = &p.Deprecated
 			row.Disabled = &p.Disabled
-			releases, err := s.ReleasePage(ctx, string(item.Kind), item.Token, locale, 1, 1)
+			releases, err := s.ReleasePage(ctx, string(item.Kind), item.Token, locale, 1, 1, false)
 			if err != nil {
 				return nil, err
 			}

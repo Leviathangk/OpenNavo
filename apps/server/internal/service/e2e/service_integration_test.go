@@ -124,7 +124,7 @@ func TestE2EFixturesIdempotentSearchRolesReleasesAndSnapshot(t *testing.T) {
 	require.Len(t, home.Features, 1)
 	require.Equal(t, "ghostty", *home.Features[0].Target.Token)
 	for token, count := range map[string]int{"visual-studio-code": 8, "ghostty": 3} {
-		page, err := public.ReleasePage(ctx, "cask", token, "zh-CN", 1, 20)
+		page, err := public.ReleasePage(ctx, "cask", token, "zh-CN", 1, 20, false)
 		require.NoError(t, err)
 		require.Equal(t, count, page.Total)
 		statuses := map[string]bool{}
@@ -184,7 +184,7 @@ func TestE2EFixturesIdempotentSearchRolesReleasesAndSnapshot(t *testing.T) {
 			Body: map[string]any{"type": "release", "ids": []any{float64(item.ID)}}, Actor: store.AuditActor{ID: &users[0].ID},
 		})
 		require.NoError(t, err)
-		page, err := public.ReleasePage(ctx, "cask", "visual-studio-code", "zh-CN", 1, 20)
+		page, err := public.ReleasePage(ctx, "cask", "visual-studio-code", "zh-CN", 1, 20, false)
 		require.NoError(t, err)
 		require.Equal(t, "1.140.0", page.Records[0].Version)
 		require.Equal(t, "manual", string(page.Records[0].Translation.Status))

@@ -217,7 +217,7 @@ func (h *Handler) ListPackageReleases(ctx context.Context, request publicapi.Lis
 	if fallback(request.Params.Original, false) {
 		l = "en-US"
 	}
-	data, err := h.Catalog.ReleasePage(requestContext(ctx), string(request.Kind), request.Token, l, fallback(request.Params.Current, 1), fallback(request.Params.Size, 20))
+	data, err := h.Catalog.ReleasePage(requestContext(ctx), string(request.Kind), request.Token, l, fallback(request.Params.Current, 1), fallback(request.Params.Size, 20), fallback(request.Params.OnlyWithNotes, false))
 	return response[publicapi.ListPackageReleases200JSONResponse](data, err)
 }
 

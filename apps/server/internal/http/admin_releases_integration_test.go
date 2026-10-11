@@ -80,7 +80,7 @@ func TestAdminReleaseContractsApprovalStalenessSourcesAndAudit(t *testing.T) {
 	stopCache, err := cache.Subscribe(ctx, st.Redis, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	defer stopCache()
-	warm, err := pub.ReleasePage(ctx, "cask", "sample", "zh-CN", 1, 100)
+	warm, err := pub.ReleasePage(ctx, "cask", "sample", "zh-CN", 1, 100, false)
 	require.NoError(t, err)
 	require.Equal(t, publicapi.TranslationInfoStatusMachine, warm.Records[0].Translation.Status)
 	id := strconv.FormatInt(rid, 10)

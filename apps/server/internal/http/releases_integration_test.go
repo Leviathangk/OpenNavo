@@ -83,6 +83,26 @@ func TestPublicReleaseTimelineContractsPriorityTranslationAndPatch(t *testing.T)
 	require.Equal(t, 1, result.Data.Stats.BrewLag.EarlierCount)
 	require.Equal(t, 0, *result.Data.Stats.BrewLag.MedianMinutes)
 	require.Nil(t, result.Data.Records[4].BrewCommittedAt)
+	// "With notes" lists only versions that have notes and pages over them; stats still cover the whole timeline.
+	var notes publicapi.ReleasePageResponse
+	require.NoError(t, json.Unmarshal(call("GET", "/packages/cask/sample/releases?onlyWithNotes=true&size=100", "", 200).Body.Bytes(), &notes))
+	require.Equal(t, 3, notes.Data.Total)
+	versions := []string{}
+	for _, entry := range notes.Data.Records {
+		require.True(t, entry.HasNotes)
+		versions = append(versions, entry.Version)
+	}
+	require.Equal(t, []string{"1.140.0", "1.139.0", "1.138.0"}, versions)
+	require.False(t, notes.Data.Records[0].IsLatest)
+	require.Equal(t, result.Data.Stats, notes.Data.Stats)
+	var notesPage publicapi.ReleasePageResponse
+	require.NoError(t, json.Unmarshal(call("GET", "/packages/cask/sample/releases?onlyWithNotes=true&current=2&size=2", "", 200).Body.Bytes(), &notesPage))
+	require.Equal(t, 3, notesPage.Data.Total)
+	require.Len(t, notesPage.Data.Records, 1)
+	require.Equal(t, "1.138.0", notesPage.Data.Records[0].Version)
+	var unfiltered publicapi.ReleasePageResponse
+	require.NoError(t, json.Unmarshal(call("GET", "/packages/cask/sample/releases?onlyWithNotes=false&size=1", "", 200).Body.Bytes(), &unfiltered))
+	require.Equal(t, 5, unfiltered.Data.Total)
 	require.Contains(t, call("GET", "/packages/cask/sample/releases?locale=en-US&current=2&size=1", "", 200).Body.String(), "Manual preferred")
 	// "Original" consistently selects English, even when both the UI and content source language are Chinese.
 	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE releases SET source_locale='zh-CN' WHERE source_key='priority'").Error)
@@ -124,14 +144,14 @@ func TestPublicReleaseTimelineContractsPriorityTranslationAndPatch(t *testing.T)
 		require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE releases SET body_markdown=NULL WHERE source_key='priority'").Error)
 		require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE release_i18n SET summary=?,sections=?", content.summary, content.sections).Error)
 		require.NoError(t, st.Redis.Del(ctx, "c:rel:c2:cask:sample:zh-CN").Err())
-		page, err := svc.ReleasePage(ctx, "cask", "sample", "zh-CN", 1, 100)
+		page, err := svc.ReleasePage(ctx, "cask", "sample", "zh-CN", 1, 100, false)
 		require.NoError(t, err)
 		require.True(t, page.Records[1].HasNotes)
 		require.Nil(t, page.Records[1].BodyMarkdown)
 	}
 	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE release_i18n SET status='skipped'").Error)
 	require.NoError(t, st.Redis.Del(ctx, "c:rel:c2:cask:sample:zh-CN").Err())
-	skipped, err := svc.ReleasePage(ctx, "cask", "sample", "zh-CN", 1, 100)
+	skipped, err := svc.ReleasePage(ctx, "cask", "sample", "zh-CN", 1, 100, false)
 	require.NoError(t, err)
 	require.False(t, skipped.Records[1].HasNotes)
 	require.Nil(t, skipped.Records[1].BodyMarkdown)

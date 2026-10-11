@@ -139,7 +139,7 @@ func TestSixLanguageHTTPNegotiationFallbackSearchAndCache(t *testing.T) {
 	require.Equal(t, names["en-US"], *row.I18n.DisplayName)
 	require.NoError(t, st.DB.Exec("INSERT INTO releases(package_id,source,source_key,version,body_markdown) VALUES(?,'manual','upstream','1','Upstream'),(?,'editorial','edited','1','Editorial')", id, id).Error)
 	require.NoError(t, st.Redis.Del(ctx, "c:rel:c2:cask:six-language:en-US").Err())
-	timeline, err := svc.ReleasePage(ctx, "cask", "six-language", "en-US", 1, 10)
+	timeline, err := svc.ReleasePage(ctx, "cask", "six-language", "en-US", 1, 10, false)
 	require.NoError(t, err)
 	require.Len(t, timeline.Records, 1)
 	require.Equal(t, publicapi.ReleaseEntrySource("editorial"), timeline.Records[0].Source)
