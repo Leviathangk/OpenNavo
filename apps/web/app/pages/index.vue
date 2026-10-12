@@ -73,7 +73,7 @@ defineOgImage('OgDefault', {
   variant: 'home',
   title: t('og.homeTitle'),
   description: t('og.homeDescription'),
-  tagline: t('og.tagline')
+  ...useOgFrame()
 });
 
 // Site and site search, with search terms in q.

@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import type { Kind, Task, TaskLogEvent, TaskOp, TaskOptions, TaskTarget, TaskTrigger } from '@/ipc/bindings';
+import type { Task, TaskKind, TaskLogEvent, TaskOp, TaskOptions, TaskTarget, TaskTrigger } from '@/ipc/bindings';
 import { commands, packageKey, unwrap } from '@/ipc/client';
 import { useInstallConfirmStore } from './installConfirm';
 import { useLibraryStore } from './library';
@@ -9,6 +9,8 @@ import { useRunningAppsStore } from './runningApps';
 
 /** Log lines retained per task in the UI (full logs remain in task log files, 06 §6.4). */
 const LOG_LIMIT = 200;
+const LOG_CHAR_LIMIT = 64 * 1024;
+const FINISHED_LIMIT = 20;
 
 /** Task queue (06 §9): task:updated pushes state, task:log pushes logs; completed tasks leave the active list. */
 export const useTasksStore = defineStore('tasks', () => {
@@ -16,14 +18,25 @@ export const useTasksStore = defineStore('tasks', () => {
   const logs = ref<Record<string, string[]>>({});
   /** Recently completed tasks in this session, for completion notices and the Updates page's just-now section. */
   const finished = ref<Task[]>([]);
+  /** The first task list arrived; startup reads it in the background (stores/index.ts). */
+  const loaded = ref(false);
 
   const running = computed(() => active.value.find(task => task.state === 'running'));
   const queued = computed(() => active.value.filter(task => task.state === 'queued'));
-  const forPackage = (kind: Kind, token: string) =>
+  const forPackage = (kind: TaskKind, token: string) =>
     active.value.find(task => task.target?.kind === kind && task.target.token === token);
 
   async function load() {
     active.value = await unwrap(commands.taskListActive());
+    loaded.value = true;
+    pruneLogs();
+  }
+
+  function pruneLogs() {
+    const retained = new Set([...active.value, ...finished.value].map(task => task.id));
+    for (const id of Object.keys(logs.value)) {
+      if (!retained.has(id)) delete logs.value[id];
+    }
   }
 
   function applyUpdate(task: Task | null) {
@@ -35,12 +48,22 @@ export const useTasksStore = defineStore('tasks', () => {
       return;
     }
     if (index >= 0) active.value.splice(index, 1);
-    finished.value = [task, ...finished.value.filter(item => item.id !== task.id)].slice(0, 20);
+    finished.value = [task, ...finished.value.filter(item => item.id !== task.id)].slice(0, FINISHED_LIMIT);
+    pruneLogs();
   }
 
   function appendLog(event: TaskLogEvent) {
-    const lines = [...(logs.value[event.id] ?? []), ...event.lines];
-    logs.value[event.id] = lines.slice(-LOG_LIMIT);
+    // Ignore late events for evicted tasks; full logs remain available on disk.
+    if (![...active.value, ...finished.value].some(task => task.id === event.id)) return;
+    const lines = [...(logs.value[event.id] ?? []), ...event.lines.slice(-LOG_LIMIT)].slice(-LOG_LIMIT);
+    const retained: string[] = [];
+    let remaining = LOG_CHAR_LIMIT;
+    for (let index = lines.length - 1; index >= 0 && remaining > 0; index -= 1) {
+      const line = lines[index]!.slice(-remaining);
+      retained.unshift(line);
+      remaining -= line.length;
+    }
+    logs.value[event.id] = retained;
   }
 
   let upgradeTail: Promise<unknown> = Promise.resolve();
@@ -149,6 +172,7 @@ export const useTasksStore = defineStore('tasks', () => {
     active,
     logs,
     finished,
+    loaded,
     running,
     queued,
     forPackage,

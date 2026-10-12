@@ -40,7 +40,10 @@ describe('Serialized full-settings writes', () => {
     settings.value!.autoUpgradeFormulae = true;
     const save = vi
       .spyOn(commands, 'settingsSet')
-      .mockResolvedValueOnce({ status: 'error', error: { code: 'E_UNKNOWN', message: 'failed', detail: null } })
+      .mockResolvedValueOnce({
+        status: 'error',
+        error: { code: 'E_UNKNOWN', message: 'failed', detail: null }
+      })
       .mockImplementationOnce(async next => ({ status: 'ok', data: next }));
     const first = settings.update('autoUpgradeFormulae', false);
     const second = settings.update('locale', 'en-US');

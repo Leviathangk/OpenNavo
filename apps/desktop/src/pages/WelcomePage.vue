@@ -20,8 +20,9 @@ import { useEnvStore, usePermissionsStore, useSettingsStore, useTasksStore } fro
 // Use the native app icon file (src-tauri/icons) so Welcome reflects icon changes.
 import appIcon from '../../src-tauri/icons/128x128@2x.png';
 
-// First launch (06 §13.1, 08 §10.13, owner revision 2026-10-07): environment check → source (official / mirror cards, lowest latency selected),
-// then permissions (App Management required, Full Disk Access optional; can enable before Homebrew), then install Homebrew or start using the app.
+// First launch (06 §13.1, 08 §10.13, owner revisions 2026-10-07 and 2026-10-12): environment check → source (official / mirror cards,
+// lowest latency selected), then permissions (App Management and Full Disk Access both required; can enable before Homebrew), then
+// install Homebrew or start using the app.
 // Save the download source only when Install Homebrew or Get Started is clicked.
 const { t, te } = useI18n();
 const router = useRouter();
@@ -225,11 +226,21 @@ async function install() {
   }
 }
 
-// Permissions: require App Management before entering the app; if system detection is unavailable, allow user confirmation.
+// Permissions: require App Management and Full Disk Access before entering the app (Installed and uninstalling read other
+// apps' data); if system detection is unavailable, allow user confirmation, which then covers both.
 const confirmedUnknown = ref(false);
-const permissionReady = computed(
-  () => permissions.appManagement === 'granted' || (permissions.appManagement === 'unknown' && confirmedUnknown.value)
+const unknownPermission = computed(
+  () => permissions.appManagement === 'unknown' || permissions.fullDiskAccess === 'unknown'
 );
+const permissionReady = computed(
+  () =>
+    (permissions.appManagement === 'granted' || (permissions.appManagement === 'unknown' && confirmedUnknown.value)) &&
+    permissions.fullDiskReady
+);
+function confirmUnknown() {
+  confirmedUnknown.value = true;
+  permissions.fullDiskConfirmed = true;
+}
 
 /** Enter only when the environment is ready, App Management is enabled, and settings save succeeds; remain on Welcome to retry failed saves. */
 async function leave() {
@@ -366,10 +377,10 @@ async function viewLog(task: Task) {
             >
               {{ t('welcome.permissions.startHint') }}
               <button
-                v-if="permissions.appManagement === 'unknown'"
+                v-if="unknownPermission"
                 type="button"
                 class="m-0 cursor-pointer border-none bg-transparent p-0 font-sans text-12.5px text-ink-secondary underline underline-offset-2 hover:text-ink-primary"
-                @click="confirmedUnknown = true"
+                @click="confirmUnknown"
               >
                 {{ t('welcome.permissions.confirm') }}
               </button>

@@ -79,7 +79,11 @@ const { data: offline, error: offlineError } = useCatalogLoader(
 );
 
 const sections = computed(() => {
-  if (home.value) return { apps: popularApps.value ?? home.value.popularApps, recent: home.value.recentlyUpdated };
+  if (home.value)
+    return {
+      apps: popularApps.value ?? home.value.popularApps,
+      recent: home.value.recentlyUpdated
+    };
   return offline.value
     ? { apps: offline.value.apps.map(toSummary), recent: offline.value.recent.map(toSummary) }
     : null;
@@ -185,7 +189,11 @@ const chips = computed(() => [
   { value: 'all', label: t('discover.allCategories'), href: '/discover' },
   ...catalog.categories
     .filter(category => !category.parent && !category.hiddenByDefault)
-    .map(category => ({ value: category.slug, label: category.name, href: `/categories/${category.slug}` }))
+    .map(category => ({
+      value: category.slug,
+      label: category.name,
+      href: `/categories/${category.slug}`
+    }))
 ]);
 </script>
 

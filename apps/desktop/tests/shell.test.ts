@@ -21,7 +21,10 @@ beforeAll(() => {
 async function mountShell(path: string) {
   const { pinia, router } = await setup(path);
   await startLocalState();
-  const wrapper = mount(AppShell, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
+  const wrapper = mount(AppShell, {
+    global: { plugins: [pinia, router, i18n] },
+    attachTo: document.body
+  });
   await flushPromises();
   return { wrapper, router };
 }
@@ -38,12 +41,18 @@ describe('AppShell', () => {
       '/brewfile',
       '/installed',
       '/updates',
+      '/cleanup',
+      '/monitor',
       '/settings'
     ]);
     expect(links[0]?.attributes('aria-current')).toBe('page');
     expect(links[1]?.attributes('aria-current')).toBeUndefined();
-    // The simulated machine has 15 packages (8 apps, 7 command-line tools); the Cask-only catalog (ADR-018) counts only apps.
-    expect(links[5]?.text()).toContain('8');
+    // Installed counts every app on the Mac (uninstall decision 3): the 8 simulated casks plus apps from other sources;
+    // command-line tools stay excluded (ADR-018).
+    const local = await commands.localAppsList();
+    const count = local.status === 'ok' ? local.data.length : -1;
+    expect(count).toBeGreaterThan(8);
+    expect(links[5]?.text()).toContain(String(count));
     expect(links[6]?.text()).toContain('4');
     wrapper.unmount();
   });
@@ -107,7 +116,10 @@ describe('IPC simulation', () => {
   it('Browser commands return fixture data', async () => {
     await setup();
     const result = await commands.appInfo();
-    expect(result).toEqual({ status: 'ok', data: { version: '0.0.0', os: 'macos', arch: 'aarch64' } });
+    expect(result).toEqual({
+      status: 'ok',
+      data: { version: '0.0.0', os: 'macos', arch: 'aarch64' }
+    });
   });
 });
 
@@ -242,7 +254,10 @@ it('Hidden-window recovery remains pending until visible', async () => {
 it('Old-page recovery does not block new-page pending network recovery', async () => {
   const { wrapper, router } = await mountShell('/discover');
   // jsdom does not implement element scrolling; provide the browser method needed for route changes.
-  Object.defineProperty(wrapper.get('main').element, 'scrollTo', { value: vi.fn(), configurable: true });
+  Object.defineProperty(wrapper.get('main').element, 'scrollTo', {
+    value: vi.fn(),
+    configurable: true
+  });
   const oldScope = effectScope();
   const newScope = effectScope();
   let fail!: (error: Error) => void;

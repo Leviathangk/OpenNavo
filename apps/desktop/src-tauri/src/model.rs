@@ -1,4 +1,7 @@
 use crate::AppError;
+pub use crate::cleanup::types::*;
+pub use crate::monitor::types::*;
+pub use crate::uninstall::types::*;
 use serde::{Deserialize, Serialize};
 
 /// Sparse maps accept legacy nulls; IPC emits only text actually present.
@@ -211,10 +214,12 @@ pub enum TaskOp {
     Install,
     Upgrade,
     Uninstall,
+    RemoveLeftovers,
     Reinstall,
     Pin,
     Unpin,
     Cleanup,
+    Clean,
     Update,
     InstallHomebrew,
 }
@@ -222,7 +227,7 @@ pub enum TaskOp {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskTarget {
-    pub kind: Kind,
+    pub kind: TaskKind,
     pub token: String,
 }
 
@@ -231,6 +236,9 @@ pub struct TaskTarget {
 #[serde(default)]
 #[derive(Default)]
 pub struct TaskOptions {
+    pub plan_id: Option<String>,
+    pub item_ids: Option<Vec<String>>,
+    pub delete_mode: Option<DeleteMode>,
     pub zap: bool,
     pub adopt: bool,
     pub greedy: bool,
@@ -284,6 +292,8 @@ pub enum TaskPhase {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Task {
+    pub target_name: Option<String>,
+    pub outcome: Option<UninstallOutcome>,
     pub id: String, // UUID v7
     pub op: TaskOp,
     pub target: Option<TaskTarget>,
@@ -447,7 +457,17 @@ pub struct Settings {
     pub brew_path: Option<String>,        // None means automatic discovery (§6.1).
     pub homebrew_analytics: Option<bool>, // None leaves analytics unchanged; Some(false) injects HOMEBREW_NO_ANALYTICS=1.
     pub crash_reports: bool,
+    pub uninstall_delete_mode: DeleteMode,
     pub zap_by_default: bool,
+    pub cleanup_delete_mode: DeleteMode,
+    pub cleanup_reminder: CleanupReminder,
+    pub cleanup_reminder_bytes: u64,
+    pub cleanup_project_roots: Vec<String>,
+    pub monitor_menu_bar: MonitorMenuBar,
+    pub monitor_interval_ms: MonitorIntervalMs,
+    pub monitor_alerts: bool,
+    pub monitor_menu_bar_intro: bool,
+    pub fan_last_manual: Option<std::collections::BTreeMap<u32, u32>>,
 }
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -472,7 +492,17 @@ struct SettingsInput {
     pub brew_path: Option<String>, // None means automatic discovery (§6.1).
     pub homebrew_analytics: Option<bool>, // None leaves analytics unchanged; Some(false) injects HOMEBREW_NO_ANALYTICS=1.
     pub crash_reports: bool,
+    pub uninstall_delete_mode: DeleteMode,
     pub zap_by_default: bool,
+    pub cleanup_delete_mode: DeleteMode,
+    pub cleanup_reminder: CleanupReminder,
+    pub cleanup_reminder_bytes: u64,
+    pub cleanup_project_roots: Vec<String>,
+    pub monitor_menu_bar: MonitorMenuBar,
+    pub monitor_interval_ms: MonitorIntervalMs,
+    pub monitor_alerts: bool,
+    pub monitor_menu_bar_intro: bool,
+    pub fan_last_manual: Option<std::collections::BTreeMap<u32, u32>>,
 }
 
 impl Default for SettingsInput {
@@ -498,7 +528,17 @@ impl Default for SettingsInput {
             brew_path: value.brew_path,
             homebrew_analytics: value.homebrew_analytics,
             crash_reports: value.crash_reports,
+            uninstall_delete_mode: value.uninstall_delete_mode,
             zap_by_default: value.zap_by_default,
+            cleanup_delete_mode: value.cleanup_delete_mode,
+            cleanup_reminder: value.cleanup_reminder,
+            cleanup_reminder_bytes: value.cleanup_reminder_bytes,
+            cleanup_project_roots: value.cleanup_project_roots,
+            monitor_menu_bar: value.monitor_menu_bar,
+            monitor_interval_ms: value.monitor_interval_ms,
+            monitor_alerts: value.monitor_alerts,
+            monitor_menu_bar_intro: value.monitor_menu_bar_intro,
+            fan_last_manual: value.fan_last_manual,
         }
     }
 }
@@ -528,7 +568,17 @@ impl From<SettingsInput> for Settings {
             brew_path: value.brew_path,
             homebrew_analytics: value.homebrew_analytics,
             crash_reports: value.crash_reports,
+            uninstall_delete_mode: value.uninstall_delete_mode,
             zap_by_default: value.zap_by_default,
+            cleanup_delete_mode: value.cleanup_delete_mode,
+            cleanup_reminder: value.cleanup_reminder,
+            cleanup_reminder_bytes: value.cleanup_reminder_bytes,
+            cleanup_project_roots: value.cleanup_project_roots,
+            monitor_menu_bar: value.monitor_menu_bar,
+            monitor_interval_ms: value.monitor_interval_ms,
+            monitor_alerts: value.monitor_alerts,
+            monitor_menu_bar_intro: value.monitor_menu_bar_intro,
+            fan_last_manual: value.fan_last_manual,
         }
     }
 }
@@ -562,21 +612,6 @@ pub struct BrewfilePreview {
     pub ready: u32,
     pub installed: u32,
     pub unsupported: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CleanupItem {
-    pub path: String,
-    pub bytes: Option<u64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct CleanupEstimate {
-    pub bytes: u64,
-    pub file_count: u32,
-    pub items: Vec<CleanupItem>, /* At most 200 entries. */
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
@@ -724,7 +759,20 @@ impl Default for Settings {
             brew_path: None,
             homebrew_analytics: None,
             crash_reports: false,
-            zap_by_default: false,
+            uninstall_delete_mode: DeleteMode::Trash,
+            zap_by_default: true,
+            cleanup_delete_mode: DeleteMode::Trash,
+            cleanup_reminder: CleanupReminder::Off,
+            cleanup_reminder_bytes: 10_000_000_000,
+            monitor_menu_bar: MonitorMenuBar::default(),
+            monitor_interval_ms: MonitorIntervalMs::default(),
+            monitor_alerts: false,
+            monitor_menu_bar_intro: false,
+            fan_last_manual: None,
+            cleanup_project_roots: ["~/Projects", "~/Developer", "~/code", "~/GitHub", "~/dev"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
         }
     }
 }
@@ -761,4 +809,53 @@ pub struct InstallPreflight {
     pub name: String,
     pub paths: Vec<String>,
     pub status: InstallPreflightStatus,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskKind {
+    Cask,
+    Formula,
+    App,
+}
+impl From<Kind> for TaskKind {
+    fn from(k: Kind) -> Self {
+        match k {
+            Kind::Cask => Self::Cask,
+            Kind::Formula => Self::Formula,
+        }
+    }
+}
+impl PartialEq<Kind> for TaskKind {
+    fn eq(&self, k: &Kind) -> bool {
+        *self == Self::from(*k)
+    }
+}
+impl PartialEq<TaskKind> for Kind {
+    fn eq(&self, k: &TaskKind) -> bool {
+        k == self
+    }
+}
+impl TaskKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cask => "cask",
+            Self::Formula => "formula",
+            Self::App => "app",
+        }
+    }
+    pub fn flag(self) -> &'static str {
+        match self {
+            Self::Cask => "--cask",
+            Self::Formula => "--formula",
+            Self::App => "",
+        }
+    }
+    pub fn brew_kind(self) -> Result<Kind, AppError> {
+        match self {
+            Self::Cask => Ok(Kind::Cask),
+            Self::Formula => Ok(Kind::Formula),
+            Self::App => Err(AppError::new("E_INVALID_ARG", "local_app_target")),
+        }
+    }
 }

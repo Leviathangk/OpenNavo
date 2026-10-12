@@ -42,7 +42,7 @@ defineExpose({ close });
     placement="right"
     :labelledby="titleId"
     :initial-focus="initialFocus"
-    panel-class="box-border flex h-full w-420px max-w-full flex-col border-l border-l-solid border-line-default bg-component-modal-bg shadow-modal"
+    panel-class="box-border flex h-full min-w-0 w-420px max-w-full flex-col overflow-hidden border-l border-l-solid border-line-default bg-component-modal-bg shadow-modal"
     @close="close"
   >
     <header class="flex h-56px shrink-0 items-center gap-8px border-b border-b-solid border-line-subtle px-20px">
@@ -50,7 +50,9 @@ defineExpose({ close });
       <slot name="actions" />
       <OnButton variant="ghost" size="sm" icon="x" icon-only :aria-label="messages.dialog.close" @click="close" />
     </header>
-    <div class="min-h-0 flex-1 overflow-y-auto p-20px text-13px text-ink-secondary">
+    <div
+      class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-20px text-13px text-ink-secondary"
+    >
       <slot />
     </div>
     <footer

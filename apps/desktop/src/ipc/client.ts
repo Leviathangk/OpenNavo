@@ -1,5 +1,5 @@
 import { commands, events } from './bindings';
-import type { AppError, CatalogItem_Serialize, Kind, SearchHit_Serialize, Settings } from './bindings';
+import type { AppError, CatalogItem_Serialize, SearchHit_Serialize, Settings, TaskKind } from './bindings';
 
 export { commands, events };
 
@@ -35,5 +35,5 @@ export async function unwrap<T>(result: Promise<CommandResult<T>>): Promise<T> {
   return value.data;
 }
 
-/** Associate local state (installed, tasks, ignored) by `kind/token`. */
-export const packageKey = (kind: Kind, token: string) => `${kind}/${token}`;
+/** Associate local state (installed, tasks, ignored) by `kind/token`; `app/<id>` keys local apps outside Homebrew. */
+export const packageKey = (kind: TaskKind, token: string) => `${kind}/${token}`;

@@ -60,7 +60,7 @@ fn actual_versions_ignore_expiry_catalog_and_sort() {
     assert!(!code.ignored);
     let current = code.current_version.clone();
     let target = TaskTarget {
-        kind: Kind::Cask,
+        kind: Kind::Cask.into(),
         token: code.token.clone(),
     };
     updates::ignore(&db, &target, Some(&current), Some(2000), 1000).unwrap();
@@ -123,7 +123,7 @@ fn actual_versions_ignore_expiry_catalog_and_sort() {
         updates::ignore(
             &db,
             &TaskTarget {
-                kind: Kind::Formula,
+                kind: Kind::Formula.into(),
                 token: "--all".into()
             },
             None,
@@ -156,7 +156,7 @@ async fn cached_ignores_and_unignore_emit_updates_and_survive_restart() {
     .unwrap();
     let total = core.rebuild_updates().await.unwrap().len();
     let target = TaskTarget {
-        kind: Kind::Cask,
+        kind: Kind::Cask.into(),
         token: "visual-studio-code".into(),
     };
     core.ignore_update(target.clone(), None, None)
@@ -245,7 +245,7 @@ async fn index_check_during_install_does_not_block_completion_or_next_task() {
         .enqueue(
             TaskOp::Install,
             Some(TaskTarget {
-                kind: Kind::Formula,
+                kind: Kind::Formula.into(),
                 token: "ripgrep".into(),
             }),
             TaskOptions::default(),
@@ -270,7 +270,7 @@ async fn index_check_during_install_does_not_block_completion_or_next_task() {
         .enqueue(
             TaskOp::Install,
             Some(TaskTarget {
-                kind: Kind::Formula,
+                kind: Kind::Formula.into(),
                 token: "gh".into(),
             }),
             TaskOptions::default(),

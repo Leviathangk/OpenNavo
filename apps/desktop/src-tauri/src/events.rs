@@ -49,7 +49,11 @@ pub struct PermissionsChanged(pub Permissions);
 
 #[derive(Debug, Clone)]
 pub enum CoreEvent {
-    Task(Task),
+    CleanupScan(CleanupProgress),
+    CleanupChanged(CleanupSummary),
+    LocalApps(LocalAppsChanged),
+    UninstallScan(ScanProgress),
+    Task(Box<Task>),
     Log(TaskLogEvent),
     Library(LibraryChanged),
     Updates(UpdatesChanged),
@@ -65,16 +69,35 @@ pub fn sink(app: tauri::AppHandle) -> EventSink {
     use tauri_specta::Event;
     Arc::new(move |event| {
         let result = match event {
-            CoreEvent::Task(task) => TaskUpdated(task).emit(&app),
+            CoreEvent::CleanupScan(data) => CleanupScanEvent(data).emit(&app),
+            CoreEvent::CleanupChanged(data) => CleanupChangedEvent(data).emit(&app),
+            CoreEvent::LocalApps(data) => LocalAppsEvent(data).emit(&app),
+            CoreEvent::UninstallScan(data) => UninstallScanEvent(data).emit(&app),
+            CoreEvent::Task(task) => TaskUpdated(*task).emit(&app),
             CoreEvent::Log(log) => TaskLog(log).emit(&app),
-            CoreEvent::Library(data) => LibraryEvent(data).emit(&app),
+            CoreEvent::Library(data) => {
+                // Homebrew records can arrive after the initial native scan (including Casks without .app artifacts).
+                if let Some(core) = app.try_state::<Arc<crate::core::DesktopCore>>() {
+                    core.queue.uninstall_engine.schedule_library_refresh();
+                }
+                LibraryEvent(data).emit(&app)
+            }
             CoreEvent::Updates(data) => {
                 crate::tray::refresh(&app);
                 UpdatesEvent(data).emit(&app)
             }
             CoreEvent::Env(data) => EnvChanged(data).emit(&app),
             CoreEvent::Permissions(data) => PermissionsChanged(data).emit(&app),
-            CoreEvent::Catalog(data) => CatalogSynced(data).emit(&app),
+            CoreEvent::Catalog(data) => {
+                // A changed catalog can identify more local apps (adoptable, zap rules).
+                if let Some(core) = app.try_state::<Arc<crate::core::DesktopCore>>() {
+                    let engine = core.queue.uninstall_engine.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let _ = engine.hydrate_catalog().await;
+                    });
+                }
+                CatalogSynced(data).emit(&app)
+            }
             CoreEvent::Deeplink(data) => DeeplinkReceived(data).emit_to(&app, "main"),
             CoreEvent::Locale(data) => {
                 let handle = app.clone();
@@ -107,3 +130,36 @@ pub fn sink(app: tauri::AppHandle) -> EventSink {
 #[serde(transparent)]
 #[tauri_specta(event_name = "updates:requested")]
 pub struct UpdatesRequested(pub Vec<TaskTarget>);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "local-apps:changed")]
+pub struct LocalAppsEvent(pub LocalAppsChanged);
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "uninstall:scan-progress")]
+pub struct UninstallScanEvent(pub ScanProgress);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "cleanup:scan-progress")]
+pub struct CleanupScanEvent(pub CleanupProgress);
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "cleanup:changed")]
+pub struct CleanupChangedEvent(pub CleanupSummary);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "monitor:sample")]
+pub struct MonitorSampleEvent(pub MonitorSample);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "monitor:popover")]
+pub struct MonitorPopover(pub MonitorModule);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "fan:changed")]
+pub struct FanChanged(pub FanChange);

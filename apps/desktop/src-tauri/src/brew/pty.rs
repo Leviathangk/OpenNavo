@@ -16,7 +16,7 @@ use std::{
         mpsc,
     },
     thread,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 
 #[derive(Clone)]
@@ -81,15 +81,20 @@ fn signal_owned_group(pid: u32, signal: Signal) -> Result<(), AppError> {
     killpg(group, signal).map_err(failed)
 }
 
-fn incomplete_bytes(cache: &Path, observed: &mut BTreeMap<PathBuf, u64>) -> u64 {
+fn incomplete_bytes(cache: &Path, since: SystemTime, observed: &mut BTreeMap<PathBuf, u64>) -> u64 {
     for dir in [cache.to_path_buf(), cache.join("downloads")] {
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
+                let path = entry.path();
                 if entry.file_name().to_string_lossy().ends_with(".incomplete")
                     && let Ok(meta) = entry.metadata()
                     && meta.is_file()
+                    // Canceled runs leave partial files behind; count one only once this run writes to it (resuming).
+                    // Keep tracking observed files: curl --remote-time backdates them when the download completes.
+                    && (observed.contains_key(&path)
+                        || meta.modified().is_ok_and(|modified| modified >= since))
                 {
-                    let size = observed.entry(entry.path()).or_default();
+                    let size = observed.entry(path).or_default();
                     *size = (*size).max(meta.len());
                 }
             }
@@ -104,6 +109,13 @@ fn incomplete_bytes(cache: &Path, observed: &mut BTreeMap<PathBuf, u64>) -> u64 
         }
     }
     observed.values().copied().sum()
+}
+
+/// Homebrew 7 downloads in parallel and, under the TERM=dumb bash defaults to, prints no percentages;
+/// map measured bytes onto the same 0–70% download stage the parser uses for curl percentages.
+fn download_percent(bytes: Option<u64>, total: Option<u64>) -> Option<f32> {
+    let total = total.filter(|total| *total > 0)?;
+    Some((bytes? as f64 / total as f64).min(1.0) as f32 * 70.0)
 }
 
 /// Run on a blocking thread. Callbacks receive sanitized logs and machine-readable progress, never passwords or environment variables.
@@ -145,6 +157,7 @@ pub fn execute(
     for (key, value) in std::mem::take(&mut request.env) {
         command.env(key, value);
     }
+    let spawned = SystemTime::now();
     let mut child = OwnedChild(pair.slave.spawn_command(command).map_err(failed)?);
     drop(pair.slave);
     let pid = child
@@ -223,7 +236,7 @@ pub fn execute(
         }
         if last_sample.elapsed() >= Duration::from_millis(500) {
             if let Some(cache) = &request.cache_dir {
-                let measured = incomplete_bytes(cache, &mut observed_downloads);
+                let measured = incomplete_bytes(cache, spawned, &mut observed_downloads);
                 // Unobserved files may mean cache hits or downloads faster than sampling; never display unknown size as 0 B.
                 bytes = (measured > 0).then_some(measured);
                 speed = Some(
@@ -245,7 +258,9 @@ pub fn execute(
                     } else {
                         parser.phase
                     },
-                    percent: parser.percent,
+                    percent: parser
+                        .percent
+                        .or_else(|| download_percent(bytes, request.download_total)),
                     step_index: parser.step_index,
                     from: parser.from_version.clone(),
                     to: parser.to_version.clone(),
@@ -290,21 +305,69 @@ mod tests {
         let downloads = dir.path().join("downloads");
         std::fs::create_dir(&downloads).expect("cache directory");
         let partial = downloads.join("app.dmg.incomplete");
+        let since = SystemTime::now() - Duration::from_secs(1);
         let mut observed = BTreeMap::new();
-        assert_eq!(incomplete_bytes(dir.path(), &mut observed), 0);
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 0);
         std::fs::write(&partial, [0; 40]).expect("downloading");
-        assert_eq!(incomplete_bytes(dir.path(), &mut observed), 40);
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 40);
         std::fs::write(&partial, [0; 100]).expect("download end");
         let complete = downloads.join("app.dmg");
         std::fs::rename(&partial, &complete).expect("rename completed download");
-        assert_eq!(incomplete_bytes(dir.path(), &mut observed), 100);
-        assert_eq!(incomplete_bytes(dir.path(), &mut observed), 100);
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 100);
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 100);
         std::fs::remove_file(complete).expect("clean cache");
-        assert_eq!(incomplete_bytes(dir.path(), &mut observed), 100);
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 100);
         std::fs::write(dir.path().join("other.zip.incomplete"), [0; 20]).expect("next download");
-        assert_eq!(incomplete_bytes(dir.path(), &mut observed), 120);
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 120);
         // Track each execution independently; retries and later tasks do not inherit earlier byte counts.
-        assert_eq!(incomplete_bytes(dir.path(), &mut BTreeMap::new()), 20);
+        assert_eq!(
+            incomplete_bytes(dir.path(), since, &mut BTreeMap::new()),
+            20
+        );
+    }
+
+    #[test]
+    fn earlier_partial_downloads_count_only_once_resumed() {
+        let dir = tempfile::tempdir().expect("temporary directory");
+        let downloads = dir.path().join("downloads");
+        std::fs::create_dir(&downloads).expect("cache directory");
+        let since = SystemTime::now() - Duration::from_secs(1);
+        let backdate = |path: &Path, modified: SystemTime| {
+            std::fs::File::options()
+                .write(true)
+                .open(path)
+                .and_then(|file| file.set_modified(modified))
+                .expect("set modification time");
+        };
+        let stale = downloads.join("other.dmg.incomplete");
+        std::fs::write(&stale, [0; 300]).expect("canceled download");
+        backdate(&stale, since - Duration::from_secs(60));
+        let mut observed = BTreeMap::new();
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 0);
+        let partial = downloads.join("app.dmg.incomplete");
+        std::fs::write(&partial, [0; 40]).expect("downloading");
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 40);
+        // curl --remote-time backdates a finished download before Homebrew renames it.
+        std::fs::write(&partial, [0; 100]).expect("download end");
+        backdate(&partial, since - Duration::from_secs(3600));
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 100);
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(&stale)
+            .and_then(|mut file| file.write_all(&[0; 20]))
+            .expect("resume canceled download");
+        assert_eq!(incomplete_bytes(dir.path(), since, &mut observed), 420);
+    }
+
+    #[test]
+    fn measured_bytes_fill_the_download_stage() {
+        assert_eq!(download_percent(Some(40), Some(100)), Some(28.0));
+        assert_eq!(download_percent(Some(0), Some(100)), Some(0.0));
+        // Dependencies or a stale catalog size can exceed the target's size; never pass the download stage.
+        assert_eq!(download_percent(Some(150), Some(100)), Some(70.0));
+        assert_eq!(download_percent(None, Some(100)), None);
+        assert_eq!(download_percent(Some(40), None), None);
+        assert_eq!(download_percent(Some(40), Some(0)), None);
     }
 
     #[test]
@@ -336,6 +399,13 @@ mod tests {
             if let Some(bytes) = progress.bytes {
                 assert!(previous.is_none_or(|last| bytes >= last));
                 previous = Some(bytes);
+                // Homebrew 7 prints no percentage mid-download; measured bytes fill the ring until it reports completion.
+                assert!(
+                    progress
+                        .percent
+                        .is_some_and(|percent| percent >= bytes as f32 * 0.7),
+                    "{progress:?}"
+                );
             }
             if progress.phase == Some(TaskPhase::Installing) {
                 installing_seen = true;
@@ -369,7 +439,7 @@ mod tests {
                 args: write_args(
                     TaskOp::Install,
                     Some(&TaskTarget {
-                        kind: Kind::Cask,
+                        kind: Kind::Cask.into(),
                         token: "inkscape".into(),
                     }),
                     &TaskOptions::default(),

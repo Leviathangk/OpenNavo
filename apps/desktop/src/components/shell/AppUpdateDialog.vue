@@ -25,7 +25,9 @@ const installed = computed(() => updater.state === 'installed');
 const progressText = computed(() =>
   updater.percent === null
     ? t('updater.downloadingUnknown')
-    : t('updater.downloading', { percent: formatPercent(updater.percent / 100, { locale: appLocale.value }) })
+    : t('updater.downloading', {
+        percent: formatPercent(updater.percent / 100, { locale: appLocale.value })
+      })
 );
 let observer: MutationObserver | undefined;
 
@@ -108,9 +110,16 @@ function install() {
 
     <div class="min-h-0 flex-1 overflow-y-auto px-30px">
       <p class="mb-20px mt-22px text-12px text-ink-secondary">
-        {{ t('updater.versionChange', { current: updater.update?.currentVersion, next: updater.update?.version }) }}
+        {{
+          t('updater.versionChange', {
+            current: updater.update?.currentVersion,
+            next: updater.update?.version
+          })
+        }}
       </p>
-      <p v-if="updater.preview" class="mb-16px text-12px text-brand-salmon">{{ t('updater.previewHint') }}</p>
+      <p v-if="updater.preview" class="mb-16px text-12px text-brand-salmon">
+        {{ t('updater.previewHint') }}
+      </p>
       <section class="border-t border-t-solid border-line-subtle pt-20px">
         <h3 class="m-0 mb-12px text-15px font-600">{{ t('updater.notesTitle') }}</h3>
         <OnMarkdown
@@ -120,7 +129,9 @@ function install() {
           :heading-level="4"
           class="on-app-update-notes"
         />
-        <p v-else class="m-0 text-14px leading-[1.7] text-ink-secondary">{{ t('updater.noNotes') }}</p>
+        <p v-else class="m-0 text-14px leading-[1.7] text-ink-secondary">
+          {{ t('updater.noNotes') }}
+        </p>
         <OnButton
           v-if="!updater.preview"
           variant="ghost"

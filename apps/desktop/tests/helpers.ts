@@ -64,6 +64,18 @@ export const stubRoutes: RouteRecordRaw[] = [
     meta: { nav: 'updates' }
   },
   {
+    path: '/cleanup',
+    name: 'cleanup',
+    components: { default: stub('清理电脑页'), rail: stub('磁盘') },
+    meta: { nav: 'cleanup' }
+  },
+  {
+    path: '/monitor',
+    name: 'monitor',
+    components: { default: stub('电脑监控页'), rail: stub('菜单栏') },
+    meta: { nav: 'monitor' }
+  },
+  {
     path: '/history',
     name: 'history',
     redirect: '/updates'

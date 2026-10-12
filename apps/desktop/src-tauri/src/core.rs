@@ -186,6 +186,28 @@ impl DesktopCore {
         *self.settings_save.write().map_err(poisoned)? = save;
         Ok(())
     }
+    /// Merge while holding the existing settings transaction lock; unrelated concurrent settings survive.
+    pub async fn save_fan_manual(
+        self: &Arc<Self>,
+        speeds: std::collections::BTreeMap<u32, u32>,
+    ) -> Result<(), AppError> {
+        let _update = self.settings_lock.lock().await;
+        let mut settings = self.current_settings()?;
+        settings
+            .fan_last_manual
+            .get_or_insert_default()
+            .extend(speeds);
+        let core = self.clone();
+        crate::blocking(move || {
+            let writer = core.settings_save.read().map_err(poisoned)?.clone();
+            writer(&settings)?;
+            *core.settings.write().map_err(poisoned)? = settings;
+            Ok(())
+        })
+        .await?;
+        self.settings_changed.notify_one();
+        Ok(())
+    }
     pub async fn replace_settings(
         self: &Arc<Self>,
         settings: Settings,
@@ -562,7 +584,12 @@ impl DesktopCore {
         };
         let (op, token) = if has_info {
             target
-                .map(|t| (ReadOp::Info(t.kind), Some(t.token.as_str())))
+                .map(|t| {
+                    t.kind
+                        .brew_kind()
+                        .map(|kind| (ReadOp::Info(kind), Some(t.token.as_str())))
+                })
+                .transpose()?
                 .unwrap_or((ReadOp::Installed, None))
         } else {
             (ReadOp::Installed, None)
@@ -570,6 +597,9 @@ impl DesktopCore {
         let raw = crate::brew::locate::read(&brew, &settings, op, token).await?;
         if raw.len() > 32 * 1024 * 1024 {
             return Err(AppError::new("E_UNKNOWN", "installed_json_size"));
+        }
+        if target.is_none() {
+            self.database.set_meta("cask_rules_cache", &raw)?;
         }
         let core = self.clone();
         let target = target.cloned();
@@ -581,7 +611,7 @@ impl DesktopCore {
                 let target = target
                     .as_ref()
                     .ok_or_else(|| AppError::new("E_UNKNOWN", "scan_target"))?;
-                match target.kind {
+                match target.kind.brew_kind()? {
                     Kind::Cask => {
                         info.casks.retain(|i| i.token != target.token);
                         info.casks.extend(
@@ -678,6 +708,23 @@ impl DesktopCore {
                 app_management_blocked_after_grant: blocked,
             };
     }
+    /// Keep inference tests independent of installed apps and native post-task metadata scans.
+    #[cfg(test)]
+    pub(crate) fn install_permission_test_completion(self: &Arc<Self>) {
+        let weak = Arc::downgrade(self);
+        self.queue
+            .set_completion(Arc::new(move |task| {
+                let weak = weak.clone();
+                Box::pin(async move {
+                    if let Some(core) = weak.upgrade() {
+                        core.infer_app_management(&task)
+                            .await
+                            .expect("permission inference");
+                    }
+                })
+            }))
+            .expect("test completion");
+    }
     /// Same behavior, callable directly from the guidance polling thread.
     pub fn permissions_blocking(&self) -> Result<Permissions, AppError> {
         let inferred = *self.app_management.read().map_err(poisoned)?;
@@ -687,11 +734,9 @@ impl DesktopCore {
     }
     async fn infer_app_management(self: &Arc<Self>, task: &Task) -> Result<(), AppError> {
         let next = if task.state == TaskState::Failed
-            && task
-                .error
-                .as_ref()
-                .is_some_and(|error| error.code == "E_PERMISSION")
-        {
+            && task.error.as_ref().is_some_and(|error| {
+                matches!(error.code.as_str(), "E_PERMISSION" | "E_APP_MANAGEMENT")
+            }) {
             let source = *self.permission_signals.read().map_err(poisoned)?;
             let signals =
                 crate::blocking(move || Ok(source(PermissionState::Unknown, false))).await?;
@@ -701,10 +746,18 @@ impl DesktopCore {
             PermissionState::Denied
         } else if task.state == TaskState::Succeeded
             && matches!(task.op, TaskOp::Upgrade | TaskOp::Uninstall)
-            && task
-                .target
-                .as_ref()
-                .is_some_and(|target| target.kind == Kind::Cask)
+            && task.target.as_ref().is_some_and(|target| {
+                target.kind == Kind::Cask
+                    || (target.kind == TaskKind::App
+                        && crate::uninstall::manifest::entries(&self.database, &task.id).is_ok_and(
+                            |entries| {
+                                entries.iter().any(|e| {
+                                    e.original.extension().is_some_and(|x| x == "app")
+                                        && matches!(e.state.as_str(), "trash" | "deleted")
+                                })
+                            },
+                        ))
+            })
         {
             let info = self.installed_info.read().map_err(poisoned)?;
             let target = task
@@ -759,6 +812,26 @@ impl DesktopCore {
                 error.code
             );
         }
+        // Apps outside Homebrew need only a new local list; the completion notice below still applies to them.
+        if task
+            .target
+            .as_ref()
+            .is_some_and(|t| t.kind == TaskKind::App)
+        {
+            let engine = self.queue.uninstall_engine.clone();
+            let _ = crate::blocking(move || engine.refresh(LocalAppsChangedReason::Task)).await;
+            if let Ok(permissions) = self.permissions().await {
+                let _ = self
+                    .queue
+                    .uninstall_engine
+                    .task_footprints(task, permissions)
+                    .await;
+            }
+            self.notice(crate::scheduler::Notice::TaskFinished(Box::new(
+                task.clone(),
+            )));
+            return;
+        }
         if task.op == TaskOp::InstallHomebrew
             && task.state == TaskState::Succeeded
             && let Ok(info) = self.detect_environment().await
@@ -780,6 +853,26 @@ impl DesktopCore {
                 "Post-task update check temporarily unavailable: {}",
                 error.code
             );
+        }
+        if task.options.plan_id.is_some()
+            || (task
+                .target
+                .as_ref()
+                .is_some_and(|target| target.kind == TaskKind::Cask)
+                && matches!(
+                    task.op,
+                    TaskOp::Install | TaskOp::Upgrade | TaskOp::Reinstall | TaskOp::Uninstall
+                ))
+        {
+            let engine = self.queue.uninstall_engine.clone();
+            let _ = crate::blocking(move || engine.refresh(LocalAppsChangedReason::Task)).await;
+        }
+        if let Ok(permissions) = self.permissions().await {
+            let _ = self
+                .queue
+                .uninstall_engine
+                .task_footprints(task, permissions)
+                .await;
         }
         self.notice(crate::scheduler::Notice::TaskFinished(Box::new(
             task.clone(),
@@ -826,7 +919,7 @@ mod permission_tests {
                 .enqueue(
                     op,
                     Some(TaskTarget {
-                        kind: Kind::Cask,
+                        kind: Kind::Cask.into(),
                         token: "font-test".into(),
                     }),
                     TaskOptions::default(),
@@ -842,7 +935,7 @@ mod permission_tests {
             .enqueue(
                 TaskOp::Upgrade,
                 Some(TaskTarget {
-                    kind: Kind::Cask,
+                    kind: Kind::Cask.into(),
                     token: "unknown-test".into(),
                 }),
                 TaskOptions::default(),
@@ -867,7 +960,7 @@ mod permission_tests {
             .enqueue(
                 TaskOp::Upgrade,
                 Some(TaskTarget {
-                    kind: Kind::Cask,
+                    kind: Kind::Cask.into(),
                     token: "app-test".into(),
                 }),
                 TaskOptions::default(),
@@ -912,7 +1005,7 @@ mod permission_tests {
             .enqueue(
                 TaskOp::Uninstall,
                 Some(TaskTarget {
-                    kind: Kind::Cask,
+                    kind: Kind::Cask.into(),
                     token: "app-test".into(),
                 }),
                 TaskOptions::default(),

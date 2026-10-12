@@ -31,7 +31,10 @@ describe('Startup route', () => {
     // Fresh settings: without a deep link, startup would enter the welcome page.
     expect(settings?.onboardingCompleted).toBe(false);
     expect(
-      startupRedirect({ deepLinkOpened: deepLinkOpened(), onboardingCompleted: settings?.onboardingCompleted })
+      startupRedirect({
+        deepLinkOpened: deepLinkOpened(),
+        onboardingCompleted: settings?.onboardingCompleted
+      })
     ).toBe('/welcome');
     expect(context.router.currentRoute.value.path).toBe('/welcome');
     expect(useDeepLinkStore().pending?.route).toBe('/package/cask/zed');

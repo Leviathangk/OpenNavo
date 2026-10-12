@@ -6,7 +6,7 @@ import { commands, unwrap } from '@/ipc/client';
  * Filter legacy command-line records in the UI; native code no longer creates them, so subtract only those actually read from the total.
  */
 export function isListedTask(task: Task): boolean {
-  return task.target === null || task.target.kind === 'cask';
+  return task.target === null || task.target.kind !== 'formula';
 }
 
 // The UI may read multiple pages, but every IPC call must respect the native limit of 200 records.

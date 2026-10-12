@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+import { DOMWrapper, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import OnSearchField from '../src/components/OnSearchField.vue';
@@ -207,33 +207,37 @@ describe('OnTooltip', () => {
       attachTo: document.body
     });
 
+  const tooltipFor = (wrapper: ReturnType<typeof mountTooltip>) =>
+    new DOMWrapper<HTMLElement>(document.getElementById(wrapper.get('button').attributes('aria-describedby')!)!);
+
   it('Appears after 400 ms of hover, disappears immediately on leave, and associates the trigger with its description', async () => {
     const wrapper = mountTooltip();
-    const tooltip = wrapper.get('[role="tooltip"]');
+    const tooltip = tooltipFor(wrapper);
     expect(wrapper.get('button').attributes('aria-describedby')).toBe(tooltip.attributes('id'));
-    await wrapper.trigger('mouseenter');
+    await wrapper.get('span.relative').trigger('mouseenter');
     vi.advanceTimersByTime(399);
     await wrapper.vm.$nextTick();
     expect(tooltip.classes()).toContain('invisible');
     vi.advanceTimersByTime(1);
     await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
     expect(tooltip.classes()).toContain('visible');
-    await wrapper.trigger('mouseleave');
+    await wrapper.get('span.relative').trigger('mouseleave');
     expect(tooltip.classes()).toContain('invisible');
     wrapper.unmount();
   });
 
   it('Also opens on keyboard focus and closes with Escape', async () => {
     const wrapper = mountTooltip({ delay: 0, placement: 'bottom' });
-    const tooltip = wrapper.get('[role="tooltip"]');
-    expect(tooltip.classes()).toContain('top-full');
+    const tooltip = tooltipFor(wrapper);
     await wrapper.get('button').trigger('focusin');
     vi.advanceTimersByTime(0);
     await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
     expect(tooltip.classes()).toContain('visible');
-    await wrapper.trigger('keydown', { key: 'Escape' });
+    await wrapper.get('span.relative').trigger('keydown', { key: 'Escape' });
     expect(tooltip.classes()).toContain('invisible');
-    await wrapper.trigger('keydown', { key: 'Escape' });
+    await wrapper.get('span.relative').trigger('keydown', { key: 'Escape' });
     await wrapper.get('button').trigger('focusout');
     expect(tooltip.classes()).toContain('invisible');
     wrapper.unmount();
@@ -241,21 +245,54 @@ describe('OnTooltip', () => {
 
   it('Stays hidden when disabled or empty and removes the description association', async () => {
     const wrapper = mountTooltip({ disabled: true, placement: 'left' });
+    const tooltip = new DOMWrapper(document.body.querySelector('[role="tooltip"]')!);
     expect(wrapper.get('button').attributes('aria-describedby')).toBeUndefined();
-    await wrapper.trigger('mouseenter');
+    await wrapper.get('span.relative').trigger('mouseenter');
     vi.advanceTimersByTime(500);
     await wrapper.vm.$nextTick();
-    expect(wrapper.get('[role="tooltip"]').classes()).toContain('invisible');
+    expect(tooltip.classes()).toContain('invisible');
 
     await wrapper.setProps({ disabled: false });
     expect(wrapper.get('button').attributes('aria-describedby')).toBeDefined();
-    await wrapper.trigger('mouseenter');
+    await wrapper.get('span.relative').trigger('mouseenter');
     vi.advanceTimersByTime(400);
     await wrapper.setProps({ disabled: true });
-    expect(wrapper.get('[role="tooltip"]').classes()).toContain('invisible');
+    expect(tooltip.classes()).toContain('invisible');
     await wrapper.setProps({ disabled: false, content: '', placement: 'right' });
     expect(wrapper.get('button').attributes('aria-describedby')).toBeUndefined();
     wrapper.unmount();
+  });
+
+  it('Keeps the description outside scrolling content, flips at the top edge and stays within the right edge', async () => {
+    const wrapper = mountTooltip({ delay: 0 });
+    const tooltip = tooltipFor(wrapper);
+    expect(tooltip.element.parentElement).toBe(document.body);
+    expect(wrapper.find('[role="tooltip"]').exists()).toBe(false);
+    expect(tooltip.isVisible()).toBe(false);
+    vi.spyOn(wrapper.get('span.relative').element, 'getBoundingClientRect').mockReturnValue({
+      left: window.innerWidth - 18,
+      right: window.innerWidth - 8,
+      top: 2,
+      bottom: 14,
+      width: 10,
+      height: 12
+    } as DOMRect);
+    vi.spyOn(tooltip.element, 'getBoundingClientRect').mockReturnValue({ width: 200, height: 30 } as DOMRect);
+
+    await wrapper.get('span.relative').trigger('mouseenter');
+    vi.advanceTimersByTime(0);
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+    expect(tooltip.isVisible()).toBe(true);
+    expect(tooltip.element.style.left).toBe(`${window.innerWidth - 208}px`);
+    expect(tooltip.element.style.top).toBe('20px');
+
+    // Scrolling an ancestor closes the floating tooltip instead of leaving it at stale coordinates.
+    wrapper.get('span.relative').element.dispatchEvent(new Event('scroll'));
+    await wrapper.vm.$nextTick();
+    expect(tooltip.isVisible()).toBe(false);
+    wrapper.unmount();
+    vi.restoreAllMocks();
   });
 });
 

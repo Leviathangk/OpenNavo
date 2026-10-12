@@ -28,7 +28,9 @@ async function restart() {
 <template>
   <div class="flex items-center gap-10px rounded-default bg-status-info-subtle px-12px py-10px" role="status">
     <OnIcon name="info" :size="15" class="shrink-0 text-status-info" />
-    <p class="m-0 min-w-0 flex-1 text-12.5px leading-[1.5] text-ink-secondary">{{ t('permission.relaunch.body') }}</p>
+    <p class="m-0 min-w-0 flex-1 text-12.5px leading-[1.5] text-ink-secondary">
+      {{ t('permission.relaunch.body') }}
+    </p>
     <OnButton variant="secondary" size="xs" :loading="restarting" @click="restart">{{
       t('permission.relaunch.action')
     }}</OnButton>

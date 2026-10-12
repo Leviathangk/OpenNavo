@@ -245,7 +245,10 @@ describe('OpenNavo automatic self-update checks', () => {
     const blocker = document.createElement('div');
     blocker.setAttribute('role', 'alertdialog');
     document.body.append(blocker);
-    const wrapper = mount(AppUpdateDialog, { attachTo: document.body, global: { plugins: [i18n] } });
+    const wrapper = mount(AppUpdateDialog, {
+      attachTo: document.body,
+      global: { plugins: [i18n] }
+    });
     try {
       await flushPromises();
       expect(document.querySelector('.on-app-update-dialog')).toBeNull();

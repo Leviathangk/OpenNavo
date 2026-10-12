@@ -10,6 +10,11 @@ fn core(root: &Path) -> Arc<DesktopCore> {
         Arc::new(|_: CoreEvent| {}),
     )
     .unwrap();
+    // This suite exercises Brewfile / maintenance contracts, not native installed-app rescanning.
+    // Match the scheduler fixture: keep completion side effects inside the synthetic test scope.
+    core.queue
+        .set_completion(Arc::new(|_| Box::pin(async {})))
+        .unwrap();
     core.settings.write().unwrap().brew_path = Some(
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fake-brew/brew")
@@ -63,7 +68,7 @@ async fn simulated_export_preview_and_bundle_queue_round_trip() {
         .iter()
         .filter(|e| e.status == BrewfileEntryStatus::Ready)
         .map(|e| TaskTarget {
-            kind: e.kind.unwrap(),
+            kind: e.kind.unwrap().into(),
             token: e.token.clone().unwrap(),
         })
         .collect();
@@ -190,14 +195,14 @@ fn system_only_uses_installed_app_and_fixed_privacy_urls() {
     .unwrap()
     .items;
     let target = TaskTarget {
-        kind: Kind::Cask,
+        kind: Kind::Cask.into(),
         token: "ghostty".into(),
     };
     assert_eq!(system::app_path(&target, &items).unwrap(), app);
     assert_eq!(
         system::app_path(
             &TaskTarget {
-                kind: Kind::Formula,
+                kind: Kind::Formula.into(),
                 token: "ripgrep".into()
             },
             &items

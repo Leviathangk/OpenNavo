@@ -15,8 +15,8 @@
     "switchLanguage": "英語",
     "switchLanguageLabel": "言語を選択",
     "browse": "見つける",
-    "lists": "Brewfile",
-    "brewfile": "マイBrewfile",
+    "lists": "リスト",
+    "brewfile": "マイリスト",
     "about": "概要",
     "feedback": "フィードバック"
   },
@@ -426,6 +426,7 @@
   },
   "og": {
     "tagline": "Homebrew アプリストア",
+    "platform": "macOS クライアント",
     "homeTitle": "Mac のための\nHomebrew\nアプリストア",
     "homeDescription": "アプリのインストールと更新履歴。\nMac をいつも最新の状態に。",
     "discoverTitle": "Mac アプリを\n見つけよう",

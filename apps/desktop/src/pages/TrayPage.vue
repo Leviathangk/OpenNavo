@@ -5,8 +5,8 @@ import { convertFileSrc, isTauri } from '@tauri-apps/api/core';
 import { emitTo } from '@tauri-apps/api/event';
 import { getAllWindows, getCurrentWindow } from '@tauri-apps/api/window';
 import { formatPercent, formatVersionChange } from '@opennavo/shared';
-import { OnAppIcon, OnButton, OnLogo, OnProgressMeter } from '@opennavo/ui';
-import type { DeepLinkEvent, Kind, OutdatedItem } from '@/ipc/bindings';
+import { OnAppIcon, OnButton, OnIcon, OnLogo, OnProgressMeter } from '@opennavo/ui';
+import type { DeepLinkEvent, OutdatedItem, TaskKind } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
@@ -29,23 +29,30 @@ const tasks = useTasksStore();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 
-const nameOf = (kind: Kind, token: string, fallback?: string) => library.find(kind, token)?.name ?? fallback ?? token;
+// Local apps outside Homebrew (`app` targets) are not in the library; use the name recorded on the task.
+const nameOf = (kind: TaskKind, token: string, fallback?: string | null) =>
+  (kind === 'app' ? undefined : library.find(kind, token)?.name) ?? fallback ?? token;
 
-function iconOf(kind: Kind, token: string) {
-  const path = library.find(kind, token)?.iconPath;
+function iconOf(kind: TaskKind, token: string) {
+  const path = kind === 'app' ? null : library.find(kind, token)?.iconPath;
   return path && isTauri() ? convertFileSrc(path) : null;
 }
 
 const running = computed(() => {
   const task = tasks.running;
   if (!task?.target) return null;
+  // Clean Up targets its report, not a package: show the action with an eraser tile.
+  if (task.op === 'clean') return { clean: true as const, text: t('tasks.running.clean'), percent: task.percent };
   const { kind, token } = task.target;
   const key = task.op === 'upgrade' || task.op === 'install' || task.op === 'uninstall' ? task.op : 'other';
+  const name = nameOf(kind, token, task.targetName);
   return {
+    clean: false as const,
     kind,
+    iconKind: kind === 'app' ? ('cask' as const) : kind,
     token,
-    name: nameOf(kind, token),
-    text: t(`tray.running.${key}`, { name: nameOf(kind, token) }),
+    name,
+    text: t(`tray.running.${key}`, { name }),
     percent: task.percent
   };
 });
@@ -70,7 +77,11 @@ async function openMain(route: string) {
   await main?.unminimize();
   await main?.show();
   await main?.setFocus();
-  const payload: DeepLinkEvent = { url: `opennavo://${route.replace(/^\//, '')}`, route, action: null };
+  const payload: DeepLinkEvent = {
+    url: `opennavo://${route.replace(/^\//, '')}`,
+    route,
+    action: null
+  };
   await emitTo('main', 'deeplink:received', payload);
   await getCurrentWindow().hide();
 }
@@ -99,8 +110,16 @@ async function openMain(route: string) {
         class="flex shrink-0 flex-col gap-8px border-b border-b-solid border-line-subtle px-16px py-12px"
       >
         <div class="flex items-center gap-10px">
+          <span
+            v-if="running.clean"
+            class="grid h-24px w-24px shrink-0 place-items-center rounded-[6px] bg-surface-raised text-ink-secondary"
+            aria-hidden="true"
+          >
+            <OnIcon name="eraser" :size="14" />
+          </span>
           <OnAppIcon
-            :kind="running.kind"
+            v-else
+            :kind="running.iconKind"
             :token="running.token"
             :name="running.name"
             :src="iconOf(running.kind, running.token)"

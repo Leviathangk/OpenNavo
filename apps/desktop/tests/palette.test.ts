@@ -15,9 +15,15 @@ async function mountPalette() {
   const open = ref(true);
   const Host = defineComponent({
     setup: () => () =>
-      h(CommandPalette, { open: open.value, 'onUpdate:open': (value: boolean) => (open.value = value) })
+      h(CommandPalette, {
+        open: open.value,
+        'onUpdate:open': (value: boolean) => (open.value = value)
+      })
   });
-  const wrapper = mount(Host, { global: { plugins: [context.pinia, context.router, i18n] }, attachTo: document.body });
+  const wrapper = mount(Host, {
+    global: { plugins: [context.pinia, context.router, i18n] },
+    attachTo: document.body
+  });
   await flushPromises();
   const input = () => document.body.querySelector<HTMLInputElement>('[role="combobox"]');
   async function type(text: string) {

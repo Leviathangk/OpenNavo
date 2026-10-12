@@ -5,6 +5,7 @@ description = "OpenNavo macOS desktop app"
 edition = "2024"
 rust-version = "1.96"
 publish = false
+default-run = "opennavo-desktop"
 
 [lib]
 # main.rs only calls the library's run(); tests and binding exports also use the library.
@@ -41,8 +42,10 @@ tracing = "0.1"
 log = "0.4"
 portable-pty = "0.9"
 regex = "1"
+# Pattern matching only; expansion walks each directory without following symlinks (MIT/Apache-2.0).
+glob = "0.3"
 tokio = { version = "1", features = ["full"] }
-nix = { version = "0.31", features = ["signal", "process"] }
+nix = { version = "0.31", features = ["signal", "process", "fs"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v7", "serde"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
@@ -75,3 +78,17 @@ strip = true
 # Build-time dylibs must load through macOS dyld; stripping breaks Rust 1.96 LINKEDIT alignment. They are not bundled in the app.
 [profile.release.build-override]
 strip = false
+
+[features]
+fan-helper = []
+
+[[bin]]
+name = "opennavo-fan-helper"
+path = "fan-helper/main.rs"
+required-features = ["fan-helper"]
+
+# AppKit rendering must run on the process main thread, not a libtest worker.
+[[test]]
+name = "monitor_render"
+path = "tests/monitor_render.rs"
+harness = false

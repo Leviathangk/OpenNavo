@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "tray-monitor",
+  "description": "Minimal permissions for the shared monitor popover",
+  "windows": ["tray-monitor"],
+  "permissions": [
+    "native-tray-monitor",
+    "core:event:default",
+    "core:window:allow-hide",
+    "core:window:allow-set-size"
+  ]
+}

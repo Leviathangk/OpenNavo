@@ -10,9 +10,13 @@ export interface OnNavItemProps {
   active?: boolean;
   /** Right count, e.g. Installed 218. */
   count?: number;
+  /** Right text in the count style, e.g. Clean Up 34 GB; used when there is no count. */
+  meta?: string;
   /** Right badge, e.g. Updates 6, taking priority over count. */
   badge?: number;
-  /** Accessible badge text. */
+  /** Right attention dot without a number, e.g. Clean Up while dead background items still load; badgeLabel names it. */
+  dot?: boolean;
+  /** Accessible badge or dot text. */
   badgeLabel?: string;
   /** Render native a/button or supplied RouterLink; component never reads routes. */
   as?: string | Component;
@@ -47,6 +51,14 @@ const linkAttrs = computed(() => ({
     <OnIcon v-if="icon" :name="icon" :size="17" />
     <span class="min-w-0 flex-1 truncate text-left"><slot /></span>
     <OnBadge v-if="badge !== undefined && badge > 0" :count="badge" :label="badgeLabel" />
+    <span
+      v-else-if="dot"
+      class="mr-6px h-7px w-7px shrink-0 rounded-full bg-brand-coral"
+      :role="badgeLabel ? 'img' : undefined"
+      :aria-label="badgeLabel"
+      :aria-hidden="badgeLabel ? undefined : 'true'"
+    ></span>
     <span v-else-if="count !== undefined" class="text-11.5px text-ink-tertiary tabular-nums">{{ count }}</span>
+    <span v-else-if="meta" class="shrink-0 text-11.5px text-ink-tertiary tabular-nums">{{ meta }}</span>
   </component>
 </template>

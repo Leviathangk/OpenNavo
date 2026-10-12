@@ -9,3 +9,9 @@ pub mod settings;
 pub mod system;
 pub mod tasks;
 pub mod updates;
+
+pub mod uninstall;
+
+pub mod cleanup;
+
+pub mod monitor;

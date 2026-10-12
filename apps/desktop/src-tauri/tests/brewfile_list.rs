@@ -5,7 +5,7 @@ use opennavo_desktop_lib::{
 
 fn target(token: &str) -> TaskTarget {
     TaskTarget {
-        kind: Kind::Cask,
+        kind: Kind::Cask.into(),
         token: token.into(),
     }
 }
@@ -34,7 +34,7 @@ fn invalid_list_does_not_overwrite_existing_file() {
     for targets in [
         vec![target("zed"), target("../bad")],
         vec![TaskTarget {
-            kind: Kind::Formula,
+            kind: Kind::Formula.into(),
             token: "wget".into(),
         }],
         vec![target("zed"); 201],

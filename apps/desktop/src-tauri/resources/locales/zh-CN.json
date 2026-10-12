@@ -36,5 +36,21 @@
   "askpass.cancel": "取消",
   "completion.succeeded": "成功 {count} 项",
   "completion.failed": "失败 {count} 项",
-  "completion.canceled": "取消 {count} 项"
+  "completion.canceled": "取消 {count} 项",
+  "monitorAlert.cpu_busy.title": "CPU 持续高负载",
+  "monitorAlert.cpu_busy.body": "CPU 已经连续 3 分钟超过 85%，点开查看是哪个进程。",
+  "monitorAlert.memory_pressure.title": "内存压力偏高",
+  "monitorAlert.memory_pressure.body": "退出不用的 App 可以释放内存，点开查看占用最多的进程。",
+  "monitorAlert.memory_critical.title": "内存压力达到紧急",
+  "monitorAlert.memory_critical.body": "App 可能变慢或被系统关闭，点开查看占用最多的进程。",
+  "monitorAlert.disk_low.title": "磁盘空间不足",
+  "monitorAlert.disk_low.body": "启动磁盘只剩 {size}，点开清理电脑。",
+  "monitorAlert.battery_health.title": "电池健康度下降",
+  "monitorAlert.battery_health.body": "电池健康度只剩 {percent}。",
+  "monitorAlert.battery_hot.title": "电池温度偏高",
+  "monitorAlert.battery_hot.body": "电池温度达到 {temp}。",
+  "monitorAlert.temperature.title": "CPU 温度过高",
+  "monitorAlert.temperature.body": "CPU 温度 {temp}，点开查看进程或调整风扇。",
+  "monitorAlert.disk_smart.title": "磁盘报告异常",
+  "monitorAlert.disk_smart.body": "「{name}」的 SMART 状态异常，请尽快备份。"
 }

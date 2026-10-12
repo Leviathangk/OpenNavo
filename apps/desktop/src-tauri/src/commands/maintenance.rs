@@ -43,13 +43,6 @@ pub async fn brewfile_install(
 }
 #[tauri::command]
 #[specta::specta]
-pub async fn cleanup_estimate(
-    state: State<'_, Arc<DesktopCore>>,
-) -> Result<CleanupEstimate, AppError> {
-    crate::maintenance::estimate(state.inner().clone()).await
-}
-#[tauri::command]
-#[specta::specta]
 pub async fn doctor_run(state: State<'_, Arc<DesktopCore>>) -> Result<DoctorReport, AppError> {
     crate::maintenance::diagnose(state.inner().clone()).await
 }

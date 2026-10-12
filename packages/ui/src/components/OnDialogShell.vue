@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Shared dialog/sheet/palette shell: body teleport, backdrop, transitions, Escape, focus transfer/trap/restore, scroll lock.
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { focusableIn, lockScroll, trapTab, unlockScroll } from '../composables/overlay';
+import { focusableIn, lockScroll, moveFocus, trapTab, unlockScroll } from '../composables/overlay';
 
 export type OnDialogPlacement = 'center' | 'right' | 'top';
 
@@ -52,7 +52,7 @@ async function activate() {
   const container = panel.value;
   if (!container) return;
   const target = props.initialFocus ? container.querySelector<HTMLElement>(props.initialFocus) : null;
-  (target ?? focusableIn(container)[0] ?? container).focus();
+  moveFocus(target ?? focusableIn(container)[0] ?? container);
 }
 
 function deactivate() {
@@ -60,7 +60,7 @@ function deactivate() {
   active = false;
   unlockScroll();
   // Restore focus to the opener, which may have been removed.
-  if (opener?.isConnected) opener.focus();
+  if (opener?.isConnected) moveFocus(opener);
   opener = null;
 }
 

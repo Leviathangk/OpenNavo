@@ -5,7 +5,7 @@
     "apps/server/go.mod": "6d64638fcd95df0f3512fd647528e7b8d179f2b3eb37c31dc68d498ac2cae756",
     "apps/server/go.sum": "8e49c990b927c1cd3e3c79e49e534ee4ead68daff3a48274c2cf134e89096b96",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
-    "apps/desktop/src-tauri/Cargo.lock": "e9ccd458898873e04b33ed28be6b32302c82204cf8b27d4205e08a0b5bf322a3"
+    "apps/desktop/src-tauri/Cargo.lock": "c3ad77ccfb201dd6be99c189b61263c8126c3a8109de0d67a3f5e79d8b621812"
   },
   "scopeNote": "runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability",
   "modules": [

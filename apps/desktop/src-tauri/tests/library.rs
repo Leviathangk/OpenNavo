@@ -89,7 +89,7 @@ fn read_only_json_versions_dependencies_plist_and_sizes() {
     for item in scan.items.iter().filter(|i| i.kind == Kind::Cask) {
         let path = item.icon_path.as_ref().unwrap();
         let image = image::open(path).unwrap();
-        assert_eq!(image.width(), 512);
+        assert_eq!((image.width(), image.height()), (256, 256));
         assert!(Path::new(path).starts_with(&icons));
     }
     let cached = library::scan(&db, &info, prefix.to_str().unwrap(), Locale::ZhCn).unwrap();
@@ -115,6 +115,48 @@ fn read_only_json_versions_dependencies_plist_and_sizes() {
     assert!(files::formula_path("/tmp", "--help", "1").is_none());
 }
 #[test]
+fn asset_scope_allows_extracted_local_icons_without_allowing_other_app_data() {
+    let tmp = tempfile::tempdir().unwrap();
+    let config: serde_json::Value =
+        serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+    let identifier = config["identifier"].as_str().unwrap();
+    let cache = tmp.path().join("Caches");
+    let data = tmp.path().join("Application Support").join(identifier);
+    let db = Database::open(&tmp.path().join("db")).unwrap();
+    let patterns: Vec<_> = config["app"]["security"]["assetProtocol"]["scope"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|scope| {
+            glob::Pattern::new(
+                &scope
+                    .as_str()
+                    .unwrap()
+                    .replace("$CACHE", &cache.to_string_lossy())
+                    .replace("$APPDATA", &data.to_string_lossy()),
+            )
+            .unwrap()
+        })
+        .collect();
+    let allowed = |path: &Path| patterns.iter().any(|pattern| pattern.matches_path(path));
+    for (name, destination) in [
+        ("LocalApp", data.join("logs/local-app-icons")),
+        ("BrewApp", cache.join(identifier).join("icons")),
+    ] {
+        let bundle = app(tmp.path(), name, "1.0", true);
+        let png = files::icon(&db, &bundle, &destination).unwrap();
+        assert!(
+            allowed(Path::new(&png)),
+            "extracted icon must be loadable: {png}"
+        );
+        assert!(image::open(png).is_ok());
+    }
+    assert!(!allowed(&data.join("opennavo.db")));
+    assert!(!allowed(&data.join("logs/tasks/private.png")));
+    assert!(!allowed(&tmp.path().join("OtherApp/icon.png")));
+}
+
+#[test]
 fn plist_fallback_and_symbolic_link_do_not_follow_outside() {
     let tmp = tempfile::tempdir().unwrap();
     let path = app(tmp.path(), "NoIcon", "1.0", false);
@@ -137,6 +179,36 @@ fn plist_fallback_and_symbolic_link_do_not_follow_outside() {
         let decoded = image::open(icon).unwrap();
         assert!(decoded.width() <= 512);
     }
+}
+
+#[test]
+fn old_icon_cache_is_replaced_by_normalized_artwork_without_changing_bundle() {
+    let tmp = tempfile::tempdir().unwrap();
+    let db = Database::open(&tmp.path().join("db")).unwrap();
+    let path = app(tmp.path(), "PaddedIcon", "1.0", true);
+    let source = path.join("Contents/Resources/AppIcon.icns");
+    let before = std::fs::read(&source).unwrap();
+    let cache = tmp.path().join("icons");
+    let normalized = files::icon(&db, &path, &cache).unwrap();
+    let old = cache.join("legacy.png");
+    std::fs::copy(&normalized, &old).unwrap();
+    db.with(|c| {
+        c.execute(
+            "UPDATE icon_cache SET png_path=?1",
+            [old.to_string_lossy().as_ref()],
+        )?;
+        Ok(())
+    })
+    .unwrap();
+    assert!(files::cached_icon(&db, &path).unwrap().is_none());
+    let regenerated = files::icon(&db, &path, &cache).unwrap();
+    assert!(regenerated.ends_with("-normalized-v1.png"));
+    assert_eq!(image::open(&regenerated).unwrap().width(), 256);
+    assert_eq!(
+        files::cached_icon(&db, &path).unwrap().as_deref(),
+        Some(regenerated.as_str())
+    );
+    assert_eq!(std::fs::read(source).unwrap(), before);
 }
 #[tokio::test]
 async fn empty_simulated_scan_caches_and_completes_without_user_paths() {
@@ -241,7 +313,7 @@ else:
         .enqueue(
             TaskOp::Install,
             Some(TaskTarget {
-                kind: Kind::Formula,
+                kind: Kind::Formula.into(),
                 token: "target".into(),
             }),
             TaskOptions::default(),

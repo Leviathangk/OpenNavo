@@ -51,7 +51,13 @@ export function useLoader<T>(
     return pending;
   }
 
-  const resetRefresh = registerRefresh({ reload: load, loading, error, updatedAt, generation: sequence });
+  const resetRefresh = registerRefresh({
+    reload: load,
+    loading,
+    error,
+    updatedAt,
+    generation: sequence
+  });
   watch(
     identitySources,
     () => {

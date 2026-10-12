@@ -74,7 +74,9 @@ function close() {
         </span>
       </button>
       <div class="min-w-0 flex-1 pr-14px">
-        <p class="m-0 text-11.5px font-500 text-ink-tertiary">{{ t(`permission.guide.${name}`) }}</p>
+        <p class="m-0 text-11.5px font-500 text-ink-tertiary">
+          {{ t(`permission.guide.${name}`) }}
+        </p>
         <p class="m-0 mt-2px text-14px font-600 leading-[1.35] text-ink-primary">
           {{
             done

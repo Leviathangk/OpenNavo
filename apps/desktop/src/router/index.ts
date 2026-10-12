@@ -4,7 +4,17 @@ import type { RouteRecordRaw } from 'vue-router';
 declare module 'vue-router' {
   interface RouteMeta {
     /** Highlighted sidebar navigation item; group detail/search subpages under their top-level destination. */
-    nav?: 'discover' | 'categories' | 'collections' | 'rankings' | 'brewfile' | 'installed' | 'updates' | 'settings';
+    nav?:
+      | 'discover'
+      | 'categories'
+      | 'collections'
+      | 'rankings'
+      | 'brewfile'
+      | 'installed'
+      | 'updates'
+      | 'cleanup'
+      | 'monitor'
+      | 'settings';
     /** Render without the app shell (Welcome, menu-bar popover). */
     bare?: boolean;
   }
@@ -14,6 +24,8 @@ declare module 'vue-router' {
 const DiscoverRail = () => import('@/components/rails/DiscoverRail.vue');
 const LibraryRail = () => import('@/components/rails/LibraryRail.vue');
 const UpdatesRail = () => import('@/components/rails/UpdatesRail.vue');
+const CleanupRail = () => import('@/components/rails/CleanupRail.vue');
+const MonitorRail = () => import('@/components/rails/MonitorRail.vue');
 
 export const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/discover' },
@@ -118,12 +130,30 @@ export const routes: RouteRecordRaw[] = [
     meta: { nav: 'updates' }
   },
   {
+    path: '/cleanup',
+    name: 'cleanup',
+    components: {
+      default: () => import('@/pages/CleanupPage.vue'),
+      rail: CleanupRail
+    },
+    meta: { nav: 'cleanup' }
+  },
+  {
+    path: '/monitor',
+    name: 'monitor',
+    components: {
+      default: () => import('@/pages/MonitorPage.vue'),
+      rail: MonitorRail
+    },
+    meta: { nav: 'monitor' }
+  },
+  {
     path: '/history',
     name: 'history',
     redirect: '/updates'
   },
   {
-    path: '/settings/:section(general|mirrors|homebrew|privacy|about)?',
+    path: '/settings/:section(general|mirrors|homebrew|cleanup|monitor|privacy|about)?',
     name: 'settings',
     component: () => import('@/pages/SettingsPage.vue'),
     meta: { nav: 'settings' }
@@ -139,6 +169,13 @@ export const routes: RouteRecordRaw[] = [
     path: '/permission-guide/:pane(app_management|full_disk_access)',
     name: 'permission-guide',
     component: () => import('@/pages/PermissionGuidePage.vue'),
+    meta: { bare: true }
+  },
+  // Monitoring menu bar popover (monitor proposal §12): one window shared by every monitoring item.
+  {
+    path: '/tray-monitor',
+    name: 'tray-monitor',
+    component: () => import('@/pages/TrayMonitorPage.vue'),
     meta: { bare: true }
   },
   // Menu-bar popover (06 §4.2), without sidebar or toolbar.

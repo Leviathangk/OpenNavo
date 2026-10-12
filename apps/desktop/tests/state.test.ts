@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { i18n } from '@/i18n';
 import { usePackageState } from '@/composables/usePackageState';
+import type { Task } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import { startLocalState, useLibraryStore, useTasksStore, useUpdatesStore } from '@/stores';
 import { setup } from './helpers';
@@ -12,20 +13,21 @@ async function states(targets: [string, 'cask' | 'formula', boolean?][], options
   const { pinia, router } = await setup('/discover', options);
   await startLocalState();
   let result: Record<string, string> = {};
+  let progress: Record<string, number | undefined> = {};
   const Probe = defineComponent({
     setup() {
       const { stateOf } = usePackageState();
       return () => {
-        result = Object.fromEntries(
-          targets.map(([token, kind, disabled]) => [token, stateOf(kind, token, disabled).state])
-        );
+        const current = targets.map(([token, kind, disabled]) => [token, stateOf(kind, token, disabled)] as const);
+        result = Object.fromEntries(current.map(([token, state]) => [token, state.state]));
+        progress = Object.fromEntries(current.map(([token, state]) => [token, state.progress]));
         return h('div');
       };
     }
   });
   const wrapper = mount(Probe, { global: { plugins: [pinia, router, i18n] } });
   await flushPromises();
-  return { result: () => result, wrapper, tasks: useTasksStore() };
+  return { result: () => result, progress: () => progress, wrapper, tasks: useTasksStore() };
 }
 
 describe('Get button state (06 §13)', () => {
@@ -59,11 +61,13 @@ describe('Get button state (06 §13)', () => {
   });
 
   it('Tasks display queued/running states', async () => {
-    const { result, tasks, wrapper } = await states([['orbstack', 'cask']]);
-    tasks.applyUpdate({
+    const { result, progress, tasks, wrapper } = await states([['orbstack', 'cask']]);
+    const task: Task = {
       id: 't1',
       op: 'reinstall',
       target: { kind: 'cask', token: 'orbstack' },
+      targetName: null,
+      outcome: null,
       options: {},
       trigger: 'manual',
       state: 'queued',
@@ -82,10 +86,22 @@ describe('Get button state (06 §13)', () => {
       createdAt: Date.now(),
       startedAt: null,
       finishedAt: null
-    });
+    };
+    tasks.applyUpdate(task);
     wrapper.vm.$forceUpdate();
     await flushPromises();
     expect(result().orbstack).toBe('queued');
+
+    // Unknown progress shows an empty ring rather than a spinner; reported progress fills it.
+    tasks.applyUpdate({ ...task, state: 'running', phase: 'preparing' });
+    wrapper.vm.$forceUpdate();
+    await flushPromises();
+    expect(result().orbstack).toBe('running');
+    expect(progress().orbstack).toBe(0);
+    tasks.applyUpdate({ ...task, state: 'running', phase: 'downloading', percent: 28 });
+    wrapper.vm.$forceUpdate();
+    await flushPromises();
+    expect(progress().orbstack).toBe(28);
   });
 
   it('Without Homebrew always show get with Install Homebrew first and open Welcome (08 §10.15)', async () => {

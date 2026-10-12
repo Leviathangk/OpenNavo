@@ -26,7 +26,10 @@ const open = computed({
 });
 const target = computed(() => deeplink.install);
 const name = computed(() => (target.value ? displayName(target.value.kind, target.value.token) : ''));
-const command = computed(() => (target.value ? installCommand(target.value.kind, target.value.token) : ''));
+// Deep links only ever request Homebrew packages, never local `app` targets.
+const command = computed(() =>
+  target.value && target.value.kind !== 'app' ? installCommand(target.value.kind, target.value.token) : ''
+);
 
 async function confirm() {
   if (!target.value) return;

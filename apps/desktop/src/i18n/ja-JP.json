@@ -13,7 +13,10 @@
     "updates": "更新",
     "history": "更新履歴",
     "settings": "設定",
-    "updatesBadge": "利用可能な更新が{count}件あります"
+    "updatesBadge": "利用可能な更新が{count}件あります",
+    "cleanup": "クリーンアップ",
+    "cleanupBadge": "不要なバックグラウンド項目{count}件がまだ読み込まれています",
+    "monitor": "システムモニタ"
   },
   "env": {
     "label": "Homebrew",
@@ -325,12 +328,6 @@
       "copyCommand": "brewコマンドをコピー",
       "web": "Webサイトで表示"
     },
-    "uninstallConfirm": {
-      "title": "{name}をアンインストールしますか？",
-      "description": "{command}を実行します。",
-      "zap": "アプリデータも削除する（--zap）",
-      "confirm": "アンインストール"
-    },
     "commandCopied": "brewコマンドをコピーしました",
     "offline": "オンラインでスクリーンショットや詳細を確認できます",
     "notFound": "ローカルカタログにこのパッケージはありません",
@@ -339,19 +336,30 @@
   },
   "library": {
     "title": "インストール済み",
-    "summary": "{count}項目 · 使用量 {size}",
+    "summary": "{count}個のApp · 使用量 {size}",
     "summaryCount": "{count}項目",
-    "filterPlaceholder": "インストール済みを絞り込む…",
+    "filterPlaceholder": "名前またはBundle IDで絞り込む…",
+    "scanProgress": {
+      "running": "使用容量を計算中",
+      "done": "使用容量の計算が完了",
+      "partial": "一部のアプリで計算に失敗",
+      "completed": "完了 {completed} / {total}",
+      "scope": "アプリ本体、データ、キャッシュ",
+      "retrying": "再試行待ち {count} 件",
+      "failed": "{count} 件失敗・理由は一覧に表示"
+    },
+    "retryFootprint": "クリックしてこのアプリの使用容量を再計算",
+    "recalculate": "使用容量を再計算",
     "refresh": "更新",
-    "empty": "Homebrewでインストールしたソフトウェアはまだありません",
+    "empty": "アンインストールできるAppが見つかりません",
     "emptyFiltered": "条件に一致する項目はありません",
     "columns": {
       "name": "名前",
       "version": "バージョン",
-      "size": "サイズ",
-      "installedAt": "インストール日",
+      "size": "使用容量",
       "status": "状態",
-      "actions": "操作"
+      "actions": "操作",
+      "lastUsed": "最終使用"
     },
     "status": {
       "installed": "インストール済み",
@@ -362,25 +370,23 @@
       "running": "更新中 {percent}",
       "runningUnknown": "処理中",
       "queued": "キュー待ち",
-      "unknown": "不明"
+      "unknown": "不明",
+      "uninstalling": "アンインストール中 {percent}",
+      "protected": "このApp",
+      "managed": "管理対象",
+      "adoptable": "引き継ぎ可能"
     },
-    "dependency": "依存関係 · {names}で使用中",
     "storage": {
       "title": "ストレージ",
       "total": "合計 {size}",
       "caption": "ディスク使用量",
-      "apps": "App",
-      "cache": "ダウンロードキャッシュ"
-    },
-    "cleanup": {
-      "title": "キャッシュを削除",
-      "description": "古いバージョンとダウンロードキャッシュを削除します。brew cleanupと同じです。",
-      "button": "{size}を解放",
-      "none": "削除できるキャッシュはありません"
+      "cache": "ダウンロードキャッシュ",
+      "homebrew": "Homebrew",
+      "others": "その他のApp"
     },
     "backup": {
       "title": "バックアップと移行",
-      "description": "すべてのパッケージをBrewfileに書き出し、新しいMacでワンクリックで復元できます。",
+      "description": "Homebrewで管理しているAppをBrewfileに書き出し、新しいMacでまとめて復元できます。",
       "export": "書き出す",
       "restore": "復元",
       "exported": "{count}個のパッケージを書き出しました"
@@ -404,6 +410,41 @@
       "warnings": "警告 {count}件",
       "run": "チェックを実行",
       "running": "確認中…"
+    },
+    "adoptableHint": "HomebrewにこのAppがあります。引き継ぐとOpenNavoで更新できます",
+    "sources": {
+      "all": "すべて",
+      "homebrew": "Homebrew",
+      "app_store": "App Store",
+      "other": "その他",
+      "direct": "手動インストール",
+      "pkg": "PKGインストーラ"
+    },
+    "sourceFilter": "入手元で絞り込む",
+    "unused": "長期間未使用",
+    "unusedHint": "{days}日以上開いていません",
+    "running": "実行中",
+    "self": "使用中のApp",
+    "systemNote": "Safariやメールなど、macOSに付属するAppは保護されているため、ここには表示されません。",
+    "selectAll": "すべて選択",
+    "selectRow": "{name}を選択",
+    "batch": {
+      "selected": "{count}個のAppを選択中",
+      "size": "App本体は合計 {size} · 関連ファイルは次の手順で検索します",
+      "clear": "選択を解除",
+      "uninstall": "一括アンインストール"
+    },
+    "menu": {
+      "info": "情報を見る",
+      "adopt": "Homebrewで引き継ぐ",
+      "detail": "OpenNavoで見る"
+    },
+    "unusedCard": {
+      "title": "長期間未使用のApp",
+      "description": "{count}個のAppが{days}日以上開かれていません。App本体は合計 {size} です。",
+      "show": "これらのAppだけ表示",
+      "all": "すべてのAppを表示",
+      "none": "どのAppも過去{days}日以内に開かれています。"
     }
   },
   "updates": {
@@ -424,6 +465,7 @@
     "emptyHint": "新しいバージョンがあればここに表示されます",
     "queued": "キューに追加しました：{count}個",
     "history": {
+      "recheck": "再確認",
       "title": "更新履歴",
       "subtitle": "このMac · 過去30日間 {count}回",
       "filterLabel": "結果",
@@ -434,6 +476,8 @@
       "yesterday": "昨日 · {date}",
       "viewLog": "ログを表示",
       "retry": "再試行",
+      "undo": "取り消す",
+      "purge": "完全に削除",
       "canceled": "キャンセルしました",
       "batch": "{action}：{count}個の{kind}",
       "empty": "更新履歴はまだありません"
@@ -491,7 +535,9 @@
       "mirrors": "ダウンロードソース",
       "homebrew": "Homebrew",
       "privacy": "プライバシー",
-      "about": "概要"
+      "about": "概要",
+      "cleanup": "クリーンアップ",
+      "monitor": "システムモニタ"
     },
     "general": {
       "followSystem": "システムに従う（現在: {language}）",
@@ -502,13 +548,16 @@
       "keepInMenuBar": "ウィンドウを閉じてもメニューバーに常駐",
       "trayShowCount": "更新可能数をメニューバーに表示",
       "notifyUpdates": "更新がある場合に通知",
-      "zapByDefault": "アンインストール時にアプリデータも削除する",
-      "zapByDefaultHint": "brew uninstall --zapと同じです",
+      "zapByDefault": "アンインストール時に関連ファイルも整理する",
+      "zapByDefaultHint": "Appデータ、キャッシュ、設定などを一覧表示し、確認してから削除します",
       "updates": "更新を確認",
       "autoCheck": "毎日更新を自動確認",
       "checkTime": "確認時刻",
       "runBrewUpdate": "確認前にHomebrewのインデックスを更新",
-      "runBrewUpdateHint": "brew update"
+      "runBrewUpdateHint": "brew update",
+      "uninstall": "アンインストール",
+      "deleteMode": "削除方法",
+      "deleteModeHint": "ゴミ箱への移動は取り消せます。すぐに削除すると容量がすぐ空きます"
     },
     "mirrors": {
       "title": "ダウンロードソース",
@@ -642,7 +691,7 @@
       "waiting": "許可を待っています…",
       "granted": "オン",
       "confirm": "オンにしました",
-      "startHint": "アプリ管理をオンにすると、使い始められます。",
+      "startHint": "アプリ管理とフルディスクアクセスをオンにすると、使い始められます。",
       "appManagement": {
         "title": "OpenNavoによるアプリ管理を許可",
         "body": "アプリのアップデートとアンインストールに必要です。",
@@ -650,7 +699,7 @@
       },
       "fullDiskAccess": {
         "title": "フルディスクアクセス",
-        "body": "アンインストール時のアプリデータ削除に必要です。後からオンにすることもできます。",
+        "body": "アプリの使用容量の確認、アンインストール、ゴミ箱からの取り消しに必要です。",
         "enable": "フルディスクアクセスをオンにする"
       }
     },
@@ -693,11 +742,19 @@
       "retry": "再試行",
       "retryAll": "すべて再試行",
       "later": "後で"
-    },
-    "uninstall": {
-      "title": "アプリデータの削除には「フルディスクアクセス」が必要です",
-      "body": "アンインストールする前にオンにするか、チェックを外してアプリのみを削除してください。"
     }
+  },
+  "fullDiskGate": {
+    "title": "まず「フルディスクアクセス」をオンにしてください",
+    "body": "「インストール済み」では、各アプリがライブラリに保存しているデータを読み取り、実際の使用容量を計算し、アンインストール後に残るファイルを見つけ、ゴミ箱から取り消せるようにします。",
+    "points": {
+      "footprint": "アプリデータとキャッシュを含む、各アプリの実際の使用容量",
+      "leftovers": "アンインストール時に、コンテナやグループコンテナを含む関連ファイルをすべて検出",
+      "undo": "アンインストールをゴミ箱から取り消し"
+    },
+    "row": "システム設定で OpenNavo を許可すると、自動的に続行します。",
+    "unknown": "macOS が権限の状態を報告しませんでした。すでにオンの場合:",
+    "privacy": "読み取りはこの Mac 上だけで行い、ファイルやパスはアップロードしません。"
   },
   "deeplink": {
     "installTitle": "{name} をインストールしますか？",
@@ -761,7 +818,8 @@
     "downloadingUnknown": "更新をダウンロード中…",
     "installFailed": "ダウンロードまたはインストールに失敗しました。再試行してください。",
     "viewUpdate": "更新を表示",
-    "previewHint": "開発プレビュー：バージョンと内容はサンプルです。インストールは無効です。",
+    "previewHint": "開発プレビュー：ダウンロードとインストールの進行状況を再現するだけで、実際には更新しません。再起動してもプレビューを閉じるだけで、もう一度表示できます。",
+    "previewNotes": "- おすすめコレクションのレイアウトをコンパクトにし、より多くの App を表示\n- OpenNavo の新しいバージョンを毎日自動で確認\n- 既知の問題を修正し、使い勝手を改善",
     "previewFailure": "ダウンロード失敗をシミュレート"
   },
   "palette": {
@@ -789,7 +847,9 @@
       "unpin": "固定を解除",
       "cleanup": "キャッシュを削除",
       "update": "Homebrew を更新",
-      "install_homebrew": "Homebrewをインストール"
+      "install_homebrew": "Homebrewをインストール",
+      "remove_leftovers": "残りファイルの整理",
+      "clean": "Macのクリーンアップ"
     },
     "running": {
       "install": "{name} をインストール中",
@@ -800,7 +860,9 @@
       "unpin": "{name} の固定を解除中",
       "cleanup": "キャッシュをクリーンアップ中",
       "update": "Homebrew を更新中",
-      "install_homebrew": "Homebrew をインストール中"
+      "install_homebrew": "Homebrew をインストール中",
+      "remove_leftovers": "残りファイルを整理中：{name}",
+      "clean": "Macをクリーンアップ中"
     },
     "phases": {
       "preparing": "準備",
@@ -849,7 +911,23 @@
     "E_INTERRUPTED": "タスクが中断されました",
     "E_TIMEOUT": "長時間応答がありません",
     "E_UNKNOWN": "操作に失敗しました。ログを確認できます",
-    "E_NETWORK": "OpenNavoサービスに接続できません"
+    "E_NETWORK": "OpenNavoサービスに接続できません",
+    "E_PROTECTED": "このAppは保護されているため、アンインストールできません",
+    "E_APP_MANAGEMENT": "先にOpenNavoにAppの管理を許可してください",
+    "E_UNINSTALL_INCOMPLETE": "アプリがまだ存在します。アンインストールが完了していません。ログを確認して再試行してください。",
+    "E_PLAN_EXPIRED": "ファイルに変更がありました。再スキャンしてください",
+    "E_SCAN_CANCELED": "スキャンをキャンセルしました",
+    "E_RESTORE_UNAVAILABLE": "一部のファイルはゴミ箱にないため、元に戻せませんでした",
+    "E_TRASH_FAILED": "ゴミ箱に移動できませんでした",
+    "E_MONITOR_UNAVAILABLE": "このMacのシステム情報を読み取れません",
+    "E_FAN_UNSUPPORTED": "このMacのチップはファン制御に対応していません",
+    "E_FAN_HELPER_NOT_ENABLED": "ファン用ヘルパーがまだインストールまたは許可されていません",
+    "E_FAN_HELPER_UNSIGNED": "このOpenNavoは正式に署名されていない（開発版など）ため、ファン用ヘルパーをインストールできません。正式なインストーラを使ってください",
+    "E_FAN_HELPER_UNAVAILABLE": "ファン用ヘルパーに接続できません。しばらくしてからもう一度お試しください",
+    "E_FAN_WRITE_FAILED": "ファンの設定を変更できませんでした",
+    "E_FAN_NO_MANUAL_SPEED": "前回の手動回転数の記録がありません",
+    "E_FAN_UNAUTHORIZED": "ファン用ヘルパーの署名を確認できませんでした。OpenNavoを再インストールしてください",
+    "E_FAN_SENSOR_UNAVAILABLE": "温度を読み取れないため、安全のため手動に切り替えられません"
   },
   "installConfirm": {
     "title": "既存の{name}を引き継ぎますか？",
@@ -875,7 +953,7 @@
     "comingSoon": "ページの内容は後続のタスクで追加されます。"
   },
   "brewfile": {
-    "title": "マイBrewfile",
+    "title": "マイリスト",
     "description": "アプリを保存して、まとめてインストールまたは書き出せます。このリストはこの端末にのみ保存されます。",
     "count": "{count}項目",
     "emptyTitle": "リストは空です",
@@ -897,5 +975,750 @@
     "copy": "Brewfileをコピー",
     "exported": "Brewfileを書き出しました",
     "installTitle": "リストのアプリをインストール"
+  },
+  "appInfo": {
+    "title": "情報",
+    "open": "開く",
+    "reveal": "Finderで表示",
+    "detail": "OpenNavoで見る",
+    "adoptTitle": "Homebrewで管理できます",
+    "adoptBody": "Homebrewには{name}があります。引き継ぐとOpenNavoでワンクリック更新でき、アンインストール時もより充実した規則で整理できます。",
+    "adopt": "Homebrewで引き継ぐ",
+    "footprint": "使用量",
+    "estimate": "概算",
+    "footprintCaption": "使用量の内訳",
+    "appBytes": "App本体",
+    "dataBytes": "Appデータ",
+    "cacheBytes": "キャッシュ",
+    "footprintIncomplete": "フルディスクアクセスがないため、一部のデータは含まれていません。",
+    "footprintPartial": "一部のファイルを読み取れなかったため、実際の使用量はさらに大きい可能性があります。",
+    "fields": {
+      "path": "場所",
+      "bundleId": "Bundle ID",
+      "version": "バージョン",
+      "vendor": "開発元",
+      "arch": "アーキテクチャ",
+      "source": "入手元",
+      "installedAt": "インストール日",
+      "lastUsed": "最終使用"
+    },
+    "arch": {
+      "arm64": "Appleシリコン",
+      "x86_64": "Intel",
+      "universal": "ユニバーサル"
+    },
+    "protected": {
+      "self": "OpenNavoは自分自身をアンインストールできません。Finderでゴミ箱に移動してください。",
+      "system": "macOSの一部のため、アンインストールできません。",
+      "managed": "管理者が管理しているAppのため、ここではアンインストールできません。"
+    },
+    "uninstall": "アンインストール…",
+    "unknown": "不明"
+  },
+  "uninstall": {
+    "title": "{name}をアンインストールしますか？",
+    "titleMany": "{count}個のAppをアンインストールしますか？",
+    "runningTitle": "{name}をアンインストール中",
+    "runningTitleMany": "{count}個のAppをアンインストール中",
+    "doneTitle": "アンインストール完了",
+    "failedTitle": "スキャンが完了しませんでした",
+    "command": "{command} を実行してから、下でチェックした関連ファイルを削除します。",
+    "scanning": "関連ファイルを探しています…",
+    "checked": "{total}か所中{checked}か所を確認済み",
+    "selection": "{total}項目中{selected}項目を選択 · {size}",
+    "admin": "{count}項目は管理者パスワードが必要です",
+    "sharedKept": "共有されている{count}項目は残します",
+    "selectAll": "すべて選択",
+    "onlyApp": "Appのみ",
+    "recommended": "おすすめに戻す",
+    "groups": {
+      "app": "App本体",
+      "app_data": "Appデータ",
+      "caches": "キャッシュ",
+      "preferences": "設定とウインドウの状態",
+      "logs": "ログとクラッシュレポート",
+      "background": "バックグラウンド項目",
+      "cli": "コマンドラインのリンク",
+      "plugins": "プラグイン、ドライバ、拡張機能",
+      "receipts": "インストール記録",
+      "maybe": "関連の可能性あり · 確認してください"
+    },
+    "groupHints": {
+      "app_data": "Application Support · Containers · Group Containers",
+      "caches": "Caches · HTTPStorages · 一時ファイル",
+      "preferences": "Preferences · Saved Application State · Cookies",
+      "logs": "Logs · DiagnosticReports",
+      "background": "LaunchAgents · LaunchDaemons · 特権ヘルパー",
+      "cli": "App内部を指すシンボリックリンク",
+      "plugins": "Internet Plug-Ins · Audio · 共有コンポーネント",
+      "receipts": "pkgutilのレシート",
+      "maybe": "名前が似ているだけのため、最初は選択しません"
+    },
+    "itemCount": "{count}項目",
+    "unselected": "未選択 · {size}",
+    "files": "{count}個のファイル",
+    "link": "リンク",
+    "reveal": "Finderで表示",
+    "required": "必ず削除されます",
+    "adminHint": "システムフォルダにあるため、実行時に管理者パスワードが必要です",
+    "shared": "共有",
+    "sharedWith": "{names}でも使われているため、最初は残します",
+    "reasons": {
+      "app_bundle": "App",
+      "brew_uninstall": "Homebrewの手順",
+      "zap_rule": "Homebrewの規則",
+      "bundle_id": "Bundle ID",
+      "app_group": "App Group",
+      "launchd": "バックグラウンドサービス",
+      "symlink": "Appへのリンク",
+      "pkg_receipt": "インストールのレシート",
+      "team_id": "同じ開発元",
+      "name_exact": "名前が一致",
+      "name_similar": "名前が類似"
+    },
+    "reasonHints": {
+      "app_bundle": "App自体",
+      "brew_uninstall": "brew uninstallが必ず処理するため、外せません",
+      "zap_rule": "Homebrew Caskのzapリスト（人の手で管理）",
+      "bundle_id": "Appまたは内部コンポーネントのBundle IDと同じ名前です",
+      "app_group": "Appの署名で宣言された共有コンテナ",
+      "launchd": "launchdの設定がこのApp内のプログラムを指しています",
+      "symlink": "リンク先がApp内にあり、削除後は無効になります",
+      "pkg_receipt": "pkgutilの記録から、このAppのインストーラが書き込んだと分かります",
+      "team_id": "署名のTeam IDが同じ開発元のフォルダ",
+      "name_exact": "フォルダ名がApp名と完全に一致しています",
+      "name_similar": "名前が似ているだけのため、最初は選択しません"
+    },
+    "phases": {
+      "preparing": "Appを終了しています",
+      "uninstalling": "App本体を削除しています",
+      "cleaning": "関連ファイルを削除しています",
+      "finishing": "記録しています"
+    },
+    "notices": {
+      "rescanned": "ファイルに変更があったため、再スキャンしました。",
+      "appManagement": "Homebrew以外でインストールしたAppを削除するには、OpenNavoにAppの管理を許可する必要があります。",
+      "incomplete": "フルディスクアクセスがないため、{count}か所を確認できませんでした：{paths}。オンにすると、より徹底的に整理できます。",
+      "running": "{names}は実行中のため、アンインストール前に終了します。",
+      "brewSudo": "Homebrewのアンインストール手順で、管理者パスワードを別途求められることがあります。",
+      "personal": {
+        "chat_history": "{name}のAppデータにはチャット履歴、画像、ファイルが含まれています（約 {size}）。残したい場合は、先にAppでバックアップしてください。",
+        "documents": "{name}のAppデータには書類やプロジェクトファイルが含まれています（約 {size}）。残したい場合は、先に保存または書き出してください。",
+        "media": "{name}のAppデータには写真や音声・動画が含まれています（約 {size}）。残したい場合は、先に書き出してください。",
+        "browser_profile": "{name}のAppデータにはブックマーク、履歴、拡張機能が含まれています（約 {size}）。アカウントにサインインしていれば、再インストール後に同期できます。",
+        "vm_disk": "{name}のAppデータには仮想マシンのディスク、イメージ、ボリュームが含まれています（約 {size}）。削除後は再ダウンロードが必要です。",
+        "other": "{name}のAppデータに個人的な内容が含まれている可能性があります（約 {size}）。残したい場合は、先にバックアップしてください。"
+      },
+      "uninstaller": "{name}には公式のアンインストーラがあり、ライセンスや共有コンポーネントもまとめて処理できます。",
+      "siblings": "同じHomebrewパッケージ（{cask}）の{names}も一緒にアンインストールされます。"
+    },
+    "mode": {
+      "label": "削除方法",
+      "trash": "ゴミ箱に移動",
+      "delete": "すぐに削除",
+      "deleteWarning": "すぐに削除すると元に戻せません"
+    },
+    "confirm": "アンインストール",
+    "confirmClean": "アンインストールして整理 · {size}",
+    "confirmDelete": "アンインストールして完全に削除 · {size}",
+    "confirmMany": "{count}個のAppをアンインストール · {size}",
+    "cancel": "キャンセル",
+    "retry": "再スキャン",
+    "scanFailed": "スキャンが完了しませんでした：{reason}",
+    "background": "バックグラウンドで続ける",
+    "backgroundHint": "このウインドウを閉じても中断されません。完了したら通知します。",
+    "log": "ログを表示",
+    "hideLog": "ログを隠す",
+    "waiting": "待機中",
+    "batch": {
+      "meta": "App + 関連する{count}項目",
+      "admin": "管理者パスワードが必要",
+      "exclude": "今回のアンインストールから外す",
+      "include": "今回のアンインストールに含める",
+      "skipped": "アンインストールしない"
+    },
+    "result": {
+      "titleOne": "{name}をアンインストールしました",
+      "titleMany": "{count}個のAppをアンインストールしました",
+      "heroTrash": "ファイルはゴミ箱にあります。ゴミ箱を空にするまではいつでも取り消せます。",
+      "heroDelete": "ファイルは完全に削除されました。",
+      "freed": "解放できる容量",
+      "freedNow": "解放した容量",
+      "freedHint": "ゴミ箱を空にすると解放されます",
+      "freedNowHint": "すでに解放済み",
+      "moved": "ゴミ箱に移動",
+      "deleted": "削除済み",
+      "countHint": "App本体を含む",
+      "skipped": "スキップ",
+      "skippedNone": "問題なし",
+      "skippedSee": "理由は下記のとおりです",
+      "skippedTitle": "次の項目は処理できませんでした",
+      "skippedHint": "後で「クリーンアップ」から改めて整理できます。",
+      "failed": "{name}はアンインストールされませんでした：{reason}",
+      "quitFailed": "終了しませんでした。変更の保存を待っている可能性があります。保存するか閉じてから、もう一度お試しください。",
+      "finished": "完了",
+      "notFinished": "未完了",
+      "retry": "もう一度アンインストール",
+      "undo": "アンインストールを取り消す",
+      "purge": "これらのファイルを完全に削除",
+      "done": "完了",
+      "brewNote": "Homebrewでアンインストールしたアプリを取り消すと、ファイルは元の場所に戻りますが、Homebrewの記録は戻りません。「手動インストール · 引き継ぎ可能」として表示されます。"
+    },
+    "skipReasons": {
+      "in_use": "使用中のファイルです",
+      "permission": "権限がありません",
+      "admin_canceled": "管理者パスワードが入力されませんでした",
+      "missing": "すでに存在しません",
+      "changed": "スキャン後に変更があったため、安全のためスキップしました",
+      "protected": "保護された場所です",
+      "running": "Appが実行中です",
+      "tool_unavailable": "ツールが実行されていません。開いてからもう一度お試しください"
+    },
+    "toasts": {
+      "done": "{name}をアンインストールしました",
+      "doneMany": "{count}個のAppをアンインストールしました",
+      "doneBody": "{count}項目をゴミ箱に移動 · 解放できる容量 {size}",
+      "deletedBody": "{count}項目を削除 · {size}を解放",
+      "undo": "取り消す",
+      "undone": "アンインストールを取り消しました",
+      "undoneBody": "{count}項目を元に戻しました",
+      "undoMissing": "{count}個のファイルを元に戻せませんでした",
+      "purged": "完全に削除しました（{size}を解放）",
+      "needsFullDisk": "ゴミ箱を読み取るには「フルディスクアクセス」が必要です。"
+    }
+  },
+  "cleanup": {
+    "title": "Macのクリーンアップ",
+    "rescan": "再スキャン",
+    "subtitle": {
+      "idle": "キャッシュ、ログ、削除済みAppの残りファイルを探し、確認してからクリーンアップします",
+      "scanning": "スキャン中：読み取りのみで、何も削除しません",
+      "review": "{size}を解放可能 · スキャン：{time}",
+      "running": "クリーンアップ中です。このページを離れても続行します",
+      "done": "クリーンアップが完了しました",
+      "failed": "スキャンが完了しませんでした"
+    },
+    "overview": {
+      "title": "このMacで空けられる容量を確認しましょう",
+      "titleAgain": "ときどきスキャンし直しましょう",
+      "body": "スキャンは読み取りのみで、約30秒かかります。見つかった項目はリスクに応じて3段階に分かれ、再生成できるものと十分に古いものだけが最初から選択されます。",
+      "scan": "スキャンを開始",
+      "never": "まだスキャンしていません",
+      "lastScan": "前回のスキャン：{time}",
+      "lastResult": "前回のスキャン（{time}）：まだ{size}をクリーンアップできます"
+    },
+    "risks": {
+      "rebuildable": "再生成可能",
+      "review": "要確認",
+      "personal": "個人ファイル"
+    },
+    "riskHints": {
+      "rebuildable": "すぐに削除して容量を空けます。必要になればAppが作り直します",
+      "review": "古いものだけを選択済みにします。クリーンアップの前に確認してください",
+      "personal": "一覧に表示するだけで、選択はしません。選んだものはゴミ箱に移します"
+    },
+    "categories": {
+      "app_caches": "Appのキャッシュ",
+      "logs": "ログと診断レポート",
+      "browser_caches": "ブラウザのキャッシュ",
+      "dev_caches": "開発ツールのキャッシュ",
+      "homebrew": "Homebrewのダウンロードキャッシュと旧バージョン",
+      "temp": "一時ファイル",
+      "leftovers": "削除済みAppの残りファイル",
+      "installers": "古いインストーラ",
+      "project_artifacts": "プロジェクトのビルド成果物",
+      "trash": "ゴミ箱",
+      "device_backups": "デバイスのバックアップとXcodeアーカイブ",
+      "large_files": "大きいファイルと古いダウンロード",
+      "docker": "Dockerの再利用可能な領域"
+    },
+    "categoryHints": {
+      "app_caches": "Appが自分で作るキャッシュ。削除しても自動で作り直されます",
+      "logs": "7日以上前のAppログとクラッシュレポート",
+      "browser_caches": "キャッシュだけを削除し、履歴、Cookie、パスワード、拡張機能には触れません",
+      "dev_caches": "次のビルドやインストールのときに再生成・再ダウンロードされます",
+      "homebrew": "brew cleanupと同じ：旧バージョンとダウンロードキャッシュ",
+      "temp": "3日間変更がなく、開かれていない一時ファイル",
+      "leftovers": "Appはこのマシンにもうありませんが、これらのファイルが残っています",
+      "installers": "ダウンロードとデスクトップにあるdmg、pkg。対応するAppがインストール済みのものは選択済みです",
+      "project_artifacts": "30日間変更のないプロジェクトのnode_modules、target、buildなど。依存関係を再インストールするか、再ビルドすれば戻ります",
+      "trash": "選択するとゴミ箱を空にします。元に戻せません",
+      "device_backups": "ゴミ箱を空にすると、バックアップからデバイスを復元できず、アーカイブでクラッシュログをシンボリケートできなくなります",
+      "large_files": "1 GBを超え、90日間開いていないファイル",
+      "docker": "Docker自身のクリーンアップコマンドで削除します。選択はしません。ボリュームは表示のみで削除しません"
+    },
+    "scan": {
+      "starting": "スキャンの準備中",
+      "scanning": "{name}をスキャン中",
+      "found": "{size}を検出",
+      "readOnly": "読み取りのみで、何も削除しません",
+      "cancel": "キャンセル"
+    },
+    "summary": {
+      "reclaimable": "解放可能",
+      "excludesPersonal": "個人ファイルを除く",
+      "selected": "{count}項目を選択中",
+      "breakdown": "削除 {delete} · ゴミ箱へ移動 {trash}",
+      "onlyRebuildable": "再生成可能のみ",
+      "recommended": "おすすめに戻す",
+      "inUse": "ほかに{size}が使用中"
+    },
+    "notices": {
+      "rescanned": "結果を更新しました。もう一度確認してください。",
+      "services": "削除済みのApp（{names}）のバックグラウンド項目{count}件が、まだログイン時に読み込まれています。エラーやバッテリー消費の原因になるだけなので、クリーンアップをおすすめします。",
+      "incomplete": "「フルディスクアクセス」がないため、次の場所を確認できませんでした：{paths}。オンにすると、さらに見つかります。"
+    },
+    "category": {
+      "atLeast": "{size}以上",
+      "selected": "{size}を選択",
+      "none": "未選択",
+      "allSkipped": "すべてスキップ",
+      "skipped": "{count}項目をスキップしました（表示のみ、選択できません）",
+      "lastModified": "最終変更：{time}",
+      "servicesLoading": "バックグラウンド項目{count}件がまだログイン時に読み込まれています",
+      "inUse": "{size}が使用中"
+    },
+    "skipReasons": {
+      "running": "実行中です。終了するとクリーンアップできます",
+      "in_use": "使用中",
+      "busy": "ツールが実行中です",
+      "recent": "最近変更されました",
+      "git_tracked": "Gitで管理されているファイルを含みます",
+      "protected": "保護されています",
+      "permission": "権限がありません",
+      "tool_stopped": "実行されていません。開いてから再スキャンすると再利用可能な領域が表示されます",
+      "volumes": "ボリュームにはデータベースなどのデータが入っている可能性があるため、表示のみで削除しません"
+    },
+    "reasons": {
+      "orphan_service": "バックグラウンド項目",
+      "installer_installed": "インストール済み",
+      "device_support_latest": "最新バージョン",
+      "device_support_latestHint": "既定では残します。削除すると、次にこのデバイスを接続したときにXcodeが数分かけて準備し直します。",
+      "tool_download_cache": "再ダウンロード",
+      "tool_download_cacheHint": "再生成できますが、次回のビルドやテストで再ダウンロードが必要になり、時間と通信量がかかるため、既定では選択しません。",
+      "docker_images": "未使用のイメージ",
+      "docker_imagesHint": "どのコンテナにも使われていないイメージです。必要になれば再度pullまたはビルドされます。",
+      "docker_build_cache": "ビルドキャッシュ",
+      "docker_build_cacheHint": "次回のイメージのビルドに時間がかかりますが、結果は変わりません。",
+      "docker_containers": "停止中のコンテナ",
+      "docker_containersHint": "コンテナ内で書き込まれた変更も削除されます。ボリュームはそのまま残ります。"
+    },
+    "item": {
+      "command": "コマンド",
+      "admin": "管理者パスワードが必要です",
+      "reveal": "Finderで表示",
+      "protect": "常に残す",
+      "keptOpen": "使用中のファイル{count}個は残します"
+    },
+    "footer": {
+      "selected": "{count}項目を選択中 · {size}",
+      "both": "{delete}は完全に削除され、元に戻せません。{trash}はゴミ箱に移動し、元に戻せます",
+      "deleteOnly": "{size}は完全に削除され、元に戻せません",
+      "trashOnly": "すべてゴミ箱に移動し、元に戻せます",
+      "nothing": "まだ何も選択されていません",
+      "clean": "{size}をクリーンアップ"
+    },
+    "confirm": {
+      "title": "{size}をクリーンアップしますか？",
+      "count": "全{count}項目",
+      "delete": "{size}は完全に削除されます：キャッシュ、ログ、開発ツールのキャッシュなど。Appが自動で作り直しますが、元に戻すことはできません。",
+      "trash": "{size}はゴミ箱に移動します：削除済みAppの残りファイルなど。完了後に元に戻せます。",
+      "emptyTrash": "「ゴミ箱」が選択されています。中身はすべて消去され、復元できません。",
+      "admin": "そのうち{count}項目はシステムレベルのバックグラウンド項目で、管理者パスワードの入力が1回必要です。",
+      "cancel": "キャンセル",
+      "clean": "クリーンアップ"
+    },
+    "run": {
+      "title": "クリーンアップ中",
+      "delete": "削除",
+      "trash": "ゴミ箱へ移動",
+      "command": "{command}を実行",
+      "hint": "クリーンアップはタスクキューの1つのタスクとして実行されます。このページを離れても中断されず、完了すると通知します。"
+    },
+    "result": {
+      "title": "{size}を解放しました",
+      "failedTitle": "クリーンアップが完了しませんでした",
+      "trashPending": "さらに{size}がゴミ箱にあり、ゴミ箱を空にすると解放されます。それまでは元に戻せます。",
+      "rebuilds": "再生成可能なファイルは、Appが必要としたときに作り直されます。",
+      "freed": "解放済み",
+      "freedHint": "すぐに使えます",
+      "trashed": "ゴミ箱へ移動",
+      "trashedHint": "{count}項目 · ゴミ箱を空にすると解放",
+      "trashedNone": "今回はありません",
+      "restored": "元の場所に戻しました",
+      "skipped": "スキップ",
+      "skippedCount": "{count}項目",
+      "skippedHint": "理由は下に表示しています",
+      "skippedNone": "問題ありません",
+      "skippedTitle": "クリーンアップしなかった項目",
+      "free": "空き容量",
+      "undo": "ゴミ箱への移動を取り消す",
+      "purge": "これらのファイルを完全に削除",
+      "done": "完了"
+    },
+    "toasts": {
+      "protected": "保護リストに追加しました",
+      "protectedBody": "今後のスキャンには表示されません",
+      "undo": "取り消す",
+      "restored": "取り消しました",
+      "restoredBody": "{count}項目を元の場所に戻しました",
+      "purged": "完全に削除しました",
+      "purgedBody": "さらに{size}を解放しました",
+      "done": "クリーンアップが完了しました",
+      "doneBody": "{size}を解放しました",
+      "view": "表示"
+    },
+    "failed": {
+      "title": "スキャンが完了しませんでした"
+    },
+    "rail": {
+      "disk": "ディスク",
+      "diskSub": "{name} · 合計 {size}",
+      "free": "空き {size}",
+      "diskUnknown": "ディスク容量を読み取れませんでした。",
+      "used": "使用済み",
+      "reclaimable": "クリーンアップ可能",
+      "available": "空き",
+      "last": "前回のスキャン",
+      "lastScan": "{time} · {size}を解放可能",
+      "lastNone": "まだスキャンしていません。クリーンアップはすべてタスク履歴に記録されます。",
+      "history": "タスク履歴を表示",
+      "protected": "保護リスト",
+      "protectedCount": "{count}項目",
+      "protectedBody": "リストにあるファイルとAppは結果に表示されません。パスワード管理、VPN、AIツール、仮想マシンなどは最初から保護されています。",
+      "manage": "管理"
+    },
+    "entry": {
+      "title": "Macのクリーンアップ",
+      "description": "キャッシュ、ログ、削除済みAppの残りファイルを探し、確認してからクリーンアップします。",
+      "found": "{size}を解放可能 · スキャン：{time}。",
+      "active": "削除済みAppのバックグラウンド項目{count}件が、まだログイン時に読み込まれています",
+      "scan": "スキャンを開始",
+      "open": "クリーンアップ"
+    },
+    "settings": {
+      "rebuildable": "再生成可能なファイル",
+      "rebuildableHint": "キャッシュ、ログ、開発ツールのキャッシュはすぐに削除して容量を空けます",
+      "fixed": "固定",
+      "deleteMode": "要確認のファイル",
+      "deleteModeHint": "削除済みAppの残りファイルなど：ゴミ箱なら元に戻せます。削除するとすぐに容量が空きます",
+      "protected": "保護リスト",
+      "added": "{date}に追加",
+      "remove": "削除",
+      "add": "フォルダを追加…",
+      "empty": "まだありません。クリーンアップの結果で「常に残す」を選んでも、ここに追加されます。",
+      "always": "キーチェーンとパスワード管理、VPNとプロキシツール、AIツール、仮想マシンとコンテナのディスクファイル、ブラウザの履歴とCookie、iCloud Driveは常に保護されます。"
+    },
+    "groups": {
+      "deviceSupport": "Xcodeのデバイスサポートファイル · {platform}",
+      "temp": "システムの一時フォルダ",
+      "trash": "ゴミ箱の項目",
+      "installers": "ダウンロードとデスクトップ",
+      "xcodeArchive": "Xcodeアーカイブ",
+      "deviceBackup": "デバイスのバックアップ",
+      "deviceBackupModel": "デバイスのバックアップ · {model}"
+    },
+    "skipReasonsBy": {
+      "running": "{names}が実行中です。終了するとクリーンアップできます",
+      "in_use": "{names}が使用中",
+      "busy": "{names}が実行中"
+    }
+  },
+  "monitor": {
+    "title": "システムモニタ",
+    "subtitle": "{model} · {chip} · メモリ{memory} · macOS {os} · 起動から{uptime}",
+    "subtitleLoading": "このMacの情報を読み取り中",
+    "menuBarButton": "メニューバー · {count}項目",
+    "waiting": "読み取り中…",
+    "modules": {
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "memory": "メモリ",
+      "disk": "ディスク",
+      "network": "ネットワーク",
+      "battery": "バッテリー",
+      "sensors": "センサー",
+      "fans": "ファン"
+    },
+    "moduleHints": {
+      "cpu": "使用率",
+      "gpu": "使用率",
+      "memory": "使用中の割合",
+      "disk": "空き容量",
+      "network": "アップロード / ダウンロード速度",
+      "battery": "残量",
+      "sensors": "最も高温のセンサー"
+    },
+    "intro": {
+      "title": "システムモニタをメニューバーに追加しました",
+      "body": "CPUとメモリがそれぞれ1つのメニューバー項目になっています。クリックすると詳細を表示します。ほかの指標もシステムモニタでいくつでもオンにでき、不要なら設定でオフにできます。",
+      "view": "表示"
+    },
+    "health": {
+      "good": "問題ありません",
+      "goodBody": "CPU、メモリ、ディスク、バッテリーはすべて正常範囲です",
+      "goodBodyNoBattery": "CPU、メモリ、ディスクはすべて正常範囲です",
+      "attention": "注意が必要な項目が{count}件あります",
+      "critical": "早めの対処が必要な項目が{count}件あります",
+      "issues": {
+        "cpuBusy": "CPUが3分以上85%を超えています",
+        "memoryPressure": "メモリプレッシャーが高めです",
+        "memoryCritical": "メモリプレッシャーが危険な水準です。Appが遅くなったり、システムに終了されたりすることがあります",
+        "diskLow": "ディスクの空きが{size}しかありません",
+        "batteryHealth": "バッテリーの状態が{percent}まで低下しています",
+        "batteryHot": "バッテリーの温度が{temp}です",
+        "temperature": "CPUの温度が{temp}です",
+        "uptime": "{count}日間再起動していません",
+        "diskSmart": "「{name}」のSMART状態に異常があります。早めにバックアップしてください"
+      },
+      "actions": {
+        "processes": "プロセスを表示",
+        "cleanup": "Macをクリーンアップ",
+        "fans": "ファンを調整"
+      }
+    },
+    "cpu": {
+      "split": "ユーザ {user} · システム {system}",
+      "load": "負荷",
+      "loadLong": "負荷（1、5、15分）",
+      "coresLabel": "コア",
+      "cores": "高性能コア{p}個 + 高効率コア{e}個",
+      "performanceLegend": "高性能コア{count}個（オレンジ）",
+      "efficiencyLegend": "高効率コア{count}個（紫）",
+      "uptime": "稼働時間",
+      "power": "消費電力"
+    },
+    "gpu": {
+      "cores": "{chip} · {count}コアGPU",
+      "model": "モデル",
+      "noProcesses": "macOSはプロセスごとのGPU使用率を提供していないため、プロセスは表示しません。",
+      "power": "消費電力"
+    },
+    "memory": {
+      "summary": "{used} / {total} · メモリプレッシャー{pressure}",
+      "pressure": {
+        "normal": "正常",
+        "warning": "高め",
+        "critical": "危険"
+      },
+      "app": "Appメモリ",
+      "wired": "確保されているメモリ",
+      "compressed": "圧縮",
+      "cached": "キャッシュされたファイル",
+      "swap": "スワップ"
+    },
+    "disk": {
+      "volume": "{name} · 合計{total}",
+      "read": "読み込み",
+      "write": "書き込み",
+      "readAt": "読み込み {value}",
+      "writeAt": "書き込み {value}",
+      "volumes": "ボリューム",
+      "internal": "内蔵",
+      "external": "外付け",
+      "volumeFree": "{kind} · 空き{free} / {total}",
+      "cleanup": "前回のスキャンで{size}を解放可能 · Macをクリーンアップ",
+      "cleanupNever": "Macをクリーンアップ",
+      "devices": "ドライブ",
+      "smartLabel": "SMART状態",
+      "smart": {
+        "verified": "検証済み",
+        "failing": "異常",
+        "unsupported": "非対応"
+      },
+      "wear": "消耗",
+      "powerOn": "通電時間",
+      "written": "書き込み総量",
+      "temperature": "温度"
+    },
+    "network": {
+      "down": "ダウンロード",
+      "up": "アップロード",
+      "interface": "インターフェイス",
+      "localIp": "ローカルIP",
+      "totalDown": "起動後のダウンロード",
+      "totalUp": "起動後のアップロード",
+      "link": "{kind}（{name}）",
+      "kinds": {
+        "wifi": "Wi-Fi",
+        "ethernet": "イーサネット",
+        "vpn": "VPN",
+        "other": "その他"
+      },
+      "privacy": "パブリックIPとWi-Fi名は表示しません。前者は外部サーバへの問い合わせが、後者は位置情報の許可が必要なためです。"
+    },
+    "battery": {
+      "charging": "充電中",
+      "chargingTime": "充電中 · フル充電まで{time}",
+      "onAc": "電源に接続中",
+      "onBattery": "バッテリー使用中",
+      "onBatteryTime": "バッテリー使用中 · 残り{time}",
+      "health": "状態",
+      "cycles": "充放電回数",
+      "designCapacity": "設計容量",
+      "maxCapacity": "最大容量",
+      "temperature": "温度",
+      "voltage": "電圧",
+      "power": "電力",
+      "adapter": "電源アダプタ"
+    },
+    "sensors": {
+      "hottest": "{name} · 現在最も高温",
+      "temperatures": "温度",
+      "note": "Appleシリコンのセンサーは熱ゾーンで、個々のコアには対応していません。",
+      "names": {
+        "cpuPerformance": "CPU高性能コア",
+        "cpuEfficiency": "CPU高効率コア",
+        "cpu": "CPU",
+        "gpu": "GPU",
+        "soc": "チップ",
+        "ssd": "SSD",
+        "battery": "バッテリー"
+      }
+    },
+    "fans": {
+      "control": "制御",
+      "auto": "自動",
+      "manual": "手動",
+      "modeAuto": "自動 · システム制御",
+      "modeManual": "手動 · {rpm}",
+      "all": "すべてのファン",
+      "min": "最小 {rpm}",
+      "max": "最大 {rpm}",
+      "range": "最小 {min} · 最大 {max}",
+      "rangeLabel": "回転数の範囲",
+      "single": "ファン",
+      "left": "左ファン",
+      "right": "右ファン",
+      "numbered": "ファン{n}",
+      "sync": "すべてのファンを同期",
+      "full": "全速",
+      "restore": "自動に戻す",
+      "restoreLast": "前回の手動回転数に戻す",
+      "autoNote": "システムが温度に応じて自動で調整します。「手動」に切り替えると回転数を自分で設定できます。",
+      "helperTitle": "ファンを手動で制御するにはヘルパーが必要です",
+      "helperBody": "ファンの制御だけを行い、システム権限でバックグラウンド動作し、OpenNavoからの指示だけを受け付けます。インストール後、表示に従って「ログイン項目と機能拡張」で許可してください。管理者パスワードの入力が1回必要な場合があります。",
+      "install": "ヘルパーをインストール",
+      "approvalTitle": "あと1ステップ",
+      "approvalBody": "「システム設定 → 一般 → ログイン項目と機能拡張」でOpenNavoのバックグラウンド動作を許可してから、「許可しました」をクリックしてください。",
+      "recheck": "許可しました",
+      "brokenTitle": "ファン用ヘルパーが応答しません",
+      "brokenBody": "インストール済みですが、OpenNavoから接続できません。再インストールすると多くの場合直ります。",
+      "reinstall": "ヘルパーを再インストール",
+      "unsupported": "このMacのチップはファン制御に対応していないため、回転数のみ表示します。",
+      "safety": "OpenNavoの終了、クラッシュや15秒間の無応答、スリープ、書き込みの失敗時には、ファンを自動でシステム制御に戻します。95 °C以上の状態が10秒続くと、手動のファンを全速にします。「ファンを止める」機能はなく、最低はシステムの最小回転数です。",
+      "reasons": {
+        "user": "ファンを調整しました",
+        "app_quit": "OpenNavoが終了しました",
+        "heartbeat_lost": "OpenNavoが応答しません",
+        "sleep": "Macがスリープしました",
+        "wake_reapplied": "スリープ解除後に手動回転数を再適用しました",
+        "overheat": "95 °C以上の状態が10秒続きました",
+        "write_failed": "ファン設定の書き込みに失敗しました",
+        "helper_started": "ヘルパーが再起動しました",
+        "helper_uninstalled": "ヘルパーをアンインストールしました"
+      },
+      "toasts": {
+        "manual": "ファンを手動にしました",
+        "manualBody": "OpenNavoの終了やスリープ時には自動に戻り、高温が続くと全速になります",
+        "auto": "ファンをシステム制御に戻しました",
+        "full": "ファンを全速にしました",
+        "reverted": "ファンが自動に戻りました",
+        "ready": "ファン用ヘルパーの準備ができました",
+        "readyBody": "「手動」に切り替えると回転数を自分で設定できます"
+      }
+    },
+    "processes": {
+      "topCpu": "CPU使用率の高いプロセス",
+      "topMemory": "メモリ使用量の多いプロセス",
+      "byCpu": "CPU",
+      "byMemory": "メモリ",
+      "sortBy": "並べ替え",
+      "system": "システム",
+      "background": "バックグラウンド",
+      "quit": "終了",
+      "quitTitle": "{name}を終了しますか？",
+      "quitBody": "{name}で⌘Qを押すのと同じです。未保存の内容はApp自身が確認します。",
+      "quitDone": "{name}に終了を要求しました",
+      "activityMonitor": "アクティビティモニタで開く",
+      "activityValue": "アクティビティモニタでは{value}",
+      "topDisk": "ディスクの読み書きが多いプロセス",
+      "topNetwork": "ネットワーク通信が多いプロセス",
+      "diskSplit": "読み込み {read} · 書き込み {write}"
+    },
+    "detail": {
+      "open": "{name}の詳細を表示",
+      "minuteAgo": "60秒前",
+      "now": "現在",
+      "range60": "直近60秒",
+      "range1h": "直近1時間",
+      "rangeLabel": "グラフの範囲",
+      "hourAgo": "1時間前"
+    },
+    "menuBar": {
+      "title": "メニューバー",
+      "show": "メニューバーに表示",
+      "showHint": "独立した項目として表示し、クリックするとその下に詳細を表示します",
+      "style": "スタイル",
+      "styleHint": "メニューバーでの表示",
+      "styles": {
+        "text": "2行テキスト",
+        "value": "数値のみ",
+        "line": "ミニ折れ線",
+        "bars": "棒グラフ"
+      },
+      "on": "メニューバー",
+      "onHint": "メニューバーに表示中",
+      "added": "「{name}」をメニューバーに追加しました",
+      "addedBody": "クリックするとその下に詳細を表示します",
+      "removed": "「{name}」をメニューバーから削除しました",
+      "keepTitle": "ウィンドウを閉じるとメニューバー項目も消えます",
+      "keepBody": "今はメインウィンドウを閉じるとOpenNavoが終了します。「ウィンドウを閉じてもメニューバーに常駐」をオンにすると、監視項目が表示されたままになります。",
+      "keepAction": "オンにする"
+    },
+    "popover": {
+      "open": "OpenNavoで表示",
+      "settings": "メニューバー設定"
+    },
+    "rail": {
+      "menuBar": "メニューバー",
+      "menuBarSub": "項目ごとに個別表示 · クリックで詳細 · 数の制限なし",
+      "empty": "メニューバーにはまだ監視項目がありません",
+      "crowded": "項目が多いと、入りきらない項目がノッチに隠れることがあります。スタイルを「数値のみ」にしてみてください。",
+      "refresh": "{count}秒ごとに更新 · ⌘を押しながらドラッグで並べ替え",
+      "adjustFans": "ファンを調整",
+      "privacy": "データはこのMacの中だけ",
+      "privacyBody": "ネットに接続せず、アップロードも履歴の保存もしません。グラフはメモリ上にだけあります。"
+    },
+    "settings": {
+      "menuBar": "メニューバー",
+      "interval": "更新間隔",
+      "intervalHint": "短いほど電力を使います。画面オフやスリープ中は一時停止します",
+      "seconds": "{count}秒",
+      "notVisible": "オンにしても表示されない場合",
+      "notVisibleHint": "macOS 26以降は「システム設定 → メニューバー」でOpenNavoを許可する必要があります。項目が多いと、入りきらない項目がノッチに隠れます",
+      "openSettings": "システム設定を開く",
+      "menuBarNote": "各指標はそれぞれ独立したメニューバー項目で、数に制限はありません。初期状態ではCPUとメモリがオンです。どの項目もクリックするとその下に詳細を表示します。",
+      "helper": "ヘルパー",
+      "helperHint": "{status}。ファン制御専用です。なくても温度と回転数は表示されます",
+      "helperStatus": {
+        "unsupported": "このMacにはファンがありません",
+        "not_installed": "未インストール",
+        "requires_approval": "「ログイン項目と機能拡張」での許可待ち",
+        "enabled": "有効",
+        "error": "ヘルパーに問題があります。再インストールできます"
+      },
+      "install": "インストール",
+      "reinstall": "再インストール",
+      "uninstall": "アンインストール",
+      "autoRestore": "システム制御に自動で戻す",
+      "autoRestoreHint": "終了、クラッシュや15秒間の無応答、スリープ、書き込み失敗のときにファンを自動に戻します。95 °C以上が10秒続くと手動のファンを全速にします",
+      "always": "常にオン",
+      "relaunch": "OpenNavoを再度開いたとき",
+      "relaunchHint": "ファンは自動から始まります。センサーの詳細から前回の手動回転数に戻せます",
+      "privacy": "すべての指標はこのMac上でのみ計算・表示されます。ネットに接続せず、アップロードも履歴の保存もしません。パブリックIPとWi-Fi名は表示しません。",
+      "alerts": "通知",
+      "alertsHint": "注意が必要な問題が起きたら通知します。同じ問題は1時間に1回までです。オンの間は、メニューバー項目がなくてもバックグラウンドで低頻度に確認します"
+    }
   }
 }

@@ -16,9 +16,15 @@ export interface MockState {
 }
 
 const FAILING = new Set(['firefox']);
-const PRIORITY: Record<Task['trigger'], number> = { manual: 0, deeplink: 0, retry: 0, schedule: 1, bundle: 1 };
+const PRIORITY: Record<Task['trigger'], number> = {
+  manual: 0,
+  deeplink: 0,
+  retry: 0,
+  schedule: 1,
+  bundle: 1
+};
 
-interface Step {
+export interface Step {
   phase: TaskPhase;
   from: number;
   to: number;
@@ -41,6 +47,10 @@ export interface RunnerHooks {
   failure?: (task: Task) => MockFailure | undefined;
   /** Called after task completion (success, failure, or cancellation). */
   finished?: (task: Task) => void;
+  /** Custom steps for a task, e.g. plan-based uninstalls of local apps; default brew-shaped steps otherwise. */
+  steps?: (task: Task) => Step[] | undefined;
+  /** Called on success before the task is recorded and emitted, so results (task.outcome) ship with it. */
+  completed?: (task: Task) => void;
 }
 
 function steps(task: Task, appName: string | undefined, url: string, installerUrl: string): Step[] {
@@ -56,7 +66,13 @@ function steps(task: Task, appName: string | undefined, url: string, installerUr
   switch (task.op as TaskOp) {
     case 'install':
       return [
-        { phase: 'preparing', from: 0, to: 5, ticks: 2, lines: [`==> Fetching downloads for: ${token}`] },
+        {
+          phase: 'preparing',
+          from: 0,
+          to: 5,
+          ticks: 2,
+          lines: [`==> Fetching downloads for: ${token}`]
+        },
         download,
         {
           phase: 'installing',
@@ -68,7 +84,13 @@ function steps(task: Task, appName: string | undefined, url: string, installerUr
             ...(appName ? [`==> Moving App '${appName}' to '/Applications/${appName}'`] : [])
           ]
         },
-        { phase: 'finishing', from: 95, to: 100, ticks: 2, lines: [`${token} was successfully installed!`] }
+        {
+          phase: 'finishing',
+          from: 95,
+          to: 100,
+          ticks: 2,
+          lines: [`${token} was successfully installed!`]
+        }
       ];
     case 'upgrade':
       return [
@@ -108,7 +130,13 @@ function steps(task: Task, appName: string | undefined, url: string, installerUr
       ];
     case 'update':
       return [
-        { phase: 'updating', from: 0, to: 100, ticks: 8, lines: ['==> Updating Homebrew...', 'Already up-to-date.'] }
+        {
+          phase: 'updating',
+          from: 0,
+          to: 100,
+          ticks: 8,
+          lines: ['==> Updating Homebrew...', 'Already up-to-date.']
+        }
       ];
     case 'install_homebrew':
       // The installer script is small and reports no byte progress (06 §12.5); use preparing without simulated transfer speed.
@@ -132,7 +160,13 @@ function steps(task: Task, appName: string | undefined, url: string, installerUr
             '==> Downloading and installing Homebrew...'
           ]
         },
-        { phase: 'finishing', from: 90, to: 100, ticks: 2, lines: ['==> Installation successful!'] }
+        {
+          phase: 'finishing',
+          from: 90,
+          to: 100,
+          ticks: 2,
+          lines: ['==> Installation successful!']
+        }
       ];
     case 'cleanup':
       return [
@@ -185,7 +219,8 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
 
   function applyResult(task: Task) {
     const target = task.target;
-    if (!target) return;
+    // Local apps outside Homebrew are not library entries; hooks.completed applies their results.
+    if (!target || target.kind === 'app') return;
     const index = state.installed.findIndex(item => item.kind === target.kind && item.token === target.token);
     const catalogItem = findItem(target.kind, target.token);
     switch (task.op) {
@@ -250,6 +285,7 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
       task.percent = 100;
       applyResult(task);
       applyGlobal(task);
+      hooks.completed?.(task);
     }
     if (outcome === 'canceled' && !task.error)
       task.error = { code: 'E_INTERRUPTED', message: 'canceled', detail: null };
@@ -271,10 +307,11 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
       finish(task, 'canceled');
       return;
     }
-    const catalogItem = task.target ? findItem(task.target.kind, task.target.token) : undefined;
+    const target = task.target;
+    const catalogItem = target && target.kind !== 'app' ? findItem(target.kind, target.token) : undefined;
     const appName = catalogItem?.apps[0];
-    const url = `https://example.test/downloads/${task.target?.token ?? 'brew'}-${task.toVersion ?? 'latest'}.zip`;
-    const plan = steps(task, appName, url, hooks.installerUrl?.() ?? url);
+    const url = `https://example.test/downloads/${target?.token ?? 'brew'}-${task.toVersion ?? 'latest'}.zip`;
+    const plan = hooks.steps?.(task) ?? steps(task, appName, url, hooks.installerUrl?.() ?? url);
     const failure = hooks.failure?.(task);
     const total = catalogItem ? downloadSizeOf(catalogItem) : 48_000_000;
     task.state = 'running';
@@ -340,7 +377,13 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
     if (next) run(next);
   }
 
-  function enqueue(op: TaskOp, target: Task['target'], options: Task['options'], trigger: Task['trigger']): Task {
+  function enqueue(
+    op: TaskOp,
+    target: Task['target'],
+    options: Task['options'],
+    trigger: Task['trigger'],
+    targetName: string | null = null
+  ): Task {
     // Return the existing task when the package is already queued/running (06 §9).
     const existing =
       target && state.active.find(task => task.target?.kind === target.kind && task.target.token === target.token);
@@ -350,12 +393,14 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
       return { ...existing };
     }
     const installed = target && state.installed.find(item => item.kind === target.kind && item.token === target.token);
-    const catalogItem = target ? findItem(target.kind, target.token) : undefined;
+    const catalogItem = target && target.kind !== 'app' ? findItem(target.kind, target.token) : undefined;
     const now = Date.now();
     const task: Task = {
       id: nextTaskId(now),
       op,
       target,
+      targetName,
+      outcome: null,
       options,
       trigger,
       state: 'queued',

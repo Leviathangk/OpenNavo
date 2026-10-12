@@ -2,10 +2,14 @@
 identifier = "native-main"
 description = "Main window access to the specified client commands"
 commands.allow = [
+  "monitor_subscribe", "monitor_unsubscribe", "monitor_trend", "monitor_quit_app", "monitor_open_activity_monitor", "monitor_menu_bar_status", "monitor_open_menu_bar_settings", "monitor_open_in_main", "fan_helper_status", "fan_helper_open_approval", "fan_helper_install", "fan_helper_uninstall", "fan_set_mode", "fan_set_speed", "fan_restore_last",
+  "cleanup_scan", "cleanup_cancel", "cleanup_execute", "cleanup_reveal", "cleanup_summary", "cleanup_protect", "cleanup_unprotect", "cleanup_protected_list",
+  "local_apps_list", "local_apps_refresh", "local_app_open", "local_app_reveal", "local_app_footprint", "local_app_footprints", "local_apps_scan_footprints", "local_app_retry_footprint",
+  "uninstall_plan", "uninstall_plan_cancel", "uninstall_reveal", "uninstall_execute", "uninstall_restore", "uninstall_purge",
   "app_info", "env_detect", "catalog_status", "catalog_sync", "catalog_search", "catalog_list", "catalog_get", "catalog_categories",
   "library_list", "library_refresh", "library_storage", "updates_list", "updates_check", "updates_ignore", "updates_unignore", "updates_status",
   "install_preflight", "apps_running", "task_enqueue", "task_enqueue_many", "task_cancel", "task_list_active", "task_log", "history_list", "history_clear", "history_export_csv",
-  "locale_get", "system_locale_get", "settings_get", "settings_set", "mirror_probe", "brewfile_export", "brewfile_preview", "brewfile_install", "cleanup_estimate", "doctor_run",
+  "locale_get", "system_locale_get", "settings_get", "settings_set", "mirror_probe", "brewfile_export", "brewfile_preview", "brewfile_install", "doctor_run",
   "app_open", "app_reveal", "system_open_privacy", "app_quit",
   "permissions_get", "permission_guide_open", "permission_guide_close"
 ]
@@ -23,4 +27,11 @@ identifier = "native-guide"
 description = "Permission overlay can only read effective locale and permissions, start dragging the OpenNavo icon, and close itself"
 commands.allow = [
   "locale_get", "permissions_get", "permission_guide_info", "permission_guide_drag", "permission_guide_close"
+]
+
+[[permission]]
+identifier = "native-tray-monitor"
+description = "Monitor popover can subscribe, control fans through the backend and return to main; no settings, process or arbitrary window access"
+commands.allow = [
+  "monitor_subscribe", "monitor_unsubscribe", "monitor_open_in_main", "fan_helper_status", "fan_helper_open_approval", "fan_helper_install", "fan_helper_uninstall", "fan_set_mode", "fan_set_speed", "fan_restore_last"
 ]

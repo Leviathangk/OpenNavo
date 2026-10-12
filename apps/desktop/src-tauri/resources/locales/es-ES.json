@@ -36,5 +36,21 @@
   "askpass.cancel": "Cancelar",
   "completion.succeeded": "Se completó correctamente {count} acción|Se completaron correctamente {count} acciones",
   "completion.failed": "Falló {count} acción|Fallaron {count} acciones",
-  "completion.canceled": "Se canceló {count} acción|Se cancelaron {count} acciones"
+  "completion.canceled": "Se canceló {count} acción|Se cancelaron {count} acciones",
+  "monitorAlert.cpu_busy.title": "La CPU lleva un rato muy ocupada",
+  "monitorAlert.cpu_busy.body": "La CPU lleva 3 minutos por encima del 85 %. Haz clic para ver qué proceso es.",
+  "monitorAlert.memory_pressure.title": "La presión de memoria es alta",
+  "monitorAlert.memory_pressure.body": "Cerrar las apps que no usas libera memoria. Haz clic para ver qué está usando más.",
+  "monitorAlert.memory_critical.title": "La presión de memoria es crítica",
+  "monitorAlert.memory_critical.body": "Las apps pueden ir más lentas o el sistema puede cerrarlas. Haz clic para ver qué usa más memoria.",
+  "monitorAlert.disk_low.title": "Queda poco espacio en el disco",
+  "monitorAlert.disk_low.body": "Solo quedan {size} en el disco de arranque. Haz clic para limpiar el Mac.",
+  "monitorAlert.battery_health.title": "La salud de la batería ha bajado",
+  "monitorAlert.battery_health.body": "La salud de la batería ha bajado al {percent}.",
+  "monitorAlert.battery_hot.title": "La batería está caliente",
+  "monitorAlert.battery_hot.body": "La batería está a {temp}.",
+  "monitorAlert.temperature.title": "La CPU está muy caliente",
+  "monitorAlert.temperature.body": "La CPU está a {temp}. Haz clic para revisar los procesos o ajustar los ventiladores.",
+  "monitorAlert.disk_smart.title": "Un disco informa de problemas",
+  "monitorAlert.disk_smart.body": "«{name}» indica un estado SMART de fallo. Haz una copia de seguridad cuanto antes."
 }

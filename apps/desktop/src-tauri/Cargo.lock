@@ -2942,6 +2942,7 @@ dependencies = [
  "block2",
  "chrono",
  "flate2",
+ "glob",
  "icns",
  "image",
  "log",

@@ -16,10 +16,12 @@ const props = defineProps<{ task: Task }>();
 
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
-const { displayName, icon } = usePackageIdentity();
+const { displayName, taskIcon } = usePackageIdentity();
 const tasks = useTasksStore();
 
-const name = computed(() => (props.task.target ? displayName(props.task.target.kind, props.task.target.token) : ''));
+const name = computed(() =>
+  props.task.op !== 'clean' && props.task.target ? displayName(props.task.target.kind, props.task.target.token) : ''
+);
 const subtitle = computed(() => {
   const parts: string[] = [];
   if (props.task.fromVersion && props.task.toVersion)
@@ -46,7 +48,10 @@ const remaining = computed(() => {
   });
 });
 const queue = computed(() =>
-  tasks.queued.flatMap(task => (task.target ? [icon(task.target.kind, task.target.token)] : []))
+  tasks.queued.flatMap(task => {
+    const pkg = taskIcon(task);
+    return pkg ? [pkg] : [];
+  })
 );
 </script>
 
@@ -54,7 +59,7 @@ const queue = computed(() =>
   <OnTaskCard
     :title="t(`tasks.running.${task.op}`, { name })"
     :subtitle="subtitle"
-    :pkg="task.target ? icon(task.target.kind, task.target.token) : undefined"
+    :pkg="taskIcon(task)"
     :progress="task.percent"
     :transferred="task.bytesDone !== null ? formatBytes(task.bytesDone, { locale: formattingLocale }) : undefined"
     :total="task.bytesTotal ? formatBytes(task.bytesTotal, { locale: formattingLocale }) : undefined"

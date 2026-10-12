@@ -43,7 +43,10 @@ const { data, error } = useRemoteLoader(
   () =>
     unwrap(
       api.GET('/packages/{kind}/{token}/dependencies', {
-        params: { path: { kind: kind.value, token: token.value }, query: { platform: activePlatformTag.value } }
+        params: {
+          path: { kind: kind.value, token: token.value },
+          query: { platform: activePlatformTag.value }
+        }
       })
     ),
   [kind, token, appLocale, activePlatformTag]
@@ -77,9 +80,19 @@ const requirements = computed<OnKeyValueItem[]>(() => {
         : arch.join(' · ') || messages.value.cask.noMac
   });
   if (dependsOn?.formulae.length)
-    items.push({ key: 'formulae', label: t('package.deps.formulae'), value: dependsOn.formulae.join(' '), mono: true });
+    items.push({
+      key: 'formulae',
+      label: t('package.deps.formulae'),
+      value: dependsOn.formulae.join(' '),
+      mono: true
+    });
   if (dependsOn?.casks.length)
-    items.push({ key: 'casks', label: t('package.deps.casks'), value: dependsOn.casks.join(' '), mono: true });
+    items.push({
+      key: 'casks',
+      label: t('package.deps.casks'),
+      value: dependsOn.casks.join(' '),
+      mono: true
+    });
   return items;
 });
 

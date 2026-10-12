@@ -80,7 +80,11 @@ describe('Deep links', () => {
     confirm?.click();
     await flushPromises();
     const [task] = await unwrap(commands.taskListActive());
-    expect(task).toMatchObject({ op: 'install', trigger: 'deeplink', target: { kind: 'cask', token: 'zed' } });
+    expect(task).toMatchObject({
+      op: 'install',
+      trigger: 'deeplink',
+      target: { kind: 'cask', token: 'zed' }
+    });
     expect(useDeepLinkStore().install).toBeNull();
     wrapper.unmount();
   });
@@ -97,19 +101,35 @@ describe('Deep links', () => {
     expect(await unwrap(commands.taskListActive())).toHaveLength(0);
 
     // Cask-only catalog (ADR-018): command-line tool deep links return to Discover with a notice, without install confirmation.
-    await openDeepLink(context.router, { url: '', route: '/package/formula/fzf', action: 'install' });
+    await openDeepLink(context.router, {
+      url: '',
+      route: '/package/formula/fzf',
+      action: 'install'
+    });
     expect(context.router.currentRoute.value.path).toBe('/discover');
     expect(deeplink.install).toBeNull();
     expect(useToasts().items.value.at(-1)?.title).toContain('只收录 App');
     expect(await unwrap(commands.taskListActive())).toHaveLength(0);
 
-    await openDeepLink(context.router, { url: '', route: '/package/cask/obsidian', action: 'install' });
+    await openDeepLink(context.router, {
+      url: '',
+      route: '/package/cask/obsidian',
+      action: 'install'
+    });
     expect(context.router.currentRoute.value.path).toBe('/package/cask/obsidian');
     expect(deeplink.install).toBeNull();
 
-    await openDeepLink(context.router, { url: '', route: '/collection/dev-setup', action: 'install' });
+    await openDeepLink(context.router, {
+      url: '',
+      route: '/collection/dev-setup',
+      action: 'install'
+    });
     expect(context.router.currentRoute.value.fullPath).toBe('/collections/dev-setup?install=1');
-    await openDeepLink(context.router, { url: '', route: '/search?q=%E5%BE%AE%E4%BF%A1', action: null });
+    await openDeepLink(context.router, {
+      url: '',
+      route: '/search?q=%E5%BE%AE%E4%BF%A1',
+      action: null
+    });
     expect(context.router.currentRoute.value.query.q).toBe('微信');
   });
 });

@@ -1,3 +1,16 @@
+// Internal Homebrew dry-run data; no longer part of the desktop IPC contract.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EstimatedPath {
+    pub path: String,
+    pub bytes: Option<u64>,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct Estimate {
+    pub bytes: u64,
+    pub file_count: u32,
+    pub items: Vec<EstimatedPath>,
+}
+
 use crate::{
     AppError,
     brew::{
@@ -93,8 +106,8 @@ fn bytes(text: &str) -> Option<u64> {
     };
     Some((value * 1024_f64.powi(power)).round() as u64)
 }
-pub fn cleanup(text: &str) -> CleanupEstimate {
-    let mut result = CleanupEstimate {
+pub fn cleanup(text: &str) -> Estimate {
+    let mut result = Estimate {
         bytes: 0,
         file_count: 0,
         items: vec![],
@@ -116,7 +129,7 @@ pub fn cleanup(text: &str) -> CleanupEstimate {
             result.file_count += 1;
             result.bytes = result.bytes.saturating_add(size.unwrap_or(0));
             if result.items.len() < 200 {
-                result.items.push(CleanupItem {
+                result.items.push(EstimatedPath {
                     path: path.into(),
                     bytes: size,
                 });
@@ -151,7 +164,7 @@ pub fn doctor(text: &str, now: i64) -> DoctorReport {
     report.ok &= report.warnings.is_empty();
     report
 }
-pub async fn estimate(core: Arc<DesktopCore>) -> Result<CleanupEstimate, AppError> {
+pub async fn estimate(core: Arc<DesktopCore>) -> Result<Estimate, AppError> {
     let _read = core.queue.read_gate.read().await;
     let result = run(
         &core.brew_info().await?,

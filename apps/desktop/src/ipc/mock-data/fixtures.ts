@@ -95,8 +95,22 @@ const INSTALLED: InstalledSpec[] = [
   { kind: 'formula', token: 'ripgrep', state: 'latest', daysAgo: 67 },
   { kind: 'formula', token: 'git', state: 'latest', daysAgo: 40 },
   { kind: 'formula', token: 'wget', state: 'outdated', daysAgo: 90 },
-  { kind: 'formula', token: 'openssl@3', state: 'latest', daysAgo: 90, onRequest: false, requiredBy: ['wget', 'node'] },
-  { kind: 'formula', token: 'zlib', state: 'latest', daysAgo: 90, onRequest: false, requiredBy: ['git'] }
+  {
+    kind: 'formula',
+    token: 'openssl@3',
+    state: 'latest',
+    daysAgo: 90,
+    onRequest: false,
+    requiredBy: ['wget', 'node']
+  },
+  {
+    kind: 'formula',
+    token: 'zlib',
+    state: 'latest',
+    daysAgo: 90,
+    onRequest: false,
+    requiredBy: ['git']
+  }
 ];
 
 // The Cask-only catalog (ADR-018) has no command-line tools, but local Homebrew may still have them installed.
@@ -124,7 +138,14 @@ function installedSource(spec: InstalledSpec) {
     };
   const version = spec.kind === 'formula' ? LOCAL_FORMULA_VERSIONS[spec.token] : undefined;
   if (!version) return null;
-  return { kind: spec.kind, token: spec.token, name: spec.token, version, apps: [] as string[], autoUpdates: false };
+  return {
+    kind: spec.kind,
+    token: spec.token,
+    name: spec.token,
+    version,
+    apps: [] as string[],
+    autoUpdates: false
+  };
 }
 
 export function installedFixture(now = fixtureNow()): InstalledItem[] {
@@ -180,6 +201,8 @@ function finishedTask(partial: Partial<Task> & Pick<Task, 'op' | 'state' | 'crea
   return {
     id: nextTaskId(partial.createdAt),
     target: null,
+    targetName: null,
+    outcome: null,
     options: {},
     trigger: 'manual',
     phase: null,
@@ -238,7 +261,11 @@ export function historyFixture(now = fixtureNow()): Task[] {
       fromVersion: '143.0',
       toVersion: '143.0.1',
       exitCode: 1,
-      error: { code: 'E_CHECKSUM', message: 'SHA256 mismatch', detail: 'Expected: 8f1c… Actual: 0d2a…' },
+      error: {
+        code: 'E_CHECKSUM',
+        message: 'SHA256 mismatch',
+        detail: 'Expected: 8f1c… Actual: 0d2a…'
+      },
       createdAt: at(1, 2, 0)
     }),
     finishedTask({

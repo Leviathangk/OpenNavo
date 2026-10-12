@@ -11,6 +11,9 @@ pub async fn task_enqueue(
     options: TaskOptions,
     trigger: TaskTrigger,
 ) -> Result<Task, AppError> {
+    if op == TaskOp::Clean {
+        return Err(AppError::new("E_INVALID_ARG", "cleanup_execute_required"));
+    }
     let queue = state.queue.clone();
     crate::blocking(move || queue.enqueue(op, target, options, trigger)).await
 }

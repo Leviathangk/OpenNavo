@@ -55,10 +55,20 @@ const info = computed<OnKeyValueItem[]>(() => {
   const items: OnKeyValueItem[] = [{ key: 'token', label: 'Token', value: token.value, mono: true }];
   const homepage = value?.homepage ?? local.value?.homepage;
   if (homepage)
-    items.push({ key: 'homepage', label: t('package.info.homepage'), value: displayUrl(homepage), href: homepage });
+    items.push({
+      key: 'homepage',
+      label: t('package.info.homepage'),
+      value: displayUrl(homepage),
+      href: homepage
+    });
   const binaries = value?.artifacts.binaries ?? local.value?.binaries ?? [];
   if (binaries.length)
-    items.push({ key: 'binaries', label: t('package.info.binaries'), value: binaries.join(' '), mono: true });
+    items.push({
+      key: 'binaries',
+      label: t('package.info.binaries'),
+      value: binaries.join(' '),
+      mono: true
+    });
   if (kind.value === 'cask')
     items.push({
       key: 'auto',
@@ -80,9 +90,17 @@ const info = computed<OnKeyValueItem[]>(() => {
       value.supports.status !== 'known' ? messages.value.cask.unknown : arch.join(' · ') || messages.value.cask.noMac
   });
   if (value.supports.requiresRosetta)
-    items.push({ key: 'rosetta', label: t('package.arch.arm64'), value: messages.value.cask.rosetta });
+    items.push({
+      key: 'rosetta',
+      label: t('package.arch.arm64'),
+      value: messages.value.cask.rosetta
+    });
   if (value.platforms?.some(platform => platform.version !== value.version))
-    items.push({ key: 'platformVersions', label: messages.value.cask.version, value: messages.value.cask.legacy });
+    items.push({
+      key: 'platformVersions',
+      label: messages.value.cask.version,
+      value: messages.value.cask.legacy
+    });
   if (value.platforms?.length) {
     const requirements = architectures(value.supports).map(platformArch => {
       const conditions = [
@@ -94,9 +112,17 @@ const info = computed<OnKeyValueItem[]>(() => {
       ];
       return `${t(`package.arch.${platformArch}`)}: ${conditions.join(' / ')}`;
     });
-    items.push({ key: 'macos', label: messages.value.cask.requirements, value: requirements.join(' · ') });
+    items.push({
+      key: 'macos',
+      label: messages.value.cask.requirements,
+      value: requirements.join(' · ')
+    });
   } else if (value.minMacos)
-    items.push({ key: 'macos', label: t('package.info.minMacos'), value: `macOS ${value.minMacos}` });
+    items.push({
+      key: 'macos',
+      label: t('package.info.minMacos'),
+      value: `macOS ${value.minMacos}`
+    });
   if (value.license) items.push({ key: 'license', label: t('package.info.license'), value: value.license });
   return items;
 });

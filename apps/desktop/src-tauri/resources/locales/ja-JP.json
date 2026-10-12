@@ -36,5 +36,21 @@
   "askpass.cancel": "キャンセル",
   "completion.succeeded": "{count} 件の操作が完了しました",
   "completion.failed": "{count} 件の操作に失敗しました",
-  "completion.canceled": "{count} 件の操作をキャンセルしました"
+  "completion.canceled": "{count} 件の操作をキャンセルしました",
+  "monitorAlert.cpu_busy.title": "CPUの高負荷が続いています",
+  "monitorAlert.cpu_busy.body": "CPU使用率が3分以上85%を超えています。クリックしてプロセスを確認できます。",
+  "monitorAlert.memory_pressure.title": "メモリプレッシャーが高めです",
+  "monitorAlert.memory_pressure.body": "使っていないAppを終了するとメモリを空けられます。クリックしてメモリ使用量の多いプロセスを確認できます。",
+  "monitorAlert.memory_critical.title": "メモリプレッシャーが危険な水準です",
+  "monitorAlert.memory_critical.body": "Appが遅くなったり、システムに終了されたりすることがあります。クリックしてメモリ使用量の多いプロセスを確認できます。",
+  "monitorAlert.disk_low.title": "ディスクの空きが少なくなっています",
+  "monitorAlert.disk_low.body": "起動ディスクの空きが{size}しかありません。クリックしてMacをクリーンアップできます。",
+  "monitorAlert.battery_health.title": "バッテリーの状態が低下しています",
+  "monitorAlert.battery_health.body": "バッテリーの状態が{percent}まで低下しています。",
+  "monitorAlert.battery_hot.title": "バッテリーの温度が高めです",
+  "monitorAlert.battery_hot.body": "バッテリーの温度が{temp}です。",
+  "monitorAlert.temperature.title": "CPUの温度が高すぎます",
+  "monitorAlert.temperature.body": "CPUの温度が{temp}です。クリックしてプロセスやファンを確認できます。",
+  "monitorAlert.disk_smart.title": "ディスクに異常が報告されています",
+  "monitorAlert.disk_smart.body": "「{name}」のSMART状態に異常があります。早めにバックアップしてください。"
 }

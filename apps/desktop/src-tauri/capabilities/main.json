@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Permissions available to the main window",
+  "description": "Permissions available to the main window, including all monitor commands via native-main",
   "windows": ["main"],
   "permissions": [
     "native-main",

@@ -31,7 +31,10 @@ const ms = (value: number) => formatMilliseconds(value, { locale: appLocale.valu
       <OnIcon name="triangle-alert" :size="14" class="shrink-0 text-status-warning" />
       <span class="min-w-0 flex-1">{{
         suggestion.officialMs === null
-          ? t('mirrors.failedOfficial', { name: suggestion.option.name, latency: ms(suggestion.latencyMs) })
+          ? t('mirrors.failedOfficial', {
+              name: suggestion.option.name,
+              latency: ms(suggestion.latencyMs)
+            })
           : t('mirrors.slowOfficial', {
               official: ms(suggestion.officialMs),
               name: suggestion.option.name,

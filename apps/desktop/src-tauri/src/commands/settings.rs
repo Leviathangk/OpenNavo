@@ -24,6 +24,7 @@ pub async fn settings_set(
         .run_on_main_thread(move || crate::settings::apply_apple_languages(&persisted))
         .map_err(|e| AppError::new("E_UNKNOWN", "apple_languages").with_detail(e.to_string()))?;
     crate::tray::refresh(&handle);
+    crate::monitor::refresh_settings(&handle);
     Ok(result)
 }
 

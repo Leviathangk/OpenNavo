@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { OnAppIcon, OnButton, OnModal } from '@opennavo/ui';
 import type { Task, TaskTarget } from '@/ipc/bindings';
@@ -9,13 +10,22 @@ import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { usePermissionPromptStore, usePermissionsStore, useTasksStore } from '@/stores';
 import { paneState } from '@/stores/permissions';
-import { retryOptions } from '@/stores/permissionPrompt';
+import { recheckRoute, retryOptions } from '@/stores/permissionPrompt';
 
 // Permission guidance (06 §12.3, §12.6) for E_PERMISSION (App Management) or E_FULL_DISK_ACCESS (zap data removal).
 // List blocked apps; Enable opens System Settings/guidance; Retry re-enqueues with trigger=retry after authorization.
 // Full Disk Access failures occur after moving the app; retry with --force to finish (06 §6.3).
 const { t } = useI18n();
 const store = usePermissionPromptStore();
+const router = useRouter();
+const retryable = computed(() => store.items.filter(task => !recheckRoute(task)));
+async function recheck(task: Task) {
+  const route = recheckRoute(task);
+  if (route) {
+    await router.push(route);
+    store.remove(task.id);
+  }
+}
 const permissions = usePermissionsStore();
 const tasks = useTasksStore();
 const toasts = useToasts();
@@ -54,7 +64,7 @@ async function enable() {
 }
 
 async function retry() {
-  const list: Task[] = [...store.items];
+  const list: Task[] = [...retryable.value];
   retrying.value = true;
   try {
     for (const task of list) {
@@ -85,6 +95,9 @@ async function retry() {
         <span class="min-w-0 flex-1 truncate text-13px text-ink-primary">{{
           displayName(target.kind, target.token)
         }}</span>
+        <OnButton v-if="recheckRoute(task)" variant="secondary" size="sm" @click="recheck(task)">{{
+          t('updates.history.recheck')
+        }}</OnButton>
       </li>
     </ul>
     <RelaunchNotice v-if="permissions.relaunchRequired" class="mt-12px" />
@@ -93,8 +106,8 @@ async function retry() {
       <OnButton v-if="!granted" variant="secondary" :loading="permissions.guiding === store.pane" @click="enable">{{
         permissions.guiding === store.pane ? t('permission.prompt.waiting') : t('permission.prompt.enable')
       }}</OnButton>
-      <OnButton variant="primary" :loading="retrying" @click="retry">{{
-        items.length > 1 ? t('permission.prompt.retryAll') : t('permission.prompt.retry')
+      <OnButton v-if="retryable.length" variant="primary" :loading="retrying" @click="retry">{{
+        retryable.length > 1 ? t('permission.prompt.retryAll') : t('permission.prompt.retry')
       }}</OnButton>
     </template>
   </OnModal>

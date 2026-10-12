@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { check } from '@tauri-apps/plugin-updater';
 import type { Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { i18n } from '@/i18n';
 import { commands, unwrap } from '@/ipc/client';
 import { useSettingsStore } from './settings';
 import { useTasksStore } from './tasks';
@@ -190,7 +191,7 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
       rid: 0,
       currentVersion: currentVersion.value ?? '0.0.0',
       version: '0.1.4',
-      body: '- 精选合集布局更紧凑，浏览更多应用\n- 每天自动检查 OpenNavo 新版本\n- 修复已知问题，提升使用体验',
+      body: i18n.global.t('updater.previewNotes'),
       rawJson: {}
     });
     state.value = 'available';

@@ -13,9 +13,15 @@ export const PERMISSION_ERRORS: Readonly<Record<string, GuidePane>> = {
  * Retry arguments: an uninstall blocked by Full Disk Access already moved the app, leaving a Caskroom backup; add force to finish (06 §6.3). Otherwise retain the original arguments.
  */
 export function retryOptions(task: Task): TaskOptions {
-  return task.op === 'uninstall' && task.error?.code === 'E_FULL_DISK_ACCESS'
+  return !task.options.planId && task.op === 'uninstall' && task.error?.code === 'E_FULL_DISK_ACCESS'
     ? { ...task.options, force: true }
     : task.options;
+}
+
+/** Consumed plans require a fresh scan and user confirmation, including after restart. */
+export function recheckRoute(task: Task): string | null {
+  if (!task.options.planId) return null;
+  return task.op === 'uninstall' ? '/installed' : '/cleanup';
 }
 
 /**

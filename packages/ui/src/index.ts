@@ -50,6 +50,7 @@ export { default as OnTaskCard } from './components/OnTaskCard.vue';
 export { default as OnBadge } from './components/OnBadge.vue';
 export { default as OnButton } from './components/OnButton.vue';
 export { default as OnCard } from './components/OnCard.vue';
+export { default as OnCheckbox } from './components/OnCheckbox.vue';
 export { default as OnChip } from './components/OnChip.vue';
 export { default as OnGetButton } from './components/OnGetButton.vue';
 export { default as OnIcon } from './components/OnIcon.vue';
@@ -124,6 +125,7 @@ export type { OnTaskCardProps, OnTaskPackage } from './components/OnTaskCard.vue
 export type { OnBadgeProps } from './components/OnBadge.vue';
 export type { OnButtonProps, OnButtonSize, OnButtonVariant } from './components/OnButton.vue';
 export type { OnCardProps } from './components/OnCard.vue';
+export type { OnCheckboxProps } from './components/OnCheckbox.vue';
 export type { OnChipProps, OnChipTone } from './components/OnChip.vue';
 export type { GetState, OnGetButtonProps } from './components/OnGetButton.vue';
 export type { OnIconProps } from './components/OnIcon.vue';

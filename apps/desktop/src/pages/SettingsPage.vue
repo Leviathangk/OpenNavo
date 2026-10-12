@@ -14,6 +14,8 @@ import {
   OnSegmented,
   OnToggle
 } from '@opennavo/ui';
+import CleanupSettings from '@/components/settings/CleanupSettings.vue';
+import MonitorSettings from '@/components/settings/MonitorSettings.vue';
 import MirrorSettings from '@/components/settings/MirrorSettings.vue';
 import AppUpdater from '@/components/settings/AppUpdater.vue';
 import SettingRow from '@/components/settings/SettingRow.vue';
@@ -29,8 +31,8 @@ import { useCatalogStore, useEnvStore, usePermissionsStore, useSettingsStore } f
 import type { GuidePane } from '@/stores/permissions';
 import { openExternal } from '@/utils/external';
 
-// Settings (06 §11): General, Sources, Homebrew, Privacy, About; save the full object on every change (settings_set).
-type Section = 'general' | 'mirrors' | 'homebrew' | 'privacy' | 'about';
+// Settings (06 §11): General, Sources, Homebrew, Clean Up, Privacy, About; save the full object on every change (settings_set).
+type Section = 'general' | 'mirrors' | 'homebrew' | 'cleanup' | 'monitor' | 'privacy' | 'about';
 
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
@@ -49,7 +51,7 @@ const languageItems = computed(() => [
 ]);
 
 const section = computed<Section>(() => (route.params.section as Section | undefined) || 'general');
-const sections: Section[] = ['general', 'mirrors', 'homebrew', 'privacy', 'about'];
+const sections: Section[] = ['general', 'mirrors', 'homebrew', 'cleanup', 'monitor', 'privacy', 'about'];
 
 async function save<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
   await settings.update(key, value);
@@ -97,16 +99,24 @@ const general = computed(() => {
       label: t('settings.general.keepInMenuBar'),
       value: value.keepInMenuBarOnClose
     },
-    { key: 'trayShowCount' as const, label: t('settings.general.trayShowCount'), value: value.trayShowCount },
-    { key: 'notifyUpdates' as const, label: t('settings.general.notifyUpdates'), value: value.notifyUpdates },
     {
-      key: 'zapByDefault' as const,
-      label: t('settings.general.zapByDefault'),
-      hint: t('settings.general.zapByDefaultHint'),
-      value: value.zapByDefault
+      key: 'trayShowCount' as const,
+      label: t('settings.general.trayShowCount'),
+      value: value.trayShowCount
+    },
+    {
+      key: 'notifyUpdates' as const,
+      label: t('settings.general.notifyUpdates'),
+      value: value.notifyUpdates
     }
   ];
 });
+
+// Uninstalling (uninstall decision 2): related files are suggested by default and go to the Trash unless chosen otherwise.
+const deleteModes = computed(() => [
+  { value: 'trash' as const, label: t('uninstall.mode.trash') },
+  { value: 'delete' as const, label: t('uninstall.mode.delete') }
+]);
 
 const checks = computed(() => {
   const value = settings.value;
@@ -215,7 +225,38 @@ onMounted(async () => {
               />
             </SettingRow>
           </OnCard>
-          <h2 class="m-0 mb-10px mt-24px text-14px font-600 text-ink-primary">{{ t('settings.general.updates') }}</h2>
+          <h2 class="m-0 mb-10px mt-24px text-14px font-600 text-ink-primary">
+            {{ t('settings.general.uninstall') }}
+          </h2>
+          <OnCard padding="none">
+            <SettingRow
+              :label="t('settings.general.zapByDefault')"
+              :hint="t('settings.general.zapByDefaultHint')"
+              label-id="setting-zapByDefault"
+            >
+              <OnToggle
+                :model-value="settings.value.zapByDefault"
+                aria-labelledby="setting-zapByDefault"
+                @update:model-value="value => save('zapByDefault', value)"
+              />
+            </SettingRow>
+            <SettingRow
+              :label="t('settings.general.deleteMode')"
+              :hint="t('settings.general.deleteModeHint')"
+              label-id="setting-uninstallDeleteMode"
+            >
+              <OnSegmented
+                :model-value="settings.value.uninstallDeleteMode"
+                :options="deleteModes"
+                size="sm"
+                :aria-label="t('settings.general.deleteMode')"
+                @update:model-value="value => save('uninstallDeleteMode', value)"
+              />
+            </SettingRow>
+          </OnCard>
+          <h2 class="m-0 mb-10px mt-24px text-14px font-600 text-ink-primary">
+            {{ t('settings.general.updates') }}
+          </h2>
           <OnCard padding="none">
             <SettingRow :label="t('settings.general.checkTime')" label-id="setting-checkTime">
               <input
@@ -281,6 +322,10 @@ onMounted(async () => {
             />
           </SettingRow>
         </OnCard>
+
+        <CleanupSettings v-else-if="section === 'cleanup'" />
+
+        <MonitorSettings v-else-if="section === 'monitor'" />
 
         <OnCard v-else-if="section === 'privacy'" padding="none">
           <SettingRow
