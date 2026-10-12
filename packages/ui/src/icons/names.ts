@@ -48,7 +48,24 @@ export const UI_ICONS = [
   'hard-drive',
   'file-text',
   'command',
-  'square'
+  'square',
+  'lock',
+  'users',
+  'hourglass',
+  'scan-search',
+  'power',
+  'undo-2',
+  'key-round',
+  'loader-circle',
+  'activity',
+  'memory-stick',
+  'gpu',
+  'fan',
+  'thermometer',
+  'wifi',
+  'battery',
+  'battery-charging',
+  'container'
 ] as const;
 
 /** Category icons (03 §5.3 seed categories). */
@@ -74,7 +91,9 @@ export const CATEGORY_ICONS = [
   'gamepad-2',
   'graduation-cap',
   'type',
-  'library'
+  'library',
+  'eraser',
+  'layers'
 ] as const;
 
 export const BUNDLED_ICONS: readonly string[] = [...new Set([...UI_ICONS, ...CATEGORY_ICONS])];

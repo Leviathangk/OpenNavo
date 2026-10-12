@@ -1,38 +1,30 @@
-import { reactive } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { OnMenuItem } from '@opennavo/ui';
 import { installCommand } from '@opennavo/shared';
 import type { InstalledItem, Kind } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import { useBrewfileStore } from '@/stores/brewfile';
-import { useLibraryStore, useSettingsStore, useTasksStore } from '@/stores';
+import { useLibraryStore, useTasksStore } from '@/stores';
+import { useLocalAppsStore } from '@/stores/localApps';
+import { useUninstallStore } from '@/stores/uninstall';
 import { openExternal } from '@/utils/external';
 import { fetchClientConfig } from './useClientConfig';
 import { usePackageState } from './usePackageState';
 import { useToasts } from './useToasts';
 
-export interface UninstallRequest {
-  open: boolean;
-  kind: Kind;
-  token: string;
-  name: string;
-  zap: boolean;
-}
-
 /**
  * Package More menu (detail header and installed rows): reinstall, pin, reveal in Finder, copy command, website, uninstall.
- * Uninstall requires confirmation (06 §6.3: apps may use --zap, default from settings); UninstallConfirm renders the dialog.
+ * Uninstall opens the shared uninstall dialog (scan → review → run), the same flow as the Installed page.
  */
 export function usePackageMenu() {
   const { t } = useI18n();
   const brewfile = useBrewfileStore();
   const library = useLibraryStore();
-  const settings = useSettingsStore();
   const tasks = useTasksStore();
+  const localApps = useLocalAppsStore();
+  const uninstaller = useUninstallStore();
   const toasts = useToasts();
   const { act, errorText } = usePackageState();
-
-  const uninstall = reactive<UninstallRequest>({ open: false, kind: 'cask', token: '', name: '', zap: false });
 
   function itemsFor(kind: Kind, token: string, options: { open?: boolean; update?: boolean } = {}): OnMenuItem[] {
     const installed: InstalledItem | undefined = library.find(kind, token);
@@ -56,7 +48,12 @@ export function usePackageMenu() {
       if (kind === 'cask' && installed.appPaths.length)
         items.push({ key: 'reveal', label: t('package.actions.reveal'), icon: 'folder' });
     }
-    items.push({ key: 'copy', label: t('package.actions.copyCommand'), icon: 'copy', separator: Boolean(installed) });
+    items.push({
+      key: 'copy',
+      label: t('package.actions.copyCommand'),
+      icon: 'copy',
+      separator: Boolean(installed)
+    });
     items.push({ key: 'web', label: t('package.actions.web'), icon: 'arrow-up-right' });
     if (installed)
       items.push({
@@ -73,7 +70,11 @@ export function usePackageMenu() {
     try {
       await operation;
     } catch (error) {
-      toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+      toasts.push({
+        tone: 'danger',
+        title: t('errors.actionFailed'),
+        description: errorText(error)
+      });
     }
   }
 
@@ -110,23 +111,25 @@ export function usePackageMenu() {
         break;
       }
       case 'uninstall':
-        Object.assign(uninstall, {
-          open: true,
-          kind,
-          token,
-          name,
-          zap: kind === 'cask' && Boolean(settings.value?.zapByDefault)
-        });
+        await uninstall(token);
         break;
     }
   }
 
-  async function confirmUninstall() {
-    uninstall.open = false;
-    await run(
-      tasks.enqueue('uninstall', { kind: uninstall.kind, token: uninstall.token }, 'manual', { zap: uninstall.zap })
-    );
+  /** Homebrew casks are local apps too; find the entry (reading the list once if needed) and start the dialog. */
+  async function uninstall(token: string) {
+    if (!localApps.findCask(token)) await run(localApps.load());
+    const app = localApps.findCask(token);
+    if (!app) {
+      toasts.push({
+        tone: 'danger',
+        title: t('errors.actionFailed'),
+        description: t('errors.E_NOT_FOUND')
+      });
+      return;
+    }
+    await run(uninstaller.start([app.id]));
   }
 
-  return { itemsFor, select, uninstall, confirmUninstall };
+  return { itemsFor, select };
 }

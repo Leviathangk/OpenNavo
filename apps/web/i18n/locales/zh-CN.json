@@ -426,6 +426,7 @@
   },
   "og": {
     "tagline": "Homebrew 应用商店",
+    "platform": "macOS 客户端",
     "homeTitle": "Mac 上的\nHomebrew\n应用商店",
     "homeDescription": "安装应用，查看更新日志。\n让你的 Mac 保持最新。",
     "discoverTitle": "发现好用的\nMac 应用",

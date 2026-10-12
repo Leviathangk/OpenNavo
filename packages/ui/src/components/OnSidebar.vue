@@ -14,8 +14,12 @@ export interface OnSidebarItem {
   active?: boolean;
   /** Right count, e.g. Installed 8. */
   count?: number;
+  /** Right text in the count style when there is no count, e.g. a size. */
+  meta?: string;
   /** Right badge, e.g. Updates 4, taking priority over count. */
   badge?: number;
+  /** Right attention dot without a number; badgeLabel names it. */
+  dot?: boolean;
   badgeLabel?: string;
 }
 
@@ -66,7 +70,9 @@ const linkAttrs = (href: string) => (props.linkAs === 'a' ? { href } : { to: hre
           :icon="item.icon"
           :active="item.active"
           :count="item.count"
+          :meta="item.meta"
           :badge="item.badge"
+          :dot="item.dot"
           :badge-label="item.badgeLabel"
         >
           {{ item.label }}
@@ -82,7 +88,9 @@ const linkAttrs = (href: string) => (props.linkAs === 'a' ? { href } : { to: hre
         :icon="item.icon"
         :active="item.active"
         :count="item.count"
+        :meta="item.meta"
         :badge="item.badge"
+        :dot="item.dot"
         :badge-label="item.badgeLabel"
       >
         {{ item.label }}

@@ -4,6 +4,7 @@ import OnButton from './OnButton.vue';
 import type { OnButtonSize, OnButtonVariant } from './OnButton.vue';
 import OnIcon from './OnIcon.vue';
 import { useUiMessages } from '../composables/locale';
+import { moveFocus, usingKeyboard } from '../composables/overlay';
 
 export interface OnMenuItem {
   key: string;
@@ -105,14 +106,15 @@ async function show(focus: 'first' | 'last') {
   // Focus only after positioning/visibility takes effect; browsers cannot focus visibility:hidden elements.
   await nextTick();
   const items = enabledItems();
-  (focus === 'first' ? items[0] : items.at(-1))?.focus();
+  // Like native menus, keyboard opens select the first/last item; pointer opens leave selection to hover and arrows.
+  moveFocus(usingKeyboard() ? (focus === 'first' ? items[0] : items.at(-1)) : menu.value);
 }
 
 function close(restoreFocus = true) {
   if (!open.value) return;
   open.value = false;
   listen(false);
-  if (restoreFocus) trigger()?.focus();
+  if (restoreFocus) moveFocus(trigger());
 }
 
 function toggle() {
@@ -191,7 +193,8 @@ onBeforeUnmount(() => {
         ref="menu"
         role="menu"
         :aria-label="label"
-        class="on-menu fixed z-dropdown box-border min-w-200px rounded-panel border border-solid border-line-default p-6px font-sans shadow-popover"
+        tabindex="-1"
+        class="on-menu fixed z-dropdown box-border min-w-200px rounded-panel border border-solid border-line-default p-6px font-sans shadow-popover outline-none"
         :style="position"
         @keydown="onMenuKeydown"
       >

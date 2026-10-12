@@ -89,6 +89,25 @@ describe('OnNavItem', () => {
     expect(zero.find('[aria-label]').exists()).toBe(false);
   });
 
+  it('Shows an attention dot named by badgeLabel, in place of count and meta', () => {
+    const item = mount(OnNavItem, {
+      props: { dot: true, meta: '34 GB', badgeLabel: '2 个失效的后台项目仍在加载' },
+      slots: { default: '清理电脑' }
+    });
+    expect(item.text()).toBe('清理电脑');
+    expect(item.get('[role="img"]').attributes('aria-label')).toBe('2 个失效的后台项目仍在加载');
+    const unnamed = mount(OnNavItem, { props: { dot: true }, slots: { default: '清理电脑' } });
+    expect(unnamed.find('[role="img"]').exists()).toBe(false);
+    expect(unnamed.find('[aria-hidden="true"]').exists()).toBe(true);
+  });
+
+  it('Shows meta text only when there is no count or badge', () => {
+    expect(mount(OnNavItem, { props: { meta: '34 GB' }, slots: { default: '清理电脑' } }).text()).toBe('清理电脑34 GB');
+    expect(mount(OnNavItem, { props: { count: 2, meta: '34 GB' }, slots: { default: '清理电脑' } }).text()).toBe(
+      '清理电脑2'
+    );
+  });
+
   it('Accepts a router link component', () => {
     // Like RouterLink, the root creates href itself; undefined fallthrough attributes would overwrite it.
     const RouterLinkStub = defineComponent({

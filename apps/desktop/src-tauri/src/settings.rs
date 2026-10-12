@@ -22,6 +22,22 @@ pub fn validate(mut settings: Settings) -> Result<Settings, AppError> {
     {
         return Err(AppError::new("E_INVALID_ARG", "brew_path"));
     }
+    if settings.cleanup_project_roots.len() > 32
+        || settings.cleanup_project_roots.iter().any(|root| {
+            root.is_empty()
+                || root.len() > 4096
+                || root.chars().any(char::is_control)
+                || (!root.starts_with("~/") && !Path::new(root).is_absolute())
+                || Path::new(root).components().any(|component| {
+                    matches!(
+                        component,
+                        std::path::Component::ParentDir | std::path::Component::CurDir
+                    )
+                })
+        })
+    {
+        return Err(AppError::new("E_INVALID_ARG", "cleanup_project_roots"));
+    }
     settings.mirror = crate::mirror::normalize(settings.mirror)?;
     if settings.custom_mirrors.len() > 20 {
         return Err(AppError::new("E_INVALID_ARG", "custom_mirror_count"));

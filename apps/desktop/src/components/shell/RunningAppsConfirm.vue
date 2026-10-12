@@ -20,7 +20,11 @@ watch(
   () => tasks.finished[0],
   task => {
     if (task && isDeferredUpdate(task) && task.trigger !== 'schedule') {
-      toasts.push({ tone: 'info', title: t('runningApps.deferred'), description: t(`errors.${task.error?.code}`) });
+      toasts.push({
+        tone: 'info',
+        title: t('runningApps.deferred'),
+        description: t(`errors.${task.error?.code}`)
+      });
     }
   }
 );
@@ -29,7 +33,11 @@ let disposed = false;
 onMounted(async () => {
   const stop = await events.updatesRequested.listen(event => {
     void tasks.enqueueMany('upgrade', event.payload, 'manual', { greedy: true }).catch(error => {
-      toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+      toasts.push({
+        tone: 'danger',
+        title: t('errors.actionFailed'),
+        description: errorText(error)
+      });
     });
   });
   if (disposed) stop();
@@ -68,7 +76,9 @@ onBeforeUnmount(() => store.choose('cancel'));
       <input v-model="reopen" type="checkbox" class="m-0 h-14px w-14px accent-brand-coral" />
       {{ t('runningApps.reopen') }}
     </label>
-    <p class="mb-0 mt-8px text-12px leading-[1.5] text-ink-tertiary">{{ t('runningApps.quitHint') }}</p>
+    <p class="mb-0 mt-8px text-12px leading-[1.5] text-ink-tertiary">
+      {{ t('runningApps.quitHint') }}
+    </p>
     <template #footer>
       <OnButton variant="ghost" data-update-later @click="store.choose('cancel')">{{
         t('runningApps.later')

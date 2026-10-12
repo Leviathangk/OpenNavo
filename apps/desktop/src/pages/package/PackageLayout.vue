@@ -40,7 +40,11 @@ const tabs = computed(() => [
     count: detail.value?.releaseCount || undefined,
     href: `${base.value}/versions`
   },
-  { value: 'dependencies' as const, label: t('package.tabs.dependencies'), href: `${base.value}/dependencies` },
+  {
+    value: 'dependencies' as const,
+    label: t('package.tabs.dependencies'),
+    href: `${base.value}/dependencies`
+  },
   { value: 'details' as const, label: t('package.tabs.details'), href: `${base.value}/details` }
 ]);
 
@@ -68,7 +72,9 @@ const notice = computed(() => {
   if (value.deprecation)
     return {
       tone: 'warning' as const,
-      text: t('package.deprecatedNotice', { reason: value.deprecation.reason ?? t('package.noReason') }),
+      text: t('package.deprecatedNotice', {
+        reason: value.deprecation.reason ?? t('package.noReason')
+      }),
       replacement: value.deprecation.replacement
     };
   return null;

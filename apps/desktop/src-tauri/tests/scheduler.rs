@@ -142,7 +142,7 @@ async fn check_schedule_serial_update_auto_upgrade_and_single_summary() {
         .unwrap();
     core.ignore_update(
         TaskTarget {
-            kind: Kind::Cask,
+            kind: Kind::Cask.into(),
             token: "visual-studio-code".into(),
         },
         None,
@@ -396,7 +396,7 @@ fn compiled_capabilities_isolate_native_commands_between_windows() {
         "apps_running",
         "settings_set",
         "brewfile_install",
-        "cleanup_estimate",
+        "cleanup_summary",
         "system_open_privacy",
         "app_quit",
         "plugin:opener|open_url",

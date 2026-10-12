@@ -32,7 +32,7 @@ fn enqueue(core: &DesktopCore, token: &str) -> Task {
         .enqueue(
             TaskOp::Install,
             Some(TaskTarget {
-                kind: Kind::Cask,
+                kind: Kind::Cask.into(),
                 token: token.into(),
             }),
             TaskOptions::default(),
@@ -213,7 +213,7 @@ async fn idle_exit_atomically_rejects_new_work_and_login_changes_persist() {
             .enqueue(
                 TaskOp::Install,
                 Some(TaskTarget {
-                    kind: Kind::Cask,
+                    kind: Kind::Cask.into(),
                     token: "ghostty".into()
                 }),
                 TaskOptions::default(),

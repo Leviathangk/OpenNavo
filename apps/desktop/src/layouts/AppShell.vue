@@ -12,6 +12,9 @@ import PermissionPrompt from '@/components/shell/PermissionPrompt.vue';
 import DeepLinkConfirm from '@/components/shell/DeepLinkConfirm.vue';
 import QuitConfirm from '@/components/shell/QuitConfirm.vue';
 import InstallConfirm from '@/components/shell/InstallConfirm.vue';
+import CleanupNotifier from '@/components/cleanup/CleanupNotifier.vue';
+import MonitorNotifier from '@/components/monitor/MonitorNotifier.vue';
+import UninstallDialog from '@/components/uninstall/UninstallDialog.vue';
 import RunningAppsConfirm from '@/components/shell/RunningAppsConfirm.vue';
 import RestorePrompt from '@/components/shell/RestorePrompt.vue';
 import AppUpdateDialog from '@/components/shell/AppUpdateDialog.vue';
@@ -102,8 +105,11 @@ watch(
       <RestorePrompt />
       <RunningAppsConfirm />
       <InstallConfirm />
+      <UninstallDialog />
+      <CleanupNotifier />
+      <MonitorNotifier />
       <AppUpdateDialog />
-      <OnToastRegion :items="toasts.items.value" @dismiss="toasts.dismiss" />
+      <OnToastRegion :items="toasts.items.value" @dismiss="toasts.dismiss" @action="toasts.runAction" />
     </template>
   </OnAppShell>
 </template>

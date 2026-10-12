@@ -69,7 +69,13 @@ export const useSettingsStore = defineStore('settings', () => {
       if (!value.value) throw new Error('Settings are not loaded');
       const mirror =
         value.value.mirror.key === key
-          ? { key: 'official', apiDomain: null, bottleDomain: null, brewGitRemote: null, coreGitRemote: null }
+          ? {
+              key: 'official',
+              apiDomain: null,
+              bottleDomain: null,
+              brewGitRemote: null,
+              coreGitRemote: null
+            }
           : value.value.mirror;
       value.value = (await unwrap(
         commands.settingsSet({

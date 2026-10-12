@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import RunningAppsConfirm from '@/components/shell/RunningAppsConfirm.vue';
 import QuitConfirm from '@/components/shell/QuitConfirm.vue';
 import RestorePrompt from '@/components/shell/RestorePrompt.vue';
@@ -19,7 +19,9 @@ describe('Menu-bar popover', () => {
   it('List updates and enqueue individual/all updates', async () => {
     const context = await setup('/tray', { tickMs: 1000 });
     await startTrayState();
-    const mainPrompt = mount(RunningAppsConfirm, { global: { plugins: [context.pinia, context.router, i18n] } });
+    const mainPrompt = mount(RunningAppsConfirm, {
+      global: { plugins: [context.pinia, context.router, i18n] }
+    });
     const wrapper = mount(TrayPage, { global: { plugins: [context.pinia, context.router, i18n] } });
     await flushPromises();
     // The simulated machine has 6 updates, including 2 command-line tools; the Cask-only catalog (ADR-018) shows only 4 apps.
@@ -45,7 +47,10 @@ describe('Menu-bar popover', () => {
 describe('Quit and recovery', () => {
   it('Confirm app:quit-requested before calling app_quit', async () => {
     const context = await setup('/discover', { tickMs: 1000 });
-    const wrapper = mount(QuitConfirm, { global: { plugins: [context.pinia, i18n] }, attachTo: document.body });
+    const wrapper = mount(QuitConfirm, {
+      global: { plugins: [context.pinia, i18n] },
+      attachTo: document.body
+    });
     await flushPromises();
     await events.appQuitRequested.emit({ running: 1, queued: 2 });
     await flushPromises();
@@ -64,6 +69,8 @@ describe('Quit and recovery', () => {
       id: `old-${token}`,
       op: 'upgrade',
       target: { kind: 'formula', token },
+      targetName: null,
+      outcome: null,
       options: {},
       trigger: 'manual',
       state: 'queued',
@@ -85,11 +92,14 @@ describe('Quit and recovery', () => {
     });
     context.state.active.push(task('wget'), task('node'));
     await startLocalState();
-    expect(useTasksStore().queued).toHaveLength(2);
 
-    const wrapper = mount(RestorePrompt, { global: { plugins: [context.pinia, i18n] }, attachTo: document.body });
-    await flushPromises();
-    expect(document.body.textContent).toContain('上次有 2 个任务没有完成');
+    // Startup reads tasks in the background: the prompt mounted before they arrive still asks once they do.
+    const wrapper = mount(RestorePrompt, {
+      global: { plugins: [context.pinia, i18n] },
+      attachTo: document.body
+    });
+    await vi.waitFor(() => expect(document.body.textContent).toContain('上次有 2 个任务没有完成'));
+    expect(useTasksStore().queued).toHaveLength(2);
     [...document.body.querySelectorAll('button')].find(button => button.textContent?.trim() === '放弃')?.click();
     await flushPromises();
     expect(await unwrap(commands.taskListActive())).toHaveLength(0);

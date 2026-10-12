@@ -1,6 +1,7 @@
 pub mod brew;
 pub mod brewfile;
 pub mod catalog;
+pub mod cleanup;
 mod commands;
 pub mod core;
 pub mod db;
@@ -16,6 +17,7 @@ pub mod locales_gen;
 pub mod maintenance;
 pub mod mirror;
 pub mod model;
+pub mod monitor;
 pub mod native_i18n;
 pub mod native_menu;
 pub mod notifications;
@@ -26,6 +28,7 @@ pub mod scheduler;
 pub mod settings;
 pub mod system;
 pub mod tray;
+pub mod uninstall;
 pub mod updates;
 
 pub use error::AppError;
@@ -41,6 +44,43 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         // Transmit time and bytes as numbers (06 §5.1); the pinned version's switch lives on Builder.
         .dangerously_cast_bigints_to_number()
         .commands(collect_commands![
+            commands::monitor::monitor_subscribe,
+            commands::monitor::monitor_unsubscribe,
+            commands::monitor::monitor_trend,
+            commands::monitor::monitor_quit_app,
+            commands::monitor::monitor_open_activity_monitor,
+            commands::monitor::monitor_menu_bar_status,
+            commands::monitor::monitor_open_menu_bar_settings,
+            commands::monitor::monitor_open_in_main,
+            commands::monitor::fan_helper_status,
+            commands::monitor::fan_helper_open_approval,
+            commands::monitor::fan_helper_install,
+            commands::monitor::fan_helper_uninstall,
+            commands::monitor::fan_set_mode,
+            commands::monitor::fan_set_speed,
+            commands::monitor::fan_restore_last,
+            commands::cleanup::cleanup_scan,
+            commands::cleanup::cleanup_cancel,
+            commands::cleanup::cleanup_execute,
+            commands::cleanup::cleanup_reveal,
+            commands::cleanup::cleanup_summary,
+            commands::cleanup::cleanup_protect,
+            commands::cleanup::cleanup_unprotect,
+            commands::cleanup::cleanup_protected_list,
+            commands::uninstall::local_apps_list,
+            commands::uninstall::local_apps_refresh,
+            commands::uninstall::local_app_open,
+            commands::uninstall::local_app_reveal,
+            commands::uninstall::local_app_footprint,
+            commands::uninstall::local_app_footprints,
+            commands::uninstall::local_apps_scan_footprints,
+            commands::uninstall::local_app_retry_footprint,
+            commands::uninstall::uninstall_plan,
+            commands::uninstall::uninstall_plan_cancel,
+            commands::uninstall::uninstall_reveal,
+            commands::uninstall::uninstall_execute,
+            commands::uninstall::uninstall_restore,
+            commands::uninstall::uninstall_purge,
             commands::app::app_info,
             commands::env::env_detect,
             commands::catalog::catalog_status,
@@ -75,7 +115,6 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::maintenance::brewfile_export,
             commands::maintenance::brewfile_preview,
             commands::maintenance::brewfile_install,
-            commands::maintenance::cleanup_estimate,
             commands::maintenance::doctor_run,
             commands::system::app_open,
             commands::system::app_reveal,
@@ -88,6 +127,13 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::permissions::permission_guide_drag
         ])
         .events(collect_events![
+            events::MonitorSampleEvent,
+            events::MonitorPopover,
+            events::FanChanged,
+            events::CleanupScanEvent,
+            events::CleanupChangedEvent,
+            events::LocalAppsEvent,
+            events::UninstallScanEvent,
             events::EnvChanged,
             events::CatalogSynced,
             events::TaskUpdated,
@@ -153,7 +199,7 @@ pub fn run() {
         .plugin(
             tauri_plugin_window_state::Builder::new()
                 .with_state_flags(lifecycle::window_state_flags(hidden))
-                .with_denylist(&[tray::LABEL])
+                .with_denylist(&[tray::LABEL, monitor::POPOVER_LABEL])
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -174,6 +220,12 @@ pub fn run() {
         .invoke_handler(specta.invoke_handler())
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Focused(true)) {
+                if let Some(sampler) =
+                    window.try_state::<std::sync::Arc<monitor::sampler::Sampler>>()
+                {
+                    sampler
+                        .set_window_visible(window.label(), window.is_visible().unwrap_or(false));
+                }
                 commands::settings::refresh_system(window.app_handle());
             }
             if window.label() == "main"
@@ -188,7 +240,12 @@ pub fn run() {
                     .unwrap_or(lifecycle::CloseAction::Hide);
                 match action {
                     lifecycle::CloseAction::Hide => {
-                        let _ = window.hide();
+                        if window.hide().is_ok()
+                            && let Some(sampler) =
+                                window.try_state::<std::sync::Arc<monitor::sampler::Sampler>>()
+                        {
+                            sampler.set_window_visible(window.label(), false);
+                        }
                     }
                     lifecycle::CloseAction::RequestExit => window.app_handle().exit(0),
                 }
@@ -252,9 +309,13 @@ pub fn run() {
             settings::install_locale_observer(app.handle());
             native_menu::install(app.handle(), core.current_settings()?.locale)?;
             tray::install(app.handle())?;
+            if let Err(error) = monitor::install(app.handle()) {
+                log::warn!("Monitor unavailable: {}", error.code);
+            }
             core.queue.start();
             core.start_catalog_sync();
             core.start_library_scan();
+            uninstall::install_watch(app.handle());
             scheduler::start(&core);
             Ok(())
         })
@@ -275,4 +336,56 @@ pub fn run() {
 #[test]
 fn export_bindings() {
     write_bindings(&specta_builder()).expect("binding export must succeed");
+    let bindings = std::fs::read_to_string("../src/ipc/bindings.ts").unwrap();
+    for expected in [
+        "monitorSubscribe: (view: MonitorView, modules: MonitorModule[])",
+        "monitorTrend:",
+        "export type MonitorTrendPoint =",
+        "export type DiskDevice =",
+        "export type MenuBarStyle = \"text\" | \"value\" | \"line\" | \"bars\"",
+        "powerWatts: number | null",
+        "diskReadBytesPerSec: number | null",
+        "diskWriteBytesPerSec: number | null",
+        "netDownBytesPerSec: number | null",
+        "netUpBytesPerSec: number | null",
+        "devices: DiskDevice[] | null",
+        "subject: string | null",
+        "monitorOpenInMain: (target: MonitorMainTarget, module:",
+        "export type FanControlSupport =",
+        "manualAllowed: boolean",
+        "monitorIntervalMs: 1000 | 2000 | 5000",
+        "monitorMenuBar: MonitorMenuBar",
+        "fanLastManual:",
+        "monitor:sample",
+        "monitor:popover",
+        "fan:changed",
+        "fanHelperOpenApproval:",
+        "load: [number, number, number]",
+        "usage: number,",
+        "cores: number[]",
+        "celsius: number,",
+        "localIp: string | null",
+        "gpu: GpuSample | null",
+    ] {
+        assert!(
+            bindings.contains(expected),
+            "missing monitor IPC export: {expected}"
+        );
+    }
+    assert!(!bindings.contains("monitorMenuBar?:"));
+    assert!(!bindings.contains("manualAllowed?:"));
+    assert!(bindings.contains("\ttrashedBytes: number,"));
+    assert!(bindings.contains("\tvolume: CleanupVolume | null,"));
+    assert!(!bindings.contains("trashedBytes?:"));
+    for removed in [
+        "leftoversScan:",
+        "leftoversRemove:",
+        "cleanupEstimate:",
+        "export type LeftoverReport",
+        "export type LeftoverGroup",
+        "export type BrewCleanupItem",
+        "export type CleanupEstimate",
+    ] {
+        assert!(!bindings.contains(removed), "removed IPC export: {removed}");
+    }
 }

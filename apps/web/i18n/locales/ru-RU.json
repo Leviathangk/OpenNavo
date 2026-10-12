@@ -212,7 +212,7 @@
       "brewSync": "≈ Синхронно",
       "brewLater": "с задержкой на {time}",
       "brewEarlier": "раньше на {time}",
-      "brewHint": "{earlier} из {compared} вышли раньше, чем в upstream",
+      "brewHint": "{earlier}/{compared} вышли раньше, чем в upstream",
       "lagMinutes": "{n} мин",
       "lagHours": "{n} ч",
       "lagDays": "{n} день | {n} дня | {n} дней | {n} дня",
@@ -426,6 +426,7 @@
   },
   "og": {
     "tagline": "Магазин приложений Homebrew",
+    "platform": "клиент для macOS",
     "homeTitle": "Магазин\nHomebrew\nдля Mac.",
     "homeDescription": "Устанавливайте приложения.\nОбновляйте Mac и читайте об изменениях.",
     "discoverTitle": "Откройте\nприложения Mac.",

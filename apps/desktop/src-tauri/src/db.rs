@@ -33,7 +33,7 @@ impl Database {
         } else {
             0
         };
-        if version > 2 {
+        if version > 4 {
             return Err(AppError::new("E_UNKNOWN", "newer_database_schema"));
         }
         if version == 0 {
@@ -49,6 +49,18 @@ impl Database {
             let tx = connection.transaction()?;
             tx.execute_batch(include_str!("../migrations/002_catalog_texts.sql"))?;
             tx.execute("INSERT INTO meta(key,value) VALUES('schema_version','2') ON CONFLICT(key) DO UPDATE SET value='2'", [])?;
+            tx.commit()?;
+        }
+        if version < 3 {
+            let tx = connection.transaction()?;
+            tx.execute_batch(include_str!("../migrations/003_uninstall.sql"))?;
+            tx.execute("INSERT INTO meta(key,value) VALUES('schema_version','3') ON CONFLICT(key) DO UPDATE SET value='3'", [])?;
+            tx.commit()?;
+        }
+        if version < 4 {
+            let tx = connection.transaction()?;
+            tx.execute_batch(include_str!("../migrations/004_cleanup.sql"))?;
+            tx.execute("INSERT INTO meta(key,value) VALUES('schema_version','4') ON CONFLICT(key) DO UPDATE SET value='4'", [])?;
             tx.commit()?;
         }
         #[cfg(unix)]
@@ -81,7 +93,7 @@ impl Database {
     }
     pub fn save_task(&self, task: &Task) -> Result<(), AppError> {
         self.with(|c|{
-        c.execute("INSERT INTO tasks(id,op,kind,token,options,trigger,state,from_version,to_version,error_code,error_message,exit_code,log_path,created_at,started_at,finished_at) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16) ON CONFLICT(id) DO UPDATE SET state=excluded.state,from_version=excluded.from_version,to_version=excluded.to_version,error_code=excluded.error_code,error_message=excluded.error_message,exit_code=excluded.exit_code,log_path=excluded.log_path,started_at=excluded.started_at,finished_at=excluded.finished_at",params![task.id,enum_text(task.op)?,task.target.as_ref().map(|t|t.kind.as_str()),task.target.as_ref().map(|t|t.token.as_str()),serde_json::to_string(&task.options)?,enum_text(task.trigger)?,enum_text(task.state)?,task.from_version,task.to_version,task.error.as_ref().map(|e|&e.code),task.error.as_ref().map(|e|&e.message),task.exit_code,task.log_path,task.created_at,task.started_at,task.finished_at])?;Ok(())
+        c.execute("INSERT INTO tasks(id,op,kind,token,options,trigger,state,from_version,to_version,error_code,error_message,exit_code,log_path,created_at,started_at,finished_at,target_name,outcome) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18) ON CONFLICT(id) DO UPDATE SET state=excluded.state,from_version=excluded.from_version,to_version=excluded.to_version,error_code=excluded.error_code,error_message=excluded.error_message,exit_code=excluded.exit_code,log_path=excluded.log_path,started_at=excluded.started_at,finished_at=excluded.finished_at,target_name=excluded.target_name,outcome=excluded.outcome",params![task.id,enum_text(task.op)?,task.target.as_ref().map(|t|t.kind.as_str()),task.target.as_ref().map(|t|t.token.as_str()),serde_json::to_string(&task.options)?,enum_text(task.trigger)?,enum_text(task.state)?,task.from_version,task.to_version,task.error.as_ref().map(|e|&e.code),task.error.as_ref().map(|e|&e.message),task.exit_code,task.log_path,task.created_at,task.started_at,task.finished_at,task.target_name,task.outcome.as_ref().map(serde_json::to_string).transpose()?])?;Ok(())
     })
     }
     pub fn tasks(&self) -> Result<Vec<Task>, AppError> {
@@ -92,12 +104,26 @@ impl Database {
                 .collect::<rusqlite::Result<Vec<_>>>()?)
         })
     }
+    pub fn task(&self, id: &str) -> Result<Option<Task>, AppError> {
+        self.with(|c| {
+            Ok(
+                c.query_row("SELECT * FROM tasks WHERE id=?1", [id], task_row)
+                    .optional()?,
+            )
+        })
+    }
     pub fn recover_tasks(&self, now: i64) -> Result<Vec<Task>, AppError> {
         let mut queued = Vec::new();
         for mut task in self.tasks()? {
             if task.state == TaskState::Running {
                 task.state = TaskState::Failed;
                 task.error = Some(AppError::new("E_INTERRUPTED", "application_restarted"));
+                task.finished_at = Some(now);
+                self.save_task(&task)?;
+            } else if task.state == TaskState::Queued && task.op == TaskOp::Clean {
+                // Cleanup reports exist only in memory and cannot be resumed after restart.
+                task.state = TaskState::Failed;
+                task.error = Some(AppError::new("E_PLAN_EXPIRED", "cleanup_report_expired"));
                 task.finished_at = Some(now);
                 self.save_task(&task)?;
             } else if task.state == TaskState::Queued {
@@ -163,11 +189,14 @@ impl Database {
                     && query.from.is_none_or(|from| finished >= from)
                     && query.to.is_none_or(|to| finished <= to)
                     && q.as_ref().is_none_or(|q| {
-                        task.target.as_ref().is_some_and(|t| {
-                            t.token.to_lowercase().contains(q)
-                                || matching_names
-                                    .contains(&(t.kind.as_str().to_owned(), t.token.clone()))
-                        })
+                        task.target_name
+                            .as_ref()
+                            .is_some_and(|name| name.to_lowercase().contains(q))
+                            || task.target.as_ref().is_some_and(|t| {
+                                t.token.to_lowercase().contains(q)
+                                    || matching_names
+                                        .contains(&(t.kind.as_str().to_owned(), t.token.clone()))
+                            })
                     })
             })
             .collect();
@@ -232,6 +261,11 @@ fn task_row(row: &Row<'_>) -> rusqlite::Result<Task> {
     };
     let code: Option<String> = row.get("error_code")?;
     Ok(Task {
+        target_name: row.get("target_name")?,
+        outcome: row
+            .get::<_, Option<String>>("outcome")?
+            .map(parse)
+            .transpose()?,
         id: row.get("id")?,
         op: variant(row, "op")?,
         target,

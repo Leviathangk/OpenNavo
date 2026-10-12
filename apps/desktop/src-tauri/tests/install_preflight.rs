@@ -26,7 +26,7 @@ async fn simulated_brew_preflight_is_read_only_and_uses_declared_target() {
         ..Settings::default()
     };
     let target = TaskTarget {
-        kind: Kind::Cask,
+        kind: Kind::Cask.into(),
         token: "example".into(),
     };
     let result = install_preflight::inspect(&settings, &target)
@@ -46,11 +46,11 @@ async fn simulated_brew_preflight_is_read_only_and_uses_declared_target() {
     )));
     for target in [
         TaskTarget {
-            kind: Kind::Formula,
+            kind: Kind::Formula.into(),
             token: "example".into(),
         },
         TaskTarget {
-            kind: Kind::Cask,
+            kind: Kind::Cask.into(),
             token: "--evil".into(),
         },
     ] {

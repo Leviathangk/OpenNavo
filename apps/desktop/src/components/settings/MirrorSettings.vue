@@ -157,7 +157,9 @@ async function copyEnv() {
       >
         <div>
           <h2 class="m-0 text-15px font-600 text-ink-primary">{{ t('settings.mirrors.title') }}</h2>
-          <p class="m-0 mt-4px text-12.5px text-ink-tertiary">{{ t('settings.mirrors.description') }}</p>
+          <p class="m-0 mt-4px text-12.5px text-ink-tertiary">
+            {{ t('settings.mirrors.description') }}
+          </p>
         </div>
         <div class="flex flex-wrap gap-8px">
           <OnButton
@@ -246,8 +248,12 @@ async function copyEnv() {
       role="alertdialog"
     >
       <p class="m-0">{{ t('settings.customMirrors.deleteConfirm', { name: removing?.name }) }}</p>
-      <p v-if="current === removing?.key" class="mb-0 mt-8px">{{ t('settings.customMirrors.deleteActive') }}</p>
-      <p v-if="removeError" class="mb-0 mt-8px text-status-danger" role="alert">{{ removeError }}</p>
+      <p v-if="current === removing?.key" class="mb-0 mt-8px">
+        {{ t('settings.customMirrors.deleteActive') }}
+      </p>
+      <p v-if="removeError" class="mb-0 mt-8px text-status-danger" role="alert">
+        {{ removeError }}
+      </p>
       <template #footer>
         <OnButton :disabled="saving" @click="removeOpen = false">{{ t('common.cancel') }}</OnButton>
         <OnButton variant="danger" :loading="saving" @click="remove">{{ t('settings.customMirrors.delete') }}</OnButton>

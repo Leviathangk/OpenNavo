@@ -50,7 +50,8 @@ const runningTask = computed(() => tasks.running);
 const runningLabel = computed(() => {
   const task = runningTask.value;
   if (!task) return '';
-  const name = task.target ? displayName(task.target.kind, task.target.token) : '';
+  // Clean Up's target is its report, not a package; the action alone names it.
+  const name = task.op !== 'clean' && task.target ? displayName(task.target.kind, task.target.token) : '';
   return t('toolbar.taskRunning', { action: t(`tasks.ops.${task.op}`), name }).trim();
 });
 const ring = computed(() => {

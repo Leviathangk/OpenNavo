@@ -66,7 +66,9 @@ const tiles = computed<Tile[]>(() => {
       label: t('rail.disk'),
       ...(total === null ? { value: '—' } : splitValue(formatBytes(total, { locale: formattingLocale.value }))),
       hint: storage
-        ? t('rail.diskHint', { size: formatBytes(storage.cacheBytes, { locale: formattingLocale.value }) })
+        ? t('rail.diskHint', {
+            size: formatBytes(storage.cacheBytes, { locale: formattingLocale.value })
+          })
         : undefined
     },
     {
@@ -83,7 +85,11 @@ const { data: trending } = useLoader(
   async () => {
     try {
       const page = await unwrap(api.GET('/rankings', { params: { query: { kind: 'cask', period: '30d', size: 4 } } }));
-      return page.records.map(record => ({ rank: record.rank, pkg: record.package, installs: record.installs }));
+      return page.records.map(record => ({
+        rank: record.rank,
+        pkg: record.package,
+        installs: record.installs
+      }));
     } catch {
       const page = await unwrapIpc(
         commands.catalogList({
@@ -97,7 +103,11 @@ const { data: trending } = useLoader(
           offset: 0
         })
       );
-      return page.items.map((item, index) => ({ rank: index + 1, pkg: toSummary(item), installs: item.installs30d }));
+      return page.items.map((item, index) => ({
+        rank: index + 1,
+        pkg: toSummary(item),
+        installs: item.installs30d
+      }));
     }
   },
   [appLocale, () => catalog.revision],

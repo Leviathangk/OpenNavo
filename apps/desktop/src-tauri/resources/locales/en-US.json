@@ -36,5 +36,21 @@
   "askpass.cancel": "Cancel",
   "completion.succeeded": "{count} action succeeded | {count} actions succeeded",
   "completion.failed": "{count} action failed | {count} actions failed",
-  "completion.canceled": "{count} action canceled | {count} actions canceled"
+  "completion.canceled": "{count} action canceled | {count} actions canceled",
+  "monitorAlert.cpu_busy.title": "CPU has been busy",
+  "monitorAlert.cpu_busy.body": "CPU has been above 85% for 3 minutes. Click to see which process.",
+  "monitorAlert.memory_pressure.title": "Memory pressure is high",
+  "monitorAlert.memory_pressure.body": "Quitting apps you’re not using frees memory. Click to see what’s using the most.",
+  "monitorAlert.memory_critical.title": "Memory pressure is critical",
+  "monitorAlert.memory_critical.body": "Apps may slow down or be closed by the system. Click to see what’s using the most memory.",
+  "monitorAlert.disk_low.title": "Low disk space",
+  "monitorAlert.disk_low.body": "Only {size} left on the startup disk. Click to clean up your Mac.",
+  "monitorAlert.battery_health.title": "Battery health has dropped",
+  "monitorAlert.battery_health.body": "Battery health is down to {percent}.",
+  "monitorAlert.battery_hot.title": "Battery is hot",
+  "monitorAlert.battery_hot.body": "Battery temperature is {temp}.",
+  "monitorAlert.temperature.title": "CPU is very hot",
+  "monitorAlert.temperature.body": "CPU temperature is {temp}. Click to check processes or adjust the fans.",
+  "monitorAlert.disk_smart.title": "A disk is reporting problems",
+  "monitorAlert.disk_smart.body": "“{name}” reports a failing SMART status. Back it up soon."
 }

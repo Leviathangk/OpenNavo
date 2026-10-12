@@ -1,100 +1,321 @@
 <script setup lang="ts">
 import { useToasts } from '@/composables/useToasts';
-import { useLoader } from '@/composables/useLoader';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { formatBytes, formatPercent, formatDate, formatList, formatVersion } from '@opennavo/shared';
-import { OnAppIcon, OnButton, OnChip, OnEmpty, OnMenu, OnPageHeader, OnSearchField, OnTable } from '@opennavo/ui';
-import type { OnChipTone, OnTableColumn, OnTableSort } from '@opennavo/ui';
-import UninstallConfirm from '@/components/package/UninstallConfirm.vue';
-import type { InstalledItem } from '@/ipc/bindings';
-import { packageKey } from '@/ipc/client';
+import { formatBytes, formatDate, formatPercent, formatVersion } from '@opennavo/shared';
+import {
+  OnAppIcon,
+  OnButton,
+  OnChip,
+  OnEmpty,
+  OnIcon,
+  OnMenu,
+  OnPageHeader,
+  OnSearchField,
+  OnSegmented,
+  OnSkeleton,
+  OnTable,
+  OnTooltip
+} from '@opennavo/ui';
+import type { OnChipTone, OnSegmentedOption, OnTableColumn, OnTableSort } from '@opennavo/ui';
+import FootprintScanProgress from '@/components/installed/FootprintScanProgress.vue';
+import AppInfoSheet from '@/components/installed/AppInfoSheet.vue';
+import FullDiskAccessGate from '@/components/permissions/FullDiskAccessGate.vue';
+import RunningTask from '@/components/updates/RunningTask.vue';
+import type { LocalApp } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
+import { useLocalAppMenu } from '@/composables/useLocalAppMenu';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
-import { usePackageMenu } from '@/composables/usePackageMenu';
-import { useLibraryStore, useTasksStore, useUpdatesStore } from '@/stores';
+import { useLibraryStore, usePermissionsStore, useTasksStore, useUpdatesStore } from '@/stores';
+import { UNUSED_DAYS, isUnused, matchesSource, useLocalAppsStore } from '@/stores/localApps';
+import { useInstalledFilterStore } from '@/stores/installedFilter';
+import { useUninstallStore } from '@/stores/uninstall';
 
-// Installed (mockup 06, 06 §6.7): name filtering, sortable table; apps only (ADR-018, store filters command-line tools); de-emphasize dependencies.
-const { t } = useI18n();
+// Installed (proposal §03, §05): every removable app on this Mac — Homebrew, App Store, drag-installed and .pkg —
+// with source filter, unused filter, multi-select uninstall and an info sheet. System apps are not listed.
+// The page starts with Full Disk Access (2026-10-12): until it is on, it shows the guide instead of the list.
+const { t, te } = useI18n();
 const { appLocale } = useAppLocale();
 const router = useRouter();
+const localApps = useLocalAppsStore();
 const library = useLibraryStore();
 const updates = useUpdatesStore();
 const tasks = useTasksStore();
-const { displayName, icon } = usePackageIdentity();
-const menu = usePackageMenu();
+const uninstaller = useUninstallStore();
+const { localApp } = usePackageIdentity();
+const menu = useLocalAppMenu();
+const toasts = useToasts();
+const permissions = usePermissionsStore();
+const ready = computed(() => permissions.fullDiskReady);
 
-const filter = ref('');
+const footprintError = (id: string) => {
+  const error = localApps.footprintErrors[id];
+  if (!error) return '';
+  if (error.code === 'E_FULL_DISK_ACCESS') return t('appInfo.footprintIncomplete');
+  return te(`errors.${error.code}`) ? t(`errors.${error.code}`) : error.message;
+};
+const incomplete = (id: string) => localApps.footprints[id]?.complete === false;
+/** Why a value is only approximate: no Full Disk Access, or files that could not be read. */
+const partialNote = computed(() =>
+  permissions.fullDiskAccess === 'granted' ? t('appInfo.footprintPartial') : t('appInfo.footprintIncomplete')
+);
+async function retryFootprint(id: string) {
+  try {
+    await localApps.retryFootprint(id);
+  } catch {
+    toasts.push({ tone: 'danger', title: t('errors.actionFailed') });
+  }
+}
+
+const filters = useInstalledFilterStore();
 const sort = ref<OnTableSort>({ key: 'size', order: 'desc' });
+const selected = ref<string[]>([]);
+const sheetId = ref<string | null>(null);
 
-const totalBytes = computed(() => library.items.reduce((total, item) => total + (item.sizeBytes ?? 0), 0));
+const format = (bytes: number) => formatBytes(bytes, { locale: appLocale.value });
+const nameOf = (app: LocalApp) => localApp(app).name;
+// Same measure as the size column: app, data and caches once known.
+const totalBytes = computed(() => localApps.items.reduce((total, app) => total + localApps.spaceOf(app), 0));
+
+const sources = computed<OnSegmentedOption<typeof filters.source>[]>(() =>
+  (['all', 'homebrew', 'app_store', 'other'] as const).map(value => ({
+    value,
+    label: t(`library.sources.${value}`),
+    count: localApps.items.filter(app => matchesSource(app, value)).length
+  }))
+);
+const unusedCount = computed(() => localApps.items.filter(app => isUnused(app)).length);
 
 interface Status {
   label: string;
   tone: OnChipTone;
   icon?: string;
+  title?: string;
 }
 
-function statusOf(item: InstalledItem): Status {
-  const task = tasks.forPackage(item.kind, item.token);
-  if (task?.state === 'running')
+function taskFor(app: LocalApp) {
+  return app.cask ? tasks.forPackage('cask', app.cask) : tasks.forPackage('app', app.id);
+}
+
+function statusOf(app: LocalApp): Status | null {
+  const task = taskFor(app);
+  if (task?.state === 'running') {
+    const key = task.op === 'uninstall' ? 'uninstalling' : 'running';
     return {
       label:
         task.percent === null
           ? t('library.status.runningUnknown')
-          : t('library.status.running', {
-              percent: formatPercent((task.percent ?? 0) / 100, { locale: appLocale.value })
+          : t(`library.status.${key}`, {
+              percent: formatPercent(task.percent / 100, {
+                locale: appLocale.value
+              })
             }),
       tone: 'coral'
     };
+  }
   if (task?.state === 'queued') return { label: t('library.status.queued'), tone: 'neutral' };
-  if (item.pinned) return { label: t('library.status.pinned'), tone: 'neutral', icon: 'pin' };
-  if (updates.find(item.kind, item.token)) return { label: t('library.status.outdated'), tone: 'accent' };
-  if (item.status === 'self_updated') return { label: t('library.status.latest'), tone: 'success' };
-  if (item.status === 'unknown') return { label: t('library.status.unknown'), tone: 'neutral' };
-  return { label: t('library.status.latest'), tone: 'success' };
+  if (!app.removable)
+    return {
+      label: t(app.protectedReason === 'managed' ? 'library.status.managed' : 'library.status.protected'),
+      tone: 'neutral',
+      icon: 'lock'
+    };
+  if (app.cask) {
+    const item = library.find('cask', app.cask);
+    if (item?.pinned)
+      return {
+        label: t('library.status.pinned'),
+        tone: 'neutral',
+        icon: 'pin'
+      };
+    if (updates.find('cask', app.cask)) return { label: t('library.status.outdated'), tone: 'accent' };
+    if (item?.status === 'unknown') return { label: t('library.status.unknown'), tone: 'neutral' };
+    return { label: t('library.status.latest'), tone: 'success' };
+  }
+  // App Store copies stay with the App Store: adopting would let Homebrew replace a licensed build.
+  if (app.catalogToken && app.source !== 'app_store')
+    return {
+      label: t('library.status.adoptable'),
+      tone: 'info',
+      title: t('library.adoptableHint')
+    };
+  return null;
 }
 
-const rows = computed(() => {
-  const q = filter.value.trim().toLowerCase();
-  const list = library.items.filter(
-    item => !q || item.token.includes(q) || displayName(item.kind, item.token).toLowerCase().includes(q)
+const sorted = computed(() => {
+  const q = filters.query.trim().toLowerCase();
+  const list = localApps.items.filter(
+    app =>
+      matchesSource(app, filters.source) &&
+      (!filters.unusedOnly || isUnused(app)) &&
+      (!q || [nameOf(app), app.name, app.bundleId, app.cask].some(value => value?.toLowerCase().includes(q)))
   );
   const direction = sort.value.order === 'asc' ? 1 : -1;
   const collator = new Intl.Collator(appLocale.value);
-  const compare: Record<string, (a: InstalledItem, b: InstalledItem) => number> = {
-    name: (a, b) => collator.compare(displayName(a.kind, a.token), displayName(b.kind, b.token)),
-    size: (a, b) => (a.sizeBytes ?? -1) - (b.sizeBytes ?? -1),
-    installedAt: (a, b) => (a.installedAt ?? 0) - (b.installedAt ?? 0)
+  const compare: Record<string, (a: LocalApp, b: LocalApp) => number> = {
+    name: (a, b) => collator.compare(nameOf(a), nameOf(b)),
+    size: (a, b) => (localApps.occupiedBytes(a.id) ?? -1) - (localApps.occupiedBytes(b.id) ?? -1),
+    // Unknown last-used times sort as the oldest, so "longest unused first" stays useful.
+    lastUsed: (a, b) => (a.lastUsedAt ?? 0) - (b.lastUsedAt ?? 0)
   };
   const by = compare[sort.value.key] ?? compare.name;
   return [...list].sort((a, b) => (by ? by(a, b) * direction : 0));
 });
 
+// While footprints are measured, values arrive one app at a time; keep the order the user saw instead of
+// reshuffling the table under the pointer, and sort once when the measurement ends (or the user sorts).
+const measuring = computed(() => localApps.scanProgress?.running === true);
+const frozen = ref<string[] | null>(null);
+watch(
+  measuring,
+  now => {
+    frozen.value = now && sort.value.key === 'size' ? sorted.value.map(app => app.id) : null;
+  },
+  { immediate: true }
+);
+watch(sort, () => (frozen.value = null), { deep: true });
+const rows = computed(() => {
+  if (!frozen.value) return sorted.value;
+  const rank = new Map(frozen.value.map((id, index) => [id, index]));
+  const last = rank.size;
+  return [...sorted.value].sort((a, b) => (rank.get(a.id) ?? last) - (rank.get(b.id) ?? last));
+});
+
+// What is selected is what is shown: a filter change drops selections it hides, so a batch never includes
+// apps that are out of sight.
+watch(
+  () => [filters.source, filters.unusedOnly, filters.query],
+  () => {
+    const visible = new Set(rows.value.map(app => app.id));
+    if (selected.value.some(id => !visible.has(id))) selected.value = selected.value.filter(id => visible.has(id));
+  }
+);
+
+// The progress card is for an ongoing full measurement or failures; a finished one gets out of the way.
+const showProgress = ref(false);
+let hideProgress: ReturnType<typeof setTimeout> | undefined;
+watch(
+  () => localApps.scanProgress,
+  progress => {
+    clearTimeout(hideProgress);
+    if (!progress) showProgress.value = false;
+    else if (progress.running) showProgress.value = showProgress.value || progress.total > 1;
+    else if (progress.failed) showProgress.value = true;
+    else if (showProgress.value) hideProgress = setTimeout(() => (showProgress.value = false), 2500);
+  },
+  { immediate: true }
+);
+onBeforeUnmount(() => clearTimeout(hideProgress));
+
+// Widths fit the default 1280 px window with the rail docked; the name column takes the rest and truncates.
+// The source sits in the name's second line (and the filter above), leaving room for names.
 const columns = computed<OnTableColumn[]>(() => [
   { key: 'name', label: t('library.columns.name'), sortable: true },
-  { key: 'version', label: t('library.columns.version'), mono: true, width: '130px' },
-  { key: 'size', label: t('library.columns.size'), numeric: true, sortable: true, width: '96px' },
-  { key: 'installedAt', label: t('library.columns.installedAt'), sortable: true, width: '120px' },
-  { key: 'status', label: t('library.columns.status'), width: '140px' },
-  { key: 'actions', label: t('library.columns.actions'), hideLabel: true, width: '48px' }
+  {
+    key: 'version',
+    label: t('library.columns.version'),
+    mono: true,
+    width: '96px'
+  },
+  {
+    key: 'size',
+    label: t('library.columns.size'),
+    numeric: true,
+    sortable: true,
+    width: '104px'
+  },
+  {
+    key: 'lastUsed',
+    label: t('library.columns.lastUsed'),
+    sortable: true,
+    width: '96px'
+  },
+  { key: 'status', label: t('library.columns.status'), width: '112px' },
+  {
+    key: 'actions',
+    label: t('library.columns.actions'),
+    hideLabel: true,
+    width: '48px'
+  }
 ]);
 
-function secondary(item: InstalledItem): string {
-  if (!item.onRequest && item.requiredBy.length)
-    return t('library.dependency', { names: formatList(item.requiredBy, { locale: appLocale.value }) });
-  return item.token;
+const SOURCE_DOT: Record<LocalApp['source'], string> = {
+  homebrew: 'bg-chart-series1',
+  app_store: 'bg-status-info',
+  direct: 'bg-chart-series3',
+  pkg: 'bg-chart-series3'
+};
+
+const DAY = 86_400_000;
+/** Coarse relative time (今天 / 3 天前 / 4 个月前 / 去年): staleness matters more here than the exact date. */
+function lastUsed(app: LocalApp) {
+  if (app.lastUsedAt === null) return '—';
+  const days = Math.max(0, Math.floor((Date.now() - app.lastUsedAt) / DAY));
+  const relative = new Intl.RelativeTimeFormat(appLocale.value, {
+    numeric: 'auto'
+  });
+  if (days < 7) return relative.format(-days, 'day');
+  if (days < 30) return relative.format(-Math.floor(days / 7), 'week');
+  if (days < 365) return relative.format(-Math.floor(days / 30), 'month');
+  return relative.format(-Math.floor(days / 365), 'year');
 }
 
-const select = (item: InstalledItem, key: string) =>
-  menu.select(item.kind, item.token, displayName(item.kind, item.token), key);
-const toasts = useToasts();
-useLoader(() => library.load());
+const chosen = computed(() =>
+  localApps.items.filter(app => selected.value.includes(app.id) && app.removable && !taskFor(app))
+);
+const chosenBytes = computed(() => chosen.value.reduce((total, app) => total + (app.sizeBytes ?? 0), 0));
+
+async function uninstallSelected() {
+  const ids = chosen.value.map(app => app.id);
+  selected.value = [];
+  await uninstall(ids);
+}
+
+async function uninstall(ids: string[]) {
+  try {
+    await uninstaller.start(ids);
+  } catch {
+    toasts.push({ tone: 'danger', title: t('errors.actionFailed') });
+  }
+}
+
+const sheetApp = computed(() => (sheetId.value ? (localApps.find(sheetId.value) ?? null) : null));
+const sheetOpen = computed({
+  get: () => sheetApp.value !== null,
+  set: value => {
+    if (!value) sheetId.value = null;
+  }
+});
+
+function select(app: LocalApp, key: string) {
+  if (key === 'uninstall') sheetId.value = app.id;
+  else void menu.select(app, nameOf(app), key);
+}
+
+async function openDetail(token: string) {
+  sheetId.value = null;
+  await router.push(`/package/cask/${token}`);
+}
+
+function uninstallFromSheet(app: LocalApp) {
+  sheetId.value = null;
+  void uninstall([app.id]);
+}
+
+if (!permissions.status) void permissions.refresh().catch(() => undefined);
+// Measuring starts only once Full Disk Access is on (reading other apps' containers without it would be incomplete).
+watch(
+  ready,
+  now => {
+    if (now)
+      void localApps.enterInstalled().catch(() => toasts.push({ tone: 'danger', title: t('errors.actionFailed') }));
+  },
+  { immediate: true }
+);
 async function refreshInstalled() {
   try {
-    await library.refresh();
-    await library.loadStorage();
+    await localApps.scan(true);
   } catch {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed') });
   }
@@ -102,88 +323,206 @@ async function refreshInstalled() {
 </script>
 
 <template>
-  <div>
+  <div class="relative">
     <OnPageHeader
       :title="t('library.title')"
       :subtitle="
-        t(
-          'library.summary',
-          { count: library.items.length, size: formatBytes(totalBytes, { locale: appLocale }) },
-          { plural: library.items.length }
-        )
+        ready && localApps.loaded
+          ? t(
+              'library.summary',
+              { count: localApps.items.length, size: format(totalBytes) },
+              { plural: localApps.items.length }
+            )
+          : undefined
       "
     >
-      <template #actions>
-        <OnButton variant="secondary" icon="refresh-cw" :loading="library.refreshing" @click="refreshInstalled">
-          {{ t('library.refresh') }}
+      <template v-if="ready" #actions>
+        <OnButton variant="secondary" icon="refresh-cw" :loading="localApps.refreshing" @click="refreshInstalled">
+          {{ t('library.recalculate') }}
         </OnButton>
       </template>
     </OnPageHeader>
 
-    <div class="mb-16px flex flex-wrap items-center gap-14px">
-      <OnSearchField v-model="filter" class="ml-auto w-280px" :placeholder="t('library.filterPlaceholder')" clearable />
-    </div>
+    <!-- Homebrew's cache cleanup reports here whatever the permission. -->
+    <RunningTask v-if="tasks.running?.op === 'cleanup'" :task="tasks.running" class="mb-20px" />
 
-    <OnTable
-      v-if="rows.length"
-      v-model:sort="sort"
-      :columns="columns"
-      :rows="rows"
-      :row-key="item => packageKey(item.kind, item.token)"
-      :dimmed="item => !item.onRequest"
-      :caption="t('library.title')"
-      @row-click="(_, item) => router.push(`/package/cask/${item.token}`)"
-    >
-      <template #cell-name="{ row }">
-        <span class="flex min-w-0 items-center gap-10px">
-          <OnAppIcon v-bind="icon(row.kind, row.token)" :size="28" />
-          <span class="min-w-0">
-            <span class="block truncate text-13px font-600 text-ink-primary">{{
-              displayName(row.kind, row.token)
-            }}</span>
-            <span class="block truncate text-11.5px text-ink-tertiary">{{ secondary(row) }}</span>
+    <FullDiskAccessGate v-if="permissions.status && !ready" />
+    <template v-else-if="ready">
+      <div class="mb-14px flex flex-wrap items-center gap-10px">
+        <OnSegmented v-model="filters.source" :options="sources" :aria-label="t('library.sourceFilter')" />
+        <OnButton
+          variant="ghost"
+          size="sm"
+          icon="hourglass"
+          :class="filters.unusedOnly ? '!border-brand-coral !bg-accent-coral-subtle !text-brand-coral' : ''"
+          :aria-pressed="filters.unusedOnly"
+          :title="t('library.unusedHint', { days: UNUSED_DAYS })"
+          @click="filters.showUnused(!filters.unusedOnly)"
+        >
+          {{ t('library.unused') }}
+          <span class="tabular-nums opacity-80">{{ unusedCount }}</span>
+        </OnButton>
+        <OnSearchField
+          v-model="filters.query"
+          class="ml-auto w-220px"
+          :placeholder="t('library.filterPlaceholder')"
+          clearable
+        />
+      </div>
+
+      <FootprintScanProgress v-if="showProgress && localApps.scanProgress" :progress="localApps.scanProgress" />
+
+      <OnTable
+        v-if="rows.length"
+        v-model:sort="sort"
+        v-model:selected="selected"
+        layout="fixed"
+        selectable
+        :columns="columns"
+        :rows="rows"
+        :row-key="app => app.id"
+        :can-select="app => app.removable && !taskFor(app)"
+        :select-all-label="t('library.selectAll')"
+        :select-row-label="app => t('library.selectRow', { name: nameOf(app) })"
+        :dimmed="app => !app.removable"
+        :caption="t('library.title')"
+        @row-click="(_, app) => (sheetId = app.id)"
+      >
+        <template #cell-name="{ row }">
+          <span class="flex min-w-0 items-center gap-10px">
+            <OnAppIcon v-bind="localApp(row).icon" :size="32" />
+            <span class="min-w-0">
+              <button
+                type="button"
+                class="m-0 block max-w-full cursor-pointer truncate rounded-tiny border-none bg-transparent p-0 text-left font-sans text-13px font-600 text-ink-primary outline-none transition-colors duration-fast ease-standard underline-offset-3 hover:text-brand-coral hover:underline focus-visible:text-brand-coral focus-visible:shadow-focus-ring"
+                @click.stop="sheetId = row.id"
+              >
+                {{ nameOf(row) }}
+              </button>
+              <span class="flex min-w-0 items-center gap-4px text-11.5px text-ink-tertiary">
+                <template v-if="row.running">
+                  <span class="inline-flex shrink-0 items-center gap-4px text-status-success">
+                    <span class="h-6px w-6px rounded-full bg-status-success" aria-hidden="true"></span>
+                    {{ t('library.running') }}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                </template>
+                <span class="inline-flex shrink-0 items-center gap-5px">
+                  <span class="h-6px w-6px rounded-[2px]" :class="SOURCE_DOT[row.source]" aria-hidden="true"></span>
+                  {{ t(`library.sources.${row.source}`) }}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span class="truncate">{{
+                  row.protectedReason === 'self' ? t('library.self') : (row.cask ?? row.bundleId ?? row.path)
+                }}</span>
+              </span>
+            </span>
           </span>
-        </span>
-      </template>
-      <template #cell-version="{ row }">{{ formatVersion(row.actualVersion ?? row.installedVersion) }}</template>
-      <template #cell-size="{ row }">{{
-        row.sizeBytes === null ? '—' : formatBytes(row.sizeBytes, { locale: appLocale })
-      }}</template>
-      <template #cell-installedAt="{ row }">
-        {{ row.installedAt ? formatDate(row.installedAt, { locale: appLocale }) : '—' }}
-      </template>
-      <template #cell-status="{ row }">
-        <OnChip :tone="statusOf(row).tone" :icon="statusOf(row).icon" :dot="!statusOf(row).icon">{{
-          statusOf(row).label
-        }}</OnChip>
-      </template>
-      <template #cell-actions="{ row }">
-        <span @click.stop>
-          <OnMenu
-            :items="
-              menu.itemsFor(row.kind, row.token, { open: true, update: Boolean(updates.find(row.kind, row.token)) })
-            "
-            :label="t('package.actions.label')"
-            variant="ghost"
-            size="sm"
-            @select="key => select(row, key)"
-          />
-        </span>
-      </template>
-    </OnTable>
-    <OnEmpty
-      v-else-if="library.loaded"
-      :title="library.items.length ? t('library.emptyFiltered') : t('library.empty')"
-      icon="lucide:package"
-    />
+        </template>
+        <template #cell-version="{ row }">
+          <span class="block truncate" :title="row.version ?? undefined">{{
+            row.version ? formatVersion(row.version) : '—'
+          }}</span>
+        </template>
+        <template #cell-size="{ row }">
+          <span class="inline-flex max-w-full items-center justify-end gap-4px">
+            <!-- A failed refresh keeps the last value; the warning offers to measure again. -->
+            <span
+              v-if="localApps.occupiedBytes(row.id) !== null"
+              class="truncate"
+              :title="incomplete(row.id) ? partialNote : undefined"
+              >{{ incomplete(row.id) ? '≈ ' : '' }}{{ format(localApps.occupiedBytes(row.id)!) }}</span
+            >
+            <span v-else-if="!localApps.footprintErrors[row.id]">—</span>
+            <OnTooltip
+              v-if="localApps.footprintErrors[row.id]"
+              :content="`${footprintError(row.id)} · ${t('library.retryFootprint')}`"
+            >
+              <button
+                type="button"
+                class="inline-flex max-w-104px cursor-pointer items-center truncate border-none bg-transparent p-0 text-11px text-status-warning hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-coral"
+                :aria-label="`${footprintError(row.id)} · ${t('library.retryFootprint')}`"
+                data-testid="retry-footprint"
+                @click.stop="retryFootprint(row.id)"
+              >
+                <template v-if="localApps.occupiedBytes(row.id) === null">{{ footprintError(row.id) }}</template>
+                <OnIcon v-else name="triangle-alert" :size="12" />
+              </button>
+            </OnTooltip>
+          </span>
+        </template>
+        <template #cell-lastUsed="{ row }">
+          <span
+            :class="isUnused(row) ? 'text-status-warning' : ''"
+            :title="row.lastUsedAt === null ? undefined : formatDate(row.lastUsedAt, { locale: appLocale })"
+            >{{ lastUsed(row) }}</span
+          >
+        </template>
+        <template #cell-status="{ row }">
+          <!-- Long labels in some languages clip inside the cell instead of covering the menu column. -->
+          <span class="block overflow-hidden">
+            <OnChip
+              v-if="statusOf(row)"
+              :tone="statusOf(row)!.tone"
+              :icon="statusOf(row)!.icon"
+              :dot="!statusOf(row)!.icon && statusOf(row)!.tone !== 'info'"
+              :title="statusOf(row)!.title ?? statusOf(row)!.label"
+              >{{ statusOf(row)!.label }}</OnChip
+            >
+            <span v-else class="text-ink-disabled">—</span>
+          </span>
+        </template>
+        <template #cell-actions="{ row }">
+          <span @click.stop>
+            <OnMenu
+              :items="menu.itemsFor(row)"
+              :label="t('package.actions.label')"
+              variant="ghost"
+              size="sm"
+              @select="key => select(row, key)"
+            />
+          </span>
+        </template>
+      </OnTable>
+      <OnEmpty
+        v-else-if="localApps.loaded"
+        :title="localApps.items.length ? t('library.emptyFiltered') : t('library.empty')"
+        icon="lucide:package"
+      />
+      <div v-else class="flex flex-col gap-8px" role="status" :aria-label="t('common.loading')">
+        <OnSkeleton v-for="line in 8" :key="line" height="48px" radius="default" />
+      </div>
 
-    <UninstallConfirm
-      v-model:open="menu.uninstall.open"
-      v-model:zap="menu.uninstall.zap"
-      :kind="menu.uninstall.kind"
-      :token="menu.uninstall.token"
-      :name="menu.uninstall.name"
-      @confirm="menu.confirmUninstall"
-    />
+      <p class="m-0 mt-12px flex items-center gap-6px text-12px text-ink-disabled">
+        <OnIcon name="lock" :size="12" />{{ t('library.systemNote') }}
+      </p>
+
+      <div v-if="chosen.length" class="sticky bottom-12px z-sticky mt-14px">
+        <div
+          class="flex items-center gap-12px rounded-big border border-solid border-line-default bg-component-toast-bg px-12px py-10px shadow-toast backdrop-blur-[20px]"
+          role="region"
+          :aria-label="t('library.batch.selected', { count: chosen.length }, { plural: chosen.length })"
+        >
+          <span
+            class="grid h-26px min-w-26px place-items-center rounded-small bg-brand-coral px-6px text-13px font-700 text-ink-on-accent"
+            >{{ chosen.length }}</span
+          >
+          <span class="min-w-0 flex-1">
+            <span class="block text-13px font-600 text-ink-primary">{{
+              t('library.batch.selected', { count: chosen.length }, { plural: chosen.length })
+            }}</span>
+            <span class="block truncate text-12px text-ink-tertiary">{{
+              t('library.batch.size', { size: format(chosenBytes) })
+            }}</span>
+          </span>
+          <OnButton variant="ghost" size="sm" @click="selected = []">{{ t('library.batch.clear') }}</OnButton>
+          <OnButton variant="danger" size="sm" icon="trash" @click="uninstallSelected">{{
+            t('library.batch.uninstall', { count: chosen.length }, { plural: chosen.length })
+          }}</OnButton>
+        </div>
+      </div>
+    </template>
+
+    <AppInfoSheet v-model:open="sheetOpen" :app="sheetApp" @uninstall="uninstallFromSheet" @detail="openDetail" />
   </div>
 </template>

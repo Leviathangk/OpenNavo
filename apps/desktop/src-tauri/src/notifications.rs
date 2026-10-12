@@ -186,7 +186,6 @@ impl NativeNotifications {
         })
     }
     pub fn send(&self, notice: Notice, locale: Locale) -> Result<(), AppError> {
-        use tauri_plugin_notification::NotificationExt;
         if let Notice::TaskFinished(task) = notice {
             let Some(core) = self.app.try_state::<Arc<crate::core::DesktopCore>>() else {
                 return Ok(());
@@ -213,6 +212,18 @@ impl NativeNotifications {
             crate::tray::refresh(&self.app);
             return Ok(());
         };
+        self.deliver(title, body, "/updates")
+    }
+    pub fn monitor(
+        &self,
+        issue: &crate::monitor::types::HealthIssue,
+        locale: Locale,
+    ) -> Result<(), AppError> {
+        let (title, body) = crate::monitor::alerts::content(issue, locale)?;
+        self.deliver(title, body, crate::monitor::alerts::route(issue.key))
+    }
+    fn deliver(&self, title: String, body: String, route: &'static str) -> Result<(), AppError> {
+        use tauri_plugin_notification::NotificationExt;
         if !self.permission_requested.swap(true, Ordering::AcqRel) {
             self.app
                 .notification()
@@ -244,14 +255,13 @@ impl NativeNotifications {
                         Ok(mac_notification_sys::NotificationResponse::Click
                             | mac_notification_sys::NotificationResponse::ActionButton(_))
                     )
-                    && let Some(router) = app.try_state::<Arc<crate::deeplink::Router>>()
                 {
-                    router.navigate("/updates");
+                    crate::tray::navigate(&app, route);
                 }
             }
             #[cfg(not(target_os = "macos"))]
             {
-                let _ = stopped;
+                let _ = (stopped, route);
                 let _ = app.notification().builder().title(title).body(body).show();
             }
         })

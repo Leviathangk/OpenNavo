@@ -218,7 +218,10 @@ describe('Local custom download mirrors', () => {
   it('Blocks checking and saving an API URL with a query before IPC', async () => {
     await setup();
     const probe = vi.spyOn(commands, 'mirrorProbe');
-    const wrapper = mount(CustomMirrorForm, { props: { saving: false }, global: { plugins: [i18n] } });
+    const wrapper = mount(CustomMirrorForm, {
+      props: { saving: false },
+      global: { plugins: [i18n] }
+    });
     await wrapper.findAll('input')[0]!.setValue('Local');
     await wrapper.findAll('input')[1]!.setValue('https://mirror.example/api?channel=stable');
     await wrapper
@@ -283,7 +286,11 @@ describe('Local custom download mirrors', () => {
     expect(radios().find(item => item.textContent?.includes('My mirror'))?.textContent).toContain('仅本机');
     await store.load();
     expect(store.value!.customMirrors).toEqual([saved]);
-    await store.saveCustomMirror({ ...saved, name: 'Renamed', apiDomain: 'https://new.example/api' });
+    await store.saveCustomMirror({
+      ...saved,
+      name: 'Renamed',
+      apiDomain: 'https://new.example/api'
+    });
     expect(store.value!.mirror.apiDomain).toBe('https://new.example/api');
     await store.removeCustomMirror(saved.key);
     expect(store.value!.customMirrors).toEqual([]);
@@ -370,7 +377,10 @@ describe('Custom sources with unavailable built-in configuration', () => {
 
   it('Discards a completed probe if its addresses changed during the request', async () => {
     await setup();
-    const wrapper = mount(CustomMirrorForm, { props: { saving: false }, global: { plugins: [i18n] } });
+    const wrapper = mount(CustomMirrorForm, {
+      props: { saving: false },
+      global: { plugins: [i18n] }
+    });
     await wrapper.findAll('input')[0]!.setValue('Local');
     await wrapper.findAll('input')[1]!.setValue('https://local.example/api');
     let finish!: (value: Awaited<ReturnType<typeof commands.mirrorProbe>>) => void;

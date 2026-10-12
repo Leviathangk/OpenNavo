@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { OnButton, OnModal } from '@opennavo/ui';
 import type { Task } from '@/ipc/bindings';
@@ -12,8 +12,20 @@ const { t } = useI18n();
 const tasks = useTasksStore();
 const startedAt = performance.timeOrigin;
 
-const restored = ref<Task[]>(tasks.queued.filter(task => task.createdAt < startedAt));
-const open = ref(restored.value.length > 0);
+const restored = ref<Task[]>([]);
+const open = ref(false);
+// Startup loads the task list without blocking the first frame; decide once, when it has arrived.
+let decided = false;
+watch(
+  () => tasks.loaded,
+  loaded => {
+    if (!loaded || decided) return;
+    decided = true;
+    restored.value = tasks.queued.filter(task => task.createdAt < startedAt);
+    open.value = restored.value.length > 0;
+  },
+  { immediate: true }
+);
 const working = ref(false);
 const count = computed(() => restored.value.length);
 

@@ -12,6 +12,7 @@ import OnMenu from '../src/components/OnMenu.vue';
 import OnModal from '../src/components/OnModal.vue';
 import OnSheet from '../src/components/OnSheet.vue';
 import OnToastRegion from '../src/components/OnToastRegion.vue';
+import { moveFocus, usingKeyboard } from '../src/composables/overlay';
 import { createToastQueue } from '../src/composables/toast';
 import { withLocale } from './helpers';
 
@@ -190,6 +191,55 @@ describe('OnSheet', () => {
   });
 });
 
+describe('Focus ring after script focus', () => {
+  const pointer = () => document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+
+  it('Rings the first control only when the user opened the sheet by keyboard, not when the app or a pointer did', async () => {
+    const calls: [string | null, FocusOptions | undefined][] = [];
+    const original = HTMLElement.prototype.focus;
+    const spy = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function (this: HTMLElement, options) {
+      calls.push([this.getAttribute('aria-label'), options]);
+      original.call(this, options);
+    });
+    const sheet = track(mount(OnSheet, { props: { open: false, title: '传感器' }, attachTo: document.body }));
+    // WebKit rings script focus that no click in this document preceded, e.g. a sheet opened from the menu bar popover.
+    pointer();
+    await sheet.setProps({ open: true });
+    await settle();
+    expect(calls.at(-1)).toEqual(['关闭', { focusVisible: false }]);
+
+    key(document.activeElement, { key: 'Escape' });
+    await sheet.setProps({ open: false });
+    await settle();
+    await sheet.setProps({ open: true });
+    await settle();
+    expect(calls.at(-1)).toEqual(['关闭', undefined]);
+    spy.mockRestore();
+  });
+
+  it('Leaves text fields showing focus however it arrives', () => {
+    pointer();
+    const input = document.createElement('input');
+    const button = document.createElement('button');
+    document.body.append(input, button);
+    const inputFocus = vi.spyOn(input, 'focus');
+    const buttonFocus = vi.spyOn(button, 'focus');
+    moveFocus(input);
+    moveFocus(button);
+    expect(inputFocus).toHaveBeenCalledWith();
+    expect(buttonFocus).toHaveBeenCalledWith({ focusVisible: false });
+  });
+
+  it('Treats shortcuts and bare modifiers as not navigating by keyboard', () => {
+    pointer();
+    key(document.body, { key: 'k', metaKey: true });
+    key(document.body, { key: 'Shift', shiftKey: true });
+    expect(usingKeyboard()).toBe(false);
+    key(document.body, { key: 'Tab', shiftKey: true });
+    expect(usingKeyboard()).toBe(true);
+  });
+});
+
 describe('OnToastRegion', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -274,16 +324,20 @@ describe('OnMenu', () => {
 
   const menu = () => document.body.querySelector<HTMLElement>('[role="menu"]');
 
-  it('Opens and focuses the first item on click, cycles past disabled items, then closes and restores focus after selection', async () => {
+  it('Opens on click without preselecting an item, cycles past disabled items, then closes and restores focus after selection', async () => {
     const wrapper = track(mount(OnMenu, { props: { items }, attachTo: document.body }));
     const trigger = wrapper.get('button');
     expect(trigger.attributes('aria-label')).toBe('更多操作');
+    await trigger.trigger('pointerdown');
     await trigger.trigger('click');
     await nextTick();
     expect(trigger.attributes('aria-expanded')).toBe('true');
     expect(menu()?.querySelectorAll('[role="separator"]')).toHaveLength(1);
-    expect(document.activeElement?.textContent).toContain('在访达中显示');
+    // Like native menus, a pointer open highlights nothing until hover or arrows.
+    expect(document.activeElement).toBe(menu());
 
+    key(document.activeElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('在访达中显示');
     key(document.activeElement, { key: 'ArrowDown' });
     expect(document.activeElement?.textContent).toContain('复制安装命令');
     key(document.activeElement, { key: 'ArrowDown' });
@@ -301,6 +355,15 @@ describe('OnMenu', () => {
     expect(document.activeElement).toBe(trigger.element);
   });
 
+  it('Keyboard opens select the first item', async () => {
+    const wrapper = track(mount(OnMenu, { props: { items }, attachTo: document.body }));
+    const trigger = wrapper.get('button');
+    await trigger.trigger('keydown', { key: 'Enter' });
+    await trigger.trigger('click');
+    await nextTick();
+    expect(document.activeElement?.textContent).toContain('在访达中显示');
+  });
+
   it('Focuses menu items only after positioning makes the menu visible, since browsers cannot focus visibility-hidden elements', async () => {
     const states: string[] = [];
     const original = HTMLElement.prototype.focus;
@@ -310,7 +373,7 @@ describe('OnMenu', () => {
       original.call(this, options);
     });
     const wrapper = track(mount(OnMenu, { props: { items }, attachTo: document.body }));
-    await wrapper.get('button').trigger('click');
+    await wrapper.get('button').trigger('keydown', { key: 'ArrowDown' });
     await settle();
     spy.mockRestore();
     expect(states).toEqual(['']);
@@ -450,6 +513,7 @@ describe('OnMenu custom triggers', () => {
     mounted.push(wrapper);
     const trigger = wrapper.get('button.get');
     expect(trigger.attributes('aria-haspopup')).toBe('menu');
+    await trigger.trigger('keydown', { key: 'Enter' });
     await trigger.trigger('click');
     await settle();
     expect(trigger.attributes('aria-expanded')).toBe('true');

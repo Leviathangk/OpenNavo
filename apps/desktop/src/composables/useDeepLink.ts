@@ -23,7 +23,11 @@ function readPending(): DeepLinkEvent | null {
       (value.action === null || value.action === 'install') &&
       (/^\/package\/(cask|formula)\/[a-z0-9][a-z0-9+@._-]{0,127}$/.test(value.route) ||
         /^\/collection\/[a-z0-9][a-z0-9-]{0,63}$/.test(value.route) ||
-        ((value.route.startsWith('/search?q=') || value.route === '/updates') && value.action === null))
+        ((value.route.startsWith('/search?q=') ||
+          value.route === '/updates' ||
+          /^\/monitor(\?detail=(cpu|gpu|memory|disk|network|battery|sensors|fans))?$/.test(value.route) ||
+          value.route === '/settings/monitor') &&
+          value.action === null))
     ) {
       return { route: value.route, url: value.url, action: value.action };
     }

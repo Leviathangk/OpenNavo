@@ -13,7 +13,10 @@
     "updates": "Actualizaciones",
     "history": "Historial de actualizaciones",
     "settings": "Ajustes",
-    "updatesBadge": "{count} actualización disponible | {count} actualizaciones disponibles"
+    "updatesBadge": "{count} actualización disponible | {count} actualizaciones disponibles",
+    "cleanup": "Limpieza",
+    "cleanupBadge": "{count} elemento en segundo plano huérfano sigue cargándose | {count} elementos en segundo plano huérfanos siguen cargándose",
+    "monitor": "Monitor"
   },
   "env": {
     "label": "Homebrew",
@@ -208,7 +211,7 @@
       "brewSync": "≈ sincronizado",
       "brewLater": "{time} más tarde",
       "brewEarlier": "{time} antes",
-      "brewHint": "{earlier} de {compared} anteriores a la versión upstream",
+      "brewHint": "{earlier}/{compared} anteriores a la versión upstream",
       "lagMinutes": "{n} min",
       "lagHours": "{n} h",
       "lagDays": "{n} día | {n} días",
@@ -325,12 +328,6 @@
       "copyCommand": "Copiar comando de brew",
       "web": "Ver en la web"
     },
-    "uninstallConfirm": {
-      "title": "¿Desinstalar {name}?",
-      "description": "Se ejecutará {command}.",
-      "zap": "Eliminar también los datos de la app (--zap)",
-      "confirm": "Desinstalar"
-    },
     "commandCopied": "Comando de brew copiado",
     "offline": "Las capturas y más información estarán disponibles cuando te conectes a Internet",
     "notFound": "Este paquete no está en el catálogo local",
@@ -339,19 +336,30 @@
   },
   "library": {
     "title": "Instaladas",
-    "summary": "{count} elemento · {size} | {count} elementos · {size}",
+    "summary": "{count} app · {size} | {count} apps · {size}",
     "summaryCount": "{count} elemento | {count} elementos",
-    "filterPlaceholder": "Filtrar apps instaladas…",
+    "filterPlaceholder": "Filtrar por nombre o Bundle ID…",
+    "scanProgress": {
+      "running": "Calculando espacio usado",
+      "done": "Cálculo completado",
+      "partial": "Completado con errores",
+      "completed": "Completados {completed} / {total}",
+      "scope": "Aplicación, datos y caché",
+      "retrying": "{count} pendientes de reintento",
+      "failed": "{count} errores; motivos en la lista"
+    },
+    "retryFootprint": "Haz clic para recalcular el espacio de esta aplicación",
+    "recalculate": "Recalcular espacio usado",
     "refresh": "Actualizar",
-    "empty": "Aún no has instalado ningún software mediante Homebrew",
+    "empty": "No hay apps para desinstalar",
     "emptyFiltered": "Ningún elemento coincide con los criterios",
     "columns": {
       "name": "Nombre",
       "version": "Versión",
-      "size": "Tamaño",
-      "installedAt": "Instalado",
+      "size": "Espacio usado",
       "status": "Estado",
-      "actions": "Acciones"
+      "actions": "Acciones",
+      "lastUsed": "Último uso"
     },
     "status": {
       "installed": "Instaladas",
@@ -362,25 +370,23 @@
       "running": "Actualizando {percent}",
       "runningUnknown": "Procesando",
       "queued": "En cola",
-      "unknown": "Desconocido"
+      "unknown": "Desconocido",
+      "uninstalling": "Desinstalando {percent}",
+      "protected": "Esta app",
+      "managed": "Gestionada",
+      "adoptable": "Adoptable"
     },
-    "dependency": "Dependencia · Usado por {names}",
     "storage": {
       "title": "Almacenamiento",
       "total": "Total: {size}",
       "caption": "Espacio en disco",
-      "apps": "Apps",
-      "cache": "Caché de descargas"
-    },
-    "cleanup": {
-      "title": "Borrar caché",
-      "description": "Versiones antiguas y caché de descargas; equivale a brew cleanup.",
-      "button": "Liberar {size}",
-      "none": "No hay caché que se pueda borrar"
+      "cache": "Caché de descargas",
+      "homebrew": "Homebrew",
+      "others": "Otras apps"
     },
     "backup": {
       "title": "Copia de seguridad y migración",
-      "description": "Exporta todos los paquetes a un Brewfile y restáuralos con un clic en tu nuevo Mac.",
+      "description": "Exporta tus apps de Homebrew a un Brewfile y restáuralas en un Mac nuevo en un solo paso.",
       "export": "Exportar",
       "restore": "Restaurar",
       "exported": "{count} paquete exportado | {count} paquetes exportados"
@@ -404,6 +410,41 @@
       "warnings": "{count} advertencia | {count} advertencias",
       "run": "Ejecutar comprobación",
       "running": "Comprobando…"
+    },
+    "adoptableHint": "Homebrew tiene esta app. Adóptala para actualizarla desde OpenNavo.",
+    "sources": {
+      "all": "Todas",
+      "homebrew": "Homebrew",
+      "app_store": "App Store",
+      "other": "Otras",
+      "direct": "Instalada manualmente",
+      "pkg": "Instalador PKG"
+    },
+    "sourceFilter": "Filtrar por origen",
+    "unused": "Sin usar",
+    "unusedHint": "Sin abrir desde hace más de {days} días",
+    "running": "Abierta",
+    "self": "La app que estás usando",
+    "systemNote": "Las apps integradas, como Safari y Mail, están protegidas por macOS y no aparecen aquí.",
+    "selectAll": "Seleccionar todo",
+    "selectRow": "Seleccionar {name}",
+    "batch": {
+      "selected": "{count} app seleccionada | {count} apps seleccionadas",
+      "size": "Las apps ocupan {size} · los archivos relacionados se buscan en el siguiente paso",
+      "clear": "Quitar selección",
+      "uninstall": "Desinstalar seleccionadas"
+    },
+    "menu": {
+      "info": "Mostrar información",
+      "adopt": "Adoptar con Homebrew",
+      "detail": "Ver en OpenNavo"
+    },
+    "unusedCard": {
+      "title": "Apps sin usar",
+      "description": "{count} app no se abre desde hace más de {days} días y ocupa {size}. | {count} apps no se abren desde hace más de {days} días y ocupan {size}.",
+      "show": "Mostrar solo estas apps",
+      "all": "Mostrar todas las apps",
+      "none": "Todas las apps se abrieron en los últimos {days} días."
     }
   },
   "updates": {
@@ -424,6 +465,7 @@
     "emptyHint": "Las nuevas versiones aparecerán aquí",
     "queued": "{count} añadido a la cola | {count} añadidos a la cola",
     "history": {
+      "recheck": "Revisar de nuevo",
       "title": "Historial de actualizaciones",
       "subtitle": "Este Mac · {count} en los últimos 30 días | Este Mac · {count} en los últimos 30 días",
       "filterLabel": "Resultado",
@@ -434,6 +476,8 @@
       "yesterday": "Ayer · {date}",
       "viewLog": "Ver registro",
       "retry": "Reintentar",
+      "undo": "Deshacer",
+      "purge": "Eliminar definitivamente",
       "canceled": "Cancelado",
       "batch": "{action} {count} {kind} | {action} {count} {kind}",
       "empty": "Aún no hay historial de actualizaciones"
@@ -491,7 +535,9 @@
       "mirrors": "Fuente de descarga",
       "homebrew": "Homebrew",
       "privacy": "Privacidad",
-      "about": "Acerca de"
+      "about": "Acerca de",
+      "cleanup": "Limpieza",
+      "monitor": "Monitor del sistema"
     },
     "general": {
       "followSystem": "Seguir el sistema (actual: {language})",
@@ -502,13 +548,16 @@
       "keepInMenuBar": "Mantener en la barra de menús al cerrar la ventana",
       "trayShowCount": "Mostrar en la barra de menús el número de actualizaciones disponibles",
       "notifyUpdates": "Notificar cuando haya actualizaciones disponibles",
-      "zapByDefault": "Eliminar también los datos de la app por defecto al desinstalar",
-      "zapByDefaultHint": "Equivale a brew uninstall --zap",
+      "zapByDefault": "Limpiar archivos relacionados al desinstalar",
+      "zapByDefaultHint": "Los datos de la app, cachés, preferencias y más se muestran para que los confirmes antes",
       "updates": "Buscar actualizaciones",
       "autoCheck": "Comprobar actualizaciones automáticamente cada día",
       "checkTime": "Hora de comprobación",
       "runBrewUpdate": "Actualizar el índice de Homebrew antes de comprobar",
-      "runBrewUpdateHint": "brew update"
+      "runBrewUpdateHint": "brew update",
+      "uninstall": "Desinstalación",
+      "deleteMode": "Eliminación",
+      "deleteModeHint": "Mover a la Papelera se puede deshacer; eliminar libera espacio al instante"
     },
     "mirrors": {
       "title": "Fuente de descarga",
@@ -642,7 +691,7 @@
       "waiting": "Esperando…",
       "granted": "Activado",
       "confirm": "Ya lo he activado",
-      "startHint": "Activa Gestión de apps para empezar.",
+      "startHint": "Activa Gestión de apps y el acceso total al disco para empezar.",
       "appManagement": {
         "title": "Permite que OpenNavo gestione apps",
         "body": "Necesaria para actualizar y desinstalar apps.",
@@ -650,7 +699,7 @@
       },
       "fullDiskAccess": {
         "title": "Acceso total al disco",
-        "body": "Necesario para eliminar los datos de las apps al desinstalarlas. Puedes activarlo más tarde.",
+        "body": "Necesario para ver cuánto ocupan las apps, desinstalarlas y deshacer desde la Papelera.",
         "enable": "Activar Acceso total al disco"
       }
     },
@@ -693,11 +742,19 @@
       "retry": "Reintentar",
       "retryAll": "Reintentar todo",
       "later": "Más tarde"
-    },
-    "uninstall": {
-      "title": "Para eliminar los datos de las apps se necesita Acceso total al disco",
-      "body": "Actívalo antes de desinstalar o desmarca la opción para eliminar solo la app."
     }
+  },
+  "fullDiskGate": {
+    "title": "Primero activa el acceso total al disco",
+    "body": "Instaladas lee los datos de cada app en tu Biblioteca para medir el espacio que ocupa de verdad, encontrar todo lo que dejaría una desinstalación y poder deshacerla desde la Papelera.",
+    "points": {
+      "footprint": "El espacio real de cada app, incluidos sus datos y cachés",
+      "leftovers": "Todos los archivos relacionados al desinstalar, incluidos los contenedores y los contenedores de grupo",
+      "undo": "Deshacer una desinstalación desde la Papelera"
+    },
+    "row": "Permite OpenNavo en Ajustes del Sistema y esta página continuará por sí sola.",
+    "unknown": "macOS no informó del estado del permiso. Si ya está activado:",
+    "privacy": "Todo se lee en este Mac; no se sube ningún archivo ni ruta."
   },
   "deeplink": {
     "installTitle": "¿Instalar {name}?",
@@ -761,7 +818,8 @@
     "downloadingUnknown": "Descargando actualización…",
     "installFailed": "Error de descarga o instalación. Inténtalo de nuevo.",
     "viewUpdate": "Ver actualización",
-    "previewHint": "Vista previa de desarrollo: versión y notas de ejemplo; instalación desactivada.",
+    "previewHint": "Vista previa de desarrollo: simula la descarga y la instalación, pero no actualiza nada. Reiniciar solo cierra la vista previa; puedes volver a abrirla.",
+    "previewNotes": "- Las colecciones destacadas usan un diseño más compacto para mostrar más apps\n- OpenNavo ahora busca nuevas versiones automáticamente cada día\n- Corrige problemas conocidos y mejora la experiencia",
     "previewFailure": "Simular fallo de descarga"
   },
   "palette": {
@@ -789,7 +847,9 @@
       "unpin": "Desfijar versión",
       "cleanup": "Borrar caché",
       "update": "Actualizar Homebrew",
-      "install_homebrew": "Instalar Homebrew"
+      "install_homebrew": "Instalar Homebrew",
+      "remove_leftovers": "Limpiar residuos",
+      "clean": "Limpieza del Mac"
     },
     "running": {
       "install": "Instalando {name}",
@@ -800,28 +860,30 @@
       "unpin": "Desfijando {name}",
       "cleanup": "Limpiando la caché",
       "update": "Actualizando Homebrew",
-      "install_homebrew": "Instalando Homebrew"
+      "install_homebrew": "Instalando Homebrew",
+      "remove_leftovers": "Limpiando residuos: {name}",
+      "clean": "Limpiando el Mac"
     },
     "phases": {
       "preparing": "Preparando",
       "fetching": "Obteniendo información",
       "downloading": "Descargando",
-      "installing": "Instalar",
-      "linking": "Apps de macOS incluidas en Homebrew, con descripciones en chino e historial de versiones. Explora por instalaciones, fecha de actualización o nombre.",
-      "cleaning": "Actualizar índice",
-      "uninstalling": "Desinstalar",
-      "updating": "Completado",
+      "installing": "Instalando",
+      "linking": "Enlazando",
+      "cleaning": "Limpiando",
+      "uninstalling": "Desinstalando",
+      "updating": "Actualizando el índice",
       "finishing": "Completado"
     },
     "step": "Paso {index} de {count}: {phase} | Paso {index} de {count}: {phase}",
     "remaining": "Quedan aproximadamente {time}",
     "queue": "En cola",
-    "oneAtATime": "Manual",
+    "oneAtATime": "brew ejecuta una tarea a la vez",
     "triggers": {
-      "manual": "Automático",
-      "schedule": "Web",
-      "deeplink": "Lote",
-      "bundle": "Más populares",
+      "manual": "Manual",
+      "schedule": "Automático",
+      "deeplink": "Web",
+      "bundle": "En lote",
       "retry": "Reintentar"
     },
     "succeeded": "{action} de {name} completada",
@@ -849,7 +911,23 @@
     "E_INTERRUPTED": "Tarea interrumpida",
     "E_TIMEOUT": "Sin respuesta durante demasiado tiempo",
     "E_UNKNOWN": "Error en la operación. Puedes consultar el registro",
-    "E_NETWORK": "No se puede conectar con el servicio de OpenNavo"
+    "E_NETWORK": "No se puede conectar con el servicio de OpenNavo",
+    "E_PROTECTED": "Esta app está protegida y no se puede desinstalar",
+    "E_APP_MANAGEMENT": "Primero permite que OpenNavo gestione apps",
+    "E_UNINSTALL_INCOMPLETE": "La aplicación sigue existiendo. La desinstalación no se completó; revisa el registro e inténtalo de nuevo.",
+    "E_PLAN_EXPIRED": "Los archivos cambiaron. Vuelve a analizar.",
+    "E_SCAN_CANCELED": "Análisis cancelado",
+    "E_RESTORE_UNAVAILABLE": "Algunos archivos ya no están en la Papelera y no se pudieron restaurar",
+    "E_TRASH_FAILED": "No se pudo mover a la Papelera",
+    "E_MONITOR_UNAVAILABLE": "No se ha podido leer la información del sistema de este Mac",
+    "E_FAN_UNSUPPORTED": "El chip de este Mac no admite el control de ventiladores",
+    "E_FAN_HELPER_NOT_ENABLED": "El asistente de ventiladores aún no está instalado o permitido",
+    "E_FAN_HELPER_UNSIGNED": "Esta copia de OpenNavo no está firmada (por ejemplo, una versión de desarrollo), así que no puede instalar el asistente de ventiladores. Usa el instalador oficial",
+    "E_FAN_HELPER_UNAVAILABLE": "No se ha podido conectar con el asistente de ventiladores. Inténtalo más tarde",
+    "E_FAN_WRITE_FAILED": "No se ha podido cambiar el ajuste del ventilador",
+    "E_FAN_NO_MANUAL_SPEED": "Aún no hay una velocidad manual anterior",
+    "E_FAN_UNAUTHORIZED": "El asistente de ventiladores no ha superado la comprobación de firma. Vuelve a instalar OpenNavo",
+    "E_FAN_SENSOR_UNAVAILABLE": "No se puede leer la temperatura, así que el control manual se bloquea por seguridad"
   },
   "installConfirm": {
     "title": "¿Adoptar la app existente {name}?",
@@ -897,5 +975,750 @@
     "copy": "Copiar Brewfile",
     "exported": "Brewfile exportado",
     "installTitle": "Instalar apps de mi lista"
+  },
+  "appInfo": {
+    "title": "Información",
+    "open": "Abrir",
+    "reveal": "Mostrar en Finder",
+    "detail": "Ver en OpenNavo",
+    "adoptTitle": "Deja que Homebrew la gestione",
+    "adoptBody": "Homebrew tiene {name}. Adóptala para actualizarla con un clic en OpenNavo y desinstalarla con reglas de limpieza más completas.",
+    "adopt": "Adoptar con Homebrew",
+    "footprint": "Almacenamiento",
+    "estimate": "Estimado",
+    "footprintCaption": "Desglose del almacenamiento",
+    "appBytes": "App",
+    "dataBytes": "Datos de la app",
+    "cacheBytes": "Cachés",
+    "footprintIncomplete": "Sin acceso total al disco, algunos datos no se cuentan.",
+    "footprintPartial": "Algunos archivos no se pudieron leer, así que el total real puede ser mayor.",
+    "fields": {
+      "path": "Ubicación",
+      "bundleId": "Bundle ID",
+      "version": "Versión",
+      "vendor": "Desarrollador",
+      "arch": "Arquitectura",
+      "source": "Origen",
+      "installedAt": "Instalada",
+      "lastUsed": "Último uso"
+    },
+    "arch": {
+      "arm64": "Apple silicon",
+      "x86_64": "Intel",
+      "universal": "Universal"
+    },
+    "protected": {
+      "self": "OpenNavo no puede desinstalarse a sí misma. Muévela a la Papelera desde Finder.",
+      "system": "Forma parte de macOS y no se puede desinstalar.",
+      "managed": "Tu administrador gestiona esta app, así que no se puede desinstalar aquí."
+    },
+    "uninstall": "Desinstalar…",
+    "unknown": "Desconocido"
+  },
+  "uninstall": {
+    "title": "¿Desinstalar {name}?",
+    "titleMany": "¿Desinstalar {count} app? | ¿Desinstalar {count} apps?",
+    "runningTitle": "Desinstalando {name}",
+    "runningTitleMany": "Desinstalando {count} app | Desinstalando {count} apps",
+    "doneTitle": "Desinstalación completada",
+    "failedTitle": "El análisis no terminó",
+    "command": "Se ejecutará {command} y luego se eliminarán los archivos relacionados marcados abajo.",
+    "scanning": "Buscando archivos relacionados…",
+    "checked": "{checked} de {total} ubicaciones revisadas",
+    "selection": "{selected} de {total} seleccionados · {size}",
+    "admin": "{count} elemento requiere tu contraseña | {count} elementos requieren tu contraseña",
+    "sharedKept": "{count} elemento compartido se conserva | {count} elementos compartidos se conservan",
+    "selectAll": "Seleccionar todo",
+    "onlyApp": "Solo la app",
+    "recommended": "Sugerido",
+    "groups": {
+      "app": "App",
+      "app_data": "Datos de la app",
+      "caches": "Cachés",
+      "preferences": "Preferencias y estado de ventanas",
+      "logs": "Registros e informes de fallos",
+      "background": "Elementos en segundo plano",
+      "cli": "Enlaces de línea de comandos",
+      "plugins": "Plug-ins, controladores y extensiones",
+      "receipts": "Recibos de instalación",
+      "maybe": "Posiblemente relacionado · revísalo"
+    },
+    "groupHints": {
+      "app_data": "Application Support · Containers · Group Containers",
+      "caches": "Caches · HTTPStorages · Archivos temporales",
+      "preferences": "Preferences · Saved Application State · Cookies",
+      "logs": "Logs · DiagnosticReports",
+      "background": "LaunchAgents · LaunchDaemons · Asistentes privilegiados",
+      "cli": "Enlaces simbólicos que apuntan a la app",
+      "plugins": "Internet Plug-Ins · Audio · Componentes compartidos",
+      "receipts": "Recibos de pkgutil",
+      "maybe": "Solo el nombre se parece, por eso no se marcan"
+    },
+    "itemCount": "{count} elemento | {count} elementos",
+    "unselected": "Ninguno · {size}",
+    "files": "{count} archivo | {count} archivos",
+    "link": "Enlace",
+    "reveal": "Mostrar en Finder",
+    "required": "Siempre se elimina",
+    "adminHint": "Está en una carpeta del sistema; se necesita la contraseña de administrador",
+    "shared": "Compartido",
+    "sharedWith": "También lo usa {names}, así que se conserva por defecto",
+    "reasons": {
+      "app_bundle": "App",
+      "brew_uninstall": "Paso de Homebrew",
+      "zap_rule": "Regla de Homebrew",
+      "bundle_id": "Bundle ID",
+      "app_group": "App Group",
+      "launchd": "Servicio en segundo plano",
+      "symlink": "Apunta a la app",
+      "pkg_receipt": "Recibo de instalación",
+      "team_id": "Mismo desarrollador",
+      "name_exact": "Mismo nombre",
+      "name_similar": "Nombre parecido"
+    },
+    "reasonHints": {
+      "app_bundle": "La propia app",
+      "brew_uninstall": "brew uninstall siempre lo gestiona, así que no se puede desmarcar",
+      "zap_rule": "De la lista zap de Homebrew Cask, mantenida por personas",
+      "bundle_id": "Con el nombre del Bundle ID de la app o de uno de sus componentes",
+      "app_group": "Contenedor compartido declarado en la firma de la app",
+      "launchd": "Una configuración de launchd ejecuta un programa de esta app",
+      "symlink": "El enlace apunta a la app y deja de funcionar al eliminarla",
+      "pkg_receipt": "Los registros de pkgutil muestran que lo escribió el instalador de la app",
+      "team_id": "Carpeta del desarrollador con el mismo Team ID de firma",
+      "name_exact": "El nombre de la carpeta coincide exactamente con el de la app",
+      "name_similar": "Solo el nombre se parece, por eso no se marca"
+    },
+    "phases": {
+      "preparing": "Cerrando la app",
+      "uninstalling": "Eliminando la app",
+      "cleaning": "Eliminando archivos relacionados",
+      "finishing": "Registrando"
+    },
+    "notices": {
+      "rescanned": "Los archivos cambiaron, así que OpenNavo volvió a analizar.",
+      "appManagement": "Primero permite que OpenNavo gestione apps. Es necesario para eliminar apps no instaladas con Homebrew.",
+      "incomplete": "Sin acceso total al disco no se pudo revisar {count} ubicación: {paths}. Actívalo para limpiar a fondo. | Sin acceso total al disco no se pudieron revisar {count} ubicaciones: {paths}. Actívalo para limpiar a fondo.",
+      "running": "{names} está abierta y se cerrará antes de desinstalar. | {names} están abiertas y se cerrarán antes de desinstalar.",
+      "brewSudo": "Los pasos de desinstalación de Homebrew pueden pedir la contraseña de administrador por separado.",
+      "personal": {
+        "chat_history": "Los datos de {name} contienen historial de chats, imágenes y archivos (unos {size}). Haz una copia en la app antes si quieres conservarlos.",
+        "documents": "Los datos de {name} contienen tus documentos y proyectos (unos {size}). Guárdalos o expórtalos antes si quieres conservarlos.",
+        "media": "Los datos de {name} contienen fotos, audio o vídeo (unos {size}). Expórtalos antes si quieres conservarlos.",
+        "browser_profile": "Los datos de {name} contienen marcadores, historial y extensiones (unos {size}). Si iniciaste sesión, se sincronizarán al reinstalar.",
+        "vm_disk": "Los datos de {name} contienen discos de máquinas virtuales, imágenes y volúmenes (unos {size}). Habrá que descargarlos de nuevo tras eliminarlos.",
+        "other": "Los datos de {name} pueden contener contenido personal (unos {size}). Haz una copia antes si quieres conservarlo."
+      },
+      "uninstaller": "{name} tiene un desinstalador oficial que también elimina sus licencias y componentes compartidos.",
+      "siblings": "También se desinstala lo siguiente del mismo paquete de Homebrew ({cask}): {names}."
+    },
+    "mode": {
+      "label": "Eliminación",
+      "trash": "Mover a la Papelera",
+      "delete": "Eliminar ya",
+      "deleteWarning": "Eliminar no se puede deshacer"
+    },
+    "confirm": "Desinstalar",
+    "confirmClean": "Desinstalar y limpiar · {size}",
+    "confirmDelete": "Desinstalar y eliminar · {size}",
+    "confirmMany": "Desinstalar {count} app · {size} | Desinstalar {count} apps · {size}",
+    "cancel": "Cancelar",
+    "retry": "Volver a analizar",
+    "scanFailed": "El análisis no terminó: {reason}",
+    "background": "Continuar en segundo plano",
+    "backgroundHint": "Cerrar esta ventana no lo detiene. Te avisaremos al terminar.",
+    "log": "Mostrar registro",
+    "hideLog": "Ocultar registro",
+    "waiting": "En cola",
+    "batch": {
+      "meta": "App + {count} elemento relacionado | App + {count} elementos relacionados",
+      "admin": "Requiere tu contraseña",
+      "exclude": "Dejar fuera de esta desinstalación",
+      "include": "Incluir en esta desinstalación",
+      "skipped": "No se desinstala"
+    },
+    "result": {
+      "titleOne": "{name} desinstalada",
+      "titleMany": "{count} app desinstalada | {count} apps desinstaladas",
+      "heroTrash": "Los archivos están en la Papelera. Puedes deshacerlo hasta vaciarla.",
+      "heroDelete": "Los archivos se eliminaron de forma permanente.",
+      "freed": "Espacio por liberar",
+      "freedNow": "Espacio liberado",
+      "freedHint": "Al vaciar la Papelera",
+      "freedNowHint": "Disponible ya",
+      "moved": "Movidos a la Papelera",
+      "deleted": "Eliminados",
+      "countHint": "Incluida la app",
+      "skipped": "Omitidos",
+      "skippedNone": "Sin problemas",
+      "skippedSee": "Consulta los motivos abajo",
+      "skippedTitle": "Estos elementos no se pudieron eliminar",
+      "skippedHint": "Puedes limpiarlos más tarde en Limpieza.",
+      "failed": "{name} no se desinstaló: {reason}",
+      "quitFailed": "No se cerró; probablemente espera que guardes los cambios. Guárdalos o ciérrala y vuelve a intentarlo.",
+      "finished": "Hecho",
+      "notFinished": "Sin terminar",
+      "retry": "Desinstalar de nuevo",
+      "undo": "Deshacer desinstalación",
+      "purge": "Eliminar estos archivos ya",
+      "done": "Hecho",
+      "brewNote": "Al deshacer, los archivos de una app de Homebrew vuelven a su sitio, pero no su registro en Homebrew. Aparecerá como instalada manualmente y adoptable."
+    },
+    "skipReasons": {
+      "in_use": "En uso por otro proceso",
+      "permission": "Sin permiso",
+      "admin_canceled": "No se proporcionó la contraseña de administrador",
+      "missing": "Ya no existe",
+      "changed": "Cambió después del análisis; se omitió por seguridad",
+      "protected": "Ubicación protegida",
+      "running": "La app está abierta",
+      "tool_unavailable": "La herramienta no está abierta; ábrela y vuelve a intentarlo"
+    },
+    "toasts": {
+      "done": "{name} desinstalada",
+      "doneMany": "{count} app desinstalada | {count} apps desinstaladas",
+      "doneBody": "{count} elemento movido a la Papelera · {size} por liberar | {count} elementos movidos a la Papelera · {size} por liberar",
+      "deletedBody": "{count} elemento eliminado · {size} liberados | {count} elementos eliminados · {size} liberados",
+      "undo": "Deshacer",
+      "undone": "Desinstalación deshecha",
+      "undoneBody": "{count} elemento restaurado | {count} elementos restaurados",
+      "undoMissing": "{count} archivo no se pudo restaurar | {count} archivos no se pudieron restaurar",
+      "purged": "Eliminado de forma permanente, {size} liberados",
+      "needsFullDisk": "Para leer la Papelera se necesita acceso total al disco."
+    }
+  },
+  "cleanup": {
+    "title": "Limpieza del Mac",
+    "rescan": "Volver a analizar",
+    "subtitle": {
+      "idle": "Busca cachés, registros y restos de apps eliminadas, y revísalos antes de limpiar",
+      "scanning": "Analizando: solo lectura, no se elimina nada",
+      "review": "{size} recuperables · analizado {time}",
+      "running": "Limpiando. Puedes salir de esta página",
+      "done": "Limpieza terminada",
+      "failed": "El análisis no terminó"
+    },
+    "overview": {
+      "title": "Mira cuánto espacio puede liberar este Mac",
+      "titleAgain": "Vuelve a analizar de vez en cuando",
+      "body": "El análisis solo lee y tarda unos 30 segundos. Los resultados se agrupan en tres niveles de riesgo; por defecto solo se seleccionan los elementos regenerables y los suficientemente antiguos.",
+      "scan": "Iniciar análisis",
+      "never": "Aún no se ha analizado",
+      "lastScan": "Último análisis: {time}",
+      "lastResult": "Último análisis ({time}): aún puedes limpiar {size}"
+    },
+    "risks": {
+      "rebuildable": "Regenerable",
+      "review": "Revisar",
+      "personal": "Personal"
+    },
+    "riskHints": {
+      "rebuildable": "Se eliminan al momento para liberar espacio; las apps los regeneran cuando hace falta",
+      "review": "Solo se preseleccionan los antiguos; échales un vistazo antes de limpiar",
+      "personal": "Solo se muestran y nunca se preseleccionan; lo que elijas va a la Papelera"
+    },
+    "categories": {
+      "app_caches": "Cachés de apps",
+      "logs": "Registros e informes de diagnóstico",
+      "browser_caches": "Cachés del navegador",
+      "dev_caches": "Cachés de desarrollo",
+      "homebrew": "Descargas y versiones antiguas de Homebrew",
+      "temp": "Archivos temporales",
+      "leftovers": "Restos de apps eliminadas",
+      "installers": "Instaladores antiguos",
+      "project_artifacts": "Archivos de compilación de proyectos",
+      "trash": "Papelera",
+      "device_backups": "Copias de seguridad de dispositivos y archivos de Xcode",
+      "large_files": "Archivos grandes y antiguos",
+      "docker": "Espacio recuperable de Docker"
+    },
+    "categoryHints": {
+      "app_caches": "Cachés que crean las propias apps; se regeneran solas tras eliminarlas",
+      "logs": "Registros de apps e informes de fallos de hace más de 7 días",
+      "browser_caches": "Solo la caché; el historial, las cookies, las contraseñas y las extensiones se quedan",
+      "dev_caches": "Se generan o se descargan de nuevo en la próxima compilación o instalación",
+      "homebrew": "Igual que brew cleanup: versiones antiguas y cachés de descarga",
+      "temp": "Archivos temporales sin cambios en 3 días y que no están abiertos",
+      "leftovers": "La app ya no está en este Mac, pero estos archivos siguen aquí",
+      "installers": "Archivos dmg y pkg en Descargas y en el Escritorio; los de apps ya instaladas se preseleccionan",
+      "project_artifacts": "node_modules, target, build y más en proyectos sin cambios en 30 días; reinstala o vuelve a compilar para recuperarlos",
+      "trash": "Al seleccionarla se vacía la Papelera; no se puede deshacer",
+      "device_backups": "Al vaciar la Papelera, las copias ya no restauran dispositivos y los archivos ya no simbolizan registros de fallos",
+      "large_files": "Archivos de más de 1 GB sin abrir en 90 días",
+      "docker": "Se eliminan con los comandos de limpieza de Docker y nunca se preseleccionan; los volúmenes solo se muestran"
+    },
+    "scan": {
+      "starting": "Preparando el análisis",
+      "scanning": "Analizando: {name}",
+      "found": "{size} encontrados",
+      "readOnly": "Solo lectura; no se elimina nada",
+      "cancel": "Cancelar"
+    },
+    "summary": {
+      "reclaimable": "Recuperable",
+      "excludesPersonal": "Sin contar archivos personales",
+      "selected": "{count} elemento seleccionado | {count} elementos seleccionados",
+      "breakdown": "Eliminar {delete} · Mover a la Papelera {trash}",
+      "onlyRebuildable": "Solo regenerables",
+      "recommended": "Restaurar sugerencias",
+      "inUse": "{size} más en uso"
+    },
+    "notices": {
+      "rescanned": "Los resultados se han actualizado. Revísalos de nuevo.",
+      "services": "{count} elemento en segundo plano de apps eliminadas ({names}) aún se carga al iniciar sesión. Solo provoca errores y gasta batería, así que conviene limpiarlo. | {count} elementos en segundo plano de apps eliminadas ({names}) aún se cargan al iniciar sesión. Solo provocan errores y gastan batería, así que conviene limpiarlos.",
+      "incomplete": "Sin Acceso total al disco no se revisaron estas ubicaciones: {paths}. Actívalo para encontrar más."
+    },
+    "category": {
+      "atLeast": "Al menos {size}",
+      "selected": "{size} seleccionados",
+      "none": "Nada seleccionado",
+      "allSkipped": "Todo omitido",
+      "skipped": "{count} elemento omitido, solo se muestra como referencia | {count} elementos omitidos, solo se muestran como referencia",
+      "lastModified": "Última modificación: {time}",
+      "servicesLoading": "{count} elemento en segundo plano aún se carga al iniciar sesión | {count} elementos en segundo plano aún se cargan al iniciar sesión",
+      "inUse": "{size} en uso"
+    },
+    "skipReasons": {
+      "running": "Está abierta; ciérrala para limpiar",
+      "in_use": "En uso",
+      "busy": "La herramienta se está ejecutando",
+      "recent": "Cambió hace poco",
+      "git_tracked": "Contiene archivos controlados por Git",
+      "protected": "Protegido",
+      "permission": "Sin permiso",
+      "tool_stopped": "No está abierto; ábrelo y vuelve a analizar para ver el espacio recuperable",
+      "volumes": "Los volúmenes pueden guardar bases de datos y otros datos; solo se muestran, nunca se limpian"
+    },
+    "reasons": {
+      "orphan_service": "Elemento en segundo plano",
+      "installer_installed": "App instalada",
+      "device_support_latest": "Más reciente",
+      "device_support_latestHint": "Se conserva por defecto. Si lo eliminas, Xcode lo prepara de nuevo la próxima vez que conectes este dispositivo, lo que tarda unos minutos.",
+      "tool_download_cache": "Se vuelve a descargar",
+      "tool_download_cacheHint": "Se puede regenerar, pero la próxima compilación o prueba lo descargará de nuevo, lo que puede tardar y consumir muchos datos; por eso empieza sin marcar.",
+      "docker_images": "Imágenes sin usar",
+      "docker_imagesHint": "Imágenes que ningún contenedor usa. Se vuelven a descargar o compilar cuando hacen falta.",
+      "docker_build_cache": "Caché de compilación",
+      "docker_build_cacheHint": "La próxima compilación de imágenes tardará más; el resultado es el mismo.",
+      "docker_containers": "Contenedores detenidos",
+      "docker_containersHint": "También se eliminan los cambios escritos dentro de estos contenedores; los volúmenes se conservan."
+    },
+    "item": {
+      "command": "Comando",
+      "admin": "Requiere tu contraseña de administrador",
+      "reveal": "Mostrar en Finder",
+      "protect": "Conservar siempre",
+      "keptOpen": "Conserva {count} archivo en uso | Conserva {count} archivos en uso"
+    },
+    "footer": {
+      "selected": "{count} elemento seleccionado · {size} | {count} elementos seleccionados · {size}",
+      "both": "{delete} se elimina para siempre; {trash} va a la Papelera y se puede deshacer",
+      "deleteOnly": "{size} se elimina para siempre y no se puede deshacer",
+      "trashOnly": "Todo va a la Papelera y se puede deshacer",
+      "nothing": "Aún no has seleccionado nada",
+      "clean": "Limpiar {size}"
+    },
+    "confirm": {
+      "title": "¿Limpiar {size}?",
+      "count": "{count} elemento | {count} elementos",
+      "delete": "{size} se elimina para siempre: cachés, registros, cachés de desarrollo y archivos similares que las apps regeneran. No se puede deshacer.",
+      "trash": "{size} va a la Papelera: restos de apps eliminadas y archivos similares. Podrás deshacerlo después.",
+      "emptyTrash": "Has seleccionado la Papelera: todo lo que contiene se vaciará y no se podrá recuperar.",
+      "admin": "Incluye {count} elemento en segundo plano del sistema, que pedirá tu contraseña de administrador una vez. | Incluye {count} elementos en segundo plano del sistema, que pedirán tu contraseña de administrador una vez.",
+      "cancel": "Cancelar",
+      "clean": "Limpiar"
+    },
+    "run": {
+      "title": "Limpiando",
+      "delete": "Eliminando",
+      "trash": "Moviendo a la Papelera",
+      "command": "Ejecutando {command}",
+      "hint": "La limpieza se ejecuta como una tarea en la cola. Salir de esta página no la detiene y te avisaremos cuando termine."
+    },
+    "result": {
+      "title": "{size} liberados",
+      "failedTitle": "La limpieza no terminó",
+      "trashPending": "Hay {size} más en la Papelera, que se liberarán al vaciarla. Hasta entonces puedes deshacerlo.",
+      "rebuilds": "Las apps vuelven a crear los archivos regenerables cuando los necesitan.",
+      "freed": "Liberado",
+      "freedHint": "Disponible ya",
+      "trashed": "En la Papelera",
+      "trashedHint": "{count} elemento · se libera al vaciar la Papelera | {count} elementos · se liberan al vaciar la Papelera",
+      "trashedNone": "Nada esta vez",
+      "restored": "Deshecho y devuelto a su sitio",
+      "skipped": "Omitidos",
+      "skippedCount": "{count} elemento | {count} elementos",
+      "skippedHint": "Consulta los motivos abajo",
+      "skippedNone": "Sin problemas",
+      "skippedTitle": "Sin limpiar",
+      "free": "Espacio disponible",
+      "undo": "Deshacer el movimiento a la Papelera",
+      "purge": "Eliminar estos archivos para siempre",
+      "done": "Listo"
+    },
+    "toasts": {
+      "protected": "Añadido a la lista protegida",
+      "protectedBody": "Los próximos análisis lo omitirán",
+      "undo": "Deshacer",
+      "restored": "Deshecho",
+      "restoredBody": "{count} elemento ha vuelto a su sitio | {count} elementos han vuelto a su sitio",
+      "purged": "Eliminado para siempre",
+      "purgedBody": "{size} más liberados",
+      "done": "Limpieza terminada",
+      "doneBody": "{size} liberados",
+      "view": "Ver"
+    },
+    "failed": {
+      "title": "El análisis no terminó"
+    },
+    "rail": {
+      "disk": "Disco",
+      "diskSub": "{name} · {size} en total",
+      "free": "{size} disponibles",
+      "diskUnknown": "Ahora mismo no se puede leer el espacio en disco.",
+      "used": "Usado",
+      "reclaimable": "Recuperable",
+      "available": "Disponible",
+      "last": "Último análisis",
+      "lastScan": "{time} · {size} recuperables",
+      "lastNone": "Aún no hay análisis. Cada limpieza queda registrada en el historial de tareas.",
+      "history": "Ver historial de tareas",
+      "protected": "Lista protegida",
+      "protectedCount": "{count} elemento | {count} elementos",
+      "protectedBody": "Los archivos y apps de esta lista nunca aparecen en los resultados. Los gestores de contraseñas, las VPN, las herramientas de IA, las máquinas virtuales y categorías similares siempre están protegidos.",
+      "manage": "Gestionar"
+    },
+    "entry": {
+      "title": "Limpieza del Mac",
+      "description": "Busca cachés, registros y restos de apps eliminadas, y revísalos antes de limpiar.",
+      "found": "{size} recuperables · analizado {time}.",
+      "active": "{count} elemento en segundo plano de una app eliminada aún se carga al iniciar sesión | {count} elementos en segundo plano de apps eliminadas aún se cargan al iniciar sesión",
+      "scan": "Iniciar análisis",
+      "open": "Limpiar"
+    },
+    "settings": {
+      "rebuildable": "Archivos regenerables",
+      "rebuildableHint": "Las cachés, los registros y las cachés de desarrollo se eliminan al momento para liberar espacio",
+      "fixed": "Fijo",
+      "deleteMode": "Archivos que revisar",
+      "deleteModeHint": "Restos de apps eliminadas y archivos similares: la Papelera permite deshacer; eliminar libera espacio al instante",
+      "protected": "Lista protegida",
+      "added": "Añadido el {date}",
+      "remove": "Quitar",
+      "add": "Añadir carpeta…",
+      "empty": "Aún no hay nada. Elegir «Conservar siempre» en los resultados también los añade aquí.",
+      "always": "Los llaveros y gestores de contraseñas, las herramientas de VPN y proxy, las herramientas de IA, los archivos de disco de máquinas virtuales y contenedores, el historial y las cookies del navegador, e iCloud Drive siempre están protegidos."
+    },
+    "groups": {
+      "deviceSupport": "Archivos de soporte de dispositivos de Xcode · {platform}",
+      "temp": "Carpeta temporal del sistema",
+      "trash": "Elementos de la Papelera",
+      "installers": "Descargas y Escritorio",
+      "xcodeArchive": "Archivos de Xcode",
+      "deviceBackup": "Copia de seguridad del dispositivo",
+      "deviceBackupModel": "Copia de seguridad del dispositivo · {model}"
+    },
+    "skipReasonsBy": {
+      "running": "En uso por {names}; se puede limpiar después de salir",
+      "in_use": "En uso por {names}",
+      "busy": "{names} lo está usando"
+    }
+  },
+  "monitor": {
+    "title": "Monitor del sistema",
+    "subtitle": "{model} · {chip} · {memory} de memoria · macOS {os} · encendido desde hace {uptime}",
+    "subtitleLoading": "Leyendo la información de este Mac",
+    "menuBarButton": "Barra de menús · {count} elemento | Barra de menús · {count} elementos",
+    "waiting": "Leyendo…",
+    "modules": {
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "memory": "Memoria",
+      "disk": "Disco",
+      "network": "Red",
+      "battery": "Batería",
+      "sensors": "Sensores",
+      "fans": "Ventiladores"
+    },
+    "moduleHints": {
+      "cpu": "Uso",
+      "gpu": "Uso",
+      "memory": "Parte en uso",
+      "disk": "Espacio disponible",
+      "network": "Velocidad de subida y bajada",
+      "battery": "Carga",
+      "sensors": "Sensor más caliente"
+    },
+    "intro": {
+      "title": "El monitor del sistema está en la barra de menús",
+      "body": "La CPU y la memoria tienen cada una su propio elemento en la barra de menús; haz clic en uno para ver sus detalles. Activa otras métricas en el monitor del sistema, tantas como quieras, o desactívalas en Ajustes.",
+      "view": "Ver"
+    },
+    "health": {
+      "good": "Todo bien",
+      "goodBody": "La CPU, la memoria, el disco y la batería están en rangos normales",
+      "goodBodyNoBattery": "La CPU, la memoria y el disco están en rangos normales",
+      "attention": "{count} cosa requiere atención | {count} cosas requieren atención",
+      "critical": "{count} cosa requiere acción pronto | {count} cosas requieren acción pronto",
+      "issues": {
+        "cpuBusy": "La CPU lleva 3 minutos por encima del 85%",
+        "memoryPressure": "La presión de memoria es alta",
+        "memoryCritical": "La presión de memoria es crítica; las apps pueden ir más lentas o el sistema puede cerrarlas",
+        "diskLow": "Solo quedan {size} en el disco",
+        "batteryHealth": "La salud de la batería es solo del {percent}",
+        "batteryHot": "La batería está a {temp}",
+        "temperature": "La CPU está a {temp}",
+        "uptime": "Sin reiniciar desde hace {count} día | Sin reiniciar desde hace {count} días",
+        "diskSmart": "«{name}» indica un estado SMART de fallo; haz una copia de seguridad cuanto antes"
+      },
+      "actions": {
+        "processes": "Ver procesos",
+        "cleanup": "Limpiar el Mac",
+        "fans": "Ajustar ventiladores"
+      }
+    },
+    "cpu": {
+      "split": "Usuario {user} · Sistema {system}",
+      "load": "Carga",
+      "loadLong": "Carga (1, 5, 15 minutos)",
+      "coresLabel": "Núcleos",
+      "cores": "{p} de rendimiento + {e} de eficiencia",
+      "performanceLegend": "{count} núcleos de rendimiento (naranja)",
+      "efficiencyLegend": "{count} núcleos de eficiencia (morado)",
+      "uptime": "Tiempo encendido",
+      "power": "Consumo"
+    },
+    "gpu": {
+      "cores": "{chip} · GPU de {count} núcleos",
+      "model": "Modelo",
+      "noProcesses": "macOS no informa del uso de la GPU por proceso, así que no se muestran procesos.",
+      "power": "Consumo"
+    },
+    "memory": {
+      "summary": "{used} de {total} · presión {pressure}",
+      "pressure": {
+        "normal": "normal",
+        "warning": "alta",
+        "critical": "crítica"
+      },
+      "app": "Memoria de apps",
+      "wired": "Memoria residente",
+      "compressed": "Comprimida",
+      "cached": "Archivos en caché",
+      "swap": "Intercambio"
+    },
+    "disk": {
+      "volume": "{name} · {total} en total",
+      "read": "Lectura",
+      "write": "Escritura",
+      "readAt": "Lectura {value}",
+      "writeAt": "Escritura {value}",
+      "volumes": "Volúmenes",
+      "internal": "Interno",
+      "external": "Externo",
+      "volumeFree": "{kind} · {free} libres de {total}",
+      "cleanup": "{size} recuperables según el último análisis · Limpiar el Mac",
+      "cleanupNever": "Limpiar el Mac",
+      "devices": "Unidades",
+      "smartLabel": "Estado SMART",
+      "smart": {
+        "verified": "Verificado",
+        "failing": "Con fallos",
+        "unsupported": "No compatible"
+      },
+      "wear": "Desgaste",
+      "powerOn": "Tiempo encendido",
+      "written": "Datos escritos",
+      "temperature": "Temperatura"
+    },
+    "network": {
+      "down": "Bajada",
+      "up": "Subida",
+      "interface": "Interfaz",
+      "localIp": "IP local",
+      "totalDown": "Descargado desde el arranque",
+      "totalUp": "Subido desde el arranque",
+      "link": "{kind} ({name})",
+      "kinds": {
+        "wifi": "Wi-Fi",
+        "ethernet": "Ethernet",
+        "vpn": "VPN",
+        "other": "Otra"
+      },
+      "privacy": "No se muestran la IP pública ni el nombre de la red Wi-Fi: la primera requiere un servidor externo y la segunda, permiso de ubicación."
+    },
+    "battery": {
+      "charging": "Cargando",
+      "chargingTime": "Cargando · {time} para completar",
+      "onAc": "Conectado a la corriente",
+      "onBattery": "Con batería",
+      "onBatteryTime": "Con batería · quedan {time}",
+      "health": "Salud",
+      "cycles": "Ciclos",
+      "designCapacity": "Capacidad de diseño",
+      "maxCapacity": "Capacidad máxima",
+      "temperature": "Temperatura",
+      "voltage": "Voltaje",
+      "power": "Potencia",
+      "adapter": "Adaptador de corriente"
+    },
+    "sensors": {
+      "hottest": "{name} · el más caliente ahora",
+      "temperatures": "Temperaturas",
+      "note": "Los sensores de los chips de Apple son zonas térmicas, no núcleos concretos.",
+      "names": {
+        "cpuPerformance": "Núcleos de rendimiento de la CPU",
+        "cpuEfficiency": "Núcleos de eficiencia de la CPU",
+        "cpu": "CPU",
+        "gpu": "GPU",
+        "soc": "Chip",
+        "ssd": "SSD",
+        "battery": "Batería"
+      }
+    },
+    "fans": {
+      "control": "Control",
+      "auto": "Automático",
+      "manual": "Manual",
+      "modeAuto": "Automático · controlado por el sistema",
+      "modeManual": "Manual · {rpm}",
+      "all": "Todos los ventiladores",
+      "min": "Mín. {rpm}",
+      "max": "Máx. {rpm}",
+      "range": "Mín. {min} · Máx. {max}",
+      "rangeLabel": "Rango de velocidad",
+      "single": "Ventilador",
+      "left": "Ventilador izquierdo",
+      "right": "Ventilador derecho",
+      "numbered": "Ventilador {n}",
+      "sync": "Sincronizar todos",
+      "full": "Velocidad máxima",
+      "restore": "Volver a automático",
+      "restoreLast": "Restaurar la última velocidad manual",
+      "autoNote": "El sistema ajusta los ventiladores según la temperatura. Cambia a Manual para fijar tú la velocidad.",
+      "helperTitle": "El control manual de los ventiladores necesita un asistente",
+      "helperBody": "Solo controla los ventiladores, se ejecuta en segundo plano con privilegios del sistema y solo acepta órdenes de OpenNavo. Tras instalarlo, permítelo en «Ítems de inicio y extensiones» cuando se te pida; puede que tengas que introducir una vez la contraseña de administrador.",
+      "install": "Instalar asistente",
+      "approvalTitle": "Falta un paso",
+      "approvalBody": "Permite que OpenNavo se ejecute en segundo plano en Ajustes del Sistema → General → Ítems de inicio y extensiones y luego haz clic en «Ya lo he permitido».",
+      "recheck": "Ya lo he permitido",
+      "brokenTitle": "El asistente de ventiladores no responde",
+      "brokenBody": "Está instalado, pero OpenNavo no puede comunicarse con él. Reinstalarlo suele solucionarlo.",
+      "reinstall": "Reinstalar asistente",
+      "unsupported": "El chip de este Mac no admite el control de ventiladores, así que solo se muestran las velocidades.",
+      "safety": "Si OpenNavo se cierra, falla o deja de responder durante 15 segundos, el Mac entra en reposo o falla una escritura, los ventiladores vuelven al control del sistema. Si el chip se mantiene a 95 °C durante 10 segundos, los ventiladores en manual pasan a velocidad máxima. No existe la opción de apagarlos; la velocidad mínima es la del sistema.",
+      "reasons": {
+        "user": "Has ajustado los ventiladores",
+        "app_quit": "OpenNavo se ha cerrado",
+        "heartbeat_lost": "OpenNavo ha dejado de responder",
+        "sleep": "El Mac ha entrado en reposo",
+        "wake_reapplied": "Se ha vuelto a aplicar la velocidad manual al reactivarse",
+        "overheat": "El chip se mantuvo a 95 °C durante 10 segundos",
+        "write_failed": "No se ha podido escribir el ajuste del ventilador",
+        "helper_started": "El asistente se ha reiniciado",
+        "helper_uninstalled": "El asistente se ha desinstalado"
+      },
+      "toasts": {
+        "manual": "Ventiladores en manual",
+        "manualBody": "Vuelven a automático si OpenNavo se cierra o el Mac entra en reposo, y pasan a velocidad máxima si sigue haciendo demasiado calor",
+        "auto": "Los ventiladores vuelven a estar bajo el control del sistema",
+        "full": "Ventiladores a velocidad máxima",
+        "reverted": "Los ventiladores han vuelto a automático",
+        "ready": "El asistente de ventiladores está listo",
+        "readyBody": "Cambia a Manual para fijar tú la velocidad"
+      }
+    },
+    "processes": {
+      "topCpu": "Procesos que más CPU usan",
+      "topMemory": "Procesos que más memoria usan",
+      "byCpu": "CPU",
+      "byMemory": "Memoria",
+      "sortBy": "Ordenar por",
+      "system": "Sistema",
+      "background": "Segundo plano",
+      "quit": "Salir",
+      "quitTitle": "¿Salir de {name}?",
+      "quitBody": "Es lo mismo que pulsar ⌘Q en {name}; la app te avisará de lo que no esté guardado.",
+      "quitDone": "Se ha pedido a {name} que salga",
+      "activityMonitor": "Abrir en Monitor de Actividad",
+      "activityValue": "Monitor de Actividad muestra {value}",
+      "topDisk": "Procesos que más usan el disco",
+      "topNetwork": "Procesos que más usan la red",
+      "diskSplit": "Lectura {read} · Escritura {write}"
+    },
+    "detail": {
+      "open": "Ver detalles de {name}",
+      "minuteAgo": "Hace 60 segundos",
+      "now": "Ahora",
+      "range60": "Último minuto",
+      "range1h": "Última hora",
+      "rangeLabel": "Rango de la gráfica",
+      "hourAgo": "Hace 1 hora"
+    },
+    "menuBar": {
+      "title": "Barra de menús",
+      "show": "Mostrar en la barra de menús",
+      "showHint": "Un elemento propio; haz clic en él para ver los detalles debajo",
+      "style": "Estilo",
+      "styleHint": "Cómo se ve en la barra de menús",
+      "styles": {
+        "text": "Dos líneas",
+        "value": "Solo el valor",
+        "line": "Línea",
+        "bars": "Barras"
+      },
+      "on": "Barra de menús",
+      "onHint": "Se muestra en la barra de menús",
+      "added": "Se ha añadido «{name}» a la barra de menús",
+      "addedBody": "Haz clic en él para ver los detalles debajo",
+      "removed": "Se ha quitado «{name}» de la barra de menús",
+      "keepTitle": "Los elementos de la barra de menús desaparecen al cerrar la ventana",
+      "keepBody": "Ahora mismo, cerrar la ventana principal sale de OpenNavo. Activa «Mantener en la barra de menús al cerrar la ventana» para que los elementos de monitorización sigan visibles.",
+      "keepAction": "Activar"
+    },
+    "popover": {
+      "open": "Ver en OpenNavo",
+      "settings": "Ajustes de la barra de menús"
+    },
+    "rail": {
+      "menuBar": "Barra de menús",
+      "menuBarSub": "Cada métrica es un elemento propio; haz clic para ver detalles · sin límite",
+      "empty": "Aún no hay elementos de monitorización en la barra de menús",
+      "crowded": "Con muchos elementos, algunos pueden quedar ocultos tras la muesca; prueba el estilo «Solo el valor».",
+      "refresh": "Se actualiza cada {count} segundo · arrastra con ⌘ para reordenar | Se actualiza cada {count} segundos · arrastra con ⌘ para reordenar",
+      "adjustFans": "Ajustar ventiladores",
+      "privacy": "Los datos se quedan en este Mac",
+      "privacyBody": "Nada se conecta a internet, se sube ni se guarda como historial; las gráficas solo están en memoria."
+    },
+    "settings": {
+      "menuBar": "Barra de menús",
+      "interval": "Frecuencia de actualización",
+      "intervalHint": "Cuanto más rápida, más energía; se pausa con la pantalla apagada o el Mac en reposo",
+      "seconds": "{count} segundo | {count} segundos",
+      "notVisible": "¿No lo ves después de activarlo?",
+      "notVisibleHint": "Desde macOS 26, permite OpenNavo en Ajustes del Sistema → Barra de menús; con muchos elementos, algunos pueden quedar ocultos tras la muesca",
+      "openSettings": "Abrir Ajustes del Sistema",
+      "menuBarNote": "Cada métrica es un elemento propio de la barra de menús, sin límite; la CPU y la memoria están activadas por defecto. Haz clic en cualquiera para ver sus detalles debajo.",
+      "helper": "Asistente",
+      "helperHint": "{status}. Solo se usa para controlar los ventiladores; las temperaturas y velocidades se muestran sin él",
+      "helperStatus": {
+        "unsupported": "Este Mac no tiene ventiladores",
+        "not_installed": "No instalado",
+        "requires_approval": "Esperando tu permiso en Ítems de inicio y extensiones",
+        "enabled": "Activado",
+        "error": "El asistente tiene un problema; puedes reinstalarlo"
+      },
+      "install": "Instalar",
+      "reinstall": "Reinstalar",
+      "uninstall": "Desinstalar",
+      "autoRestore": "Devolver el control al sistema",
+      "autoRestoreHint": "Los ventiladores vuelven a automático al salir, si hay un fallo, tras 15 segundos sin respuesta, en reposo o si falla una escritura; en manual pasan a velocidad máxima tras 10 segundos a 95 °C",
+      "always": "Siempre activado",
+      "relaunch": "Al volver a abrir OpenNavo",
+      "relaunchHint": "Los ventiladores empiezan en automático; desde los detalles de Sensores puedes restaurar la última velocidad manual",
+      "privacy": "Todas las métricas se calculan y muestran solo en este Mac: nada se conecta a internet, se sube ni se guarda como historial. No se muestran la IP pública ni el nombre de la red Wi-Fi.",
+      "alerts": "Avisos",
+      "alertsHint": "Recibe un aviso cuando algo requiere atención, como mucho una vez por hora para el mismo problema. Mientras esté activado, se comprueba en segundo plano con poca frecuencia aunque no haya elementos en la barra de menús"
+    }
   }
 }

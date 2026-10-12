@@ -31,6 +31,9 @@ if args == ['doctor']:
 if args == ['cleanup', '--prune=all', '--dry-run']:
     print((fixtures / 'cleanup_dry_run.txt').read_text(), end='')
     sys.exit(0)
+if args == ['cleanup', '--prune=all']:
+    print('OPENNAVO_FAKE_BREW_CLEANUP_ARGS=' + json.dumps(args), flush=True)
+    sys.exit(0)
 if len(args) == 4 and args[:2] == ['bundle', 'dump'] and args[2].startswith('--file=') and args[3] == '--force':
     Path(args[2][len('--file='):]).write_text((fixtures / 'Brewfile').read_text())
     sys.exit(0)

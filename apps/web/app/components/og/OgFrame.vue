@@ -5,7 +5,7 @@ import { color } from '@opennavo/tokens';
 
 // All 1200×630 cards keep the bottom 126 px empty for X's title overlay.
 // Satori needs inline styles, numeric SVG dimensions and static font families.
-const props = defineProps<{ tagline: string; locale?: string }>();
+const props = defineProps<{ tagline: string; platform: string; site?: string; locale?: string }>();
 defineSlots<{ default?: () => unknown }>();
 const font = computed(() => (props.locale?.startsWith('ja') ? 'Inter, OG Noto Sans JP' : 'Inter, OG Noto Sans SC'));
 const logoHeight = 64;
@@ -71,14 +71,14 @@ const logoHeight = 64;
               }"
               >OpenNavo</span
             >
-            <span :style="{ fontSize: '24px', color: color.text.secondary }">- macOS app</span>
+            <span :style="{ fontSize: '24px', color: color.text.secondary }">- {{ platform }}</span>
           </div>
           <div :style="{ fontSize: '20px', lineHeight: 1.35, color: color.text.secondary }">
             {{ tagline }}
           </div>
         </div>
       </div>
-      <span :style="{ fontSize: '24px', color: color.text.secondary, marginTop: '8px' }">opennavo.com</span>
+      <span v-if="site" :style="{ fontSize: '24px', color: color.text.secondary, marginTop: '8px' }">{{ site }}</span>
     </div>
     <div
       :style="{

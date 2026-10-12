@@ -5,7 +5,7 @@
     "apps/server/go.mod": "6d64638fcd95df0f3512fd647528e7b8d179f2b3eb37c31dc68d498ac2cae756",
     "apps/server/go.sum": "8e49c990b927c1cd3e3c79e49e534ee4ead68daff3a48274c2cf134e89096b96",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
-    "apps/desktop/src-tauri/Cargo.lock": "e9ccd458898873e04b33ed28be6b32302c82204cf8b27d4205e08a0b5bf322a3"
+    "apps/desktop/src-tauri/Cargo.lock": "c3ad77ccfb201dd6be99c189b61263c8126c3a8109de0d67a3f5e79d8b621812"
   },
   "scopeNote": "runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability",
   "modules": [
@@ -63538,6 +63538,27 @@
           "source": "LICENSE",
           "path": "licenses/a681e9d183c72b4af4856935893805eb48c08f0f5a3f260203db7444c20fb98a.txt",
           "sha256": "a681e9d183c72b4af4856935893805eb48c08f0f5a3f260203db7444c20fb98a"
+        }
+      ]
+    },
+    {
+      "ecosystem": "vendored",
+      "name": "exelban/stats-sensor-keys",
+      "version": "5df24006b2993228fdf23f72fec467bffb4d2106",
+      "license": "MIT",
+      "url": "https://github.com/exelban/stats/tree/5df24006b2993228fdf23f72fec467bffb4d2106",
+      "scope": "runtime",
+      "evidence": {
+        "source": "Modules/Sensors/values.swift",
+        "url": "https://raw.githubusercontent.com/exelban/stats/5df24006b2993228fdf23f72fec467bffb4d2106/Modules/Sensors/values.swift",
+        "range": "M1 generation CPU temperature mappings only (2 efficiency + 8 performance keys)",
+        "local": "apps/desktop/src-tauri/src/monitor/sensors.rs"
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/79a58cb749dcc8b569c432f92ed37cf05527e505e4de4999199aed22b6a6cbf8.txt",
+          "sha256": "79a58cb749dcc8b569c432f92ed37cf05527e505e4de4999199aed22b6a6cbf8"
         }
       ]
     }

@@ -167,7 +167,12 @@ function onKeydown(event: KeyboardEvent) {
       />
     </div>
 
-    <div :id="listId" role="listbox" :aria-label="messages.palette.results" class="min-h-0 flex-1 overflow-y-auto">
+    <div
+      :id="listId"
+      role="listbox"
+      :aria-label="messages.palette.results"
+      class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+    >
       <template v-if="flat.length">
         <div
           v-for="(group, groupIndex) in groups"
@@ -211,12 +216,12 @@ function onKeydown(event: KeyboardEvent) {
                 :class="item.iconTone === 'accent' ? 'text-brand-salmon' : 'text-ink-secondary'"
               />
             </span>
-            <span class="shrink-0 font-600 text-ink-primary">{{ item.label }}</span>
+            <span class="min-w-0 truncate font-600 text-ink-primary" :title="item.label">{{ item.label }}</span>
             <span v-if="item.description" class="min-w-0 truncate text-12px text-ink-tertiary">{{
               item.description
             }}</span>
             <span class="flex-1"></span>
-            <OnChip v-if="item.badge" :tone="item.badgeTone ?? 'accent'">{{ item.badge }}</OnChip>
+            <OnChip v-if="item.badge" class="shrink-0" :tone="item.badgeTone ?? 'accent'">{{ item.badge }}</OnChip>
             <kbd
               v-if="item.hint"
               class="shrink-0 rounded-tiny bg-surface-chip px-6px py-2px font-sans text-11px text-ink-tertiary"

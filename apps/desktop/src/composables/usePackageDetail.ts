@@ -39,7 +39,12 @@ export function providePackage(props: { kind: Kind; token: string }): PackageCon
     reload
   } = useRemoteLoader(
     'package',
-    () => unwrap(api.GET('/packages/{kind}/{token}', { params: { path: { kind: kind.value, token: token.value } } })),
+    () =>
+      unwrap(
+        api.GET('/packages/{kind}/{token}', {
+          params: { path: { kind: kind.value, token: token.value } }
+        })
+      ),
     [kind, token, appLocale]
   );
 

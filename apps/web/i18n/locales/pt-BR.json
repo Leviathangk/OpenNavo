@@ -426,6 +426,7 @@
   },
   "og": {
     "tagline": "A loja de apps do Homebrew",
+    "platform": "cliente macOS",
     "homeTitle": "A loja de apps\ndo Homebrew\npara Mac.",
     "homeDescription": "Instale apps. Veja as novidades.\nMantenha seu Mac atualizado.",
     "discoverTitle": "Descubra apps\npara Mac.",

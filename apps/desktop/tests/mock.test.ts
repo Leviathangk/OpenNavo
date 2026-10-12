@@ -7,7 +7,16 @@ import { useSettingsStore, useUpdatesStore } from '@/stores';
 import { setup } from './helpers';
 
 const search = (q: string) =>
-  unwrap(commands.catalogSearch({ q, kind: null, category: null, includeDisabled: false, limit: 10, offset: 0 }));
+  unwrap(
+    commands.catalogSearch({
+      q,
+      kind: null,
+      category: null,
+      includeDisabled: false,
+      limit: 10,
+      offset: 0
+    })
+  );
 
 describe('Local catalog simulation (06 §7.1)', () => {
   it('Exact names rank first; short terms, commands, and spaceless names match', async () => {

@@ -36,5 +36,21 @@
   "askpass.cancel": "Отмена",
   "completion.succeeded": "Выполнено {count} действие|Выполнено {count} действия|Выполнено {count} действий|Выполнено {count} действия",
   "completion.failed": "Не удалось выполнить {count} действие|Не удалось выполнить {count} действия|Не удалось выполнить {count} действий|Не удалось выполнить {count} действия",
-  "completion.canceled": "Отменено {count} действие|Отменено {count} действия|Отменено {count} действий|Отменено {count} действия"
+  "completion.canceled": "Отменено {count} действие|Отменено {count} действия|Отменено {count} действий|Отменено {count} действия",
+  "monitorAlert.cpu_busy.title": "ЦП долго загружен",
+  "monitorAlert.cpu_busy.body": "ЦП загружен больше чем на 85% уже 3 минуты. Нажмите, чтобы увидеть, какой процесс виноват.",
+  "monitorAlert.memory_pressure.title": "Высокая нагрузка на память",
+  "monitorAlert.memory_pressure.body": "Закройте ненужные приложения, чтобы освободить память. Нажмите, чтобы увидеть, что расходует её больше всего.",
+  "monitorAlert.memory_critical.title": "Критическая нагрузка на память",
+  "monitorAlert.memory_critical.body": "Приложения могут замедлиться или быть закрыты системой. Нажмите, чтобы увидеть, что расходует больше всего памяти.",
+  "monitorAlert.disk_low.title": "Мало места на диске",
+  "monitorAlert.disk_low.body": "На загрузочном диске осталось всего {size}. Нажмите, чтобы очистить Mac.",
+  "monitorAlert.battery_health.title": "Состояние аккумулятора ухудшилось",
+  "monitorAlert.battery_health.body": "Состояние аккумулятора снизилось до {percent}.",
+  "monitorAlert.battery_hot.title": "Аккумулятор нагрелся",
+  "monitorAlert.battery_hot.body": "Температура аккумулятора — {temp}.",
+  "monitorAlert.temperature.title": "ЦП сильно нагрелся",
+  "monitorAlert.temperature.body": "Температура ЦП — {temp}. Нажмите, чтобы проверить процессы или настроить вентиляторы.",
+  "monitorAlert.disk_smart.title": "Диск сообщает о проблемах",
+  "monitorAlert.disk_smart.body": "Диск «{name}» сообщает о сбое по SMART. Сделайте резервную копию как можно скорее."
 }

@@ -30,6 +30,10 @@ pub trait AppControl: Send + Sync {
     fn list(&self) -> Result<Vec<Process>, AppError>;
     fn quit(&self, process: &Process) -> Result<bool, AppError>;
     fn reopen(&self, path: &Path) -> Result<(), AppError>;
+    /// Bring an app forward, e.g. so its "save changes?" sheet is seen while OpenNavo waits for it to quit.
+    fn activate(&self, _process: &Process) -> Result<(), AppError> {
+        Ok(())
+    }
 }
 
 pub struct NativeApps;
@@ -79,6 +83,20 @@ impl AppControl for NativeApps {
             Ok(same && app.terminate())
         })
     }
+    fn activate(&self, process: &Process) -> Result<(), AppError> {
+        use objc2_app_kit::{NSApplicationActivationOptions, NSRunningApplication};
+        if process.pid == std::process::id() as i32 {
+            return Ok(());
+        }
+        objc2::rc::autoreleasepool(|_| {
+            if let Some(app) =
+                NSRunningApplication::runningApplicationWithProcessIdentifier(process.pid)
+            {
+                app.activateWithOptions(NSApplicationActivationOptions::ActivateAllWindows);
+            }
+            Ok(())
+        })
+    }
     fn reopen(&self, path: &Path) -> Result<(), AppError> {
         use objc2_app_kit::NSWorkspace;
         use objc2_foundation::{NSString, NSURL};
@@ -122,6 +140,10 @@ pub fn deferred(error: &AppError) -> bool {
 pub struct Identity {
     pub paths: Vec<PathBuf>,
     pub bundle_ids: Vec<String>,
+    /// Other installed apps: a process running from one of them is never matched by bundle ID alone.
+    pub exclude: Vec<PathBuf>,
+    /// Bring apps that have not quit after this long to the front, so a "save changes?" sheet gets noticed.
+    pub reveal_after: Option<Duration>,
 }
 impl Identity {
     fn matches(&self, process: &Process) -> bool {
@@ -129,13 +151,16 @@ impl Identity {
         self.paths
             .iter()
             .any(|root| path.starts_with(canonical(root)))
-            || self.bundle_ids.iter().any(|id| {
+            || (self.bundle_ids.iter().any(|id| {
                 if let Some(prefix) = id.strip_suffix('*') {
                     !prefix.is_empty() && process.bundle_id.starts_with(prefix)
                 } else {
                     process.bundle_id == *id
                 }
-            })
+            }) && !self
+                .exclude
+                .iter()
+                .any(|other| path.starts_with(canonical(other))))
     }
     fn running(&self, control: &dyn AppControl) -> Result<Vec<Process>, AppError> {
         control
@@ -250,7 +275,11 @@ pub async fn identity(
         }) {
             return Err(check_failed());
         }
-        Ok(Identity { paths, bundle_ids })
+        Ok(Identity {
+            paths,
+            bundle_ids,
+            ..Default::default()
+        })
     })
     .await
 }
@@ -277,7 +306,7 @@ pub async fn inspect(
             .await?
             .is_empty()
         {
-            let name = crate::catalog::get(database, target.kind, &target.token)?;
+            let name = crate::catalog::get(database, target.kind.brew_kind()?, &target.token)?;
             let name = crate::library::display_name(name.as_ref(), &target.token, settings.locale);
             result.push(RunningApp { target, name });
         }
@@ -324,12 +353,25 @@ pub async fn prepare(
         }
     }
     let start = Instant::now();
+    let mut revealed = false;
     loop {
         if cancel.load(Ordering::Acquire) {
             return Err(AppError::new("E_INTERRUPTED", "task_canceled"));
         }
-        if detect().await?.is_empty() {
+        let remaining = detect().await?;
+        if remaining.is_empty() {
             return Ok(reopen);
+        }
+        if !revealed
+            && identity
+                .reveal_after
+                .is_some_and(|after| start.elapsed() >= after)
+        {
+            revealed = true;
+            for process in remaining {
+                let native = control.clone();
+                let _ = crate::blocking(move || native.activate(&process)).await;
+            }
         }
         if start.elapsed() >= timeout {
             return Err(AppError::new("E_APP_QUIT_FAILED", "quit_timeout"));
@@ -413,6 +455,7 @@ pub(crate) mod tests {
         Arc::new(Identity {
             paths: vec!["/Applications/target.app".into()],
             bundle_ids: vec!["test.target".into()],
+            ..Default::default()
         })
     }
     async fn prepare_test(apps: Arc<FakeApps>, allow: bool) -> Result<Vec<PathBuf>, AppError> {

@@ -14,6 +14,8 @@ const props = defineProps<{
   accent?: string | null;
   locale?: string;
   tagline: string;
+  platform: string;
+  site?: string;
 }>();
 // Wide CJK characters and long names need smaller lettering within the fixed share-image canvas.
 const titleSize = computed(() => {
@@ -23,7 +25,7 @@ const titleSize = computed(() => {
 </script>
 
 <template>
-  <OgFrame :tagline="tagline" :locale="locale">
+  <OgFrame :tagline="tagline" :platform="platform" :site="site" :locale="locale">
     <div
       :style="{
         display: 'flex',

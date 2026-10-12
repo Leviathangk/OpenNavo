@@ -17,5 +17,13 @@ It includes the following third-party materials, which keep their own licenses:
   Homebrew API (https://formulae.brew.sh). The data comes from Homebrew/homebrew-cask
   and Homebrew/homebrew-core, BSD 2-Clause License.
 
+- apps/desktop/src-tauri/src/monitor/sensors.rs adapts the M1-generation CPU
+  temperature sensor keys from exelban/stats (Modules/Sensors/values.swift,
+  revision 5df24006b2993228fdf23f72fec467bffb4d2106), Copyright (c) 2019
+  Serhiy Mytrovtsiy, MIT License. Only ten read-only CPU temperature keys are
+  used, grouped into performance and efficiency cores; no fan control or other
+  Stats code is included. The license text is kept in
+  docs/legal/third-party/licenses/79a58cb749dcc8b569c432f92ed37cf05527e505e4de4999199aed22b6a6cbf8.txt.
+
 The full list of third-party dependencies and their licenses is generated into
 apps/server/seeds/about.json (tooling/scripts/about-inventory.py) and shown on the About page.

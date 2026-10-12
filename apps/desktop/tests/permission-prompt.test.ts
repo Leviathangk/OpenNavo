@@ -19,7 +19,10 @@ async function open(flags = 'no-app-management') {
   window.history.replaceState(null, '', `/?mock=${flags}`);
   const context = await setup('/updates', { tickMs: 5 });
   await startLocalState();
-  mount(PermissionPrompt, { global: { plugins: [context.pinia, context.router, i18n] }, attachTo: document.body });
+  mount(PermissionPrompt, {
+    global: { plugins: [context.pinia, context.router, i18n] },
+    attachTo: document.body
+  });
   await flushPromises();
   return context;
 }
@@ -47,7 +50,9 @@ describe('Permission prompt', () => {
     expect(guide).toHaveBeenCalledWith('app_management');
     // Keep the prompt during guidance; enabling permission in System Settings removes Enable and leaves Retry.
     expect(text()).toContain(APP_TITLE);
-    await vi.waitFor(() => expect(usePermissionsStore().appManagement).toBe('granted'), { timeout: 3000 });
+    await vi.waitFor(() => expect(usePermissionsStore().appManagement).toBe('granted'), {
+      timeout: 3000
+    });
     await flushPromises();
     expect(button('开启')).toBeUndefined();
 
@@ -137,7 +142,13 @@ describe('Permission prompt', () => {
       );
       await vi.waitFor(() => expect(store.blocked).toHaveLength(2), { timeout: 5000 });
       const [first, second] = store.blocked as [Task, Task];
-      const queued: Task = { ...first, id: 'retry-first', state: 'queued', error: null, trigger: 'retry' };
+      const queued: Task = {
+        ...first,
+        id: 'retry-first',
+        state: 'queued',
+        error: null,
+        trigger: 'retry'
+      };
       let finish: (() => void) | undefined;
       const pending = new Promise<Task>(resolve => {
         finish = () => resolve(queued);
@@ -185,7 +196,13 @@ describe('Permission prompt', () => {
     );
     await vi.waitFor(() => expect(store.blocked).toHaveLength(3), { timeout: 5000 });
     const [first, second, third] = store.blocked as [Task, Task, Task];
-    const queued: Task = { ...first, id: 'retry-first', state: 'queued', error: null, trigger: 'retry' };
+    const queued: Task = {
+      ...first,
+      id: 'retry-first',
+      state: 'queued',
+      error: null,
+      trigger: 'retry'
+    };
     const enqueue = vi
       .spyOn(tasks, 'enqueue')
       .mockResolvedValueOnce(queued)
@@ -212,3 +229,29 @@ describe('Permission prompt', () => {
     expect(text()).not.toContain(APP_TITLE);
   });
 });
+
+it.each(['E_PERMISSION', 'E_FULL_DISK_ACCESS'].flatMap(code => ['app', 'cask'].map(kind => [code, kind] as const)))(
+  'Planned %s %s failure opens review without replay or force',
+  async (code, kind) => {
+    const context = await open();
+    const store = usePermissionPromptStore();
+    store.observe({
+      ...context.state.history[0]!,
+      id: 'planned-failure',
+      op: 'uninstall',
+      state: 'failed',
+      target: { kind: kind as 'app' | 'cask', token: 'local-editor' },
+      options: { planId: 'consumed' },
+      error: { code, message: 'permission', detail: null }
+    });
+    await flushPromises();
+    const enqueue = vi.spyOn(commands, 'taskEnqueue');
+    expect(button('重试')).toBeUndefined();
+    expect(button('重新检查')).toBeDefined();
+    button('重新检查')!.click();
+    await flushPromises();
+    expect(context.router.currentRoute.value.path).toBe('/installed');
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(store.blocked).toEqual([]);
+  }
+);

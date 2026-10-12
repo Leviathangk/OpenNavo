@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="Row">
 import { computed, ref } from 'vue';
 import { interpolate } from '@opennavo/shared';
+import OnCheckbox from './OnCheckbox.vue';
 import { useUiMessages } from '../composables/locale';
 
 export interface OnTableColumn {
@@ -38,12 +39,25 @@ export interface OnTableProps<R> {
   caption?: string;
   /** Fixed-height scrolling with sticky header; virtualize above 200 rows. */
   height?: number;
+  /** fixed honors column widths and lets the flexible column truncate, so wide tables never scroll sideways. */
+  layout?: 'auto' | 'fixed';
+  /** Leading checkbox column; selected row keys use v-model:selected. */
+  selectable?: boolean;
+  /** Selected row keys; keys of rows filtered out of `rows` are kept. */
+  selected?: readonly string[];
+  /** Rows that cannot be selected, e.g. protected apps; all rows by default. */
+  canSelect?: (row: R) => boolean;
+  /** Accessible name of the header checkbox. */
+  selectAllLabel?: string;
+  /** Accessible name of a row checkbox. */
+  selectRowLabel?: (row: R) => string;
 }
 
 const props = defineProps<OnTableProps<Row>>();
 
 const emit = defineEmits<{
   'update:sort': [sort: OnTableSort];
+  'update:selected': [keys: string[]];
   rowClick: [key: string, row: Row];
 }>();
 
@@ -100,6 +114,35 @@ function onScroll(event: Event) {
 }
 
 const sticky = computed(() => props.height !== undefined);
+
+// Selection works on every row, not only the virtualized window; the header box reflects selectable rows.
+const selectedSet = computed(() => new Set(props.selected ?? []));
+const selectableKeys = computed(() =>
+  props.rows.filter(row => props.canSelect?.(row) ?? true).map(row => props.rowKey(row))
+);
+const selectedCount = computed(() => selectableKeys.value.filter(key => selectedSet.value.has(key)).length);
+const allSelected = computed(
+  () => selectableKeys.value.length > 0 && selectedCount.value === selectableKeys.value.length
+);
+const columnCount = computed(() => props.columns.length + (props.selectable ? 1 : 0));
+
+function toggleAll() {
+  const next = new Set(selectedSet.value);
+  for (const key of selectableKeys.value) {
+    if (allSelected.value) next.delete(key);
+    else next.add(key);
+  }
+  emit('update:selected', [...next]);
+}
+
+function toggleRow(key: string, value: boolean) {
+  const next = new Set(selectedSet.value);
+  if (value) next.add(key);
+  else next.delete(key);
+  emit('update:selected', [...next]);
+}
+
+const highlighted = (key: string) => key === props.selectedKey || selectedSet.value.has(key);
 </script>
 
 <template>
@@ -110,7 +153,10 @@ const sticky = computed(() => props.height !== undefined);
       :tabindex="height === undefined ? undefined : 0"
       @scroll="onScroll"
     >
-      <table class="w-full border-separate border-spacing-0 text-12.5px">
+      <table
+        class="w-full border-separate border-spacing-0 text-12.5px"
+        :class="layout === 'fixed' ? 'table-fixed' : ''"
+      >
         <caption v-if="caption" class="sr-only">
           {{
             caption
@@ -118,6 +164,20 @@ const sticky = computed(() => props.height !== undefined);
         </caption>
         <thead>
           <tr>
+            <th
+              v-if="selectable"
+              scope="col"
+              class="box-border h-38px w-40px border-b border-b-solid border-line-subtle pl-14px pr-0 text-left"
+              :class="sticky ? 'sticky top-0 z-sticky bg-surface-card' : ''"
+            >
+              <OnCheckbox
+                :model-value="allSelected"
+                :indeterminate="selectedCount > 0 && !allSelected"
+                :disabled="!selectableKeys.length"
+                :aria-label="selectAllLabel"
+                @update:model-value="toggleAll"
+              />
+            </th>
             <th
               v-for="column in columns"
               :key="column.key"
@@ -149,15 +209,31 @@ const sticky = computed(() => props.height !== undefined);
         </thead>
         <tbody>
           <tr v-if="virtual && range.start > 0" aria-hidden="true">
-            <td :colspan="columns.length" :style="{ height: `${range.start * ROW_HEIGHT}px` }" class="p-0"></td>
+            <td :colspan="columnCount" :style="{ height: `${range.start * ROW_HEIGHT}px` }" class="p-0"></td>
           </tr>
           <tr
             v-for="item in visible"
             :key="item.key"
             class="cursor-default"
             :class="item.key === selectedKey ? 'on-table-selected' : ''"
+            :aria-selected="selectable ? selectedSet.has(item.key) : undefined"
             @click="emit('rowClick', item.key, item.row)"
           >
+            <td
+              v-if="selectable"
+              class="box-border h-44px w-40px pl-14px pr-0"
+              :class="[
+                item.index > 0 ? 'border-t border-t-solid border-surface-card-alt' : '',
+                highlighted(item.key) ? 'bg-surface-card-alt' : ''
+              ]"
+            >
+              <OnCheckbox
+                :model-value="selectedSet.has(item.key)"
+                :disabled="!(canSelect?.(item.row) ?? true)"
+                :aria-label="selectRowLabel?.(item.row)"
+                @update:model-value="value => toggleRow(item.key, value)"
+              />
+            </td>
             <td
               v-for="column in columns"
               :key="column.key"
@@ -167,7 +243,7 @@ const sticky = computed(() => props.height !== undefined);
                 column.numeric ? 'text-right tabular-nums' : '',
                 column.mono ? 'font-mono text-11.5px text-component-mono-text' : '',
                 dimmed?.(item.row) ? 'opacity-55' : '',
-                item.key === selectedKey ? 'bg-surface-card-alt' : ''
+                highlighted(item.key) ? 'bg-surface-card-alt' : ''
               ]"
             >
               <slot :name="`cell-${column.key}`" :row="item.row" :value="valueOf(item.row, column.key)">
@@ -177,7 +253,7 @@ const sticky = computed(() => props.height !== undefined);
           </tr>
           <tr v-if="virtual && range.end < rows.length" aria-hidden="true">
             <td
-              :colspan="columns.length"
+              :colspan="columnCount"
               :style="{ height: `${(rows.length - range.end) * ROW_HEIGHT}px` }"
               class="p-0"
             ></td>

@@ -79,7 +79,9 @@ describe('Pre-install adoption confirmation', () => {
   it('Preflight failures block installation; unverifiable apps cannot force consent', async () => {
     await init('install-check-fails');
     const enqueue = vi.spyOn(commands, 'taskEnqueue');
-    await expect(useTasksStore().enqueue('install', target)).rejects.toMatchObject({ code: 'E_TIMEOUT' });
+    await expect(useTasksStore().enqueue('install', target)).rejects.toMatchObject({
+      code: 'E_TIMEOUT'
+    });
     expect(enqueue).not.toHaveBeenCalled();
     await init('install-blocked');
     const result = useTasksStore().enqueue('install', target);
@@ -156,7 +158,16 @@ describe('Pre-install adoption confirmation', () => {
       props: {
         open: true,
         preview: {
-          entries: [{ line: 1, raw: 'cask "notion"', kind: 'cask', token: 'notion', status: 'ready', reason: null }],
+          entries: [
+            {
+              line: 1,
+              raw: 'cask "notion"',
+              kind: 'cask',
+              token: 'notion',
+              status: 'ready',
+              reason: null
+            }
+          ],
           ready: 1,
           installed: 0,
           unsupported: 0

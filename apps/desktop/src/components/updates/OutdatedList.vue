@@ -46,7 +46,10 @@ async function ignore(item: OutdatedItem) {
     await updates.ignore({ kind: item.kind, token: item.token }, item.currentVersion);
     toasts.push({
       tone: 'info',
-      title: t('updates.ignored', { name: displayName(item.kind, item.token), version: item.currentVersion })
+      title: t('updates.ignored', {
+        name: displayName(item.kind, item.token),
+        version: item.currentVersion
+      })
     });
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
@@ -54,7 +57,10 @@ async function ignore(item: OutdatedItem) {
 }
 
 const rows = computed(() =>
-  props.items.map(item => ({ item, summary: props.summaries.get(packageKey(item.kind, item.token))?.summary ?? null }))
+  props.items.map(item => ({
+    item,
+    summary: props.summaries.get(packageKey(item.kind, item.token))?.summary ?? null
+  }))
 );
 </script>
 

@@ -9,6 +9,8 @@ const props = defineProps<{
   description?: string;
   locale?: string;
   tagline: string;
+  platform: string;
+  site?: string;
   variant: 'home' | 'discover';
   icons?: { name: string; token: string; src?: string | null; accent?: string | null }[];
 }>();
@@ -21,7 +23,7 @@ const iconRows = computed(() => {
 </script>
 
 <template>
-  <OgFrame :tagline="tagline" :locale="locale">
+  <OgFrame :tagline="tagline" :platform="platform" :site="site" :locale="locale">
     <div
       :style="{
         display: 'flex',

@@ -9,7 +9,8 @@ import { startLocalState, usePermissionsStore, useSettingsStore } from '@/stores
 import { setup } from './helpers';
 
 // First-launch welcome (06 §13.1, 08 §10.13, owner revision 2026-10-07): two download-source cards, official and other mirrors.
-// Select the lowest-latency source by default and recommend only that source; install from the selected source. App Management is required; Full Disk Access is optional.
+// Select the lowest-latency source by default and recommend only that source; install from the selected source. App Management and
+// Full Disk Access are both required (owner decision 2026-10-12).
 const remote = vi.hoisted(() => ({ config: null as unknown }));
 vi.mock('@/composables/useClientConfig', () => ({
   fetchClientConfig: async () => {
@@ -85,6 +86,14 @@ const start = () => button('开始使用');
 async function grantAppManagement() {
   button('开启 App 管理')?.click();
   await vi.waitFor(() => expect(usePermissionsStore().appManagement).toBe('granted'), {
+    timeout: 3000
+  });
+  await flushPromises();
+}
+/** Same for Full Disk Access. */
+async function grantFullDiskAccess() {
+  button('开启完全磁盘访问权限')?.click();
+  await vi.waitFor(() => expect(usePermissionsStore().fullDiskAccess).toBe('granted'), {
     timeout: 3000
   });
   await flushPromises();
@@ -288,19 +297,23 @@ describe('Welcome without Homebrew', () => {
 });
 
 describe('Welcome with Homebrew', () => {
-  it('Require App Management, open guidance, save source/onboarding, then enter Discover', async () => {
+  it('Require App Management and Full Disk Access, open guidance, save source/onboarding, then enter Discover', async () => {
     const { router } = await open({ brew: true, flags: 'first-run' });
     const replace = vi.spyOn(router, 'replace');
     expect(text()).toContain('不读取终端里设置的镜像变量');
     expect(button('安装 Homebrew')).toBeUndefined();
     expect(start()?.disabled).toBe(true);
-    expect(text()).toContain('开启「App 管理」后即可开始使用。');
+    expect(text()).toContain('开启「App 管理」和「完全磁盘访问权限」后即可开始使用。');
 
     const guide = vi.spyOn(commands, 'permissionGuideOpen');
     await grantAppManagement();
     expect(guide).toHaveBeenCalledWith('app_management');
+    // App Management alone is no longer enough.
+    expect(start()?.disabled).toBe(true);
+    await grantFullDiskAccess();
+    expect(guide).toHaveBeenCalledWith('full_disk_access');
     expect(start()?.disabled).toBe(false);
-    expect(text()).not.toContain('开启「App 管理」后即可开始使用。');
+    expect(text()).not.toContain('后即可开始使用。');
 
     start()?.click();
     await flushPromises();
@@ -314,25 +327,25 @@ describe('Welcome with Homebrew', () => {
     expect(replace).toHaveBeenCalledWith('/discover');
   });
 
-  it('Full Disk Access remains optional and shows Enabled after granting', async () => {
+  it('Full Disk Access is required as well and shows Enabled after granting', async () => {
     await open({ brew: true });
+    expect(usePermissionsStore().appManagement).toBe('granted');
     expect(usePermissionsStore().fullDiskAccess).toBe('denied');
-    expect(text()).toContain('可选');
-    expect(start()?.disabled).toBe(false);
+    expect(text().match(/必需/g)?.length).toBe(2);
+    expect(text()).not.toContain('可选');
+    expect(start()?.disabled).toBe(true);
     const guide = vi.spyOn(commands, 'permissionGuideOpen');
-    button('开启完全磁盘访问权限')?.click();
-    await vi.waitFor(() => expect(usePermissionsStore().fullDiskAccess).toBe('granted'), {
-      timeout: 3000
-    });
-    await flushPromises();
+    await grantFullDiskAccess();
     expect(guide).toHaveBeenCalledWith('full_disk_access');
     expect(button('开启完全磁盘访问权限')).toBeUndefined();
     expect(text().match(/已开启/g)?.length).toBe(2);
+    expect(start()?.disabled).toBe(false);
   });
 
   it('Failed onboarding saves stay on Welcome with retryable errors', async () => {
     const { router } = await open({ brew: true, flags: 'first-run' });
     await grantAppManagement();
+    await grantFullDiskAccess();
     const update = vi.spyOn(useSettingsStore(), 'update').mockRejectedValueOnce(new Error('save_failed'));
     start()?.click();
     await flushPromises();
@@ -345,12 +358,14 @@ describe('Welcome with Homebrew', () => {
     expect(router.currentRoute.value.path).toBe('/discover');
   });
 
-  it('Unknown system detection allows explicit I enabled it confirmation', async () => {
+  it('Unknown system detection allows explicit I enabled it confirmation, covering both permissions', async () => {
     await open({ brew: true, flags: 'first-run,no-permission-check' });
     expect(start()?.disabled).toBe(true);
     button('我已开启')?.click();
     await flushPromises();
     expect(start()?.disabled).toBe(false);
+    // The confirmation also lets Installed start without asking again.
+    expect(usePermissionsStore().fullDiskReady).toBe(true);
   });
 
   it('Permission requiring relaunch shows notice and Reopen', async () => {

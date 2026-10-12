@@ -426,6 +426,7 @@
   },
   "og": {
     "tagline": "The Homebrew App Store",
+    "platform": "macOS app",
     "homeTitle": "The Homebrew\nApp Store\nfor Mac.",
     "homeDescription": "Install apps. Read release notes.\nKeep your Mac up to date.",
     "discoverTitle": "Discover\nMac apps.",

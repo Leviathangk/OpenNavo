@@ -40,7 +40,10 @@ const messages: MessageSchema = {
     updates: 'Updates',
     history: 'History',
     settings: 'Settings',
-    updatesBadge: '{count} update available | {count} updates available'
+    updatesBadge: '{count} update available | {count} updates available',
+    cleanup: 'Clean Up',
+    cleanupBadge: '{count} broken background item still loads | {count} broken background items still load',
+    monitor: 'Monitor'
   },
   env: {
     label: 'Homebrew',
@@ -353,12 +356,6 @@ const messages: MessageSchema = {
       copyCommand: 'Copy brew Command',
       web: 'View on the Web'
     },
-    uninstallConfirm: {
-      title: 'Uninstall {name}?',
-      description: 'This runs {command}.',
-      zap: 'Also remove app data (--zap)',
-      confirm: 'Uninstall'
-    },
     commandCopied: 'brew command copied',
     offline: 'Connect to see screenshots and more',
     notFound: 'This package isn’t in the local catalog',
@@ -367,19 +364,30 @@ const messages: MessageSchema = {
   },
   library: {
     title: 'Installed',
-    summary: '{count} item · {size} | {count} items · {size}',
+    summary: '{count} app · {size} | {count} apps · {size}',
     summaryCount: '{count} item | {count} items',
-    filterPlaceholder: 'Filter installed…',
+    filterPlaceholder: 'Filter by name or bundle ID…',
+    scanProgress: {
+      running: 'Calculating space used',
+      done: 'Space calculation complete',
+      partial: 'Complete with failures',
+      completed: 'Completed {completed} / {total}',
+      scope: 'App, application data and caches',
+      retrying: '{count} awaiting retry',
+      failed: '{count} failed; see list for reasons'
+    },
+    retryFootprint: 'Click to recalculate space used by this app',
+    recalculate: 'Recalculate space used',
     refresh: 'Refresh',
-    empty: 'Nothing installed with Homebrew yet',
+    empty: 'No apps to uninstall',
     emptyFiltered: 'Nothing matches the filters',
     columns: {
       name: 'Name',
       version: 'Version',
-      size: 'Size',
-      installedAt: 'Installed',
+      size: 'Space used',
       status: 'Status',
-      actions: 'Actions'
+      actions: 'Actions',
+      lastUsed: 'Last Opened'
     },
     status: {
       installed: 'Installed',
@@ -390,25 +398,23 @@ const messages: MessageSchema = {
       running: 'Updating {percent}',
       runningUnknown: 'Working',
       queued: 'Queued',
-      unknown: 'Unknown'
+      unknown: 'Unknown',
+      uninstalling: 'Uninstalling {percent}',
+      protected: 'This app',
+      managed: 'Managed',
+      adoptable: 'Adoptable'
     },
-    dependency: 'Dependency of {names}',
     storage: {
       title: 'Storage',
       total: '{size} in total',
       caption: 'Disk usage',
-      apps: 'Apps',
-      cache: 'Download cache'
-    },
-    cleanup: {
-      title: 'Clean Up Cache',
-      description: 'Old versions and downloads, same as brew cleanup.',
-      button: 'Free {size}',
-      none: 'Nothing to clean up'
+      cache: 'Download cache',
+      homebrew: 'Homebrew',
+      others: 'Other apps'
     },
     backup: {
       title: 'Backup & Migration',
-      description: 'Export everything as a Brewfile and restore it on a new Mac in one step.',
+      description: 'Export your Homebrew apps as a Brewfile and restore them on a new Mac in one step.',
       export: 'Export',
       restore: 'Restore',
       exported: '{count} package exported | {count} packages exported'
@@ -432,6 +438,42 @@ const messages: MessageSchema = {
       warnings: '{count} warning | {count} warnings',
       run: 'Run Check',
       running: 'Checking…'
+    },
+    adoptableHint: 'Homebrew has this app. Adopt it to update it in OpenNavo.',
+    sources: {
+      all: 'All',
+      homebrew: 'Homebrew',
+      app_store: 'App Store',
+      other: 'Other',
+      direct: 'Installed manually',
+      pkg: 'PKG installer'
+    },
+    sourceFilter: 'Filter by source',
+    unused: 'Unused',
+    unusedHint: 'Not opened in more than {days} days',
+    running: 'Running',
+    self: 'The app you are using',
+    systemNote: 'Built-in apps such as Safari and Mail are protected by macOS and are not listed here.',
+    selectAll: 'Select all',
+    selectRow: 'Select {name}',
+    batch: {
+      selected: '{count} app selected | {count} apps selected',
+      size: 'Apps take {size} · related files are scanned next',
+      clear: 'Clear Selection',
+      uninstall: 'Uninstall Selected'
+    },
+    menu: {
+      info: 'Show Info',
+      adopt: 'Adopt with Homebrew',
+      detail: 'View in OpenNavo'
+    },
+    unusedCard: {
+      title: 'Unused Apps',
+      description:
+        '{count} app has not been opened in over {days} days and takes {size}. | {count} apps have not been opened in over {days} days and take {size}.',
+      show: 'Show These Apps',
+      all: 'Show All Apps',
+      none: 'Every app was opened in the last {days} days.'
     }
   },
   updates: {
@@ -453,6 +495,7 @@ const messages: MessageSchema = {
     emptyHint: 'New versions will show up here',
     queued: '{count} added to the queue | {count} added to the queue',
     history: {
+      recheck: 'Review Again',
       title: 'History',
       subtitle: 'This Mac · {count} in the last 30 days | This Mac · {count} in the last 30 days',
       filterLabel: 'Result',
@@ -463,6 +506,8 @@ const messages: MessageSchema = {
       yesterday: 'Yesterday · {date}',
       viewLog: 'View Log',
       retry: 'Retry',
+      undo: 'Undo',
+      purge: 'Delete Permanently',
       canceled: 'Canceled',
       batch: '{action} {count} {kind} | {action} {count} {kind}',
       empty: 'No history yet'
@@ -520,7 +565,9 @@ const messages: MessageSchema = {
       mirrors: 'Download Source',
       homebrew: 'Homebrew',
       privacy: 'Privacy',
-      about: 'About'
+      about: 'About',
+      cleanup: 'Clean Up',
+      monitor: 'System Monitor'
     },
     general: {
       followSystem: 'Follow system (current: {language})',
@@ -531,13 +578,16 @@ const messages: MessageSchema = {
       keepInMenuBar: 'Keep in the menu bar after closing the window',
       trayShowCount: 'Show the number of updates in the menu bar',
       notifyUpdates: 'Notify me when updates are available',
-      zapByDefault: 'Also remove app data when uninstalling',
-      zapByDefaultHint: 'Same as brew uninstall --zap',
+      zapByDefault: 'Clean up related files when uninstalling',
+      zapByDefaultHint: 'App data, caches, preferences and more are listed for you to confirm first',
       updates: 'Update Checks',
       autoCheck: 'Check for updates daily',
       checkTime: 'Check time',
       runBrewUpdate: 'Update the Homebrew index before checking',
-      runBrewUpdateHint: 'brew update'
+      runBrewUpdateHint: 'brew update',
+      uninstall: 'Uninstalling',
+      deleteMode: 'Removal',
+      deleteModeHint: 'Moving to the Trash can be undone; deleting frees space right away'
     },
     customMirrors: {
       add: 'Add custom source',
@@ -671,7 +721,7 @@ const messages: MessageSchema = {
       waiting: 'Waiting…',
       granted: 'On',
       confirm: 'I’ve Turned It On',
-      startHint: 'Turn on App Management to get started.',
+      startHint: 'Turn on App Management and Full Disk Access to get started.',
       appManagement: {
         title: 'Allow OpenNavo to manage apps',
         body: 'Needed to update and uninstall apps.',
@@ -679,7 +729,7 @@ const messages: MessageSchema = {
       },
       fullDiskAccess: {
         title: 'Full Disk Access',
-        body: 'Needed to delete app data when uninstalling. You can turn it on later.',
+        body: 'Needed to see how much space apps take, uninstall them and undo from the Trash.',
         enable: 'Turn On Full Disk Access'
       }
     },
@@ -722,11 +772,19 @@ const messages: MessageSchema = {
       retry: 'Retry',
       retryAll: 'Retry All',
       later: 'Later'
-    },
-    uninstall: {
-      title: 'Deleting app data needs Full Disk Access',
-      body: 'Turn it on before uninstalling, or uncheck the option to remove just the app.'
     }
+  },
+  fullDiskGate: {
+    title: 'Turn on Full Disk Access first',
+    body: 'Installed reads each app’s data in your Library to measure the space it really takes, find everything an uninstall would leave behind, and undo an uninstall from the Trash.',
+    points: {
+      footprint: 'The real space each app takes, including its data and caches',
+      leftovers: 'Every related file when uninstalling, including containers and group containers',
+      undo: 'Undo an uninstall from the Trash'
+    },
+    row: 'Allow OpenNavo in System Settings and this page continues on its own.',
+    unknown: 'macOS did not report the permission state. If it is already on:',
+    privacy: 'Everything is read on this Mac; no file or path is uploaded.'
   },
   deeplink: {
     installTitle: 'Install {name}?',
@@ -782,6 +840,8 @@ const messages: MessageSchema = {
     viewUpdate: 'View update',
     previewHint:
       'Development preview: simulated download and installation; no real update. Restart only closes the preview; you can view it again.',
+    previewNotes:
+      '- Featured collections use a more compact layout to show more apps\n- OpenNavo now checks for new versions automatically every day\n- Fixes known issues and improves the experience',
     previewFailure: 'Simulate download failure',
     title: 'App updates',
     current: 'Current version {version}',
@@ -820,7 +880,9 @@ const messages: MessageSchema = {
       unpin: 'Unpin',
       cleanup: 'Clean up cache',
       update: 'Update Homebrew',
-      install_homebrew: 'Install Homebrew'
+      install_homebrew: 'Install Homebrew',
+      remove_leftovers: 'Clean up leftovers',
+      clean: 'Clean Up Mac'
     },
     running: {
       install: 'Installing {name}',
@@ -831,7 +893,9 @@ const messages: MessageSchema = {
       unpin: 'Unpinning {name}',
       cleanup: 'Cleaning up cache',
       update: 'Updating Homebrew',
-      install_homebrew: 'Installing Homebrew'
+      install_homebrew: 'Installing Homebrew',
+      remove_leftovers: 'Cleaning up leftovers: {name}',
+      clean: 'Cleaning up Mac'
     },
     phases: {
       preparing: 'Preparing',
@@ -883,7 +947,24 @@ const messages: MessageSchema = {
     E_INTERRUPTED: 'The task was interrupted',
     E_TIMEOUT: 'No response for a long time',
     E_UNKNOWN: 'The operation failed. See the log for details',
-    E_NETWORK: 'Can’t reach the OpenNavo service'
+    E_NETWORK: 'Can’t reach the OpenNavo service',
+    E_PROTECTED: 'This app is protected and cannot be uninstalled',
+    E_APP_MANAGEMENT: 'Allow OpenNavo to manage apps first',
+    E_UNINSTALL_INCOMPLETE: 'The app still exists. Uninstall did not complete; check the log and try again.',
+    E_PLAN_EXPIRED: 'Files changed. Scan again.',
+    E_SCAN_CANCELED: 'Scan canceled',
+    E_RESTORE_UNAVAILABLE: 'Some files are no longer in the Trash and could not be put back',
+    E_TRASH_FAILED: 'Could not move it to the Trash',
+    E_MONITOR_UNAVAILABLE: 'Couldn’t read this Mac’s system information',
+    E_FAN_UNSUPPORTED: 'Fan control isn’t supported on this Mac’s chip',
+    E_FAN_HELPER_NOT_ENABLED: 'The fan helper isn’t installed or allowed yet',
+    E_FAN_HELPER_UNSIGNED:
+      'This copy of OpenNavo isn’t signed (a development build, for example), so it can’t install the fan helper. Use the official installer',
+    E_FAN_HELPER_UNAVAILABLE: 'Couldn’t reach the fan helper. Try again later',
+    E_FAN_WRITE_FAILED: 'Couldn’t change the fan setting',
+    E_FAN_NO_MANUAL_SPEED: 'There’s no previous manual speed yet',
+    E_FAN_UNAUTHORIZED: 'The fan helper failed its signature check. Reinstall OpenNavo',
+    E_FAN_SENSOR_UNAVAILABLE: 'Temperature can’t be read, so manual control is blocked for safety'
   },
   installConfirm: {
     title: 'Adopt the existing {name}?',
@@ -910,6 +991,785 @@ const messages: MessageSchema = {
   },
   page: {
     comingSoon: 'This page will be filled in by a later task.'
+  },
+  appInfo: {
+    title: 'Info',
+    open: 'Open',
+    reveal: 'Show in Finder',
+    detail: 'View in OpenNavo',
+    adoptTitle: 'Let Homebrew Manage It',
+    adoptBody:
+      'Homebrew has {name}. Adopt it to update it in OpenNavo with one click and uninstall it with fuller cleanup rules.',
+    adopt: 'Adopt with Homebrew',
+    footprint: 'Storage',
+    estimate: 'Estimate',
+    footprintCaption: 'Storage breakdown',
+    appBytes: 'App',
+    dataBytes: 'App data',
+    cacheBytes: 'Caches',
+    footprintIncomplete: 'Without Full Disk Access, some data is not counted.',
+    footprintPartial: 'Some files could not be read, so the real total may be larger.',
+    fields: {
+      path: 'Location',
+      bundleId: 'Bundle ID',
+      version: 'Version',
+      vendor: 'Developer',
+      arch: 'Architecture',
+      source: 'Source',
+      installedAt: 'Installed',
+      lastUsed: 'Last opened'
+    },
+    arch: {
+      arm64: 'Apple silicon',
+      x86_64: 'Intel',
+      universal: 'Universal'
+    },
+    protected: {
+      self: 'OpenNavo cannot uninstall itself. Move it to the Trash in Finder instead.',
+      system: 'This is part of macOS and cannot be uninstalled.',
+      managed: 'Your administrator manages this app, so it cannot be uninstalled here.'
+    },
+    uninstall: 'Uninstall…',
+    unknown: 'Unknown'
+  },
+  uninstall: {
+    title: 'Uninstall {name}?',
+    titleMany: 'Uninstall {count} App? | Uninstall {count} Apps?',
+    runningTitle: 'Uninstalling {name}',
+    runningTitleMany: 'Uninstalling {count} App | Uninstalling {count} Apps',
+    doneTitle: 'Uninstall Complete',
+    failedTitle: 'Scan Not Completed',
+    command: 'Runs {command}, then removes the related files checked below.',
+    scanning: 'Looking for related files…',
+    checked: '{checked} of {total} locations checked',
+    selection: '{selected} of {total} selected · {size}',
+    admin: '{count} item needs your password | {count} items need your password',
+    sharedKept: '{count} shared item kept | {count} shared items kept',
+    selectAll: 'Select All',
+    onlyApp: 'App Only',
+    recommended: 'Suggested',
+    groups: {
+      app: 'App',
+      app_data: 'App Data',
+      caches: 'Caches',
+      preferences: 'Preferences & Window State',
+      logs: 'Logs & Crash Reports',
+      background: 'Background Items',
+      cli: 'Command-Line Links',
+      plugins: 'Plug-ins, Drivers & Extensions',
+      receipts: 'Install Receipts',
+      maybe: 'Possibly Related · Please Check'
+    },
+    groupHints: {
+      app_data: 'Application Support · Containers · Group Containers',
+      caches: 'Caches · HTTPStorages · Temporary files',
+      preferences: 'Preferences · Saved Application State · Cookies',
+      logs: 'Logs · DiagnosticReports',
+      background: 'LaunchAgents · LaunchDaemons · Privileged helpers',
+      cli: 'Symbolic links into the app',
+      plugins: 'Internet Plug-Ins · Audio · Shared components',
+      receipts: 'pkgutil receipts',
+      maybe: 'Only the name is similar, so these are not checked'
+    },
+    itemCount: '{count} item | {count} items',
+    unselected: 'None · {size}',
+    files: '{count} file | {count} files',
+    link: 'Link',
+    reveal: 'Show in Finder',
+    required: 'Always removed',
+    adminHint: 'In a system folder; your administrator password is needed',
+    shared: 'Shared',
+    sharedWith: 'Also used by {names}, so it is kept by default',
+    reasons: {
+      app_bundle: 'App',
+      brew_uninstall: 'Homebrew step',
+      zap_rule: 'Homebrew rule',
+      bundle_id: 'Bundle ID',
+      app_group: 'App Group',
+      launchd: 'Background service',
+      symlink: 'Points into app',
+      pkg_receipt: 'Install receipt',
+      team_id: 'Same developer',
+      name_exact: 'Same name',
+      name_similar: 'Similar name'
+    },
+    reasonHints: {
+      app_bundle: 'The app itself',
+      brew_uninstall: 'brew uninstall always handles this, so it cannot be unchecked',
+      zap_rule: 'From the Homebrew Cask zap list, maintained by people',
+      bundle_id: 'Named after the bundle ID of the app or one of its components',
+      app_group: 'Shared container declared in the app signature',
+      launchd: 'A launchd configuration runs a program inside this app',
+      symlink: 'The link points into the app and breaks once the app is removed',
+      pkg_receipt: 'pkgutil records show that the app installer wrote it',
+      team_id: 'Developer folder with the same signing Team ID',
+      name_exact: 'The folder name matches the app name exactly',
+      name_similar: 'Only the name is similar, so it is not checked'
+    },
+    phases: {
+      preparing: 'Quitting the app',
+      uninstalling: 'Removing the app',
+      cleaning: 'Removing related files',
+      finishing: 'Recording'
+    },
+    notices: {
+      rescanned: 'Files changed, so OpenNavo scanned again.',
+      appManagement: 'Allow OpenNavo to manage apps first. It is needed to delete apps not installed with Homebrew.',
+      incomplete:
+        'Without Full Disk Access, {count} location could not be checked: {paths}. Turn it on to clean up more thoroughly. | Without Full Disk Access, {count} locations could not be checked: {paths}. Turn it on to clean up more thoroughly.',
+      running:
+        '{names} is running and will quit before uninstalling. | {names} are running and will quit before uninstalling.',
+      siblings: 'Apps from the same Homebrew package ({cask}) are uninstalled too: {names}.',
+      brewSudo: 'The Homebrew uninstall steps may ask for your administrator password separately.',
+      personal: {
+        chat_history:
+          'The app data of {name} contains chat history, images and files (about {size}). Back them up in the app first if you want to keep them.',
+        documents:
+          'The app data of {name} contains your documents and projects (about {size}). Save or export them first if you want to keep them.',
+        media:
+          'The app data of {name} contains photos, audio or video (about {size}). Export them first if you want to keep them.',
+        browser_profile:
+          'The app data of {name} contains bookmarks, history and extensions (about {size}). If you signed in, they can sync back after reinstalling.',
+        vm_disk:
+          'The app data of {name} contains virtual machine disks, images and volumes (about {size}). They must be downloaded again after deleting.',
+        other:
+          'The app data of {name} may contain your personal content (about {size}). Back it up first if you want to keep it.'
+      },
+      uninstaller: '{name} has an official uninstaller that also removes its licenses and shared components.'
+    },
+    mode: {
+      label: 'Removal',
+      trash: 'Move to Trash',
+      delete: 'Delete Immediately',
+      deleteWarning: 'Deleting cannot be undone'
+    },
+    confirm: 'Uninstall',
+    confirmClean: 'Uninstall & Clean Up · {size}',
+    confirmDelete: 'Uninstall & Delete · {size}',
+    confirmMany: 'Uninstall {count} App · {size} | Uninstall {count} Apps · {size}',
+    cancel: 'Cancel',
+    retry: 'Scan Again',
+    scanFailed: 'The scan did not finish: {reason}',
+    background: 'Continue in Background',
+    backgroundHint: 'Closing this window does not stop it. You will be notified when it finishes.',
+    log: 'Show Log',
+    hideLog: 'Hide Log',
+    waiting: 'Queued',
+    batch: {
+      meta: 'App + {count} related item | App + {count} related items',
+      admin: 'Needs your password',
+      exclude: 'Leave out of this uninstall',
+      include: 'Include in this uninstall',
+      skipped: 'Not uninstalled'
+    },
+    result: {
+      titleOne: '{name} Uninstalled',
+      titleMany: '{count} App Uninstalled | {count} Apps Uninstalled',
+      heroTrash: 'The files are in the Trash. You can undo until it is emptied.',
+      heroDelete: 'The files were deleted permanently.',
+      freed: 'Space to free',
+      freedNow: 'Space freed',
+      freedHint: 'After emptying the Trash',
+      freedNowHint: 'Available now',
+      moved: 'Moved to Trash',
+      deleted: 'Deleted',
+      countHint: 'Including the app',
+      skipped: 'Skipped',
+      skippedNone: 'No problems',
+      skippedSee: 'See reasons below',
+      skippedTitle: 'These items could not be removed',
+      skippedHint: 'You can clean them up later in Clean Up.',
+      failed: '{name} was not uninstalled: {reason}',
+      quitFailed:
+        'It did not quit, probably because it is waiting for you to save changes. Save or close it, then try again.',
+      finished: 'Done',
+      notFinished: 'Not finished',
+      retry: 'Uninstall Again',
+      undo: 'Undo Uninstall',
+      purge: 'Delete These Files Now',
+      done: 'Done',
+      brewNote:
+        'Undoing puts the files of a Homebrew app back, but not its Homebrew record. The app then shows as installed manually and adoptable.'
+    },
+    skipReasons: {
+      in_use: 'In use by another process',
+      permission: 'No permission',
+      admin_canceled: 'Administrator password not provided',
+      missing: 'Already gone',
+      changed: 'Changed after the scan, skipped for safety',
+      protected: 'Protected location',
+      running: 'The app is running',
+      tool_unavailable: 'The tool isn’t running; open it and try again'
+    },
+    toasts: {
+      done: '{name} uninstalled',
+      doneMany: '{count} app uninstalled | {count} apps uninstalled',
+      doneBody: '{count} item moved to the Trash · {size} to free | {count} items moved to the Trash · {size} to free',
+      deletedBody: '{count} item deleted · {size} freed | {count} items deleted · {size} freed',
+      undo: 'Undo',
+      undone: 'Uninstall undone',
+      undoneBody: '{count} item put back | {count} items put back',
+      undoMissing: '{count} file could not be put back | {count} files could not be put back',
+      purged: 'Deleted permanently, {size} freed',
+      needsFullDisk: 'Reading the Trash needs Full Disk Access.'
+    }
+  },
+  cleanup: {
+    title: 'Clean Up Mac',
+    rescan: 'Scan Again',
+    subtitle: {
+      idle: 'Find caches, logs, and leftovers of deleted apps, then review before anything is removed',
+      scanning: 'Scanning. This only reads and deletes nothing.',
+      review: '{size} reclaimable · scanned {time}',
+      running: 'Cleaning up. You can leave this page.',
+      done: 'Cleanup finished',
+      failed: 'The scan didn’t finish'
+    },
+    overview: {
+      title: 'See how much space this Mac can free up',
+      titleAgain: 'Scan again from time to time',
+      body: 'The scan only reads and takes about 30 seconds. Results are grouped into three risk levels; only rebuildable and old enough items are selected by default.',
+      scan: 'Start Scan',
+      never: 'Never scanned',
+      lastScan: 'Last scan: {time}',
+      lastResult: 'Last scan ({time}): {size} can still be cleaned up'
+    },
+    risks: {
+      rebuildable: 'Rebuildable',
+      review: 'Review',
+      personal: 'Personal'
+    },
+    riskHints: {
+      rebuildable: 'Deleted right away to free space; apps rebuild them as needed',
+      review: 'Only old items are preselected; give them a look before cleaning',
+      personal: 'Listed only and never preselected; what you pick goes to the Trash'
+    },
+    categories: {
+      app_caches: 'App Caches',
+      logs: 'Logs and Diagnostic Reports',
+      browser_caches: 'Browser Caches',
+      dev_caches: 'Developer Caches',
+      homebrew: 'Homebrew Downloads and Old Versions',
+      temp: 'Temporary Files',
+      leftovers: 'Leftovers of Deleted Apps',
+      installers: 'Old Installers',
+      project_artifacts: 'Project Build Files',
+      trash: 'Trash',
+      device_backups: 'Device Backups and Xcode Archives',
+      large_files: 'Large and Old Files',
+      docker: 'Docker Reclaimable Space'
+    },
+    categoryHints: {
+      app_caches: 'Caches apps create themselves; rebuilt automatically after deletion',
+      logs: 'App logs and crash reports older than 7 days',
+      browser_caches: 'Caches only; history, cookies, passwords, and extensions stay',
+      dev_caches: 'Generated or downloaded again on the next build or install',
+      homebrew: 'Same as brew cleanup: old versions and download caches',
+      temp: 'Temporary files untouched for 3 days and not open',
+      leftovers: 'The app is gone from this Mac, but these files remain',
+      installers: 'dmg and pkg files in Downloads and on the Desktop; ones for installed apps are preselected',
+      project_artifacts:
+        'node_modules, target, build, and more in projects untouched for 30 days; reinstall or rebuild to get them back',
+      trash: 'Selecting it empties the Trash; this can’t be undone',
+      device_backups:
+        'Once the Trash is emptied, backups can’t restore devices and archives can’t symbolicate crash logs',
+      large_files: 'Files larger than 1 GB not opened for 90 days',
+      docker: 'Removed by Docker’s own prune commands, never preselected; volumes are shown, not cleaned'
+    },
+    scan: {
+      starting: 'Preparing to scan',
+      scanning: 'Scanning {name}',
+      found: '{size} found',
+      readOnly: 'Read-only; nothing is deleted',
+      cancel: 'Cancel'
+    },
+    summary: {
+      reclaimable: 'Reclaimable',
+      excludesPersonal: 'Excluding personal files',
+      selected: '{count} item selected | {count} items selected',
+      breakdown: 'Delete {delete} · Move to Trash {trash}',
+      onlyRebuildable: 'Rebuildable Only',
+      recommended: 'Restore Suggestions',
+      inUse: '{size} more in use'
+    },
+    notices: {
+      rescanned: 'The results were refreshed. Please confirm again.',
+      services:
+        '{count} background item of deleted apps ({names}) still loads at login. It only causes errors and uses power, so cleaning it up is recommended. | {count} background items of deleted apps ({names}) still load at login. They only cause errors and use power, so cleaning them up is recommended.',
+      incomplete: 'Without Full Disk Access, these locations weren’t checked: {paths}. Turn it on to find more.'
+    },
+    category: {
+      atLeast: 'At least {size}',
+      selected: '{size} selected',
+      none: 'None selected',
+      allSkipped: 'All skipped',
+      skipped: '{count} item skipped, shown for reference only | {count} items skipped, shown for reference only',
+      lastModified: 'Last modified {time}',
+      servicesLoading: '{count} background item still loads at login | {count} background items still load at login',
+      inUse: '{size} in use'
+    },
+    skipReasons: {
+      running: 'Running; quit it to clean up',
+      in_use: 'In use',
+      busy: 'The tool is running',
+      recent: 'Changed recently',
+      git_tracked: 'Contains files tracked by Git',
+      protected: 'Protected',
+      permission: 'No permission',
+      tool_stopped: 'Not running; open it and scan again to see what can be reclaimed',
+      volumes: 'Volumes may hold databases and other data; shown only, never cleaned'
+    },
+    reasons: {
+      orphan_service: 'Background item',
+      installer_installed: 'Installed',
+      device_support_latest: 'Latest',
+      device_support_latestHint:
+        'Kept by default. If removed, Xcode prepares it again the next time this device connects, which takes a few minutes.',
+      tool_download_cache: 'Downloads again',
+      tool_download_cacheHint:
+        'Rebuildable, but the next build or test run downloads it again, which can take a while and use a lot of data, so it starts unchecked.',
+      docker_images: 'Unused images',
+      docker_imagesHint: 'Images no container uses. They are pulled or built again when needed.',
+      docker_build_cache: 'Build cache',
+      docker_build_cacheHint: 'The next image build takes longer; the result is the same.',
+      docker_containers: 'Stopped containers',
+      docker_containersHint: 'Changes written inside these containers are removed too; volumes stay.'
+    },
+    item: {
+      command: 'Command',
+      admin: 'Needs your administrator password',
+      reveal: 'Show in Finder',
+      protect: 'Always Keep',
+      keptOpen: 'Keeps {count} file in use | Keeps {count} files in use'
+    },
+    footer: {
+      selected: '{count} item selected · {size} | {count} items selected · {size}',
+      both: '{delete} is deleted for good; {trash} goes to the Trash and can be undone',
+      deleteOnly: '{size} is deleted for good and can’t be undone',
+      trashOnly: 'Everything goes to the Trash and can be undone',
+      nothing: 'Nothing selected yet',
+      clean: 'Clean Up {size}'
+    },
+    confirm: {
+      title: 'Clean up {size}?',
+      count: '{count} item | {count} items',
+      delete:
+        '{size} is deleted for good: caches, logs, developer caches, and similar files that apps rebuild. This can’t be undone.',
+      trash: '{size} goes to the Trash: leftovers of deleted apps and similar files. You can undo this afterward.',
+      emptyTrash: 'You selected the Trash: everything in it will be emptied and can’t be recovered.',
+      admin:
+        '{count} of them is a system-level background item and needs your administrator password once. | {count} of them are system-level background items and need your administrator password once.',
+      cancel: 'Cancel',
+      clean: 'Clean Up'
+    },
+    run: {
+      title: 'Cleaning up',
+      delete: 'Deleting',
+      trash: 'Moving to the Trash',
+      command: 'Running {command}',
+      hint: 'Cleanup runs as a task in the queue. Leaving this page won’t stop it, and you’ll be notified when it finishes.'
+    },
+    result: {
+      title: '{size} freed',
+      failedTitle: 'Cleanup didn’t finish',
+      trashPending: '{size} more is in the Trash and is freed once you empty it. Until then you can undo.',
+      rebuilds: 'Rebuildable files are recreated when apps need them.',
+      freed: 'Freed',
+      freedHint: 'Available now',
+      trashed: 'Moved to Trash',
+      trashedHint: '{count} item · freed when the Trash is emptied | {count} items · freed when the Trash is emptied',
+      trashedNone: 'None this time',
+      restored: 'Undone and put back',
+      skipped: 'Skipped',
+      skippedCount: '{count} item | {count} items',
+      skippedHint: 'See the reasons below',
+      skippedNone: 'No problems',
+      skippedTitle: 'Not cleaned up',
+      free: 'Available space',
+      undo: 'Undo Moving to Trash',
+      purge: 'Delete These Files for Good',
+      done: 'Done'
+    },
+    toasts: {
+      protected: 'Added to the protected list',
+      protectedBody: 'Future scans will skip it',
+      undo: 'Undo',
+      restored: 'Undone',
+      restoredBody: '{count} item is back where it was | {count} items are back where they were',
+      purged: 'Deleted for good',
+      purgedBody: '{size} more freed',
+      done: 'Cleanup finished',
+      doneBody: '{size} freed',
+      view: 'View'
+    },
+    failed: {
+      title: 'The scan didn’t finish'
+    },
+    rail: {
+      disk: 'Disk',
+      diskSub: '{name} · {size} total',
+      free: '{size} available',
+      diskUnknown: 'Disk space isn’t available right now.',
+      used: 'Used',
+      reclaimable: 'Reclaimable',
+      available: 'Available',
+      last: 'Last Scan',
+      lastScan: '{time} · {size} reclaimable',
+      lastNone: 'No scans yet. Every cleanup is recorded in your task history.',
+      history: 'View Task History',
+      protected: 'Protected List',
+      protectedCount: '{count} item | {count} items',
+      protectedBody:
+        'Files and apps on this list never show up in results. Password managers, VPNs, AI tools, virtual machines, and similar categories are always protected.',
+      manage: 'Manage'
+    },
+    entry: {
+      title: 'Clean Up Mac',
+      description: 'Find caches, logs, and leftovers of deleted apps, then review before cleaning up.',
+      found: '{size} reclaimable · scanned {time}.',
+      active:
+        '{count} background item of a deleted app still loads at login | {count} background items of deleted apps still load at login',
+      scan: 'Start Scan',
+      open: 'Clean Up'
+    },
+    settings: {
+      rebuildable: 'Rebuildable files',
+      rebuildableHint: 'Caches, logs, and developer caches are deleted right away to free space',
+      fixed: 'Fixed',
+      deleteMode: 'Files to review',
+      deleteModeHint:
+        'Leftovers of deleted apps and similar files: the Trash lets you undo; deleting frees space right away',
+      protected: 'Protected List',
+      added: 'Added {date}',
+      remove: 'Remove',
+      add: 'Add Folder…',
+      empty: 'Nothing yet. Choosing Always Keep in cleanup results also adds items here.',
+      always:
+        'Keychains and password managers, VPN and proxy tools, AI tools, virtual machine and container disk files, browser history and cookies, and iCloud Drive are always protected.'
+    },
+    groups: {
+      deviceSupport: 'Xcode device support files · {platform}',
+      temp: 'System temporary folder',
+      trash: 'Items in the Trash',
+      installers: 'Downloads and Desktop',
+      xcodeArchive: 'Xcode archives',
+      deviceBackup: 'Device backup',
+      deviceBackupModel: 'Device backup · {model}'
+    },
+    skipReasonsBy: {
+      running: 'In use by {names}; it can be cleaned up after quitting',
+      in_use: 'In use by {names}',
+      busy: '{names} is working on it'
+    }
+  },
+  monitor: {
+    title: 'System Monitor',
+    subtitle: '{model} · {chip} · {memory} memory · macOS {os} · up {uptime}',
+    subtitleLoading: 'Reading this Mac’s details',
+    menuBarButton: 'Menu Bar · {count} item | Menu Bar · {count} items',
+    waiting: 'Reading…',
+    modules: {
+      cpu: 'CPU',
+      gpu: 'GPU',
+      memory: 'Memory',
+      disk: 'Disk',
+      network: 'Network',
+      battery: 'Battery',
+      sensors: 'Sensors',
+      fans: 'Fans'
+    },
+    moduleHints: {
+      cpu: 'Usage',
+      gpu: 'Usage',
+      memory: 'Share in use',
+      disk: 'Available space',
+      network: 'Upload and download speed',
+      battery: 'Charge',
+      sensors: 'Hottest sensor'
+    },
+    intro: {
+      title: 'System Monitor is in your menu bar',
+      body: 'CPU and memory each have their own menu bar item; click one to see its details. Turn on other metrics in System Monitor, as many as you like, or turn them off in Settings.',
+      view: 'View'
+    },
+    health: {
+      good: 'All good',
+      goodBody: 'CPU, memory, disk, and battery are within normal ranges',
+      goodBodyNoBattery: 'CPU, memory, and disk are within normal ranges',
+      attention: '{count} thing needs attention | {count} things need attention',
+      critical: '{count} thing needs action soon | {count} things need action soon',
+      issues: {
+        cpuBusy: 'CPU has been above 85% for 3 minutes',
+        memoryPressure: 'Memory pressure is high',
+        memoryCritical: 'Memory pressure is critical; apps may slow down or be closed by the system',
+        diskLow: 'Only {size} left on disk',
+        batteryHealth: 'Battery health is only {percent}',
+        batteryHot: 'Battery is at {temp}',
+        temperature: 'CPU is at {temp}',
+        uptime: 'Not restarted for {count} day | Not restarted for {count} days',
+        diskSmart: '“{name}” reports a failing SMART status; back it up soon'
+      },
+      actions: {
+        processes: 'View Processes',
+        cleanup: 'Clean Up Mac',
+        fans: 'Adjust Fans'
+      }
+    },
+    cpu: {
+      split: 'User {user} · System {system}',
+      load: 'Load',
+      loadLong: 'Load (1, 5, 15 minutes)',
+      coresLabel: 'Cores',
+      cores: '{p} performance + {e} efficiency',
+      performanceLegend: '{count} performance cores (orange)',
+      efficiencyLegend: '{count} efficiency cores (purple)',
+      uptime: 'Uptime',
+      power: 'Power'
+    },
+    gpu: {
+      cores: '{chip} · {count}-core GPU',
+      model: 'Model',
+      noProcesses: 'macOS doesn’t report GPU usage per process, so no processes are shown.',
+      power: 'Power'
+    },
+    memory: {
+      summary: '{used} of {total} · pressure {pressure}',
+      pressure: {
+        normal: 'normal',
+        warning: 'high',
+        critical: 'critical'
+      },
+      app: 'App memory',
+      wired: 'Wired',
+      compressed: 'Compressed',
+      cached: 'Cached files',
+      swap: 'Swap'
+    },
+    disk: {
+      volume: '{name} · {total} total',
+      read: 'Read',
+      write: 'Write',
+      readAt: 'Read {value}',
+      writeAt: 'Write {value}',
+      volumes: 'Volumes',
+      internal: 'Internal',
+      external: 'External',
+      volumeFree: '{kind} · {free} free of {total}',
+      cleanup: '{size} reclaimable from the last scan · Clean Up Mac',
+      cleanupNever: 'Clean Up Mac',
+      devices: 'Drives',
+      smartLabel: 'SMART status',
+      smart: {
+        verified: 'Verified',
+        failing: 'Failing',
+        unsupported: 'Not supported'
+      },
+      wear: 'Wear',
+      powerOn: 'Power-on time',
+      written: 'Data written',
+      temperature: 'Temperature'
+    },
+    network: {
+      down: 'Download',
+      up: 'Upload',
+      interface: 'Interface',
+      localIp: 'Local IP',
+      totalDown: 'Downloaded since startup',
+      totalUp: 'Uploaded since startup',
+      link: '{kind} ({name})',
+      kinds: {
+        wifi: 'Wi-Fi',
+        ethernet: 'Ethernet',
+        vpn: 'VPN',
+        other: 'Other'
+      },
+      privacy:
+        'Public IP and Wi-Fi name aren’t shown: the first needs an outside server, the second needs location access.'
+    },
+    battery: {
+      charging: 'Charging',
+      chargingTime: 'Charging · {time} until full',
+      onAc: 'Connected to power',
+      onBattery: 'On battery',
+      onBatteryTime: 'On battery · {time} left',
+      health: 'Health',
+      cycles: 'Cycle count',
+      designCapacity: 'Design capacity',
+      maxCapacity: 'Maximum capacity',
+      temperature: 'Temperature',
+      voltage: 'Voltage',
+      power: 'Power',
+      adapter: 'Power adapter'
+    },
+    sensors: {
+      hottest: '{name} · hottest now',
+      temperatures: 'Temperatures',
+      note: 'Apple silicon sensors are thermal zones, not individual cores.',
+      names: {
+        cpuPerformance: 'CPU performance cores',
+        cpuEfficiency: 'CPU efficiency cores',
+        cpu: 'CPU',
+        gpu: 'GPU',
+        soc: 'Chip',
+        ssd: 'SSD',
+        battery: 'Battery'
+      }
+    },
+    fans: {
+      control: 'Control',
+      auto: 'Automatic',
+      manual: 'Manual',
+      modeAuto: 'Automatic · system controlled',
+      modeManual: 'Manual · {rpm}',
+      all: 'All fans',
+      min: 'Min {rpm}',
+      max: 'Max {rpm}',
+      range: 'Min {min} · Max {max}',
+      rangeLabel: 'Speed range',
+      single: 'Fan',
+      left: 'Left fan',
+      right: 'Right fan',
+      numbered: 'Fan {n}',
+      sync: 'Sync all fans',
+      full: 'Full Speed',
+      restore: 'Back to Automatic',
+      restoreLast: 'Restore Last Manual Speed',
+      autoNote: 'The system adjusts the fans by temperature. Switch to Manual to set the speed yourself.',
+      helperTitle: 'Manual fan control needs a helper first',
+      helperBody:
+        'It only controls the fans, runs in the background with system privileges, and only accepts commands from OpenNavo. After installing, allow it in Login Items & Extensions when prompted; you may need to enter an administrator password once.',
+      install: 'Install Helper',
+      approvalTitle: 'One more step',
+      approvalBody:
+        'Allow OpenNavo to run in the background in System Settings → General → Login Items & Extensions, then click I’ve Allowed It.',
+      recheck: 'I’ve Allowed It',
+      brokenTitle: 'The fan helper isn’t responding',
+      brokenBody: 'It’s installed, but OpenNavo can’t reach it. Reinstalling it usually fixes this.',
+      reinstall: 'Reinstall Helper',
+      unsupported: 'Fan control isn’t supported on this Mac’s chip, so only fan speeds are shown.',
+      safety:
+        'If OpenNavo quits, crashes, or stops responding for 15 seconds, the Mac sleeps, or a write fails, the fans go back to system control. If the chip stays at 95 °C for 10 seconds, manual fans go to full speed. There is no “fan off”; the lowest speed is the system minimum.',
+      reasons: {
+        user: 'You adjusted the fans',
+        app_quit: 'OpenNavo quit',
+        heartbeat_lost: 'OpenNavo stopped responding',
+        sleep: 'The Mac went to sleep',
+        wake_reapplied: 'Manual speed reapplied after waking',
+        overheat: 'The chip stayed at 95 °C for 10 seconds',
+        write_failed: 'Writing the fan setting failed',
+        helper_started: 'The helper restarted',
+        helper_uninstalled: 'The helper was uninstalled'
+      },
+      toasts: {
+        manual: 'Fans set to manual',
+        manualBody:
+          'They go back to automatic if OpenNavo quits or the Mac sleeps, and go to full speed if it stays too hot',
+        auto: 'Fans are back under system control',
+        full: 'Fans set to full speed',
+        reverted: 'Fans went back to automatic',
+        ready: 'The fan helper is ready',
+        readyBody: 'Switch to Manual to set the speed yourself'
+      }
+    },
+    processes: {
+      topCpu: 'Top Processes by CPU',
+      topMemory: 'Top Processes by Memory',
+      byCpu: 'CPU',
+      byMemory: 'Memory',
+      sortBy: 'Sort by',
+      system: 'System',
+      background: 'Background',
+      quit: 'Quit',
+      quitTitle: 'Quit {name}?',
+      quitBody: 'The same as pressing ⌘Q in {name}; the app asks about anything unsaved.',
+      quitDone: 'Asked {name} to quit',
+      activityMonitor: 'Open in Activity Monitor',
+      activityValue: 'Activity Monitor shows {value}',
+      topDisk: 'Top Processes by Disk',
+      topNetwork: 'Top Processes by Network',
+      diskSplit: 'Read {read} · Write {write}'
+    },
+    detail: {
+      open: 'View {name} details',
+      minuteAgo: '60 seconds ago',
+      now: 'Now',
+      range60: 'Last minute',
+      range1h: 'Last hour',
+      rangeLabel: 'Chart range',
+      hourAgo: '1 hour ago'
+    },
+    menuBar: {
+      title: 'Menu Bar',
+      show: 'Show in Menu Bar',
+      showHint: 'Its own item; click it to see this metric’s details below it',
+      style: 'Style',
+      styleHint: 'How it looks in the menu bar',
+      styles: {
+        text: 'Two Lines',
+        value: 'Value Only',
+        line: 'Line',
+        bars: 'Bars'
+      },
+      on: 'Menu Bar',
+      onHint: 'Shown in the menu bar',
+      added: 'Added “{name}” to the menu bar',
+      addedBody: 'Click it to see this metric’s details below it',
+      removed: 'Removed “{name}” from the menu bar',
+      keepTitle: 'Menu bar items go away when you close the window',
+      keepBody:
+        'Closing the main window quits OpenNavo right now. Turn on “Keep in the menu bar after closing the window” to keep monitoring items visible.',
+      keepAction: 'Turn It On'
+    },
+    popover: {
+      open: 'View in OpenNavo',
+      settings: 'Menu Bar Settings'
+    },
+    rail: {
+      menuBar: 'Menu Bar',
+      menuBarSub: 'Each metric is its own item; click it for details · no limit',
+      empty: 'No monitoring items in the menu bar yet',
+      crowded: 'With many items, some may hide behind the notch; try the Value Only style.',
+      refresh:
+        'Refreshes every {count} second · ⌘-drag to reorder | Refreshes every {count} seconds · ⌘-drag to reorder',
+      adjustFans: 'Adjust Fans',
+      privacy: 'Data stays on this Mac',
+      privacyBody: 'Nothing goes online, gets uploaded, or is kept as history; charts live only in memory.'
+    },
+    settings: {
+      menuBar: 'Menu Bar',
+      interval: 'Refresh rate',
+      intervalHint: 'Faster uses more power; pauses while the display is off or the Mac sleeps',
+      seconds: '{count} second | {count} seconds',
+      notVisible: 'Don’t see it after turning it on?',
+      notVisibleHint:
+        'Since macOS 26, allow OpenNavo in System Settings → Menu Bar; with many items, some may hide behind the notch',
+      openSettings: 'Open System Settings',
+      menuBarNote:
+        'Each metric is its own menu bar item, with no limit; CPU and memory are on by default. Click any item to see its details below it.',
+      helper: 'Helper',
+      helperHint: '{status}. Used only for fan control; temperatures and fan speeds show without it',
+      helperStatus: {
+        unsupported: 'This Mac has no fans',
+        not_installed: 'Not installed',
+        requires_approval: 'Waiting for approval in Login Items & Extensions',
+        enabled: 'On',
+        error: 'The helper has a problem; you can reinstall it'
+      },
+      install: 'Install',
+      reinstall: 'Reinstall',
+      uninstall: 'Uninstall',
+      autoRestore: 'Hand back to system control',
+      autoRestoreHint:
+        'Fans go back to automatic on quit, a crash, 15 seconds without a response, sleep, or a failed write; manual fans go to full speed after 10 seconds at 95 °C',
+      always: 'Always on',
+      relaunch: 'When OpenNavo reopens',
+      relaunchHint: 'Fans start in automatic; the Sensors details can restore your last manual speed',
+      privacy:
+        'All metrics are computed and shown only on this Mac: nothing goes online, gets uploaded, or is kept as history. Public IP and Wi-Fi name aren’t shown.',
+      alerts: 'Alerts',
+      alertsHint:
+        'Get a notification when something needs attention, at most once an hour for the same issue. While on, checks keep running in the background at a low rate even with no menu bar items'
+    }
   }
 };
 

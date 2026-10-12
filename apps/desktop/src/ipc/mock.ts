@@ -31,6 +31,9 @@ import {
   storageFixture
 } from './mock-data/fixtures';
 import { createRunner } from './mock-data/runner';
+import { createCleanupMock } from './mock-data/cleanup';
+import { createMonitorMock } from './mock-data/monitor';
+import { createUninstallMock } from './mock-data/uninstall';
 import type { MockFailure, MockState } from './mock-data/runner';
 
 const appInfo: AppInfo = { version: '0.0.0', os: 'macos', arch: 'aarch64' };
@@ -67,7 +70,27 @@ function defaultSettings(): AppSettings {
     brewPath: null,
     homebrewAnalytics: null,
     crashReports: false,
-    zapByDefault: false
+    // Match Rust defaults for new installs: clean related files, move them to the Trash.
+    zapByDefault: true,
+    uninstallDeleteMode: 'trash',
+    // Match Rust defaults (cleanup decisions 3 and 6): review items go to the Trash, reminders off.
+    cleanupDeleteMode: 'trash',
+    cleanupReminder: 'off',
+    cleanupReminderBytes: 10_000_000_000,
+    cleanupProjectRoots: ['~/Projects', '~/Developer', '~/code', '~/GitHub', '~/dev'],
+    monitorMenuBar: {
+      cpu: { enabled: true, style: 'text' },
+      gpu: { enabled: false, style: 'text' },
+      memory: { enabled: true, style: 'text' },
+      disk: { enabled: false, style: 'text' },
+      network: { enabled: false, style: 'text' },
+      battery: { enabled: false, style: 'text' },
+      sensors: { enabled: false, style: 'value' }
+    },
+    monitorIntervalMs: 2000,
+    monitorAlerts: false,
+    monitorMenuBarIntro: false,
+    fanLastManual: null
   };
 }
 
@@ -118,7 +141,8 @@ function mockFailure(
     };
   }
   const target = task.target;
-  const app = target ? (findItem(target.kind, target.token)?.apps[0] ?? `${target.token}.app`) : '';
+  const app =
+    target && target.kind !== 'app' ? (findItem(target.kind, target.token)?.apps[0] ?? `${target.token}.app`) : '';
   // zap hits Full Disk Access-protected directories (06 §12.6): the app is already moved when Homebrew exits during data removal.
   if (task.op === 'uninstall' && target?.kind === 'cask' && task.options.zap && permissions.fullDiskAccess === 'denied')
     return {
@@ -254,7 +278,15 @@ export function installMockIpc(
     flags.has('running-apps') || flags.has('quit-fails') ? ['ghostty', 'zed', 'google-chrome'] : []
   );
   const reopenApps = new Map<string, string>();
+  // Created after the runner because it queues tasks; runner hooks only call it once tasks run.
+  let uninstall: ReturnType<typeof createUninstallMock> | undefined;
+  let cleanup: ReturnType<typeof createCleanupMock> | undefined;
   const runner = createRunner(state, options.tickMs, {
+    steps: task => uninstall?.hooks.steps(task) ?? cleanup?.hooks.steps(task),
+    completed: task => {
+      uninstall?.hooks.completed(task);
+      cleanup?.hooks.completed(task);
+    },
     beforeRun: task => {
       const token = task.target?.token;
       if (task.op !== 'upgrade' || !token) return;
@@ -281,6 +313,23 @@ export function installMockIpc(
     installerUrl: () => (settings.mirror.key === 'official' ? OFFICIAL_INSTALLER : MIRROR_INSTALLER),
     failure: task => mockFailure(task, flags, settings.mirror.key, permissions)
   });
+  uninstall = createUninstallMock({
+    state,
+    tickMs: options.tickMs ?? 200,
+    permissions: () => permissions,
+    enqueue: (op, target, taskOptions, targetName) => runner.enqueue(op, target, taskOptions, 'manual', targetName)
+  });
+  cleanup = createCleanupMock({
+    state,
+    tickMs: options.tickMs ?? 200,
+    permissions: () => permissions,
+    apps: () => uninstall?.apps() ?? [],
+    running: () => runningApps,
+    deleteMode: () => settings.cleanupDeleteMode,
+    flags,
+    enqueue: (op, target, taskOptions, targetName) => runner.enqueue(op, target, taskOptions, 'manual', targetName)
+  });
+  const cleanupMock = cleanup;
   let settings = normalizeSettings({}, true);
   if (persist) {
     try {
@@ -302,6 +351,16 @@ export function installMockIpc(
   };
   if (persist) window.addEventListener('storage', onStorage);
   import.meta.hot?.dispose(() => window.removeEventListener('storage', onStorage));
+  const monitor = createMonitorMock({
+    tickMs: options.tickMs ?? 250,
+    flags,
+    settings: () => settings,
+    // Rust remembers the last manual fan speeds itself; mirror that into the simulated settings.
+    updateSettings: patch => {
+      settings = normalizeSettings({ ...settings, ...patch });
+    }
+  });
+  import.meta.hot?.dispose(monitor.stop);
   let checkedAt: number | null = noBrew ? null : Date.now() - 2 * 60 * 60 * 1000;
   // ?mock=restore: two tasks were queued on last exit (startup recovery prompt).
   if (flags.has('restore')) {
@@ -311,6 +370,8 @@ export function installMockIpc(
         id: `restore-${token}`,
         op: 'upgrade',
         target: { kind: 'formula', token },
+        targetName: null,
+        outcome: null,
         options: {},
         trigger: 'manual',
         state: 'queued',
@@ -340,6 +401,13 @@ export function installMockIpc(
   };
 
   const handlers: Record<string, (args: Args) => unknown> = {
+    ...uninstall.handlers,
+    ...cleanupMock.handlers,
+    ...monitor.handlers,
+    // Clean tasks keep their own Trash manifests; everything else is an uninstall or leftovers task.
+    uninstall_restore: args =>
+      cleanupMock.restore(args.taskId as string) ?? uninstall?.handlers.uninstall_restore?.(args),
+    uninstall_purge: args => cleanupMock.purge(args.taskId as string) ?? uninstall?.handlers.uninstall_purge?.(args),
     app_info: () => appInfo,
     locale_get: () => settings.locale,
     system_locale_get: () => systemLocale,
@@ -441,7 +509,9 @@ export function installMockIpc(
         .filter(task => query.includeScheduledUpdates || !(task.op === 'update' && task.trigger === 'schedule'))
         .filter(task => query.from === null || (task.finishedAt ?? 0) >= query.from)
         .filter(task => query.to === null || (task.finishedAt ?? 0) <= query.to)
-        .filter(task => !q || (task.target?.token ?? '').includes(q));
+        .filter(
+          task => !q || (task.target?.token ?? '').includes(q) || (task.targetName ?? '').toLowerCase().includes(q)
+        );
       return {
         total: items.length,
         items: items.slice(query.offset, query.offset + query.limit)
@@ -491,11 +561,6 @@ export function installMockIpc(
               error: null
             }
       ),
-    cleanup_estimate: () => ({
-      bytes: state.cacheBytes,
-      fileCount: state.cacheBytes ? 37 : 0,
-      items: []
-    }),
     doctor_run: () => ({
       ok: false,
       warnings: [
@@ -598,8 +663,10 @@ export function installMockIpc(
       const handler = handlers[command] ?? (command.startsWith('plugin:window|') ? () => null : undefined);
       if (!handler) throw new Error(`IPC mock does not implement command: ${command}`);
       // Real IPC returns fresh JSON objects each time; clone simulated mutable state through JSON to avoid shared UI references.
+      // Long-running commands (uninstall scans) resolve later; clone their result once it arrives.
+      const clone = (value: unknown) => (value === undefined ? value : (JSON.parse(JSON.stringify(value)) as unknown));
       const result = handler((payload ?? {}) as Args);
-      return result === undefined ? result : (JSON.parse(JSON.stringify(result)) as unknown);
+      return result instanceof Promise ? result.then(clone) : clone(result);
     },
     { shouldMockEvents: true }
   );

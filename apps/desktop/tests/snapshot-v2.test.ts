@@ -45,7 +45,14 @@ describe('Snapshot v2 browser fixtures', () => {
     catalogItems.push(fixture);
     try {
       const result = searchCatalog(
-        { q: 'テスト専用', offset: 0, limit: 10, kind: 'cask', category: null, includeDisabled: false },
+        {
+          q: 'テスト専用',
+          offset: 0,
+          limit: 10,
+          kind: 'cask',
+          category: null,
+          includeDisabled: false
+        },
         'ja-JP'
       );
       expect(result.items[0]?.item.token).toBe('locale-test');

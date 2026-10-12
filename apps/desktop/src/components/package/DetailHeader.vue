@@ -6,7 +6,6 @@ import { formatDate } from '@opennavo/shared';
 import { architectures, OnButton, OnMenu, OnPackageHeader } from '@opennavo/ui';
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import PackageGetButton from './PackageGetButton.vue';
-import UninstallConfirm from './UninstallConfirm.vue';
 import type { Kind } from '@/ipc/bindings';
 import type { LocalItem } from '@/ipc/client';
 import { useAppLocale } from '@/composables/useAppLocale';
@@ -17,7 +16,12 @@ import { useLibraryStore, useUpdatesStore } from '@/stores';
 
 // Detail header (mockup 03): shared OnPackageHeader (ADR-017) plus local badges (installed version, pinned).
 // Right side: update/get/open by local state, extra Open for updatable apps, More menu; sources and install date below.
-const props = defineProps<{ kind: Kind; token: string; detail?: PackageDetail; local?: LocalItem | null }>();
+const props = defineProps<{
+  kind: Kind;
+  token: string;
+  detail?: PackageDetail;
+  local?: LocalItem | null;
+}>();
 
 const { t } = useI18n();
 const { pick, appLocale } = useAppLocale();
@@ -70,7 +74,12 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
   if (props.detail?.disable ?? props.local?.disabled)
     list.push({ key: 'disabled', label: t('package.disabled'), tone: 'danger', outline: true });
   else if (props.detail?.deprecation ?? props.local?.deprecated)
-    list.push({ key: 'deprecated', label: t('package.deprecated'), tone: 'warning', outline: true });
+    list.push({
+      key: 'deprecated',
+      label: t('package.deprecated'),
+      tone: 'warning',
+      outline: true
+    });
   return list;
 });
 
@@ -79,7 +88,9 @@ const meta = computed(() => {
   if (props.detail?.tap) parts.push(`${t('package.fromTap')} ${props.detail.tap}`);
   if (installed.value?.installedAt)
     parts.push(
-      t('package.installedAt', { date: formatDate(installed.value.installedAt, { locale: appLocale.value }) })
+      t('package.installedAt', {
+        date: formatDate(installed.value.installedAt, { locale: appLocale.value })
+      })
     );
   return parts.join(' · ');
 });
@@ -125,13 +136,5 @@ const onSelect = (key: string) => menu.select(props.kind, props.token, name.valu
       </OnButton>
       <OnMenu :items="menuItems" :label="t('package.actions.label')" variant="secondary" @select="onSelect" />
     </template>
-    <UninstallConfirm
-      v-model:open="menu.uninstall.open"
-      v-model:zap="menu.uninstall.zap"
-      :kind="menu.uninstall.kind"
-      :token="menu.uninstall.token"
-      :name="menu.uninstall.name"
-      @confirm="menu.confirmUninstall"
-    />
   </OnPackageHeader>
 </template>

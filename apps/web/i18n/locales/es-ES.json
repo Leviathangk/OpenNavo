@@ -212,7 +212,7 @@
       "brewSync": "≈ sincronizado",
       "brewLater": "{time} más tarde",
       "brewEarlier": "{time} antes",
-      "brewHint": "{earlier} de {compared} anteriores a la versión upstream",
+      "brewHint": "{earlier}/{compared} anteriores a la versión upstream",
       "lagMinutes": "{n} min",
       "lagHours": "{n} h",
       "lagDays": "{n} día | {n} días",
@@ -426,6 +426,7 @@
   },
   "og": {
     "tagline": "La tienda de apps de Homebrew",
+    "platform": "cliente de macOS",
     "homeTitle": "La tienda de apps\nde Homebrew\npara Mac.",
     "homeDescription": "Instala apps. Lee las novedades.\nMantén tu Mac al día.",
     "discoverTitle": "Descubre apps\npara Mac.",

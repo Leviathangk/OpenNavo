@@ -31,7 +31,9 @@ it.each([16, 32, 40])('selects geometry for a %i px admin logo', size => {
 });
 
 it('uses full brand geometry and gradients in the 64px OG header', () => {
-  const frame = mount(OgFrame, { props: { tagline: 'The Homebrew App Store' } });
+  const frame = mount(OgFrame, {
+    props: { tagline: 'The Homebrew App Store', platform: 'macOS app', site: 'opennavo.com' }
+  });
   const svg = frame.get('svg');
   expect(svg.attributes('viewBox')).toBe(LOGO.markViewBox);
   expect(svg.attributes('width')).toBe(String(Math.round(64 * LOGO.markAspect)));
@@ -39,4 +41,6 @@ it('uses full brand geometry and gradients in the 64px OG header', () => {
   expect(svg.findAll('path').map(path => path.attributes('d'))).toEqual([LOGO.outerPath, LOGO.innerPath]);
   expect(svg.findAll('linearGradient')).toHaveLength(2);
   expect(frame.text()).toContain('The Homebrew App Store');
+  expect(frame.text()).toContain('- macOS app');
+  expect(frame.text()).toContain('opennavo.com');
 });

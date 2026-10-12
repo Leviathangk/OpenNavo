@@ -75,7 +75,7 @@ pub fn refresh(app: &tauri::AppHandle) {
     });
 }
 
-fn navigate(app: &tauri::AppHandle, route: &str) {
+pub(crate) fn navigate(app: &tauri::AppHandle, route: &str) {
     if let Some(window) = app.get_webview_window(LABEL) {
         let _ = window.hide();
     }
@@ -157,7 +157,7 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), AppError> {
                             .into_iter()
                             .filter(actionable)
                             .map(|i| TaskTarget {
-                                kind: i.kind,
+                                kind: i.kind.into(),
                                 token: i.token,
                             })
                             .collect();

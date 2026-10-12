@@ -52,7 +52,10 @@ const { data, error } = useCatalogLoader(
 
 const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
 const sorts = computed(() =>
-  (['popular', 'updated', 'name'] as const).map(value => ({ value, label: t(`categories.sorts.${value}`) }))
+  (['popular', 'updated', 'name'] as const).map(value => ({
+    value,
+    label: t(`categories.sorts.${value}`)
+  }))
 );
 const items = computed(() => (data.value ? data.value.items.map(toSummary) : error.value ? [] : null));
 const breadcrumb = computed(() => [

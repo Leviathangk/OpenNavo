@@ -20,7 +20,9 @@ const hint = computed(() => {
     case 'downloading':
       return updater.percent === null
         ? t('updater.downloadingUnknown')
-        : t('updater.downloading', { percent: formatPercent(updater.percent / 100, { locale: appLocale.value }) });
+        : t('updater.downloading', {
+            percent: formatPercent(updater.percent / 100, { locale: appLocale.value })
+          });
     case 'installed':
       return updater.busy ? t('updater.busy') : t('updater.installed');
     case 'failed':

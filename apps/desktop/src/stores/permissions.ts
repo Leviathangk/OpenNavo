@@ -18,12 +18,21 @@ export function paneState(pane: GuidePane, status: Permissions | null): Permissi
 export const usePermissionsStore = defineStore('permissions', () => {
   const status = ref<Permissions | null>(null);
   const guiding = ref<GuidePane | null>(null);
+  /** The user said Full Disk Access is on although macOS could not tell (this session only, like Welcome). */
+  const fullDiskConfirmed = ref(false);
   let requestSequence = 0;
   let eventVersion = 0;
 
   const appManagement = computed(() => paneState('app_management', status.value));
   const fullDiskAccess = computed(() => paneState('full_disk_access', status.value));
   const relaunchRequired = computed(() => status.value?.relaunchRequired ?? false);
+  /**
+   * Installed and uninstalling start only with Full Disk Access (2026-10-12): without it app data in other apps'
+   * containers cannot be measured or found, and the Trash cannot be read back for Undo.
+   */
+  const fullDiskReady = computed(
+    () => fullDiskAccess.value === 'granted' || (fullDiskAccess.value === 'unknown' && fullDiskConfirmed.value)
+  );
 
   function setStatus(next: Permissions) {
     status.value = next;
@@ -61,5 +70,17 @@ export const usePermissionsStore = defineStore('permissions', () => {
     await refresh().catch(() => undefined);
   }
 
-  return { status, guiding, appManagement, fullDiskAccess, relaunchRequired, apply, refresh, guide, returned };
+  return {
+    status,
+    guiding,
+    fullDiskConfirmed,
+    appManagement,
+    fullDiskAccess,
+    fullDiskReady,
+    relaunchRequired,
+    apply,
+    refresh,
+    guide,
+    returned
+  };
 });

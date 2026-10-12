@@ -167,6 +167,7 @@ async fn finish_quit<R: tauri::Runtime>(
     core: Arc<DesktopCore>,
     code: i32,
 ) {
+    crate::monitor::fan::client::shutdown(&app).await;
     let native = app
         .try_state::<Arc<crate::notifications::NativeNotifications>>()
         .map(|n| n.inner().clone());

@@ -2,28 +2,35 @@
 import { useAppLocale as useFormattingLocale } from '@/composables/useAppLocale';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatBytes } from '@opennavo/shared';
-import { OnButton, OnCard, OnChip, OnRailPanel, OnRailSection, OnStackBar } from '@opennavo/ui';
+import { useRouter } from 'vue-router';
+import { formatBytes, formatRelativeTime } from '@opennavo/shared';
+import { OnButton, OnCard, OnIcon, OnRailPanel, OnRailSection, OnStackBar } from '@opennavo/ui';
 import BrewfileRestore from '@/components/library/BrewfileRestore.vue';
-import type { BrewfilePreview, DoctorReport } from '@/ipc/bindings';
+import type { BrewfilePreview } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import { usePackageState } from '@/composables/usePackageState';
 import { useLoader } from '@/composables/useLoader';
 import { useToasts } from '@/composables/useToasts';
 import { useLibraryStore, useTasksStore } from '@/stores';
+import { useInstalledFilterStore } from '@/stores/installedFilter';
+import { useCleanupStore } from '@/stores/cleanup';
+import { UNUSED_DAYS, isUnused, useLocalAppsStore } from '@/stores/localApps';
 import { pickOpenPath, pickSavePath } from '@/utils/files';
 
 const { appLocale: formattingLocale } = useFormattingLocale();
 
-// Installed rail (mockup 06): storage breakdown, cleanup, Brewfile backup/migration, brew doctor health checks.
+// Installed rail (mockup 06, cleanup proposal §04): storage by source, the Clean Up Mac entry (replacing the leftovers
+// and cache cards), unused apps, Brewfile backup/migration.
 const { t } = useI18n();
 const library = useLibraryStore();
+const localApps = useLocalAppsStore();
+const filters = useInstalledFilterStore();
+const cleanup = useCleanupStore();
+const router = useRouter();
 const tasks = useTasksStore();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 
-const doctor = ref<DoctorReport | null>(null);
-const doctorRunning = ref(false);
 const restoreOpen = ref(false);
 const preview = ref<BrewfilePreview | null>(null);
 
@@ -37,33 +44,43 @@ async function attempt<T>(operation: Promise<T>): Promise<T | undefined> {
 }
 
 useLoader(() => library.loadStorage(), [() => tasks.finished], undefined, []);
-const { data: estimate } = useLoader(() => unwrap(commands.cleanupEstimate()), [() => tasks.finished], undefined, []);
 
 const storage = computed(() => library.storage);
-// Cask-only catalog (ADR-018): storage includes apps/download cache, excluding command-line tools.
-const total = computed(() => (storage.value ? storage.value.appsBytes + storage.value.cacheBytes : 0));
-const parts = computed(() =>
-  storage.value
-    ? [
-        {
-          key: 'apps',
-          label: t('library.storage.apps'),
-          value: storage.value.appsBytes,
-          display: formatBytes(storage.value.appsBytes, { locale: formattingLocale.value })
-        },
-        {
-          key: 'cache',
-          label: t('library.storage.cache'),
-          value: storage.value.cacheBytes,
-          display: formatBytes(storage.value.cacheBytes, { locale: formattingLocale.value })
-        }
-      ]
-    : []
-);
-const reclaimable = computed(() => estimate.value?.bytes ?? storage.value?.cacheBytes ?? 0);
+const format = (bytes: number) => formatBytes(bytes, { locale: formattingLocale.value });
+// Every app on this Mac by source plus Homebrew's download cache; command-line tools stay excluded (ADR-018).
+// Three segments keep the chart within the design system's three category colors. Apps count as the size column
+// does (app, data and caches once measured).
+const sizeOf = (homebrew: boolean) =>
+  localApps.items
+    .filter(app => (app.source === 'homebrew') === homebrew)
+    .reduce((sum, app) => sum + localApps.spaceOf(app), 0);
+const parts = computed(() => {
+  if (!storage.value && !localApps.loaded) return [];
+  const cache = storage.value?.cacheBytes ?? 0;
+  return [
+    { key: 'homebrew', label: t('library.storage.homebrew'), value: sizeOf(true) },
+    { key: 'others', label: t('library.storage.others'), value: sizeOf(false) },
+    { key: 'cache', label: t('library.storage.cache'), value: cache }
+  ].map(part => ({ ...part, display: format(part.value) }));
+});
+const total = computed(() => parts.value.reduce((sum, part) => sum + part.value, 0));
 
-async function cleanup() {
-  await attempt(tasks.enqueue('cleanup', null));
+const unused = computed(() => localApps.items.filter(app => isUnused(app)));
+const unusedBytes = computed(() => unused.value.reduce((sum, app) => sum + (app.sizeBytes ?? 0), 0));
+const lastScan = computed(() => {
+  const summary = cleanup.summary;
+  if (summary?.scannedAt == null) return null;
+  return {
+    size: format(summary.reclaimableBytes),
+    time: formatRelativeTime(summary.scannedAt, { locale: formattingLocale.value }),
+    active: summary.activeBackgroundItems
+  };
+});
+
+/** Never scanned: start right away; otherwise open the page with the last numbers. */
+async function openCleanup() {
+  await router.push('/cleanup');
+  if (!cleanup.scanned && cleanup.stage === 'idle') void cleanup.scan();
 }
 
 async function exportBrewfile() {
@@ -71,7 +88,10 @@ async function exportBrewfile() {
   if (!path) return;
   const count = await attempt(unwrap(commands.brewfileExport(path, null)));
   if (count !== undefined)
-    toasts.push({ tone: 'success', title: t('library.backup.exported', { count }, { plural: count }) });
+    toasts.push({
+      tone: 'success',
+      title: t('library.backup.exported', { count }, { plural: count })
+    });
 }
 
 async function restoreBrewfile() {
@@ -82,43 +102,66 @@ async function restoreBrewfile() {
   preview.value = result;
   restoreOpen.value = true;
 }
-
-async function runDoctor() {
-  doctorRunning.value = true;
-  doctor.value = (await attempt(unwrap(commands.doctorRun()))) ?? doctor.value;
-  doctorRunning.value = false;
-}
 </script>
 
 <template>
   <OnRailPanel>
     <OnRailSection
       :title="t('library.storage.title')"
-      :subtitle="t('library.storage.total', { size: storage ? formatBytes(total, { locale: formattingLocale }) : '—' })"
+      :subtitle="t('library.storage.total', { size: parts.length ? format(total) : '—' })"
     >
       <OnCard padding="md">
         <p class="m-0 mb-12px text-26px font-600 leading-none text-ink-primary">
-          {{ storage ? formatBytes(total, { locale: formattingLocale }) : '—' }}
+          {{ parts.length ? format(total) : '—' }}
         </p>
-        <OnStackBar v-if="parts.length" :items="parts" :caption="t('library.storage.caption')" :format="formatBytes" />
+        <OnStackBar v-if="parts.length" :items="parts" :caption="t('library.storage.caption')" :format="format" />
       </OnCard>
     </OnRailSection>
 
-    <OnCard padding="md" class="flex flex-col gap-10px">
-      <h2 class="m-0 text-14px font-600 text-ink-primary">{{ t('library.cleanup.title') }}</h2>
-      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">{{ t('library.cleanup.description') }}</p>
-      <OnButton variant="secondary" icon="trash" :disabled="!reclaimable" @click="cleanup">
+    <OnCard padding="md" class="flex flex-col gap-10px" data-testid="cleanup-entry">
+      <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
+        <OnIcon name="eraser" :size="15" />{{ t('cleanup.entry.title') }}
+      </h2>
+      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
+        {{ lastScan ? t('cleanup.entry.found', lastScan) : t('cleanup.entry.description') }}
+      </p>
+      <p v-if="lastScan?.active" class="m-0 text-12.5px leading-[1.55] text-status-danger">
+        {{ t('cleanup.entry.active', { count: lastScan.active }, { plural: lastScan.active }) }}
+      </p>
+      <OnButton
+        :variant="lastScan ? 'primary' : 'secondary'"
+        :icon="lastScan ? undefined : 'scan-search'"
+        @click="openCleanup"
+      >
+        {{ lastScan ? t('cleanup.entry.open') : t('cleanup.entry.scan') }}
+      </OnButton>
+    </OnCard>
+
+    <OnCard v-if="localApps.loaded" padding="md" class="flex flex-col gap-10px">
+      <h2 class="m-0 flex items-center gap-7px text-14px font-600 text-ink-primary">
+        <OnIcon name="hourglass" :size="15" />{{ t('library.unusedCard.title') }}
+      </h2>
+      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
         {{
-          reclaimable
-            ? t('library.cleanup.button', { size: formatBytes(reclaimable, { locale: formattingLocale }) })
-            : t('library.cleanup.none')
+          unused.length
+            ? t(
+                'library.unusedCard.description',
+                { count: unused.length, days: UNUSED_DAYS, size: format(unusedBytes) },
+                { plural: unused.length }
+              )
+            : t('library.unusedCard.none', { days: UNUSED_DAYS })
         }}
+      </p>
+      <OnButton v-if="unused.length" variant="secondary" @click="filters.showUnused(!filters.unusedOnly)">
+        {{ filters.unusedOnly ? t('library.unusedCard.all') : t('library.unusedCard.show') }}
       </OnButton>
     </OnCard>
 
     <OnCard padding="md" class="flex flex-col gap-10px">
       <h2 class="m-0 text-14px font-600 text-ink-primary">{{ t('library.backup.title') }}</h2>
-      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">{{ t('library.backup.description') }}</p>
+      <p class="m-0 text-12.5px leading-[1.55] text-ink-tertiary">
+        {{ t('library.backup.description') }}
+      </p>
       <div class="flex flex-wrap gap-8px">
         <OnButton
           class="max-w-full flex-1 !h-auto min-h-34px py-6px"
@@ -132,28 +175,6 @@ async function runDoctor() {
           <span class="min-w-0 whitespace-normal break-words">{{ t('library.backup.restore') }}</span>
         </OnButton>
       </div>
-    </OnCard>
-
-    <OnCard padding="md" class="flex flex-col gap-10px">
-      <div class="flex items-center justify-between gap-8px">
-        <h2 class="m-0 text-14px font-600 text-ink-primary">{{ t('library.health.title') }}</h2>
-        <OnChip v-if="doctor && doctor.warnings.length" tone="warning" icon="triangle-alert">
-          {{ t('library.health.warnings', { count: doctor.warnings.length }, { plural: doctor.warnings.length }) }}
-        </OnChip>
-        <OnChip v-else-if="doctor" tone="success" icon="check">{{ t('library.health.ok') }}</OnChip>
-      </div>
-      <ul v-if="doctor?.warnings.length" class="m-0 flex list-none flex-col gap-6px p-0">
-        <li
-          v-for="(warning, index) in doctor.warnings"
-          :key="index"
-          class="text-12.5px leading-[1.5] text-ink-secondary"
-        >
-          {{ warning.title }}
-        </li>
-      </ul>
-      <OnButton variant="secondary" icon="shield-check" :loading="doctorRunning" @click="runDoctor">
-        {{ doctorRunning ? t('library.health.running') : t('library.health.run') }}
-      </OnButton>
     </OnCard>
 
     <BrewfileRestore v-model:open="restoreOpen" :preview="preview" />

@@ -38,6 +38,10 @@ const slots = defineSlots<{
   default?: () => unknown;
   /** Right-aligned footer actions. */
   footer?: () => unknown;
+  /** Before the title, e.g. the app icon in the uninstall dialog. */
+  leading?: () => unknown;
+  /** Rich line under the title (chips, code); description still renders below it. */
+  subtitle?: () => unknown;
 }>();
 
 const messages = useUiMessages();
@@ -66,8 +70,12 @@ defineExpose({ close });
     @close="close"
   >
     <header class="flex shrink-0 items-start gap-12px px-24px pt-22px" :class="slots.default ? '' : 'pb-4px'">
+      <slot name="leading" />
       <div class="min-w-0 flex-1">
         <h2 :id="titleId" class="m-0 text-title2 text-ink-primary">{{ title }}</h2>
+        <div v-if="slots.subtitle" class="mt-4px text-12.5px leading-[1.55] text-ink-tertiary">
+          <slot name="subtitle" />
+        </div>
         <p v-if="description" :id="descriptionId" class="m-0 mt-6px text-13px leading-[1.55] text-ink-secondary">
           {{ description }}
         </p>
@@ -83,7 +91,10 @@ defineExpose({ close });
         @click="close"
       />
     </header>
-    <div v-if="slots.default" class="min-h-0 flex-1 overflow-y-auto px-24px pt-16px text-13px text-ink-secondary">
+    <div
+      v-if="slots.default"
+      class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-24px pt-16px text-13px text-ink-secondary"
+    >
       <slot />
     </div>
     <footer v-if="slots.footer" class="flex shrink-0 flex-wrap justify-end gap-8px px-24px pb-20px pt-20px">

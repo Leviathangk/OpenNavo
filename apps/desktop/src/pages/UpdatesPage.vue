@@ -62,7 +62,10 @@ async function updateAll() {
     const targets = updates.actionable.map(item => ({ kind: item.kind, token: item.token }));
     const queued = await tasks.enqueueMany('upgrade', targets, 'manual', { greedy: true });
     if (queued.length)
-      toasts.push({ tone: 'success', title: t('updates.queued', { count: queued.length }, { plural: queued.length }) });
+      toasts.push({
+        tone: 'success',
+        title: t('updates.queued', { count: queued.length }, { plural: queued.length })
+      });
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
   }
@@ -79,7 +82,10 @@ const { data: lookup } = useLoader(async () => {
   return new Map(
     result.map(item => [
       packageKey(item.kind, item.token),
-      { summary: item.latestRelease?.summary ?? null, publishedAt: item.latestRelease?.publishedAt ?? null }
+      {
+        summary: item.latestRelease?.summary ?? null,
+        publishedAt: item.latestRelease?.publishedAt ?? null
+      }
     ])
   );
 }, [
@@ -98,10 +104,14 @@ const loadingMore = ref(false);
 const moreError = ref(false);
 const sentinel = ref<HTMLElement>();
 let disposed = false;
-const STATES: Record<Filter, TaskState[]> = { all: [], succeeded: ['succeeded'], failed: ['failed'] };
+const STATES: Record<Filter, TaskState[]> = {
+  all: [],
+  succeeded: ['succeeded'],
+  failed: ['failed']
+};
 const query = (): HistoryQuery => ({
   q: null,
-  ops: ['install', 'upgrade', 'uninstall', 'reinstall'],
+  ops: ['install', 'upgrade', 'uninstall', 'reinstall', 'clean', 'remove_leftovers'],
   states: STATES[filter.value],
   target: null,
   includeScheduledUpdates: false,
@@ -205,7 +215,7 @@ useLoader(() => updates.load());
       </template>
     </OnPageHeader>
 
-    <RunningTask v-if="tasks.running" :task="tasks.running" />
+    <RunningTask v-if="tasks.running && tasks.running.op !== 'cleanup'" :task="tasks.running" />
 
     <OutdatedList v-if="updates.items.length" :items="updates.items" :summaries="summaries" />
     <OnEmpty

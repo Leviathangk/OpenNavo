@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
 import { interpolate } from '@opennavo/shared';
 import OnIcon from './OnIcon.vue';
 import { useUiMessages } from '../composables/locale';
-import { lockScroll, trapTab, unlockScroll } from '../composables/overlay';
+import { lockScroll, moveFocus, trapTab, unlockScroll } from '../composables/overlay';
 
 export interface OnScreenshot {
   /** Original image for lightbox. */
@@ -44,7 +44,7 @@ async function open(index: number, event: MouseEvent) {
   if (current.value === null) lockScroll();
   current.value = index;
   await nextTick();
-  closeButton.value?.focus();
+  moveFocus(closeButton.value);
 }
 
 function close() {
@@ -52,7 +52,7 @@ function close() {
   current.value = null;
   unlockScroll();
   // Restore focus to the thumbnail that opened the lightbox.
-  opener?.focus();
+  moveFocus(opener);
   opener = null;
 }
 

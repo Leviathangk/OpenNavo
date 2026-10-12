@@ -30,12 +30,14 @@ struct Control {
 }
 pub struct TaskQueue {
     pub database: Database,
+    pub cleanup_engine: Arc<crate::cleanup::Engine>,
+    pub uninstall_engine: Arc<crate::uninstall::Engine>,
     pub app_control: Arc<dyn crate::running_apps::AppControl>,
     pub settings: Arc<RwLock<Settings>>,
     tasks: Mutex<Vec<Task>>,
     controls: Mutex<HashMap<String, Control>>,
     logs: PathBuf,
-    askpass: PathBuf,
+    pub(crate) askpass: PathBuf,
     sink: EventSink,
     wake: Notify,
     paused: AtomicBool,
@@ -57,7 +59,19 @@ impl TaskQueue {
     ) -> Result<Arc<Self>, AppError> {
         let tasks = database.recover_tasks(chrono::Utc::now().timestamp_millis())?;
         let paused = !tasks.is_empty();
+        let uninstall_engine = crate::uninstall::Engine::new(crate::uninstall::EngineConfig {
+            database: database.clone(),
+            settings: settings.clone(),
+            sink: sink.clone(),
+            roots: crate::uninstall::rules::Roots::native(),
+            control: Arc::new(crate::running_apps::NativeApps),
+            probe: Arc::new(crate::uninstall::identity::NativeProbe),
+            icon_cache: logs.parent().unwrap_or(&logs).join("local-app-icons"),
+            askpass: askpass.clone(),
+        });
         Ok(Arc::new(Self {
+            cleanup_engine: crate::cleanup::Engine::new(uninstall_engine.clone()),
+            uninstall_engine,
             database,
             app_control: Arc::new(crate::running_apps::NativeApps),
             settings,
@@ -109,7 +123,20 @@ impl TaskQueue {
         if self.is_stopping() {
             return Err(AppError::new("E_INTERRUPTED", "queue_stopped"));
         }
-        write_args(op, target.as_ref(), &options)?;
+        let planned = if op == TaskOp::Clean {
+            self.cleanup_engine
+                .validate_task(target.as_ref(), &options)?;
+            None
+        } else if options.plan_id.is_some() {
+            Some(
+                self.uninstall_engine
+                    .task_plan(op, target.as_ref(), &options)?,
+            )
+        } else {
+            write_args(op, target.as_ref(), &options)?;
+            None
+        };
+
         if options.adopt && trigger == TaskTrigger::Schedule {
             return Err(AppError::new("E_INVALID_ARG", "unattended_adopt"));
         }
@@ -144,6 +171,15 @@ impl TaskQueue {
         let now = chrono::Utc::now().timestamp_millis();
         let id = uuid::Uuid::now_v7().to_string();
         let task = Task {
+            target_name: if op == TaskOp::Clean {
+                Some("cleanup".into())
+            } else {
+                planned
+                    .as_ref()
+                    .filter(|_| target.as_ref().is_some_and(|t| t.kind == TaskKind::App))
+                    .map(|(_, a)| a.name.clone())
+            },
+            outcome: None,
             id: id.clone(),
             op,
             target,
@@ -157,7 +193,7 @@ impl TaskQueue {
             speed_bps: None,
             step_index: Some(0),
             step_count: match op {
-                TaskOp::Uninstall => Some(3),
+                TaskOp::Uninstall | TaskOp::RemoveLeftovers | TaskOp::Clean => Some(4),
                 TaskOp::Install | TaskOp::Upgrade | TaskOp::Reinstall => Some(4),
                 _ => None,
             },
@@ -181,10 +217,20 @@ impl TaskQueue {
             self.database
                 .set_meta(&format!("task_retry_parent:{id}"), &parent.id)?;
         }
-        self.database.save_task(&task)?;
+        if let Some((entry, app)) = &planned {
+            self.uninstall_engine
+                .reserve(&entry.plan.plan_id, &app.app_id)?;
+        }
+        if let Err(error) = self.database.save_task(&task) {
+            if let Some((entry, app)) = &planned {
+                self.uninstall_engine
+                    .release(&entry.plan.plan_id, &app.app_id);
+            }
+            return Err(error);
+        }
         tasks.push(task.clone());
         drop(tasks);
-        (self.sink)(CoreEvent::Task(task.clone()));
+        (self.sink)(CoreEvent::Task(Box::new(task.clone())));
         self.wake.notify_one();
         Ok(task)
     }
@@ -226,7 +272,10 @@ impl TaskQueue {
             task.state = TaskState::Canceled;
             task.finished_at = Some(chrono::Utc::now().timestamp_millis());
             self.database.save_task(task)?;
-            (self.sink)(CoreEvent::Task(task.clone()));
+            let task = task.clone();
+            tasks.retain(|item| item.id != id);
+            drop(tasks);
+            (self.sink)(CoreEvent::Task(Box::new(task)));
         } else if task.state == TaskState::Running
             && let Some(control) = self.controls.lock().map_err(poison)?.get(id)
         {
@@ -243,8 +292,16 @@ impl TaskQueue {
                 .map_err(poison)?
                 .iter()
                 .find(|t| t.id == id)
-                .cloned()
-                .ok_or_else(|| AppError::new("E_NOT_FOUND", "task_id"))?;
+                .cloned();
+            // Terminal tasks live in SQLite, not the active queue. Drop the queue
+            // lock before reading the database, preserving the enqueue lock order.
+            let task = match task {
+                Some(task) => task,
+                None => self
+                    .database
+                    .task(id)?
+                    .ok_or_else(|| AppError::new("E_NOT_FOUND", "task_id"))?,
+            };
             if !matches!(task.state, TaskState::Queued | TaskState::Running) {
                 return Ok(task);
             }
@@ -282,9 +339,7 @@ impl TaskQueue {
         }
         let task = self
             .database
-            .tasks()?
-            .into_iter()
-            .find(|t| t.id == id)
+            .task(id)?
             .ok_or_else(|| AppError::new("E_INVALID_ARG", "unknown_task"))?;
         let Some(path) = task.log_path else {
             return Ok(String::new());
@@ -348,10 +403,14 @@ impl TaskQueue {
             });
             task.to_version = if matches!(task.op, TaskOp::Pin | TaskOp::Unpin) {
                 task.from_version.clone()
-            } else if task.op == TaskOp::Uninstall {
+            } else if matches!(
+                task.op,
+                TaskOp::Uninstall | TaskOp::RemoveLeftovers | TaskOp::Clean
+            ) {
                 None
             } else {
-                crate::catalog::get(&self.database, target.kind, &target.token)?.map(|i| i.version)
+                crate::catalog::get(&self.database, target.kind.brew_kind()?, &target.token)?
+                    .map(|i| i.version)
             };
         }
         task.state = TaskState::Running;
@@ -365,7 +424,7 @@ impl TaskQueue {
             },
         );
         self.database.save_task(task)?;
-        (self.sink)(CoreEvent::Task(task.clone()));
+        (self.sink)(CoreEvent::Task(Box::new(task.clone())));
         Ok(Some(task.clone()))
     }
     fn progress(
@@ -398,7 +457,7 @@ impl TaskQueue {
                 task.to_version = progress.to.clone();
             }
             if emit {
-                (self.sink)(CoreEvent::Task(task.clone()));
+                (self.sink)(CoreEvent::Task(Box::new(task.clone())));
             }
         }
         Ok(())
@@ -415,6 +474,12 @@ impl TaskQueue {
                 .ok_or_else(|| AppError::new("E_UNKNOWN", "missing_task_control"))?;
             (control.cancel.clone(), control.notify.clone())
         };
+        if task.op == TaskOp::Clean {
+            return crate::cleanup::execute::run(self.clone(), task, cancel, notify).await;
+        }
+        if task.options.plan_id.is_some() {
+            return crate::uninstall::execute::run(self.clone(), task, cancel, notify).await;
+        }
         let mut prepared = None;
         let (executable, args, prefix, cache) = if task.op == TaskOp::InstallHomebrew {
             let sources = self
@@ -512,8 +577,12 @@ impl TaskQueue {
                 let database = self.database.clone();
                 let target = task.target.clone();
                 crate::blocking(move || match target {
-                    Some(target) => Ok(crate::catalog::get(&database, target.kind, &target.token)?
-                        .and_then(|i| i.download_size)),
+                    Some(target) => Ok(crate::catalog::get(
+                        &database,
+                        target.kind.brew_kind()?,
+                        &target.token,
+                    )?
+                    .and_then(|i| i.download_size)),
                     None => Ok(None),
                 })
                 .await?
@@ -609,6 +678,62 @@ impl TaskQueue {
             }
         }
     }
+    pub(crate) fn uninstall_progress(
+        &self,
+        id: &str,
+        phase: TaskPhase,
+        step: u8,
+        percent: f32,
+        line: Option<String>,
+    ) -> Result<(), AppError> {
+        let lines: Vec<_> = line.into_iter().collect();
+        if !lines.is_empty() {
+            use std::io::Write;
+            std::fs::create_dir_all(&self.logs)?;
+            let path = self.logs.join(format!("{id}.log"));
+            let mut options = std::fs::OpenOptions::new();
+            options.append(true).create(true);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                options.mode(0o600);
+            }
+            let mut file = options.open(path)?;
+            for line in &lines {
+                writeln!(file, "{line}")?;
+            }
+        }
+        self.progress(
+            id,
+            &lines,
+            &Progress {
+                phase: Some(phase),
+                percent: Some(percent),
+                step_index: Some(step),
+                from: None,
+                to: None,
+                bytes: None,
+                total: None,
+                speed: None,
+            },
+            true,
+        )
+    }
+    pub(crate) fn set_uninstall_outcome(
+        &self,
+        id: &str,
+        outcome: UninstallOutcome,
+    ) -> Result<(), AppError> {
+        let mut tasks = self.tasks.lock().map_err(poison)?;
+        let task = tasks
+            .iter_mut()
+            .find(|t| t.id == id)
+            .ok_or_else(|| AppError::new("E_UNKNOWN", "missing_task"))?;
+        task.outcome = Some(outcome);
+        self.database.save_task(task)?;
+        (self.sink)(CoreEvent::Task(Box::new(task.clone())));
+        Ok(())
+    }
     fn finish(
         &self,
         id: &str,
@@ -662,8 +787,11 @@ impl TaskQueue {
         task.finished_at = Some(chrono::Utc::now().timestamp_millis());
         self.database.save_task(task)?;
         self.controls.lock().map_err(poison)?.remove(id);
-        (self.sink)(CoreEvent::Task(task.clone()));
-        Ok(task.clone())
+        let task = task.clone();
+        tasks.retain(|item| item.id != id);
+        drop(tasks);
+        (self.sink)(CoreEvent::Task(Box::new(task.clone())));
+        Ok(task)
     }
     async fn run(self: Arc<Self>) {
         while !self.stopping.load(Ordering::Acquire) {
@@ -756,7 +884,7 @@ mod tests {
     }
     fn target(token: &str) -> TaskTarget {
         TaskTarget {
-            kind: Kind::Cask,
+            kind: Kind::Cask.into(),
             token: token.into(),
         }
     }
@@ -1062,6 +1190,70 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn terminal_tasks_release_queue_memory_and_remain_queryable() {
+        let (_directory, queue, events) = fixture("install_ok");
+        for index in 0..100 {
+            let task = queue
+                .enqueue(
+                    TaskOp::Install,
+                    Some(target("inkscape")),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .expect("enqueue");
+            let expected = match index % 3 {
+                0 => {
+                    queue.cancel(&task.id).expect("cancel queued");
+                    TaskState::Canceled
+                }
+                1 => {
+                    queue.next().expect("start task").expect("queued task");
+                    queue
+                        .finish(&task.id, Err(AppError::new("E_UNKNOWN", "test_failure")))
+                        .expect("finish failed");
+                    TaskState::Failed
+                }
+                _ => {
+                    queue.next().expect("start task").expect("queued task");
+                    queue
+                        .finish(
+                            &task.id,
+                            Ok(crate::brew::pty::Outcome {
+                                code: 0,
+                                canceled: false,
+                                signal: None,
+                                parser: crate::brew::parse::Parser::default(),
+                            }),
+                        )
+                        .expect("finish succeeded");
+                    TaskState::Succeeded
+                }
+            };
+            assert!(queue.tasks.lock().expect("tasks").is_empty());
+            assert!(queue.controls.lock().expect("controls").is_empty());
+            let ended = queue
+                .wait_terminal(&task.id)
+                .await
+                .expect("persisted result");
+            assert_eq!(ended.state, expected);
+            assert!(ended.finished_at.is_some());
+            assert!(events.lock().expect("events").iter().any(|event| {
+                matches!(event, CoreEvent::Task(ended) if ended.id == task.id && ended.state == expected)
+            }));
+        }
+        assert_eq!(queue.database.tasks().expect("history").len(), 100);
+        assert!(queue.database.task("missing").expect("query").is_none());
+        assert_eq!(
+            queue
+                .wait_terminal("missing")
+                .await
+                .expect_err("unknown")
+                .code,
+            "E_NOT_FOUND"
+        );
+    }
+
+    #[tokio::test]
     async fn history_export_is_persistent_and_filtered() {
         let (directory, queue, _) = fixture("install_ok");
         let task = queue
@@ -1315,6 +1507,7 @@ mod tests {
         )
         .unwrap();
         core.infer_permissions_only();
+        core.install_permission_test_completion();
         // Sync scans also read simulated app metadata so completion callbacks cannot replace running-state preflight cache with an empty directory.
         let app_path = tmp.path().join("Example.app");
         std::fs::create_dir_all(app_path.join("Contents")).unwrap();

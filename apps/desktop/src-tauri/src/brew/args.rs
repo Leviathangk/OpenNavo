@@ -22,6 +22,12 @@ pub fn write_args(
     target: Option<&TaskTarget>,
     options: &TaskOptions,
 ) -> Result<Vec<String>, AppError> {
+    if options.plan_id.is_some() || options.item_ids.is_some() || options.delete_mode.is_some() {
+        return Err(AppError::new(
+            "E_INVALID_ARG",
+            "plan_options_require_engine",
+        ));
+    }
     if matches!(op, TaskOp::Update | TaskOp::Cleanup) {
         if target.is_some() || *options != TaskOptions::default() {
             return Err(AppError::new("E_INVALID_ARG", "global_options"));
@@ -40,6 +46,7 @@ pub fn write_args(
         return Ok(vec![]);
     }
     let target = target.ok_or_else(|| AppError::new("E_INVALID_ARG", "target"))?;
+    target.kind.brew_kind()?;
     validate_token(&target.token)?;
     if (options.zap || options.force) && (op != TaskOp::Uninstall || target.kind != Kind::Cask)
         || options.adopt && (op != TaskOp::Install || target.kind != Kind::Cask)
@@ -158,7 +165,7 @@ mod tests {
     #[test]
     fn flags_and_options_are_operation_specific() {
         let target = TaskTarget {
-            kind: Kind::Cask,
+            kind: Kind::Cask.into(),
             token: "firefox".into(),
         };
         assert_eq!(
@@ -166,7 +173,7 @@ mod tests {
             ["upgrade", "--cask", "--greedy", "firefox"]
         );
         let cli = TaskTarget {
-            kind: Kind::Formula,
+            kind: Kind::Formula.into(),
             token: "ripgrep".into(),
         };
         assert_eq!(
@@ -210,7 +217,7 @@ mod tests {
     fn every_whitelisted_operation_has_fixed_arguments() {
         for kind in [Kind::Cask, Kind::Formula] {
             let target = TaskTarget {
-                kind,
+                kind: kind.into(),
                 token: "valid@1".into(),
             };
             for op in [

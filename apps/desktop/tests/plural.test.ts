@@ -11,7 +11,9 @@ describe('vue-i18n plural integration', () => {
       locale,
       pluralRules,
       messages: {
-        [locale]: { forms: LOCALE_METADATA[locale].pluralCategories.map(category => `${category} {count}`).join(' | ') }
+        [locale]: {
+          forms: LOCALE_METADATA[locale].pluralCategories.map(category => `${category} {count}`).join(' | ')
+        }
       }
     });
     for (const count of [0, 1, 2, 5, 21]) {

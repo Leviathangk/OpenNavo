@@ -1,27 +1,40 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { formatDate, formatDuration, formatTime, formatVersionChange } from '@opennavo/shared';
-import { OnAppIcon, OnButton, OnChip, OnLogViewer, OnModal } from '@opennavo/ui';
+import { OnAppIcon, OnButton, OnChip, OnIcon, OnLogViewer, OnModal } from '@opennavo/ui';
 import type { Task } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
+import { useUninstallUndo } from '@/composables/useUninstallUndo';
 import { useTasksStore } from '@/stores';
 import { isDeferredUpdate } from '@/stores/runningApps';
-import { retryOptions } from '@/stores/permissionPrompt';
+import { recheckRoute, retryOptions } from '@/stores/permissionPrompt';
 
 // Local history (mockup 05, 06 §8: completed tasks), grouped by day; failures show reasons, logs, and retry (trigger=retry).
 const props = defineProps<{ tasks: readonly Task[] }>();
 
 const { t, te } = useI18n();
 const { appLocale } = useAppLocale();
-const { displayName, icon } = usePackageIdentity();
+const { taskIcon, taskName } = usePackageIdentity();
 const { errorText } = usePackageState();
 const queue = useTasksStore();
+const router = useRouter();
 const toasts = useToasts();
+const { undo, purge } = useUninstallUndo();
+
+// Uninstall and clean-up runs that moved files to the Trash stay reversible here, also after a restart.
+const settled = ref(new Set<string>());
+const reversible = (task: Task) =>
+  (task.op === 'uninstall' || task.op === 'clean') && task.outcome?.restorable === true && !settled.value.has(task.id);
+async function reverse(task: Task, action: 'undo' | 'purge') {
+  if (await (action === 'undo' ? undo([task.id]) : purge([task.id])))
+    settled.value = new Set([...settled.value, task.id]);
+}
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -43,9 +56,9 @@ const groups = computed(() => {
   return [...map.entries()].map(([label, items]) => ({ label, items }));
 });
 
+/** Clean Up runs and uninstalled apps fall back to the op or the name recorded with the task. */
 function title(task: Task): string {
-  const name = task.target ? displayName(task.target.kind, task.target.token) : t(`tasks.ops.${task.op}`);
-  return name;
+  return taskName(task) || t(`tasks.ops.${task.op}`);
 }
 
 function meta(task: Task): string {
@@ -78,7 +91,9 @@ async function viewLog(task: Task) {
 
 async function retry(task: Task) {
   try {
-    await queue.enqueue(task.op, task.target, 'retry', retryOptions(task));
+    const route = recheckRoute(task);
+    if (route) await router.push(route);
+    else await queue.enqueue(task.op, task.target, 'retry', retryOptions(task));
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
   }
@@ -99,7 +114,14 @@ async function retry(task: Task) {
           <span class="w-44px shrink-0 font-mono text-12.5px text-ink-tertiary">{{
             formatTime(task.finishedAt ?? task.createdAt)
           }}</span>
-          <OnAppIcon v-if="task.target" v-bind="icon(task.target.kind, task.target.token)" :size="28" />
+          <OnAppIcon v-if="taskIcon(task)" v-bind="taskIcon(task)!" :size="28" />
+          <span
+            v-else-if="task.op === 'clean'"
+            class="grid h-28px w-28px shrink-0 place-items-center rounded-[7px] bg-surface-raised text-ink-secondary"
+            aria-hidden="true"
+          >
+            <OnIcon name="eraser" :size="15" />
+          </span>
           <span class="min-w-0 flex-1">
             <span class="block truncate text-13.5px text-ink-primary">
               <b class="font-600">{{ title(task) }}</b>
@@ -115,12 +137,25 @@ async function retry(task: Task) {
           <template v-if="task.state === 'failed' || isDeferredUpdate(task)">
             <OnChip v-if="isDeferredUpdate(task)">{{ t('runningApps.deferred') }}</OnChip>
             <OnButton variant="ghost" size="sm" @click="viewLog(task)">{{ t('updates.history.viewLog') }}</OnButton>
-            <OnButton variant="secondary" size="sm" @click="retry(task)">{{ t('updates.history.retry') }}</OnButton>
+            <OnButton variant="secondary" size="sm" @click="retry(task)">{{
+              t(recheckRoute(task) ? 'updates.history.recheck' : 'updates.history.retry')
+            }}</OnButton>
           </template>
-          <OnChip v-else-if="task.state === 'succeeded'" tone="success" icon="check">{{
-            t('updates.history.succeeded')
-          }}</OnChip>
-          <OnChip v-else>{{ t('updates.history.canceled') }}</OnChip>
+          <!-- A partly finished uninstall can be undone as well. -->
+          <template v-if="reversible(task)">
+            <OnButton variant="ghost" size="sm" @click="reverse(task, 'purge')">{{
+              t('updates.history.purge')
+            }}</OnButton>
+            <OnButton variant="secondary" size="sm" icon="undo-2" @click="reverse(task, 'undo')">{{
+              t('updates.history.undo')
+            }}</OnButton>
+          </template>
+          <template v-else-if="task.state !== 'failed' && !isDeferredUpdate(task)">
+            <OnChip v-if="task.state === 'succeeded'" tone="success" icon="check">{{
+              t('updates.history.succeeded')
+            }}</OnChip>
+            <OnChip v-else>{{ t('updates.history.canceled') }}</OnChip>
+          </template>
         </li>
       </ul>
     </section>

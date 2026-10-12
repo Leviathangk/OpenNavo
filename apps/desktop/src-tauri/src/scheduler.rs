@@ -73,7 +73,7 @@ pub fn eligible(items: &[OutdatedItem], settings: &Settings) -> Vec<TaskTarget> 
                 }
         })
         .map(|item| TaskTarget {
-            kind: item.kind,
+            kind: item.kind.into(),
             token: item.token.clone(),
         })
         .collect()

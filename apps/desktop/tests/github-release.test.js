@@ -21,7 +21,12 @@ function fixture({ draft = true, remote = [], prerelease = false, exists = true 
     get: vi.fn(async () => (exists ? release : null)),
     create: vi.fn(async () => release),
     assets: vi.fn(async () => remote),
-    upload: vi.fn(async (_, a) => ({ name: a.name, size: a.bytes, digest: `sha256:${a.sha256}`, state: 'uploaded' })),
+    upload: vi.fn(async (_, a) => ({
+      name: a.name,
+      size: a.bytes,
+      digest: `sha256:${a.sha256}`,
+      state: 'uploaded'
+    })),
     updateNotes: vi.fn(async () => ({})),
     publish: vi.fn(async () => ({})),
     verify: vi.fn(async () => {})
@@ -159,7 +164,10 @@ describe('Tap publication gate', () => {
   const fetcher = (published = version, manifestVersion = version, artifact = dmg) =>
     vi.fn(async url => {
       if (url.includes('/desktop/releases/'))
-        return Response.json({ code: '0000', data: { version: published, channel: 'stable', downloads: [artifact] } });
+        return Response.json({
+          code: '0000',
+          data: { version: published, channel: 'stable', downloads: [artifact] }
+        });
       if (url.endsWith('latest.json')) return Response.json({ version: manifestVersion });
       return new Response('content');
     });

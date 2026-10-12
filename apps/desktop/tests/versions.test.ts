@@ -34,14 +34,20 @@ afterEach(() => {
   scenario.older = false;
 });
 
-const ok = (data: unknown) => ({ data: { code: '0000', msg: 'ok', data }, error: undefined, response: new Response() });
+const ok = (data: unknown) => ({
+  data: { code: '0000', msg: 'ok', data },
+  error: undefined,
+  response: new Response()
+});
 
 vi.mock('@/api', () => ({
   api: {
     GET: vi.fn(
       async (
         path: string,
-        options: { params?: { query?: { onlyWithNotes?: boolean; size?: number; current?: number } } }
+        options: {
+          params?: { query?: { onlyWithNotes?: boolean; size?: number; current?: number } };
+        }
       ) => {
         if (path === '/packages/{kind}/{token}/releases') {
           const records = scenario.older
@@ -56,7 +62,11 @@ vi.mock('@/api', () => ({
               ((options.params?.query?.current ?? 1) - 1) * size,
               (options.params?.query?.current ?? 1) * size
             ),
-            stats: { count30d: 3, cadence: 'weekly', brewLag: { medianMinutes: 30, earlierCount: 1, compared: 3 } }
+            stats: {
+              count30d: 3,
+              cadence: 'weekly',
+              brewLag: { medianMinutes: 30, earlierCount: 1, compared: 3 }
+            }
           });
         }
         return ok({ kind: 'formula', token: 'gh', autoUpdates: false, releaseStats: null });

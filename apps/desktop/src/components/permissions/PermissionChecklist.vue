@@ -8,8 +8,22 @@ import { useToasts } from '@/composables/useToasts';
 import { usePermissionsStore } from '@/stores';
 import RelaunchNotice from './RelaunchNotice.vue';
 
-// Welcome permissions (06 §12.3, §12.6): App Management required, Full Disk Access optional.
+// Welcome permissions (06 §12.3, §12.6; owner decision 2026-10-12): App Management and Full Disk Access are both required.
 // Enable opens System Settings and the draggable OpenNavo icon overlay; state updates live.
+// Installed shows only the Full Disk Access row, with its own explanation.
+const props = withDefaults(
+  defineProps<{
+    panes?: readonly GuidePane[];
+    required?: readonly GuidePane[];
+    /** Replaces a row's explanation. */
+    bodies?: Partial<Record<GuidePane, string>>;
+  }>(),
+  {
+    panes: () => ['app_management', 'full_disk_access'],
+    required: () => ['app_management', 'full_disk_access'],
+    bodies: () => ({})
+  }
+);
 const { t } = useI18n();
 const permissions = usePermissionsStore();
 const toasts = useToasts();
@@ -18,14 +32,18 @@ const { errorText } = usePackageState();
 const rows = computed(() =>
   (
     [
-      { pane: 'app_management', icon: 'layout-grid', required: true, key: 'appManagement' },
-      { pane: 'full_disk_access', icon: 'hard-drive', required: false, key: 'fullDiskAccess' }
+      { pane: 'app_management', icon: 'layout-grid', key: 'appManagement' },
+      { pane: 'full_disk_access', icon: 'hard-drive', key: 'fullDiskAccess' }
     ] as const
-  ).map(row => ({
-    ...row,
-    state: row.pane === 'app_management' ? permissions.appManagement : permissions.fullDiskAccess,
-    waiting: permissions.guiding === row.pane
-  }))
+  )
+    .filter(row => props.panes.includes(row.pane))
+    .map(row => ({
+      ...row,
+      required: props.required.includes(row.pane),
+      body: props.bodies[row.pane] ?? t(`welcome.permissions.${row.key}.body`),
+      state: row.pane === 'app_management' ? permissions.appManagement : permissions.fullDiskAccess,
+      waiting: permissions.guiding === row.pane
+    }))
 );
 
 async function enable(pane: GuidePane) {
@@ -65,9 +83,7 @@ async function enable(pane: GuidePane) {
               row.required ? t('welcome.permissions.required') : t('welcome.permissions.optional')
             }}</OnChip>
           </span>
-          <span class="mt-2px block text-12.5px leading-[1.5] text-ink-tertiary">{{
-            t(`welcome.permissions.${row.key}.body`)
-          }}</span>
+          <span class="mt-2px block text-12.5px leading-[1.5] text-ink-tertiary">{{ row.body }}</span>
         </span>
         <span v-if="row.state === 'granted'" class="shrink-0 text-13px text-status-success">
           {{ t('welcome.permissions.granted') }}

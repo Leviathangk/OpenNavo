@@ -41,11 +41,26 @@ const items = computed<OnKeyValueItem[]>(() => {
     list.push({ key: 'names', label: t('package.details.names'), value: value.names.join(' · ') });
   const appPaths = installed?.appPaths ?? [];
   if (appPaths.length)
-    list.push({ key: 'apps', label: t('package.details.location'), value: appPaths.join('  '), mono: true });
+    list.push({
+      key: 'apps',
+      label: t('package.details.location'),
+      value: appPaths.join('  '),
+      mono: true
+    });
   else if (!artifacts.value?.entries?.length && artifacts.value?.apps.length)
-    list.push({ key: 'apps', label: messages.value.cask.source, value: artifacts.value.apps.join(' · '), mono: true });
+    list.push({
+      key: 'apps',
+      label: messages.value.cask.source,
+      value: artifacts.value.apps.join(' · '),
+      mono: true
+    });
   if (effectiveArtifacts.pkgs.length)
-    list.push({ key: 'pkgs', label: t('package.details.pkgs'), value: effectiveArtifacts.pkgs.join('  '), mono: true });
+    list.push({
+      key: 'pkgs',
+      label: t('package.details.pkgs'),
+      value: effectiveArtifacts.pkgs.join('  '),
+      mono: true
+    });
   if (effectiveArtifacts.binaries.length)
     list.push({
       key: 'binaries',
@@ -60,7 +75,11 @@ const items = computed<OnKeyValueItem[]>(() => {
       value: effectiveArtifacts.uninstallNotes.join('；')
     });
   if (value.kegOnly)
-    list.push({ key: 'keg', label: t('package.details.kegOnly'), value: t('package.details.kegOnlyValue') });
+    list.push({
+      key: 'keg',
+      label: t('package.details.kegOnly'),
+      value: t('package.details.kegOnlyValue')
+    });
   if (downloadUrl.value)
     list.push({
       key: 'download',
@@ -70,7 +89,12 @@ const items = computed<OnKeyValueItem[]>(() => {
     });
   // 08 §10.8: truncate displayed SHA-256; the button below copies the full value.
   if (downloadSha.value)
-    list.push({ key: 'sha256', label: 'SHA-256', value: `${downloadSha.value.slice(0, 16)}…`, mono: true });
+    list.push({
+      key: 'sha256',
+      label: 'SHA-256',
+      value: `${downloadSha.value.slice(0, 16)}…`,
+      mono: true
+    });
   list.push({
     key: 'source',
     label: t('package.details.source'),
@@ -84,7 +108,12 @@ const items = computed<OnKeyValueItem[]>(() => {
     href: value.formulaeUrl
   });
   if (value.repoUrl)
-    list.push({ key: 'repo', label: t('package.details.repo'), value: displayUrl(value.repoUrl), href: value.repoUrl });
+    list.push({
+      key: 'repo',
+      label: t('package.details.repo'),
+      value: displayUrl(value.repoUrl),
+      href: value.repoUrl
+    });
   return list;
 });
 

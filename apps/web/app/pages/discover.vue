@@ -154,7 +154,7 @@ defineOgImage('OgDefault', {
   variant: 'discover',
   title: t('og.discoverTitle'),
   description: t('og.discoverDescription'),
-  tagline: t('og.tagline'),
+  ...useOgFrame(),
   icons: pickShowcaseApps([home.value?.popularApps, home.value?.recentlyUpdated], 4).map(pkg => ({
     name: pkg.displayName,
     token: pkg.token,

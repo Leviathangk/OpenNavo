@@ -6,6 +6,44 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	monitorSubscribe: (view: MonitorView, modules: MonitorModule[]) => typedError<MonitorSnapshot, AppError>(__TAURI_INVOKE("monitor_subscribe", { view, modules })),
+	monitorUnsubscribe: (view: MonitorView) => typedError<null, AppError>(__TAURI_INVOKE("monitor_unsubscribe", { view })),
+	/**  Shared in-memory one-hour trend, oldest first. */
+	monitorTrend: () => typedError<MonitorTrendPoint[], AppError>(__TAURI_INVOKE("monitor_trend")),
+	monitorQuitApp: (pid: number) => typedError<null, AppError>(__TAURI_INVOKE("monitor_quit_app", { pid })),
+	monitorOpenActivityMonitor: () => typedError<null, AppError>(__TAURI_INVOKE("monitor_open_activity_monitor")),
+	monitorMenuBarStatus: () => typedError<MenuBarItemStatus[], AppError>(__TAURI_INVOKE("monitor_menu_bar_status")),
+	monitorOpenMenuBarSettings: () => typedError<null, AppError>(__TAURI_INVOKE("monitor_open_menu_bar_settings")),
+	monitorOpenInMain: (target: MonitorMainTarget, module: "cpu" | "gpu" | "memory" | "disk" | "network" | "battery" | "sensors" | "fans" | null) => typedError<null, AppError>(__TAURI_INVOKE("monitor_open_in_main", { target, module })),
+	fanHelperStatus: () => typedError<FanHelperStatus, AppError>(__TAURI_INVOKE("fan_helper_status")),
+	fanHelperOpenApproval: () => typedError<null, AppError>(__TAURI_INVOKE("fan_helper_open_approval")),
+	fanHelperInstall: () => typedError<FanHelperStatus, AppError>(__TAURI_INVOKE("fan_helper_install")),
+	fanHelperUninstall: () => typedError<null, AppError>(__TAURI_INVOKE("fan_helper_uninstall")),
+	fanSetMode: (fanId: number | null, mode: FanMode) => typedError<FanState[], AppError>(__TAURI_INVOKE("fan_set_mode", { fanId, mode })),
+	fanSetSpeed: (fanId: number | null, rpm: number) => typedError<FanState[], AppError>(__TAURI_INVOKE("fan_set_speed", { fanId, rpm })),
+	fanRestoreLast: () => typedError<FanState[], AppError>(__TAURI_INVOKE("fan_restore_last")),
+	cleanupScan: (requestId: string, categories: CleanupCategory[] | null) => typedError<CleanupReport, AppError>(__TAURI_INVOKE("cleanup_scan", { requestId, categories })),
+	cleanupCancel: (requestId: string) => typedError<null, AppError>(__TAURI_INVOKE("cleanup_cancel", { requestId })),
+	cleanupExecute: (reportId: string, itemIds: string[]) => typedError<Task, AppError>(__TAURI_INVOKE("cleanup_execute", { reportId, itemIds })),
+	cleanupReveal: (reportId: string, itemId: string) => typedError<null, AppError>(__TAURI_INVOKE("cleanup_reveal", { reportId, itemId })),
+	cleanupSummary: () => typedError<CleanupSummary, AppError>(__TAURI_INVOKE("cleanup_summary")),
+	cleanupProtect: (input: ProtectInput) => typedError<ProtectRule, AppError>(__TAURI_INVOKE("cleanup_protect", { input })),
+	cleanupUnprotect: (ruleId: string) => typedError<null, AppError>(__TAURI_INVOKE("cleanup_unprotect", { ruleId })),
+	cleanupProtectedList: () => typedError<ProtectRule[], AppError>(__TAURI_INVOKE("cleanup_protected_list")),
+	localAppsList: () => typedError<LocalApp[], AppError>(__TAURI_INVOKE("local_apps_list")),
+	localAppsRefresh: () => typedError<LocalApp[], AppError>(__TAURI_INVOKE("local_apps_refresh")),
+	localAppOpen: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("local_app_open", { id })),
+	localAppReveal: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("local_app_reveal", { id })),
+	localAppFootprint: (id: string) => typedError<Footprint, AppError>(__TAURI_INVOKE("local_app_footprint", { id })),
+	localAppFootprints: () => typedError<FootprintReport, AppError>(__TAURI_INVOKE("local_app_footprints")),
+	localAppsScanFootprints: (force: boolean) => typedError<boolean, AppError>(__TAURI_INVOKE("local_apps_scan_footprints", { force })),
+	localAppRetryFootprint: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("local_app_retry_footprint", { id })),
+	uninstallPlan: (requestId: string, appIds: string[]) => typedError<UninstallPlan, AppError>(__TAURI_INVOKE("uninstall_plan", { requestId, appIds })),
+	uninstallPlanCancel: (requestId: string) => typedError<null, AppError>(__TAURI_INVOKE("uninstall_plan_cancel", { requestId })),
+	uninstallReveal: (planId: string, itemId: string) => typedError<null, AppError>(__TAURI_INVOKE("uninstall_reveal", { planId, itemId })),
+	uninstallExecute: (planId: string, choices: UninstallChoice[], mode: DeleteMode) => typedError<Task[], AppError>(__TAURI_INVOKE("uninstall_execute", { planId, choices, mode })),
+	uninstallRestore: (taskId: string) => typedError<RestoreResult, AppError>(__TAURI_INVOKE("uninstall_restore", { taskId })),
+	uninstallPurge: (taskId: string) => typedError<number, AppError>(__TAURI_INVOKE("uninstall_purge", { taskId })),
 	appInfo: () => typedError<AppInfo, AppError>(__TAURI_INVOKE("app_info")),
 	envDetect: () => typedError<EnvInfo, AppError>(__TAURI_INVOKE("env_detect")),
 	catalogStatus: () => typedError<CatalogStatus, AppError>(__TAURI_INVOKE("catalog_status")),
@@ -61,7 +99,7 @@ export const commands = {
 	appsRunning: (targets: TaskTarget[]) => typedError<RunningApp[], AppError>(__TAURI_INVOKE("apps_running", { targets })),
 	installPreflight: (target: TaskTarget) => typedError<InstallPreflight, AppError>(__TAURI_INVOKE("install_preflight", { target })),
 	taskEnqueue: (op: TaskOp, target: {
-	kind: Kind,
+	kind: TaskKind,
 	token: string,
 } | null, options: TaskOptions, trigger: TaskTrigger) => typedError<Task, AppError>(__TAURI_INVOKE("task_enqueue", { op, target, options, trigger })),
 	taskEnqueueMany: (op: TaskOp, targets: TaskTarget[], options: TaskOptions, trigger: TaskTrigger) => typedError<Task[], AppError>(__TAURI_INVOKE("task_enqueue_many", { op, targets, options, trigger })),
@@ -74,7 +112,6 @@ export const commands = {
 	brewfileExport: (path: string, targets: TaskTarget[] | null) => typedError<number, AppError>(__TAURI_INVOKE("brewfile_export", { path, targets })),
 	brewfilePreview: (path: string) => typedError<BrewfilePreview, AppError>(__TAURI_INVOKE("brewfile_preview", { path })),
 	brewfileInstall: (targets: TaskTarget[]) => typedError<Task[], AppError>(__TAURI_INVOKE("brewfile_install", { targets })),
-	cleanupEstimate: () => typedError<CleanupEstimate, AppError>(__TAURI_INVOKE("cleanup_estimate")),
 	doctorRun: () => typedError<DoctorReport, AppError>(__TAURI_INVOKE("doctor_run")),
 	appOpen: (target: TaskTarget) => typedError<null, AppError>(__TAURI_INVOKE("app_open", { target })),
 	appReveal: (target: TaskTarget) => typedError<null, AppError>(__TAURI_INVOKE("app_reveal", { target })),
@@ -94,13 +131,20 @@ export const commands = {
 export const events = {
 	appQuitRequested: makeEvent<QuitEvent>("app:quit-requested"),
 	catalogSynced: makeEvent<CatalogSynced>("catalog:synced"),
+	cleanupChanged: makeEvent<CleanupChangedEvent>("cleanup:changed"),
+	cleanupScanProgress: makeEvent<CleanupScanEvent>("cleanup:scan-progress"),
 	deeplinkReceived: makeEvent<DeeplinkReceived>("deeplink:received"),
 	envChanged: makeEvent<EnvChanged>("env:changed"),
+	fanChanged: makeEvent<FanChanged>("fan:changed"),
 	libraryChanged: makeEvent<LibraryEvent>("library:changed"),
+	localAppsChanged: makeEvent<LocalAppsEvent>("local-apps:changed"),
 	localeChanged: makeEvent<LocaleEvent>("locale:changed"),
+	monitorPopover: makeEvent<MonitorPopover>("monitor:popover"),
+	monitorSample: makeEvent<MonitorSampleEvent>("monitor:sample"),
 	permissionsChanged: makeEvent<PermissionsChanged>("permissions:changed"),
 	taskLog: makeEvent<TaskLog>("task:log"),
 	taskUpdated: makeEvent<TaskUpdated>("task:updated"),
+	uninstallScanProgress: makeEvent<UninstallScanEvent>("uninstall:scan-progress"),
 	updatesChanged: makeEvent<UpdatesEvent>("updates:changed"),
 	updatesRequested: makeEvent<UpdatesRequested>("updates:requested"),
 };
@@ -120,6 +164,40 @@ export type AppInfo = {
 	os: string,
 	/**  CPU architecture, e.g. aarch64 or x86_64. */
 	arch: string,
+};
+
+export type AppPlan = {
+	appId: string,
+	name: string,
+	source: AppSource,
+	running: boolean,
+	removal: AppPlanRemoval,
+	brewCommand: string | null,
+	blockedReason: AppPlanBlockedReason | null,
+	uninstaller: string | null,
+	personalData: string | null,
+	items: PlanItem[],
+};
+
+export type AppPlanBlockedReason = "system" | "self" | "managed" | "app_management";
+
+export type AppPlanRemoval = "brew" | "trash" | "blocked";
+
+export type AppSource = "homebrew" | "app_store" | "direct" | "pkg";
+
+export type BatterySample = {
+	percent: number,
+	charging: boolean,
+	onAc: boolean,
+	minutesRemaining: number | null,
+	healthPercent: number | null,
+	cycleCount: number | null,
+	designCapacityMah: number | null,
+	maxCapacityMah: number | null,
+	temperatureC: number | null,
+	voltageV: number | null,
+	powerWatts: number | null,
+	adapterWatts: number | null,
 };
 
 export type BrewInfo = {
@@ -239,15 +317,113 @@ export type CategoryItem = {
 	packageCount: number,
 };
 
-export type CleanupEstimate = {
+export type CategoryReport = {
+	key: CleanupCategory,
+	risk: CleanupRisk,
 	bytes: number,
-	fileCount: number,
+	complete: boolean,
+	groups: CleanupGroup[],
+	skipped: SkippedGroup[],
+};
+
+export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_caches" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" | "trash" | "device_backups" | 
+/**  Docker's own reclaimable space, removed only by Docker's prune commands. */
+"docker" | "large_files";
+
+export type CleanupCategoryBytes = {
+	key: CleanupCategory,
+	bytes: number,
+};
+
+export type CleanupChangedEvent = CleanupSummary;
+
+export type CleanupGroup = {
+	id: string,
+	title: string,
+	subtitle: string | null,
+	appId: string | null,
+	bundleId: string | null,
 	items: CleanupItem[],
 };
 
 export type CleanupItem = {
+	id: string,
 	path: string,
-	bytes: number | null,
+	kind: CleanupItemKind,
+	command: string | null,
+	sizeBytes: number | null,
+	keptOpenFiles: number,
+	modifiedAt: number | null,
+	reason: CleanupReason,
+	selected: boolean,
+	deleteMode: DeleteMode,
+	needsAdmin: boolean,
+	note: string | null,
+};
+
+export type CleanupItemKind = "file" | "dir" | "command";
+
+export type CleanupProgress = {
+	requestId: string,
+	category: CleanupCategory,
+	location: string | null,
+	checked: number,
+	total: number,
+	foundBytes: number,
+};
+
+export type CleanupReason = "cache_dir" | "log_file" | "browser_cache" | "tool_cache" | 
+/**  Rebuildable, but the next build downloads it again (Gradle, Maven, Go modules, browsers for tests). */
+"tool_download_cache" | "device_support" | "device_support_latest" | "tool_command" | "brew_cleanup" | "temp_file" | "orphan" | "orphan_service" | "installer" | "installer_installed" | "build_artifact" | "trash" | "device_backup" | 
+/**  An Xcode archive: the shipped build and the dSYMs needed to symbolicate its crash logs. */
+"xcode_archive" | 
+/**  Images no container uses; pulled or built again when needed. */
+"docker_images" | "docker_build_cache" | 
+/**  Stopped containers; their own changes are lost, volumes stay. */
+"docker_containers" | "large_file";
+
+export type CleanupReminder = "off" | "weekly" | "monthly";
+
+export type CleanupReport = {
+	reportId: string,
+	scannedAt: number,
+	expiresAt: number,
+	volume: CleanupVolume,
+	categories: CategoryReport[],
+	incomplete: SkippedLocation[],
+};
+
+export type CleanupRisk = "rebuildable" | "review" | "personal";
+
+export type CleanupScanEvent = CleanupProgress;
+
+export type CleanupSummary = {
+	scannedAt: number | null,
+	volume: CleanupVolume | null,
+	reclaimableBytes: number,
+	suggestedBytes: number,
+	activeBackgroundItems: number,
+	categories: CleanupCategoryBytes[],
+};
+
+export type CleanupVolume = {
+	name: string,
+	totalBytes: number,
+	freeBytes: number,
+};
+
+export type CpuSample = {
+	usage: number,
+	user: number,
+	system: number,
+	/**
+	 *  Apple: the first performanceCores entries are performance cores, followed by efficiency cores.
+	 *  Intel has performanceCores=null and preserves host order.
+	 */
+	cores: number[],
+	load: [number, number, number],
+	/**  Watts; M3.1 visible CPU/GPU subscriptions only, at most once per two seconds; otherwise null. */
+	powerWatts: number | null,
 };
 
 export type DeepLinkAction = "install";
@@ -259,6 +435,31 @@ export type DeepLinkEvent = {
 };
 
 export type DeeplinkReceived = DeepLinkEvent;
+
+export type DeleteMode = "trash" | "delete";
+
+export type DiskDevice = {
+	id: string,
+	name: string,
+	internal: boolean,
+	smart: DiskSmartStatus,
+	/**  NVMe wear expressed as a 0–1 ratio, not free-space usage. */
+	percentUsed: number | null,
+	temperatureC: number | null,
+	powerOnHours: number | null,
+	dataWrittenBytes: number | null,
+	mountPoints: string[],
+};
+
+export type DiskSample = {
+	volumes: VolumeInfo[],
+	readBytesPerSec: number,
+	writeBytesPerSec: number,
+	/**  M3.1 SMART device data, refreshed at most every ten minutes; unavailable data is null. */
+	devices: DiskDevice[] | null,
+};
+
+export type DiskSmartStatus = "verified" | "failing" | "unsupported";
 
 export type DoctorReport = {
 	ok: boolean,
@@ -281,6 +482,86 @@ export type EnvInfo = {
 	brew: BrewInfo | null,
 	appManagement: PermissionState,
 };
+
+export type FanChange = {
+	fans: FanState[],
+	reason: FanReason,
+};
+
+export type FanChanged = FanChange;
+
+export type FanControlSupport = "verified" | "unverified" | "unsupported";
+
+export type FanHelperState = "unsupported" | "not_installed" | "requires_approval" | "enabled" | "error";
+
+export type FanHelperStatus = {
+	status: FanHelperState,
+	support: FanControlSupport,
+	/**  The chip gate alone, independent of the helper: false only for unknown chips and fanless Macs. */
+	manualAllowed: boolean,
+};
+
+export type FanMode = "auto" | "manual";
+
+export type FanReason = "user" | "app_quit" | "heartbeat_lost" | "sleep" | "wake_reapplied" | "overheat" | "write_failed" | "helper_started" | "helper_uninstalled";
+
+/**  id is the zero-based SMC index; name prefers its location, otherwise Fan {id+1}. */
+export type FanState = {
+	id: number,
+	name: string,
+	rpm: number,
+	minRpm: number,
+	maxRpm: number,
+	targetRpm: number | null,
+	mode: FanMode,
+};
+
+export type Footprint = {
+	appBytes: number,
+	dataBytes: number,
+	cacheBytes: number,
+	complete: boolean,
+};
+
+export type FootprintProgress = {
+	total: number,
+	completed: number,
+	failed: number,
+	retrying: number,
+	running: boolean,
+};
+
+export type FootprintReport = {
+	progress: FootprintProgress | null,
+	values: { [key in string]: Footprint },
+	errors: { [key in string]: AppError },
+};
+
+export type GpuSample = {
+	usage: number,
+	/**  Watts; unsupported Intel / unavailable IOReport readings are null. */
+	powerWatts: number | null,
+};
+
+export type Health = {
+	level: HealthLevel,
+	issues: HealthIssue[],
+};
+
+export type HealthIssue = {
+	key: HealthIssueKey,
+	level: HealthIssueLevel,
+	value: number,
+	topPid: number | null,
+	/**  Device name for disk_smart; null for every other issue. */
+	subject: string | null,
+};
+
+export type HealthIssueKey = "cpu_busy" | "memory_pressure" | "disk_low" | "disk_smart" | "battery_health" | "battery_hot" | "temperature" | "uptime";
+
+export type HealthIssueLevel = "info" | "attention" | "critical";
+
+export type HealthLevel = "good" | "attention" | "critical";
 
 export type HistoryQuery = {
 	q: string | null,
@@ -322,6 +603,8 @@ export type InstalledItem = {
 
 export type InstalledStatus = "up_to_date" | "outdated" | "pinned" | "self_updated" | "unknown";
 
+export type ItemCategory = "app" | "app_data" | "caches" | "preferences" | "logs" | "background" | "cli" | "plugins" | "receipts";
+
 export type Kind = "cask" | "formula";
 
 export type LibraryChangeReason = "task" | "refresh" | "startup";
@@ -345,6 +628,42 @@ export type ListQuery = {
 
 export type ListSort = "popular" | "updated" | "name" | "installs30d" | "installs90d" | "installs365d";
 
+export type LocalApp = {
+	id: string,
+	path: string,
+	name: string,
+	bundleId: string | null,
+	version: string | null,
+	source: AppSource,
+	cask: string | null,
+	catalogToken: string | null,
+	teamId: string | null,
+	vendor: string | null,
+	arch: LocalAppArch | null,
+	sizeBytes: number | null,
+	installedAt: number | null,
+	lastUsedAt: number | null,
+	iconPath: string | null,
+	running: boolean,
+	removable: boolean,
+	protectedReason: ProtectedReason | null,
+	uninstaller: string | null,
+};
+
+export type LocalAppArch = "arm64" | "x86_64" | "universal";
+
+export type LocalAppsChanged = {
+	reason: LocalAppsChangedReason,
+};
+
+export type LocalAppsChangedReason = "startup" | "refresh" | 
+/**  Bundle sizes (`LocalApp.sizeBytes`) were measured. */
+"measured" | "running" | "task" | "fs" | 
+/**  Only the footprint report changed (values, errors or progress); the app list did not. */
+"footprints";
+
+export type LocalAppsEvent = LocalAppsChanged;
+
 export type Locale = "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU";
 
 export type LocaleChanged = {
@@ -357,6 +676,34 @@ export type LocaleMode = "system" | "manual";
 
 /**  Sparse maps accept legacy nulls; IPC emits only text actually present. */
 export type LocalizedText = Partial<{ [key in Locale]: string }>;
+
+export type MatchReason = "app_bundle" | "brew_uninstall" | "zap_rule" | "bundle_id" | "app_group" | "launchd" | "symlink" | "pkg_receipt" | "team_id" | "name_exact" | "name_similar";
+
+export type MemoryPressure = "normal" | "warning" | "critical";
+
+export type MemorySample = {
+	totalBytes: number,
+	usedBytes: number,
+	appBytes: number,
+	wiredBytes: number,
+	compressedBytes: number,
+	cachedBytes: number,
+	swapUsedBytes: number,
+	pressure: MemoryPressure,
+};
+
+export type MenuBarItemSetting = {
+	enabled: boolean,
+	style: MenuBarStyle,
+};
+
+export type MenuBarItemStatus = {
+	module: MonitorModule,
+	installed: boolean,
+	visible: boolean | null,
+};
+
+export type MenuBarStyle = "text" | "value" | "line" | "bars";
 
 export type MirrorChoice = {
 	key: string,
@@ -382,6 +729,86 @@ export type MirrorProbe = {
 	latencyMs: number | null,
 	status: number | null,
 	error: string | null,
+};
+
+export type MonitorMainTarget = "detail" | "settings";
+
+/**
+ *  Every menu bar item on output, with partial legacy input support. Fans have no item of their own:
+ *  as in Stats, the sensors item shows the temperature and its popover the fans.
+ */
+export type MonitorMenuBar = {
+	cpu: MenuBarItemSetting,
+	gpu: MenuBarItemSetting,
+	memory: MenuBarItemSetting,
+	disk: MenuBarItemSetting,
+	network: MenuBarItemSetting,
+	battery: MenuBarItemSetting,
+	sensors: MenuBarItemSetting,
+};
+
+export type MonitorModule = "cpu" | "gpu" | "memory" | "disk" | "network" | "battery" | "sensors" | "fans";
+
+export type MonitorPopover = MonitorModule;
+
+export type MonitorSample = {
+	at: number,
+	cpu: CpuSample,
+	gpu: GpuSample | null,
+	memory: MemorySample,
+	disk: DiskSample,
+	network: NetworkSample,
+	battery: BatterySample | null,
+	sensors: SensorReading[] | null,
+	fans: FanState[] | null,
+	/**
+	 *  Visible page/detail/popover only: CPU top 20 union memory top 20, deduplicated by PID.
+	 *  M3.1 adds disk top 10 / network top 10 when those modules have a visible subscription.
+	 */
+	processes: ProcessInfo[] | null,
+	health: Health,
+};
+
+export type MonitorSampleEvent = MonitorSample;
+
+export type MonitorSnapshot = {
+	system: SystemInfo,
+	/**  Modules that this machine can actually read; no temperature or FNum=0 excludes that module. */
+	available: MonitorModule[],
+	/**  Shared in-memory history, oldest first; the latest 60 samples, at Unix milliseconds. */
+	history: MonitorSample[],
+};
+
+/**
+ *  In-memory five-second bucket averages, oldest first, at most 720 points (one hour).
+ *  Unsampled periods have no point; ratios are 0–1, rates B/s, temperature °C, fan RPM the mean.
+ */
+export type MonitorTrendPoint = {
+	at: number,
+	cpu: number | null,
+	gpu: number | null,
+	memory: number | null,
+	diskRead: number | null,
+	diskWrite: number | null,
+	netDown: number | null,
+	netUp: number | null,
+	temperature: number | null,
+	fanRpm: number | null,
+	battery: number | null,
+};
+
+export type MonitorView = "page" | "detail" | "popover";
+
+export type NetworkKind = "wifi" | "ethernet" | "vpn" | "other";
+
+export type NetworkSample = {
+	interface: string | null,
+	kind: NetworkKind | null,
+	localIp: string | null,
+	downBytesPerSec: number,
+	upBytesPerSec: number,
+	totalDownBytes: number,
+	totalUpBytes: number,
 };
 
 export type OnRequest = {
@@ -428,7 +855,60 @@ export type Permissions = {
 /**  Permission changes detected by guidance polling (06 §12.7), broadcast to all windows. */
 export type PermissionsChanged = Permissions;
 
+export type PlanItem = {
+	id: string,
+	path: string,
+	category: ItemCategory,
+	kind: PlanItemKind,
+	count: number,
+	sizeBytes: number | null,
+	reason: MatchReason,
+	confidence: PlanItemConfidence,
+	selected: boolean,
+	required: boolean,
+	needsAdmin: boolean,
+	sharedWith: string[],
+	note: string | null,
+};
+
+export type PlanItemConfidence = "high" | "medium" | "low";
+
+export type PlanItemKind = "file" | "dir" | "symlink" | "launchd" | "glob";
+
 export type PrivacyPane = "app_management" | "notifications" | "full_disk_access";
+
+export type ProcessInfo = {
+	pid: number,
+	name: string,
+	bundleId: string | null,
+	iconPath: string | null,
+	/**  Whole-machine ratio; multiply by logicalCores for Activity Monitor's convention. */
+	cpu: number,
+	memoryBytes: number,
+	/**  B/s; unreadable / other-user processes and the first delta are null (M3.1). */
+	diskReadBytesPerSec: number | null,
+	diskWriteBytesPerSec: number | null,
+	netDownBytesPerSec: number | null,
+	netUpBytesPerSec: number | null,
+	kind: ProcessKind,
+	quittable: boolean,
+};
+
+export type ProcessKind = "app" | "background" | "system";
+
+export type ProtectInput = ({ reportId: string; itemId: string }) & { kind?: never; value?: never } | ({ kind: ProtectKind; value: string }) & { itemId?: never; reportId?: never };
+
+export type ProtectKind = "path" | "bundle_id";
+
+export type ProtectRule = {
+	id: string,
+	kind: ProtectKind,
+	value: string,
+	label: string,
+	createdAt: number,
+};
+
+export type ProtectedReason = "system" | "self" | "managed";
 
 export type QuitEvent = QuitRequested;
 
@@ -437,9 +917,21 @@ export type QuitRequested = {
 	queued: number,
 };
 
+export type RestoreResult = {
+	restored: number,
+	missing: string[],
+};
+
 export type RunningApp = {
 	target: TaskTarget,
 	name: string,
+};
+
+export type ScanProgress = {
+	requestId: string,
+	checked: number,
+	total: number,
+	location: string,
 };
 
 export type SearchHit = SearchHit_Serialize | SearchHit_Deserialize;
@@ -465,6 +957,16 @@ export type SearchQuery = {
 	offset: number,
 };
 
+export type SensorGroup = "cpu" | "gpu" | "soc" | "battery" | "ssd" | "other";
+
+/**  Maximum per thermal zone, stable keys, at most seven localized English names; absent readings are null. */
+export type SensorReading = {
+	key: string,
+	name: string,
+	group: SensorGroup,
+	celsius: number,
+};
+
 export type Settings = {
 	onboardingCompleted: boolean,
 	localeMode: LocaleMode,
@@ -485,8 +987,49 @@ export type Settings = {
 	brewPath: string | null,
 	homebrewAnalytics: boolean | null,
 	crashReports: boolean,
+	uninstallDeleteMode: DeleteMode,
 	zapByDefault: boolean,
+	cleanupDeleteMode: DeleteMode,
+	cleanupReminder: CleanupReminder,
+	cleanupReminderBytes: number,
+	cleanupProjectRoots: string[],
+	monitorMenuBar: MonitorMenuBar,
+	monitorIntervalMs: 1000 | 2000 | 5000,
+	monitorAlerts: boolean,
+	monitorMenuBarIntro: boolean,
+	fanLastManual: { [key in number]: number } | null,
 };
+
+export type SkippedGroup = {
+	title: string,
+	appId: string | null,
+	bytes: number | null,
+	reason: SkippedGroupReason,
+	processes: string[],
+};
+
+export type SkippedGroupReason = "running" | "in_use" | "busy" | "recent" | "git_tracked" | "protected" | "permission" | 
+/**  The tool that owns the space is not running (Docker); open it and scan again. */
+"tool_stopped" | 
+/**  Docker volumes: measured and shown, never offered; they can hold databases. */
+"volumes";
+
+export type SkippedItem = {
+	itemId: string,
+	path: string,
+	reason: SkippedItemReason,
+};
+
+export type SkippedItemReason = "running" | "in_use" | "permission" | "admin_canceled" | "missing" | "changed" | "protected" | 
+/**  The tool that runs the command is no longer available (Docker was quit after the scan). */
+"tool_unavailable";
+
+export type SkippedLocation = {
+	path: string,
+	reason: SkippedLocationReason,
+};
+
+export type SkippedLocationReason = "full_disk_access" | "permission" | "timeout";
 
 export type StorageSummary = {
 	appsBytes: number,
@@ -506,7 +1049,22 @@ export type SyncResult = {
 	cursor: number,
 };
 
+export type SystemInfo = {
+	modelName: string,
+	modelId: string,
+	chip: string,
+	performanceCores: number | null,
+	efficiencyCores: number | null,
+	logicalCores: number,
+	gpuCores: number | null,
+	memoryBytes: number,
+	osVersion: string,
+	bootedAt: number,
+};
+
 export type Task = {
+	targetName: string | null,
+	outcome: UninstallOutcome | null,
 	id: string,
 	op: TaskOp,
 	target: TaskTarget | null,
@@ -530,6 +1088,8 @@ export type Task = {
 	finishedAt: number | null,
 };
 
+export type TaskKind = "cask" | "formula" | "app";
+
 export type TaskLog = TaskLogEvent;
 
 export type TaskLogEvent = {
@@ -537,9 +1097,12 @@ export type TaskLogEvent = {
 	lines: string[],
 };
 
-export type TaskOp = "install" | "upgrade" | "uninstall" | "reinstall" | "pin" | "unpin" | "cleanup" | "update" | "install_homebrew";
+export type TaskOp = "install" | "upgrade" | "uninstall" | "remove_leftovers" | "reinstall" | "pin" | "unpin" | "cleanup" | "clean" | "update" | "install_homebrew";
 
 export type TaskOptions = {
+	planId?: string | null,
+	itemIds?: string[] | null,
+	deleteMode?: DeleteMode | null,
 	zap?: boolean,
 	adopt?: boolean,
 	greedy?: boolean,
@@ -554,13 +1117,38 @@ export type TaskPhase = "preparing" | "fetching" | "downloading" | "installing" 
 export type TaskState = "queued" | "running" | "succeeded" | "failed" | "canceled";
 
 export type TaskTarget = {
-	kind: Kind,
+	kind: TaskKind,
 	token: string,
 };
 
 export type TaskTrigger = "manual" | "schedule" | "deeplink" | "bundle" | "retry";
 
 export type TaskUpdated = Task;
+
+export type UninstallChoice = {
+	appId: string,
+	itemIds: string[],
+	quitRunning: boolean,
+};
+
+export type UninstallOutcome = {
+	freedBytes: number,
+	trashedBytes: number,
+	trashed: number,
+	deleted: number,
+	skipped: SkippedItem[],
+	restorable: boolean,
+};
+
+export type UninstallPlan = {
+	planId: string,
+	apps: AppPlan[],
+	incomplete: SkippedLocation[],
+	createdAt: number,
+	expiresAt: number,
+};
+
+export type UninstallScanEvent = ScanProgress;
 
 export type UpdatesChanged = {
 	count: number,
@@ -575,6 +1163,14 @@ export type UpdatesStatus = {
 	checkedAt: number | null,
 	nextCheckAt: number | null,
 	checking: boolean,
+};
+
+export type VolumeInfo = {
+	name: string,
+	mountPoint: string,
+	totalBytes: number,
+	freeBytes: number,
+	internal: boolean,
 };
 
 /* Tauri Specta runtime */

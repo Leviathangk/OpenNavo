@@ -1,16 +1,16 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { defineComponent, h, ref } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import UninstallConfirm from '@/components/package/UninstallConfirm.vue';
+import UninstallDialog from '@/components/uninstall/UninstallDialog.vue';
 import PermissionGuidePage from '@/pages/PermissionGuidePage.vue';
 import SettingsPage from '@/pages/SettingsPage.vue';
 import { i18n } from '@/i18n';
 import { commands, events } from '@/ipc/client';
 import type { Permissions } from '@/ipc/bindings';
 import { startGuideState, startLocalState, usePermissionsStore } from '@/stores';
+import { useUninstallStore } from '@/stores/uninstall';
 import { setup } from './helpers';
 
-// Privacy permissions (06 §12.3, §12.6, §12.7): removing app data on uninstall requires Full Disk Access; guidance overlay and settings permission rows.
+// Privacy permissions (06 §12.3, §12.6, §12.7): uninstall scans need Full Disk Access for app containers; guidance overlay and settings permission rows.
 const text = () => document.body.textContent ?? '';
 const button = (label: string) =>
   [...document.body.querySelectorAll<HTMLButtonElement>('button')].find(
@@ -28,58 +28,36 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('Uninstall confirmation: app data removal', () => {
-  async function mountConfirm(zap: boolean) {
+describe('Uninstall: Full Disk Access comes first', () => {
+  async function mountDialog() {
     const { pinia, router } = await context('/installed');
     await startLocalState();
-    const confirm = vi.fn();
-    const Host = defineComponent({
-      setup: () => {
-        const open = ref(true);
-        const checked = ref(zap);
-        return () =>
-          h(UninstallConfirm, {
-            kind: 'cask',
-            token: 'ghostty',
-            name: 'Ghostty',
-            open: open.value,
-            'onUpdate:open': (value: boolean) => (open.value = value),
-            zap: checked.value,
-            'onUpdate:zap': (value: boolean) => (checked.value = value),
-            onConfirm: confirm
-          });
-      }
-    });
-    mount(Host, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
+    mount(UninstallDialog, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
     await flushPromises();
-    return { confirm };
   }
 
-  it('Data removal without Full Disk Access requires guidance before confirmation', async () => {
-    const { confirm } = await mountConfirm(true);
+  it('Guides the permission first, then scans everything, containers included', async () => {
+    await mountDialog();
     expect(usePermissionsStore().fullDiskAccess).toBe('denied');
-    expect(text()).toContain('删除应用数据需要「完全磁盘访问权限」');
-    expect(button('卸载')?.disabled).toBe(true);
+    const store = useUninstallStore();
+    void store.start(['cask-wechat']);
+    await vi.waitFor(() => expect(store.stage).toBe('permission'), { timeout: 3000 });
+    await flushPromises();
+    expect(text()).toContain('先开启「完全磁盘访问权限」');
 
     const guide = vi.spyOn(commands, 'permissionGuideOpen');
     button('开启')?.click();
     await flushPromises();
     expect(guide).toHaveBeenCalledWith('full_disk_access');
-    await vi.waitFor(() => expect(usePermissionsStore().fullDiskAccess).toBe('granted'), { timeout: 3000 });
+    await vi.waitFor(() => expect(usePermissionsStore().fullDiskAccess).toBe('granted'), {
+      timeout: 3000
+    });
+    await vi.waitFor(() => expect(store.stage).toBe('review'), { timeout: 3000 });
     await flushPromises();
-    expect(text()).not.toContain('删除应用数据需要「完全磁盘访问权限」');
-    expect(button('卸载')?.disabled).toBe(false);
-    button('卸载')?.click();
-    expect(confirm).toHaveBeenCalledTimes(1);
-  });
-
-  it('Unchecked data removal uninstalls only the app without Full Disk Access', async () => {
-    await mountConfirm(true);
-    const checkbox = document.body.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    checkbox?.click();
-    await flushPromises();
-    expect(text()).not.toContain('删除应用数据需要「完全磁盘访问权限」');
-    expect(button('卸载')?.disabled).toBe(false);
+    expect(store.plan?.incomplete).toEqual([]);
+    expect(text()).not.toContain('没有「完全磁盘访问权限」');
+    expect(text()).toContain('com.tencent.xinWeChat.MiniProgram');
+    expect(text()).toContain('聊天记录');
   });
 });
 
@@ -87,7 +65,10 @@ describe('Permission guidance overlay', () => {
   async function mountGuide(pane: string) {
     const { pinia, router } = await context(`/permission-guide/${pane}`);
     await startGuideState();
-    mount(PermissionGuidePage, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
+    mount(PermissionGuidePage, {
+      global: { plugins: [pinia, router, i18n] },
+      attachTo: document.body
+    });
     await flushPromises();
   }
 
@@ -112,14 +93,21 @@ describe('Permission guidance overlay', () => {
   it('Show completion after permission is enabled', async () => {
     await mountGuide('app_management');
     expect(text()).toContain('App 管理');
-    usePermissionsStore().apply({ appManagement: 'granted', fullDiskAccess: 'denied', relaunchRequired: false });
+    usePermissionsStore().apply({
+      appManagement: 'granted',
+      fullDiskAccess: 'denied',
+      relaunchRequired: false
+    });
     await flushPromises();
     expect(text()).toContain('已允许 OpenNavo 管理 App');
     expect(button('拖动 OpenNavo 图标')).toBeUndefined();
   });
 
   it('Development builds that cannot drag instruct using + instead', async () => {
-    vi.spyOn(commands, 'permissionGuideInfo').mockResolvedValue({ status: 'ok', data: { draggable: false } });
+    vi.spyOn(commands, 'permissionGuideInfo').mockResolvedValue({
+      status: 'ok',
+      data: { draggable: false }
+    });
     await mountGuide('full_disk_access');
     expect(text()).toContain('点按列表下方的「+」，选择 OpenNavo');
     const drag = vi.spyOn(commands, 'permissionGuideDrag');
@@ -147,15 +135,25 @@ describe('Settings: Privacy', () => {
     enable[0]?.click();
     await flushPromises();
     expect(guide).toHaveBeenCalledWith('full_disk_access');
-    await vi.waitFor(() => expect(usePermissionsStore().fullDiskAccess).toBe('granted'), { timeout: 3000 });
+    await vi.waitFor(() => expect(usePermissionsStore().fullDiskAccess).toBe('granted'), {
+      timeout: 3000
+    });
     await flushPromises();
     expect(text()).not.toContain('未开启');
   });
 });
 
 describe('Permission response ordering', () => {
-  const oldStatus: Permissions = { appManagement: 'denied', fullDiskAccess: 'denied', relaunchRequired: false };
-  const newStatus: Permissions = { appManagement: 'granted', fullDiskAccess: 'granted', relaunchRequired: true };
+  const oldStatus: Permissions = {
+    appManagement: 'denied',
+    fullDiskAccess: 'denied',
+    relaunchRequired: false
+  };
+  const newStatus: Permissions = {
+    appManagement: 'granted',
+    fullDiskAccess: 'granted',
+    relaunchRequired: true
+  };
 
   function deferredQuery() {
     let resolve!: (value: Awaited<ReturnType<typeof commands.permissionsGet>>) => void;

@@ -212,7 +212,10 @@ const brew = computed(() => {
   return {
     value,
     hint: stats.brewLag.compared
-      ? t('package.release.brewHint', { earlier: stats.brewLag.earlierCount, compared: stats.brewLag.compared })
+      ? t('package.release.brewHint', {
+          earlier: stats.brewLag.earlierCount,
+          compared: stats.brewLag.compared
+        })
       : undefined
   };
 });
@@ -308,7 +311,9 @@ const pinHint = computed(() =>
         <OnStatTile v-if="brew" :label="t('package.release.brewLabel')" :value="brew.value" :hint="brew.hint" />
       </div>
       <OnCard v-if="sources.length" padding="md">
-        <h2 class="m-0 mb-10px text-13.5px font-600 text-ink-primary">{{ t('package.release.sourcesTitle') }}</h2>
+        <h2 class="m-0 mb-10px text-13.5px font-600 text-ink-primary">
+          {{ t('package.release.sourcesTitle') }}
+        </h2>
         <ol class="m-0 flex list-none flex-col gap-12px p-0">
           <li v-for="(source, index) in sources" :key="source" class="flex gap-10px">
             <span

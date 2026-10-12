@@ -66,7 +66,12 @@ it('registers Markdown files through the CLI without executing their contents', 
     for (const target of Object.keys(TARGETS))
       writeFileSync(
         join(dir, `${target}.json`),
-        JSON.stringify({ target, url: 'https://example.test/app', bytes: 1, sha256: 'a'.repeat(64) })
+        JSON.stringify({
+          target,
+          url: 'https://example.test/app',
+          bytes: 1,
+          sha256: 'a'.repeat(64)
+        })
       );
     await promisify(execFile)(
       process.execPath,

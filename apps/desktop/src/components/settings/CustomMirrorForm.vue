@@ -88,7 +88,9 @@ const inputClass =
           <h3 class="m-0 text-15px font-600 text-ink-primary">
             {{ t(mirror ? 'settings.customMirrors.edit' : 'settings.customMirrors.add') }}
           </h3>
-          <p class="m-0 mt-4px text-12.5px text-ink-secondary">{{ t('settings.customMirrors.fallback') }}</p>
+          <p class="m-0 mt-4px text-12.5px text-ink-secondary">
+            {{ t('settings.customMirrors.fallback') }}
+          </p>
         </div>
         <OnButton
           size="sm"

@@ -14,7 +14,9 @@ export function fetchClientConfig(): Promise<ClientConfig> {
   return cached(locale, () =>
     unwrap(
       api.GET('/config/client', {
-        params: { query: { platform: 'desktop', version: import.meta.env.VITE_APP_VERSION ?? '0.0.0' } },
+        params: {
+          query: { platform: 'desktop', version: import.meta.env.VITE_APP_VERSION ?? '0.0.0' }
+        },
         headers: { 'Accept-Language': locale }
       })
     )

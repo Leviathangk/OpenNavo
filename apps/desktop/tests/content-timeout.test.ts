@@ -15,7 +15,9 @@ describe('Content request timeout', () => {
       .mockImplementationOnce(
         (_input: unknown, init: RequestInit) =>
           new Promise((_resolve, reject) => {
-            init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+            init.signal?.addEventListener('abort', () => reject(init.signal?.reason), {
+              once: true
+            });
           })
       )
       .mockResolvedValueOnce(
