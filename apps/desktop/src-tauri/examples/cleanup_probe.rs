@@ -134,6 +134,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !opted_in(&std::env::args().skip(1).collect::<Vec<_>>()) {
         return Err("require exactly --real-read-only; no cleanup execution is available".into());
     }
+    // Same descriptor budget as the app.
+    opennavo_desktop_lib::raise_open_file_limit();
     let temporary = tempfile::tempdir()?;
     let core = DesktopCore::open(
         temporary.path().join("data"),

@@ -93,9 +93,10 @@ jobs:
           - artifact: darwin-x86_64
             target: x86_64-apple-darwin
             bundles: app
+          # Tauri builds only the App here; the "Build installer DMG" step packages it.
           - artifact: dmg-universal
             target: universal-apple-darwin
-            bundles: app,dmg
+            bundles: app
     runs-on: macos-15
     timeout-minutes: 75
     env:
@@ -179,11 +180,25 @@ jobs:
           pnpm --filter @opennavo/desktop exec tauri build "${args[@]}"
 
       - name: Sign updater artifacts separately
-        if: matrix.bundles == 'app' && steps.signing.outputs.apple != 'true' && steps.signing.outputs.updater == 'true'
+        if: matrix.artifact != 'dmg-universal' && steps.signing.outputs.apple != 'true' && steps.signing.outputs.updater == 'true'
         run: |
           for archive in apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz; do
             pnpm --filter @opennavo/desktop exec tauri signer sign --app-version "$VERSION" "$(pwd)/$archive"
           done
+
+      - name: Build installer DMG
+        if: matrix.artifact == 'dmg-universal'
+        env:
+          APPLE_SIGNED: ${{ steps.signing.outputs.apple }}
+        run: |
+          # Tauri skips its Finder layout script when CI=true, leaving a bare window; dmgbuild writes the layout without Finder.
+          python3 -m venv "$RUNNER_TEMP/dmgbuild"
+          "$RUNNER_TEMP/dmgbuild/bin/pip" install --quiet --disable-pip-version-check --require-hashes --only-binary=:all: -r apps/desktop/packaging/dmg/requirements.txt
+          bundle="apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"
+          rm -rf "$bundle/dmg"
+          args=(--app "$bundle/macos/OpenNavo.app" --out "$bundle/dmg/OpenNavo_${VERSION}_universal.dmg")
+          if [ "$APPLE_SIGNED" = true ]; then args+=(--sign "$APPLE_SIGNING_IDENTITY"); fi
+          "$RUNNER_TEMP/dmgbuild/bin/python" -I apps/desktop/scripts/build-dmg.py "${args[@]}"
 
       - name: Verify release signing and notarization
         if: github.event_name == 'push'
@@ -206,7 +221,7 @@ jobs:
           --repository "$GITHUB_REPOSITORY" --out release-artifacts
 
       - name: Verify updater artifacts with the production desktop public key
-        if: github.event_name == 'push' && matrix.bundles == 'app'
+        if: github.event_name == 'push' && matrix.artifact != 'dmg-universal'
         run: |
           node --input-type=module -e 'import fs from "node:fs"; const config=JSON.parse(fs.readFileSync("apps/desktop/src-tauri/tauri.conf.json", "utf8")); fs.writeFileSync(process.env.RUNNER_TEMP+"/updater.pub", config.plugins.updater.pubkey);'
           for archive in release-artifacts/*.app.tar.gz; do

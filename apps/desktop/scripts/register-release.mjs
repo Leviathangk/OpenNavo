@@ -32,7 +32,8 @@ const body = releaseBody({
   version: values.version ?? '',
   channel: values.channel,
   artifacts,
-  notesEn: notes['en-US'] ?? values['notes-en']
+  notes: values['notes-dir'] ? notes : undefined,
+  notesEn: values['notes-en']
 });
 
 const response = await fetch(`${base.replace(/\/+$/, '')}/desktop-releases`, {

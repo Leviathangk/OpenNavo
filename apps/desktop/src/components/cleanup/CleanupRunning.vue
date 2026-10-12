@@ -12,7 +12,17 @@ const { t } = useI18n();
 const { appLocale } = useAppLocale();
 const store = useCleanupStore();
 
-const percent = computed(() => store.task?.percent ?? null);
+const percent = computed(() => {
+  const value = store.task?.percent;
+  return value === null || value === undefined ? null : Math.floor(value);
+});
+/** Freed so far out of the selected size; Rust moves it while a large folder is being emptied. */
+const freed = computed(() => {
+  const task = store.task;
+  if (!task?.bytesTotal || task.bytesDone === null) return null;
+  const format = (bytes: number) => formatBytes(bytes, { locale: appLocale.value });
+  return `${format(task.bytesDone)} / ${format(task.bytesTotal)}`;
+});
 const rows = computed(() =>
   store.categories.flatMap(category => {
     const items = store.chosen.filter(entry => entry.category.key === category.key).map(entry => entry.item);
@@ -37,6 +47,7 @@ const rows = computed(() =>
       <span v-if="percent !== null" class="text-13px tabular-nums text-ink-secondary">{{ percent }}%</span>
     </div>
     <OnProgressMeter class="mt-12px" :value="percent" :label="t('cleanup.run.title')" />
+    <p v-if="freed" class="m-0 mt-8px text-12px tabular-nums text-ink-tertiary">{{ freed }}</p>
   </section>
 
   <ul class="m-0 mt-12px list-none rounded-panel border border-solid border-line-subtle bg-surface-card px-16px py-2px">

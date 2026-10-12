@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadReleaseNotes, validateNotes } from '../scripts/release-notes.mjs';
+import { loadReleaseNotes, RELEASE_NOTE_LOCALES, validateNotes } from '../scripts/release-notes.mjs';
 import { releaseBody, TARGETS } from '../scripts/release-lib.mjs';
 
 describe('Versioned release notes', () => {
@@ -21,11 +21,13 @@ describe('Versioned release notes', () => {
       const en = '## Fixes\n\n- Fix startup.\n- Preserve "quotes".';
       expect(() => loadReleaseNotes(dir, version)).toThrow();
       writeFileSync(join(dir, version, 'en-US.md'), en);
+      expect(() => loadReleaseNotes(dir, version)).toThrow();
+      for (const locale of RELEASE_NOTE_LOCALES) writeFileSync(join(dir, version, `${locale}.md`), en);
       const notes = loadReleaseNotes(dir, version);
       const body = releaseBody({
         version,
         channel: 'beta',
-        notesEn: notes['en-US'],
+        notes,
         artifacts: Object.keys(TARGETS).map(target => ({
           target,
           url: 'https://example.test/app',
@@ -33,9 +35,10 @@ describe('Versioned release notes', () => {
           sha256: 'a'.repeat(64)
         }))
       });
-      expect(JSON.parse(JSON.stringify(body)).i18n).toEqual({
-        'en-US': { notes: en }
-      });
+      expect(JSON.parse(JSON.stringify(body)).i18n).toEqual(
+        Object.fromEntries(RELEASE_NOTE_LOCALES.map(locale => [locale, { notes: en }]))
+      );
+      expect(() => releaseBody({ version, channel: 'beta', artifacts: body.artifacts, notes: { ...notes, 'ja-JP': 'TODO' } })).toThrow('real release notes');
       expect(() => loadReleaseNotes(dir, '0.3.0')).toThrow();
       expect(() => loadReleaseNotes(dir, '../escape')).toThrow('Invalid');
       expect(() => releaseBody({ version, channel: 'beta', artifacts: body.artifacts })).toThrow('real release notes');
@@ -62,7 +65,8 @@ it('registers Markdown files through the CLI without executing their contents', 
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     mkdirSync(join(dir, '0.3.0'));
     const notes = '## Fixes\n\n- Preserve `code`, "$HOME" and $(literal).';
-    writeFileSync(join(dir, '0.3.0', 'en-US.md'), notes);
+    for (const locale of RELEASE_NOTE_LOCALES)
+      writeFileSync(join(dir, '0.3.0', `${locale}.md`), locale === 'en-US' ? notes : `${notes}\n- ${locale}`);
     for (const target of Object.keys(TARGETS))
       writeFileSync(
         join(dir, `${target}.json`),
@@ -86,7 +90,9 @@ it('registers Markdown files through the CLI without executing their contents', 
       }
     );
     expect(received.sourceLocale).toBe('en-US');
-    expect(received.i18n).toEqual({ 'en-US': { notes } });
+    expect(received.i18n).toEqual(Object.fromEntries(
+      RELEASE_NOTE_LOCALES.map(locale => [locale, { notes: locale === 'en-US' ? notes : `${notes}\n- ${locale}` }])
+    ));
   } finally {
     await new Promise(resolve => server.close(resolve));
     rmSync(dir, { recursive: true, force: true });

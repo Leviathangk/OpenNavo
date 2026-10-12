@@ -1,6 +1,6 @@
 // Desktop release artifact names, checksums, draft registration payloads, and cask rendering (06 §15, 03 §13.3).
 // release-desktop.yml calls these through release-artifacts.mjs / register-release.mjs / render-cask.mjs; unit tests import the pure functions directly.
-import { validateNotes } from './release-notes.mjs';
+import { RELEASE_NOTE_LOCALES, validateNotes } from './release-notes.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 
@@ -68,7 +68,7 @@ export function describeFile(path) {
 }
 
 /** Draft registration payload (DesktopReleaseCreate contract); DMGs have no update signature. */
-export function releaseBody({ version, channel, artifacts, notesEn, minMacos = '13.0' }) {
+export function releaseBody({ version, channel, artifacts, notesEn, notes, minMacos = '13.0' }) {
   if (!isReleaseVersion(version)) throw new Error(`invalid version: ${version}`);
   const missing = Object.keys(TARGETS).filter(target => !artifacts.some(item => item.target === target));
   if (missing.length) throw new Error(`missing artifacts: ${missing.join(', ')}`);
@@ -79,9 +79,12 @@ export function releaseBody({ version, channel, artifacts, notesEn, minMacos = '
     channel,
     minMacos,
     sourceLocale: 'en-US',
-    i18n: {
-      'en-US': { notes: validateNotes(notesEn, version, 'en-US') }
-    },
+    i18n: Object.fromEntries(
+      (notes ? RELEASE_NOTE_LOCALES : ['en-US']).map(locale => [
+        locale,
+        { notes: validateNotes(notes ? notes[locale] : notesEn, version, locale) }
+      ])
+    ),
     artifacts: artifacts.map(({ target, url, signature, bytes, sha256 }) => ({
       target,
       url,

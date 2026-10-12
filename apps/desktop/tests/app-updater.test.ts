@@ -11,6 +11,7 @@ import { useTasksStore } from '@/stores/tasks';
 import { useAppUpdateChecks } from '@/composables/useAppUpdateChecks';
 import AppUpdateDialog from '@/components/shell/AppUpdateDialog.vue';
 import { i18n } from '@/i18n';
+import { api } from '@/api';
 import { setup } from './helpers';
 
 vi.mock('@tauri-apps/plugin-updater', () => ({ check: vi.fn() }));
@@ -236,6 +237,37 @@ describe('OpenNavo automatic self-update checks', () => {
     useTasksStore().active = [];
     await updater.restart();
     expect(relaunch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['0.1.4', '本次更新修复了启动问题', '本次更新修复了启动问题'],
+    ['0.1.5', '另一版本的更新记录', 'Improvements']
+  ])('Displays localized notes only for the offered version (%s)', async (version, translated, expected) => {
+    const get = vi.spyOn(api, 'GET').mockResolvedValue({
+      data: { code: '0000', data: { version, notes: translated } },
+      response: new Response()
+    } as never);
+    const updater = useAppUpdaterStore();
+    vi.mocked(check).mockResolvedValue(release());
+    await updater.checkNow();
+    const wrapper = mount(AppUpdateDialog, {
+      attachTo: document.body,
+      global: {
+        plugins: [i18n],
+        stubs: { OnMarkdown: { props: ['source'], template: '<div class="on-app-update-notes">{{ source }}</div>' } }
+      }
+    });
+    try {
+      await flushPromises();
+      expect(get).toHaveBeenCalledWith('/desktop/releases/latest', {
+        params: { query: { channel: 'stable' } },
+        headers: { 'Accept-Language': 'zh-CN' }
+      });
+      expect(document.querySelector('.on-app-update-notes')?.textContent).toContain(expected);
+    } finally {
+      wrapper.unmount();
+      document.body.innerHTML = '';
+    }
   });
 
   it('Shows an accessible update dialog with Later focused and postpones it behind other dialogs', async () => {

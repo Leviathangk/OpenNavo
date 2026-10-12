@@ -33,4 +33,16 @@ The script uses a development key in an ignored directory. If missing, first run
 
 Production releases use the update private key from CI secrets, paired with `plugins.updater.pubkey` in `tauri.conf.json`. `release-desktop.yml` overrides only the version through temporary configuration, additionally merging `tauri.beta.conf.json` for beta; it does not replace the public key or stable endpoint. For independent distribution, set your own identifier, update key pair, CSP, updater endpoints, and CDN domains in `src/core.rs`. Private keys come only from CI secrets, never local development keys. Tauri CLI signatures record the app version; the plugin rejects archives whose signed version differs from the manifest. Downgrades are disabled by default.
 
+## Installer DMG
+
+Tauri skips its Finder layout script when `CI=true`, so `release-desktop.yml` builds only the universal App and packages it with `scripts/build-dmg.py`. The script uses dmgbuild to write the window size, background, and icon positions directly into `.DS_Store`, with no Finder automation, and moves `.background.tiff` and `.VolumeIcon.icns` below the window so they stay out of the layout when Finder shows hidden files. The background source is `packaging/dmg/background.svg`; its arrow sits between the icon centres defined in the script. Preview a layout locally with any built App:
+
+```sh
+python3 -m venv /tmp/opennavo-dmgbuild
+/tmp/opennavo-dmgbuild/bin/pip install --require-hashes --only-binary=:all: -r apps/desktop/packaging/dmg/requirements.txt
+/tmp/opennavo-dmgbuild/bin/python -I apps/desktop/scripts/build-dmg.py --app path/to/OpenNavo.app --out /tmp/OpenNavo.dmg
+```
+
+Local `tauri build` still produces Tauri's own DMG, which has no background.
+
 The architecture requires Rust ≥1.96. Release build dependencies use `strip=false` to avoid macOS LINKEDIT alignment failures in stripped procedural macros. These dependencies are not bundled; the final executable remains stripped according to the release profile. See the [Rust compiler issue](https://github.com/rust-lang/rust/issues/157750) and [Cargo build overrides](https://doc.rust-lang.org/cargo/reference/profiles.html#build-dependencies).

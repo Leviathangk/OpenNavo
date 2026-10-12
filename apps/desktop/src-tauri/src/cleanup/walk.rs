@@ -85,16 +85,6 @@ impl Directory {
             )
         })
     }
-    pub fn relative(&self, path: &Path) -> Result<Self, AppError> {
-        let mut dir = self.child(Path::new("."))?;
-        for component in path.components() {
-            let Component::Normal(name) = component else {
-                return Err(AppError::new("E_PROTECTED", "cleanup_path"));
-            };
-            dir = dir.child(Path::new(name))?;
-        }
-        Ok(dir)
-    }
     pub fn identity(&self) -> Result<Node, AppError> {
         self.stat(Path::new("."))
     }
@@ -128,6 +118,8 @@ impl Directory {
             modified: stat.st_mtime.saturating_mul(1000) + stat.st_mtime_nsec / 1_000_000,
         })
     }
+    /// Lists this directory from its own descriptor, rewound first. Two threads must not list the same `Directory`
+    /// at once; the descriptor-relative calls (`stat`, `child`, `unlink`) are safe to share.
     pub fn entries(&self) -> Result<Vec<Node>, AppError> {
         #[cfg(target_os = "macos")]
         if let Ok(entries) = self.bulk() {
@@ -234,14 +226,31 @@ impl Directory {
             fileattr: files,
             forkattr: 0,
         };
-        let dir = self.child(Path::new("."))?;
-        let mut buffer = vec![0u8; 256 * 1024];
+        // getattrlistbulk continues from the descriptor's offset; rewinding it is cheaper than opening the directory
+        // again for every listing.
+        if unsafe { libc::lseek(self.0.as_raw_fd(), 0, libc::SEEK_SET) } < 0 {
+            return Err(std::io::Error::last_os_error().into());
+        }
+        thread_local! {
+            // One listing buffer per thread instead of a fresh 256 KiB allocation for every directory.
+            static BUFFER: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(vec![0u8; 256 * 1024]);
+        }
+        BUFFER.with_borrow_mut(|buffer| self.bulk_into(&mut attrs, common, files, buffer))
+    }
+    #[cfg(target_os = "macos")]
+    fn bulk_into(
+        &self,
+        attrs: &mut libc::attrlist,
+        common: u32,
+        files: u32,
+        buffer: &mut [u8],
+    ) -> Result<Vec<Node>, AppError> {
         let mut entries = vec![];
         loop {
             let count = unsafe {
                 libc::getattrlistbulk(
-                    dir.0.as_raw_fd(),
-                    (&mut attrs as *mut libc::attrlist).cast(),
+                    self.0.as_raw_fd(),
+                    (attrs as *mut libc::attrlist).cast(),
                     buffer.as_mut_ptr().cast(),
                     buffer.len(),
                     (libc::FSOPT_NOFOLLOW | libc::FSOPT_PACK_INVAL_ATTRS) as u64,
@@ -255,8 +264,10 @@ impl Directory {
             }
             let mut offset = 0;
             for _ in 0..count {
-                let length = read_u32(&buffer, offset)? as usize;
+                let length = read_u32(buffer, offset)? as usize;
                 let record = buffer.get(offset..offset + length).ok_or_else(bulk_error)?;
+                // Advance first: a skipped record must not be read again in place of the next one.
+                offset += length;
                 if record.len() < 68 {
                     return Err(bulk_error());
                 }
@@ -311,7 +322,6 @@ impl Directory {
                     }
                 };
                 entries.push(node);
-                offset += length;
             }
         }
         Ok(entries)

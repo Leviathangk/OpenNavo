@@ -3,6 +3,10 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
+export const RELEASE_NOTE_LOCALES = JSON.parse(
+  readFileSync(new URL('../../../packages/shared/src/locales.json', import.meta.url), 'utf8')
+).locales.map(locale => locale.code);
+
 export function validateNotes(notes, version, locale) {
   const text = typeof notes === 'string' ? notes.trim() : '';
   const plain = text.replace(/[#*`_]/g, '').trim();
@@ -18,7 +22,7 @@ export function validateNotes(notes, version, locale) {
 export function loadReleaseNotes(dir, version) {
   if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(version)) throw new Error('Invalid release notes version');
   return Object.fromEntries(
-    ['en-US'].map(locale => [
+    RELEASE_NOTE_LOCALES.map(locale => [
       locale,
       validateNotes(readFileSync(resolve(dir, version, `${locale}.md`), 'utf8'), version, locale)
     ])
@@ -33,5 +37,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     }
   });
   loadReleaseNotes(values.dir, values.version ?? '');
-  console.log(`Release notes validated for ${values.version} (en-US)`);
+  console.log(`Release notes validated for ${values.version} (${RELEASE_NOTE_LOCALES.join(', ')})`);
 }

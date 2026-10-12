@@ -678,6 +678,26 @@ impl TaskQueue {
             }
         }
     }
+    fn append_log(&self, id: &str, lines: &[String]) -> Result<(), AppError> {
+        if lines.is_empty() {
+            return Ok(());
+        }
+        use std::io::Write;
+        std::fs::create_dir_all(&self.logs)?;
+        let path = self.logs.join(format!("{id}.log"));
+        let mut options = std::fs::OpenOptions::new();
+        options.append(true).create(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options.open(path)?;
+        for line in lines {
+            writeln!(file, "{line}")?;
+        }
+        Ok(())
+    }
     pub(crate) fn uninstall_progress(
         &self,
         id: &str,
@@ -687,22 +707,7 @@ impl TaskQueue {
         line: Option<String>,
     ) -> Result<(), AppError> {
         let lines: Vec<_> = line.into_iter().collect();
-        if !lines.is_empty() {
-            use std::io::Write;
-            std::fs::create_dir_all(&self.logs)?;
-            let path = self.logs.join(format!("{id}.log"));
-            let mut options = std::fs::OpenOptions::new();
-            options.append(true).create(true);
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::OpenOptionsExt;
-                options.mode(0o600);
-            }
-            let mut file = options.open(path)?;
-            for line in &lines {
-                writeln!(file, "{line}")?;
-            }
-        }
+        self.append_log(id, &lines)?;
         self.progress(
             id,
             &lines,
@@ -718,6 +723,46 @@ impl TaskQueue {
             },
             true,
         )
+    }
+    /// Cleanup progress with the bytes freed so far out of the selected size; `lines` are logged and announced once.
+    pub(crate) fn cleanup_progress(
+        &self,
+        id: &str,
+        phase: TaskPhase,
+        percent: f32,
+        (freed, selected): (u64, u64),
+        lines: Vec<String>,
+    ) -> Result<(), AppError> {
+        self.append_log(id, &lines)?;
+        self.progress(
+            id,
+            &lines,
+            &Progress {
+                phase: Some(phase),
+                percent: Some(percent),
+                step_index: Some(if phase == TaskPhase::Finishing { 3 } else { 2 }),
+                from: None,
+                to: None,
+                bytes: Some(freed),
+                total: Some(selected),
+                speed: None,
+            },
+            true,
+        )
+    }
+    /// Persists the outcome so far without an event of its own; the next progress event carries it.
+    pub(crate) fn store_uninstall_outcome(
+        &self,
+        id: &str,
+        outcome: &UninstallOutcome,
+    ) -> Result<(), AppError> {
+        let mut tasks = self.tasks.lock().map_err(poison)?;
+        let task = tasks
+            .iter_mut()
+            .find(|t| t.id == id)
+            .ok_or_else(|| AppError::new("E_UNKNOWN", "missing_task"))?;
+        task.outcome = Some(outcome.clone());
+        self.database.save_task(task)
     }
     pub(crate) fn set_uninstall_outcome(
         &self,

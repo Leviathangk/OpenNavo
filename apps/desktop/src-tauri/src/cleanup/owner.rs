@@ -3,6 +3,8 @@ use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
     process::Command,
+    sync::{Arc, Mutex, PoisonError},
+    time::{Duration, Instant},
 };
 
 #[derive(Debug, Clone, Default)]
@@ -96,10 +98,6 @@ impl Owner {
             ..Self::default()
         }
     }
-    pub fn status(&self, engine: &super::Engine) -> Option<SkippedGroupReason> {
-        self.status_in(&Activity::read(engine))
-    }
-
     fn matches_bundle(&self, id: &str) -> bool {
         if self.tool_only {
             return false;
@@ -610,6 +608,7 @@ fn darwin_user_dir(name: i32) -> Result<Option<PathBuf>, AppError> {
 pub struct Activity {
     pub apps: Vec<crate::running_apps::Process>,
     pub processes: Vec<CommandProcess>,
+    /// Sorted by path, so everything open below a folder is one contiguous run.
     pub open_paths: Vec<(PathBuf, Option<i32>)>,
     pub apps_complete: bool,
     pub processes_complete: bool,
@@ -617,23 +616,89 @@ pub struct Activity {
 }
 impl Activity {
     pub fn read(engine: &super::Engine) -> Result<Self, AppError> {
-        // A failed lsof must not discard the independently acquired process tables.
-        let apps = engine.uninstall.control.list();
-        let processes = engine.processes.list();
-        let open = engine.processes.open_files();
+        // A failed lsof must not discard the independently acquired process tables. lsof takes most of the time, so
+        // the process tables are read meanwhile.
+        let (apps, processes, open) = std::thread::scope(|scope| {
+            let open = scope.spawn(|| engine.processes.open_files());
+            let apps = engine.uninstall.control.list();
+            let processes = engine.processes.list();
+            let open = open
+                .join()
+                .unwrap_or_else(|_| Err(AppError::new("E_UNKNOWN", "cleanup_open_files_probe")));
+            (apps, processes, open)
+        });
+        let open_complete = open.is_ok();
+        let mut open_paths = open.unwrap_or_default();
+        open_paths.sort_by(|a, b| a.0.cmp(&b.0));
         Ok(Self {
             apps_complete: apps.is_ok(),
             processes_complete: processes.is_ok(),
-            open_complete: open.is_ok(),
+            open_complete,
             apps: apps.unwrap_or_default(),
             processes: processes.unwrap_or_default(),
-            open_paths: open.unwrap_or_default(),
+            open_paths,
         })
     }
+    /// Whether anything is open at or below `path`.
     pub fn in_use(&self, path: &Path) -> bool {
-        self.open_paths
+        self.open_under(path).next().is_some()
+    }
+    /// Open files at or below `path`. Paths sort component by component, so they follow `path` in one run.
+    pub fn open_under<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> impl Iterator<Item = &'a (PathBuf, Option<i32>)> + 'a {
+        let start = self
+            .open_paths
+            .partition_point(|(open, _)| open.as_path() < path);
+        self.open_paths[start..]
             .iter()
-            .any(|(open, _)| open.starts_with(path))
+            .take_while(move |(open, _)| open.starts_with(path))
+    }
+    /// Whether `path` itself or one of the folders above it is open.
+    pub fn open_at_or_above(&self, path: &Path) -> bool {
+        path.ancestors().any(|ancestor| {
+            self.open_paths
+                .binary_search_by(|(open, _)| open.as_path().cmp(ancestor))
+                .is_ok()
+        })
+    }
+    fn complete(&self) -> bool {
+        self.apps_complete && self.processes_complete && self.open_complete
+    }
+}
+
+/// How long one reading of running apps and open files serves the next items of a cleanup. Reading open files runs
+/// lsof, about half a second, which used to happen twice for every item.
+pub const ACTIVITY_REUSE: Duration = Duration::from_secs(2);
+
+/// What runs and what is open, as one cleanup run sees it. Every item is checked against a reading at most
+/// `ACTIVITY_REUSE` old. An incomplete reading fails closed for the item at hand and is read again for the next one.
+#[derive(Default)]
+pub struct Activities(Mutex<Option<(Instant, Reading)>>);
+/// One reading, shared by the items it serves.
+pub type Reading = Arc<Result<Activity, AppError>>;
+impl Activities {
+    pub fn get(&self, engine: &super::Engine) -> Reading {
+        let mut cached = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some((started, activity)) = cached.as_ref()
+            && started.elapsed() < ACTIVITY_REUSE
+        {
+            return activity.clone();
+        }
+        // Age counts from the start of the reading: lsof reports what was open while it ran.
+        let started = Instant::now();
+        let activity = Arc::new(Activity::read(engine));
+        *cached = activity
+            .as_ref()
+            .as_ref()
+            .is_ok_and(Activity::complete)
+            .then(|| (started, activity.clone()));
+        activity
+    }
+    /// The next item reads again, e.g. after a background service was unloaded.
+    pub fn forget(&self) {
+        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = None;
     }
 }
 impl Owner {
@@ -711,15 +776,16 @@ impl Owner {
                 }
             }
         } else if reason == SkippedGroupReason::InUse {
+            let holders: BTreeSet<i32> = activity
+                .open_under(path)
+                .filter_map(|(_, pid)| *pid)
+                .collect();
             for process in &activity.processes {
                 if (process.argv.is_none()
                     && self
                         .arguments
                         .is_some_and(|r| r.runtime(&process.executable)))
-                    || activity
-                        .open_paths
-                        .iter()
-                        .any(|(open, pid)| open.starts_with(path) && *pid == Some(process.pid))
+                    || holders.contains(&process.pid)
                 {
                     names.insert(process.comm().to_owned());
                 }
@@ -1008,6 +1074,70 @@ mod tests {
             argv: Some(arguments(&["python3", "script.py", "pip"])),
         };
         assert!(!ArgumentMatch::Pip.matches(&process, &[]));
+    }
+
+    #[test]
+    fn sorted_open_files_answer_like_a_linear_scan() {
+        let open = [
+            "/u/a/b",
+            "/u/a/b-c/d",
+            "/u/a/b/c",
+            "/u/a/b/c/d/e",
+            "/u/a/bc",
+            "/u/a/b c/x",
+            "/u/a/b.d",
+            "/u/z",
+            "/v/a/b/c",
+        ];
+        let mut open_paths: Vec<_> = open.iter().map(|p| (PathBuf::from(p), Some(1))).collect();
+        open_paths.sort_by(|a, b| a.0.cmp(&b.0));
+        let activity = Activity {
+            apps: vec![],
+            processes: vec![],
+            open_paths,
+            apps_complete: true,
+            processes_complete: true,
+            open_complete: true,
+        };
+        for query in [
+            "/",
+            "/u",
+            "/u/a",
+            "/u/a/b",
+            "/u/a/b/c",
+            "/u/a/b/c/d",
+            "/u/a/b-c",
+            "/u/a/b c",
+            "/u/a/bc",
+            "/u/a/b/x",
+            "/u/a/b.d",
+            "/u/a/b.d/x",
+            "/u/y",
+            "/u/z/deeper",
+            "/v",
+            "/w",
+        ] {
+            let query = Path::new(query);
+            let below: Vec<_> = open
+                .iter()
+                .map(Path::new)
+                .filter(|p| p.starts_with(query))
+                .collect();
+            let mut found: Vec<_> = activity
+                .open_under(query)
+                .map(|(p, _)| p.as_path())
+                .collect();
+            found.sort();
+            let mut expected = below.clone();
+            expected.sort();
+            assert_eq!(found, expected, "{query:?}");
+            assert_eq!(activity.in_use(query), !below.is_empty(), "{query:?}");
+            assert_eq!(
+                activity.open_at_or_above(query),
+                open.iter().any(|p| query.starts_with(p)),
+                "{query:?}"
+            );
+        }
     }
 
     #[test]

@@ -1,4 +1,8 @@
-use super::{Engine, EntryItem, poison, protect, reconcile, rules, tree};
+use super::{
+    Engine, EntryItem,
+    owner::{Activities, Activity},
+    poison, protect, reconcile, rules, tree,
+};
 use crate::{
     AppError,
     brew::{self, pty},
@@ -15,6 +19,11 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::sync::Notify;
+
+/// Progress events while an item runs (a large folder takes a while to empty), and at most this often in general.
+const PROGRESS_INTERVAL: Duration = Duration::from_millis(200);
+/// Progress weight of a tool command (Homebrew, Docker): roughly a few seconds of removing files.
+const COMMAND_WEIGHT: u64 = 50_000;
 
 pub async fn run(
     queue: Arc<TaskQueue>,
@@ -44,42 +53,50 @@ pub async fn run(
         0.0,
         Some("==> OpenNavo: cleanup".into()),
     )?;
+    // One reading of what runs and what is open serves the items of the next two seconds.
+    let activities = Arc::new(Activities::default());
+    let mut report = Report::new(&entry, ids);
     let mut removed = vec![];
     let mut command_failure = None;
-    for (index, id) in ids.iter().enumerate() {
+    for id in ids {
         if flag.load(Ordering::Acquire) {
             break;
         }
         let item = entry.items.get(id).ok_or_else(super::cached_error)?.clone();
-        let result = if item.item.kind == CleanupItemKind::Command
-            && super::docker::prune_args(item.item.reason).is_some()
-        {
-            let engine = engine.clone();
-            let log_path = task.log_path.clone().ok_or_else(super::cached_error)?;
-            let flag = flag.clone();
-            let item = item.clone();
-            crate::blocking(move || engine.docker(Path::new(&log_path), &item, flag)).await
-        } else if item.item.kind == CleanupItemKind::Command {
-            run_brew(&queue, task, &engine, &item, flag.clone()).await
-        } else {
-            let engine = engine.clone();
-            let task_id = task.id.clone();
-            let flag = flag.clone();
-            let item = item.clone();
-            crate::blocking(move || engine.act(&task_id, &item, &flag)).await
+        report.start(&item);
+        let meter = Arc::new(tree::Meter::default());
+        let work = async {
+            if item.item.kind == CleanupItemKind::Command
+                && super::docker::prune_args(item.item.reason).is_some()
+            {
+                let engine = engine.clone();
+                let log_path = task.log_path.clone().ok_or_else(super::cached_error)?;
+                let flag = flag.clone();
+                let item = item.clone();
+                crate::blocking(move || engine.docker(Path::new(&log_path), &item, flag)).await
+            } else if item.item.kind == CleanupItemKind::Command {
+                run_brew(&queue, task, &engine, &item, flag.clone(), &activities).await
+            } else {
+                let engine = engine.clone();
+                let task_id = task.id.clone();
+                let flag = flag.clone();
+                let item = item.clone();
+                let activities = activities.clone();
+                let meter = meter.clone();
+                crate::blocking(move || engine.act(&task_id, &item, &flag, &activities, &meter))
+                    .await
+            }
         };
+        let result = await_with_progress(work, &flag, || {
+            report.emit(&queue, &task.id, &outcome, Some(&meter), false)
+        })
+        .await?;
         match result {
             Ok(Act::Deleted(bytes)) => {
                 outcome.deleted += 1;
                 outcome.freed_bytes = outcome.freed_bytes.saturating_add(bytes);
                 removed.push(id.clone());
-                log(
-                    &queue,
-                    &task.id,
-                    index,
-                    ids.len(),
-                    format!("deleted {}", display(&item)),
-                )?;
+                report.line(format!("deleted {}", display(&item)));
             }
             Ok(Act::Trashed) => {
                 let bytes = item.item.size_bytes.unwrap_or(0);
@@ -88,17 +105,9 @@ pub async fn run(
                 outcome.trashed += 1;
                 outcome.restorable = true;
                 removed.push(id.clone());
-                log(
-                    &queue,
-                    &task.id,
-                    index,
-                    ids.len(),
-                    format!("trashed {}", display(&item)),
-                )?;
+                report.line(format!("trashed {}", display(&item)));
             }
-            Ok(Act::Skipped(reason)) => {
-                skip(&queue, task, &mut outcome, &item, reason, index, ids.len())?
-            }
+            Ok(Act::Skipped(reason)) => skip(&mut report, &mut outcome, &item, reason),
             Err(error) => {
                 if error.code == "E_BREW_CLEANUP" {
                     command_failure = Some(error.clone());
@@ -111,32 +120,28 @@ pub async fn run(
                     "E_APP_RUNNING" | "E_CANCELED" => SkippedItemReason::InUse,
                     _ => SkippedItemReason::Permission,
                 };
-                skip(&queue, task, &mut outcome, &item, reason, index, ids.len())?;
+                skip(&mut report, &mut outcome, &item, reason);
             }
         }
-        queue.set_uninstall_outcome(&task.id, outcome.clone())?;
+        report.done();
+        // Persisted per item; the next progress event carries it to the window.
+        queue.store_uninstall_outcome(&task.id, &outcome)?;
+        report.emit(&queue, &task.id, &outcome, None, false)?;
     }
     // Include the unattempted selection when a task is canceled so the result accounts for every selected item.
     for id in ids {
         if !removed.contains(id) && !outcome.skipped.iter().any(|s| &s.item_id == id) {
             let item = &entry.items[id];
-            skip(
-                &queue,
-                task,
-                &mut outcome,
-                item,
-                SkippedItemReason::InUse,
-                0,
-                ids.len(),
-            )?;
+            skip(&mut report, &mut outcome, item, SkippedItemReason::InUse);
         }
     }
     outcome.restorable = manifest::entries(&engine.uninstall.database, &task.id)?
         .iter()
         .any(|e| e.state == "trash" || e.state == "pending");
-    queue.set_uninstall_outcome(&task.id, outcome)?;
+    report.emit(&queue, &task.id, &outcome, None, true)?;
+    queue.set_uninstall_outcome(&task.id, outcome.clone())?;
     engine.executed(&removed, &entry)?;
-    queue.uninstall_progress(&task.id, TaskPhase::Finishing, 3, 100.0, None)?;
+    report.finish(&queue, &task.id, &outcome)?;
     if let Some(error) = command_failure {
         return Err(error);
     }
@@ -148,45 +153,142 @@ pub async fn run(
         parser: Default::default(),
     })
 }
+/// Reporting must not detach blocking deletion work from the queue's cancellation control.
+async fn await_with_progress<T>(
+    work: impl std::future::Future<Output = T>,
+    flag: &AtomicBool,
+    mut emit: impl FnMut() -> Result<(), AppError>,
+) -> Result<T, AppError> {
+    tokio::pin!(work);
+    let mut ticker = tokio::time::interval_at(
+        tokio::time::Instant::now() + PROGRESS_INTERVAL,
+        PROGRESS_INTERVAL,
+    );
+    loop {
+        tokio::select! {
+            result = &mut work => return Ok(result),
+            _ = ticker.tick() => {
+                if let Err(error) = emit() {
+                    flag.store(true, Ordering::Release);
+                    let _ = work.await;
+                    return Err(error);
+                }
+            }
+        }
+    }
+}
+
 fn display(item: &EntryItem) -> &str {
     item.item.command.as_deref().unwrap_or(&item.item.path)
 }
-fn log(
-    queue: &TaskQueue,
-    task: &str,
-    index: usize,
-    count: usize,
-    line: String,
-) -> Result<(), AppError> {
-    queue.uninstall_progress(
-        task,
-        TaskPhase::Cleaning,
-        2,
-        (index + 1) as f32 / count.max(1) as f32 * 100.0,
-        Some(line),
-    )
-}
 fn skip(
-    queue: &TaskQueue,
-    task: &Task,
+    report: &mut Report,
     outcome: &mut UninstallOutcome,
     item: &EntryItem,
     reason: SkippedItemReason,
-    index: usize,
-    count: usize,
-) -> Result<(), AppError> {
+) {
     outcome.skipped.push(SkippedItem {
         item_id: item.item.id.clone(),
         path: item.item.path.clone(),
         reason,
     });
-    log(
-        queue,
-        &task.id,
-        index,
-        count,
-        format!("skipped {:?} {}", reason, display(item)),
-    )
+    report.line(format!("skipped {:?} {}", reason, display(item)));
+}
+/// How much of an item's run is spent: removing takes time per entry, not per byte, and a tool command takes seconds.
+fn weight(item: &EntryItem) -> u64 {
+    if item.item.kind == CleanupItemKind::Command {
+        COMMAND_WEIGHT
+    } else {
+        item.tree.as_ref().map_or(1, |tree| tree.entries.max(1))
+    }
+}
+/// Progress of one run. The bar follows entries removed; the numbers are bytes freed out of the selected size. Log
+/// lines and events are batched to a few per second.
+struct Report {
+    total: u64,
+    done: u64,
+    current: u64,
+    selected_bytes: u64,
+    lines: Vec<String>,
+    last: Option<Instant>,
+}
+impl Report {
+    fn new(entry: &super::Entry, ids: &[String]) -> Self {
+        let items: Vec<_> = ids.iter().filter_map(|id| entry.items.get(id)).collect();
+        Self {
+            total: items
+                .iter()
+                .map(|item| weight(item))
+                .fold(0, u64::saturating_add),
+            done: 0,
+            current: 0,
+            selected_bytes: items
+                .iter()
+                .filter_map(|item| item.item.size_bytes)
+                .fold(0, u64::saturating_add),
+            lines: vec![],
+            last: None,
+        }
+    }
+    fn start(&mut self, item: &EntryItem) {
+        self.current = weight(item);
+    }
+    fn done(&mut self) {
+        self.done = self.done.saturating_add(self.current);
+        self.current = 0;
+    }
+    fn line(&mut self, line: String) {
+        self.lines.push(line);
+    }
+    fn emit(
+        &mut self,
+        queue: &TaskQueue,
+        task: &str,
+        outcome: &UninstallOutcome,
+        meter: Option<&tree::Meter>,
+        force: bool,
+    ) -> Result<(), AppError> {
+        if !force
+            && self
+                .last
+                .is_some_and(|last| last.elapsed() < PROGRESS_INTERVAL)
+        {
+            return Ok(());
+        }
+        let removing = meter.map_or(0, |m| m.entries.load(Ordering::Relaxed).min(self.current));
+        let percent = (self.done.saturating_add(removing) as f64 / self.total.max(1) as f64
+            * 100.0)
+            .min(99.9);
+        let freed = outcome
+            .freed_bytes
+            .saturating_add(meter.map_or(0, |m| m.bytes.load(Ordering::Relaxed)));
+        queue.cleanup_progress(
+            task,
+            TaskPhase::Cleaning,
+            percent as f32,
+            (freed.min(self.selected_bytes), self.selected_bytes),
+            std::mem::take(&mut self.lines),
+        )?;
+        self.last = Some(Instant::now());
+        Ok(())
+    }
+    fn finish(
+        &mut self,
+        queue: &TaskQueue,
+        task: &str,
+        outcome: &UninstallOutcome,
+    ) -> Result<(), AppError> {
+        queue.cleanup_progress(
+            task,
+            TaskPhase::Finishing,
+            100.0,
+            (
+                outcome.freed_bytes.min(self.selected_bytes),
+                self.selected_bytes,
+            ),
+            std::mem::take(&mut self.lines),
+        )
+    }
 }
 pub enum Act {
     Deleted(u64),
@@ -268,10 +370,11 @@ impl Engine {
         snapshot: &uninstall::rules::Snapshot,
         flag: &AtomicBool,
         partial: bool,
+        activity: &Result<Activity, AppError>,
+        meter: &tree::Meter,
     ) -> Result<Act, AppError> {
         let path = Path::new(&item.item.path);
-        let activity = super::owner::Activity::read(self);
-        if let Some(reason) = item.owner.status_in(&activity) {
+        if let Some(reason) = item.owner.status_in(activity) {
             return Ok(Act::Skipped(if reason == SkippedGroupReason::Running {
                 SkippedItemReason::Running
             } else {
@@ -283,13 +386,7 @@ impl Engine {
         }
         let open: Vec<_> = activity
             .as_ref()
-            .map(|a| {
-                a.open_paths
-                    .iter()
-                    .map(|(p, _)| p.clone())
-                    .filter(|p| p.starts_with(path))
-                    .collect()
-            })
+            .map(|a| a.open_under(path).map(|(p, _)| p.clone()).collect())
             .unwrap_or_default();
         let protected = self.protected_list()?;
         // Same rule as the scan: inside generated trees, names deep in the tree say nothing about user secrets, so
@@ -309,13 +406,22 @@ impl Engine {
                     || protect::is_protected(&protected, p, item.owner.bundle.as_deref())
             },
             &open,
+            tree::parallel_workers(item.tree.as_ref().is_some_and(|tree| tree.compact)),
+            meter,
         )?;
         if bytes == 0 && !open.is_empty() {
             return Ok(Act::Skipped(SkippedItemReason::InUse));
         }
         Ok(Act::Deleted(bytes))
     }
-    pub fn act(&self, task_id: &str, item: &EntryItem, flag: &AtomicBool) -> Result<Act, AppError> {
+    pub fn act(
+        &self,
+        task_id: &str,
+        item: &EntryItem,
+        flag: &AtomicBool,
+        activities: &Activities,
+        meter: &tree::Meter,
+    ) -> Result<Act, AppError> {
         let _operation = self.operation.lock().map_err(poison)?;
         let path = Path::new(&item.item.path);
         if item.owner.protected
@@ -329,8 +435,9 @@ impl Engine {
         {
             return Ok(Act::Skipped(SkippedItemReason::Protected));
         }
-        let activity = super::owner::Activity::read(self);
-        if let Some(reason) = item.owner.status_in(&activity) {
+        let reading = activities.get(self);
+        let activity = &*reading;
+        if let Some(reason) = item.owner.status_in(activity) {
             return Ok(Act::Skipped(if reason == SkippedGroupReason::Running {
                 SkippedItemReason::Running
             } else {
@@ -380,14 +487,11 @@ impl Engine {
         {
             let snapshot = before.snapshots.get(path).ok_or_else(super::cached_error)?;
             if partial && !before.compact {
-                let open: Vec<_> = activity
-                    .as_ref()
-                    .map(|a| a.open_paths.iter().map(|(p, _)| p).collect())
-                    .unwrap_or_default();
                 for (p, expected) in &before.snapshots {
-                    if open
-                        .iter()
-                        .any(|file| p.starts_with(file) || file.starts_with(p))
+                    // Open here, below or above: that part stays and may change.
+                    if activity
+                        .as_ref()
+                        .is_ok_and(|a| a.in_use(p) || a.open_at_or_above(p))
                     {
                         continue;
                     }
@@ -402,7 +506,7 @@ impl Engine {
                     }
                 }
             }
-            return self.delete_cache(item, snapshot, flag, partial);
+            return self.delete_cache(item, snapshot, flag, partial, activity, meter);
         }
         // Moving an installer, a backup or an archive to the Trash is one rename of its root, and a wrong pick can be
         // put back. A large one is not walked again: its root identity is checked below, and a protection rule on
@@ -472,8 +576,11 @@ impl Engine {
                 .lock()
                 .map_err(poison)?
                 .bootout(label, false, &item.item.path)?;
+            // What the service ran is looked at again, not as it was before unloading.
+            activities.forget();
         }
-        if flag.load(Ordering::Acquire) || item.owner.status(self).is_some() {
+        let reading = activities.get(self);
+        if flag.load(Ordering::Acquire) || item.owner.status_in(&reading).is_some() {
             return Ok(Act::Skipped(SkippedItemReason::InUse));
         }
         if !snapshot.matches(path) {
@@ -486,7 +593,7 @@ impl Engine {
             // Directories go through the descriptor-based remover: no symlink traversal, identity checks on every
             // entry, and read-only directories we own (Go's module cache) can still be emptied.
             if snapshot.kind == 1 && !*empty_only {
-                return self.delete_cache(item, snapshot, flag, partial);
+                return self.delete_cache(item, snapshot, flag, partial, &reading, meter);
             }
             uninstall::execute::remove(path, *empty_only)?;
             return Ok(Act::Deleted(current.bytes));
@@ -597,13 +704,18 @@ async fn run_brew(
     engine: &Arc<Engine>,
     item: &EntryItem,
     flag: Arc<AtomicBool>,
+    activities: &Arc<Activities>,
 ) -> Result<Act, AppError> {
     if item.item.reason != CleanupReason::BrewCleanup
         || !matches!(item.action, ItemAction::BrewStep)
     {
         return Err(AppError::new("E_PROTECTED", "cleanup_command"));
     }
-    if item.owner.status(engine).is_some() {
+    let status = {
+        let (engine, activities, owner) = (engine.clone(), activities.clone(), item.owner.clone());
+        crate::blocking(move || Ok(owner.status_in(&activities.get(&engine)))).await?
+    };
+    if status.is_some() {
         return Ok(Act::Skipped(SkippedItemReason::InUse));
     }
     let settings = queue.settings()?;
@@ -645,6 +757,7 @@ async fn run_brew(
     };
     let engine = engine.clone();
     let item = item.clone();
+    let activities = activities.clone();
     crate::blocking(move || {
         let _operation = engine.operation.lock().map_err(poison)?;
         let protected = engine.protected_list()?;
@@ -658,7 +771,7 @@ async fn run_brew(
         {
             return Ok(Act::Skipped(SkippedItemReason::Protected));
         }
-        if let Some(reason) = item.owner.status(&engine) {
+        if let Some(reason) = item.owner.status_in(&activities.get(&engine)) {
             return Ok(Act::Skipped(if reason == SkippedGroupReason::Running {
                 SkippedItemReason::Running
             } else {
@@ -675,4 +788,38 @@ async fn run_brew(
         Ok(Act::Deleted(estimate.bytes))
     })
     .await
+}
+
+#[cfg(test)]
+mod progress_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn reporting_failure_cancels_and_joins_blocking_work() {
+        let flag = Arc::new(AtomicBool::new(false));
+        let finished = Arc::new(AtomicBool::new(false));
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let worker_flag = flag.clone();
+        let worker_finished = finished.clone();
+        let work = tokio::task::spawn_blocking(move || {
+            started_tx.send(()).unwrap();
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while !worker_flag.load(Ordering::Acquire) && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            assert!(worker_flag.load(Ordering::Acquire));
+            // Cancellation is observed before the worker has finished unwinding its work.
+            std::thread::sleep(Duration::from_millis(50));
+            worker_finished.store(true, Ordering::Release);
+        });
+        started_rx.await.unwrap();
+        let error = await_with_progress(work, &flag, || {
+            Err(AppError::new("E_TEST_REPORT", "progress_write_failed"))
+        })
+        .await
+        .unwrap_err();
+        assert_eq!(error.code, "E_TEST_REPORT");
+        assert!(flag.load(Ordering::Acquire));
+        assert!(finished.load(Ordering::Acquire));
+    }
 }

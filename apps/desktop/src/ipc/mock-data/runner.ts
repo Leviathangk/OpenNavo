@@ -30,6 +30,8 @@ export interface Step {
   to: number;
   ticks: number;
   lines: string[];
+  /** Cleanup: bytes freed at the start and end of the step, out of `total` (Rust reports them as bytesDone/bytesTotal). */
+  freed?: { from: number; to: number; total: number };
 }
 
 /** Injected failure: emit `lines` at the first tick of zero-based `step`, then finish with `error`. */
@@ -352,6 +354,10 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
           finish(task, 'failed');
           return;
         }
+      } else if (step.freed) {
+        task.bytesTotal = step.freed.total;
+        task.bytesDone = Math.round(step.freed.from + (step.freed.to - step.freed.from) * ratio);
+        task.speedBps = null;
       } else {
         task.bytesDone = null;
         task.speedBps = null;

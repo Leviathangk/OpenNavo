@@ -59,6 +59,7 @@ struct Processes {
     docker: Mutex<Option<PathBuf>>,
     delay: AtomicBool,
     open_error: AtomicBool,
+    open_reads: AtomicUsize,
 }
 impl ProcessProbe for Processes {
     fn list(&self) -> Result<Vec<CommandProcess>, AppError> {
@@ -96,6 +97,7 @@ impl ProcessProbe for Processes {
         Ok(self.open.lock().unwrap().clone())
     }
     fn open_files(&self) -> Result<Vec<(PathBuf, Option<i32>)>, AppError> {
+        self.open_reads.fetch_add(1, Ordering::AcqRel);
         if self.open_error.load(Ordering::Acquire) {
             return Err(AppError::new("E_TIMEOUT", "fake_open_probe"));
         }
@@ -633,6 +635,75 @@ async fn rebuildable_direct_delete_measures_blocks_and_updates_persistent_summar
     );
     assert!(restored_summary.volume.is_some());
 }
+#[tokio::test]
+async fn many_items_share_activity_readings_and_progress_reports_freed_bytes() {
+    let f = Fixture::new();
+    let logs: Vec<_> = (0..40)
+        .map(|i| {
+            let path = f.file(&format!("Library/Logs/Tool/run-{i}.log"));
+            age(&path, 8);
+            path
+        })
+        .collect();
+    let report = f.scan(&[CleanupCategory::Logs]).await;
+    let selected: u64 = items(&report).iter().filter_map(|i| i.size_bytes).sum();
+    assert_eq!(items(&report).len(), logs.len());
+    let reads = f.processes.open_reads.load(Ordering::Acquire);
+    let ids = items(&report).iter().map(|i| i.id.clone()).collect();
+    let task = f.execute(&report, ids).await;
+    let outcome = task.outcome.clone().unwrap();
+    assert_eq!(outcome.deleted, logs.len() as i64);
+    assert!(logs.iter().all(|path| !path.exists()));
+    // Forty items read open files once or twice (a reading serves two seconds), not twice per item.
+    assert!(f.processes.open_reads.load(Ordering::Acquire) - reads <= 2);
+    let progress: Vec<_> = f
+        .events
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|e| match e {
+            CoreEvent::Task(t) if t.id == task.id && t.bytes_total.is_some() => Some((
+                t.phase,
+                t.percent.unwrap(),
+                t.bytes_done.unwrap(),
+                t.bytes_total.unwrap(),
+            )),
+            _ => None,
+        })
+        .collect();
+    assert!(progress.iter().all(|(_, _, _, total)| *total == selected));
+    assert!(
+        progress
+            .windows(2)
+            .all(|w| w[0].1 <= w[1].1 && w[0].2 <= w[1].2)
+    );
+    assert_eq!(
+        progress.last(),
+        Some(&(
+            Some(TaskPhase::Finishing),
+            100.0,
+            outcome.freed_bytes,
+            selected
+        ))
+    );
+}
+
+#[tokio::test]
+async fn an_incomplete_activity_reading_is_not_reused() {
+    let f = Fixture::new();
+    for i in 0..5 {
+        age(&f.file(&format!("Library/Logs/Tool/run-{i}.log")), 8);
+    }
+    let report = f.scan(&[CleanupCategory::Logs]).await;
+    f.processes.open_error.store(true, Ordering::Release);
+    let reads = f.processes.open_reads.load(Ordering::Acquire);
+    let ids = items(&report).iter().map(|i| i.id.clone()).collect();
+    let task = f.execute(&report, ids).await;
+    assert_eq!(task.outcome.unwrap().deleted, 5);
+    // Checked when each item starts and again right before it is removed.
+    assert_eq!(f.processes.open_reads.load(Ordering::Acquire) - reads, 10);
+}
+
 #[tokio::test]
 async fn protect_result_bundle_manual_child_persistence_and_unprotect() {
     let f = Fixture::new();

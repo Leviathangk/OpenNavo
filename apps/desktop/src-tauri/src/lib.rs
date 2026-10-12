@@ -166,8 +166,31 @@ pub fn write_bindings(builder: &Builder<tauri::Wry>) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
+/// A Finder-launched app gets a soft limit of 256 open files. Cleanup walks and removes folders on several threads,
+/// each keeping one descriptor per folder level open, so the soft limit is raised toward the hard one.
+pub fn raise_open_file_limit() {
+    #[cfg(unix)]
+    {
+        use nix::libc;
+        let mut limit = libc::rlimit {
+            rlim_cur: 0,
+            rlim_max: 0,
+        };
+        if unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut limit) } != 0 {
+            return;
+        }
+        // macOS rejects a soft limit above OPEN_MAX (10240) even when the hard limit is unlimited.
+        let wanted = limit.rlim_max.min(10_240);
+        if limit.rlim_cur < wanted {
+            limit.rlim_cur = wanted;
+            unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &limit) };
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    raise_open_file_limit();
     let specta = specta_builder();
     let hidden = lifecycle::hidden_launch(&std::env::args().collect::<Vec<_>>());
 

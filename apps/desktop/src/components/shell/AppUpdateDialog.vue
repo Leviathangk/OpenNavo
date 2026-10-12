@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, useId } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { unwrap } from '@opennavo/api';
+import { api } from '@/api';
 import { formatPercent } from '@opennavo/shared';
 import { OnButton, OnDialogShell, OnLogo, useUiMessages } from '@opennavo/ui';
 import { useAppLocale } from '@/composables/useAppLocale';
@@ -20,6 +22,27 @@ const descriptionId = useId();
 const blocked = ref(false);
 const visible = ref(document.visibilityState !== 'hidden');
 const open = computed(() => updater.dialogOpen && (updater.preview || visible.value) && !blocked.value);
+const localizedNotes = ref<string | null>(null);
+const notes = computed(() => localizedNotes.value ?? updater.update?.body);
+watch(
+  [() => updater.update?.version, appLocale, open],
+  async ([version, locale, isOpen], _previous, onCleanup) => {
+    localizedNotes.value = null;
+    if (!version || !isOpen || updater.preview) return;
+    let stale = false;
+    onCleanup(() => { stale = true; });
+    try {
+      const release = await unwrap(api.GET('/desktop/releases/latest', {
+        params: { query: { channel: version.includes('-') ? 'beta' : 'stable' } },
+        headers: { 'Accept-Language': locale }
+      }));
+      if (!stale && release.version === version && release.notes?.trim()) localizedNotes.value = release.notes;
+    } catch {
+      // Keep the updater manifest's notes available when the content API is offline.
+    }
+  },
+  { immediate: true }
+);
 const downloading = computed(() => updater.state === 'downloading');
 const installed = computed(() => updater.state === 'installed');
 const progressText = computed(() =>
@@ -123,8 +146,8 @@ function install() {
       <section class="border-t border-t-solid border-line-subtle pt-20px">
         <h3 class="m-0 mb-12px text-15px font-600">{{ t('updater.notesTitle') }}</h3>
         <OnMarkdown
-          v-if="updater.update?.body"
-          :source="updater.update.body"
+          v-if="notes"
+          :source="notes"
           size="md"
           :heading-level="4"
           class="on-app-update-notes"

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="400" viewBox="0 0 660 400">
+  <!-- Installer DMG window background (660×400 pt). Icon centres come from scripts/build-dmg.py: OpenNavo (180,190), Applications (480,190).
+       Finder treats a window with a background picture as light mode and draws labels in black, so keep the label rows light.
+       background.png and background@2x.png are 1× and 2× resvg renders of this file; re-render both after editing. -->
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F4F2EF"/>
+    </linearGradient>
+    <radialGradient id="warm" cx="180" cy="190" r="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF7356" stop-opacity=".16"/>
+      <stop offset=".55" stop-color="#FFB347" stop-opacity=".06"/>
+      <stop offset="1" stop-color="#FFB347" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cool" cx="480" cy="190" r="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#66A4FA" stop-opacity=".1"/>
+      <stop offset="1" stop-color="#66A4FA" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="trail" x1="273" y1="0" x2="387" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB347"/>
+      <stop offset=".55" stop-color="#FF7356"/>
+      <stop offset="1" stop-color="#FF4E3A"/>
+    </linearGradient>
+  </defs>
+  <rect width="660" height="400" fill="url(#base)"/>
+  <rect width="660" height="400" fill="url(#warm)"/>
+  <rect width="660" height="400" fill="url(#cool)"/>
+  <g fill="url(#trail)">
+    <circle cx="275" cy="190" r="2" fill-opacity=".35"/>
+    <circle cx="292" cy="190" r="2.25" fill-opacity=".48"/>
+    <circle cx="309" cy="190" r="2.5" fill-opacity=".61"/>
+    <circle cx="326" cy="190" r="2.75" fill-opacity=".74"/>
+    <circle cx="343" cy="190" r="3" fill-opacity=".87"/>
+    <circle cx="360" cy="190" r="3.25"/>
+  </g>
+  <path d="M372 178L385 190L372 202" fill="none" stroke="url(#trail)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

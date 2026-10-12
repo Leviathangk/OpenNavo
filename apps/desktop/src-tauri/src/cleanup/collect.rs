@@ -247,23 +247,28 @@ impl Collector<'_> {
                         let Some((index, candidate)) = candidate else {
                             break;
                         };
-                        let mut slots = collector.engine.scan_slots.lock().unwrap();
-                        while *slots == 0
-                            && Instant::now() < collector.deadline
-                            && !collector.flag.load(Ordering::Acquire)
-                        {
-                            slots = collector
-                                .engine
-                                .scan_ready
-                                .wait_timeout(slots, Duration::from_millis(25))
-                                .unwrap()
-                                .0;
+                        // Only folder walks share the slots. A missing path or a single file is answered at once
+                        // instead of queueing behind other categories' large trees.
+                        let walk = fs::symlink_metadata(&candidate.path).is_ok_and(|m| m.is_dir());
+                        let mut acquired = false;
+                        if walk {
+                            let mut slots = collector.engine.scan_slots.lock().unwrap();
+                            while *slots == 0
+                                && Instant::now() < collector.deadline
+                                && !collector.flag.load(Ordering::Acquire)
+                            {
+                                slots = collector
+                                    .engine
+                                    .scan_ready
+                                    .wait_timeout(slots, Duration::from_millis(25))
+                                    .unwrap()
+                                    .0;
+                            }
+                            acquired = *slots > 0;
+                            if acquired {
+                                *slots -= 1;
+                            }
                         }
-                        let acquired = *slots > 0;
-                        if acquired {
-                            *slots -= 1;
-                        }
-                        drop(slots);
                         let mut worker = Collector {
                             engine: collector.engine,
                             apps: collector.apps,
@@ -362,13 +367,7 @@ impl Collector<'_> {
         let open: Vec<_> = if partial {
             self.activity
                 .as_ref()
-                .map(|a| {
-                    a.open_paths
-                        .iter()
-                        .map(|(p, _)| p.clone())
-                        .filter(|p| p.starts_with(&path))
-                        .collect()
-                })
+                .map(|a| a.open_under(&path).map(|(p, _)| p.clone()).collect())
                 .unwrap_or_default()
         } else {
             vec![]

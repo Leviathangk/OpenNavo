@@ -986,15 +986,25 @@ export function createCleanupMock({
         ? `==> ${item.command}`
         : `${item.deleteMode === 'trash' ? 'Moving to Trash' : 'Deleting'} ${item.path}`
     );
+    // Like Rust: the selected size is the total, and the bytes freed so far grow with the bar.
+    const total = execution.items.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0);
     return [
       {
         phase: 'cleaning',
         from: 0,
         to: 92,
         ticks: Math.max(3, Math.ceil(lines.length / 2)),
-        lines
+        lines,
+        freed: { from: 0, to: total, total }
       },
-      { phase: 'finishing', from: 92, to: 100, ticks: 1, lines: ['==> Recorded'] }
+      {
+        phase: 'finishing',
+        from: 92,
+        to: 100,
+        ticks: 1,
+        lines: ['==> Recorded'],
+        freed: { from: total, to: total, total }
+      }
     ];
   }
 

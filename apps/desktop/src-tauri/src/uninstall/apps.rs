@@ -602,7 +602,17 @@ impl Engine {
             reason,
         }));
         let engine = self.clone();
-        std::thread::spawn(move || engine.measure(generation));
+        std::thread::spawn(move || {
+            // Sizes fill in on their own; at utility priority this walk does not slow a cleanup scan running meanwhile.
+            #[cfg(target_os = "macos")]
+            unsafe {
+                nix::libc::pthread_set_qos_class_self_np(
+                    nix::libc::qos_class_t::QOS_CLASS_UTILITY,
+                    0,
+                );
+            }
+            engine.measure(generation)
+        });
         Ok(result)
     }
     fn allowed_bundle(&self, path: &Path) -> bool {
