@@ -30,12 +30,16 @@ watch(
     localizedNotes.value = null;
     if (!version || !isOpen || updater.preview) return;
     let stale = false;
-    onCleanup(() => { stale = true; });
+    onCleanup(() => {
+      stale = true;
+    });
     try {
-      const release = await unwrap(api.GET('/desktop/releases/latest', {
-        params: { query: { channel: version.includes('-') ? 'beta' : 'stable' } },
-        headers: { 'Accept-Language': locale }
-      }));
+      const release = await unwrap(
+        api.GET('/desktop/releases/latest', {
+          params: { query: { channel: version.includes('-') ? 'beta' : 'stable' } },
+          headers: { 'Accept-Language': locale }
+        })
+      );
       if (!stale && release.version === version && release.notes?.trim()) localizedNotes.value = release.notes;
     } catch {
       // Keep the updater manifest's notes available when the content API is offline.
@@ -145,13 +149,7 @@ function install() {
       </p>
       <section class="border-t border-t-solid border-line-subtle pt-20px">
         <h3 class="m-0 mb-12px text-15px font-600">{{ t('updater.notesTitle') }}</h3>
-        <OnMarkdown
-          v-if="notes"
-          :source="notes"
-          size="md"
-          :heading-level="4"
-          class="on-app-update-notes"
-        />
+        <OnMarkdown v-if="notes" :source="notes" size="md" :heading-level="4" class="on-app-update-notes" />
         <p v-else class="m-0 text-14px leading-[1.7] text-ink-secondary">
           {{ t('updater.noNotes') }}
         </p>

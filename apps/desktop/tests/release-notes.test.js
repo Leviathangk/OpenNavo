@@ -38,7 +38,9 @@ describe('Versioned release notes', () => {
       expect(JSON.parse(JSON.stringify(body)).i18n).toEqual(
         Object.fromEntries(RELEASE_NOTE_LOCALES.map(locale => [locale, { notes: en }]))
       );
-      expect(() => releaseBody({ version, channel: 'beta', artifacts: body.artifacts, notes: { ...notes, 'ja-JP': 'TODO' } })).toThrow('real release notes');
+      expect(() =>
+        releaseBody({ version, channel: 'beta', artifacts: body.artifacts, notes: { ...notes, 'ja-JP': 'TODO' } })
+      ).toThrow('real release notes');
       expect(() => loadReleaseNotes(dir, '0.3.0')).toThrow();
       expect(() => loadReleaseNotes(dir, '../escape')).toThrow('Invalid');
       expect(() => releaseBody({ version, channel: 'beta', artifacts: body.artifacts })).toThrow('real release notes');
@@ -90,9 +92,11 @@ it('registers Markdown files through the CLI without executing their contents', 
       }
     );
     expect(received.sourceLocale).toBe('en-US');
-    expect(received.i18n).toEqual(Object.fromEntries(
-      RELEASE_NOTE_LOCALES.map(locale => [locale, { notes: locale === 'en-US' ? notes : `${notes}\n- ${locale}` }])
-    ));
+    expect(received.i18n).toEqual(
+      Object.fromEntries(
+        RELEASE_NOTE_LOCALES.map(locale => [locale, { notes: locale === 'en-US' ? notes : `${notes}\n- ${locale}` }])
+      )
+    );
   } finally {
     await new Promise(resolve => server.close(resolve));
     rmSync(dir, { recursive: true, force: true });
