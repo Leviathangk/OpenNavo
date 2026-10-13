@@ -13,9 +13,11 @@ import (
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/about"
 	"github.com/opennavo/opennavo/server/internal/cache"
+	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 	"github.com/opennavo/opennavo/server/internal/i18n"
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 )
@@ -25,6 +27,8 @@ type PublicService struct {
 	Store      *store.Store
 	Cache      cache.Backend
 	WebBaseURL string
+	// Secrets decrypts credentials read by public endpoints (IndexNow key file).
+	Secrets config.Config
 }
 type SummaryPage struct {
 	Current int                        `json:"current"`
@@ -254,6 +258,19 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 		repo := strings.Replace(p.Tap, "/", "/homebrew-", 1)
 		d.SourceUrl = "https://github.com/" + repo + "/blob/HEAD/" + path
 		d.FormulaeUrl = "https://formulae.brew.sh/" + kind + "/" + token
+		if kind == "cask" {
+			if d.Indexing, d.VersionCommittedAt, err = s.indexing(ctx, token); err != nil {
+				return d, err
+			}
+			if err := s.appFacts(ctx, &d, p.ID, locale); err != nil {
+				return d, err
+			}
+			related, err := s.packageArticles(ctx, p.ID, locale)
+			if err != nil {
+				return d, err
+			}
+			d.Articles = &related
+		}
 		shots, err := s.Store.PublicScreenshots(ctx, p.ID, locale)
 		if err != nil {
 			return d, err
@@ -611,16 +628,59 @@ func (s *PublicService) Lookup(ctx context.Context, items []publicapi.PackageRef
 	}
 	return out, nil
 }
-func (s *PublicService) Sitemap(ctx context.Context, current, size int) (SitemapPage, error) {
-	if !ValidPage(current, size, 5000) {
+
+// Sitemap pages indexable casks in id order (WP3). Under an enforced index policy only eligible
+// apps and their published languages are listed; otherwise the long-standing rule applies (listed,
+// not disabled, all six languages). Records can be fewer than size: total counts candidates.
+func (s *PublicService) Sitemap(ctx context.Context, group string, current, size int) (SitemapPage, error) {
+	if !ValidPage(current, size, 5000) || (group != "" && group != "apps" && group != "fonts") {
 		return SitemapPage{}, domain.Validation()
 	}
-	rows, total, err := s.Store.PublicSitemap(ctx, current, size)
+	policy, err := s.Store.IndexPolicy(ctx)
+	if err != nil {
+		return SitemapPage{}, err
+	}
+	rows, total, err := s.Store.SitemapIndexRows(ctx, group, current, size)
 	out := SitemapPage{current, size, total, []publicapi.SitemapEntry{}}
-	for _, p := range rows {
-		out.Records = append(out.Records, publicapi.SitemapEntry{Kind: publicapi.PackageKind(p.Kind), Token: p.Token, UpdatedAt: p.UpdatedAt.UTC()})
+	for _, row := range rows {
+		decision := seo.Decide(row.Facts(), policy)
+		if !decision.Indexable || (!decision.Enforced && row.Disabled) {
+			continue
+		}
+		locales := make([]publicapi.SitemapLocale, 0, len(decision.Locales))
+		for _, locale := range decision.Locales {
+			locales = append(locales, publicapi.SitemapLocale{Locale: publicapi.Locale(locale), Lastmod: row.Lastmod(locale)})
+		}
+		isFont, notes := row.IsFont, row.NotesCount
+		out.Records = append(out.Records, publicapi.SitemapEntry{
+			Kind: publicapi.PackageKindCask, Token: row.Token, UpdatedAt: row.UpdatedAt.UTC(),
+			IsFont: &isFont, NotesCount: &notes, Locales: &locales,
+		})
 	}
 	return out, err
+}
+
+// indexing is the WP11 decision for one cask's pages, plus the Homebrew commit time of its current
+// version. Both are nil for unknown tokens.
+func (s *PublicService) indexing(ctx context.Context, token string) (*publicapi.PackageIndexing, *time.Time, error) {
+	row, found, err := s.Store.IndexRowByToken(ctx, token)
+	if err != nil || !found {
+		return nil, nil, err
+	}
+	policy, err := s.Store.IndexPolicy(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	decision := seo.Decide(row.Facts(), policy)
+	locales := make([]publicapi.Locale, 0, len(decision.Locales))
+	for _, locale := range decision.Locales {
+		locales = append(locales, publicapi.Locale(locale))
+	}
+	var reason *string
+	if decision.Reason != "" {
+		reason = &decision.Reason
+	}
+	return &publicapi.PackageIndexing{Indexable: decision.Indexable, Reason: reason, Locales: locales, Enforced: decision.Enforced, NotesCount: row.NotesCount}, row.CommittedAt, nil
 }
 func (s *PublicService) Config(ctx context.Context, platform, version, locale string) (publicapi.ClientConfig, error) {
 	if platform == "desktop" && version == "" {

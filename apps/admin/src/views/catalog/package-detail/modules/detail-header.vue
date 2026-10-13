@@ -37,7 +37,15 @@ const { nameOf } = useLocalizedPackage();
         <NText depth="3" class="flex flex-wrap items-center gap-12px text-13px">
           <span class="font-mono">{{ detail.token }}</span>
           <span class="font-mono">{{ detail.version }}</span>
-          <span>{{ $t('page.catalog.packageDetail.installs30d', { count: formatCount(detail.installs30d, { locale: formattingLocale }) }, { plural: detail.installs30d }) }}</span>
+          <span>
+            {{
+              $t(
+                'page.catalog.packageDetail.installs30d',
+                { count: formatCount(detail.installs30d, { locale: formattingLocale }) },
+                { plural: detail.installs30d }
+              )
+            }}
+          </span>
           <span v-if="detail.rank30d">#{{ detail.rank30d }}</span>
         </NText>
       </div>

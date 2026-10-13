@@ -76,10 +76,9 @@ defineOgImage('OgDefault', {
   ...useOgFrame()
 });
 
-// Site and site search, with search terms in q.
+// Site search on the WebSite node defined in app.vue, with search terms in q.
 useSchemaOrg([
   defineWebSite({
-    name: 'OpenNavo',
     potentialAction: [defineSearchAction({ target: `${localePath('/search')}?q={search_term_string}` })]
   })
 ]);

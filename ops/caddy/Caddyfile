@@ -12,12 +12,24 @@
 	}
 }
 
+# Web pages also load GA4 from Google Tag Manager and send hits to Google Analytics (WP8). The
+# script only runs once the visitor's region or consent allows it; API and admin keep the policy above.
+(security-web) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		?Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://*.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' {$PUBLIC_BASE_URL} https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+		-Server
+	}
+}
+
 {$WEB_DOMAIN} {
 	@internalAgent path /agent-api /agent-api/*
 	handle @internalAgent {
 		respond 404
 	}
-	import security
+	import security-web
 	encode zstd gzip
 	reverse_proxy {
 		dynamic a {

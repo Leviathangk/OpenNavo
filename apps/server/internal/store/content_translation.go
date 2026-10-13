@@ -67,6 +67,8 @@ func (s *Store) ReadContentSource(ctx context.Context, ref content.Ref) (Content
 		query = "SELECT EXISTS(SELECT 1 FROM categories WHERE id=? AND applies_to<>'formula')"
 	case "feature":
 		query = "SELECT EXISTS(SELECT 1 FROM features f WHERE f.id=? AND (f.target_type<>'package' OR EXISTS(SELECT 1 FROM packages p WHERE p.id=f.package_id AND p.kind='cask')))"
+	case "article":
+		query = "SELECT EXISTS(SELECT 1 FROM articles a WHERE a.published_revision_id=? AND a.status='published')"
 	}
 	if query != "" {
 		if err := s.DB.WithContext(ctx).Raw(query, id).Scan(&managed).Error; err != nil {
@@ -498,6 +500,9 @@ func (s *Store) ApplyContentTranslation(ctx context.Context, source ContentSourc
 				return err
 			}
 			return st.AppendContentChange(ctx, source.Ref.ID)
+		}
+		if applied && (source.Ref.Entity == "article" || source.Ref.Entity == "article_author") {
+			return st.ContentChanged(ctx, source.Ref)
 		}
 		if applied && source.Ref.Entity == "release" {
 			var id int64

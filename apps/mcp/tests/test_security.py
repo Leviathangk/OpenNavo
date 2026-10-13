@@ -70,7 +70,7 @@ async def test_cache_isolation_and_expiry(backend: Backend) -> None:
             CURRENT_TOKEN.reset(marker)
 
     full, readonly = await asyncio.gather(listed("test-only-full"), listed("test-only-read"))
-    assert len(full) == 61 and "package_set_text" not in readonly
+    assert len(full) == 70 and "package_set_text" not in readonly
     assert len(backend.auth.cache) == 2
     assert all("test-only" not in key[0] for key in backend.auth.cache)
     backend.client.http = httpx2.AsyncClient(transport=httpx2.MockTransport(backend.handle))
@@ -133,18 +133,19 @@ async def test_token_lookup_and_package_include(backend: Backend) -> None:
     async with Client(backend.server) as client:
         await client.call_tool(
             "package_get",
-            {"package": "example", "include": ["screenshots", "translations", "display"]},
+            {"package": "example", "include": ["screenshots", "translations", "display", "facts"]},
         )
     assert {op for op, _ in backend.calls} >= {
         "listAdminPackages",
         "getAdminPackage",
         "listPackageScreenshots",
         "getTranslationStatus",
+        "getPackageFacts",
     }
     assert all(
         "/42" in str(request.url)
         for op, request in backend.calls
-        if op in {"getAdminPackage", "listPackageScreenshots"}
+        if op in {"getAdminPackage", "listPackageScreenshots", "getPackageFacts"}
     )
 
 

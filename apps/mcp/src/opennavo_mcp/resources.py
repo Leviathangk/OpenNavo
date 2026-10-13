@@ -29,12 +29,21 @@ old source text from release_get is reference data only. Write this version's ch
 with release_write_notes. Leave notes empty when evidence is insufficient.
 4. Use listing_gaps with popularity pagination to fill historical gaps. Do not limit
 results to apps with existing content or repeatedly modify complete content.
-5. Use collections_list / collection_* and features_list / feature_upsert for content
+5. Sourced facts go to high-demand pages first (listing_gaps gaps=["price"] with
+sort=popular, apps users ask about), never to every app in bulk. package_get
+include=["facts"] shows the evidence, Homebrew's requirements, conflicts and gaps.
+Record only what an official source states, with its URL and method: package_set_price
+(a free download never means free; leave unknown when unsure),
+package_set_macos_support only where vendor requirements add to or differ from Homebrew
+(differences show as pending verification; chip support is not native code), and
+package_set_alternatives with 0-8 confirmed apps and fixed reason codes (never pad the
+list). Preview with dry_run, read sourceGaps, and re-check evidence older than 365 days.
+6. Use collections_list / collection_* and features_list / feature_upsert for content
 operations; translation_list / translation_status / translation_retranslate for failures;
 glossary_* for terminology; feedback_*, search_insights and synonym_* for feedback and
 zero-result queries. announcement_* and desktop_release_write_notes manage only
 announcements and notes.
-6. Summarize successes, failures, pending translations and quotas with dashboard_overview,
+7. Summarize successes, failures, pending translations and quotas with dashboard_overview,
 jobs_runs, queues_status and logs_search. Correct mistakes with revision_restore,
 request undo or trash restoration.
 Preview batches and deletions with dry_run=true and inspect affected URLs. Limit each
@@ -60,7 +69,8 @@ Chinese translations for Chinese names. Explain the purpose in a one-sentence su
 do not mechanically translate the Homebrew English description.
 Introductions should include positioning, 3-6 main features, intended users,
 pricing/subscription/account model and OS/chip requirements. Do not include numerical
-prices or rankings, or exaggerated marketing. Use at most 3 categories with exactly
+prices or rankings, or exaggerated marketing; record verified prices with
+package_set_price instead. Use at most 3 categories with exactly
 1 primary category; keep tags concise and deduplicated. Icons must come from trusted
 public HTTPS images; the backend validates PNG/JPEG/WebP and the 5 MB upload limit.
 The primary color is calculated from the icon by default; prefer automatic download-size
@@ -74,6 +84,25 @@ Describe only changes in this version; omit notes when reliable information is u
 Specify source_locale and preserve code blocks, links and version numbers.
 clear=true clears only OpenNavo editorial content and requires deletion allowance.
 Preview with dry_run first; revisions support restoration.
+""",
+    "article-writing": """Articles answer a question an app page cannot: how to choose, how to
+do a task, what changed, or a hands-on test. App pages hold the facts about one app; do not
+restate them as an article. Write in one source language (source_locale) and let the backend
+translate after publication.
+Cite what you rely on in sources (https links). Recommendations, roundups and news need at
+least one source. A review needs test_note with the real environment and method; if nothing
+was tested, write a compilation that names its sources instead. Never invent tests, results,
+prices, rankings or conclusions, and do not imply you used an app you did not use.
+Run every command you show, or quote it from official documentation; keep commands and code in
+backticks or fences. Prices, versions and test results belong in plain Markdown tables as a
+snapshot of the moment you checked; ::app[token] on its own line embeds the app's live catalog
+card, which is not a snapshot. Images must be OpenNavo assets (asset_upload_from_url or
+asset_upload_ticket with kind cover or screenshot) from sources you may use, each with alt text.
+No raw HTML.
+Flow: article_create (slug, type, title; idempotency_key for retries), article_update and
+article_set_packages with expected_revision from the last read, then article_get and fix every
+code in readiness before article_submit_review. Preview with dry_run. Publishing, withdrawing and
+restoring happen in admin; editing a published article only creates a new draft.
 """,
 }
 

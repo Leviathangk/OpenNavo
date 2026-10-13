@@ -39,10 +39,11 @@ const forms = reactive(
 const makeSource = ref(false);
 const saving = ref<ContentLocale | null>(null);
 
-const views = computed(() =>
-  Object.fromEntries(
-    CONTENT_LOCALES.map(code => [code, props.detail.i18n.find(item => item.locale === code) ?? null])
-  ) as Record<ContentLocale, DataOf<'getAdminPackage'>['i18n'][number] | null>
+const views = computed(
+  () =>
+    Object.fromEntries(
+      CONTENT_LOCALES.map(code => [code, props.detail.i18n.find(item => item.locale === code) ?? null])
+    ) as Record<ContentLocale, DataOf<'getAdminPackage'>['i18n'][number] | null>
 );
 
 watch(
@@ -109,7 +110,9 @@ async function save(code: ContentLocale) {
               {{ $t('page.catalog.packageDetail.i18n.model', { model: views[code].model }) }}
             </NText>
             <NText v-if="views[code].translatedAt" depth="3" class="text-12px">
-              {{ $t('page.catalog.packageDetail.i18n.translatedAt', { time: formatDateTime(views[code].translatedAt) }) }}
+              {{
+                $t('page.catalog.packageDetail.i18n.translatedAt', { time: formatDateTime(views[code].translatedAt) })
+              }}
             </NText>
           </div>
           <NAlert v-if="views[code]?.stale" type="warning" :bordered="false">

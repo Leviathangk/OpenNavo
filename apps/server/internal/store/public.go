@@ -301,26 +301,6 @@ func (s *Store) PublicDependents(ctx context.Context, p PublicPackage, locale st
 	out, err := s.PublicPackagesByID(ctx, ids, locale)
 	return out, rows[0].Total, err
 }
-func (s *Store) PublicSitemap(ctx context.Context, current, size int) ([]PublicPackage, int, error) {
-	var total int
-	var rows []struct {
-		Kind, Token string
-		UpdatedAt   time.Time
-	}
-	if err := s.DB.WithContext(ctx).Raw("SELECT count(*)" + publicJoins + " WHERE " + publicVisible + " AND NOT (p.disabled OR p.stale_disabled)").Scan(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	offset, found := domain.PageOffset(current, size, int64(total))
-	if !found {
-		return []PublicPackage{}, total, nil
-	}
-	err := s.DB.WithContext(ctx).Raw("SELECT p.kind,p.token,p.updated_at"+publicJoins+" WHERE "+publicVisible+" AND NOT (p.disabled OR p.stale_disabled) ORDER BY p.id LIMIT ? OFFSET ?", size, offset).Scan(&rows).Error
-	out := make([]PublicPackage, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, PublicPackage{Kind: r.Kind, Token: r.Token, UpdatedAt: r.UpdatedAt})
-	}
-	return out, total, err
-}
 func (s *Store) PublicScreenshots(ctx context.Context, id int64, locale string) (json.RawMessage, error) {
 	var row struct{ Data json.RawMessage }
 	err := s.DB.WithContext(ctx).Raw(`SELECT COALESCE(jsonb_agg(jsonb_build_object('url',a.url,'thumbUrl',regexp_replace(a.url,'-1280[.]png$','-640.png'),'width',a.width,'height',a.height,'theme',s.theme,'caption',i.caption,'sourceLocale',s.source_locale,'machineTranslated',COALESCE(i.machine_translated,false)) ORDER BY s.sort,s.id),'[]'::jsonb) data FROM package_screenshots s JOIN assets a ON a.id=s.asset_id LEFT JOIN LATERAL (SELECT t.* FROM screenshot_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE t.caption IS NOT NULL AND t.screenshot_id=s.id AND t.locale IN (lang.requested,s.source_locale,'en-US') ORDER BY `+publicLocaleOrder+` LIMIT 1) i ON TRUE WHERE s.package_id=?`, locale, id).Scan(&row).Error

@@ -23,6 +23,189 @@ class GitHubSettingsView(BaseModel):
     tokenSource: Literal['admin', 'none']
 
 
+class PackageIndexOverride(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    override: Literal['auto', 'index', 'noindex']
+    reason: Annotated[str | None, Field(description='Required for index and noindex.', max_length=500)] = None
+
+
+class IndexReportRow(BaseModel):
+    id: int
+    token: str
+    displayName: str
+    firstSeenAt: AwareDatetime
+    eligible: bool
+    reason: str
+    enforced: bool
+    override: Literal['auto', 'index', 'noindex']
+    overrideReason: str
+
+
+class IndexReportCounts(BaseModel):
+    hidden: int
+    forcedNoindex: int
+    unavailable: int
+    missingSummary: int
+    thin: int
+    forcedIndex: int
+
+
+class Data(BaseModel):
+    records: list[IndexReportRow]
+    current: int
+    size: int
+    total: int
+    counts: IndexReportCounts
+
+
+class ChangeFeedStatus(BaseModel):
+    lastRunAt: AwareDatetime
+    lastUrls: Annotated[int, Field(description='Page-cache prefixes refreshed in the last run with changes.')]
+    lastIndexnowStatus: Annotated[str, Field(description='ok, accepted (key verification pending), skipped or error with details; empty when not used.')]
+    lastPurgeStatus: str
+    lastError: str
+
+
+class Bot(RootModel[str]):
+    root: Annotated[str, Field(pattern='^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$')]
+
+
+class SeoCrawlerRule(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    mode: Literal['allow', 'limit', 'block']
+    delaySeconds: Annotated[int, Field(ge=1, le=60)]
+    bots: Annotated[list[Bot], Field(max_length=20)]
+
+
+class AlternateName(RootModel[str]):
+    root: Annotated[str, Field(max_length=80, min_length=1)]
+
+
+class SameA(RootModel[str]):
+    root: Annotated[str, Field(max_length=300)]
+
+
+class Identity(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    name: Annotated[str, Field(description='Site name for WebSite/Organization structured data and og:site_name.', max_length=60, min_length=1)]
+    alternateNames: Annotated[list[AlternateName], Field(max_length=5)]
+    logoUrl: Annotated[str, Field(description='HTTPS logo URL; empty uses the site icon.', max_length=500)]
+    sameAs: Annotated[list[SameA], Field(max_length=10)]
+
+
+class Verification(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    google: Annotated[str, Field(max_length=100, pattern='^[A-Za-z0-9_-]*$')]
+    bing: Annotated[str, Field(max_length=100, pattern='^[A-Za-z0-9_-]*$')]
+
+
+class ConsentRegion(RootModel[str]):
+    root: Annotated[str, Field(pattern='^[A-Z]{2}$')]
+
+
+class Analytics(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    ga4Enabled: bool
+    ga4MeasurementId: Annotated[str, Field(pattern='^(G-[A-Z0-9]{4,16})?$')]
+    consentRegions: Annotated[list[ConsentRegion], Field(description='ISO 3166-1 alpha-2 regions where analytics cookies wait for consent.', max_length=60)]
+
+
+class IndexNow(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    enabled: bool
+
+
+class Cloudflare(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    zoneId: Annotated[str, Field(pattern='^([a-f0-9]{32})?$')]
+    purgeEnabled: bool
+
+
+class EdgeCache(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    enabled: bool
+
+
+class Crawlers(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    training: SeoCrawlerRule
+    seoTools: SeoCrawlerRule
+
+
+class IndexPolicy(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    mode: Annotated[Literal['off', 'shadow', 'enforce'], Field(description='Temporary rollout switch for the index eligibility policy.')]
+    scope: Literal['new', 'all']
+    since: Annotated[str, Field(description='Set by the server when enforcement first covers new apps (RFC 3339); apps first seen after it are the new scope. Empty until then; saved values are kept.', max_length=40)]
+
+
+class Pages(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    titleTemplate: Annotated[Literal['new', 'legacy'], Field(description='Temporary rollout switch; removed together with the legacy templates.')]
+    indexPolicy: IndexPolicy
+    versionsSitemap: bool
+
+
+class SeoSettings(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    identity: Identity
+    verification: Verification
+    analytics: Analytics
+    indexNow: IndexNow
+    cloudflare: Cloudflare
+    edgeCache: EdgeCache
+    crawlers: Crawlers
+    pages: Pages
+
+
+class SeoSettingsUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    settings: SeoSettings
+    indexNowKey: Annotated[str | None, Field(description='IndexNow key; empty/omitted preserves the existing key.', max_length=128, pattern='^([A-Za-z0-9-]{8,128})?$')] = None
+    clearIndexNowKey: bool | None = False
+    cloudflareToken: Annotated[str | None, Field(description='Cloudflare API token limited to cache purge; empty/omitted preserves the existing token.', max_length=200, pattern='^[!-~]*$')] = None
+    clearCloudflareToken: bool | None = False
+
+
+class SeoSettingsView(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    settings: SeoSettings
+    indexNowKeyConfigured: bool
+    cloudflareTokenConfigured: bool
+    updatedAt: AwareDatetime
+    revision: Annotated[int, Field(description='Increments on every save; the public site settings carry the same value.', ge=1)]
+    siteUrl: Annotated[AnyUrl, Field(description='Public web origin (WEB_BASE_URL), used for the robots.txt preview.')]
+    changeFeed: ChangeFeedStatus
+
+
 class TranslationModelsRequest(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -36,7 +219,7 @@ class Model(RootModel[str]):
     root: Annotated[str, Field(max_length=200, min_length=1)]
 
 
-class Data(BaseModel):
+class Data1(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -159,14 +342,14 @@ class EmptyResponse(BaseModel):
     data: dict[str, Any] | None = None
 
 
-class Data1(BaseModel):
+class Data2(BaseModel):
     id: Annotated[int, Field(examples=[1])]
 
 
 class IdResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data1
+    data: Data2
 
 
 class IdList(BaseModel):
@@ -202,7 +385,7 @@ class UserInfo(BaseModel):
     userId: Annotated[str, Field(examples=['1'])]
     userName: Annotated[str, Field(examples=['local-admin'])]
     roles: Annotated[list[str], Field(examples=[['R_SUPER']])]
-    buttons: Annotated[list[str], Field(description='Permission code', examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'i18n:settings', 'system:github:edit']])]
+    buttons: Annotated[list[str], Field(description='Permission code', examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'i18n:settings', 'system:github:edit', 'system:seo:edit']])]
 
 
 class ProfileUpdate(BaseModel):
@@ -665,7 +848,7 @@ class LlmUsageResponse(BaseModel):
     data: list[LlmMonthlyUsage] | None = None
 
 
-class Data3(BaseModel):
+class Data4(BaseModel):
     records: list[PackageVersion]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -675,7 +858,7 @@ class Data3(BaseModel):
 class PackageVersionPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data3 | None = None
+    data: Data4 | None = None
 
 
 class ChangelogSourceListResponse(BaseModel):
@@ -684,7 +867,7 @@ class ChangelogSourceListResponse(BaseModel):
     data: list[ChangelogSource] | None = None
 
 
-class Data6(BaseModel):
+class Data7(BaseModel):
     records: list[AdminRelease]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -694,10 +877,10 @@ class Data6(BaseModel):
 class AdminReleasePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data6 | None = None
+    data: Data7 | None = None
 
 
-class Data8(BaseModel):
+class Data9(BaseModel):
     records: list[JobRun]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -707,7 +890,7 @@ class Data8(BaseModel):
 class JobRunPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data8 | None = None
+    data: Data9 | None = None
 
 
 class JobRunResponse(BaseModel):
@@ -722,7 +905,7 @@ class QueueStatListResponse(BaseModel):
     data: list[QueueStat] | None = None
 
 
-class Data9(BaseModel):
+class Data10(BaseModel):
     records: list[QueryStat]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -732,10 +915,10 @@ class Data9(BaseModel):
 class QueryStatPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data9 | None = None
+    data: Data10 | None = None
 
 
-class Data10(BaseModel):
+class Data11(BaseModel):
     records: list[Synonym]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -745,10 +928,10 @@ class Data10(BaseModel):
 class SynonymPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data10 | None = None
+    data: Data11 | None = None
 
 
-class Data11(BaseModel):
+class Data12(BaseModel):
     records: list[Feedback]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -758,7 +941,7 @@ class Data11(BaseModel):
 class FeedbackPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data11 | None = None
+    data: Data12 | None = None
 
 
 class FeedbackResponse(BaseModel):
@@ -767,7 +950,7 @@ class FeedbackResponse(BaseModel):
     data: Feedback | None = None
 
 
-class Data12(BaseModel):
+class Data13(BaseModel):
     records: list[Asset]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -777,7 +960,7 @@ class Data12(BaseModel):
 class AssetPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data12 | None = None
+    data: Data13 | None = None
 
 
 class AssetResponse(BaseModel):
@@ -792,7 +975,7 @@ class AppConfigListResponse(BaseModel):
     data: list[AppConfigItem] | None = None
 
 
-class Data14(BaseModel):
+class Data15(BaseModel):
     records: list[AdminUser]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -802,7 +985,7 @@ class Data14(BaseModel):
 class AdminUserPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data14 | None = None
+    data: Data15 | None = None
 
 
 class RoleListResponse(BaseModel):
@@ -817,7 +1000,7 @@ class PermissionListResponse(BaseModel):
     data: list[Permission] | None = None
 
 
-class Data15(BaseModel):
+class Data16(BaseModel):
     records: list[AuditLog]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -827,7 +1010,7 @@ class Data15(BaseModel):
 class AuditLogPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data15 | None = None
+    data: Data16 | None = None
 
 
 class TranslationStatus(RootModel[Literal['source', 'machine', 'manual', 'pending', 'failed']]):
@@ -1100,12 +1283,12 @@ class MirrorI18nViewMap(BaseModel):
     ru_RU: Annotated[MirrorI18nView | None, Field(alias='ru-RU')] = None
 
 
-class ContentEntity(RootModel[Literal['package', 'release', 'category', 'collection', 'feature', 'screenshot', 'collection_item', 'desktop_release', 'mirror', 'announcement']]):
-    root: Annotated[Literal['package', 'release', 'category', 'collection', 'feature', 'screenshot', 'collection_item', 'desktop_release', 'mirror', 'announcement'], Field(examples=['package'])]
+class ContentEntity(RootModel[Literal['package', 'release', 'category', 'collection', 'feature', 'screenshot', 'collection_item', 'desktop_release', 'mirror', 'announcement', 'article', 'article_author']]):
+    root: Annotated[Literal['package', 'release', 'category', 'collection', 'feature', 'screenshot', 'collection_item', 'desktop_release', 'mirror', 'announcement', 'article', 'article_author'], Field(examples=['package'])]
 
 
-class HistoryEntity(RootModel[Literal['package', 'release', 'category', 'collection', 'feature', 'screenshot', 'collection_item', 'desktop_release', 'mirror', 'announcement', 'synonym', 'glossary', 'feedback', 'asset']]):
-    root: Annotated[Literal['package', 'release', 'category', 'collection', 'feature', 'screenshot', 'collection_item', 'desktop_release', 'mirror', 'announcement', 'synonym', 'glossary', 'feedback', 'asset'], Field(examples=['package'])]
+class HistoryEntity(RootModel[Literal['package', 'release', 'category', 'collection', 'feature', 'screenshot', 'collection_item', 'desktop_release', 'mirror', 'announcement', 'synonym', 'glossary', 'feedback', 'asset', 'article', 'article_author']]):
+    root: Annotated[Literal['package', 'release', 'category', 'collection', 'feature', 'screenshot', 'collection_item', 'desktop_release', 'mirror', 'announcement', 'synonym', 'glossary', 'feedback', 'asset', 'article', 'article_author'], Field(examples=['package'])]
 
 
 class ContentRef(BaseModel):
@@ -1142,6 +1325,11 @@ class ContentFields(BaseModel):
     note: Annotated[str | None, Field(examples=[None], max_length=2000)] = None
     notes: Annotated[str | None, Field(examples=[None], max_length=20000)] = None
     bodyMarkdown: Annotated[str | None, Field(examples=[None], max_length=200000)] = None
+    testNote: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
+    seoTitle: Annotated[str | None, Field(examples=[None], max_length=120)] = None
+    seoDescription: Annotated[str | None, Field(examples=[None], max_length=300)] = None
+    role: Annotated[str | None, Field(examples=[None], max_length=80)] = None
+    bio: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
     sections: Annotated[list[ReleaseSection] | None, Field(examples=[[]], max_length=8)] = None
 
 
@@ -1172,16 +1360,6 @@ class Change(BaseModel):
     action: Annotated[Literal['create', 'update', 'delete', 'restore', 'retranslate', 'trigger'], Field(examples=['create'])]
     before: Annotated[dict[str, Any], Field(examples=[None])]
     after: Annotated[dict[str, Any], Field(examples=[None])]
-
-
-class AgentDryRun(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    dryRun: Annotated[Literal[True], Field(examples=[True])]
-    requestId: Annotated[str, Field(examples=['demo-preview-001'], max_length=128)]
-    changes: Annotated[list[Change], Field(examples=[[{'object': {'entity': 'package', 'objectKey': '1'}, 'action': 'update', 'before': {'summary': '旧简介'}, 'after': {'summary': '新简介'}}]])]
-    affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
 
 
 class ContentMutationResponse(BaseModel):
@@ -1271,7 +1449,7 @@ class TranslationObject(BaseModel):
     updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
 
 
-class Data16(BaseModel):
+class Data17(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -1287,7 +1465,7 @@ class TranslationObjectsResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data16
+    data: Data17
 
 
 class TranslationObjectsResponseResult(RootModel[TranslationObjectsResponse | BusinessErrorResponse]):
@@ -1357,7 +1535,7 @@ class GlossaryTerm(BaseModel):
     updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
 
 
-class Data17(BaseModel):
+class Data18(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -1373,7 +1551,7 @@ class GlossaryResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data17
+    data: Data18
 
 
 class GlossaryResponseResult(RootModel[GlossaryResponse | BusinessErrorResponse]):
@@ -1434,8 +1612,463 @@ class DesktopNotesUpdate(BaseModel):
     notes: Annotated[str, Field(examples=['改善稳定性。'], max_length=20000)]
 
 
-class ListingGap(RootModel[Literal['zhName', 'zhSummary', 'enSummary', 'primaryCategory', 'tags', 'icon', 'downloadSize', 'latestEditorial']]):
-    root: Annotated[Literal['zhName', 'zhSummary', 'enSummary', 'primaryCategory', 'tags', 'icon', 'downloadSize', 'latestEditorial'], Field(examples=['zhName'])]
+class PriceType(RootModel[Literal['free', 'free_with_iap', 'paid', 'subscription', 'trial', 'unknown']]):
+    root: Annotated[Literal['free', 'free_with_iap', 'paid', 'subscription', 'trial', 'unknown'], Field(description='unknown clears the price; a free download never implies free.', examples=['subscription'])]
+
+
+class FactMethod(RootModel[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other']]):
+    root: Annotated[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other'], Field(description='How the fact was checked: vendor website or pricing page, Mac App Store listing, vendor documentation, inside the app, or other.', examples=['vendor_site'])]
+
+
+class FactStatus(RootModel[Literal['verified', 'needs_review']]):
+    root: Annotated[Literal['verified', 'needs_review'], Field(description='needs_review keeps the evidence but hides the fact from pages until it is checked again.', examples=['verified'])]
+
+
+class FactVerifier(RootModel[Literal['admin', 'agent']]):
+    root: Annotated[Literal['admin', 'agent'], Field(examples=['agent'])]
+
+
+class FactGap(RootModel[Literal['price.unknown', 'price.review', 'price.stale', 'price.offer', 'price.version', 'macos.missing', 'macos.review', 'macos.stale', 'macos.version', 'macos.conflict', 'alternatives.unavailable']]):
+    root: Annotated[Literal['price.unknown', 'price.review', 'price.stale', 'price.offer', 'price.version', 'macos.missing', 'macos.review', 'macos.stale', 'macos.version', 'macos.conflict', 'alternatives.unavailable'], Field(description='Missing or outdated evidence: no price, price marked for review, price older than 365 days, paid price without amount/currency/region/plan for offers, no app version; no macOS data from either source, supplement marked for review, older than 365 days, without app version, or disagreeing with Homebrew; alternatives pages currently skip.', examples=['price.offer'])]
+
+
+class MacosConflictCode(RootModel[Literal['minimum', 'maximum', 'arm64', 'x86_64']]):
+    root: Annotated[Literal['minimum', 'maximum', 'arm64', 'x86_64'], Field(examples=['minimum'])]
+
+
+class MacosRange(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    arch: Annotated[Literal['arm64', 'x86_64'], Field(examples=['arm64'])]
+    support: Annotated[Literal['native', 'rosetta', 'unsupported'], Field(description='rosetta applies to arm64 only; unsupported takes no versions.', examples=['native'])]
+    minimum: Annotated[str | None, Field(description='macOS release such as 13 or 10.15', examples=['13'], pattern='^(?:10\\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\\.[0-9]{1,2}){0,2}$')] = None
+    maximum: Annotated[str | None, Field(examples=[None], pattern='^(?:10\\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\\.[0-9]{1,2}){0,2}$')] = None
+
+
+class AlternativeReason(RootModel[Literal['free', 'open_source', 'lighter', 'more_features', 'simpler', 'native_ui', 'apple_silicon', 'privacy', 'offline', 'collaboration', 'cross_platform', 'one_time_purchase', 'active_development', 'customizable']]):
+    root: Annotated[Literal['free', 'open_source', 'lighter', 'more_features', 'simpler', 'native_ui', 'apple_silicon', 'privacy', 'offline', 'collaboration', 'cross_platform', 'one_time_purchase', 'active_development', 'customizable'], Field(description='Why someone would pick the alternative; pages translate the code.', examples=['open_source'])]
+
+
+class AlternativeLimit(RootModel[Literal['paid', 'subscription', 'fewer_features', 'requires_account', 'learning_curve', 'different_workflow', 'no_apple_silicon', 'online_only', 'limited_languages']]):
+    root: Annotated[Literal['paid', 'subscription', 'fewer_features', 'requires_account', 'learning_curve', 'different_workflow', 'no_apple_silicon', 'online_only', 'limited_languages'], Field(description='What to weigh before switching; pages translate the code.', examples=['fewer_features'])]
+
+
+class PackagePriceUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    type: PriceType
+    amount: Annotated[float | None, Field(description='At most two decimals', examples=[9.99], ge=0.01, le=10000000.0)] = None
+    currency: Annotated[str | None, Field(examples=['USD'], pattern='^[A-Z]{3}$')] = None
+    region: Annotated[str | None, Field(description='ISO 3166-1 country the price was checked for', examples=['US'], pattern='^[A-Z]{2}$')] = None
+    plan: Annotated[str | None, Field(description='Vendor plan name as the vendor writes it; not translated', examples=['Pro'], max_length=80)] = None
+    period: Annotated[Literal['one_time', 'month', 'year'] | None, Field(examples=['month'])] = None
+    appVersion: Annotated[str | None, Field(examples=['5.2'], max_length=64)] = None
+    sourceUrl: Annotated[AnyUrl | None, Field(examples=['https://vendor.example/pricing'])] = None
+    method: Annotated[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other'] | None, Field(examples=['vendor_site'])] = None
+    verifiedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13 08:00:00+00:00'])] = None
+    status: Annotated[Literal['verified', 'needs_review'] | None, Field(examples=['verified'])] = None
+    note: Annotated[str | None, Field(examples=['Checked the US pricing page.'], max_length=1000)] = None
+
+
+class PackageMacosUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    ranges: Annotated[list[MacosRange], Field(max_length=2)]
+    appVersion: Annotated[str | None, Field(examples=['5.2'], max_length=64)] = None
+    sourceUrl: Annotated[AnyUrl | None, Field(examples=['https://vendor.example/docs/system-requirements'])] = None
+    method: Annotated[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other'] | None, Field(examples=['vendor_site'])] = None
+    verifiedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13 08:00:00+00:00'])] = None
+    status: Annotated[Literal['verified', 'needs_review'] | None, Field(examples=['verified'])] = None
+    note: Annotated[str | None, Field(examples=["From the vendor's requirements page."], max_length=1000)] = None
+
+
+class PackageAlternativeInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    packageId: Annotated[int, Field(examples=[2], ge=1)]
+    reasons: Annotated[list[AlternativeReason], Field(max_length=4, min_length=1)]
+    limits: Annotated[list[AlternativeLimit] | None, Field(max_length=3)] = None
+    bestFor: Annotated[Literal['everyday', 'professionals', 'developers', 'teams', 'beginners', 'power_users'] | None, Field(examples=['developers'])] = None
+    note: Annotated[str | None, Field(description='Internal; never shown on pages', examples=['Both edit code; this one starts faster.'], max_length=500)] = None
+
+
+class PackageAlternativesUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    items: Annotated[list[PackageAlternativeInput], Field(description='Display order; an empty list removes all alternatives', max_length=8)]
+
+
+class PackagePrice(BaseModel):
+    type: PriceType
+    amount: Annotated[float, Field(examples=[9.99])]
+    currency: Annotated[str, Field(examples=['USD'])]
+    region: Annotated[str, Field(examples=['US'])]
+    plan: Annotated[str, Field(examples=['Pro'])]
+    period: Annotated[Literal['one_time', 'month', 'year'], Field(examples=['month'])]
+    appVersion: Annotated[str, Field(examples=['5.2'])]
+    sourceUrl: Annotated[str, Field(examples=['https://vendor.example/pricing'])]
+    method: FactMethod
+    verifiedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    verifiedBy: Annotated[str, Field(examples=['Hermes'])]
+    verifier: FactVerifier
+    status: FactStatus
+    note: Annotated[str, Field(examples=[None])]
+    stale: Annotated[bool, Field(description='Verified more than 365 days ago', examples=[False])]
+
+
+class PackageMacosSupplement(BaseModel):
+    ranges: list[MacosRange]
+    appVersion: Annotated[str, Field(examples=['5.2'])]
+    sourceUrl: Annotated[str, Field(examples=['https://vendor.example/docs/system-requirements'])]
+    method: FactMethod
+    verifiedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    verifiedBy: Annotated[str, Field(examples=['kaka'])]
+    verifier: FactVerifier
+    status: FactStatus
+    note: Annotated[str, Field(examples=[None])]
+    stale: Annotated[bool, Field(examples=[False])]
+
+
+class HomebrewRequirements(BaseModel):
+    supportStatus: Annotated[Literal['known', 'unknown'], Field(examples=['known'])]
+    arm64: Annotated[bool, Field(examples=[True])]
+    x86_64: Annotated[bool, Field(examples=[True])]
+    requiresRosetta: Annotated[bool, Field(examples=[False])]
+    minimum: Annotated[str, Field(examples=['13.0'])]
+    maximum: Annotated[str, Field(examples=[None])]
+
+
+class PackageAlternativeEntry(BaseModel):
+    packageId: Annotated[int, Field(examples=[2])]
+    token: Annotated[str, Field(examples=['zed'])]
+    name: Annotated[str, Field(examples=['Zed'])]
+    displayName: Annotated[str, Field(examples=['Zed'])]
+    iconUrl: Annotated[str, Field(examples=['https://cdn.opennavo.example/icons/zed.png'])]
+    reasons: list[AlternativeReason]
+    limits: list[AlternativeLimit]
+    bestFor: Annotated[Literal['everyday', 'professionals', 'developers', 'teams', 'beginners', 'power_users'], Field(examples=['developers'])]
+    note: Annotated[str, Field(examples=[None])]
+    source: FactVerifier
+    available: Annotated[bool, Field(description='False while the alternative is hidden, removed or disabled; pages skip it', examples=[True])]
+
+
+class PackageFacts(BaseModel):
+    packageId: Annotated[int, Field(examples=[1])]
+    price: Annotated[PackagePrice, Field(description='null means unknown')]
+    macos: Annotated[PackageMacosSupplement, Field(description="null means no supplement; Homebrew's requirements apply")]
+    homebrew: HomebrewRequirements
+    conflicts: Annotated[list[MacosConflictCode], Field(description='Where the supplement and Homebrew disagree; pages show both as pending verification')]
+    alternatives: list[PackageAlternativeEntry]
+    offerReady: Annotated[bool, Field(description='Structured data may publish an offer: verified, current, and free or complete', examples=[True])]
+    gaps: list[FactGap]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+
+
+class PackageFactsResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: PackageFacts
+
+
+class ArticleType(RootModel[Literal['recommendation', 'review', 'tutorial', 'roundup', 'news']]):
+    root: Annotated[Literal['recommendation', 'review', 'tutorial', 'roundup', 'news'], Field(description='recommendation: picks for a need; review: hands-on test, needs a test record; tutorial; roundup: compares several apps; news', examples=['roundup'])]
+
+
+class ArticleStatus(RootModel[Literal['draft', 'review', 'published', 'archived']]):
+    root: Annotated[Literal['draft', 'review', 'published', 'archived'], Field(description='draft and review: never published; published: live; archived: withdrawn, can be restored', examples=['published'])]
+
+
+class ArticleProblem(RootModel[Literal['title', 'summary', 'body', 'raw_html', 'unsafe_link', 'image_alt', 'image_host', 'too_many_images', 'too_many_app_cards', 'unknown_app', 'sources', 'test_note', 'cover_alt']]):
+    root: Annotated[Literal['title', 'summary', 'body', 'raw_html', 'unsafe_link', 'image_alt', 'image_host', 'too_many_images', 'too_many_app_cards', 'unknown_app', 'sources', 'test_note', 'cover_alt'], Field(description='What blocks review or publication: missing title, summary or body; raw HTML; unsafe links; images without alt text or not stored as OpenNavo assets; too many images or app cards; app cards for apps not in the catalog; no sources for recommendations, roundups and news; no test record for reviews; a cover without alt text.', examples=['sources'])]
+
+
+class ArticleSource(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    title: Annotated[str, Field(examples=['Shottr documentation'], max_length=200, min_length=1)]
+    url: Annotated[AnyUrl, Field(examples=['https://shottr.cc/kb'])]
+
+
+class PackageId(RootModel[int]):
+    root: Annotated[int, Field(examples=[1], ge=1)]
+
+
+class ArticleCreate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    slug: Annotated[str, Field(examples=['choose-a-screenshot-app'], max_length=100, pattern='^[a-z0-9]+(-[a-z0-9]+)*$')]
+    sourceLocale: Locale
+    type: ArticleType
+    title: Annotated[str, Field(examples=['How to choose a screenshot app for Mac'], max_length=200, min_length=1)]
+    summary: Annotated[str | None, Field(description='Lead and default meta description', examples=['What to compare when picking a screenshot tool.'], max_length=400)] = None
+    bodyMarkdown: Annotated[str | None, Field(description="Markdown without raw HTML. Images must be OpenNavo assets with alt text; ::app[token] on its own line embeds an app's current catalog card. Keep tested versions and prices as plain tables: they are a snapshot, the card is live.", examples=['## What to compare\n\n::app[shottr]'], max_length=100000)] = None
+    testNote: Annotated[str | None, Field(description='Test environment and method; required for reviews, and only when the test really happened', examples=['MacBook Pro (M4), macOS 26, the same capture tasks in every app'], max_length=1000)] = None
+    seoTitle: Annotated[str | None, Field(examples=[None], max_length=120)] = None
+    seoDescription: Annotated[str | None, Field(examples=[None], max_length=300)] = None
+    authorId: Annotated[int | None, Field(description='null signs the article as the editorial team (the site organization)', examples=[None], ge=1)] = None
+    coverAssetId: Annotated[int | None, Field(examples=[None], ge=1)] = None
+    coverAlt: Annotated[str | None, Field(examples=[None], max_length=300)] = None
+    sources: Annotated[list[ArticleSource] | None, Field(max_length=20)] = None
+    packageIds: Annotated[list[PackageId] | None, Field(max_length=50)] = None
+    idempotencyKey: Annotated[str | None, Field(description='Retrying with the same key returns the article created the first time', examples=['draft-2026-10-13-screenshots'], max_length=128, min_length=1)] = None
+
+
+class ArticleUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expectedRevision: Annotated[int, Field(description='The article revision from the last read; a mismatch means someone else changed it', examples=[4], ge=1)]
+    sourceLocale: Locale | None = None
+    type: ArticleType | None = None
+    title: Annotated[str | None, Field(examples=['How to choose a screenshot app for Mac'], max_length=200, min_length=1)] = None
+    summary: Annotated[str | None, Field(examples=['What to compare when picking a screenshot tool.'], max_length=400)] = None
+    bodyMarkdown: Annotated[str | None, Field(examples=['## What to compare'], max_length=100000)] = None
+    testNote: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
+    seoTitle: Annotated[str | None, Field(examples=[None], max_length=120)] = None
+    seoDescription: Annotated[str | None, Field(examples=[None], max_length=300)] = None
+    authorId: Annotated[int | None, Field(examples=[None], ge=1)] = None
+    coverAssetId: Annotated[int | None, Field(examples=[None], ge=1)] = None
+    coverAlt: Annotated[str | None, Field(examples=[None], max_length=300)] = None
+    sources: Annotated[list[ArticleSource] | None, Field(max_length=20)] = None
+
+
+class ArticlePackagesUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    packageIds: Annotated[list[PackageId], Field(max_length=50)]
+
+
+class ArticleRevisionCheck(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+
+
+class ArticleWithdraw(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    reason: Annotated[str | None, Field(examples=['Prices changed; rewriting.'], max_length=500)] = None
+
+
+class ArticleRevert(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    revisionNumber: Annotated[int, Field(examples=[2], ge=1)]
+
+
+class ArticleSlugUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    slug: Annotated[str, Field(examples=['screenshot-apps-for-mac'], max_length=100, pattern='^[a-z0-9]+(-[a-z0-9]+)*$')]
+
+
+class ArticleLocaleUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    withheld: Annotated[bool, Field(examples=[True])]
+
+
+class ArticleAuthorWrite(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    slug: Annotated[str, Field(examples=['lin-wei'], max_length=80, pattern='^[a-z0-9]+(-[a-z0-9]+)*$')]
+    name: Annotated[str, Field(examples=['Lin Wei'], max_length=80, min_length=1)]
+    sourceLocale: Locale
+    role: Annotated[str | None, Field(examples=['Editor'], max_length=80)] = None
+    bio: Annotated[str | None, Field(examples=['Tests Mac productivity apps.'], max_length=1000)] = None
+    links: Annotated[list[ArticleSource] | None, Field(max_length=8)] = None
+    avatarAssetId: Annotated[int | None, Field(examples=[None], ge=1)] = None
+
+
+class ArticleAuthorRef(BaseModel):
+    id: Annotated[int, Field(examples=[1])]
+    slug: Annotated[str, Field(examples=['lin-wei'])]
+    name: Annotated[str, Field(examples=['Lin Wei'])]
+
+
+class ArticlePackageRef(BaseModel):
+    id: Annotated[int, Field(examples=[1])]
+    token: Annotated[str, Field(examples=['shottr'])]
+    name: Annotated[str, Field(examples=['Shottr'])]
+    displayName: Annotated[str, Field(examples=['Shottr'])]
+    iconUrl: Annotated[str, Field(examples=[None])]
+
+
+class AdminArticleRevision(BaseModel):
+    number: Annotated[int, Field(examples=[3])]
+    sourceLocale: Locale
+    type: ArticleType
+    authorId: Annotated[int, Field(examples=[None])]
+    author: ArticleAuthorRef
+    coverAssetId: Annotated[int, Field(examples=[None])]
+    coverUrl: Annotated[str, Field(examples=[None])]
+    coverAlt: Annotated[str, Field(examples=[None])]
+    sources: list[ArticleSource]
+    packages: list[ArticlePackageRef]
+    title: Annotated[str, Field(examples=['How to choose a screenshot app for Mac'])]
+    summary: Annotated[str, Field(examples=['What to compare when picking a screenshot tool.'])]
+    bodyMarkdown: Annotated[str, Field(examples=['## What to compare'])]
+    testNote: Annotated[str, Field(examples=[None])]
+    seoTitle: Annotated[str, Field(examples=[None])]
+    seoDescription: Annotated[str, Field(examples=[None])]
+    submittedAt: Annotated[AwareDatetime, Field(examples=[None])]
+    submittedByName: Annotated[str, Field(examples=[''])]
+    publishedAt: Annotated[AwareDatetime, Field(examples=[None])]
+    createdByName: Annotated[str, Field(examples=['Hermes'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+
+
+class ArticleLocaleState(BaseModel):
+    locale: Locale
+    status: Annotated[Literal['source', 'machine', 'manual', 'pending', 'failed', 'missing'], Field(examples=['machine'])]
+    withheld: Annotated[bool, Field(examples=[False])]
+    source: Annotated[bool, Field(examples=[False])]
+    failReason: Annotated[str, Field(examples=[None])]
+    translatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 09:00:00+00:00'])]
+
+
+class ArticleRevisionEntry(BaseModel):
+    number: Annotated[int, Field(examples=[2])]
+    title: Annotated[str, Field(examples=['How to choose a screenshot app for Mac'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 08:00:00+00:00'])]
+    createdByName: Annotated[str, Field(examples=['Hermes'])]
+    submittedAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 09:00:00+00:00'])]
+    publishedAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 10:00:00+00:00'])]
+
+
+class ArticleEvent(BaseModel):
+    action: Annotated[Literal['create', 'update', 'submit', 'review_invalidated', 'publish', 'withdraw', 'restore', 'slug', 'withhold', 'release', 'revert'], Field(examples=['publish'])]
+    revisionNumber: Annotated[int, Field(examples=[2])]
+    actorType: Annotated[Literal['admin', 'agent', 'system'], Field(examples=['admin'])]
+    actorName: Annotated[str, Field(examples=['kaka'])]
+    detail: Annotated[dict[str, Any], Field(examples=[{}])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 10:00:00+00:00'])]
+
+
+class ArticleImage(BaseModel):
+    url: Annotated[str, Field(examples=['https://cdn.opennavo.example/screenshots/uploads/cover/a.png'])]
+    width: Annotated[int, Field(examples=[1280])]
+    height: Annotated[int, Field(examples=[800])]
+
+
+class Published(BaseModel):
+    number: Annotated[int, Field(examples=[2])]
+    publishedAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 10:00:00+00:00'])]
+
+
+class AdminArticle(BaseModel):
+    id: Annotated[int, Field(examples=[1])]
+    slug: Annotated[str, Field(examples=['choose-a-screenshot-app'])]
+    status: ArticleStatus
+    revision: Annotated[int, Field(description='Change counter; send it back as expectedRevision', examples=[4])]
+    firstPublishedAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 10:00:00+00:00'])]
+    contentUpdatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 10:00:00+00:00'])]
+    archivedAt: Annotated[AwareDatetime, Field(examples=[None])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    webUrl: Annotated[str, Field(examples=['https://opennavo.example/articles/choose-a-screenshot-app'])]
+    aliases: list[str]
+    working: AdminArticleRevision
+    published: Annotated[Published, Field(examples=[{'number': 2, 'publishedAt': '2026-10-12 10:00:00+00:00'}])]
+    hasPendingChanges: Annotated[bool, Field(description='The working revision is not the published one', examples=[True])]
+    readiness: list[ArticleProblem]
+    images: list[ArticleImage]
+    locales: Annotated[list[ArticleLocaleState], Field(description='Languages of the published revision')]
+    revisions: list[ArticleRevisionEntry]
+    events: list[ArticleEvent]
+
+
+class AdminArticleResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: AdminArticle
+
+
+class AdminArticleResponseResult(RootModel[AdminArticleResponse | BusinessErrorResponse]):
+    root: Annotated[AdminArticleResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'slug': 'choose-a-screenshot-app', 'status': 'draft', 'revision': 1, 'firstPublishedAt': None, 'contentUpdatedAt': None, 'archivedAt': None, 'createdAt': '2026-10-13 08:00:00+00:00', 'updatedAt': '2026-10-13 08:00:00+00:00', 'webUrl': None, 'aliases': [], 'working': {'number': 1, 'sourceLocale': 'en-US', 'type': 'roundup', 'authorId': None, 'author': None, 'coverAssetId': None, 'coverUrl': None, 'coverAlt': None, 'sources': [], 'packages': [], 'title': 'How to choose a screenshot app for Mac', 'summary': None, 'bodyMarkdown': None, 'testNote': None, 'seoTitle': None, 'seoDescription': None, 'submittedAt': None, 'submittedByName': '', 'publishedAt': None, 'createdByName': 'Hermes', 'createdAt': '2026-10-13 08:00:00+00:00', 'updatedAt': '2026-10-13 08:00:00+00:00'}, 'published': None, 'hasPendingChanges': True, 'readiness': ['summary', 'body', 'sources'], 'images': [], 'locales': [], 'revisions': [], 'events': []}}])]
+
+
+class AdminArticleListItem(BaseModel):
+    id: Annotated[int, Field(examples=[1])]
+    slug: Annotated[str, Field(examples=['choose-a-screenshot-app'])]
+    status: ArticleStatus
+    revision: Annotated[int, Field(examples=[4])]
+    type: ArticleType
+    title: Annotated[str, Field(examples=['How to choose a screenshot app for Mac'])]
+    sourceLocale: Locale
+    workingNumber: Annotated[int, Field(examples=[3])]
+    publishedNumber: Annotated[int, Field(examples=[2])]
+    submittedAt: Annotated[AwareDatetime, Field(examples=[None])]
+    hasPendingChanges: Annotated[bool, Field(examples=[True])]
+    authorName: Annotated[str, Field(examples=[None])]
+    firstPublishedAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 10:00:00+00:00'])]
+    contentUpdatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 10:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+
+
+class ArticlePage(BaseModel):
+    records: list[AdminArticleListItem]
+    current: Annotated[int, Field(examples=[1])]
+    size: Annotated[int, Field(examples=[20])]
+    total: Annotated[int, Field(examples=[1])]
+
+
+class ArticlePageResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: ArticlePage
+
+
+class ArticlePageResponseResult(RootModel[ArticlePageResponse | BusinessErrorResponse]):
+    root: Annotated[ArticlePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [], 'current': 1, 'size': 20, 'total': 0}}])]
+
+
+class ArticleAuthor(BaseModel):
+    id: Annotated[int, Field(examples=[1])]
+    slug: Annotated[str, Field(examples=['lin-wei'])]
+    name: Annotated[str, Field(examples=['Lin Wei'])]
+    links: list[ArticleSource]
+    avatarAssetId: Annotated[int, Field(examples=[None])]
+    avatarUrl: Annotated[str, Field(examples=[None])]
+    sourceLocale: Locale
+    role: Annotated[str, Field(examples=['Editor'])]
+    bio: Annotated[str, Field(examples=['Tests Mac productivity apps.'])]
+    articleCount: Annotated[int, Field(examples=[3])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+
+
+class ArticleAuthorListResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: list[ArticleAuthor]
+
+
+class ArticleAuthorListResponseResult(RootModel[ArticleAuthorListResponse | BusinessErrorResponse]):
+    root: Annotated[ArticleAuthorListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': []}])]
+
+
+class ListingGap(RootModel[Literal['zhName', 'zhSummary', 'enSummary', 'primaryCategory', 'tags', 'icon', 'downloadSize', 'latestEditorial', 'price']]):
+    root: Annotated[Literal['zhName', 'zhSummary', 'enSummary', 'primaryCategory', 'tags', 'icon', 'downloadSize', 'latestEditorial', 'price'], Field(examples=['zhName'])]
 
 
 class CatalogActivity(BaseModel):
@@ -1456,7 +2089,7 @@ class CatalogActivity(BaseModel):
     webUrl: Annotated[AnyUrl, Field(examples=[None])]
 
 
-class Data18(BaseModel):
+class Data19(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -1472,15 +2105,15 @@ class CatalogActivityResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data18
+    data: Data19
 
 
 class CatalogActivityResponseResult(RootModel[CatalogActivityResponse | BusinessErrorResponse]):
     root: Annotated[CatalogActivityResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'previousVersion': '1.139.0', 'changedAt': '2026-10-07 08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
-class AgentPermission(RootModel[Literal['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']]):
-    root: Annotated[Literal['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], Field(examples=['dashboard:view'])]
+class AgentPermission(RootModel[Literal['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']]):
+    root: Annotated[Literal['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], Field(examples=['dashboard:view'])]
 
 
 class AgentLimits(BaseModel):
@@ -1508,7 +2141,7 @@ class AgentSettings(BaseModel):
     enabled: Annotated[bool, Field(examples=[True])]
     limits: AgentLimits
     mcpUrl: Annotated[AnyUrl, Field(examples=['https://admin.opennavo.example/mcp'])]
-    grantablePermissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']])]
+    grantablePermissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']])]
     updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
 
 
@@ -1522,7 +2155,7 @@ class AgentSettingsResponse(BaseModel):
 
 
 class AgentSettingsResponseResult(RootModel[AgentSettingsResponse | BusinessErrorResponse]):
-    root: Annotated[AgentSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'mcpUrl': 'https://admin.opennavo.example/mcp', 'grantablePermissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
+    root: Annotated[AgentSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'mcpUrl': 'https://admin.opennavo.example/mcp', 'grantablePermissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
 
 
 class AgentClientCreate(BaseModel):
@@ -1571,7 +2204,7 @@ class AgentClientResponseResult(RootModel[AgentClientResponse | BusinessErrorRes
     root: Annotated[AgentClientResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'userId': 6, 'name': 'Hermes · 家里电脑', 'notes': '负责人日常运营代理', 'enabled': True, 'activeTokenCount': 1, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
 
 
-class Data19(BaseModel):
+class Data20(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -1587,7 +2220,7 @@ class AgentClientsResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data19
+    data: Data20
 
 
 class AgentClientsResponseResult(RootModel[AgentClientsResponse | BusinessErrorResponse]):
@@ -1603,7 +2236,7 @@ class AgentTokenCreate(BaseModel):
         extra='forbid',
     )
     name: Annotated[str, Field(examples=['日常运营'], max_length=128, min_length=1)]
-    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=21)] = None
+    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=22)] = None
     allowDelete: Annotated[bool | None, Field(examples=[True])] = True
     expiresAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
     ipAllowlist: Annotated[list[IpAllowlistItem] | None, Field(examples=[[]], max_length=100)] = None
@@ -1614,7 +2247,7 @@ class AgentTokenUpdate(BaseModel):
         extra='forbid',
     )
     name: Annotated[str | None, Field(examples=['日常运营'], max_length=128, min_length=1)] = None
-    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=21)] = None
+    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=22)] = None
     allowDelete: Annotated[bool | None, Field(examples=[True])] = True
     expiresAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
     ipAllowlist: Annotated[list[IpAllowlistItem] | None, Field(examples=[[]], max_length=100)] = None
@@ -1627,7 +2260,7 @@ class AgentToken(BaseModel):
     id: Annotated[int, Field(examples=[1], ge=1)]
     clientId: Annotated[int, Field(examples=[1], ge=1)]
     name: Annotated[str, Field(examples=['日常运营'], max_length=128, min_length=1)]
-    permissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=21)]
+    permissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=22)]
     allowDelete: Annotated[bool, Field(examples=[True])]
     expiresAt: Annotated[AwareDatetime, Field(examples=[None])]
     ipAllowlist: Annotated[list[IpAllowlistItem], Field(examples=[[]], max_length=100)]
@@ -1649,11 +2282,11 @@ class AgentTokenCreated(BaseModel):
     plaintext: Annotated[str, Field(description='Returned only once at creation. Prism contains invalid demo text, never real credentials. Lists, logs, audit and introspection never return this field.', examples=['MOCK_ONLY_NOT_A_VALID_AGENT_TOKEN'], max_length=200)]
 
 
-class Data20(BaseModel):
+class Data21(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[AgentToken], Field(examples=[[{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}]])]
+    records: Annotated[list[AgentToken], Field(examples=[[{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -1665,11 +2298,11 @@ class AgentTokensResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data20
+    data: Data21
 
 
 class AgentTokensResponseResult(RootModel[AgentTokensResponse | BusinessErrorResponse]):
-    root: Annotated[AgentTokensResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[AgentTokensResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class AgentTokenCreatedResponse(BaseModel):
@@ -1682,7 +2315,7 @@ class AgentTokenCreatedResponse(BaseModel):
 
 
 class AgentTokenCreatedResponseResult(RootModel[AgentTokenCreatedResponse | BusinessErrorResponse]):
-    root: Annotated[AgentTokenCreatedResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'token': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}, 'plaintext': 'MOCK_ONLY_NOT_A_VALID_AGENT_TOKEN'}}])]
+    root: Annotated[AgentTokenCreatedResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'token': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}, 'plaintext': 'MOCK_ONLY_NOT_A_VALID_AGENT_TOKEN'}}])]
 
 
 class AgentTokenResponse(BaseModel):
@@ -1695,7 +2328,7 @@ class AgentTokenResponse(BaseModel):
 
 
 class AgentTokenResponseResult(RootModel[AgentTokenResponse | BusinessErrorResponse]):
-    root: Annotated[AgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}}])]
+    root: Annotated[AgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}}])]
 
 
 class RevokedAgentTokenResponse(BaseModel):
@@ -1708,7 +2341,7 @@ class RevokedAgentTokenResponse(BaseModel):
 
 
 class RevokedAgentTokenResponseResult(RootModel[RevokedAgentTokenResponse | BusinessErrorResponse]):
-    root: Annotated[RevokedAgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': '2026-10-07 08:00:00+00:00', 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'revoked', 'expiringSoon': False}}])]
+    root: Annotated[RevokedAgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': '2026-10-07 08:00:00+00:00', 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'revoked', 'expiringSoon': False}}])]
 
 
 class AgentQuota(BaseModel):
@@ -1731,7 +2364,7 @@ class AgentIntrospection(BaseModel):
     clientName: Annotated[str, Field(examples=['Hermes · 家里电脑'], max_length=200)]
     tokenId: Annotated[int, Field(examples=[1], ge=1)]
     tokenPrefix: Annotated[str, Field(examples=['onv_demo'], max_length=8)]
-    permissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']])]
+    permissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']])]
     allowDelete: Annotated[bool, Field(examples=[True])]
     paused: Annotated[bool, Field(examples=[False])]
     limits: AgentLimits
@@ -1750,7 +2383,7 @@ class AgentIntrospectionResponse(BaseModel):
 
 
 class AgentIntrospectionResponseResult(RootModel[AgentIntrospectionResponse | BusinessErrorResponse]):
-    root: Annotated[AgentIntrospectionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'active': True, 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'paused': False, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'quota': {'callsRemaining': 119, 'writesRemaining': 2999, 'llmOpsRemaining': 999, 'minuteResetsAt': '2026-10-07 08:01:00+00:00', 'dayResetsAt': '2026-10-08 00:00:00+00:00'}, 'locales': ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'], 'expiresAt': '2027-01-05 08:00:00+00:00'}}])]
+    root: Annotated[AgentIntrospectionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'active': True, 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'paused': False, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'quota': {'callsRemaining': 119, 'writesRemaining': 2999, 'llmOpsRemaining': 999, 'minuteResetsAt': '2026-10-07 08:01:00+00:00', 'dayResetsAt': '2026-10-08 00:00:00+00:00'}, 'locales': ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'], 'expiresAt': '2027-01-05 08:00:00+00:00'}}])]
 
 
 class HistoryActor(BaseModel):
@@ -1786,7 +2419,7 @@ class ContentRevision(BaseModel):
     requiredPermissions: Annotated[list[RequiredPermission], Field(examples=[['catalog:package:edit']])]
 
 
-class Data21(BaseModel):
+class Data22(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -1802,7 +2435,7 @@ class ContentRevisionsResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data21
+    data: Data22
 
 
 class ContentRevisionsResponseResult(RootModel[ContentRevisionsResponse | BusinessErrorResponse]):
@@ -1874,7 +2507,7 @@ class TrashItem(BaseModel):
     affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/collections/new-mac']])]
 
 
-class Data22(BaseModel):
+class Data23(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -1890,7 +2523,7 @@ class TrashResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data22
+    data: Data23
 
 
 class TrashResponseResult(RootModel[TrashResponse | BusinessErrorResponse]):
@@ -1933,7 +2566,7 @@ class AgentCall(BaseModel):
     createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
 
 
-class Data23(BaseModel):
+class Data24(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -1949,7 +2582,7 @@ class AgentCallsResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data23
+    data: Data24
 
 
 class AgentCallsResponseResult(RootModel[AgentCallsResponse | BusinessErrorResponse]):
@@ -1995,7 +2628,7 @@ class TranslationLog(BaseModel):
     createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
 
 
-class Data24(BaseModel):
+class Data25(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -2011,7 +2644,7 @@ class TranslationLogsResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data24
+    data: Data25
 
 
 class TranslationLogsResponseResult(RootModel[TranslationLogsResponse | BusinessErrorResponse]):
@@ -2059,7 +2692,7 @@ class AdminCatalogVersion(BaseModel):
     historicalReleaseId: Annotated[int, Field(examples=[None], ge=0)]
 
 
-class Data25(BaseModel):
+class Data26(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -2075,20 +2708,11 @@ class AdminCatalogVersionsResponse(BaseModel):
     )
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: Data25
+    data: Data26
 
 
 class AdminCatalogVersionsResponseResult(RootModel[AdminCatalogVersionsResponse | BusinessErrorResponse]):
     root: Annotated[AdminCatalogVersionsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07 08:00:00+00:00', 'brewCommittedAt': '2026-10-07 07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'historicalReleaseId': None}], 'current': 1, 'size': 20, 'total': 1}}])]
-
-
-class AgentDryRunResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    code: Code
-    msg: Annotated[str, Field(examples=['ok'], max_length=200)]
-    data: AgentDryRun
 
 
 class GetDashboardOverviewInput(BaseModel):
@@ -2142,6 +2766,40 @@ class UpdatePackageMetaInput(BaseModel):
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool | None, Field(examples=[False])] = False
     body: PackageMetaUpdate
+
+
+class GetPackageFactsInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+
+
+class SetPackagePriceInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: PackagePriceUpdate
+
+
+class SetPackageMacosSupportInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: PackageMacosUpdate
+
+
+class SetPackageAlternativesInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: PackageAlternativesUpdate
 
 
 class SetPackageCategoriesInput(BaseModel):
@@ -2232,6 +2890,59 @@ class DeleteCategoryInput(BaseModel):
     )
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool | None, Field(examples=[False])] = False
+
+
+class ListAdminArticlesInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    current: Annotated[int | None, Field(examples=[1], ge=1)] = 1
+    size: Annotated[int | None, Field(examples=[24], ge=1, le=100)] = 10
+    status: ArticleStatus | None = None
+    type: ArticleType | None = None
+    q: Annotated[str | None, Field(max_length=100)] = None
+
+
+class CreateArticleInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: ArticleCreate
+
+
+class GetAdminArticleInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+
+
+class UpdateArticleInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: ArticleUpdate
+
+
+class SetArticlePackagesInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: ArticlePackagesUpdate
+
+
+class SubmitArticleReviewInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: ArticleRevisionCheck
 
 
 class ListAdminCollectionsInput(BaseModel):
@@ -2763,10 +3474,51 @@ class GitHubSettingsResponseResult(RootModel[GitHubSettingsResponse | BusinessEr
     root: Annotated[GitHubSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'tokenConfigured': True, 'tokenSource': 'admin'}}])]
 
 
+class PackageIndexStatus(BaseModel):
+    eligible: Annotated[bool, Field(description='Verdict of the rule and the override, whatever the policy mode.')]
+    reason: Annotated[str, Field(description='Why the app is not eligible: hidden, forced_noindex, unavailable, missing_summary or thin.')]
+    indexable: Annotated[bool, Field(description='What pages and the sitemap do now under the current policy.')]
+    enforced: Annotated[bool, Field(description='Whether the policy applies the verdict to this app (mode enforce and in scope).')]
+    locales: Annotated[list[Locale], Field(description='Languages listed in hreflang and the sitemap.')]
+    override: Literal['auto', 'index', 'noindex']
+    overrideReason: str
+    overrideAt: AwareDatetime
+
+
+class PackageIndexStatusResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: PackageIndexStatus
+
+
+class PackageIndexStatusResponseResult(RootModel[PackageIndexStatusResponse | BusinessErrorResponse]):
+    root: Annotated[PackageIndexStatusResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'eligible': False, 'reason': 'missing_summary', 'indexable': True, 'enforced': False, 'locales': ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'], 'override': 'auto', 'overrideReason': None, 'overrideAt': None}}])]
+
+
+class IndexReportResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: Data
+
+
+class IndexReportResponseResult(RootModel[IndexReportResponse | BusinessErrorResponse]):
+    root: Annotated[IndexReportResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'token': 'visual-studio-code', 'displayName': 'Visual Studio Code', 'firstSeenAt': '2026-10-01 08:00:00+00:00', 'eligible': False, 'reason': 'missing_summary', 'enforced': False, 'override': 'auto', 'overrideReason': None}], 'current': 1, 'size': 24, 'total': 1, 'counts': {'hidden': 0, 'forcedNoindex': 0, 'unavailable': 12, 'missingSummary': 1, 'thin': 3, 'forcedIndex': 0}}}])]
+
+
+class SeoSettingsResponse(BaseModel):
+    code: Code
+    msg: str
+    data: SeoSettingsView
+
+
+class SeoSettingsResponseResult(RootModel[SeoSettingsResponse | BusinessErrorResponse]):
+    root: Annotated[SeoSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'settings': {'identity': {'name': 'OpenNavo', 'alternateNames': ['opennavo.com'], 'logoUrl': 'https://opennavo.example/brand/logo-512.png', 'sameAs': ['https://github.com/opennavo/OpenNavo', 'https://x.com/opennavo']}, 'verification': {'google': '', 'bing': ''}, 'analytics': {'ga4Enabled': True, 'ga4MeasurementId': 'G-EXAMPLE123', 'consentRegions': ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'IS', 'LI', False, 'GB', 'CH']}, 'indexNow': {'enabled': False}, 'cloudflare': {'zoneId': '', 'purgeEnabled': False}, 'edgeCache': {'enabled': False}, 'crawlers': {'training': {'mode': 'limit', 'delaySeconds': 10, 'bots': ['ClaudeBot']}, 'seoTools': {'mode': 'block', 'delaySeconds': 10, 'bots': ['MJ12bot', 'SerpstatBot']}}, 'pages': {'titleTemplate': 'new', 'indexPolicy': {'mode': 'shadow', 'scope': 'new', 'since': ''}, 'versionsSitemap': False}}, 'indexNowKeyConfigured': False, 'cloudflareTokenConfigured': False, 'updatedAt': '2026-10-13 08:00:00+00:00', 'revision': 1, 'siteUrl': 'https://opennavo.example', 'changeFeed': {'lastRunAt': '2026-10-13 08:00:00+00:00', 'lastUrls': 6, 'lastIndexnowStatus': 'ok: 6 URLs', 'lastPurgeStatus': '', 'lastError': ''}}}])]
+
+
 class TranslationModelsResponse(BaseModel):
     code: Code
     msg: str
-    data: Data
+    data: Data1
 
 
 class TranslationModelsResponseResult(RootModel[TranslationModelsResponse | BusinessErrorResponse]):
@@ -2797,10 +3549,6 @@ class AppConfigListResponseResult(RootModel[AppConfigListResponse | BusinessErro
 
 class AssetPageResponseResult(RootModel[AssetPageResponse | BusinessErrorResponse]):
     root: Annotated[AssetPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'kind': 'icon', 'url': 'https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png', 'mime': 'image/png', 'width': 256, 'height': 256, 'bytes': 12000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'createTime': '2026-09-30 08:00:00+00:00'}], 'current': 1, 'size': 24, 'total': 1}}])]
-
-
-class AssetResponseResult(RootModel[AssetResponse | BusinessErrorResponse | AgentDryRunResponse]):
-    root: Annotated[AssetResponse | BusinessErrorResponse | AgentDryRunResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'kind': 'icon', 'url': 'https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png', 'mime': 'image/png', 'width': 256, 'height': 256, 'bytes': 12000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'createTime': '2026-09-30 08:00:00+00:00'}}])]
 
 
 class AuditLogPageResponseResult(RootModel[AuditLogPageResponse | BusinessErrorResponse]):
@@ -2848,7 +3596,7 @@ class PackageVersionPageResponseResult(RootModel[PackageVersionPageResponse | Bu
 
 
 class PermissionListResponseResult(RootModel[PermissionListResponse | BusinessErrorResponse]):
-    root: Annotated[PermissionListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'code': 'dashboard:view', 'name': '查看仪表盘', 'group': 'dashboard', 'agentGrantable': True}, {'code': 'catalog:package:view', 'name': '查看包', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:package:edit', 'name': '编辑包信息、分类、隐藏、推荐', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:package:resync', 'name': '重新同步', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:asset:upload', 'name': '上传图标与截图', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:category:edit', 'name': '编辑分类', 'group': 'catalog', 'agentGrantable': True}, {'code': 'content:collection:edit', 'name': '编辑合集', 'group': 'content', 'agentGrantable': True}, {'code': 'content:collection:publish', 'name': '发布/下线合集', 'group': 'content', 'agentGrantable': True}, {'code': 'content:feature:edit', 'name': '编辑精选位', 'group': 'content', 'agentGrantable': True}, {'code': 'changelog:release:edit', 'name': '隐藏版本、编辑原文', 'group': 'changelog', 'agentGrantable': True}, {'code': 'translation:review', 'name': '编辑与审核译文', 'group': 'translation', 'agentGrantable': True}, {'code': 'ops:job:view', 'name': '查看任务', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:job:trigger', 'name': '手动触发任务', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:search:view', 'name': '搜索洞察', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:search:edit', 'name': '同义词管理', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:feedback:handle', 'name': '处理反馈', 'group': 'ops', 'agentGrantable': True}, {'code': 'release:desktop:edit', 'name': '编辑客户端版本', 'group': 'release', 'agentGrantable': False}, {'code': 'release:desktop:publish', 'name': '发布/回滚客户端', 'group': 'release', 'agentGrantable': False}, {'code': 'system:config:edit', 'name': '远程配置、镜像', 'group': 'system', 'agentGrantable': False}, {'code': 'system:user:edit', 'name': '管理员管理', 'group': 'system', 'agentGrantable': False}, {'code': 'system:role:edit', 'name': '角色与权限', 'group': 'system', 'agentGrantable': False}, {'code': 'system:audit:view', 'name': '审计日志', 'group': 'system', 'agentGrantable': False}, {'code': 'i18n:settings', 'name': '翻译 AI 设置', 'group': 'i18n', 'agentGrantable': False}, {'code': 'system:github:edit', 'name': 'GitHub 设置', 'group': 'system', 'agentGrantable': False}, {'code': 'content:glossary:edit', 'name': '术语表管理', 'group': 'content', 'agentGrantable': True}, {'code': 'agent:log:view', 'name': 'Agent 与 AI 日志', 'group': 'agent', 'agentGrantable': True}, {'code': 'content:revision:restore', 'name': '内容修订与恢复', 'group': 'content', 'agentGrantable': True}, {'code': 'agent:manage', 'name': 'Agent 接入管理', 'group': 'agent', 'agentGrantable': False}, {'code': 'content:announcement:edit', 'name': '客户端公告', 'group': 'content', 'agentGrantable': True}, {'code': 'release:desktop:notes', 'name': '客户端更新说明', 'group': 'release', 'agentGrantable': True}]}])]
+    root: Annotated[PermissionListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'code': 'dashboard:view', 'name': '查看仪表盘', 'group': 'dashboard', 'agentGrantable': True}, {'code': 'catalog:package:view', 'name': '查看包', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:package:edit', 'name': '编辑包信息、分类、隐藏、推荐', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:package:resync', 'name': '重新同步', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:asset:upload', 'name': '上传图标与截图', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:category:edit', 'name': '编辑分类', 'group': 'catalog', 'agentGrantable': True}, {'code': 'content:collection:edit', 'name': '编辑合集', 'group': 'content', 'agentGrantable': True}, {'code': 'content:collection:publish', 'name': '发布/下线合集', 'group': 'content', 'agentGrantable': True}, {'code': 'content:article:edit', 'name': '撰写文章草稿并提交审核', 'group': 'content', 'agentGrantable': True}, {'code': 'content:article:publish', 'name': '发布、撤回和恢复文章，管理作者', 'group': 'content', 'agentGrantable': False}, {'code': 'content:feature:edit', 'name': '编辑精选位', 'group': 'content', 'agentGrantable': True}, {'code': 'changelog:release:edit', 'name': '隐藏版本、编辑原文', 'group': 'changelog', 'agentGrantable': True}, {'code': 'translation:review', 'name': '编辑与审核译文', 'group': 'translation', 'agentGrantable': True}, {'code': 'ops:job:view', 'name': '查看任务', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:job:trigger', 'name': '手动触发任务', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:search:view', 'name': '搜索洞察', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:search:edit', 'name': '同义词管理', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:feedback:handle', 'name': '处理反馈', 'group': 'ops', 'agentGrantable': True}, {'code': 'release:desktop:edit', 'name': '编辑客户端版本', 'group': 'release', 'agentGrantable': False}, {'code': 'release:desktop:publish', 'name': '发布/回滚客户端', 'group': 'release', 'agentGrantable': False}, {'code': 'system:config:edit', 'name': '远程配置、镜像', 'group': 'system', 'agentGrantable': False}, {'code': 'system:user:edit', 'name': '管理员管理', 'group': 'system', 'agentGrantable': False}, {'code': 'system:role:edit', 'name': '角色与权限', 'group': 'system', 'agentGrantable': False}, {'code': 'system:audit:view', 'name': '审计日志', 'group': 'system', 'agentGrantable': False}, {'code': 'i18n:settings', 'name': '翻译 AI 设置', 'group': 'i18n', 'agentGrantable': False}, {'code': 'system:github:edit', 'name': 'GitHub 设置', 'group': 'system', 'agentGrantable': False}, {'code': 'system:seo:edit', 'name': 'SEO 与统计', 'group': 'system', 'agentGrantable': False}, {'code': 'content:glossary:edit', 'name': '术语表管理', 'group': 'content', 'agentGrantable': True}, {'code': 'agent:log:view', 'name': 'Agent 与 AI 日志', 'group': 'agent', 'agentGrantable': True}, {'code': 'content:revision:restore', 'name': '内容修订与恢复', 'group': 'content', 'agentGrantable': True}, {'code': 'agent:manage', 'name': 'Agent 接入管理', 'group': 'agent', 'agentGrantable': False}, {'code': 'content:announcement:edit', 'name': '客户端公告', 'group': 'content', 'agentGrantable': True}, {'code': 'release:desktop:notes', 'name': '客户端更新说明', 'group': 'release', 'agentGrantable': True}]}])]
 
 
 class QueryStatPageResponseResult(RootModel[QueryStatPageResponse | BusinessErrorResponse]):
@@ -2860,7 +3608,7 @@ class QueueStatListResponseResult(RootModel[QueueStatListResponse | BusinessErro
 
 
 class RoleListResponseResult(RootModel[RoleListResponse | BusinessErrorResponse]):
-    root: Annotated[RoleListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'roleCode': 'R_EDITOR', 'roleName': '编辑', 'roleDesc': None, 'status': '1', 'builtin': True, 'permissionCodes': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'i18n:settings', 'system:github:edit'], 'userCount': 1}, {'id': 6, 'roleCode': 'R_AGENT', 'roleName': 'Agent', 'roleDesc': '内部机器账号，不可登录后台', 'status': '1', 'builtin': True, 'permissionCodes': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'userCount': 1}]}])]
+    root: Annotated[RoleListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'roleCode': 'R_EDITOR', 'roleName': '编辑', 'roleDesc': None, 'status': '1', 'builtin': True, 'permissionCodes': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'i18n:settings', 'system:github:edit', 'system:seo:edit'], 'userCount': 1}, {'id': 6, 'roleCode': 'R_AGENT', 'roleName': 'Agent', 'roleDesc': '内部机器账号，不可登录后台', 'status': '1', 'builtin': True, 'permissionCodes': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'userCount': 1}]}])]
 
 
 class SynonymPageResponseResult(RootModel[SynonymPageResponse | BusinessErrorResponse]):
@@ -2868,7 +3616,7 @@ class SynonymPageResponseResult(RootModel[SynonymPageResponse | BusinessErrorRes
 
 
 class UserInfoResponseResult(RootModel[UserInfoResponse | BusinessErrorResponse]):
-    root: Annotated[UserInfoResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'userId': '1', 'userName': 'local-admin', 'roles': ['R_SUPER'], 'buttons': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'i18n:settings', 'system:github:edit', 'content:glossary:edit', 'agent:log:view', 'content:revision:restore', 'agent:manage', 'content:announcement:edit', 'release:desktop:notes']}}])]
+    root: Annotated[UserInfoResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'userId': '1', 'userName': 'local-admin', 'roles': ['R_SUPER'], 'buttons': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'i18n:settings', 'system:github:edit', 'system:seo:edit', 'content:glossary:edit', 'agent:log:view', 'content:revision:restore', 'agent:manage', 'content:announcement:edit', 'release:desktop:notes']}}])]
 
 
 class DashboardOverview(BaseModel):
@@ -3113,10 +3861,6 @@ class TranslationQueueItem(BaseModel):
     sourceLocale: Locale | None = None
 
 
-class AssetUploadTicketResponseResult(RootModel[AssetUploadTicketResponse | BusinessErrorResponse | AgentDryRunResponse]):
-    root: Annotated[AssetUploadTicketResponse | BusinessErrorResponse | AgentDryRunResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'uploadUrl': 'https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000', 'method': 'POST', 'fileField': 'file', 'kind': 'icon', 'maxBytes': 5242880, 'expiresAt': '2026-09-30 08:10:00+00:00'}}])]
-
-
 class DesktopRelease(BaseModel):
     id: Annotated[int, Field(examples=[1])]
     version: Annotated[str, Field(examples=['1.140.0'])]
@@ -3181,7 +3925,7 @@ class DashboardOverviewResponse(BaseModel):
     data: DashboardOverview | None = None
 
 
-class Data2(BaseModel):
+class Data3(BaseModel):
     records: list[AdminPackage]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -3191,7 +3935,7 @@ class Data2(BaseModel):
 class AdminPackagePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data2 | None = None
+    data: Data3 | None = None
 
 
 class AdminPackageDetailResponse(BaseModel):
@@ -3212,7 +3956,7 @@ class CategoryTreeResponse(BaseModel):
     data: list[AdminCategoryNode] | None = None
 
 
-class Data4(BaseModel):
+class Data5(BaseModel):
     records: list[AdminCollection]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -3222,7 +3966,7 @@ class Data4(BaseModel):
 class AdminCollectionPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data4 | None = None
+    data: Data5 | None = None
 
 
 class AdminCollectionResponse(BaseModel):
@@ -3231,7 +3975,7 @@ class AdminCollectionResponse(BaseModel):
     data: AdminCollection | None = None
 
 
-class Data5(BaseModel):
+class Data6(BaseModel):
     records: list[AdminFeature]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -3241,7 +3985,7 @@ class Data5(BaseModel):
 class AdminFeaturePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data5 | None = None
+    data: Data6 | None = None
 
 
 class AdminFeatureResponse(BaseModel):
@@ -3256,7 +4000,7 @@ class AdminReleaseResponse(BaseModel):
     data: AdminReleaseDetail | None = None
 
 
-class Data7(BaseModel):
+class Data8(BaseModel):
     records: list[TranslationQueueItem]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -3266,10 +4010,10 @@ class Data7(BaseModel):
 class TranslationQueuePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data7 | None = None
+    data: Data8 | None = None
 
 
-class Data13(BaseModel):
+class Data14(BaseModel):
     records: list[DesktopRelease]
     current: Annotated[int, Field(examples=[1])]
     size: Annotated[int, Field(examples=[24])]
@@ -3279,7 +4023,7 @@ class Data13(BaseModel):
 class DesktopReleasePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data13 | None = None
+    data: Data14 | None = None
 
 
 class DesktopReleaseResponse(BaseModel):
@@ -3292,6 +4036,30 @@ class MirrorListResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
     data: list[Mirror] | None = None
+
+
+class AgentDryRun(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[Literal[True], Field(examples=[True])]
+    requestId: Annotated[str, Field(examples=['demo-preview-001'], max_length=128)]
+    changes: Annotated[list[Change], Field(examples=[[{'object': {'entity': 'package', 'objectKey': '1'}, 'action': 'update', 'before': {'summary': '旧简介'}, 'after': {'summary': '新简介'}}]])]
+    affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
+    sourceGaps: Annotated[list[FactGap] | None, Field(description='App fact writes only: the evidence still missing or outdated after this write')] = None
+
+
+class PackageFactsResponseResult(RootModel[PackageFactsResponse | BusinessErrorResponse]):
+    root: Annotated[PackageFactsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'packageId': 1, 'price': None, 'macos': None, 'homebrew': {'supportStatus': 'known', 'arm64': True, 'x86_64': True, 'requiresRosetta': False, 'minimum': '13.0', 'maximum': None}, 'conflicts': [], 'alternatives': [], 'offerReady': False, 'gaps': ['price.unknown'], 'updatedAt': None}}])]
+
+
+class AgentDryRunResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'], max_length=200)]
+    data: AgentDryRun
 
 
 class AddPackageScreenshotInput(BaseModel):
@@ -3405,6 +4173,10 @@ class AdminReleaseResponseResult(RootModel[AdminReleaseResponse | BusinessErrorR
     root: Annotated[AdminReleaseResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'packageId': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'packageName': 'Visual Studio Code', 'version': '1.140.0', 'title': None, 'publishedAt': None, 'source': 'github_release', 'sourceUrl': None, 'hidden': False, 'isPrerelease': False, 'translationStatus': 'source', 'fetchedAt': '2026-09-30 08:00:00+00:00', 'bodyMarkdown': None, 'i18n': [{'locale': 'en-US', 'status': 'source', 'summary': 'Improve usability and stability.', 'sections': [{'area': 'Editor', 'items': ['Improve keyboard navigation.']}], 'bodyMarkdown': '## Editor\n\nImprove keyboard navigation.', 'failReason': None, 'stale': False, 'model': None, 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': None, 'title': 'A better workspace'}, {'locale': 'zh-CN', 'status': 'machine', 'summary': '改善体验与稳定性。', 'sections': [{'area': '编辑器', 'items': ['改善键盘导航。']}], 'bodyMarkdown': '## 编辑器\n\n改善键盘导航。', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': '更好的工作空间'}, {'locale': 'ja-JP', 'status': 'machine', 'summary': '使いやすさと安定性を改善しました。', 'sections': [{'area': 'エディター', 'items': ['キーボード操作を改善しました。']}], 'bodyMarkdown': '## エディター\n\nキーボード操作を改善しました。', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': 'より快適なワークスペース'}, {'locale': 'es-ES', 'status': 'machine', 'summary': 'Mejoras de uso y estabilidad.', 'sections': [{'area': 'Editor', 'items': ['Mejoras de navegación con teclado.']}], 'bodyMarkdown': '## Editor\n\nMejoras de navegación con teclado.', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': 'Un mejor espacio de trabajo'}, {'locale': 'pt-BR', 'status': 'machine', 'summary': 'Melhorias de uso e estabilidade.', 'sections': [{'area': 'Editor', 'items': ['Melhorias na navegação por teclado.']}], 'bodyMarkdown': '## Editor\n\nMelhorias na navegação por teclado.', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': 'Um espaço de trabalho melhor'}, {'locale': 'ru-RU', 'status': 'machine', 'summary': 'Улучшены удобство и стабильность.', 'sections': [{'area': 'Редактор', 'items': ['Улучшена навигация с клавиатуры.']}], 'bodyMarkdown': '## Редактор\n\nУлучшена навигация с клавиатуры.', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': 'Удобное рабочее пространство'}], 'sourceLocale': 'en-US'}}])]
 
 
+class AssetResponseResult(RootModel[AssetResponse | BusinessErrorResponse | AgentDryRunResponse]):
+    root: Annotated[AssetResponse | BusinessErrorResponse | AgentDryRunResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'kind': 'icon', 'url': 'https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png', 'mime': 'image/png', 'width': 256, 'height': 256, 'bytes': 12000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'createTime': '2026-09-30 08:00:00+00:00'}}])]
+
+
 class CategoryTreeResponseResult(RootModel[CategoryTreeResponse | BusinessErrorResponse]):
     root: Annotated[CategoryTreeResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'parentId': None, 'slug': 'new-mac', 'icon': 'lucide:code-xml', 'appliesTo': 'cask', 'sort': 0, 'visible': True, 'hiddenByDefault': False, 'i18n': {'en-US': {'name': 'Developer Tools', 'description': 'Edit code, debug applications, and add extensions.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'name': '开发工具', 'description': '编辑代码、调试应用并安装扩展。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'name': '開発ツール', 'description': 'コードを編集し、アプリをデバッグして、拡張機能を追加できます。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'name': 'Desarrollo', 'description': 'Edita código, depura aplicaciones y añade extensiones.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'name': 'Desenvolvimento', 'description': 'Edite código, depure aplicativos e adicione extensões.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'name': 'Разработка', 'description': 'Редактируйте код, отлаживайте приложения и добавляйте расширения.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'packageCount': 1, 'children': [], 'sourceLocale': 'en-US'}]}])]
 
@@ -3431,6 +4203,10 @@ class ScreenshotListResponseResult(RootModel[ScreenshotListResponse | BusinessEr
 
 class TranslationQueuePageResponseResult(RootModel[TranslationQueuePageResponse | BusinessErrorResponse]):
     root: Annotated[TranslationQueuePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'type': 'package', 'id': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'packageName': 'Visual Studio Code', 'version': None, 'rank30d': None, 'status': 'machine', 'original': 'Code editor with debugging and extensions', 'translated': 'デバッグと拡張機能に対応したコードエディター', 'confidence': None, 'updatedAt': '2026-09-30 08:00:00+00:00', 'locale': 'ja-JP', 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
+
+
+class AssetUploadTicketResponseResult(RootModel[AssetUploadTicketResponse | BusinessErrorResponse | AgentDryRunResponse]):
+    root: Annotated[AssetUploadTicketResponse | BusinessErrorResponse | AgentDryRunResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'uploadUrl': 'https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000', 'method': 'POST', 'fileField': 'file', 'kind': 'icon', 'maxBytes': 5242880, 'expiresAt': '2026-09-30 08:10:00+00:00'}}])]
 
 
 AdminCategoryNode.model_rebuild()

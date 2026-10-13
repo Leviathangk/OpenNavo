@@ -235,6 +235,9 @@ const local: App.I18n.Schema = {
     content: '内容运营',
     content_collection: '合集',
     'content_collection-detail': '合集详情',
+    content_article: '文章',
+    'content_article-detail': '编辑文章',
+    'content_article-author': '作者',
     content_feature: '精选位',
     content_glossary: '术语表',
     content_announcement: '公告',
@@ -255,6 +258,7 @@ const local: App.I18n.Schema = {
     system_role: '角色与权限',
     system_translation: '翻译 AI 设置',
     system_github: 'GitHub 设置',
+    system_seo: 'SEO 与统计',
     system_agent: 'Agent 接入',
     system_audit: '审计日志',
     'user-center': '个人中心'

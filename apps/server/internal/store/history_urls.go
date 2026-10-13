@@ -58,6 +58,22 @@ func (s *Store) HistoryURLs(ctx context.Context, ref content.Ref, base string, s
 		}
 	case "feature":
 		add("/")
+	case "article":
+		var slug string
+		if err := s.DB.WithContext(ctx).Raw("SELECT a.slug FROM article_revisions r JOIN articles a ON a.id=r.article_id WHERE r.id=? AND a.status='published'", ref.ID).Scan(&slug).Error; err != nil {
+			return nil, err
+		}
+		if slug != "" {
+			add("/articles/" + url.PathEscape(slug))
+		}
+	case "article_author":
+		var slug string
+		if err := s.DB.WithContext(ctx).Raw("SELECT slug FROM article_authors WHERE id=?", ref.ID).Scan(&slug).Error; err != nil {
+			return nil, err
+		}
+		if slug != "" {
+			add("/authors/" + url.PathEscape(slug))
+		}
 	}
 	return out, nil
 }

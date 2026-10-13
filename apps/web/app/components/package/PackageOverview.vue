@@ -4,12 +4,16 @@ import { formatCount, formatVersion } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
 import { architectures, displayUrl, OnPackageOverview, useUiMessages } from '@opennavo/ui';
 import type { OnKeyValueItem, OnRelatedPackage } from '@opennavo/ui';
-import { applicationCategory, packagePath } from '~/utils/packageView';
+import { packagePath } from '~/utils/packageView';
+import { appEntityId, softwareAppNode } from '~/utils/structuredData';
+import { trackEvent } from '~/utils/analytics';
+import { overviewDescription, overviewTitle } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 
-// Overview (08 §10.5): shared OnPackageOverview (ADR-017); left screenshots → introduction → latest release → caveats.
+// Overview (08 §10.5): shared OnPackageOverview (ADR-017); left screenshots → introduction → latest release →
+// install and uninstall → sourced facts → confirmed alternatives → questions (WP9, web only) → caveats.
 // Right: install command → information → monthly installs → similar apps.
 const props = defineProps<{ kind: PackageKind }>();
 
@@ -127,67 +131,41 @@ const info = computed<OnKeyValueItem[]>(() => {
 
 function onCopied(command: string) {
   toasts.push({ tone: 'success', title: t('toast.copied'), description: command });
+  trackEvent('copy_install_command');
 }
 
 type SoftwareAppInput = NonNullable<Parameters<typeof defineSoftwareApp>[0]>;
 
-// Share image (08 §14).
-if (pkg.value)
-  defineOgImage('OgPackage', {
-    locale: formattingLocale.value,
-    name: pkg.value.displayName,
-    summary: pkg.value.summary ?? undefined,
-    kind: pkg.value.kind,
-    token: pkg.value.token,
-    iconUrl: pkg.value.iconUrl,
-    accent: pkg.value.accentColor,
-    ...useOgFrame()
-  });
-
-// 05 §6.2: SoftwareApplication and breadcrumbs; URL matches absolute canonical.
+// WP10 SoftwareApplication (utils/structuredData): only what the page shows, offers only for
+// verified prices, none for fonts. Breadcrumbs come from PackageDetailLayout.
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
 useSchemaOrg(
   computed(() => {
     const value = pkg.value;
     if (!value) return [];
+    const app = softwareAppNode(value, `${siteUrl}${localePath(packagePath(value.token))}`, t);
     return [
-      // 05 §6.2: omit offers because price is unknown; never label paid apps free. Assert against definer input despite its required offers type.
-      defineSoftwareApp({
-        name: value.displayName,
-        alternateName: value.names.filter(name => name !== value.displayName),
-        operatingSystem: 'macOS',
-        applicationCategory: applicationCategory(value.primaryCategory?.slug),
-        softwareVersion: value.version,
-        url: `${siteUrl}${localePath(packagePath(value.token))}`,
-        ...(value.homepage ? { sameAs: value.homepage } : {}),
-        ...(value.summary ? { description: value.summary } : {}),
-        ...(value.iconUrl ? { image: value.iconUrl } : {})
-      } as SoftwareAppInput),
-      defineBreadcrumb({
-        itemListElement: [
-          { name: t('nav.discover'), item: localePath('/discover') },
-          {
-            name: t('catalog.appsTitle'),
-            item: localePath('/apps')
-          },
-          { name: value.displayName }
-        ]
-      })
+      ...(app ? [defineSoftwareApp({ '@id': appEntityId(siteUrl, value.token), ...app } as SoftwareAppInput)] : []),
+      // Otherwise the WebPage borrows the site logo as its primary image.
+      ...(value.iconUrl ? [defineWebPage({ primaryImageOfPage: value.iconUrl })] : [])
     ];
   })
 );
 
-// 05 §6.1: title is name — summary; grouped numbers. Cask-only (ADR-018).
+// WP1 titles and descriptions (utils/seoTitles). The legacy branch is the rollout fallback
+// selected in admin; it goes away together with the switch. Cask-only (ADR-018).
+const legacyTitles = useLegacyTitles();
 usePageSeo({
   title: () => {
     const value = pkg.value;
     if (!value) return token.value;
-    const summary = value.summary ?? '';
-    return t('package.metaTitleCask', { name: value.displayName, summary });
+    if (!legacyTitles.value) return overviewTitle(value, t);
+    return t('package.metaTitleCask', { name: value.displayName, summary: value.summary ?? '' });
   },
   description: () => {
     const value = pkg.value;
     if (!value) return undefined;
+    if (!legacyTitles.value) return overviewDescription(value, t);
     return t(
       'package.metaDescription',
       {
@@ -203,35 +181,44 @@ usePageSeo({
 </script>
 
 <template>
-  <OnPackageOverview
-    v-if="pkg"
-    :screenshots="shots"
-    :screenshots-label="t('package.screenshots')"
-    :has-about="Boolean(description)"
-    :about-machine-translated="Boolean(pkg.machineTranslated)"
-    :about-original-href="originalHref"
-    :caveats="pkg.caveats"
-    :caveats-title="t('package.caveats')"
-    :command="pkg.installCommand"
-    :info="info"
-    :related="relatedItems"
-    :related-title="t('package.related')"
-    :link-as="NuxtLink"
-    @copied="onCopied"
-  >
-    <template #about>
-      <MarkdownContent size="md" :heading-level="3" :source="description" />
-    </template>
-    <template #main>
-      <LatestReleaseCard
-        v-if="pkg.latestRelease"
-        :release="pkg.latestRelease"
-        :total="pkg.releaseCount"
-        :versions-href="localePath(packagePath(pkg.token, 'versions'))"
-      />
-    </template>
-    <template #aside>
-      <MonthlyInstalls :installs="pkg.installs" />
-    </template>
-  </OnPackageOverview>
+  <div v-if="pkg" class="flex flex-col gap-14px">
+    <PackageAnswer v-if="pkg.kind === 'cask'" :pkg="pkg" />
+    <OnPackageOverview
+      :screenshots="shots"
+      :screenshots-label="t('package.screenshots')"
+      :has-about="Boolean(description)"
+      :about-machine-translated="Boolean(pkg.machineTranslated)"
+      :about-original-href="originalHref"
+      :caveats="pkg.caveats"
+      :caveats-title="t('package.caveats')"
+      :command="pkg.installCommand"
+      :info="info"
+      :related="relatedItems"
+      :related-title="t('package.related')"
+      :link-as="NuxtLink"
+      @copied="onCopied"
+    >
+      <template #about>
+        <MarkdownContent size="md" :heading-level="3" :source="description" />
+      </template>
+      <template #main>
+        <LatestReleaseCard
+          v-if="pkg.latestRelease"
+          :release="pkg.latestRelease"
+          :total="pkg.releaseCount"
+          :versions-href="localePath(packagePath(pkg.token, 'versions'))"
+        />
+        <template v-if="pkg.kind === 'cask'">
+          <PackageGuide :pkg="pkg" />
+          <PackageFacts :pkg="pkg" />
+          <PackageAlternatives :pkg="pkg" />
+          <PackageFaq :pkg="pkg" />
+          <PackageArticles :pkg="pkg" />
+        </template>
+      </template>
+      <template #aside>
+        <MonthlyInstalls :installs="pkg.installs" />
+      </template>
+    </OnPackageOverview>
+  </div>
 </template>

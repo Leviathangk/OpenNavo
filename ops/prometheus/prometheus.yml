@@ -10,6 +10,13 @@ scrape_configs:
         type: A
         port: 9090
         refresh_interval: 30s
+  # Web origin requests by crawler class (WP8); one target per replica.
+  - job_name: web
+    dns_sd_configs:
+      - names: [web]
+        type: A
+        port: 9091
+        refresh_interval: 30s
   - job_name: asynq
     static_configs:
       - targets: ['asynqmon:8080']

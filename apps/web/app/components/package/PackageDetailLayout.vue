@@ -2,6 +2,7 @@
 import { unwrap } from '@opennavo/api';
 import type { PackageKind } from '@opennavo/shared';
 import { OnBreadcrumb, OnErrorState, OnPackageNotice, OnTabs } from '@opennavo/ui';
+import { allowedHreflangs, packageRobots } from '~/utils/indexing';
 import { packageLink, packagePath } from '~/utils/packageView';
 
 // Detail shell (05 §3): notice/header/stats shared with desktop (ADR-017), tabs with separate URLs, child-route content.
@@ -13,7 +14,31 @@ const route = useRoute();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 
-const { data: pkg, error, refresh, token } = await usePackage(props.kind);
+const { data: pkg, error, refresh, token, removed } = await usePackage(props.kind);
+
+// Share image (08 §14, WP13): every tab reuses the app's card; removed apps keep their name.
+const formattingLocale = toAppLocale(locale.value);
+if (pkg.value)
+  defineOgImage('OgPackage', {
+    locale: formattingLocale,
+    name: pkg.value.displayName,
+    summary: pkg.value.summary ?? undefined,
+    kind: pkg.value.kind,
+    token: pkg.value.token,
+    iconUrl: pkg.value.iconUrl,
+    accent: pkg.value.accentColor,
+    ...useOgFrame()
+  });
+else if (removed.value)
+  defineOgImage('OgPackage', {
+    locale: formattingLocale,
+    name: removed.value.displayName,
+    summary: removed.value.summary ?? undefined,
+    kind: props.kind,
+    token: removed.value.token,
+    iconUrl: removed.value.iconUrl,
+    ...useOgFrame()
+  });
 
 // Release cadence uses detail releaseStats; older backends fall back to timeline stats, showing a dash on failure.
 const { data: fallbackStats } = await useAsyncData(
@@ -62,7 +87,7 @@ const tabs = computed(() => [
   }
 ]);
 
-// Breadcrumbs match desktop: Discover › primary category › app.
+// Breadcrumbs match desktop: Discover › primary category › app. Structured data uses the same list.
 const breadcrumb = computed(() => {
   const category = pkg.value?.primaryCategory;
   return [
@@ -70,6 +95,18 @@ const breadcrumb = computed(() => {
     ...(category ? [{ label: category.name, href: localePath(`/categories/${category.slug}`) }] : []),
     { label: pkg.value?.displayName ?? token.value }
   ];
+});
+useBreadcrumbSchema(breadcrumb);
+
+// WP11: the API decides indexability and languages; each tab adds its own value check. Alternates
+// for languages that are not indexed are dropped from hreflang (app.vue reads this state).
+useSeoMeta({ robots: () => (pkg.value ? packageRobots(pkg.value, tab.value, toAppLocale(locale.value)) : undefined) });
+const hreflangs = useState<string[] | null>('page:hreflangs', () => null);
+watchEffect(() => {
+  hreflangs.value = allowedHreflangs(pkg.value?.indexing);
+});
+onUnmounted(() => {
+  hreflangs.value = null;
 });
 
 const notice = computed(() => {
@@ -93,7 +130,8 @@ const notice = computed(() => {
 
 <template>
   <div class="box-border flex flex-col gap-14px pt-6px">
-    <OnErrorState v-if="error && !pkg" @retry="refresh()" />
+    <PackageRemoved v-if="removed" :info="removed" />
+    <OnErrorState v-else-if="error && !pkg" @retry="refresh()" />
     <template v-else-if="pkg">
       <OnBreadcrumb :items="breadcrumb" :link-as="NuxtLink" />
       <OnPackageNotice

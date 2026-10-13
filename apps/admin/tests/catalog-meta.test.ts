@@ -28,15 +28,17 @@ function field(name: string) {
   return defineComponent({
     props: { value: { type: null, default: null } },
     emits: ['update:value'],
-    setup: (props, { emit }) => () =>
-      h('input', {
-        'data-field': name,
-        value: props.value ?? '',
-        onInput: (event: Event) => {
-          const raw = (event.target as HTMLInputElement).value;
-          emit('update:value', name === 'size' ? (raw === '' ? null : Number(raw)) : raw || null);
-        }
-      })
+    setup:
+      (props, { emit }) =>
+      () =>
+        h('input', {
+          'data-field': name,
+          value: props.value ?? '',
+          onInput: (event: Event) => {
+            const raw = (event.target as HTMLInputElement).value;
+            emit('update:value', name === 'size' ? (raw === '' ? null : Number(raw)) : raw || null);
+          }
+        })
   });
 }
 
@@ -113,7 +115,9 @@ describe('Package details: size and accent', () => {
   it('Cleared size and accent submit null', async () => {
     const wrapper = tab();
     await wrapper.find('[data-field="size"]').setValue('');
-    const clear = wrapper.findAll('button').find(item => item.text() === 'page.catalog.packageDetail.basic.accentColorClear');
+    const clear = wrapper
+      .findAll('button')
+      .find(item => item.text() === 'page.catalog.packageDetail.basic.accentColorClear');
     await clear!.trigger('click');
     const body = await save(wrapper);
     expect(body.downloadSize).toBeNull();
@@ -132,7 +136,9 @@ describe('Job center: types', () => {
       'cleanup'
     ]);
     expect(TRIGGER_TYPES).not.toContain('enrich_schedule');
-    expect(JOB_TYPES).toEqual(expect.arrayContaining([...TRIGGER_TYPES, 'enrich_schedule', 'translate_schedule', 'assets_icons']));
+    expect(JOB_TYPES).toEqual(
+      expect.arrayContaining([...TRIGGER_TYPES, 'enrich_schedule', 'translate_schedule', 'assets_icons'])
+    );
   });
 
   it('Convert asynq colons to underscores, preserving unknown names', () => {

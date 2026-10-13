@@ -22,6 +22,8 @@ func TestConfigurationValidation(t *testing.T) {
 		{"APP_ENV", func(c *Config) { c.AppEnv = "other" }}, {"DATABASE_URL", func(c *Config) { c.DatabaseURL = "mysql://localhost/db" }},
 		{"JWT_SECRET", func(c *Config) { c.JWTSecret = "private-value" }}, {"LLM_API_KEY", func(c *Config) { c.LLMEnabled = true }},
 		{"GITHUB_SETTINGS_ENCRYPTION_KEY", func(c *Config) { c.GitHubSettingsEncryptionKey = "short" }},
+		{"SEO_SETTINGS_ENCRYPTION_KEY", func(c *Config) { c.SEOSettingsEncryptionKey = "short" }},
+		{"WEB_INTERNAL_SECRET", func(c *Config) { c.WebInternalSecret = "short" }},
 		{"prod", func(c *Config) { c.AppEnv = "prod" }}, {"duration", func(c *Config) { c.LLMTimeout = 0 }},
 		{"reasoning", func(c *Config) { c.LLMReasoningEffort = "max" }}, {"url", func(c *Config) { c.CDNBaseURL = "file:///tmp" }},
 		{"timezone", func(c *Config) { c.TZSchedule = "bad-zone" }}, {"log", func(c *Config) { c.LogLevel = "verbose" }},

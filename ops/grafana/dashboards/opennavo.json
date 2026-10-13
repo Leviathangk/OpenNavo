@@ -272,6 +272,87 @@
           "legendFormat": "{{job}} {{kind}} {{task}} {{type}} {{status}}"
         }
       ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Crawlers at origin",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "opennavo-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(agent)(rate(opennavo_web_requests_total{agent!~\"browser|unknown\"}[5m]))",
+          "legendFormat": "{{agent}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Crawler errors and redirects",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "opennavo-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(agent,status)(rate(opennavo_web_requests_total{agent!~\"browser|unknown\",status!~\"200|304\"}[5m]))",
+          "legendFormat": "{{agent}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Crawled page types",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "opennavo-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 32
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(route)(rate(opennavo_web_requests_total{agent!~\"browser|unknown\"}[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "text",
+      "title": "About crawler counts",
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Counts cover requests that reached the web origin. Pages served from the Cloudflare cache never get here, so use Cloudflare analytics for total crawler traffic. User-agents can be forged: confirm important crawlers against the vendors' published IP ranges or reverse DNS. Visitors are measured in GA4, which does not see crawlers and misses visitors in mainland China and users with ad blockers."
+      }
     }
   ]
 }

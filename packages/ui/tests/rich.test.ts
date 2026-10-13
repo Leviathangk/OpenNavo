@@ -128,6 +128,12 @@ describe('OnMarkdown', () => {
     expect(wrapper.get('p').text()).toBe('正文');
   });
 
+  it('OnMarkdownView reads article bodies across their column', () => {
+    const wrapper = mount(OnMarkdownView, { props: { html: '<h2 id="pick">怎么选</h2>', size: 'article' } });
+    expect(wrapper.classes()).toEqual(expect.arrayContaining(['on-markdown', 'on-markdown-article']));
+    expect(wrapper.classes()).not.toContain('max-w-[72ch]');
+  });
+
   it('Passes headingLevel to rendering so content directly below the page h1 starts at h2', () => {
     const wrapper = mount(OnMarkdown, { props: { source: '## 简介\n\n### 特性', headingLevel: 2 } });
     expect(wrapper.get('h2').text()).toBe('简介');

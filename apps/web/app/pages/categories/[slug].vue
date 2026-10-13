@@ -4,6 +4,7 @@ import { formatCount } from '@opennavo/shared';
 import { OnEmpty, OnErrorState, OnPackageListView, OnPagination } from '@opennavo/ui';
 import { CATALOG_SORTS, readEnum, readFlag, readPage } from '~/utils/catalogQuery';
 import { findCategoryPath } from '~/utils/categories';
+import { packagePath } from '~/utils/packageView';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -77,9 +78,38 @@ const crumbs = computed(() => [
       : { label: node.name, href: localePath(`/categories/${node.slug}`) }
   )
 ]);
+useBreadcrumbSchema(crumbs);
+// Share image (WP13): the category beside the first apps it lists.
+if (category.value)
+  defineOgImage('OgList', {
+    locale: formattingLocale.value,
+    label: t('og.category'),
+    title: category.value.name,
+    description: category.value.description ?? undefined,
+    icons: (data.value?.records ?? []).slice(0, 4).map(pkg => ({
+      name: pkg.displayName,
+      token: pkg.token,
+      src: pkg.iconUrl,
+      accent: pkg.accentColor
+    })),
+    ...useOgFrame()
+  });
+useItemListSchema(
+  () =>
+    error.value
+      ? null
+      : data.value?.records.map(pkg => ({ name: pkg.displayName, path: localePath(packagePath(pkg.token)) })),
+  () => (page.value - 1) * PAGE_SIZE + 1
+);
 
+// WP1: no "best" in titles; the legacy title is the rollout fallback selected in admin.
+const legacyTitles = useLegacyTitles();
 usePageSeo({
-  title: () => t('categories.itemMetaTitle', { name: category.value?.name ?? '' }),
+  title: () =>
+    t(legacyTitles.value ? 'categories.itemMetaTitle' : 'categories.seo.itemTitle', {
+      name: category.value?.name ?? ''
+    }),
+  page,
   description: () => category.value?.description ?? t('categories.description')
 });
 </script>

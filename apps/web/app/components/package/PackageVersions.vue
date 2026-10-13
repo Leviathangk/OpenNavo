@@ -2,10 +2,11 @@
 import { LOCALE_METADATA } from '@opennavo/shared';
 import { unwrap } from '@opennavo/api';
 import type { ReleaseEntry } from '@opennavo/api';
-import { formatDate, formatVersion } from '@opennavo/shared';
+import { formatDate } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
 import { OnEmpty, OnErrorState, OnPagination, OnSegmented, OnStatTile, OnVersionTimeline } from '@opennavo/ui';
 import { readPage } from '~/utils/catalogQuery';
+import { versionsDescription, versionsTitle } from '~/utils/seoTitles';
 
 // Version history (08 §10.6, mockup 04): toolbar (all / with notes, Chinese / original), timeline, stats/sources on right.
 // Filters/original switch live in SSR URL (notes=1, original=1); canonical retains page only. No desktop installation markers or Update to this version.
@@ -105,18 +106,18 @@ const sources = computed(() => {
   return order.filter(source => used.has(source));
 });
 
+// WP1: the legacy title is the rollout fallback selected in admin. The description never uses
+// versionChangedAt as a release date (utils/seoTitles currentReleaseDate).
+const legacyTitles = useLegacyTitles();
 usePageSeo({
-  title: () => t('package.versionsMetaTitle', { name: pkg.value?.displayName ?? token.value }),
+  title: () => {
+    const value = pkg.value;
+    if (legacyTitles.value) return t('package.versionsMetaTitle', { name: value?.displayName ?? token.value });
+    return value ? versionsTitle(value, t) : t('package.seo.versionsTitle', { name: token.value });
+  },
+  page,
   description: () =>
-    pkg.value
-      ? t('package.versionsMetaDescription', {
-          name: pkg.value.displayName,
-          version: formatVersion(pkg.value.version),
-          date: formatDate(pkg.value.latestRelease?.publishedAt ?? pkg.value.versionChangedAt, {
-            locale: appLocale.value
-          })
-        })
-      : undefined
+    pkg.value ? versionsDescription(pkg.value, t, iso => formatDate(iso, { locale: appLocale.value })) : undefined
 });
 </script>
 

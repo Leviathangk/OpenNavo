@@ -9,12 +9,15 @@ vi.mock('@/locales', () => ({ getLocale: () => 'en-US' }));
 vi.mock('../src/locales/index', () => ({ getLocale: () => 'en-US' }));
 
 describe('Admin six-language runtime configuration', () => {
-  it.each(['ja-JP', 'es-ES', 'pt-BR', 'ru-RU'] as const)('%s uses complete generated messages without English placeholders', locale => {
-    expect(messages[locale]).not.toBe(messages['en-US']);
-    // Brand titles may remain English; generic actions must use generated translations.
-    expect(messages[locale].common.cancel).not.toBe(messages['en-US'].common.cancel);
-    expect(Object.keys(messages[locale].page)).toEqual(Object.keys(messages['zh-CN'].page));
-  });
+  it.each(['ja-JP', 'es-ES', 'pt-BR', 'ru-RU'] as const)(
+    '%s uses complete generated messages without English placeholders',
+    locale => {
+      expect(messages[locale]).not.toBe(messages['en-US']);
+      // Brand titles may remain English; generic actions must use generated translations.
+      expect(messages[locale].common.cancel).not.toBe(messages['en-US'].common.cancel);
+      expect(Object.keys(messages[locale].page)).toEqual(Object.keys(messages['zh-CN'].page));
+    }
+  );
   it('Stored choices win; invalid values match browser preferences; unknown falls back to English', () => {
     expect(resolveLocale('ru-RU', ['ja-JP'])).toBe('ru-RU');
     expect(resolveLocale('invalid', ['fr-FR', 'es-MX'])).toBe('es-ES');

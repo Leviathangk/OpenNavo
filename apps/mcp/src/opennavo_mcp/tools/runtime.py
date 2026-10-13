@@ -26,7 +26,10 @@ SELECTORS: dict[str, dict[str, Any]] = {
         "kind": {"type": "string", "enum": ["revision", "request", "trash"], "default": "revision"}
     },
     "package_get": {
-        "include": {"type": "array", "items": {"enum": ["screenshots", "display", "translations"]}}
+        "include": {
+            "type": "array",
+            "items": {"enum": ["screenshots", "display", "translations", "facts"]},
+        }
     },
     "package_refresh": {"mode": {"type": "string", "enum": ["resync"], "default": "resync"}},
     "package_set_icon": {"remove": {"type": "boolean", "default": False}},
@@ -286,6 +289,8 @@ class AdapterTool(Tool):
                 result["translations"] = await self.invoke(
                     "getTranslationStatus", {"entity": "package", "id": args["id"]}
                 )
+            if "facts" in includes:
+                result["facts"] = await self.invoke("getPackageFacts", {"id": args["id"]})
             if "display" in includes:
                 result["display"] = package_display(result)
         # Reads/previews may contain Homebrew data, feedback, queries or old upstream text.

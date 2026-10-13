@@ -94,7 +94,7 @@ func run(ctx context.Context) error {
 	}
 	desktopService := &desktop.Service{Store: st, Objects: desktop.S3Objects{S3Objects: assets.S3Objects{Client: objects}}}
 	adminService := &management.Service{Desktop: desktopService, Store: st, Config: cfg, Queue: &jobs.Enqueuer{Client: asynq.NewClientFromRedisClient(st.Redis), Redis: st.Redis}, IconAccent: assetService.IconAccent}
-	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient)}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}, Catalog: &catalog.PublicService{Store: st, Cache: cacheBackend, WebBaseURL: cfg.WebBaseURL}, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
+	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient)}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}, Catalog: &catalog.PublicService{Store: st, Cache: cacheBackend, WebBaseURL: cfg.WebBaseURL, Secrets: cfg}, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
 	if err != nil {
 		return fmt.Errorf("create HTTP server: %w", err)
 	}

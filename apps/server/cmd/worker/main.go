@@ -28,6 +28,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/contenttranslate"
 	"github.com/opennavo/opennavo/server/internal/service/maintenance"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
+	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	"github.com/opennavo/opennavo/server/internal/storage"
 	"github.com/opennavo/opennavo/server/internal/store"
 )
@@ -130,5 +131,26 @@ func run(ctx context.Context) error {
 		}
 	}()
 	defer func() { cancelDispatch(); <-done }()
+	// URL change feed (WP4): refresh page caches and notify search engines after catalog changes.
+	notifier := &urlnotify.Notifier{Store: st, Config: cfg, Logger: logger}
+	notifyDone := make(chan struct{})
+	go func() {
+		defer close(notifyDone)
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-dispatchCtx.Done():
+				return
+			case <-ticker.C:
+				if result, err := notifier.Run(dispatchCtx); err != nil && dispatchCtx.Err() == nil {
+					logger.Error("url change feed failed", "error", err)
+				} else if result.Changes > 0 {
+					logger.Info("url change feed", "changes", result.Changes, "paths", result.Paths, "purged", result.Purged, "announced", result.Announced)
+				}
+			}
+		}
+	}()
+	defer func() { cancelDispatch(); <-notifyDone }()
 	return jobs.Run(ctx, st.Redis, st, jobs.WithLLMLimit(handlers, cfg.LLMConcurrency), location, logger)
 }

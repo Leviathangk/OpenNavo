@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -282,10 +283,13 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 		}
 		if domain.CurrentOperation(ctx).DryRun {
 			delete(preview, "revisionIds")
+			if view, ok := result.(map[string]any); ok && slices.Contains(factWrites, op) {
+				preview["sourceGaps"] = view["gaps"]
+			}
 			result = preview
 			return errPreviewRollback
 		}
-		var after any = mapped(in.Body, map[string]string{"name": "name", "permissions": "permissions", "allowDelete": "allowDelete", "ipAllowlist": "ipAllowlist", "expiresAt": "expiresAt", "limits": "limits", "sourceLocale": "sourceLocale", "title": "title", "body": "body", "sections": "sections", "term": "term", "translations": "translations", "doNotTranslate": "doNotTranslate", "developer": "developer", "repoUrl": "repoUrl", "hidden": "hidden", "editorChoice": "editorChoice", "tags": "tags", "notes": "notes", "downloadSize": "downloadSize", "accentColor": "accentColor", "displayName": "displayName", "summary": "summary", "description": "description", "assetId": "assetId", "captionZh": "captionZh", "captionEn": "captionEn", "theme": "theme", "items": "items", "ids": "ids", "slug": "slug", "icon": "icon", "appliesTo": "appliesTo", "visible": "visible", "hiddenByDefault": "hiddenByDefault", "parentId": "parentId", "i18n": "i18n", "roles": "roles", "status": "status", "nickName": "nickName", "email": "email", "userName": "userName", "roleCode": "roleCode", "roleName": "roleName", "roleDesc": "roleDesc", "permissionCodes": "permissionCodes", "terms": "terms", "enabled": "enabled", "handlerNote": "handlerNote", "manual": "manual", "autoEnabled": "autoEnabled", "value": "value", "key": "key", "nameZh": "nameZh", "nameEn": "nameEn", "probeUrl": "probeUrl", "recommended": "recommended", "sort": "sort", "apiDomain": "apiDomain", "bottleDomain": "bottleDomain", "brewGitRemote": "brewGitRemote", "coreGitRemote": "coreGitRemote", "publishAt": "publishAt", "unpublishAt": "unpublishAt", "coverAssetId": "coverAssetId", "placement": "placement", "targetType": "targetType", "packageId": "packageId", "collectionId": "collectionId", "url": "url", "glowColor": "glowColor", "startsAt": "startsAt", "endsAt": "endsAt"})
+		var after any = mapped(in.Body, map[string]string{"name": "name", "permissions": "permissions", "allowDelete": "allowDelete", "ipAllowlist": "ipAllowlist", "expiresAt": "expiresAt", "limits": "limits", "sourceLocale": "sourceLocale", "title": "title", "body": "body", "sections": "sections", "term": "term", "translations": "translations", "doNotTranslate": "doNotTranslate", "developer": "developer", "repoUrl": "repoUrl", "hidden": "hidden", "editorChoice": "editorChoice", "tags": "tags", "notes": "notes", "downloadSize": "downloadSize", "accentColor": "accentColor", "displayName": "displayName", "summary": "summary", "description": "description", "assetId": "assetId", "captionZh": "captionZh", "captionEn": "captionEn", "theme": "theme", "items": "items", "ids": "ids", "slug": "slug", "icon": "icon", "appliesTo": "appliesTo", "visible": "visible", "hiddenByDefault": "hiddenByDefault", "parentId": "parentId", "i18n": "i18n", "roles": "roles", "status": "status", "nickName": "nickName", "email": "email", "userName": "userName", "roleCode": "roleCode", "roleName": "roleName", "roleDesc": "roleDesc", "permissionCodes": "permissionCodes", "terms": "terms", "enabled": "enabled", "handlerNote": "handlerNote", "manual": "manual", "autoEnabled": "autoEnabled", "value": "value", "key": "key", "nameZh": "nameZh", "nameEn": "nameEn", "probeUrl": "probeUrl", "recommended": "recommended", "sort": "sort", "apiDomain": "apiDomain", "bottleDomain": "bottleDomain", "brewGitRemote": "brewGitRemote", "coreGitRemote": "coreGitRemote", "publishAt": "publishAt", "unpublishAt": "unpublishAt", "coverAssetId": "coverAssetId", "placement": "placement", "targetType": "targetType", "packageId": "packageId", "collectionId": "collectionId", "url": "url", "glowColor": "glowColor", "startsAt": "startsAt", "endsAt": "endsAt", "type": "type", "amount": "amount", "currency": "currency", "region": "region", "plan": "plan", "period": "period", "appVersion": "appVersion", "sourceUrl": "sourceUrl", "method": "method", "verifiedAt": "verifiedAt", "ranges": "ranges", "note": "note"})
 		if op != "UpsertReleaseNotes" && (entity == "release" || entity == "translation" || entity == "changelog_source") {
 			after, err = snapshotEntity(ctx, st, entity, in)
 			if err != nil {
@@ -351,6 +355,34 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 		return s.translationSettings(ctx, op, in)
 	case "GetGitHubSettings", "UpdateGitHubSettings":
 		return s.githubSettings(ctx, op, in)
+	case "GetSeoSettings", "UpdateSeoSettings":
+		return s.seoSettings(ctx, op, in)
+	case "GetPackageIndexStatus", "SetPackageIndexStatus":
+		return s.packageIndexStatus(ctx, op, in)
+	case "ListIndexReport":
+		return s.indexReport(ctx, in)
+	case "GetPackageFacts", "SetPackagePrice", "SetPackageMacosSupport", "SetPackageAlternatives":
+		return s.packageFacts(ctx, op, in)
+	case "ListAdminArticles", "GetAdminArticle":
+		return s.articleRead(ctx, op, in)
+	case "CreateArticle":
+		return s.createArticle(ctx, in)
+	case "UpdateArticle", "SetArticlePackages":
+		return s.updateArticle(ctx, op, in)
+	case "SubmitArticleReview":
+		return s.submitArticle(ctx, in)
+	case "PublishArticle":
+		return s.publishArticle(ctx, in)
+	case "WithdrawArticle", "RestoreArticle":
+		return s.withdrawArticle(ctx, op, in)
+	case "RevertArticle":
+		return s.revertArticle(ctx, in)
+	case "SetArticleSlug":
+		return s.setArticleSlug(ctx, in)
+	case "SetArticleLocale":
+		return s.setArticleLocale(ctx, in)
+	case "ListArticleAuthors", "CreateArticleAuthor", "UpdateArticleAuthor":
+		return s.articleAuthors(ctx, op, in)
 	case "ListDesktopReleases":
 		if s.Desktop == nil {
 			return nil, domain.Internal(nil)

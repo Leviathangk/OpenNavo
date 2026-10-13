@@ -29,6 +29,9 @@ declare module "@elegant-router/types" {
     "changelog_review": "/changelog/review";
     "content": "/content";
     "content_announcement": "/content/announcement";
+    "content_article": "/content/article";
+    "content_article-author": "/content/article-author";
+    "content_article-detail": "/content/article-detail/:id";
     "content_collection": "/content/collection";
     "content_collection-detail": "/content/collection-detail/:id";
     "content_feature": "/content/feature";
@@ -50,6 +53,7 @@ declare module "@elegant-router/types" {
     "system_audit": "/system/audit";
     "system_github": "/system/github";
     "system_role": "/system/role";
+    "system_seo": "/system/seo";
     "system_translation": "/system/translation";
     "system_user": "/system/user";
     "user-center": "/user-center";
@@ -124,6 +128,9 @@ declare module "@elegant-router/types" {
     | "changelog_release"
     | "changelog_review"
     | "content_announcement"
+    | "content_article-author"
+    | "content_article-detail"
+    | "content_article"
     | "content_collection-detail"
     | "content_collection"
     | "content_feature"
@@ -140,6 +147,7 @@ declare module "@elegant-router/types" {
     | "system_audit"
     | "system_github"
     | "system_role"
+    | "system_seo"
     | "system_translation"
     | "system_user"
     | "user-center"

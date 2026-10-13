@@ -75,7 +75,7 @@ func TestHermesAgentSeedExactlyMatchesGrantableContract(t *testing.T) {
 			}
 		}
 	}
-	require.Len(t, granted, 21)
+	require.Len(t, granted, 22)
 	require.ElementsMatch(t, spec.Components.Schemas["AgentPermission"].Value.Enum, granted)
 }
 
@@ -83,7 +83,7 @@ func TestAgentRouteWhitelistCountAndForbiddenSurfaces(t *testing.T) {
 	spec, err := adminapi.GetSpec()
 	require.NoError(t, err)
 	policies := AgentPolicies(spec)
-	require.Len(t, policies, 80)
+	require.Len(t, policies, 90)
 	require.Contains(t, policies, "POST /introspect")
 	require.Equal(t, []string{"dashboard:view"}, policies["GET /dashboard/llm-usage"].Permissions)
 	require.Equal(t, []string{"catalog:asset:upload"}, policies["POST /assets/upload-tickets"].Permissions)

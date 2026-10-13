@@ -128,6 +128,13 @@ func cachePolicy(path string) string {
 		return "public, max-age=60"
 	case "/api/v1/config/client":
 		return "public, max-age=300"
+	case "/api/v1/site/settings":
+		return "public, max-age=60"
+	case "/api/v1/site/indexnow-keys/:key":
+		return "public, max-age=300"
+	case "/api/v1/articles", "/api/v1/articles/:slug", "/api/v1/authors/:slug", "/api/v1/sitemap/articles":
+		// Withdrawals must leave caches quickly.
+		return "public, max-age=60"
 	default:
 		return "public, max-age=60, s-maxage=300, stale-while-revalidate=600"
 	}

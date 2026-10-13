@@ -105,6 +105,104 @@ paths:
                   $ref: "#/components/examples/GitHubSettingsSixLocales"
       x-permissions: [system:github:edit]
       x-agent-access: false
+  /seo/index-report:
+    get:
+      tags: [system]
+      operationId: listIndexReport
+      summary: "Apps the index rule keeps out of search results"
+      description: "Lists apps the rule finds ineligible or that carry a manual override, with the reason and whether the current policy already enforces it, plus counts per reason across all apps. Review it in shadow mode before enforcing. Requires system:seo:edit, not grantable to Agents."
+      parameters:
+        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/Size"
+        - name: reason
+          in: query
+          schema:
+            type: string
+            enum: [hidden, forced_noindex, unavailable, missing_summary, thin, forced_index]
+            example: missing_summary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexReportResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/IndexReportSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/IndexReportSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/IndexReportSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/IndexReportSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/IndexReportSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/IndexReportSixLocales"
+      x-permissions: [system:seo:edit]
+      x-agent-access: false
+  /system/seo-settings:
+    get:
+      tags: [system]
+      operationId: getSeoSettings
+      summary: "Get SEO and analytics settings without returning credentials"
+      description: "Requires system:seo:edit, not grantable to Agents. Returns the effective settings (stored values over defaults) and whether the IndexNow key and Cloudflare token are configured."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeoSettingsResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+      x-permissions: [system:seo:edit]
+      x-agent-access: false
+    put:
+      tags: [system]
+      operationId: updateSeoSettings
+      summary: "Save SEO and analytics settings"
+      description: "Saves the full settings document. The IndexNow key and Cloudflare token are write-only, stored with AES-GCM encryption and excluded from responses, audit and logs; empty/omitted values preserve the current credential and clear* flags remove it. Enabling IndexNow or Cloudflare purge requires the matching credential. Search engines and user-requested fetchers cannot be listed in crawler rules. Requires system:seo:edit, not grantable to Agents."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeoSettingsUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeoSettingsResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/SeoSettingsSixLocales"
+      x-permissions: [system:seo:edit]
+      x-agent-access: false
   /system/translation-settings/models:
     post:
       tags:
@@ -645,7 +743,7 @@ paths:
               schema:
                 type: string
               example: Origin, Accept-Language
-      description: "Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial checks non-hidden editorial notes for the current versionBase. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      description: "Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial checks non-hidden editorial notes for the current versionBase. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
       x-permissions:
         - catalog:package:view
       x-agent-access:
@@ -781,6 +879,277 @@ paths:
                             summary: 新简介
                       affectedUrls:
                         - https://opennavo.example/zh/apps/visual-studio-code
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - catalog:package:edit
+      x-agent-access:
+        permissions:
+          - catalog:package:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /packages/{id}/facts:
+    get:
+      tags:
+        - packages
+      operationId: getPackageFacts
+      summary: "Read sourced app facts"
+      description: "Price, the manual macOS supplement and alternatives with their evidence, what Homebrew declares, where the two disagree, and the evidence gaps (unknown, stale, needs review, incomplete offer, missing app version). Pages show a fact only when it is verified; older than 365 days it is shown as possibly outdated. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageFactsResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - catalog:package:view
+      x-agent-access:
+        permissions:
+          - catalog:package:view
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /packages/{id}/price:
+    put:
+      tags:
+        - packages
+      operationId: setPackagePrice
+      summary: "Set price type with evidence"
+      description: "Records the price type with its source URL, method and verification time (now when omitted); the verifier is the calling admin or Agent. type unknown clears the price and takes no other field. Never infer free from a free download. amount needs currency and period; paid is one_time, subscription renews monthly or yearly; offers in structured data also need region and plan. status needs_review hides the price from pages until it is checked again. Writes a package revision that can be rolled back; dry_run lists the gaps left after the write in sourceGaps. Requires catalog:package:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PackagePriceUpdate"
+            example:
+              type: subscription
+              amount: 9.99
+              currency: USD
+              region: US
+              plan: Pro
+              period: month
+              appVersion: "5.2"
+              sourceUrl: https://vendor.example/pricing
+              method: vendor_site
+              note: Checked the US pricing page.
+      responses:
+        "200":
+          description: "The facts after the write, or the dry-run preview"
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/PackageFactsResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/PackageFactsDryRun"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - catalog:package:edit
+      x-agent-access:
+        permissions:
+          - catalog:package:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /packages/{id}/macos-support:
+    put:
+      tags:
+        - packages
+      operationId: setPackageMacosSupport
+      summary: "Set the manual macOS supplement"
+      description: "Records vendor-sourced support per architecture (native, rosetta for arm64 only, or unsupported) with optional minimum and maximum macOS versions, plus the evidence. It never replaces Homebrew's requirements: where they disagree, pages show both as pending verification. Chip support alone never implies native code. Empty ranges clear the supplement and take no other field. Writes a package revision that can be rolled back; dry_run lists the gaps left after the write in sourceGaps. Requires catalog:package:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PackageMacosUpdate"
+            example:
+              ranges:
+                - arch: arm64
+                  support: native
+                  minimum: "13"
+                  maximum: null
+                - arch: x86_64
+                  support: native
+                  minimum: "12"
+                  maximum: null
+              appVersion: "5.2"
+              sourceUrl: https://vendor.example/docs/system-requirements
+              method: vendor_docs
+      responses:
+        "200":
+          description: "The facts after the write, or the dry-run preview"
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/PackageFactsResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/PackageFactsDryRun"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - catalog:package:edit
+      x-agent-access:
+        permissions:
+          - catalog:package:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /packages/{id}/alternatives:
+    put:
+      tags:
+        - packages
+      operationId: setPackageAlternatives
+      summary: "Set confirmed alternatives"
+      description: "Replaces the ordered list of human-confirmed alternatives (0 to 8; an empty list is valid, never pad it with unrelated apps). The relation is directional: listing B on A does not list A on B. Each entry names 1 to 4 reasons and up to 3 limits from fixed vocabularies, which pages translate; the optional note is internal. Alternatives must be apps in the catalog; hidden or disabled ones stay stored but pages skip them. Writes a package revision that can be rolled back; dry_run lists the gaps left after the write in sourceGaps. Requires catalog:package:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PackageAlternativesUpdate"
+            example:
+              items:
+                - packageId: 2
+                  reasons:
+                    - open_source
+                    - lighter
+                  limits:
+                    - fewer_features
+                  bestFor: developers
+                  note: Both edit code; this one starts faster.
+      responses:
+        "200":
+          description: "The facts after the write, or the dry-run preview"
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/PackageFactsResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/PackageFactsSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/PackageFactsDryRun"
           headers:
             Vary:
               description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
@@ -1497,6 +1866,71 @@ paths:
         - agentToken: []
           agentGateway: []
       description: "This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+  /packages/{id}/index-status:
+    get:
+      tags: [packages]
+      operationId: getPackageIndexStatus
+      summary: "Index eligibility of one app"
+      description: "Returns the rule's verdict, whether the current policy enforces it for this app, the languages its pages would list and the manual override. Requires system:seo:edit, not grantable to Agents."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageIndexStatusResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+      x-permissions: [system:seo:edit]
+      x-agent-access: false
+    put:
+      tags: [packages]
+      operationId: setPackageIndexStatus
+      summary: "Override the index rule for one app"
+      description: "auto follows the rule; index and noindex need a reason, which the impact report shows. Hidden apps stay out of the index whatever the override. Requires system:seo:edit, not grantable to Agents."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PackageIndexOverride"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageIndexStatusResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/PackageIndexStatusSixLocales"
+      x-permissions: [system:seo:edit]
+      x-agent-access: false
   /packages/{id}/resync:
     post:
       tags:
@@ -1951,6 +2385,776 @@ paths:
         - bearerAuth: []
         - agentToken: []
           agentGateway: []
+  /articles:
+    get:
+      tags:
+        - content
+      operationId: listAdminArticles
+      summary: "List articles"
+      description: "Drafts, articles in review, published and withdrawn articles with their working revision. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/Current"
+        - $ref: "#/components/parameters/Size"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ArticleStatus"
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/ArticleType"
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: "Matches the slug or the working title"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticlePageResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:edit
+      x-agent-access:
+        permissions:
+          - content:article:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+    post:
+      tags:
+        - content
+      operationId: createArticle
+      summary: "Create an article draft"
+      description: "Creates a draft with revision 1. Text goes in the source language only; translations start after publication. idempotencyKey returns the same article when a call is retried. Problems that block review are listed in readiness. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleCreate"
+            example:
+              slug: choose-a-screenshot-app
+              sourceLocale: en-US
+              type: roundup
+              title: How to choose a screenshot app for Mac
+              summary: What to compare when picking a screenshot tool.
+              bodyMarkdown: "## What to compare\n\n::app[shottr]"
+              sources:
+                - title: Shottr documentation
+                  url: https://shottr.cc/kb
+              packageIds: [1]
+              idempotencyKey: draft-2026-10-13-screenshots
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:edit
+      x-agent-access:
+        permissions:
+          - content:article:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /articles/{id}:
+    get:
+      tags:
+        - content
+      operationId: getAdminArticle
+      summary: "Read an article"
+      description: "The working revision with its source text, the published revision, language status of the published revision, revision history, review record and what blocks review (readiness). Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArticleResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:edit
+      x-agent-access:
+        permissions:
+          - content:article:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+    put:
+      tags:
+        - content
+      operationId: updateArticle
+      summary: "Edit the working revision"
+      description: "Changes only the fields sent; null clears optional fields. Editing a published article creates a new working revision and never changes the live page. Editing a submitted draft withdraws the submission. expectedRevision must equal the article revision. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleUpdate"
+            example:
+              expectedRevision: 4
+              summary: What to compare when picking a screenshot tool on a Mac.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:edit
+      x-agent-access:
+        permissions:
+          - content:article:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /articles/{id}/packages:
+    put:
+      tags:
+        - content
+      operationId: setArticlePackages
+      summary: "Set the apps an article covers"
+      description: "Replaces the related apps of the working revision (at most 50, apps in the catalog). Same revision rules as updateArticle. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticlePackagesUpdate"
+            example:
+              expectedRevision: 4
+              packageIds: [1, 2]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:edit
+      x-agent-access:
+        permissions:
+          - content:article:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /articles/{id}/submit:
+    post:
+      tags:
+        - content
+      operationId: submitArticleReview
+      summary: "Submit the working revision for review"
+      description: "Fails while readiness lists problems (missing title, summary or body, unsafe Markdown, images that are not OpenNavo assets, unknown app cards, no sources for compilations, no test record for reviews). Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleRevisionCheck"
+            example:
+              expectedRevision: 4
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:edit
+      x-agent-access:
+        permissions:
+          - content:article:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /articles/{id}/publish:
+    post:
+      tags:
+        - content
+      operationId: publishArticle
+      summary: "Publish the submitted revision"
+      description: "Makes the submitted working revision live and starts its translations; each language appears once its translation passes the checks. The first publication sets the publication date; later ones move the update date only when what readers see changed. Requires content:article:publish. Not available to Agents."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleRevisionCheck"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArticleResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:publish
+      x-agent-access: false
+  /articles/{id}/withdraw:
+    post:
+      tags:
+        - content
+      operationId: withdrawArticle
+      summary: "Withdraw a published article"
+      description: "Takes the article off the site (pages answer 410) and out of lists, the sitemap and feeds; restoreArticle brings it back. Requires content:article:publish. Not available to Agents."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleWithdraw"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArticleResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:publish
+      x-agent-access: false
+  /articles/{id}/restore:
+    post:
+      tags:
+        - content
+      operationId: restoreArticle
+      summary: "Restore a withdrawn article"
+      description: "Publishes the last published revision again. Requires content:article:publish. Not available to Agents."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleRevisionCheck"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArticleResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:publish
+      x-agent-access: false
+  /articles/{id}/revert:
+    post:
+      tags:
+        - content
+      operationId: revertArticle
+      summary: "Restore an older revision as the working draft"
+      description: "Copies an earlier revision into the working revision (a new one if the working revision is published), so it can be reviewed and published again. Apps no longer in the catalog are dropped. Requires content:article:edit. Not available to Agents."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleRevert"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArticleResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:edit
+      x-agent-access: false
+  /articles/{id}/slug:
+    put:
+      tags:
+        - content
+      operationId: setArticleSlug
+      summary: "Change the article address"
+      description: "Published slugs keep redirecting to the new address. Requires content:article:publish. Not available to Agents."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleSlugUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArticleResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:publish
+      x-agent-access: false
+  /articles/{id}/locales/{locale}:
+    put:
+      tags:
+        - content
+      operationId: setArticleLocale
+      summary: "Hold back or release one language"
+      description: "A held language stays off the site even when its translation is ready; the page shows the source text there and is not indexed in that language. Requires content:article:publish. Not available to Agents."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/LocalePath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleLocaleUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArticleResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AdminArticleSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:publish
+      x-agent-access: false
+  /article-authors:
+    get:
+      tags:
+        - content
+      operationId: listArticleAuthors
+      summary: "List authors"
+      description: "Authors available for bylines, with their published article counts. Requires content:article:edit. Not available to Agents."
+      parameters:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleAuthorListResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/ArticleAuthorListSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/ArticleAuthorListSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/ArticleAuthorListSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/ArticleAuthorListSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/ArticleAuthorListSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/ArticleAuthorListSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:edit
+      x-agent-access: false
+    post:
+      tags:
+        - content
+      operationId: createArticleAuthor
+      summary: "Create an author"
+      description: "Public profile for bylines and the author page; role and bio are translated. Requires content:article:publish. Not available to Agents."
+      parameters:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleAuthorWrite"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:publish
+      x-agent-access: false
+  /article-authors/{id}:
+    put:
+      tags:
+        - content
+      operationId: updateArticleAuthor
+      summary: "Edit an author"
+      description: "Requires content:article:publish. Not available to Agents."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleAuthorWrite"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/IdResponseResultSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - content:article:publish
+      x-agent-access: false
   /collections:
     get:
       tags:
@@ -6554,6 +7758,7 @@ paths:
                 - catalog:category:edit
                 - content:collection:edit
                 - content:collection:publish
+                - content:article:edit
                 - content:feature:edit
                 - content:glossary:edit
                 - changelog:release:edit
@@ -7727,6 +8932,697 @@ components:
         data:
           tokenConfigured: true
           tokenSource: admin
+    PackageIndexStatus:
+      type: object
+      required: [eligible, reason, indexable, enforced, locales, override, overrideReason, overrideAt]
+      properties:
+        eligible:
+          type: boolean
+          description: "Verdict of the rule and the override, whatever the policy mode."
+        reason:
+          type: string
+          nullable: true
+          description: "Why the app is not eligible: hidden, forced_noindex, unavailable, missing_summary or thin."
+        indexable:
+          type: boolean
+          description: "What pages and the sitemap do now under the current policy."
+        enforced:
+          type: boolean
+          description: "Whether the policy applies the verdict to this app (mode enforce and in scope)."
+        locales:
+          type: array
+          description: "Languages listed in hreflang and the sitemap."
+          items:
+            $ref: "#/components/schemas/Locale"
+        override:
+          type: string
+          enum: [auto, index, noindex]
+        overrideReason:
+          type: string
+          nullable: true
+        overrideAt:
+          type: string
+          format: date-time
+          nullable: true
+      example:
+        eligible: false
+        reason: missing_summary
+        indexable: true
+        enforced: false
+        locales: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU]
+        override: auto
+        overrideReason: null
+        overrideAt: null
+    PackageIndexOverride:
+      type: object
+      additionalProperties: false
+      required: [override]
+      properties:
+        override:
+          type: string
+          enum: [auto, index, noindex]
+        reason:
+          type: string
+          maxLength: 500
+          description: "Required for index and noindex."
+      example:
+        override: noindex
+        reason: Placeholder entry without a real description yet
+    PackageIndexStatusResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/PackageIndexStatus"
+      example:
+        code: '0000'
+        msg: ok
+        data:
+          eligible: false
+          reason: missing_summary
+          indexable: true
+          enforced: false
+          locales: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU]
+          override: auto
+          overrideReason: null
+          overrideAt: null
+    PackageIndexStatusResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/PackageIndexStatusResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+      example:
+        code: '0000'
+        msg: ok
+        data:
+          eligible: false
+          reason: missing_summary
+          indexable: true
+          enforced: false
+          locales: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU]
+          override: auto
+          overrideReason: null
+          overrideAt: null
+    IndexReportRow:
+      type: object
+      required: [id, token, displayName, firstSeenAt, eligible, reason, enforced, override, overrideReason]
+      properties:
+        id:
+          type: integer
+          format: int64
+        token:
+          type: string
+        displayName:
+          type: string
+        firstSeenAt:
+          type: string
+          format: date-time
+        eligible:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+        enforced:
+          type: boolean
+        override:
+          type: string
+          enum: [auto, index, noindex]
+        overrideReason:
+          type: string
+          nullable: true
+      example:
+        id: 1
+        token: visual-studio-code
+        displayName: Visual Studio Code
+        firstSeenAt: 2026-10-01T08:00:00Z
+        eligible: false
+        reason: missing_summary
+        enforced: false
+        override: auto
+        overrideReason: null
+    IndexReportCounts:
+      type: object
+      required: [hidden, forcedNoindex, unavailable, missingSummary, thin, forcedIndex]
+      description: "Apps per reason across the whole catalog; forcedIndex counts apps kept in by an override."
+      properties:
+        hidden:
+          type: integer
+        forcedNoindex:
+          type: integer
+        unavailable:
+          type: integer
+        missingSummary:
+          type: integer
+        thin:
+          type: integer
+        forcedIndex:
+          type: integer
+      example:
+        hidden: 0
+        forcedNoindex: 0
+        unavailable: 12
+        missingSummary: 1
+        thin: 3
+        forcedIndex: 0
+    IndexReportResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          type: object
+          required: [records, current, size, total, counts]
+          properties:
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/IndexReportRow"
+            current:
+              type: integer
+            size:
+              type: integer
+            total:
+              type: integer
+            counts:
+              $ref: "#/components/schemas/IndexReportCounts"
+      example:
+        code: '0000'
+        msg: ok
+        data:
+          records:
+          - id: 1
+            token: visual-studio-code
+            displayName: Visual Studio Code
+            firstSeenAt: 2026-10-01T08:00:00Z
+            eligible: false
+            reason: missing_summary
+            enforced: false
+            override: auto
+            overrideReason: null
+          current: 1
+          size: 24
+          total: 1
+          counts:
+            hidden: 0
+            forcedNoindex: 0
+            unavailable: 12
+            missingSummary: 1
+            thin: 3
+            forcedIndex: 0
+    IndexReportResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/IndexReportResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+      example:
+        code: '0000'
+        msg: ok
+        data:
+          records:
+          - id: 1
+            token: visual-studio-code
+            displayName: Visual Studio Code
+            firstSeenAt: 2026-10-01T08:00:00Z
+            eligible: false
+            reason: missing_summary
+            enforced: false
+            override: auto
+            overrideReason: null
+          current: 1
+          size: 24
+          total: 1
+          counts:
+            hidden: 0
+            forcedNoindex: 0
+            unavailable: 12
+            missingSummary: 1
+            thin: 3
+            forcedIndex: 0
+    ChangeFeedStatus:
+      type: object
+      required: [lastRunAt, lastUrls, lastIndexnowStatus, lastPurgeStatus, lastError]
+      description: "Latest run of the URL change feed (WP4): page caches refreshed, Cloudflare purge and IndexNow results."
+      properties:
+        lastRunAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastUrls:
+          type: integer
+          description: "Page-cache prefixes refreshed in the last run with changes."
+        lastIndexnowStatus:
+          type: string
+          description: "ok, accepted (key verification pending), skipped or error with details; empty when not used."
+        lastPurgeStatus:
+          type: string
+        lastError:
+          type: string
+      example:
+        lastRunAt: 2026-10-13T08:00:00Z
+        lastUrls: 6
+        lastIndexnowStatus: "ok: 6 URLs"
+        lastPurgeStatus: ""
+        lastError: ""
+    SeoCrawlerRule:
+      type: object
+      additionalProperties: false
+      required: [mode, delaySeconds, bots]
+      description: "Rule for one tunable crawler class. limit adds Crawl-delay and keeps the bots off payloads and dependency tabs; block disallows the whole site."
+      properties:
+        mode:
+          type: string
+          enum: [allow, limit, block]
+        delaySeconds:
+          type: integer
+          minimum: 1
+          maximum: 60
+        bots:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$'
+      example:
+        mode: limit
+        delaySeconds: 10
+        bots: [ClaudeBot]
+    SeoSettings:
+      type: object
+      additionalProperties: false
+      required: [identity, verification, analytics, indexNow, cloudflare, edgeCache, crawlers, pages]
+      description: "Non-secret SEO and analytics settings. Credentials are never part of this document."
+      properties:
+        identity:
+          type: object
+          additionalProperties: false
+          required: [name, alternateNames, logoUrl, sameAs]
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 60
+              description: "Site name for WebSite/Organization structured data and og:site_name."
+            alternateNames:
+              type: array
+              maxItems: 5
+              items:
+                type: string
+                minLength: 1
+                maxLength: 80
+            logoUrl:
+              type: string
+              maxLength: 500
+              description: "HTTPS logo URL; empty uses the site icon."
+            sameAs:
+              type: array
+              maxItems: 10
+              items:
+                type: string
+                maxLength: 300
+        verification:
+          type: object
+          additionalProperties: false
+          required: [google, bing]
+          properties:
+            google:
+              type: string
+              maxLength: 100
+              pattern: '^[A-Za-z0-9_-]*$'
+            bing:
+              type: string
+              maxLength: 100
+              pattern: '^[A-Za-z0-9_-]*$'
+        analytics:
+          type: object
+          additionalProperties: false
+          required: [ga4Enabled, ga4MeasurementId, consentRegions]
+          properties:
+            ga4Enabled:
+              type: boolean
+            ga4MeasurementId:
+              type: string
+              pattern: '^(G-[A-Z0-9]{4,16})?$'
+            consentRegions:
+              type: array
+              maxItems: 60
+              description: "ISO 3166-1 alpha-2 regions where analytics cookies wait for consent."
+              items:
+                type: string
+                pattern: '^[A-Z]{2}$'
+        indexNow:
+          type: object
+          additionalProperties: false
+          required: [enabled]
+          properties:
+            enabled:
+              type: boolean
+        cloudflare:
+          type: object
+          additionalProperties: false
+          required: [zoneId, purgeEnabled]
+          properties:
+            zoneId:
+              type: string
+              pattern: '^([a-f0-9]{32})?$'
+            purgeEnabled:
+              type: boolean
+        edgeCache:
+          type: object
+          additionalProperties: false
+          required: [enabled]
+          properties:
+            enabled:
+              type: boolean
+        crawlers:
+          type: object
+          additionalProperties: false
+          required: [training, seoTools]
+          properties:
+            training:
+              $ref: "#/components/schemas/SeoCrawlerRule"
+            seoTools:
+              $ref: "#/components/schemas/SeoCrawlerRule"
+        pages:
+          type: object
+          additionalProperties: false
+          required: [titleTemplate, indexPolicy, versionsSitemap]
+          properties:
+            titleTemplate:
+              type: string
+              enum: [new, legacy]
+              description: "Temporary rollout switch; removed together with the legacy templates."
+            indexPolicy:
+              type: object
+              additionalProperties: false
+              required: [mode, scope, since]
+              properties:
+                mode:
+                  type: string
+                  enum: ["off", shadow, enforce]
+                  description: "Temporary rollout switch for the index eligibility policy."
+                scope:
+                  type: string
+                  enum: [new, all]
+                since:
+                  type: string
+                  maxLength: 40
+                  description: "Set by the server when enforcement first covers new apps (RFC 3339); apps first seen after it are the new scope. Empty until then; saved values are kept."
+            versionsSitemap:
+              type: boolean
+      example:
+        identity:
+          name: OpenNavo
+          alternateNames: [opennavo.com]
+          logoUrl: https://opennavo.example/brand/logo-512.png
+          sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+        verification:
+          google: ""
+          bing: ""
+        analytics:
+          ga4Enabled: true
+          ga4MeasurementId: G-EXAMPLE123
+          consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+        indexNow:
+          enabled: false
+        cloudflare:
+          zoneId: ""
+          purgeEnabled: false
+        edgeCache:
+          enabled: false
+        crawlers:
+          training:
+            mode: limit
+            delaySeconds: 10
+            bots: [ClaudeBot]
+          seoTools:
+            mode: block
+            delaySeconds: 10
+            bots: [MJ12bot, SerpstatBot]
+        pages:
+          titleTemplate: new
+          indexPolicy:
+            mode: shadow
+            scope: new
+            since: ""
+          versionsSitemap: false
+    SeoSettingsUpdate:
+      type: object
+      additionalProperties: false
+      required: [settings]
+      properties:
+        settings:
+          $ref: "#/components/schemas/SeoSettings"
+        indexNowKey:
+          type: string
+          maxLength: 128
+          pattern: '^([A-Za-z0-9-]{8,128})?$'
+          writeOnly: true
+          description: "IndexNow key; empty/omitted preserves the existing key."
+        clearIndexNowKey:
+          type: boolean
+          default: false
+        cloudflareToken:
+          type: string
+          maxLength: 200
+          pattern: '^[!-~]*$'
+          writeOnly: true
+          description: "Cloudflare API token limited to cache purge; empty/omitted preserves the existing token."
+        clearCloudflareToken:
+          type: boolean
+          default: false
+      example:
+        settings:
+          identity:
+            name: OpenNavo
+            alternateNames: [opennavo.com]
+            logoUrl: https://opennavo.example/brand/logo-512.png
+            sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+          verification:
+            google: ""
+            bing: ""
+          analytics:
+            ga4Enabled: true
+            ga4MeasurementId: G-EXAMPLE123
+            consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+          indexNow:
+            enabled: false
+          cloudflare:
+            zoneId: ""
+            purgeEnabled: false
+          edgeCache:
+            enabled: false
+          crawlers:
+            training:
+              mode: limit
+              delaySeconds: 10
+              bots: [ClaudeBot]
+            seoTools:
+              mode: block
+              delaySeconds: 10
+              bots: [MJ12bot, SerpstatBot]
+          pages:
+            titleTemplate: new
+            indexPolicy:
+              mode: shadow
+              scope: new
+              since: ""
+            versionsSitemap: false
+    SeoSettingsView:
+      type: object
+      additionalProperties: false
+      required: [settings, indexNowKeyConfigured, cloudflareTokenConfigured, updatedAt, revision, siteUrl, changeFeed]
+      properties:
+        settings:
+          $ref: "#/components/schemas/SeoSettings"
+        indexNowKeyConfigured:
+          type: boolean
+        cloudflareTokenConfigured:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+          description: "Increments on every save; the public site settings carry the same value."
+        siteUrl:
+          type: string
+          format: uri
+          description: "Public web origin (WEB_BASE_URL), used for the robots.txt preview."
+        changeFeed:
+          $ref: "#/components/schemas/ChangeFeedStatus"
+      example:
+        settings:
+          identity:
+            name: OpenNavo
+            alternateNames: [opennavo.com]
+            logoUrl: https://opennavo.example/brand/logo-512.png
+            sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+          verification:
+            google: ""
+            bing: ""
+          analytics:
+            ga4Enabled: true
+            ga4MeasurementId: G-EXAMPLE123
+            consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+          indexNow:
+            enabled: false
+          cloudflare:
+            zoneId: ""
+            purgeEnabled: false
+          edgeCache:
+            enabled: false
+          crawlers:
+            training:
+              mode: limit
+              delaySeconds: 10
+              bots: [ClaudeBot]
+            seoTools:
+              mode: block
+              delaySeconds: 10
+              bots: [MJ12bot, SerpstatBot]
+          pages:
+            titleTemplate: new
+            indexPolicy:
+              mode: shadow
+              scope: new
+              since: ""
+            versionsSitemap: false
+        indexNowKeyConfigured: false
+        cloudflareTokenConfigured: false
+        updatedAt: 2026-10-13T08:00:00Z
+        revision: 1
+        siteUrl: https://opennavo.example
+        changeFeed:
+          lastRunAt: 2026-10-13T08:00:00Z
+          lastUrls: 6
+          lastIndexnowStatus: "ok: 6 URLs"
+          lastPurgeStatus: ""
+          lastError: ""
+    SeoSettingsResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+        data:
+          $ref: "#/components/schemas/SeoSettingsView"
+      example:
+        code: '0000'
+        msg: ok
+        data:
+            settings:
+              identity:
+                name: OpenNavo
+                alternateNames: [opennavo.com]
+                logoUrl: https://opennavo.example/brand/logo-512.png
+                sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+              verification:
+                google: ""
+                bing: ""
+              analytics:
+                ga4Enabled: true
+                ga4MeasurementId: G-EXAMPLE123
+                consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+              indexNow:
+                enabled: false
+              cloudflare:
+                zoneId: ""
+                purgeEnabled: false
+              edgeCache:
+                enabled: false
+              crawlers:
+                training:
+                  mode: limit
+                  delaySeconds: 10
+                  bots: [ClaudeBot]
+                seoTools:
+                  mode: block
+                  delaySeconds: 10
+                  bots: [MJ12bot, SerpstatBot]
+              pages:
+                titleTemplate: new
+                indexPolicy:
+                  mode: shadow
+                  scope: new
+                  since: ""
+                versionsSitemap: false
+            indexNowKeyConfigured: false
+            cloudflareTokenConfigured: false
+            updatedAt: 2026-10-13T08:00:00Z
+            revision: 1
+            siteUrl: https://opennavo.example
+            changeFeed:
+              lastRunAt: 2026-10-13T08:00:00Z
+              lastUrls: 6
+              lastIndexnowStatus: "ok: 6 URLs"
+              lastPurgeStatus: ""
+              lastError: ""
+    SeoSettingsResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/SeoSettingsResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+      example:
+        code: '0000'
+        msg: ok
+        data:
+            settings:
+              identity:
+                name: OpenNavo
+                alternateNames: [opennavo.com]
+                logoUrl: https://opennavo.example/brand/logo-512.png
+                sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+              verification:
+                google: ""
+                bing: ""
+              analytics:
+                ga4Enabled: true
+                ga4MeasurementId: G-EXAMPLE123
+                consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+              indexNow:
+                enabled: false
+              cloudflare:
+                zoneId: ""
+                purgeEnabled: false
+              edgeCache:
+                enabled: false
+              crawlers:
+                training:
+                  mode: limit
+                  delaySeconds: 10
+                  bots: [ClaudeBot]
+                seoTools:
+                  mode: block
+                  delaySeconds: 10
+                  bots: [MJ12bot, SerpstatBot]
+              pages:
+                titleTemplate: new
+                indexPolicy:
+                  mode: shadow
+                  scope: new
+                  since: ""
+                versionsSitemap: false
+            indexNowKeyConfigured: false
+            cloudflareTokenConfigured: false
+            updatedAt: 2026-10-13T08:00:00Z
+            revision: 1
+            siteUrl: https://opennavo.example
+            changeFeed:
+              lastRunAt: 2026-10-13T08:00:00Z
+              lastUrls: 6
+              lastIndexnowStatus: "ok: 6 URLs"
+              lastPurgeStatus: ""
+              lastError: ""
     TranslationModelsRequest:
       type: object
       additionalProperties: false
@@ -9397,6 +11293,14 @@ components:
             name: 发布/下线合集
             group: content
             agentGrantable: true
+          - code: content:article:edit
+            name: 撰写文章草稿并提交审核
+            group: content
+            agentGrantable: true
+          - code: content:article:publish
+            name: 发布、撤回和恢复文章，管理作者
+            group: content
+            agentGrantable: false
           - code: content:feature:edit
             name: 编辑精选位
             group: content
@@ -9459,6 +11363,10 @@ components:
             agentGrantable: false
           - code: system:github:edit
             name: GitHub 设置
+            group: system
+            agentGrantable: false
+          - code: system:seo:edit
+            name: SEO 与统计
             group: system
             agentGrantable: false
           - code: content:glossary:edit
@@ -9542,6 +11450,8 @@ components:
               - catalog:category:edit
               - content:collection:edit
               - content:collection:publish
+              - content:article:edit
+              - content:article:publish
               - content:feature:edit
               - changelog:release:edit
               - translation:review
@@ -9558,6 +11468,7 @@ components:
               - system:audit:view
               - i18n:settings
               - system:github:edit
+              - system:seo:edit
             userCount: 1
           - id: 6
             roleCode: R_AGENT
@@ -9574,6 +11485,7 @@ components:
               - catalog:category:edit
               - content:collection:edit
               - content:collection:publish
+              - content:article:edit
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -9716,6 +11628,8 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - changelog:release:edit
             - translation:review
@@ -9732,6 +11646,7 @@ components:
             - system:audit:view
             - i18n:settings
             - system:github:edit
+            - system:seo:edit
             - content:glossary:edit
             - agent:log:view
             - content:revision:restore
@@ -10116,6 +12031,8 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - changelog:release:edit
             - translation:review
@@ -10132,6 +12049,7 @@ components:
             - system:audit:view
             - i18n:settings
             - system:github:edit
+            - system:seo:edit
       example:
         userId: "1"
         userName: local-admin
@@ -10146,6 +12064,8 @@ components:
           - catalog:category:edit
           - content:collection:edit
           - content:collection:publish
+          - content:article:edit
+          - content:article:publish
           - content:feature:edit
           - changelog:release:edit
           - translation:review
@@ -10162,6 +12082,7 @@ components:
           - system:audit:view
           - i18n:settings
           - system:github:edit
+          - system:seo:edit
           - content:glossary:edit
           - agent:log:view
           - content:revision:restore
@@ -13849,6 +15770,8 @@ components:
           - catalog:category:edit
           - content:collection:edit
           - content:collection:publish
+          - content:article:edit
+          - content:article:publish
           - content:feature:edit
           - changelog:release:edit
           - translation:review
@@ -13865,6 +15788,7 @@ components:
           - system:audit:view
           - i18n:settings
           - system:github:edit
+          - system:seo:edit
         userCount: 1
     RoleUpsert:
       type: object
@@ -13913,6 +15837,8 @@ components:
           - catalog:category:edit
           - content:collection:edit
           - content:collection:publish
+          - content:article:edit
+          - content:article:publish
           - content:feature:edit
           - changelog:release:edit
           - translation:review
@@ -13929,6 +15855,7 @@ components:
           - system:audit:view
           - i18n:settings
           - system:github:edit
+          - system:seo:edit
     Permission:
       type: object
       required:
@@ -14065,6 +15992,8 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - changelog:release:edit
             - translation:review
@@ -14081,6 +16010,7 @@ components:
             - system:audit:view
             - i18n:settings
             - system:github:edit
+            - system:seo:edit
             - content:glossary:edit
             - agent:log:view
             - content:revision:restore
@@ -16256,6 +18186,8 @@ components:
               - catalog:category:edit
               - content:collection:edit
               - content:collection:publish
+              - content:article:edit
+              - content:article:publish
               - content:feature:edit
               - changelog:release:edit
               - translation:review
@@ -16272,6 +18204,7 @@ components:
               - system:audit:view
               - i18n:settings
               - system:github:edit
+              - system:seo:edit
             userCount: 1
           - id: 6
             roleCode: R_AGENT
@@ -16288,6 +18221,7 @@ components:
               - catalog:category:edit
               - content:collection:edit
               - content:collection:publish
+              - content:article:edit
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -16354,6 +18288,14 @@ components:
             name: 发布/下线合集
             group: content
             agentGrantable: true
+          - code: content:article:edit
+            name: 撰写文章草稿并提交审核
+            group: content
+            agentGrantable: true
+          - code: content:article:publish
+            name: 发布、撤回和恢复文章，管理作者
+            group: content
+            agentGrantable: false
           - code: content:feature:edit
             name: 编辑精选位
             group: content
@@ -16416,6 +18358,10 @@ components:
             agentGrantable: false
           - code: system:github:edit
             name: GitHub 设置
+            group: system
+            agentGrantable: false
+          - code: system:seo:edit
+            name: SEO 与统计
             group: system
             agentGrantable: false
           - code: content:glossary:edit
@@ -17534,6 +19480,8 @@ components:
         - desktop_release
         - mirror
         - announcement
+        - article
+        - article_author
       example: package
     HistoryEntity:
       type: string
@@ -17552,6 +19500,8 @@ components:
         - glossary
         - feedback
         - asset
+        - article
+        - article_author
       example: package
     ContentRef:
       type: object
@@ -17660,6 +19610,31 @@ components:
         bodyMarkdown:
           type: string
           maxLength: 200000
+          example: null
+          nullable: true
+        testNote:
+          type: string
+          maxLength: 1000
+          example: null
+          nullable: true
+        seoTitle:
+          type: string
+          maxLength: 120
+          example: null
+          nullable: true
+        seoDescription:
+          type: string
+          maxLength: 300
+          example: null
+          nullable: true
+        role:
+          type: string
+          maxLength: 80
+          example: null
+          nullable: true
+        bio:
+          type: string
+          maxLength: 1000
           example: null
           nullable: true
         sections:
@@ -17830,6 +19805,11 @@ components:
             format: uri
           example:
             - https://opennavo.example/zh/apps/visual-studio-code
+        sourceGaps:
+          type: array
+          description: "App fact writes only: the evidence still missing or outdated after this write"
+          items:
+            $ref: "#/components/schemas/FactGap"
       description: "Writes no business data, revisions, audit, trash, queues or caches; stores only the dryRun call log."
     ContentMutationResponse:
       type: object
@@ -19579,6 +21559,1639 @@ components:
       example:
         sourceLocale: zh-CN
         notes: 改善稳定性。
+    PriceType:
+      type: string
+      description: "unknown clears the price; a free download never implies free."
+      enum: [free, free_with_iap, paid, subscription, trial, unknown]
+      example: subscription
+    FactMethod:
+      type: string
+      description: "How the fact was checked: vendor website or pricing page, Mac App Store listing, vendor documentation, inside the app, or other."
+      enum: [vendor_site, app_store, vendor_docs, in_app, other]
+      example: vendor_site
+    FactStatus:
+      type: string
+      description: "needs_review keeps the evidence but hides the fact from pages until it is checked again."
+      enum: [verified, needs_review]
+      example: verified
+    FactVerifier:
+      type: string
+      enum: [admin, agent]
+      example: agent
+    FactGap:
+      type: string
+      description: "Missing or outdated evidence: no price, price marked for review, price older than 365 days, paid price without amount/currency/region/plan for offers, no app version; no macOS data from either source, supplement marked for review, older than 365 days, without app version, or disagreeing with Homebrew; alternatives pages currently skip."
+      enum: [price.unknown, price.review, price.stale, price.offer, price.version, macos.missing, macos.review, macos.stale, macos.version, macos.conflict, alternatives.unavailable]
+      example: price.offer
+    MacosConflictCode:
+      type: string
+      enum: [minimum, maximum, arm64, x86_64]
+      example: minimum
+    MacosRange:
+      type: object
+      additionalProperties: false
+      required: [arch, support]
+      properties:
+        arch:
+          type: string
+          enum: [arm64, x86_64]
+          example: arm64
+        support:
+          type: string
+          description: "rosetta applies to arm64 only; unsupported takes no versions."
+          enum: [native, rosetta, unsupported]
+          example: native
+        minimum:
+          type: string
+          nullable: true
+          description: "macOS release such as 13 or 10.15"
+          pattern: ^(?:10\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\.[0-9]{1,2}){0,2}$
+          example: "13"
+        maximum:
+          type: string
+          nullable: true
+          pattern: ^(?:10\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\.[0-9]{1,2}){0,2}$
+          example: null
+      example:
+        arch: arm64
+        support: native
+        minimum: "13"
+        maximum: null
+    AlternativeReason:
+      type: string
+      description: "Why someone would pick the alternative; pages translate the code."
+      enum: [free, open_source, lighter, more_features, simpler, native_ui, apple_silicon, privacy, offline, collaboration, cross_platform, one_time_purchase, active_development, customizable]
+      example: open_source
+    AlternativeLimit:
+      type: string
+      description: "What to weigh before switching; pages translate the code."
+      enum: [paid, subscription, fewer_features, requires_account, learning_curve, different_workflow, no_apple_silicon, online_only, limited_languages]
+      example: fewer_features
+    PackagePriceUpdate:
+      type: object
+      additionalProperties: false
+      required: [type]
+      description: "Every type except unknown requires sourceUrl and method."
+      properties:
+        type:
+          $ref: "#/components/schemas/PriceType"
+        amount:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0.01
+          maximum: 10000000
+          description: "At most two decimals"
+          example: 9.99
+        currency:
+          type: string
+          nullable: true
+          pattern: ^[A-Z]{3}$
+          example: USD
+        region:
+          type: string
+          nullable: true
+          description: "ISO 3166-1 country the price was checked for"
+          pattern: ^[A-Z]{2}$
+          example: US
+        plan:
+          type: string
+          nullable: true
+          maxLength: 80
+          description: "Vendor plan name as the vendor writes it; not translated"
+          example: Pro
+        period:
+          type: string
+          nullable: true
+          enum: [one_time, month, year]
+          example: month
+        appVersion:
+          type: string
+          nullable: true
+          maxLength: 64
+          example: "5.2"
+        sourceUrl:
+          type: string
+          nullable: true
+          format: uri
+          maxLength: 2048
+          pattern: ^https://
+          example: https://vendor.example/pricing
+        method:
+          type: string
+          nullable: true
+          enum: [vendor_site, app_store, vendor_docs, in_app, other]
+          example: vendor_site
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-13T08:00:00Z
+        status:
+          type: string
+          nullable: true
+          enum: [verified, needs_review]
+          example: verified
+        note:
+          type: string
+          nullable: true
+          maxLength: 1000
+          example: Checked the US pricing page.
+      example:
+        type: free
+        appVersion: "2.4"
+        sourceUrl: https://vendor.example/download
+        method: vendor_site
+    PackageMacosUpdate:
+      type: object
+      additionalProperties: false
+      required: [ranges]
+      description: "Ranges other than an empty list require sourceUrl and method."
+      properties:
+        ranges:
+          type: array
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/MacosRange"
+        appVersion:
+          type: string
+          nullable: true
+          maxLength: 64
+          example: "5.2"
+        sourceUrl:
+          type: string
+          nullable: true
+          format: uri
+          maxLength: 2048
+          pattern: ^https://
+          example: https://vendor.example/docs/system-requirements
+        method:
+          type: string
+          nullable: true
+          enum: [vendor_site, app_store, vendor_docs, in_app, other]
+          example: vendor_site
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-13T08:00:00Z
+        status:
+          type: string
+          nullable: true
+          enum: [verified, needs_review]
+          example: verified
+        note:
+          type: string
+          nullable: true
+          maxLength: 1000
+          example: From the vendor's requirements page.
+      example:
+        ranges:
+          - arch: arm64
+            support: native
+            minimum: "13"
+            maximum: null
+        sourceUrl: https://vendor.example/docs/system-requirements
+        method: vendor_docs
+    PackageAlternativeInput:
+      type: object
+      additionalProperties: false
+      required: [packageId, reasons]
+      properties:
+        packageId:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 2
+        reasons:
+          type: array
+          minItems: 1
+          maxItems: 4
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/AlternativeReason"
+        limits:
+          type: array
+          maxItems: 3
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/AlternativeLimit"
+        bestFor:
+          type: string
+          nullable: true
+          enum: [everyday, professionals, developers, teams, beginners, power_users]
+          example: developers
+        note:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: "Internal; never shown on pages"
+          example: Both edit code; this one starts faster.
+      example:
+        packageId: 2
+        reasons: [open_source, lighter]
+        limits: [fewer_features]
+        bestFor: developers
+    PackageAlternativesUpdate:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 8
+          description: "Display order; an empty list removes all alternatives"
+          items:
+            $ref: "#/components/schemas/PackageAlternativeInput"
+      example:
+        items: []
+    PackagePrice:
+      type: object
+      required: [type, amount, currency, region, plan, period, appVersion, sourceUrl, method, verifiedAt, verifiedBy, verifier, status, note, stale]
+      properties:
+        type:
+          $ref: "#/components/schemas/PriceType"
+        amount:
+          type: number
+          format: double
+          nullable: true
+          example: 9.99
+        currency:
+          type: string
+          nullable: true
+          example: USD
+        region:
+          type: string
+          nullable: true
+          example: US
+        plan:
+          type: string
+          nullable: true
+          example: Pro
+        period:
+          type: string
+          nullable: true
+          enum: [one_time, month, year]
+          example: month
+        appVersion:
+          type: string
+          nullable: true
+          example: "5.2"
+        sourceUrl:
+          type: string
+          example: https://vendor.example/pricing
+        method:
+          $ref: "#/components/schemas/FactMethod"
+        verifiedAt:
+          type: string
+          format: date-time
+          example: 2026-10-13T08:00:00Z
+        verifiedBy:
+          type: string
+          example: Hermes
+        verifier:
+          $ref: "#/components/schemas/FactVerifier"
+        status:
+          $ref: "#/components/schemas/FactStatus"
+        note:
+          type: string
+          nullable: true
+          example: null
+        stale:
+          type: boolean
+          description: "Verified more than 365 days ago"
+          example: false
+      example:
+        type: subscription
+        amount: 9.99
+        currency: USD
+        region: US
+        plan: Pro
+        period: month
+        appVersion: "5.2"
+        sourceUrl: https://vendor.example/pricing
+        method: vendor_site
+        verifiedAt: 2026-10-13T08:00:00Z
+        verifiedBy: Hermes
+        verifier: agent
+        status: verified
+        note: null
+        stale: false
+    PackageMacosSupplement:
+      type: object
+      required: [ranges, appVersion, sourceUrl, method, verifiedAt, verifiedBy, verifier, status, note, stale]
+      properties:
+        ranges:
+          type: array
+          items:
+            $ref: "#/components/schemas/MacosRange"
+        appVersion:
+          type: string
+          nullable: true
+          example: "5.2"
+        sourceUrl:
+          type: string
+          example: https://vendor.example/docs/system-requirements
+        method:
+          $ref: "#/components/schemas/FactMethod"
+        verifiedAt:
+          type: string
+          format: date-time
+          example: 2026-10-13T08:00:00Z
+        verifiedBy:
+          type: string
+          example: kaka
+        verifier:
+          $ref: "#/components/schemas/FactVerifier"
+        status:
+          $ref: "#/components/schemas/FactStatus"
+        note:
+          type: string
+          nullable: true
+          example: null
+        stale:
+          type: boolean
+          example: false
+      example:
+        ranges:
+          - arch: arm64
+            support: native
+            minimum: "12"
+            maximum: null
+        appVersion: "5.2"
+        sourceUrl: https://vendor.example/docs/system-requirements
+        method: vendor_docs
+        verifiedAt: 2026-10-13T08:00:00Z
+        verifiedBy: kaka
+        verifier: admin
+        status: verified
+        note: null
+        stale: false
+    HomebrewRequirements:
+      type: object
+      required: [supportStatus, arm64, x86_64, requiresRosetta, minimum, maximum]
+      properties:
+        supportStatus:
+          type: string
+          enum: [known, unknown]
+          example: known
+        arm64:
+          type: boolean
+          example: true
+        x86_64:
+          type: boolean
+          example: true
+        requiresRosetta:
+          type: boolean
+          example: false
+        minimum:
+          type: string
+          nullable: true
+          example: "13.0"
+        maximum:
+          type: string
+          nullable: true
+          example: null
+      example:
+        supportStatus: known
+        arm64: true
+        x86_64: true
+        requiresRosetta: false
+        minimum: "13.0"
+        maximum: null
+    PackageAlternativeEntry:
+      type: object
+      required: [packageId, token, name, displayName, iconUrl, reasons, limits, bestFor, note, source, available]
+      properties:
+        packageId:
+          type: integer
+          format: int64
+          example: 2
+        token:
+          type: string
+          example: zed
+        name:
+          type: string
+          example: Zed
+        displayName:
+          type: string
+          example: Zed
+        iconUrl:
+          type: string
+          nullable: true
+          example: https://cdn.opennavo.example/icons/zed.png
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlternativeReason"
+        limits:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlternativeLimit"
+        bestFor:
+          type: string
+          nullable: true
+          enum: [everyday, professionals, developers, teams, beginners, power_users]
+          example: developers
+        note:
+          type: string
+          nullable: true
+          example: null
+        source:
+          $ref: "#/components/schemas/FactVerifier"
+        available:
+          type: boolean
+          description: "False while the alternative is hidden, removed or disabled; pages skip it"
+          example: true
+      example:
+        packageId: 2
+        token: zed
+        name: Zed
+        displayName: Zed
+        iconUrl: null
+        reasons: [open_source, lighter]
+        limits: [fewer_features]
+        bestFor: developers
+        note: null
+        source: admin
+        available: true
+    PackageFacts:
+      type: object
+      required: [packageId, price, macos, homebrew, conflicts, alternatives, offerReady, gaps, updatedAt]
+      properties:
+        packageId:
+          type: integer
+          format: int64
+          example: 1
+        price:
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/PackagePrice"
+          nullable: true
+          description: "null means unknown"
+        macos:
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/PackageMacosSupplement"
+          nullable: true
+          description: "null means no supplement; Homebrew's requirements apply"
+        homebrew:
+          $ref: "#/components/schemas/HomebrewRequirements"
+        conflicts:
+          type: array
+          description: "Where the supplement and Homebrew disagree; pages show both as pending verification"
+          items:
+            $ref: "#/components/schemas/MacosConflictCode"
+        alternatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/PackageAlternativeEntry"
+        offerReady:
+          type: boolean
+          description: "Structured data may publish an offer: verified, current, and free or complete"
+          example: true
+        gaps:
+          type: array
+          items:
+            $ref: "#/components/schemas/FactGap"
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-13T08:00:00Z
+      example:
+        packageId: 1
+        price: null
+        macos: null
+        homebrew:
+          supportStatus: known
+          arm64: true
+          x86_64: true
+          requiresRosetta: false
+          minimum: "13.0"
+          maximum: null
+        conflicts: []
+        alternatives: []
+        offerReady: false
+        gaps: [price.unknown]
+        updatedAt: null
+    PackageFactsResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/PackageFactsResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          packageId: 1
+          price: null
+          macos: null
+          homebrew:
+            supportStatus: known
+            arm64: true
+            x86_64: true
+            requiresRosetta: false
+            minimum: "13.0"
+            maximum: null
+          conflicts: []
+          alternatives: []
+          offerReady: false
+          gaps: [price.unknown]
+          updatedAt: null
+    PackageFactsResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/PackageFacts"
+      example:
+        code: '0000'
+        msg: ok
+        data:
+          packageId: 1
+          price: null
+          macos: null
+          homebrew:
+            supportStatus: known
+            arm64: true
+            x86_64: true
+            requiresRosetta: false
+            minimum: "13.0"
+            maximum: null
+          conflicts: []
+          alternatives: []
+          offerReady: false
+          gaps: [price.unknown]
+          updatedAt: null
+    ArticleType:
+      type: string
+      description: "recommendation: picks for a need; review: hands-on test, needs a test record; tutorial; roundup: compares several apps; news"
+      enum: [recommendation, review, tutorial, roundup, news]
+      example: roundup
+    ArticleStatus:
+      type: string
+      description: "draft and review: never published; published: live; archived: withdrawn, can be restored"
+      enum: [draft, review, published, archived]
+      example: published
+    ArticleProblem:
+      type: string
+      description: "What blocks review or publication: missing title, summary or body; raw HTML; unsafe links; images without alt text or not stored as OpenNavo assets; too many images or app cards; app cards for apps not in the catalog; no sources for recommendations, roundups and news; no test record for reviews; a cover without alt text."
+      enum: [title, summary, body, raw_html, unsafe_link, image_alt, image_host, too_many_images, too_many_app_cards, unknown_app, sources, test_note, cover_alt]
+      example: sources
+    ArticleSource:
+      type: object
+      additionalProperties: false
+      required: [title, url]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: Shottr documentation
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+          pattern: ^https://
+          example: https://shottr.cc/kb
+      example:
+        title: Shottr documentation
+        url: https://shottr.cc/kb
+    ArticleCreate:
+      type: object
+      additionalProperties: false
+      required: [slug, sourceLocale, type, title]
+      properties:
+        slug:
+          type: string
+          maxLength: 100
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          example: choose-a-screenshot-app
+        sourceLocale:
+          $ref: "#/components/schemas/Locale"
+        type:
+          $ref: "#/components/schemas/ArticleType"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: How to choose a screenshot app for Mac
+        summary:
+          type: string
+          nullable: true
+          maxLength: 400
+          description: "Lead and default meta description"
+          example: What to compare when picking a screenshot tool.
+        bodyMarkdown:
+          type: string
+          nullable: true
+          maxLength: 100000
+          description: "Markdown without raw HTML. Images must be OpenNavo assets with alt text; ::app[token] on its own line embeds an app's current catalog card. Keep tested versions and prices as plain tables: they are a snapshot, the card is live."
+          example: "## What to compare\n\n::app[shottr]"
+        testNote:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: "Test environment and method; required for reviews, and only when the test really happened"
+          example: MacBook Pro (M4), macOS 26, the same capture tasks in every app
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          example: null
+        authorId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+          description: "null signs the article as the editorial team (the site organization)"
+          example: null
+        coverAssetId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+          example: null
+        coverAlt:
+          type: string
+          nullable: true
+          maxLength: 300
+          example: null
+        sources:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ArticleSource"
+        packageIds:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+            example: 1
+        idempotencyKey:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: "Retrying with the same key returns the article created the first time"
+          example: draft-2026-10-13-screenshots
+      example:
+        slug: choose-a-screenshot-app
+        sourceLocale: en-US
+        type: roundup
+        title: How to choose a screenshot app for Mac
+    ArticleUpdate:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision]
+      minProperties: 2
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 1
+          description: "The article revision from the last read; a mismatch means someone else changed it"
+          example: 4
+        sourceLocale:
+          $ref: "#/components/schemas/Locale"
+        type:
+          $ref: "#/components/schemas/ArticleType"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: How to choose a screenshot app for Mac
+        summary:
+          type: string
+          nullable: true
+          maxLength: 400
+          example: What to compare when picking a screenshot tool.
+        bodyMarkdown:
+          type: string
+          nullable: true
+          maxLength: 100000
+          example: "## What to compare"
+        testNote:
+          type: string
+          nullable: true
+          maxLength: 1000
+          example: null
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          example: null
+        authorId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+          example: null
+        coverAssetId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+          example: null
+        coverAlt:
+          type: string
+          nullable: true
+          maxLength: 300
+          example: null
+        sources:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ArticleSource"
+      example:
+        expectedRevision: 4
+        summary: What to compare when picking a screenshot tool on a Mac.
+    ArticlePackagesUpdate:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision, packageIds]
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 4
+        packageIds:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+            example: 1
+      example:
+        expectedRevision: 4
+        packageIds: [1, 2]
+    ArticleRevisionCheck:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision]
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 4
+      example:
+        expectedRevision: 4
+    ArticleWithdraw:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision]
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 4
+        reason:
+          type: string
+          nullable: true
+          maxLength: 500
+          example: Prices changed; rewriting.
+      example:
+        expectedRevision: 4
+    ArticleRevert:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision, revisionNumber]
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 4
+        revisionNumber:
+          type: integer
+          minimum: 1
+          example: 2
+      example:
+        expectedRevision: 4
+        revisionNumber: 2
+    ArticleSlugUpdate:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision, slug]
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 4
+        slug:
+          type: string
+          maxLength: 100
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          example: screenshot-apps-for-mac
+      example:
+        expectedRevision: 4
+        slug: screenshot-apps-for-mac
+    ArticleLocaleUpdate:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision, withheld]
+      properties:
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 4
+        withheld:
+          type: boolean
+          example: true
+      example:
+        expectedRevision: 4
+        withheld: true
+    ArticleAuthorWrite:
+      type: object
+      additionalProperties: false
+      required: [slug, name, sourceLocale]
+      properties:
+        slug:
+          type: string
+          maxLength: 80
+          pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+          example: lin-wei
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          example: Lin Wei
+        sourceLocale:
+          $ref: "#/components/schemas/Locale"
+        role:
+          type: string
+          nullable: true
+          maxLength: 80
+          example: Editor
+        bio:
+          type: string
+          nullable: true
+          maxLength: 1000
+          example: Tests Mac productivity apps.
+        links:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/ArticleSource"
+        avatarAssetId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+          example: null
+      example:
+        slug: lin-wei
+        name: Lin Wei
+        sourceLocale: en-US
+        role: Editor
+    ArticleAuthorRef:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        slug:
+          type: string
+          example: lin-wei
+        name:
+          type: string
+          example: Lin Wei
+      example:
+        id: 1
+        slug: lin-wei
+        name: Lin Wei
+    ArticlePackageRef:
+      type: object
+      required: [id, token, name, displayName, iconUrl]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        token:
+          type: string
+          example: shottr
+        name:
+          type: string
+          example: Shottr
+        displayName:
+          type: string
+          example: Shottr
+        iconUrl:
+          type: string
+          nullable: true
+          example: null
+      example:
+        id: 1
+        token: shottr
+        name: Shottr
+        displayName: Shottr
+        iconUrl: null
+    AdminArticleRevision:
+      type: object
+      required: [number, sourceLocale, type, authorId, author, coverAssetId, coverUrl, coverAlt, sources, packages, title, summary, bodyMarkdown, testNote, seoTitle, seoDescription, submittedAt, submittedByName, publishedAt, createdByName, createdAt, updatedAt]
+      properties:
+        number:
+          type: integer
+          example: 3
+        sourceLocale:
+          $ref: "#/components/schemas/Locale"
+        type:
+          $ref: "#/components/schemas/ArticleType"
+        authorId:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        author:
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/ArticleAuthorRef"
+          nullable: true
+        coverAssetId:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        coverUrl:
+          type: string
+          nullable: true
+          example: null
+        coverAlt:
+          type: string
+          nullable: true
+          example: null
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleSource"
+        packages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticlePackageRef"
+        title:
+          type: string
+          example: How to choose a screenshot app for Mac
+        summary:
+          type: string
+          nullable: true
+          example: What to compare when picking a screenshot tool.
+        bodyMarkdown:
+          type: string
+          nullable: true
+          example: "## What to compare"
+        testNote:
+          type: string
+          nullable: true
+          example: null
+        seoTitle:
+          type: string
+          nullable: true
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          example: null
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        submittedByName:
+          type: string
+          example: ""
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        createdByName:
+          type: string
+          example: Hermes
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-10-13T08:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-10-13T08:00:00Z
+      example:
+        number: 3
+        sourceLocale: en-US
+        type: roundup
+        authorId: null
+        author: null
+        coverAssetId: null
+        coverUrl: null
+        coverAlt: null
+        sources: []
+        packages: []
+        title: How to choose a screenshot app for Mac
+        summary: null
+        bodyMarkdown: null
+        testNote: null
+        seoTitle: null
+        seoDescription: null
+        submittedAt: null
+        submittedByName: ""
+        publishedAt: null
+        createdByName: Hermes
+        createdAt: 2026-10-13T08:00:00Z
+        updatedAt: 2026-10-13T08:00:00Z
+    ArticleLocaleState:
+      type: object
+      required: [locale, status, withheld, source, failReason, translatedAt]
+      properties:
+        locale:
+          $ref: "#/components/schemas/Locale"
+        status:
+          type: string
+          enum: [source, machine, manual, pending, failed, missing]
+          example: machine
+        withheld:
+          type: boolean
+          example: false
+        source:
+          type: boolean
+          example: false
+        failReason:
+          type: string
+          nullable: true
+          example: null
+        translatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-13T09:00:00Z
+      example:
+        locale: zh-CN
+        status: machine
+        withheld: false
+        source: false
+        failReason: null
+        translatedAt: 2026-10-13T09:00:00Z
+    ArticleRevisionEntry:
+      type: object
+      required: [number, title, createdAt, createdByName, submittedAt, publishedAt]
+      properties:
+        number:
+          type: integer
+          example: 2
+        title:
+          type: string
+          example: How to choose a screenshot app for Mac
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-10-12T08:00:00Z
+        createdByName:
+          type: string
+          example: Hermes
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-12T09:00:00Z
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-12T10:00:00Z
+      example:
+        number: 2
+        title: How to choose a screenshot app for Mac
+        createdAt: 2026-10-12T08:00:00Z
+        createdByName: Hermes
+        submittedAt: 2026-10-12T09:00:00Z
+        publishedAt: 2026-10-12T10:00:00Z
+    ArticleEvent:
+      type: object
+      required: [action, revisionNumber, actorType, actorName, detail, createdAt]
+      properties:
+        action:
+          type: string
+          enum: [create, update, submit, review_invalidated, publish, withdraw, restore, slug, withhold, release, revert]
+          example: publish
+        revisionNumber:
+          type: integer
+          nullable: true
+          example: 2
+        actorType:
+          type: string
+          enum: [admin, agent, system]
+          example: admin
+        actorName:
+          type: string
+          example: kaka
+        detail:
+          type: object
+          additionalProperties: true
+          example: {}
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-10-12T10:00:00Z
+      example:
+        action: publish
+        revisionNumber: 2
+        actorType: admin
+        actorName: kaka
+        detail: {}
+        createdAt: 2026-10-12T10:00:00Z
+    ArticleImage:
+      type: object
+      required: [url, width, height]
+      properties:
+        url:
+          type: string
+          example: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
+        width:
+          type: integer
+          nullable: true
+          example: 1280
+        height:
+          type: integer
+          nullable: true
+          example: 800
+      example:
+        url: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
+        width: 1280
+        height: 800
+    AdminArticle:
+      type: object
+      required: [id, slug, status, revision, firstPublishedAt, contentUpdatedAt, archivedAt, createdAt, updatedAt, webUrl, aliases, working, published, hasPendingChanges, readiness, images, locales, revisions, events]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        slug:
+          type: string
+          example: choose-a-screenshot-app
+        status:
+          $ref: "#/components/schemas/ArticleStatus"
+        revision:
+          type: integer
+          format: int64
+          description: "Change counter; send it back as expectedRevision"
+          example: 4
+        firstPublishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-12T10:00:00Z
+        contentUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-12T10:00:00Z
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-10-12T08:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-10-13T08:00:00Z
+        webUrl:
+          type: string
+          nullable: true
+          example: https://opennavo.example/articles/choose-a-screenshot-app
+        aliases:
+          type: array
+          items:
+            type: string
+            example: screenshot-tools
+        working:
+          $ref: "#/components/schemas/AdminArticleRevision"
+        published:
+          type: object
+          nullable: true
+          required: [number, publishedAt]
+          properties:
+            number:
+              type: integer
+              example: 2
+            publishedAt:
+              type: string
+              format: date-time
+              nullable: true
+              example: 2026-10-12T10:00:00Z
+          example:
+            number: 2
+            publishedAt: 2026-10-12T10:00:00Z
+        hasPendingChanges:
+          type: boolean
+          description: "The working revision is not the published one"
+          example: true
+        readiness:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleProblem"
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleImage"
+        locales:
+          type: array
+          description: "Languages of the published revision"
+          items:
+            $ref: "#/components/schemas/ArticleLocaleState"
+        revisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleRevisionEntry"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleEvent"
+      example:
+        id: 1
+        slug: choose-a-screenshot-app
+        status: draft
+        revision: 1
+        firstPublishedAt: null
+        contentUpdatedAt: null
+        archivedAt: null
+        createdAt: 2026-10-13T08:00:00Z
+        updatedAt: 2026-10-13T08:00:00Z
+        webUrl: null
+        aliases: []
+        working:
+          number: 1
+          sourceLocale: en-US
+          type: roundup
+          authorId: null
+          author: null
+          coverAssetId: null
+          coverUrl: null
+          coverAlt: null
+          sources: []
+          packages: []
+          title: How to choose a screenshot app for Mac
+          summary: null
+          bodyMarkdown: null
+          testNote: null
+          seoTitle: null
+          seoDescription: null
+          submittedAt: null
+          submittedByName: ""
+          publishedAt: null
+          createdByName: Hermes
+          createdAt: 2026-10-13T08:00:00Z
+          updatedAt: 2026-10-13T08:00:00Z
+        published: null
+        hasPendingChanges: true
+        readiness: [summary, body, sources]
+        images: []
+        locales: []
+        revisions: []
+        events: []
+    AdminArticleResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/AdminArticle"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          id: 1
+          slug: choose-a-screenshot-app
+          status: draft
+          revision: 1
+          firstPublishedAt: null
+          contentUpdatedAt: null
+          archivedAt: null
+          createdAt: 2026-10-13T08:00:00Z
+          updatedAt: 2026-10-13T08:00:00Z
+          webUrl: null
+          aliases: []
+          working:
+            number: 1
+            sourceLocale: en-US
+            type: roundup
+            authorId: null
+            author: null
+            coverAssetId: null
+            coverUrl: null
+            coverAlt: null
+            sources: []
+            packages: []
+            title: How to choose a screenshot app for Mac
+            summary: null
+            bodyMarkdown: null
+            testNote: null
+            seoTitle: null
+            seoDescription: null
+            submittedAt: null
+            submittedByName: ""
+            publishedAt: null
+            createdByName: Hermes
+            createdAt: 2026-10-13T08:00:00Z
+            updatedAt: 2026-10-13T08:00:00Z
+          published: null
+          hasPendingChanges: true
+          readiness: [summary, body, sources]
+          images: []
+          locales: []
+          revisions: []
+          events: []
+    AdminArticleResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/AdminArticleResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          id: 1
+          slug: choose-a-screenshot-app
+          status: draft
+          revision: 1
+          firstPublishedAt: null
+          contentUpdatedAt: null
+          archivedAt: null
+          createdAt: 2026-10-13T08:00:00Z
+          updatedAt: 2026-10-13T08:00:00Z
+          webUrl: null
+          aliases: []
+          working:
+            number: 1
+            sourceLocale: en-US
+            type: roundup
+            authorId: null
+            author: null
+            coverAssetId: null
+            coverUrl: null
+            coverAlt: null
+            sources: []
+            packages: []
+            title: How to choose a screenshot app for Mac
+            summary: null
+            bodyMarkdown: null
+            testNote: null
+            seoTitle: null
+            seoDescription: null
+            submittedAt: null
+            submittedByName: ""
+            publishedAt: null
+            createdByName: Hermes
+            createdAt: 2026-10-13T08:00:00Z
+            updatedAt: 2026-10-13T08:00:00Z
+          published: null
+          hasPendingChanges: true
+          readiness: [summary, body, sources]
+          images: []
+          locales: []
+          revisions: []
+          events: []
+    AdminArticleListItem:
+      type: object
+      required: [id, slug, status, revision, type, title, sourceLocale, workingNumber, publishedNumber, submittedAt, hasPendingChanges, authorName, firstPublishedAt, contentUpdatedAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        slug:
+          type: string
+          example: choose-a-screenshot-app
+        status:
+          $ref: "#/components/schemas/ArticleStatus"
+        revision:
+          type: integer
+          format: int64
+          example: 4
+        type:
+          $ref: "#/components/schemas/ArticleType"
+        title:
+          type: string
+          example: How to choose a screenshot app for Mac
+        sourceLocale:
+          $ref: "#/components/schemas/Locale"
+        workingNumber:
+          type: integer
+          example: 3
+        publishedNumber:
+          type: integer
+          nullable: true
+          example: 2
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        hasPendingChanges:
+          type: boolean
+          example: true
+        authorName:
+          type: string
+          nullable: true
+          example: null
+        firstPublishedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-12T10:00:00Z
+        contentUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-12T10:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-10-13T08:00:00Z
+      example:
+        id: 1
+        slug: choose-a-screenshot-app
+        status: published
+        revision: 4
+        type: roundup
+        title: How to choose a screenshot app for Mac
+        sourceLocale: en-US
+        workingNumber: 3
+        publishedNumber: 2
+        submittedAt: null
+        hasPendingChanges: true
+        authorName: null
+        firstPublishedAt: 2026-10-12T10:00:00Z
+        contentUpdatedAt: 2026-10-12T10:00:00Z
+        updatedAt: 2026-10-13T08:00:00Z
+    ArticlePage:
+      type: object
+      required: [records, current, size, total]
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminArticleListItem"
+        current:
+          type: integer
+          example: 1
+        size:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          format: int64
+          example: 1
+      example:
+        records: []
+        current: 1
+        size: 20
+        total: 0
+    ArticlePageResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/ArticlePage"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          records: []
+          current: 1
+          size: 20
+          total: 0
+    ArticlePageResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/ArticlePageResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          records: []
+          current: 1
+          size: 20
+          total: 0
+    ArticleAuthor:
+      type: object
+      required: [id, slug, name, links, avatarAssetId, avatarUrl, sourceLocale, role, bio, articleCount, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        slug:
+          type: string
+          example: lin-wei
+        name:
+          type: string
+          example: Lin Wei
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleSource"
+        avatarAssetId:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        avatarUrl:
+          type: string
+          nullable: true
+          example: null
+        sourceLocale:
+          $ref: "#/components/schemas/Locale"
+        role:
+          type: string
+          nullable: true
+          example: Editor
+        bio:
+          type: string
+          nullable: true
+          example: Tests Mac productivity apps.
+        articleCount:
+          type: integer
+          example: 3
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-10-13T08:00:00Z
+      example:
+        id: 1
+        slug: lin-wei
+        name: Lin Wei
+        links: []
+        avatarAssetId: null
+        avatarUrl: null
+        sourceLocale: en-US
+        role: Editor
+        bio: Tests Mac productivity apps.
+        articleCount: 3
+        updatedAt: 2026-10-13T08:00:00Z
+    ArticleAuthorListResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleAuthor"
+      example:
+        code: "0000"
+        msg: ok
+        data: []
+    ArticleAuthorListResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/ArticleAuthorListResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+      example:
+        code: "0000"
+        msg: ok
+        data: []
     ListingGap:
       type: string
       enum:
@@ -19590,6 +23203,7 @@ components:
         - icon
         - downloadSize
         - latestEditorial
+        - price
       example: zhName
     CatalogActivity:
       type: object
@@ -19789,6 +23403,7 @@ components:
         - catalog:category:edit
         - content:collection:edit
         - content:collection:publish
+        - content:article:edit
         - content:feature:edit
         - content:glossary:edit
         - changelog:release:edit
@@ -19892,6 +23507,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -19927,6 +23543,7 @@ components:
           - catalog:category:edit
           - content:collection:edit
           - content:collection:publish
+          - content:article:edit
           - content:feature:edit
           - content:glossary:edit
           - changelog:release:edit
@@ -19978,6 +23595,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -20016,6 +23634,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -20305,6 +23924,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -20319,7 +23939,7 @@ components:
             - content:announcement:edit
             - release:desktop:notes
           uniqueItems: true
-          maxItems: 21
+          maxItems: 22
         allowDelete:
           type: boolean
           example: true
@@ -20350,6 +23970,7 @@ components:
           - catalog:category:edit
           - content:collection:edit
           - content:collection:publish
+          - content:article:edit
           - content:feature:edit
           - content:glossary:edit
           - changelog:release:edit
@@ -20389,6 +24010,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -20403,7 +24025,7 @@ components:
             - content:announcement:edit
             - release:desktop:notes
           uniqueItems: true
-          maxItems: 21
+          maxItems: 22
         allowDelete:
           type: boolean
           example: true
@@ -20477,6 +24099,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -20491,7 +24114,7 @@ components:
             - content:announcement:edit
             - release:desktop:notes
           uniqueItems: true
-          maxItems: 21
+          maxItems: 22
         allowDelete:
           type: boolean
           example: true
@@ -20562,6 +24185,7 @@ components:
           - catalog:category:edit
           - content:collection:edit
           - content:collection:publish
+          - content:article:edit
           - content:feature:edit
           - content:glossary:edit
           - changelog:release:edit
@@ -20615,6 +24239,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -20680,6 +24305,7 @@ components:
                     - catalog:category:edit
                     - content:collection:edit
                     - content:collection:publish
+                    - content:article:edit
                     - content:feature:edit
                     - content:glossary:edit
                     - changelog:release:edit
@@ -20736,6 +24362,7 @@ components:
                 - catalog:category:edit
                 - content:collection:edit
                 - content:collection:publish
+                - content:article:edit
                 - content:feature:edit
                 - content:glossary:edit
                 - changelog:release:edit
@@ -20784,6 +24411,7 @@ components:
                 - catalog:category:edit
                 - content:collection:edit
                 - content:collection:publish
+                - content:article:edit
                 - content:feature:edit
                 - content:glossary:edit
                 - changelog:release:edit
@@ -20844,6 +24472,7 @@ components:
               - catalog:category:edit
               - content:collection:edit
               - content:collection:publish
+              - content:article:edit
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -20890,6 +24519,7 @@ components:
               - catalog:category:edit
               - content:collection:edit
               - content:collection:publish
+              - content:article:edit
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -20947,6 +24577,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -20991,6 +24622,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -21047,6 +24679,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -21091,6 +24724,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -21204,6 +24838,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -21260,6 +24895,7 @@ components:
           - catalog:category:edit
           - content:collection:edit
           - content:collection:publish
+          - content:article:edit
           - content:feature:edit
           - content:glossary:edit
           - changelog:release:edit
@@ -21328,6 +24964,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -21384,6 +25021,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -23316,6 +26954,234 @@ components:
           affectedUrls:
             - https://opennavo.example/zh/apps/visual-studio-code
   examples:
+    AdminArticleSixLocales:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          id: 1
+          slug: choose-a-screenshot-app
+          status: published
+          revision: 6
+          firstPublishedAt: 2026-10-12T10:00:00Z
+          contentUpdatedAt: 2026-10-12T10:00:00Z
+          archivedAt: null
+          createdAt: 2026-10-12T08:00:00Z
+          updatedAt: 2026-10-13T08:00:00Z
+          webUrl: https://opennavo.example/articles/choose-a-screenshot-app
+          aliases: []
+          working:
+            number: 3
+            sourceLocale: en-US
+            type: roundup
+            authorId: 1
+            author:
+              id: 1
+              slug: lin-wei
+              name: Lin Wei
+            coverAssetId: 7
+            coverUrl: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
+            coverAlt: Four screenshot apps side by side
+            sources:
+              - title: Shottr documentation
+                url: https://shottr.cc/kb
+            packages:
+              - id: 1
+                token: shottr
+                name: Shottr
+                displayName: Shottr
+                iconUrl: https://cdn.opennavo.example/icons/shottr.png
+            title: How to choose a screenshot app for Mac
+            summary: What to compare when picking a screenshot tool.
+            bodyMarkdown: "## What to compare\n\n::app[shottr]"
+            testNote: null
+            seoTitle: null
+            seoDescription: null
+            submittedAt: null
+            submittedByName: ""
+            publishedAt: null
+            createdByName: Hermes
+            createdAt: 2026-10-13T08:00:00Z
+            updatedAt: 2026-10-13T08:00:00Z
+          published:
+            number: 2
+            publishedAt: 2026-10-12T10:00:00Z
+          hasPendingChanges: true
+          readiness: []
+          images: []
+          locales:
+            - locale: en-US
+              status: source
+              withheld: false
+              source: true
+              failReason: null
+              translatedAt: null
+            - locale: zh-CN
+              status: machine
+              withheld: false
+              source: false
+              failReason: null
+              translatedAt: 2026-10-12T10:05:00Z
+            - locale: ja-JP
+              status: failed
+              withheld: false
+              source: false
+              failReason: changed_literal
+              translatedAt: null
+          revisions:
+            - number: 3
+              title: How to choose a screenshot app for Mac
+              createdAt: 2026-10-13T08:00:00Z
+              createdByName: Hermes
+              submittedAt: null
+              publishedAt: null
+          events:
+            - action: publish
+              revisionNumber: 2
+              actorType: admin
+              actorName: kaka
+              detail:
+                substantive: true
+              createdAt: 2026-10-12T10:00:00Z
+    AdminArticleDryRun:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          dryRun: true
+          requestId: demo-preview-001
+          changes:
+            - object:
+                entity: article
+                objectKey: "1"
+              action: update
+              before:
+                status: draft
+              after:
+                status: review
+          affectedUrls: []
+    ArticlePageSixLocales:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          records:
+            - id: 1
+              slug: choose-a-screenshot-app
+              status: published
+              revision: 6
+              type: roundup
+              title: How to choose a screenshot app for Mac
+              sourceLocale: en-US
+              workingNumber: 3
+              publishedNumber: 2
+              submittedAt: null
+              hasPendingChanges: true
+              authorName: Lin Wei
+              firstPublishedAt: 2026-10-12T10:00:00Z
+              contentUpdatedAt: 2026-10-12T10:00:00Z
+              updatedAt: 2026-10-13T08:00:00Z
+          current: 1
+          size: 20
+          total: 1
+    ArticleAuthorListSixLocales:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          - id: 1
+            slug: lin-wei
+            name: Lin Wei
+            links:
+              - title: Personal site
+                url: https://lin.example
+            avatarAssetId: null
+            avatarUrl: null
+            sourceLocale: en-US
+            role: Editor
+            bio: Tests Mac productivity apps.
+            articleCount: 3
+            updatedAt: 2026-10-13T08:00:00Z
+    PackageFactsSixLocales:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          packageId: 1
+          price:
+            type: subscription
+            amount: 9.99
+            currency: USD
+            region: US
+            plan: Pro
+            period: month
+            appVersion: "5.2"
+            sourceUrl: https://vendor.example/pricing
+            method: vendor_site
+            verifiedAt: 2026-10-13T08:00:00Z
+            verifiedBy: Hermes
+            verifier: agent
+            status: verified
+            note: null
+            stale: false
+          macos:
+            ranges:
+              - arch: arm64
+                support: native
+                minimum: "12"
+                maximum: null
+            appVersion: "5.2"
+            sourceUrl: https://vendor.example/docs/system-requirements
+            method: vendor_docs
+            verifiedAt: 2026-10-13T08:00:00Z
+            verifiedBy: kaka
+            verifier: admin
+            status: verified
+            note: null
+            stale: false
+          homebrew:
+            supportStatus: known
+            arm64: true
+            x86_64: true
+            requiresRosetta: false
+            minimum: "13.0"
+            maximum: null
+          conflicts: [minimum]
+          alternatives:
+            - packageId: 2
+              token: zed
+              name: Zed
+              displayName: Zed
+              iconUrl: https://cdn.opennavo.example/icons/zed.png
+              reasons: [open_source, lighter]
+              limits: [fewer_features]
+              bestFor: developers
+              note: null
+              source: admin
+              available: true
+          offerReady: true
+          gaps: [macos.conflict]
+          updatedAt: 2026-10-13T08:00:00Z
+    PackageFactsDryRun:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          dryRun: true
+          requestId: demo-preview-001
+          changes:
+            - object:
+                entity: package
+                objectKey: "1"
+              action: update
+              before:
+                package_facts: []
+              after:
+                package_facts:
+                  - package_id: 1
+          affectedUrls:
+            - https://opennavo.example/apps/visual-studio-code
+          sourceGaps: [price.offer, price.version]
     GitHubSettingsSixLocales:
       value:
         code: '0000'
@@ -23323,6 +27189,96 @@ components:
         data:
           tokenConfigured: true
           tokenSource: admin
+    PackageIndexStatusSixLocales:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          eligible: false
+          reason: missing_summary
+          indexable: true
+          enforced: false
+          locales: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU]
+          override: auto
+          overrideReason: null
+          overrideAt: null
+    IndexReportSixLocales:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          records:
+          - id: 1
+            token: visual-studio-code
+            displayName: Visual Studio Code
+            firstSeenAt: 2026-10-01T08:00:00Z
+            eligible: false
+            reason: missing_summary
+            enforced: false
+            override: auto
+            overrideReason: null
+          current: 1
+          size: 24
+          total: 1
+          counts:
+            hidden: 0
+            forcedNoindex: 0
+            unavailable: 12
+            missingSummary: 1
+            thin: 3
+            forcedIndex: 0
+    SeoSettingsSixLocales:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+            settings:
+              identity:
+                name: OpenNavo
+                alternateNames: [opennavo.com]
+                logoUrl: https://opennavo.example/brand/logo-512.png
+                sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+              verification:
+                google: ""
+                bing: ""
+              analytics:
+                ga4Enabled: true
+                ga4MeasurementId: G-EXAMPLE123
+                consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+              indexNow:
+                enabled: false
+              cloudflare:
+                zoneId: ""
+                purgeEnabled: false
+              edgeCache:
+                enabled: false
+              crawlers:
+                training:
+                  mode: limit
+                  delaySeconds: 10
+                  bots: [ClaudeBot]
+                seoTools:
+                  mode: block
+                  delaySeconds: 10
+                  bots: [MJ12bot, SerpstatBot]
+              pages:
+                titleTemplate: new
+                indexPolicy:
+                  mode: shadow
+                  scope: new
+                  since: ""
+                versionsSitemap: false
+            indexNowKeyConfigured: false
+            cloudflareTokenConfigured: false
+            updatedAt: 2026-10-13T08:00:00Z
+            revision: 1
+            siteUrl: https://opennavo.example
+            changeFeed:
+              lastRunAt: 2026-10-13T08:00:00Z
+              lastUrls: 6
+              lastIndexnowStatus: "ok: 6 URLs"
+              lastPurgeStatus: ""
+              lastError: ""
     TranslationModelsSixLocales:
       value:
         code: '0000'
@@ -23369,6 +27325,8 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - changelog:release:edit
             - translation:review
@@ -23385,6 +27343,7 @@ components:
             - system:audit:view
             - i18n:settings
             - system:github:edit
+            - system:seo:edit
             - content:glossary:edit
             - agent:log:view
             - content:revision:restore
@@ -24917,6 +28876,8 @@ components:
               - catalog:category:edit
               - content:collection:edit
               - content:collection:publish
+              - content:article:edit
+              - content:article:publish
               - content:feature:edit
               - changelog:release:edit
               - translation:review
@@ -24933,6 +28894,7 @@ components:
               - system:audit:view
               - i18n:settings
               - system:github:edit
+              - system:seo:edit
             userCount: 1
           - id: 6
             roleCode: R_AGENT
@@ -24949,6 +28911,7 @@ components:
               - catalog:category:edit
               - content:collection:edit
               - content:collection:publish
+              - content:article:edit
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -25001,6 +28964,14 @@ components:
             name: 发布/下线合集
             group: content
             agentGrantable: true
+          - code: content:article:edit
+            name: 撰写文章草稿并提交审核
+            group: content
+            agentGrantable: true
+          - code: content:article:publish
+            name: 发布、撤回和恢复文章，管理作者
+            group: content
+            agentGrantable: false
           - code: content:feature:edit
             name: 编辑精选位
             group: content
@@ -25063,6 +29034,10 @@ components:
             agentGrantable: false
           - code: system:github:edit
             name: GitHub 设置
+            group: system
+            agentGrantable: false
+          - code: system:seo:edit
+            name: SEO 与统计
             group: system
             agentGrantable: false
           - code: content:glossary:edit
@@ -25527,6 +29502,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -25594,6 +29570,7 @@ components:
                 - catalog:category:edit
                 - content:collection:edit
                 - content:collection:publish
+                - content:article:edit
                 - content:feature:edit
                 - content:glossary:edit
                 - changelog:release:edit
@@ -25639,6 +29616,7 @@ components:
               - catalog:category:edit
               - content:collection:edit
               - content:collection:publish
+              - content:article:edit
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -25681,6 +29659,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -25722,6 +29701,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -25764,6 +29744,7 @@ components:
             - catalog:category:edit
             - content:collection:edit
             - content:collection:publish
+            - content:article:edit
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit

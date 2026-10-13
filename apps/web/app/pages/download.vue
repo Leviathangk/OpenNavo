@@ -2,6 +2,7 @@
 import { ApiError, unwrap } from '@opennavo/api';
 import { formatBytes, formatDate, formatVersion } from '@opennavo/shared';
 import { OnButton, OnChip, OnIcon, OnInstallCommand, OnKeyValueList, useUiMessages } from '@opennavo/ui';
+import { trackEvent } from '~/utils/analytics';
 import { DESKTOP_BREW_COMMAND } from '~/utils/download';
 
 // Download (05 §7.4, 08 §10.14): client icon on glow/orbits, Universal DMG, three feature columns,
@@ -116,11 +117,48 @@ async function copySha(sha: string) {
   }
 }
 
+// Copying the client's brew command is a download too.
 function onCopied(command: string) {
   toasts.push({ tone: 'success', title: t('toast.copied'), description: command });
+  trackEvent('download_client');
 }
 
 usePageSeo({ title: () => t('download.metaTitle'), description: () => t('download.description') });
+
+// Share image (WP13): OpenNavo itself, with the brand icon.
+defineOgImage('OgDefault', {
+  locale: appLocale.value,
+  variant: 'home',
+  title: t('og.downloadTitle'),
+  description: t('og.downloadDescription'),
+  ...useOgFrame()
+});
+
+// WP10: OpenNavo's own app, kept apart from catalog apps by its own @id and published by the site
+// organization. No offer: the resolver would add a validity date nobody stated.
+type SoftwareAppInput = NonNullable<Parameters<typeof defineSoftwareApp>[0]>;
+const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
+const settings = useSiteSettings();
+useSchemaOrg(
+  computed(() => {
+    const value = release.value;
+    if (!value || !dmg.value) return [];
+    return [
+      defineSoftwareApp({
+        '@id': `${siteUrl}/#desktop-app`,
+        name: settings.value?.identity.name || 'OpenNavo',
+        operatingSystem: 'macOS',
+        applicationCategory: 'UtilitiesApplication',
+        softwareVersion: value.version,
+        ...(value.minMacos ? { softwareRequirements: `macOS >= ${value.minMacos}` } : {}),
+        downloadUrl: dmg.value.url,
+        url: `${siteUrl}${localePath('/download')}`,
+        image: `${siteUrl}/icon-512.png`,
+        publisher: { '@id': `${siteUrl}/#identity` }
+      } as SoftwareAppInput)
+    ];
+  })
+);
 </script>
 
 <template>
@@ -134,7 +172,14 @@ usePageSeo({ title: () => t('download.metaTitle'), description: () => t('downloa
         {{ t('download.description') }}
       </p>
       <div v-if="release && dmg" class="mt-32px flex flex-col items-center gap-14px">
-        <OnButton variant="primary" size="lg" shape="round" icon="download" :href="dmg.url">
+        <OnButton
+          variant="primary"
+          size="lg"
+          shape="round"
+          icon="download"
+          :href="dmg.url"
+          @click="trackEvent('download_client')"
+        >
           {{ t('download.button') }}
         </OnButton>
         <p class="download-balance m-0 text-12.5px text-ink-tertiary tabular-nums">

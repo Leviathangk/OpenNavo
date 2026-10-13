@@ -68,3 +68,11 @@ export const fetchGitHubSettings = () => request<DataOf<'getGitHubSettings'>>({ 
 
 export const updateGitHubSettings = (data: BodyOf<'updateGitHubSettings'>) =>
   request<DataOf<'updateGitHubSettings'>>({ url: '/system/github-settings', method: 'put', data });
+
+export const fetchSeoSettings = () => request<DataOf<'getSeoSettings'>>({ url: '/system/seo-settings' });
+
+export const updateSeoSettings = (data: BodyOf<'updateSeoSettings'>) =>
+  request<DataOf<'updateSeoSettings'>>({ url: '/system/seo-settings', method: 'put', data });
+
+export const fetchIndexReport = (params: QueryOf<'listIndexReport'>) =>
+  request<DataOf<'listIndexReport'>>({ url: '/seo/index-report', params });

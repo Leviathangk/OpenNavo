@@ -48,7 +48,10 @@ INSERT INTO package_screenshots(id,package_id,asset_id,source_locale) VALUES(100
 INSERT INTO collection_items(collection_id,package_id,source_locale) VALUES(100,100,'en-US');
 INSERT INTO desktop_releases(id,version,artifacts,source_locale) VALUES(100,'1','[]','en-US');
 INSERT INTO mirrors(id,key,probe_url,source_locale) VALUES(100,'test','https://example.com','en-US');
-INSERT INTO app_config(key,value) VALUES('desktop.announcement','{"sourceLocale":"en-US","en-US":{"title":"The application manages files"}}');`).Error)
+INSERT INTO app_config(key,value) VALUES('desktop.announcement','{"sourceLocale":"en-US","en-US":{"title":"The application manages files"}}');
+INSERT INTO article_authors(id,slug,name,source_locale) VALUES(100,'files-author','Files Author','en-US');
+INSERT INTO articles(id,slug,status,working_revision_id,published_revision_id,first_published_at,content_updated_at) VALUES(100,'files-article','published',100,100,now(),now());
+INSERT INTO article_revisions(id,article_id,number,source_locale,type,published_at) VALUES(100,100,1,'en-US','tutorial',now());`).Error)
 	for _, entity := range content.Names() {
 		spec := content.Registry[entity]
 		row := map[string]any{spec.Key: 100, "locale": "en-US", "source_locale": "en-US", "status": "source"}

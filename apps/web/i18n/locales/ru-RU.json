@@ -9,6 +9,7 @@
     "discover": "Обзор",
     "categories": "Категории",
     "rankings": "Рейтинг",
+    "articles": "Статьи",
     "collections": "Подборки",
     "download": "Загрузить приложение",
     "search": "Поиск приложений",
@@ -54,6 +55,14 @@
     "tagline": "Графический интерфейс Homebrew с открытым исходным кодом. Устанавливайте через клиент macOS или команду brew.",
     "copyright": "© {year} OpenNavo"
   },
+  "analytics": {
+    "label": "Настройки cookie аналитики",
+    "message": "OpenNavo использует Google Analytics для подсчёта посещений и ключевых действий, при этом в браузере сохраняются cookie аналитики. Разрешить?",
+    "privacy": "Подробнее о конфиденциальности",
+    "accept": "Разрешить",
+    "decline": "Не разрешать",
+    "settings": "Настройки аналитики"
+  },
   "error": {
     "notFoundTitle": "Страница не найдена",
     "notFoundBody": "На этом адресе ничего нет. Возможно, страница перемещена или удалена из Homebrew.",
@@ -83,6 +92,7 @@
   "catalog": {
     "appsTitle": "Приложение",
     "appsMetaTitle": "Каталог приложений для Mac · OpenNavo",
+    "pageTitle": "Страница {page}",
     "appsDescription": "Приложения macOS в Homebrew с описаниями и историей версий. Сортируйте по установкам, обновлениям или названию.",
     "total": "Всего {total} | Всего {total} | Всего {total} | Всего {total}",
     "sortLabel": "Сортировка",
@@ -98,7 +108,10 @@
     "metaTitle": "Категории приложений для Mac · OpenNavo",
     "description": "Просматривайте приложения из Homebrew по назначению.",
     "count": "{count} приложение | {count} приложения | {count} приложений | {count} приложения",
-    "itemMetaTitle": "Рекомендации приложений {name} · OpenNavo"
+    "itemMetaTitle": "Рекомендации приложений {name} · OpenNavo",
+    "seo": {
+      "itemTitle": "Приложения для Mac: {name} · OpenNavo"
+    }
   },
   "rankings": {
     "title": "Рейтинг",
@@ -307,7 +320,164 @@
     "versionsMetaTitle": "История версий и обновления {name} · OpenNavo",
     "versionsMetaDescription": "Последняя версия {name}: {version} ({date}). Узнайте об изменениях в каждом выпуске.",
     "metaTitleCask": "{name}: {summary} — установка через Homebrew · OpenNavo",
-    "metaDescription": "{summary}. Установка: {command}. Последняя версия {version}, {installs} установка за последние 30 дней. | {summary}. Установка: {command}. Последняя версия {version}, {installs} установки за последние 30 дней. | {summary}. Установка: {command}. Последняя версия {version}, {installs} установок за последние 30 дней. | {summary}. Установка: {command}. Последняя версия {version}, {installs} установки за последние 30 дней."
+    "metaDescription": "{summary}. Установка: {command}. Последняя версия {version}, {installs} установка за последние 30 дней. | {summary}. Установка: {command}. Последняя версия {version}, {installs} установки за последние 30 дней. | {summary}. Установка: {command}. Последняя версия {version}, {installs} установок за последние 30 дней. | {summary}. Установка: {command}. Последняя версия {version}, {installs} установки за последние 30 дней.",
+    "seo": {
+      "titleApp": "{name} для Mac — скачать и установить · OpenNavo",
+      "titleFont": "Шрифт {name} для Mac — скачать и установить · OpenNavo",
+      "titleUnavailable": "{name} для компьютеров Mac · OpenNavo",
+      "description": "{summary}. Узнайте, как установить {name} на Mac, а также системные требования и историю версий.",
+      "descriptionNoSummary": "Узнайте, как установить {name} на Mac, а также системные требования и историю версий.",
+      "descriptionUnavailable": "{summary}. Homebrew отключил {name}; посмотрите историю версий и похожие приложения.",
+      "descriptionUnavailableNoSummary": "Homebrew отключил {name}; посмотрите историю версий и похожие приложения.",
+      "versionsTitle": "История обновлений {name} · OpenNavo",
+      "versionsTitleLatest": "История обновлений {name} (последняя версия {version}) · OpenNavo",
+      "versionsDescriptionNoDate": "Последняя версия {name}: {version}. Узнайте об изменениях в каждом выпуске.",
+      "versionsDescriptionNoVersion": "Узнайте об изменениях в каждом выпуске {name}."
+    },
+    "removed": {
+      "metaTitle": "{name} удалён из Homebrew · OpenNavo",
+      "title": "{name} удалён из Homebrew",
+      "body": "Последняя версия в каталоге — {version}. С {date} Homebrew её не предоставляет, поэтому установить её через Homebrew больше нельзя. Страница сохранена для справки.",
+      "replacement": "Замена, указанная Homebrew",
+      "alternatives": "Похожие приложения, которые можно установить",
+      "categories": "Категории"
+    },
+    "answer": {
+      "appCategory": "{name} — приложение для Mac из категории «{category}».",
+      "app": "{name} — приложение для Mac.",
+      "softwareCategory": "{name} — программа для Mac из категории «{category}».",
+      "software": "{name} — программа для Mac.",
+      "font": "{name} — шрифт, который можно установить на Mac.",
+      "price": {
+        "free": "Пользоваться можно бесплатно.",
+        "free_with_iap": "Скачивается бесплатно, есть встроенные покупки.",
+        "paid": "Это платная программа.",
+        "subscription": "Нужна подписка.",
+        "trial": "Есть бесплатный пробный период."
+      },
+      "requires": "Нужна macOS {version} или новее."
+    },
+    "guide": {
+      "title": "Установка и удаление",
+      "installApp": "Homebrew устанавливает приложение в папку «Программы».",
+      "installFont": "Homebrew устанавливает шрифт в ~/Library/Fonts, где его видит «Шрифты».",
+      "installPkg": "Homebrew запускает установщик {pkg}, который запрашивает пароль администратора.",
+      "downloadTitle": "Установка без Homebrew",
+      "downloadDirect": "Скачайте тот же файл, что использует Homebrew:",
+      "downloadArch": "Скачайте файл, который Homebrew использует для вашего чипа:",
+      "downloadVaries": "Файл зависит от версии macOS, поэтому выберите его на официальном сайте:",
+      "downloadOfficial": "Скачайте на официальном сайте:",
+      "sha": "SHA-256 лишь проверяет, что файл скачан полностью; это не сертификат безопасности.",
+      "shaLink": "Посмотреть SHA-256 и адрес загрузки",
+      "uninstallTitle": "Команда удаления",
+      "uninstall": "Обычное удаление стирает приложение, но оставляет настройки и кеш.",
+      "zapTitle": "Глубокая очистка (по желанию)",
+      "zap": "`--zap` также удаляет настройки, кеш и другие файлы из определения Homebrew. Среди них могут быть данные, общие с другими приложениями, восстановить их нельзя, и полное отсутствие следов не гарантируется.",
+      "zapDetails": "Какие файлы будут удалены"
+    },
+    "facts": {
+      "title": "Сведения и источники",
+      "price": "Цена",
+      "types": {
+        "free": "Бесплатно",
+        "free_with_iap": "Бесплатно, со встроенными покупками",
+        "paid": "Платно",
+        "subscription": "Подписка",
+        "trial": "Есть пробный период"
+      },
+      "perMonth": "{price} в месяц",
+      "perYear": "{price} в год",
+      "plan": "Тариф {plan}",
+      "region": "Цена для региона {region}",
+      "checkedOn": "Проверено {date}",
+      "checked": "Источник: {source}, проверено {date}.",
+      "stale": "Могло измениться",
+      "macos": "Системные требования от разработчика",
+      "support": {
+        "native": "Работает нативно",
+        "rosetta": "Работает через Rosetta",
+        "unsupported": "Не поддерживается"
+      },
+      "minimum": "macOS {version} или новее",
+      "maximum": "до macOS {version}",
+      "pending": "Ожидает проверки",
+      "conflict": "Расходится с записью Homebrew ({fields}). Оба варианта сохраняются, пока один не будет проверен.",
+      "conflictFields": {
+        "minimum": "минимальная версия",
+        "maximum": "максимальная версия",
+        "arm64": "чип Apple",
+        "x86_64": "процессор Intel"
+      },
+      "homebrewSays": "Запись Homebrew: {value}",
+      "version": "Версия {version}",
+      "recorded": "Homebrew записал её {date}",
+      "released": "Разработчик выпустил её {date}"
+    },
+    "alternatives": {
+      "title": "Альтернативы",
+      "hint": "Приложения, которые редакция проверила для той же задачи, в порядке рекомендации.",
+      "reasons": {
+        "free": "Бесплатно",
+        "open_source": "Открытый исходный код",
+        "lighter": "Легче и быстрее",
+        "more_features": "Больше функций",
+        "simpler": "Проще освоить",
+        "native_ui": "Нативный интерфейс Mac",
+        "apple_silicon": "Нативно на чипах Apple",
+        "privacy": "Данные остаются на вашем Mac",
+        "offline": "Работает офлайн",
+        "collaboration": "Для совместной работы",
+        "cross_platform": "Есть и для Windows и Linux",
+        "one_time_purchase": "Разовая покупка",
+        "active_development": "Активно развивается",
+        "customizable": "Гибко настраивается"
+      },
+      "limits": {
+        "paid": "Платно",
+        "subscription": "Подписка",
+        "fewer_features": "Меньше функций",
+        "requires_account": "Нужна учётная запись",
+        "learning_curve": "Нужно время на освоение",
+        "different_workflow": "Другой подход к работе",
+        "no_apple_silicon": "Не нативно на чипах Apple",
+        "online_only": "Нужен интернет",
+        "limited_languages": "Меньше языков интерфейса"
+      },
+      "bestFor": "Кому подходит: {audience}",
+      "audience": {
+        "everyday": "повседневные задачи",
+        "professionals": "профессиональная работа",
+        "developers": "разработчики",
+        "teams": "команды",
+        "beginners": "новички",
+        "power_users": "опытные пользователи"
+      }
+    },
+    "faq": {
+      "title": "Частые вопросы",
+      "updateQ": "Как обновить {name}?",
+      "updateAuto": "{name} обновляется само. `brew upgrade` по умолчанию его пропускает; при необходимости выполните `brew upgrade --cask --greedy {token}`.",
+      "updateBrew": "Выполните `brew upgrade --cask {token}`, чтобы получить последнюю версию, записанную в Homebrew.",
+      "priceQ": "{name} бесплатно?",
+      "priceA": {
+        "free": "Да, {name} можно использовать бесплатно.",
+        "free_with_iap": "{name} скачивается бесплатно, но в нём есть встроенные покупки.",
+        "paid": "Нет, {name} — платная программа.",
+        "subscription": "Нет, для {name} нужна подписка.",
+        "trial": "У {name} есть бесплатный пробный период, после него программа платная."
+      },
+      "siliconQ": "Работает ли {name} нативно на чипах Apple?",
+      "siliconA": {
+        "native": "Да. По данным разработчика, программа работает на чипах Apple нативно.",
+        "rosetta": "Не нативно. По данным разработчика, программа работает на чипах Apple через Rosetta.",
+        "unsupported": "По данным разработчика, Mac с чипами Apple не поддерживаются."
+      },
+      "withoutBrewQ": "Можно ли установить {name} без Homebrew?",
+      "withoutBrewA": "Да, скачайте программу на официальном сайте {site}."
+    },
+    "articles": {
+      "title": "Статьи по теме"
+    }
   },
   "collections": {
     "title": "Подборки",
@@ -320,6 +490,53 @@
     "addAll": "Добавить всё в список Brewfile",
     "addedAll": "Добавлен {count} пакет | Добавлены {count} пакета | Добавлено {count} пакетов | Добавлено {count} пакета",
     "export": "Экспортировать Brewfile"
+  },
+  "articles": {
+    "title": "Статьи",
+    "subtitle": "Рекомендации, обзоры, инструкции и подборки приложений для Mac",
+    "metaTitle": "Статьи о приложениях для Mac: рекомендации, обзоры, инструкции и подборки · OpenNavo",
+    "typeMetaTitle": "{type} · Статьи о приложениях для Mac · OpenNavo",
+    "description": "Рекомендации, обзоры, инструкции и подборки приложений для Mac от редакции OpenNavo со ссылками на источники.",
+    "ogTitle": "Статьи о приложениях для Mac",
+    "all": "Все",
+    "typesLabel": "Тип статьи",
+    "types": {
+      "recommendation": "Рекомендация",
+      "review": "Обзор",
+      "tutorial": "Инструкция",
+      "roundup": "Подборка",
+      "news": "Новости"
+    },
+    "rss": "Подписаться через RSS",
+    "feedTitle": "Статьи OpenNavo",
+    "emptyTitle": "Статей пока нет",
+    "emptyDescription": "Опубликованные статьи появятся здесь.",
+    "readingTime": "{minutes} мин чтения",
+    "published": "Опубликовано {date}",
+    "updated": "Обновлено {date}",
+    "editorial": "Редакция OpenNavo",
+    "machineTranslated": "Перевод ИИ",
+    "viewOriginal": "Открыть оригинал",
+    "sourceText": "Эта статья пока недоступна на вашем языке, поэтому ниже показан оригинал.",
+    "testNote": "Как мы тестировали:",
+    "toc": "Содержание",
+    "sources": "Источники",
+    "appCardNote": "Текущие данные каталога: версия и число установок обновляются вместе с каталогом и могут отличаться от тех, что были на момент написания.",
+    "installs": "Установок за 30 дней: {count}",
+    "mentionedApps": "Приложения из статьи",
+    "related": "Статьи по теме",
+    "withdrawnTitle": "Статья снята с публикации",
+    "withdrawnBody": "Возможно, она устарела или стала неточной, поэтому больше недоступна. Посмотрите другие наши статьи.",
+    "withdrawnMetaTitle": "Статья снята с публикации · OpenNavo",
+    "backToList": "Все статьи"
+  },
+  "authors": {
+    "label": "Автор",
+    "metaTitle": "{name} · Автор OpenNavo",
+    "description": "Статьи о приложениях для Mac от автора {name} на OpenNavo.",
+    "count": "{count} статья | {count} статьи | {count} статей | {count} статьи",
+    "links": "Ссылки автора",
+    "empty": "Опубликованных статей пока нет"
   },
   "brewfile": {
     "title": "Список Brewfile",
@@ -430,7 +647,11 @@
     "homeTitle": "Магазин\nHomebrew\nдля Mac.",
     "homeDescription": "Устанавливайте приложения.\nОбновляйте Mac и читайте об изменениях.",
     "discoverTitle": "Откройте\nприложения Mac.",
-    "discoverDescription": "Изучайте приложения и обновления.\nНайдите новое приложение для Mac."
+    "discoverDescription": "Изучайте приложения и обновления.\nНайдите новое приложение для Mac.",
+    "category": "Категория",
+    "collection": "Подборка",
+    "downloadTitle": "Скачайте OpenNavo\nдля Mac.",
+    "downloadDescription": "Устанавливайте и обновляйте приложения в один клик,\nкаждое изменение сохраняется."
   },
   "languageSuggestion": {
     "message": "Хотите просматривать сайт на языке «{language}»?",

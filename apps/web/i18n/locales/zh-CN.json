@@ -9,6 +9,7 @@
     "discover": "发现",
     "categories": "分类",
     "rankings": "排行榜",
+    "articles": "文章",
     "collections": "合集",
     "download": "下载客户端",
     "search": "搜索 App",
@@ -54,6 +55,14 @@
     "tagline": "开源的 Homebrew 图形界面。安装通过 macOS 客户端或 brew 命令完成。",
     "copyright": "© {year} OpenNavo"
   },
+  "analytics": {
+    "label": "统计 Cookie 设置",
+    "message": "OpenNavo 使用 Google Analytics 统计访问量和关键操作，会在浏览器中设置统计 Cookie。是否允许？",
+    "privacy": "隐私说明",
+    "accept": "允许",
+    "decline": "不允许",
+    "settings": "统计设置"
+  },
   "error": {
     "notFoundTitle": "页面不存在",
     "notFoundBody": "这个地址没有内容，可能已经移动或被 Homebrew 移除。",
@@ -83,6 +92,7 @@
   "catalog": {
     "appsTitle": "App",
     "appsMetaTitle": "Mac App 大全 · OpenNavo",
+    "pageTitle": "第 {page} 页",
     "appsDescription": "Homebrew 收录的 macOS App，附介绍与版本记录，按安装量、更新时间或名称浏览。",
     "total": "共 {total} 个",
     "sortLabel": "排序",
@@ -98,7 +108,10 @@
     "metaTitle": "Mac 软件分类 · OpenNavo",
     "description": "按用途浏览 Homebrew 收录的 App。",
     "count": "{count} 个",
-    "itemMetaTitle": "{name}软件推荐 · OpenNavo"
+    "itemMetaTitle": "{name}软件推荐 · OpenNavo",
+    "seo": {
+      "itemTitle": "Mac {name}软件 · OpenNavo"
+    }
   },
   "rankings": {
     "title": "排行榜",
@@ -307,7 +320,164 @@
     "versionsMetaTitle": "{name} 版本记录与更新内容 · OpenNavo",
     "versionsMetaDescription": "{name} 最新版本 {version}（{date}）。查看每个版本更新了什么。",
     "metaTitleCask": "{name}：{summary} — Homebrew 安装 · OpenNavo",
-    "metaDescription": "{summary}。安装命令：{command}。最新版本 {version}，近 30 天安装 {installs} 次。"
+    "metaDescription": "{summary}。安装命令：{command}。最新版本 {version}，近 30 天安装 {installs} 次。",
+    "seo": {
+      "titleApp": "{name} Mac 版下载安装 · OpenNavo",
+      "titleFont": "{name} 字体 Mac 版下载安装 · OpenNavo",
+      "titleUnavailable": "{name} Mac 版 · OpenNavo",
+      "description": "{summary}。查看 {name} 在 Mac 上的安装方法、系统要求和版本记录。",
+      "descriptionNoSummary": "查看 {name} 在 Mac 上的安装方法、系统要求和版本记录。",
+      "descriptionUnavailable": "{summary}。{name} 已被 Homebrew 停用，可以查看版本记录和同类软件。",
+      "descriptionUnavailableNoSummary": "{name} 已被 Homebrew 停用，可以查看版本记录和同类软件。",
+      "versionsTitle": "{name} 更新日志 · OpenNavo",
+      "versionsTitleLatest": "{name} 更新日志（最新 {version}）· OpenNavo",
+      "versionsDescriptionNoDate": "{name} 最新版本 {version}。查看每个版本更新了什么。",
+      "versionsDescriptionNoVersion": "查看 {name} 每个版本更新了什么。"
+    },
+    "removed": {
+      "metaTitle": "{name} 已从 Homebrew 移除 · OpenNavo",
+      "title": "{name} 已从 Homebrew 移除",
+      "body": "最后收录的版本是 {version}，{date} 起 Homebrew 不再提供，已无法通过 Homebrew 安装。这个页面保留供参考。",
+      "replacement": "Homebrew 推荐的替代",
+      "alternatives": "可以安装的同类软件",
+      "categories": "所属分类"
+    },
+    "answer": {
+      "appCategory": "{name} 是一款{category}类 Mac 应用。",
+      "app": "{name} 是一款 Mac 应用。",
+      "softwareCategory": "{name} 是一款{category}类 Mac 软件。",
+      "software": "{name} 是一款 Mac 软件。",
+      "font": "{name} 是可以安装在 Mac 上的字体。",
+      "price": {
+        "free": "可以免费使用。",
+        "free_with_iap": "可以免费下载，提供应用内购买。",
+        "paid": "需要付费购买。",
+        "subscription": "需要订阅才能使用。",
+        "trial": "提供免费试用。"
+      },
+      "requires": "需要 macOS {version} 或更高版本。"
+    },
+    "guide": {
+      "title": "安装与卸载",
+      "installApp": "Homebrew 会把应用安装到“应用程序”文件夹。",
+      "installFont": "Homebrew 会把字体安装到 ~/Library/Fonts，之后可以在“字体册”中使用。",
+      "installPkg": "Homebrew 会运行安装包 {pkg}，需要输入管理员密码。",
+      "downloadTitle": "不用 Homebrew 安装",
+      "downloadDirect": "直接下载 Homebrew 使用的同一个文件：",
+      "downloadArch": "按芯片下载 Homebrew 使用的文件：",
+      "downloadVaries": "下载文件因系统版本而不同，请在官网选择：",
+      "downloadOfficial": "请从官网下载：",
+      "sha": "SHA-256 只用来核对下载的文件是否完整，不代表安全认证。",
+      "shaLink": "查看 SHA-256 和下载地址",
+      "uninstallTitle": "卸载命令",
+      "uninstall": "普通卸载会删除应用本身，设置和缓存会保留。",
+      "zapTitle": "深度清理（可选）",
+      "zap": "`--zap` 还会删除 Homebrew 定义里列出的设置、缓存等文件，其中可能有其他应用共用的数据，删除后无法恢复；它也不保证没有任何残留。",
+      "zapDetails": "查看会删除哪些文件"
+    },
+    "facts": {
+      "title": "资料与来源",
+      "price": "价格",
+      "types": {
+        "free": "免费",
+        "free_with_iap": "免费，含应用内购买",
+        "paid": "付费",
+        "subscription": "订阅",
+        "trial": "提供免费试用"
+      },
+      "perMonth": "每月 {price}",
+      "perYear": "每年 {price}",
+      "plan": "{plan} 方案",
+      "region": "{region} 地区价格",
+      "checkedOn": "核查于 {date}",
+      "checked": "来源：{source}，核查于 {date}。",
+      "stale": "可能已变化",
+      "macos": "厂商提供的系统要求",
+      "support": {
+        "native": "原生运行",
+        "rosetta": "通过 Rosetta 运行",
+        "unsupported": "不支持"
+      },
+      "minimum": "macOS {version} 起",
+      "maximum": "最高 macOS {version}",
+      "pending": "待核实",
+      "conflict": "与 Homebrew 的记录不一致（{fields}），两种说法都保留，尚未核实哪一个正确。",
+      "conflictFields": {
+        "minimum": "最低版本",
+        "maximum": "最高版本",
+        "arm64": "Apple 芯片",
+        "x86_64": "Intel"
+      },
+      "homebrewSays": "Homebrew 记录：{value}",
+      "version": "版本 {version}",
+      "recorded": "Homebrew 记录于 {date}",
+      "released": "厂商发布于 {date}"
+    },
+    "alternatives": {
+      "title": "可以替代的应用",
+      "hint": "编辑确认能完成同样工作的应用，按推荐顺序排列。",
+      "reasons": {
+        "free": "免费",
+        "open_source": "开源",
+        "lighter": "更轻快",
+        "more_features": "功能更多",
+        "simpler": "更容易上手",
+        "native_ui": "Mac 原生界面",
+        "apple_silicon": "Apple 芯片原生",
+        "privacy": "数据留在本机",
+        "offline": "可离线使用",
+        "collaboration": "适合协作",
+        "cross_platform": "也支持 Windows 和 Linux",
+        "one_time_purchase": "一次买断",
+        "active_development": "持续更新",
+        "customizable": "可高度定制"
+      },
+      "limits": {
+        "paid": "需要付费",
+        "subscription": "订阅制",
+        "fewer_features": "功能较少",
+        "requires_account": "需要账号",
+        "learning_curve": "上手需要时间",
+        "different_workflow": "使用方式不同",
+        "no_apple_silicon": "非 Apple 芯片原生",
+        "online_only": "需要联网",
+        "limited_languages": "界面语言较少"
+      },
+      "bestFor": "适合：{audience}",
+      "audience": {
+        "everyday": "日常使用",
+        "professionals": "专业工作",
+        "developers": "开发者",
+        "teams": "团队",
+        "beginners": "新手",
+        "power_users": "进阶用户"
+      }
+    },
+    "faq": {
+      "title": "常见问题",
+      "updateQ": "怎样更新 {name}？",
+      "updateAuto": "{name} 会自行更新。`brew upgrade` 默认跳过它，需要时可以运行 `brew upgrade --cask --greedy {token}`。",
+      "updateBrew": "运行 `brew upgrade --cask {token}`，更新到 Homebrew 记录的最新版本。",
+      "priceQ": "{name} 免费吗？",
+      "priceA": {
+        "free": "是的，{name} 可以免费使用。",
+        "free_with_iap": "{name} 可以免费下载，但提供应用内购买。",
+        "paid": "不是，{name} 需要付费购买。",
+        "subscription": "不是，{name} 需要订阅才能使用。",
+        "trial": "{name} 提供免费试用，之后需要付费。"
+      },
+      "siliconQ": "{name} 能在 Apple 芯片上原生运行吗？",
+      "siliconA": {
+        "native": "能。厂商资料显示它原生支持 Apple 芯片。",
+        "rosetta": "不能原生运行。厂商资料显示它要通过 Rosetta 在 Apple 芯片上运行。",
+        "unsupported": "厂商资料显示它不支持搭载 Apple 芯片的 Mac。"
+      },
+      "withoutBrewQ": "不用 Homebrew 能安装 {name} 吗？",
+      "withoutBrewA": "可以，从官网 {site} 下载安装。"
+    },
+    "articles": {
+      "title": "相关文章"
+    }
   },
   "collections": {
     "title": "合集",
@@ -320,6 +490,53 @@
     "addAll": "全部加入 Brewfile 清单",
     "addedAll": "已加入 {count} 个包",
     "export": "导出 Brewfile"
+  },
+  "articles": {
+    "title": "文章",
+    "subtitle": "Mac 软件推荐、评测、教程和合集",
+    "metaTitle": "Mac 软件文章：推荐、评测、教程和合集 · OpenNavo",
+    "typeMetaTitle": "{type} · Mac 软件文章 · OpenNavo",
+    "description": "OpenNavo 编辑部撰写的 Mac 软件推荐、评测、教程和合集，并注明信息来源。",
+    "ogTitle": "Mac 软件文章",
+    "all": "全部",
+    "typesLabel": "文章类型",
+    "types": {
+      "recommendation": "推荐",
+      "review": "评测",
+      "tutorial": "教程",
+      "roundup": "合集",
+      "news": "新闻"
+    },
+    "rss": "订阅 RSS",
+    "feedTitle": "OpenNavo 文章",
+    "emptyTitle": "还没有文章",
+    "emptyDescription": "文章发布后会显示在这里。",
+    "readingTime": "阅读约 {minutes} 分钟",
+    "published": "{date} 发布",
+    "updated": "{date} 更新",
+    "editorial": "OpenNavo 编辑部",
+    "machineTranslated": "AI 翻译",
+    "viewOriginal": "查看原文",
+    "sourceText": "这篇文章还没有当前语言的版本，下面显示的是原文。",
+    "testNote": "测试环境：",
+    "toc": "目录",
+    "sources": "参考来源",
+    "appCardNote": "当前目录数据：版本和安装量随目录更新，可能与撰写时不同。",
+    "installs": "近 30 天安装 {count} 次",
+    "mentionedApps": "文中提到的 App",
+    "related": "相关文章",
+    "withdrawnTitle": "这篇文章已撤下",
+    "withdrawnBody": "文章内容可能已过时或不再准确，因此不再提供。可以看看其他文章。",
+    "withdrawnMetaTitle": "文章已撤下 · OpenNavo",
+    "backToList": "浏览全部文章"
+  },
+  "authors": {
+    "label": "作者",
+    "metaTitle": "{name} · OpenNavo 作者",
+    "description": "{name} 在 OpenNavo 发表的 Mac 软件文章。",
+    "count": "{count} 篇文章",
+    "links": "作者链接",
+    "empty": "还没有已发布的文章"
   },
   "brewfile": {
     "title": "Brewfile 清单",
@@ -430,7 +647,11 @@
     "homeTitle": "Mac 上的\nHomebrew\n应用商店",
     "homeDescription": "安装应用，查看更新日志。\n让你的 Mac 保持最新。",
     "discoverTitle": "发现好用的\nMac 应用",
-    "discoverDescription": "浏览应用，查看更新日志。\n找到下一款想安装的应用。"
+    "discoverDescription": "浏览应用，查看更新日志。\n找到下一款想安装的应用。",
+    "category": "分类",
+    "collection": "合集",
+    "downloadTitle": "OpenNavo\nMac 版下载",
+    "downloadDescription": "一键安装和更新应用，\n每一次变化都有记录。"
   },
   "languageSuggestion": {
     "message": "是否使用{language}浏览？",

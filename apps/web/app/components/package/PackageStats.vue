@@ -10,6 +10,7 @@ import {
 } from '@opennavo/shared';
 import { architectures, OnPackageStats, useUiMessages } from '@opennavo/ui';
 import type { OnPackageStatsCell } from '@opennavo/ui';
+import { latestVersionDate } from '~/utils/indexing';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -32,7 +33,8 @@ const size = computed(() => {
 const fileType = computed(() => /\.([a-z0-9]{2,5})(?:[?#]|$)/i.exec(props.pkg.downloadUrl ?? '')?.[1]?.toLowerCase());
 
 const cells = computed<OnPackageStatsCell[]>(() => {
-  const latestAt = props.pkg.latestRelease?.publishedAt ?? props.pkg.versionChangedAt;
+  // WP3: only a reliable release date; versionChangedAt is when OpenNavo noticed the version.
+  const latestAt = latestVersionDate(props.pkg);
   const stats = props.releaseStats;
   return [
     {
@@ -53,7 +55,9 @@ const cells = computed<OnPackageStatsCell[]>(() => {
       key: 'version',
       label: t('package.stats.latest'),
       value: formatVersion(props.pkg.version),
-      hint: `${formatRelativeTime(latestAt, { locale: appLocale.value })} · ${formatDate(latestAt, { locale: appLocale.value })}`
+      hint: latestAt
+        ? `${formatRelativeTime(latestAt, { locale: appLocale.value })} · ${formatDate(latestAt, { locale: appLocale.value })}`
+        : undefined
     },
     {
       key: 'size',

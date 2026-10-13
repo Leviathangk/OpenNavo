@@ -2,6 +2,7 @@
 import { OnButton, OnGetButton, OnMenu, useUiMessages } from '@opennavo/ui';
 import type { OnMenuItem } from '@opennavo/ui';
 import type { PackageKind } from '@opennavo/shared';
+import { trackEvent } from '~/utils/analytics';
 
 // Web Get menu (05 §7): open in OpenNavo / copy install command / add to Brewfile.
 const props = withDefaults(
@@ -51,8 +52,14 @@ function onSelect(key: string) {
 <template>
   <OnMenu :items="items" :label="t('get.menuLabel', { name })" @select="onSelect">
     <template #trigger="{ attrs }">
-      <OnGetButton v-if="variant === 'chip'" state="get" v-bind="attrs" :aria-label="t('get.label', { name })" />
-      <OnButton v-else variant="primary" shape="round" icon="download" v-bind="attrs">
+      <OnGetButton
+        v-if="variant === 'chip'"
+        state="get"
+        v-bind="attrs"
+        :aria-label="t('get.label', { name })"
+        @click="trackEvent('get_app')"
+      />
+      <OnButton v-else variant="primary" shape="round" icon="download" v-bind="attrs" @click="trackEvent('get_app')">
         {{ messages.getButton.get }}
       </OnButton>
     </template>

@@ -9,6 +9,7 @@
     "discover": "見つける",
     "categories": "カテゴリ",
     "rankings": "ランキング",
+    "articles": "記事",
     "collections": "コレクション",
     "download": "クライアントをダウンロード",
     "search": "App を検索",
@@ -54,6 +55,14 @@
     "tagline": "オープンソースのHomebrew用GUIです。インストールはmacOSクライアントまたはbrewコマンドで行います。",
     "copyright": "© {year} OpenNavo"
   },
+  "analytics": {
+    "label": "分析用 Cookie の設定",
+    "message": "OpenNavo はアクセス数と主な操作を Google Analytics で計測し、ブラウザに分析用の Cookie を保存します。許可しますか？",
+    "privacy": "プライバシーの詳細",
+    "accept": "許可する",
+    "decline": "許可しない",
+    "settings": "分析の設定"
+  },
   "error": {
     "notFoundTitle": "ページが見つかりません",
     "notFoundBody": "このページには内容がありません。移動したか、Homebrewから削除された可能性があります。",
@@ -83,6 +92,7 @@
   "catalog": {
     "appsTitle": "App",
     "appsMetaTitle": "Mac App カタログ · OpenNavo",
+    "pageTitle": "{page} ページ目",
     "appsDescription": "HomebrewのmacOSアプリの紹介とリリースノート。インストール数、更新日、名前で閲覧できます。",
     "total": "全 {total} 件",
     "sortLabel": "並べ替え",
@@ -98,7 +108,10 @@
     "metaTitle": "Mac ソフトウェアカテゴリ · OpenNavo",
     "description": "用途別に Homebrew 収録の App を閲覧できます。",
     "count": "{count} 件",
-    "itemMetaTitle": "{name} ソフトウェアのおすすめ · OpenNavo"
+    "itemMetaTitle": "{name} ソフトウェアのおすすめ · OpenNavo",
+    "seo": {
+      "itemTitle": "Mac 向け{name}アプリ · OpenNavo"
+    }
   },
   "rankings": {
     "title": "ランキング",
@@ -307,7 +320,164 @@
     "versionsMetaTitle": "{name}のバージョン履歴と更新内容 · OpenNavo",
     "versionsMetaDescription": "{name}の最新バージョンは{version}（{date}）です。各リリースの変更内容をご覧ください。",
     "metaTitleCask": "{name}：{summary} — Homebrewでインストール · OpenNavo",
-    "metaDescription": "{summary}。インストールコマンド：{command}。最新バージョンは{version}、過去30日間のインストール数は{installs}回です。"
+    "metaDescription": "{summary}。インストールコマンド：{command}。最新バージョンは{version}、過去30日間のインストール数は{installs}回です。",
+    "seo": {
+      "titleApp": "{name} for Mac ダウンロード・インストール · OpenNavo",
+      "titleFont": "{name} フォント for Mac ダウンロード・インストール · OpenNavo",
+      "titleUnavailable": "{name}の Mac 版 · OpenNavo",
+      "description": "{summary}。{name}を Mac にインストールする方法、システム要件、バージョン履歴を確認できます。",
+      "descriptionNoSummary": "{name}を Mac にインストールする方法、システム要件、バージョン履歴を確認できます。",
+      "descriptionUnavailable": "{summary}。{name}は Homebrew で無効化されています。バージョン履歴や類似アプリを確認できます。",
+      "descriptionUnavailableNoSummary": "{name}は Homebrew で無効化されています。バージョン履歴や類似アプリを確認できます。",
+      "versionsTitle": "{name}の更新履歴 · OpenNavo",
+      "versionsTitleLatest": "{name}の更新履歴（最新 {version}）· OpenNavo",
+      "versionsDescriptionNoDate": "{name}の最新バージョンは{version}です。各リリースの変更内容をご覧ください。",
+      "versionsDescriptionNoVersion": "{name}の各リリースの変更内容をご覧ください。"
+    },
+    "removed": {
+      "metaTitle": "{name} は Homebrew から削除されました · OpenNavo",
+      "title": "{name} は Homebrew から削除されました",
+      "body": "最後に掲載されたバージョンは {version} です。{date} から Homebrew では提供されておらず、Homebrew でインストールすることはできません。このページは参考のために残しています。",
+      "replacement": "Homebrew が推奨する代替",
+      "alternatives": "インストールできる類似のアプリ",
+      "categories": "カテゴリー"
+    },
+    "answer": {
+      "appCategory": "{name} は「{category}」カテゴリの Mac 用アプリです。",
+      "app": "{name} は Mac 用のアプリです。",
+      "softwareCategory": "{name} は「{category}」カテゴリの Mac 用ソフトウェアです。",
+      "software": "{name} は Mac 用のソフトウェアです。",
+      "font": "{name} は Mac にインストールできるフォントです。",
+      "price": {
+        "free": "無料で使えます。",
+        "free_with_iap": "無料でダウンロードでき、アプリ内課金があります。",
+        "paid": "購入が必要な有料ソフトウェアです。",
+        "subscription": "利用にはサブスクリプションが必要です。",
+        "trial": "無料トライアルがあります。"
+      },
+      "requires": "macOS {version} 以降が必要です。"
+    },
+    "guide": {
+      "title": "インストールとアンインストール",
+      "installApp": "Homebrew はアプリを「アプリケーション」フォルダにインストールします。",
+      "installFont": "Homebrew はフォントを ~/Library/Fonts にインストールし、「Font Book」で使えるようにします。",
+      "installPkg": "Homebrew はインストーラ {pkg} を実行するため、管理者パスワードの入力が必要です。",
+      "downloadTitle": "Homebrew を使わずにインストール",
+      "downloadDirect": "Homebrew が使うのと同じファイルをダウンロード：",
+      "downloadArch": "チップに合わせて Homebrew が使うファイルをダウンロード：",
+      "downloadVaries": "ダウンロードするファイルは macOS のバージョンで異なるため、公式サイトで選んでください：",
+      "downloadOfficial": "公式サイトからダウンロードしてください：",
+      "sha": "SHA-256 はダウンロードしたファイルが完全かを確かめるためのもので、安全性の認証ではありません。",
+      "shaLink": "SHA-256 とダウンロード URL を見る",
+      "uninstallTitle": "アンインストールのコマンド",
+      "uninstall": "通常のアンインストールではアプリ本体だけを削除し、設定とキャッシュは残ります。",
+      "zapTitle": "完全な削除（任意）",
+      "zap": "`--zap` は Homebrew の定義に記載された設定やキャッシュなどのファイルも削除します。ほかのアプリと共有しているデータが含まれる場合があり、元に戻せません。何も残らないことを保証するものでもありません。",
+      "zapDetails": "削除されるファイルを見る"
+    },
+    "facts": {
+      "title": "情報と出典",
+      "price": "価格について",
+      "types": {
+        "free": "無料で使える",
+        "free_with_iap": "無料（アプリ内課金あり）",
+        "paid": "有料（買い切り）",
+        "subscription": "サブスクリプション",
+        "trial": "無料トライアルあり"
+      },
+      "perMonth": "月額 {price}",
+      "perYear": "年額 {price}",
+      "plan": "{plan} プラン",
+      "region": "{region} での価格",
+      "checkedOn": "{date} に確認",
+      "checked": "出典：{source}、{date} に確認。",
+      "stale": "変わっている可能性あり",
+      "macos": "ベンダーが示すシステム要件",
+      "support": {
+        "native": "ネイティブで動作",
+        "rosetta": "Rosetta を使って動作",
+        "unsupported": "対応していない"
+      },
+      "minimum": "macOS {version} 以降",
+      "maximum": "macOS {version} まで",
+      "pending": "確認待ち",
+      "conflict": "Homebrew の記録と一致しません（{fields}）。どちらが正しいか確認できるまで両方を残しています。",
+      "conflictFields": {
+        "minimum": "下限のバージョン",
+        "maximum": "上限のバージョン",
+        "arm64": "Apple シリコン",
+        "x86_64": "Intel プロセッサ"
+      },
+      "homebrewSays": "Homebrew の記録：{value}",
+      "version": "バージョン {version}",
+      "recorded": "Homebrew が記録した日：{date}",
+      "released": "ベンダーが公開した日：{date}"
+    },
+    "alternatives": {
+      "title": "代わりに使えるアプリ",
+      "hint": "同じ用途に使えることを編集部が確認したアプリを、おすすめ順に並べています。",
+      "reasons": {
+        "free": "無料で使える",
+        "open_source": "オープンソース",
+        "lighter": "軽くて速い",
+        "more_features": "機能が多い",
+        "simpler": "覚えやすい",
+        "native_ui": "Mac ネイティブの画面",
+        "apple_silicon": "Apple シリコンにネイティブ対応",
+        "privacy": "データを Mac 内に保存",
+        "offline": "オフラインで使える",
+        "collaboration": "チームでの共同作業向け",
+        "cross_platform": "Windows と Linux にも対応",
+        "one_time_purchase": "買い切り",
+        "active_development": "活発に開発されている",
+        "customizable": "細かくカスタマイズできる"
+      },
+      "limits": {
+        "paid": "有料です",
+        "subscription": "サブスクリプション制",
+        "fewer_features": "機能が少ない",
+        "requires_account": "アカウントが必要",
+        "learning_curve": "慣れるまで時間がかかる",
+        "different_workflow": "使い方が異なる",
+        "no_apple_silicon": "Apple シリコンにネイティブ非対応",
+        "online_only": "インターネット接続が必要",
+        "limited_languages": "表示言語が少ない"
+      },
+      "bestFor": "向いている人：{audience}",
+      "audience": {
+        "everyday": "ふだん使い",
+        "professionals": "仕事での本格利用",
+        "developers": "デベロッパー",
+        "teams": "チーム",
+        "beginners": "はじめての人",
+        "power_users": "上級ユーザー"
+      }
+    },
+    "faq": {
+      "title": "よくある質問",
+      "updateQ": "{name} をアップデートするには？",
+      "updateAuto": "{name} は自動でアップデートされます。`brew upgrade` は通常これを飛ばすので、必要なときは `brew upgrade --cask --greedy {token}` を実行します。",
+      "updateBrew": "`brew upgrade --cask {token}` を実行すると、Homebrew に記録された最新バージョンになります。",
+      "priceQ": "{name} は無料ですか？",
+      "priceA": {
+        "free": "はい、{name} は無料で使えます。",
+        "free_with_iap": "{name} は無料でダウンロードできますが、アプリ内課金があります。",
+        "paid": "いいえ、{name} は購入が必要な有料ソフトウェアです。",
+        "subscription": "いいえ、{name} の利用にはサブスクリプションが必要です。",
+        "trial": "{name} には無料トライアルがあり、その後は有料です。"
+      },
+      "siliconQ": "{name} は Apple シリコンでネイティブに動きますか？",
+      "siliconA": {
+        "native": "はい。ベンダーの情報では Apple シリコンにネイティブ対応しています。",
+        "rosetta": "ネイティブではありません。ベンダーの情報では Rosetta を使って Apple シリコンで動作します。",
+        "unsupported": "ベンダーの情報では Apple シリコン搭載の Mac には対応していません。"
+      },
+      "withoutBrewQ": "Homebrew を使わずに {name} をインストールできますか？",
+      "withoutBrewA": "はい、公式サイト {site} からダウンロードしてインストールできます。"
+    },
+    "articles": {
+      "title": "関連記事"
+    }
   },
   "collections": {
     "title": "コレクション",
@@ -320,6 +490,53 @@
     "addAll": "すべてBrewfileに追加",
     "addedAll": "{count}個のパッケージを追加しました",
     "export": "Brewfileをエクスポート"
+  },
+  "articles": {
+    "title": "記事",
+    "subtitle": "Mac アプリのおすすめ、レビュー、使い方、まとめ",
+    "metaTitle": "Mac アプリの記事：おすすめ・レビュー・使い方・まとめ · OpenNavo",
+    "typeMetaTitle": "{type} · Mac アプリの記事 · OpenNavo",
+    "description": "OpenNavo 編集部による Mac アプリのおすすめ、レビュー、使い方、まとめ。情報源も明記しています。",
+    "ogTitle": "Mac アプリの記事",
+    "all": "すべて",
+    "typesLabel": "記事の種類",
+    "types": {
+      "recommendation": "おすすめ",
+      "review": "レビュー",
+      "tutorial": "使い方",
+      "roundup": "まとめ",
+      "news": "ニュース"
+    },
+    "rss": "RSS で購読",
+    "feedTitle": "OpenNavo の記事",
+    "emptyTitle": "記事はまだありません",
+    "emptyDescription": "記事が公開されるとここに表示されます。",
+    "readingTime": "約 {minutes} 分で読めます",
+    "published": "{date} 公開",
+    "updated": "{date} 更新",
+    "editorial": "OpenNavo 編集部",
+    "machineTranslated": "AI 翻訳",
+    "viewOriginal": "原文を見る",
+    "sourceText": "この記事はまだお使いの言語で読めないため、原文を表示しています。",
+    "testNote": "テスト環境：",
+    "toc": "目次",
+    "sources": "参考情報",
+    "appCardNote": "現在のカタログ情報：バージョンとインストール数はカタログに合わせて更新されるため、執筆時と異なる場合があります。",
+    "installs": "30 日間のインストール数：{count}",
+    "mentionedApps": "記事で紹介したアプリ",
+    "related": "関連記事",
+    "withdrawnTitle": "この記事は取り下げられました",
+    "withdrawnBody": "内容が古くなったか正確でなくなった可能性があるため、公開を終了しました。ほかの記事もご覧ください。",
+    "withdrawnMetaTitle": "取り下げられた記事 · OpenNavo",
+    "backToList": "すべての記事を見る"
+  },
+  "authors": {
+    "label": "著者",
+    "metaTitle": "{name} · OpenNavo の著者",
+    "description": "{name} が OpenNavo に書いた Mac アプリの記事。",
+    "count": "{count} 本の記事",
+    "links": "著者のリンク",
+    "empty": "公開済みの記事はまだありません"
   },
   "brewfile": {
     "title": "Brewfile リスト",
@@ -430,7 +647,11 @@
     "homeTitle": "Mac のための\nHomebrew\nアプリストア",
     "homeDescription": "アプリのインストールと更新履歴。\nMac をいつも最新の状態に。",
     "discoverTitle": "Mac アプリを\n見つけよう",
-    "discoverDescription": "アプリと更新履歴をチェック。\n次に使いたいアプリを見つけよう。"
+    "discoverDescription": "アプリと更新履歴をチェック。\n次に使いたいアプリを見つけよう。",
+    "category": "カテゴリ",
+    "collection": "コレクション",
+    "downloadTitle": "OpenNavo を\nMac で使おう",
+    "downloadDescription": "ワンクリックでアプリをインストール・更新、\nすべての変更を記録します。"
   },
   "languageSuggestion": {
     "message": "{language}で閲覧しますか？",

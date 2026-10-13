@@ -103,6 +103,22 @@
       ]
     },
     {
+      "code": "content:article:edit",
+      "name": "Write article drafts and submit them for review",
+      "roles": [
+        "R_ADMIN",
+        "R_EDITOR",
+        "R_AGENT"
+      ]
+    },
+    {
+      "code": "content:article:publish",
+      "name": "Publish, withdraw and restore articles; manage authors",
+      "roles": [
+        "R_ADMIN"
+      ]
+    },
+    {
       "code": "content:feature:edit",
       "name": "Edit featured placements",
       "roles": [
@@ -227,6 +243,13 @@
     {
       "code": "system:github:edit",
       "name": "GitHub settings",
+      "roles": [
+        "R_ADMIN"
+      ]
+    },
+    {
+      "code": "system:seo:edit",
+      "name": "SEO and analytics settings",
       "roles": [
         "R_ADMIN"
       ]

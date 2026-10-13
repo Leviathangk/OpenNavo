@@ -11,6 +11,24 @@ export const fetchPackageDetail = (id: number) => request<DataOf<'getAdminPackag
 export const updatePackageMeta = (id: number, data: BodyOf<'updatePackageMeta'>) =>
   request({ url: `/packages/${id}/meta`, method: 'put', data });
 
+export const fetchPackageIndexStatus = (id: number) =>
+  request<DataOf<'getPackageIndexStatus'>>({ url: `/packages/${id}/index-status` });
+
+export const updatePackageIndexStatus = (id: number, data: BodyOf<'setPackageIndexStatus'>) =>
+  request<DataOf<'setPackageIndexStatus'>>({ url: `/packages/${id}/index-status`, method: 'put', data });
+
+// Sourced facts (WP12): writes return the facts after the change and record a package revision.
+export const fetchPackageFacts = (id: number) => request<DataOf<'getPackageFacts'>>({ url: `/packages/${id}/facts` });
+
+export const updatePackagePrice = (id: number, data: BodyOf<'setPackagePrice'>) =>
+  request<DataOf<'getPackageFacts'>>({ url: `/packages/${id}/price`, method: 'put', data });
+
+export const updatePackageMacosSupport = (id: number, data: BodyOf<'setPackageMacosSupport'>) =>
+  request<DataOf<'getPackageFacts'>>({ url: `/packages/${id}/macos-support`, method: 'put', data });
+
+export const updatePackageAlternatives = (id: number, data: BodyOf<'setPackageAlternatives'>) =>
+  request<DataOf<'getPackageFacts'>>({ url: `/packages/${id}/alternatives`, method: 'put', data });
+
 export const updatePackageI18n = (id: number, locale: Schemas['Locale'], data: BodyOf<'updatePackageI18n'>) =>
   request({ url: `/packages/${id}/i18n/${locale}`, method: 'put', data });
 

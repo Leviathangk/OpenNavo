@@ -144,6 +144,40 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'content_article',
+        path: '/content/article',
+        component: 'view.content_article',
+        meta: {
+          title: 'content_article',
+          i18nKey: 'route.content_article',
+          order: 5,
+          roles: ['R_ADMIN', 'R_EDITOR']
+        }
+      },
+      {
+        name: 'content_article-author',
+        path: '/content/article-author',
+        component: 'view.content_article-author',
+        meta: {
+          title: 'content_article-author',
+          i18nKey: 'route.content_article-author',
+          order: 6,
+          roles: ['R_ADMIN']
+        }
+      },
+      {
+        name: 'content_article-detail',
+        path: '/content/article-detail/:id',
+        component: 'view.content_article-detail',
+        meta: {
+          title: 'content_article-detail',
+          i18nKey: 'route.content_article-detail',
+          hideInMenu: true,
+          activeMenu: 'content_article',
+          roles: ['R_ADMIN', 'R_EDITOR']
+        }
+      },
+      {
         name: 'content_collection',
         path: '/content/collection',
         component: 'view.content_collection',
@@ -382,6 +416,17 @@ export const generatedRoutes: GeneratedRoute[] = [
           i18nKey: 'route.system_role',
           order: 2,
           roles: ['R_SUPER']
+        }
+      },
+      {
+        name: 'system_seo',
+        path: '/system/seo',
+        component: 'view.system_seo',
+        meta: {
+          title: 'system_seo',
+          i18nKey: 'route.system_seo',
+          order: 7,
+          roles: ['R_ADMIN']
         }
       },
       {

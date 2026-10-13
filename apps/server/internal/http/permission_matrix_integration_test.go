@@ -57,10 +57,11 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 		"system:audit:view":          "listAuditLogs",
 		"i18n:settings":              "getTranslationSettings updateTranslationSettings listTranslationModels",
 		"system:github:edit":         "getGitHubSettings updateGitHubSettings",
+		"system:seo:edit":            "getSeoSettings updateSeoSettings getPackageIndexStatus setPackageIndexStatus listIndexReport",
 	}
 	// B3 extends the independent expectation list; retain all original route and five-role assertions.
-	groups["catalog:package:view"] += " listAdminVersions listAdminCatalogChanges getPackageChangelogSettings"
-	groups["catalog:package:edit"] += " updatePackageText updatePackageChangelogSettings"
+	groups["catalog:package:view"] += " listAdminVersions listAdminCatalogChanges getPackageChangelogSettings getPackageFacts"
+	groups["catalog:package:edit"] += " updatePackageText updatePackageChangelogSettings setPackagePrice setPackageMacosSupport setPackageAlternatives"
 	groups["changelog:release:edit"] += " upsertReleaseNotes"
 	groups["translation:review"] += " listTranslations getTranslationStatus retranslateContent fixTranslation"
 	groups["content:glossary:edit"] = "listGlossary upsertGlossaryTerm deleteGlossaryTerm"
@@ -69,6 +70,8 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups["agent:manage"] = "getAgentSettings updateAgentSettings listAgentClients createAgentClient getAgentClient updateAgentClient listAgentTokens createAgentToken updateAgentToken revokeAgentToken introspectAgentToken"
 	groups["agent:log:view"] = "listContentRevisions getContentRevision listTrash getTrashItem listAgentCalls getAgentCall listTranslationLogs getTranslationLog"
 	groups["content:revision:restore"] = "restoreRevision restoreTrash revertRequest"
+	groups["content:article:edit"] = "listAdminArticles createArticle getAdminArticle updateArticle setArticlePackages submitArticleReview revertArticle listArticleAuthors"
+	groups["content:article:publish"] = "publishArticle withdrawArticle restoreArticle setArticleSlug setArticleLocale createArticleAuthor updateArticleAuthor"
 	// Upload tickets are issued only to Agents and redeemed only with the ticket itself.
 	groups["catalog:asset:upload"] += " createAssetUploadTicket uploadAssetWithTicket"
 	operations := map[string]string{}
@@ -91,9 +94,11 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 		"ops:job:view":           ops, "ops:job:trigger": ops, "ops:search:view": editorialOps,
 		"ops:search:edit": edit, "ops:feedback:handle": editorialOps,
 		"release:desktop:edit": ops, "release:desktop:publish": {"R_ADMIN"}, "system:config:edit": ops,
-		"i18n:settings":      {"R_ADMIN"},
-		"system:github:edit": {"R_ADMIN"},
-		"system:user:edit":   {}, "system:role:edit": {}, "system:audit:view": {"R_ADMIN"},
+		"i18n:settings":        {"R_ADMIN"},
+		"system:github:edit":   {"R_ADMIN"},
+		"system:seo:edit":      {"R_ADMIN"},
+		"content:article:edit": edit, "content:article:publish": {"R_ADMIN"},
+		"system:user:edit": {}, "system:role:edit": {}, "system:audit:view": {"R_ADMIN"},
 	}
 	for _, p := range []string{"content:glossary:edit", "content:announcement:edit", "release:desktop:notes", "agent:log:view", "content:revision:restore"} {
 		roles[p] = []string{"R_ADMIN"}

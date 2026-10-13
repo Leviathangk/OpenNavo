@@ -3,6 +3,7 @@ import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { OnEmpty, OnErrorState, OnPackageListView, OnPagination } from '@opennavo/ui';
 import { CATALOG_SORTS, readEnum, readFlag, readPage } from '~/utils/catalogQuery';
+import { packagePath } from '~/utils/packageView';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -12,6 +13,7 @@ const PAGE_SIZE = 24;
 
 const { t, locale } = useI18n();
 const api = useApi();
+const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const { query, hrefWith, update } = useCatalogQuery({ page: 1, sort: 'popular', disabled: false });
 
@@ -46,8 +48,17 @@ const subtitle = computed(() =>
     : t('catalog.appsDescription')
 );
 
+useItemListSchema(
+  () =>
+    error.value
+      ? null
+      : data.value?.records.map(pkg => ({ name: pkg.displayName, path: localePath(packagePath(pkg.token)) })),
+  () => (page.value - 1) * PAGE_SIZE + 1
+);
+
 usePageSeo({
   title: () => t('catalog.appsMetaTitle'),
+  page,
   description: () => t('catalog.appsDescription')
 });
 </script>

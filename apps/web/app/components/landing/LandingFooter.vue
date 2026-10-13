@@ -5,27 +5,8 @@ import { OnLogo } from '@opennavo/ui';
 const { t } = useI18n();
 const localePath = useLocalePath();
 const year = new Date().getFullYear();
-
-const columns = computed(() => [
-  {
-    key: 'browse',
-    title: t('nav.browse'),
-    links: (['discover', 'categories', 'rankings', 'collections'] as const).map(key => ({
-      key,
-      label: t(`nav.${key}`),
-      href: localePath(`/${key}`)
-    }))
-  },
-  {
-    key: 'site',
-    title: t('site.name'),
-    links: (['download', 'brewfile', 'about', 'feedback'] as const).map(key => ({
-      key,
-      label: t(`nav.${key}`),
-      href: localePath(`/${key}`)
-    }))
-  }
-]);
+const columns = useFooterLinks();
+const consent = useAnalyticsConsent();
 </script>
 
 <template>
@@ -59,8 +40,16 @@ const columns = computed(() => [
         </div>
       </nav>
     </div>
-    <p class="m-0 mx-auto box-border max-w-1240px px-24px pb-32px text-12px text-ink-tertiary">
-      {{ t('footer.copyright', { year }) }}
-    </p>
+    <div class="mx-auto box-border flex max-w-1240px flex-wrap items-center gap-x-16px gap-y-6px px-24px pb-32px">
+      <p class="m-0 text-12px text-ink-tertiary">{{ t('footer.copyright', { year }) }}</p>
+      <button
+        v-if="consent.enabled.value"
+        type="button"
+        class="m-0 rounded-tiny border-none bg-transparent p-0 text-12px text-ink-tertiary underline outline-none hover:text-ink-secondary focus-visible:shadow-focus-ring"
+        @click="consent.openSettings()"
+      >
+        {{ t('analytics.settings') }}
+      </button>
+    </div>
   </footer>
 </template>

@@ -5,7 +5,12 @@ import TokenForm from '../src/views/system/agent/modules/token-form.vue';
 import { buildTokenBody } from '../src/views/system/agent/modules/token';
 import { PERMISSION_GROUPS, groupPermissions, hermesConfig } from '../src/views/system/agent/modules/permissions';
 import type { AgentPermission } from '../src/views/system/agent/modules/permissions';
-import { buildNotesBody, emptyNotes, normalizeSections, validateNotes } from '../src/views/changelog/release/modules/notes';
+import {
+  buildNotesBody,
+  emptyNotes,
+  normalizeSections,
+  validateNotes
+} from '../src/views/changelog/release/modules/notes';
 import { defaultRetranslateLocales } from '../src/views/changelog/review/modules/locales';
 
 const api = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn() }));
@@ -18,7 +23,13 @@ describe('Agent access: permissions and tokens', () => {
   it('All 21 grantable permissions are grouped, excluding system, mirrors, configuration, and desktop publishing', () => {
     expect(ALL).toHaveLength(21);
     expect(new Set(ALL).size).toBe(21);
-    for (const forbidden of ['system:config:edit', 'system:user:edit', 'release:desktop:publish', 'release:desktop:edit', 'agent:manage']) {
+    for (const forbidden of [
+      'system:config:edit',
+      'system:user:edit',
+      'release:desktop:publish',
+      'release:desktop:edit',
+      'agent:manage'
+    ]) {
       expect(ALL).not.toContain(forbidden);
     }
   });
@@ -32,7 +43,13 @@ describe('Agent access: permissions and tokens', () => {
   });
 
   it('Default expiry omitted, never null, custom ISO; remove empty IPs', () => {
-    const base = { name: ' 每日更新 ', permissions: ALL, allowDelete: true, expiresAt: null, ipAllowlist: [' 203.0.113.0/24 ', ' '] };
+    const base = {
+      name: ' 每日更新 ',
+      permissions: ALL,
+      allowDelete: true,
+      expiresAt: null,
+      ipAllowlist: [' 203.0.113.0/24 ', ' ']
+    };
     const byDefault = buildTokenBody({ ...base, expiry: 'default' });
     expect(byDefault).not.toHaveProperty('expiresAt');
     expect(byDefault).toMatchObject({ name: '每日更新', allowDelete: true, ipAllowlist: ['203.0.113.0/24'] });
@@ -59,13 +76,21 @@ describe('New token form', () => {
   // Write checked state only to attributes for assertions.
   const checkboxGroup = defineComponent({
     props: { value: { type: Array, default: () => [] } },
-    setup: (props, { slots }) => () => h('div', { 'data-picked': (props.value as string[]).join(',') }, slots.default?.())
+    setup:
+      (props, { slots }) =>
+      () =>
+        h('div', { 'data-picked': (props.value as string[]).join(',') }, slots.default?.())
   });
   const input = defineComponent({
     props: { value: { type: String, default: '' } },
     emits: ['update:value'],
-    setup: (props, { emit }) => () =>
-      h('input', { value: props.value, onInput: (event: Event) => emit('update:value', (event.target as HTMLInputElement).value) })
+    setup:
+      (props, { emit }) =>
+      () =>
+        h('input', {
+          value: props.value,
+          onInput: (event: Event) => emit('update:value', (event.target as HTMLInputElement).value)
+        })
   });
   const button = defineComponent({
     emits: ['click'],
@@ -128,7 +153,10 @@ describe('Author release notes', () => {
   it('Validate required summary and contract limits: eight groups, six items, 12-character names, 80-character items', () => {
     expect(validateNotes(emptyNotes())).toBe('page.changelog.notes.errors.summaryRequired');
     expect(validateNotes(filled())).toBeNull();
-    const many = { ...filled(), groups: Array.from({ length: 9 }, (_, index) => ({ area: `组${index}`, items: ['要点'] })) };
+    const many = {
+      ...filled(),
+      groups: Array.from({ length: 9 }, (_, index) => ({ area: `组${index}`, items: ['要点'] }))
+    };
     expect(validateNotes(many)).toBe('page.changelog.notes.errors.tooManyGroups');
     const items = { ...filled(), groups: [{ area: '改进', items: Array.from({ length: 7 }, () => '要点') }] };
     expect(validateNotes(items)).toBe('page.changelog.notes.errors.tooManyItems');
@@ -138,7 +166,9 @@ describe('Author release notes', () => {
     expect(validateNotes({ ...filled(), groups: [{ area: '改进', items: ['字'.repeat(81)] }] })).toBe(
       'page.changelog.notes.errors.itemTooLong'
     );
-    expect(validateNotes({ ...filled(), groups: [{ area: '', items: ['要点'] }] })).toBe('page.changelog.notes.errors.areaRequired');
+    expect(validateNotes({ ...filled(), groups: [{ area: '', items: ['要点'] }] })).toBe(
+      'page.changelog.notes.errors.areaRequired'
+    );
   });
 
   it('Payload sets clear false and blank title/body/date null', () => {
@@ -172,7 +202,10 @@ describe('Default retranslation selections', () => {
     }) as never;
 
   it('Select failed, missing, or source-changed locales only', () => {
-    expect(defaultRetranslateLocales(item({ 'ja-JP': state('failed'), 'ru-RU': state('manual', true) }))).toEqual(['ja-JP', 'ru-RU']);
+    expect(defaultRetranslateLocales(item({ 'ja-JP': state('failed'), 'ru-RU': state('manual', true) }))).toEqual([
+      'ja-JP',
+      'ru-RU'
+    ]);
   });
 
   it('Select all non-source locales when none need repair', () => {

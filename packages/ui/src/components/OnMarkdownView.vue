@@ -2,8 +2,8 @@
 export interface OnMarkdownViewProps {
   /** Sanitized renderMarkdown output; web delivers SSR HTML in payload, avoiding the renderer on first load. */
   html: string;
-  /** sm is 13/20 for releases; md is 14/1.75 for descriptions. */
-  size?: 'sm' | 'md';
+  /** sm is 13/20 for releases; md is 14/1.75 for descriptions; article is 15/1.8 across the column with larger headings. */
+  size?: 'sm' | 'md' | 'article';
 }
 
 withDefaults(defineProps<OnMarkdownViewProps>(), { size: 'sm' });
@@ -14,8 +14,12 @@ withDefaults(defineProps<OnMarkdownViewProps>(), { size: 'sm' });
 
 <template>
   <div
-    class="on-markdown max-w-[72ch] break-words text-ink-secondary"
-    :class="size === 'md' ? 'text-14px leading-[1.75]' : 'text-body-sm'"
+    class="on-markdown break-words text-ink-secondary"
+    :class="
+      size === 'article'
+        ? 'on-markdown-article'
+        : ['max-w-[72ch]', size === 'md' ? 'text-14px leading-[1.75]' : 'text-body-sm']
+    "
     v-html="html"
   ></div>
 </template>
@@ -31,6 +35,43 @@ withDefaults(defineProps<OnMarkdownViewProps>(), { size: 'sm' });
 
 .on-markdown :where(p, ul, ol, pre, blockquote, table) {
   margin: 0 0 10px;
+}
+
+/* Article bodies (the web article page and the admin preview, so both read the same): headings that
+   stand apart and anchors clear of the sticky toolbar. */
+.on-markdown-article {
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.on-markdown-article :where(h2, h3, h4) {
+  scroll-margin-top: 72px;
+}
+
+.on-markdown-article h2 {
+  margin: 32px 0 12px;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.on-markdown-article h3 {
+  margin: 24px 0 8px;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.on-markdown-article h4 {
+  margin: 20px 0 6px;
+  font-size: 15px;
+}
+
+/* Article bodies only: renderArticle emits img for listed assets with stored sizes. */
+.on-markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: 10px;
 }
 
 .on-markdown :where(h2, h3, h4, h5, h6) {

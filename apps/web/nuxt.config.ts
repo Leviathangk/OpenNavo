@@ -10,6 +10,8 @@ function localizedRules<T>(rules: Record<string, T>): Record<string, T> {
   );
 }
 const privatePagePaths = Object.keys(localizedRules({ '/search': true, '/brewfile': true }));
+// The article list joins the sitemap with the articles group, once there are articles to list.
+const articleListPaths = Object.keys(localizedRules({ '/articles': true }));
 
 // Web app (05-web.md): SSR, English at the root path, other languages at their manifest prefixes.
 export default defineNuxtConfig({
@@ -31,6 +33,10 @@ export default defineNuxtConfig({
     apiBaseInternal: '',
     // Trust only explicitly configured ingress proxy IPs (comma-separated); ignore forwarded headers by default.
     trustedProxies: '',
+    // Internal port (NUXT_METRICS_PORT) for crawler counters and page-cache invalidation; empty disables it.
+    metricsPort: '',
+    // Shared with the Go worker (WEB_INTERNAL_SECRET) to authenticate cache invalidation; empty refuses all.
+    internalSecret: '',
     redisUrl: '',
     public: {
       apiBase: 'http://localhost:8080/api/v1',
@@ -101,32 +107,29 @@ export default defineNuxtConfig({
     ]
   },
   linkChecker: { enabled: false },
-  // Sitemap (05 §6.4): pages (static pages, categories, collections) and packages (one shard per 10,000 entries).
+  // Sitemap (05 §6.4, WP3): one sitemap per business group so each can be diagnosed on its own. static
+  // holds the app routes (home, lists, about, download); server/plugins/sitemap-sources.ts fills the
+  // other groups from the API with per-language lastmod. Large groups shard at 10,000 URLs.
   sitemap: {
     sitemaps: {
-      pages: {
-        includeAppSources: true,
-        sources: ['/api/__sitemap__/pages'],
-        exclude: privatePagePaths
-      },
-      packages: { includeAppSources: false, sources: ['/api/__sitemap__/packages'], chunks: 10000 }
+      static: { includeAppSources: true, exclude: [...privatePagePaths, ...articleListPaths] },
+      apps: { includeAppSources: false, chunks: 10000 },
+      fonts: { includeAppSources: false, chunks: 10000 },
+      versions: { includeAppSources: false, chunks: 10000 },
+      categories: { includeAppSources: false },
+      collections: { includeAppSources: false },
+      articles: { includeAppSources: false },
+      authors: { includeAppSources: false }
     }
   },
   // Exclude search results and Brewfile lists from indexing (05 §6.4).
   // List actual manifest paths explicitly rather than assuming a particular language prefix.
-  // Search engines and AI search/user agents keep the default group. SEO-tool crawlers bring no
-  // visitors; the ClaudeBot training crawler is slowed (Crawl-delay is added by
-  // server/plugins/robots-crawl-delay.ts) and kept off payloads and dependency tabs.
+  // robots.txt itself is generated at runtime from the admin crawler policy
+  // (server/routes/robots.txt.ts). Only the default group stays here, so the robots meta tag and
+  // X-Robots-Tag never depend on the requesting User-Agent and cannot leak into shared SWR caches.
   robots: {
-    disallow: privatePagePaths,
-    groups: [
-      { userAgent: ['MJ12bot', 'SerpstatBot'], disallow: ['/'], _skipI18n: true },
-      {
-        userAgent: ['ClaudeBot'],
-        disallow: [...privatePagePaths, '/*_payload.json', '/*/dependencies'],
-        _skipI18n: true
-      }
-    ]
+    robotsTxt: false,
+    disallow: privatePagePaths
   },
   // Generate the About page canonical URL at runtime too, so a generic image cannot embed the build host URL in HTML.
   routeRules: localizedRules({
@@ -146,9 +149,19 @@ export default defineNuxtConfig({
       '/categories/**': { swr: 900 },
       '/rankings': { swr: 900 },
       '/download': { swr: 600 },
-      '/apps/**': { swr: 600 }
+      '/apps/**': { swr: 600 },
+      // Publishing, withdrawing and translations purge these pages (WP4), so the cache can be long.
+      '/articles': { swr: 600 },
+      '/articles/**': { swr: 600 },
+      '/authors/**': { swr: 600 }
     })
   },
+  // Article feeds (WP17) at fixed paths per language, which take precedence over the cached
+  // <prefix>/articles/** page routes.
+  serverHandlers: LOCALES.map(code => ({
+    route: `${LOCALE_METADATA[code].prefix}/articles/feed.xml`,
+    handler: '~~/server/handlers/articleFeed.ts'
+  })),
   // Generate gzip and brotli assets at build time and serve by Accept-Encoding (the production Caddy proxy also compresses dynamic pages).
   nitro: { compressPublicAssets: { gzip: true, brotli: true } },
   typescript: {

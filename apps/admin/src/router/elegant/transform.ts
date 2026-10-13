@@ -175,6 +175,9 @@ const routeMap: RouteMap = {
   "changelog_review": "/changelog/review",
   "content": "/content",
   "content_announcement": "/content/announcement",
+  "content_article": "/content/article",
+  "content_article-author": "/content/article-author",
+  "content_article-detail": "/content/article-detail/:id",
   "content_collection": "/content/collection",
   "content_collection-detail": "/content/collection-detail/:id",
   "content_feature": "/content/feature",
@@ -196,6 +199,7 @@ const routeMap: RouteMap = {
   "system_audit": "/system/audit",
   "system_github": "/system/github",
   "system_role": "/system/role",
+  "system_seo": "/system/seo",
   "system_translation": "/system/translation",
   "system_user": "/system/user",
   "user-center": "/user-center"

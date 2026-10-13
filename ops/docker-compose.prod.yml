@@ -20,6 +20,10 @@ x-backend-env: &backend-env
   JWT_SECRET: ${JWT_SECRET:?Configure JWT_SECRET}
   CI_RELEASE_TOKEN: ${CI_RELEASE_TOKEN:?Configure CI_RELEASE_TOKEN}
   GITHUB_SETTINGS_ENCRYPTION_KEY: ${GITHUB_SETTINGS_ENCRYPTION_KEY:-}
+  SEO_SETTINGS_ENCRYPTION_KEY: ${SEO_SETTINGS_ENCRYPTION_KEY:-}
+  # URL change feed: the worker refreshes web page caches through the web's internal port.
+  WEB_INTERNAL_URL: http://web:9091
+  WEB_INTERNAL_SECRET: ${WEB_INTERNAL_SECRET:-}
   LLM_ENABLED: ${LLM_ENABLED:-false}
   LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
   LLM_API_KEY: ${LLM_API_KEY:-}
@@ -138,6 +142,9 @@ services:
       NUXT_PUBLIC_CDN_BASE: ${CDN_BASE_URL}
       NUXT_REDIS_URL: redis://web-cache:6379/0
       NUXT_OG_IMAGE_SECRET: ${NUXT_OG_IMAGE_SECRET:?Set a stable OG image signing secret}
+      # Internal port: crawler counters for Prometheus and page-cache invalidation for the worker.
+      NUXT_METRICS_PORT: '9091'
+      NUXT_INTERNAL_SECRET: ${WEB_INTERNAL_SECRET:-}
     deploy:
       replicas: 2
       resources:

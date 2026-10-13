@@ -129,6 +129,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/packages/{kind}/{token}/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Where a package URL should go
+         * @description For URLs whose detail request returned 404 (WP2). active: serve the page; renamed: redirect permanently to token; removed: the app left Homebrew, answer 410 and show the read-only summary in removed. Unknown tokens return 404. A live package always wins over an alias.
+         */
+        get: operations["getPackageLifecycle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Published articles
+         * @description Newest first. Each card uses the requested language when its translation is ready and not held back, otherwise the source language (locale tells which). Withdrawn articles are never listed.
+         */
+        get: operations["listArticles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One article
+         * @description published: the published revision, in the requested language when its translation is ready and not held back (availableLocales lists those languages; others show the source text and should not be indexed). moved: a former slug, redirect permanently to slug. withdrawn: taken off the site, answer 410. Unknown slugs return 404. Drafts are never readable here.
+         */
+        get: operations["getArticle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/authors/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Author profile and published articles */
+        get: operations["getAuthor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sitemap/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Article and author URLs for the sitemap
+         * @description Published articles with the languages whose text is ready (lastmod per language: the latest substantive update or that language's translation), and authors with published articles.
+         */
+        get: operations["getArticleSitemap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/packages/lookup": {
         parameters: {
             query?: never;
@@ -360,8 +457,51 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Sitemap data for the web server */
+        /**
+         * Sitemap data for the web server
+         * @description Indexable apps in stable id order. Under an enforced index policy only eligible apps and their published languages are listed; otherwise every listed app in all six languages.
+         */
         get: operations["listSitemapPackages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public website SEO and analytics settings for the web server
+         * @description Returns only non-secret values configured in admin (System > SEO & analytics), with defaults for unset fields. Credentials and CDN identifiers are never included.
+         */
+        get: operations["getSiteSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/indexnow-keys/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Confirm the IndexNow key file name
+         * @description Returns the key when IndexNow is enabled and the path matches the stored key, so the web server can serve /{key}.txt without learning the key in advance. Any other key returns 404.
+         */
+        get: operations["verifyIndexNowKey"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1012,6 +1152,21 @@ export interface components {
          *         "machineTranslated": false
          *       },
          *       "downloadSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *       "indexing": {
+         *         "indexable": true,
+         *         "reason": null,
+         *         "locales": [
+         *           "en-US",
+         *           "zh-CN",
+         *           "ja-JP",
+         *           "es-ES",
+         *           "pt-BR",
+         *           "ru-RU"
+         *         ],
+         *         "enforced": false,
+         *         "notesCount": 12
+         *       },
+         *       "versionCommittedAt": "2026-09-30T09:00:00Z",
          *       "releaseStats": {
          *         "count30d": 5,
          *         "cadence": "weekly",
@@ -1108,7 +1263,22 @@ export interface components {
              * @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
              */
             downloadSha256?: string | null;
+            indexing?: components["schemas"]["PackageIndexing"];
+            /**
+             * Format: date-time
+             * @description When Homebrew committed the current version; versionChangedAt is when OpenNavo noticed it.
+             * @example 2026-09-30T09:00:00Z
+             */
+            versionCommittedAt?: string | null;
             releaseStats?: components["schemas"]["ReleaseStats"];
+            /** @description Apps only; null when the price is unknown or under review */
+            price?: components["schemas"]["AppPrice"] | null;
+            /** @description Apps only; null without a verified supplement */
+            macosSupplement?: components["schemas"]["MacosSupplement"] | null;
+            /** @description Apps only: human-confirmed alternatives (0 to 8) that pages can show */
+            alternatives?: components["schemas"]["PackageAlternative"][];
+            /** @description Apps only: up to three published articles that cover this app, newest first */
+            articles?: components["schemas"]["ArticleCard"][];
         };
         /**
          * @example {
@@ -3826,10 +3996,971 @@ export interface components {
             website?: string;
         };
         /**
+         * @description Rule for one tunable crawler class. Search engines and user-requested fetchers always use the default group.
+         * @example {
+         *       "mode": "limit",
+         *       "delaySeconds": 10,
+         *       "bots": [
+         *         "ClaudeBot"
+         *       ]
+         *     }
+         */
+        SiteCrawlerRule: {
+            /** @enum {string} */
+            mode: "allow" | "limit" | "block";
+            delaySeconds: number;
+            bots: string[];
+        };
+        /**
+         * @example {
+         *       "revision": 1,
+         *       "identity": {
+         *         "name": "OpenNavo",
+         *         "alternateNames": [
+         *           "opennavo.com"
+         *         ],
+         *         "logoUrl": "https://opennavo.example/brand/logo-512.png",
+         *         "sameAs": [
+         *           "https://github.com/opennavo/OpenNavo",
+         *           "https://x.com/opennavo"
+         *         ]
+         *       },
+         *       "verification": {
+         *         "google": "",
+         *         "bing": ""
+         *       },
+         *       "analytics": {
+         *         "ga4Enabled": true,
+         *         "ga4MeasurementId": "G-EXAMPLE123",
+         *         "consentRegions": [
+         *           "AT",
+         *           "BE",
+         *           "BG",
+         *           "HR",
+         *           "CY",
+         *           "CZ",
+         *           "DK",
+         *           "EE",
+         *           "FI",
+         *           "FR",
+         *           "DE",
+         *           "GR",
+         *           "HU",
+         *           "IE",
+         *           "IT",
+         *           "LV",
+         *           "LT",
+         *           "LU",
+         *           "MT",
+         *           "NL",
+         *           "PL",
+         *           "PT",
+         *           "RO",
+         *           "SK",
+         *           "SI",
+         *           "ES",
+         *           "SE",
+         *           "IS",
+         *           "LI",
+         *           "NO",
+         *           "GB",
+         *           "CH"
+         *         ]
+         *       },
+         *       "edgeCache": {
+         *         "enabled": false
+         *       },
+         *       "crawlers": {
+         *         "training": {
+         *           "mode": "limit",
+         *           "delaySeconds": 10,
+         *           "bots": [
+         *             "ClaudeBot"
+         *           ]
+         *         },
+         *         "seoTools": {
+         *           "mode": "block",
+         *           "delaySeconds": 10,
+         *           "bots": [
+         *             "MJ12bot",
+         *             "SerpstatBot"
+         *           ]
+         *         }
+         *       },
+         *       "pages": {
+         *         "titleTemplate": "new",
+         *         "indexPolicy": {
+         *           "mode": "shadow",
+         *           "scope": "new",
+         *           "since": ""
+         *         },
+         *         "versionsSitemap": false
+         *       }
+         *     }
+         */
+        SiteSettings: {
+            /**
+             * Format: int64
+             * @description Increments on every admin save; use it to key caches.
+             */
+            revision: number;
+            identity: {
+                name: string;
+                alternateNames: string[];
+                logoUrl: string;
+                sameAs: string[];
+            };
+            verification: {
+                google: string;
+                bing: string;
+            };
+            analytics: {
+                ga4Enabled: boolean;
+                ga4MeasurementId: string;
+                consentRegions: string[];
+            };
+            edgeCache: {
+                enabled: boolean;
+            };
+            crawlers: {
+                training: components["schemas"]["SiteCrawlerRule"];
+                seoTools: components["schemas"]["SiteCrawlerRule"];
+            };
+            pages: {
+                /** @enum {string} */
+                titleTemplate: "new" | "legacy";
+                indexPolicy: {
+                    /** @enum {string} */
+                    mode: "off" | "shadow" | "enforce";
+                    /** @enum {string} */
+                    scope: "new" | "all";
+                    since: string;
+                };
+                versionsSitemap: boolean;
+            };
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "revision": 1,
+         *         "identity": {
+         *           "name": "OpenNavo",
+         *           "alternateNames": [
+         *             "opennavo.com"
+         *           ],
+         *           "logoUrl": "https://opennavo.example/brand/logo-512.png",
+         *           "sameAs": [
+         *             "https://github.com/opennavo/OpenNavo",
+         *             "https://x.com/opennavo"
+         *           ]
+         *         },
+         *         "verification": {
+         *           "google": "",
+         *           "bing": ""
+         *         },
+         *         "analytics": {
+         *           "ga4Enabled": true,
+         *           "ga4MeasurementId": "G-EXAMPLE123",
+         *           "consentRegions": [
+         *             "AT",
+         *             "BE",
+         *             "BG",
+         *             "HR",
+         *             "CY",
+         *             "CZ",
+         *             "DK",
+         *             "EE",
+         *             "FI",
+         *             "FR",
+         *             "DE",
+         *             "GR",
+         *             "HU",
+         *             "IE",
+         *             "IT",
+         *             "LV",
+         *             "LT",
+         *             "LU",
+         *             "MT",
+         *             "NL",
+         *             "PL",
+         *             "PT",
+         *             "RO",
+         *             "SK",
+         *             "SI",
+         *             "ES",
+         *             "SE",
+         *             "IS",
+         *             "LI",
+         *             "NO",
+         *             "GB",
+         *             "CH"
+         *           ]
+         *         },
+         *         "edgeCache": {
+         *           "enabled": false
+         *         },
+         *         "crawlers": {
+         *           "training": {
+         *             "mode": "limit",
+         *             "delaySeconds": 10,
+         *             "bots": [
+         *               "ClaudeBot"
+         *             ]
+         *           },
+         *           "seoTools": {
+         *             "mode": "block",
+         *             "delaySeconds": 10,
+         *             "bots": [
+         *               "MJ12bot",
+         *               "SerpstatBot"
+         *             ]
+         *           }
+         *         },
+         *         "pages": {
+         *           "titleTemplate": "new",
+         *           "indexPolicy": {
+         *             "mode": "shadow",
+         *             "scope": "new",
+         *             "since": ""
+         *           },
+         *           "versionsSitemap": false
+         *         }
+         *       }
+         *     }
+         */
+        SiteSettingsResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SiteSettings"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "key": "example-indexnow-key"
+         *       }
+         *     }
+         */
+        IndexNowKeyResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: {
+                /** @example example-indexnow-key */
+                key: string;
+            };
+        };
+        /**
+         * @description Read-only summary of an app Homebrew removed. Data stays in the database; the page returns to 200 if Homebrew adds it back.
+         * @example {
+         *       "token": "legacy-app",
+         *       "displayName": "Legacy App",
+         *       "summary": "Archived utility",
+         *       "iconUrl": null,
+         *       "lastVersion": "2.4.1",
+         *       "removedAt": "2026-09-01T08:00:00Z",
+         *       "replacement": null,
+         *       "alternatives": [],
+         *       "categories": [
+         *         {
+         *           "slug": "utilities",
+         *           "name": "Utilities",
+         *           "icon": "lucide:wrench"
+         *         }
+         *       ]
+         *     }
+         */
+        RemovedPackage: {
+            token: string;
+            displayName: string;
+            summary: string | null;
+            iconUrl: string | null;
+            lastVersion: string;
+            /** Format: date-time */
+            removedAt: string;
+            /** @description The replacement Homebrew named when it disabled or deprecated the app, if still available. */
+            replacement: components["schemas"]["PackageSummary"] | null;
+            /** @description Popular available apps from the same primary category. */
+            alternatives: components["schemas"]["PackageSummary"][];
+            categories: components["schemas"]["CategoryRef"][];
+        };
+        /**
+         * @example {
+         *       "state": "renamed",
+         *       "token": "visual-studio-code"
+         *     }
+         */
+        PackageLifecycle: {
+            /** @enum {string} */
+            state: "active" | "renamed" | "removed";
+            /** @description Current token; the redirect target for renamed. */
+            token: string;
+            removed?: components["schemas"]["RemovedPackage"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "state": "removed",
+         *         "token": "legacy-app",
+         *         "removed": {
+         *           "token": "legacy-app",
+         *           "displayName": "Legacy App",
+         *           "summary": "Archived utility",
+         *           "iconUrl": null,
+         *           "lastVersion": "2.4.1",
+         *           "removedAt": "2026-09-01T08:00:00Z",
+         *           "replacement": null,
+         *           "alternatives": [],
+         *           "categories": [
+         *             {
+         *               "slug": "utilities",
+         *               "name": "Utilities",
+         *               "icon": "lucide:wrench"
+         *             }
+         *           ]
+         *         }
+         *       }
+         *     }
+         */
+        PackageLifecycleResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["PackageLifecycle"];
+        };
+        /**
+         * @description Index decision for the app's pages (WP11). Pages outside locales, or with indexable false, render noindex and stay out of hreflang and the sitemap.
+         * @example {
+         *       "indexable": true,
+         *       "reason": null,
+         *       "locales": [
+         *         "en-US",
+         *         "zh-CN",
+         *         "ja-JP",
+         *         "es-ES",
+         *         "pt-BR",
+         *         "ru-RU"
+         *       ],
+         *       "enforced": false,
+         *       "notesCount": 12
+         *     }
+         */
+        PackageIndexing: {
+            indexable: boolean;
+            /** @description hidden, forced_noindex, unavailable, missing_summary or thin when not indexable. */
+            reason: string | null;
+            locales: components["schemas"]["Locale"][];
+            /** @description Whether the index policy applies to this app. While false, pages keep today's behaviour. */
+            enforced: boolean;
+            /** @description Visible releases with their own notes; the versions page needs several to be indexed on its own. */
+            notesCount: number;
+        };
+        /**
+         * @description Verified price type with its evidence (WP12). Absent when unknown or marked for review; a free download never implies free.
+         * @example {
+         *       "type": "free",
+         *       "amount": null,
+         *       "currency": null,
+         *       "region": null,
+         *       "plan": null,
+         *       "period": null,
+         *       "appVersion": "2.4",
+         *       "sourceUrl": "https://vendor.example/download",
+         *       "method": "vendor_site",
+         *       "verifiedAt": "2026-10-13T08:00:00Z",
+         *       "stale": false,
+         *       "offer": true
+         *     }
+         */
+        AppPrice: {
+            /**
+             * @example subscription
+             * @enum {string}
+             */
+            type: "free" | "free_with_iap" | "paid" | "subscription" | "trial";
+            /**
+             * Format: double
+             * @example 9.99
+             */
+            amount: number | null;
+            /** @example USD */
+            currency: string | null;
+            /**
+             * @description ISO 3166-1 country the price was checked for
+             * @example US
+             */
+            region: string | null;
+            /**
+             * @description Vendor plan name as the vendor writes it; not translated
+             * @example Pro
+             */
+            plan: string | null;
+            /**
+             * @example month
+             * @enum {string|null}
+             */
+            period: "one_time" | "month" | "year" | null;
+            /** @example 5.2 */
+            appVersion: string | null;
+            /** @example https://vendor.example/pricing */
+            sourceUrl: string;
+            /**
+             * @example vendor_site
+             * @enum {string}
+             */
+            method: "vendor_site" | "app_store" | "vendor_docs" | "in_app" | "other";
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            verifiedAt: string;
+            /**
+             * @description Verified more than 365 days ago: show the date as possibly outdated
+             * @example false
+             */
+            stale: boolean;
+            /**
+             * @description Structured data may publish an offer: current, and free to obtain (price 0) or a complete amount with currency, region and plan
+             * @example true
+             */
+            offer: boolean;
+        };
+        /**
+         * @example {
+         *       "arch": "arm64",
+         *       "support": "native",
+         *       "minimum": "13",
+         *       "maximum": null
+         *     }
+         */
+        MacosRange: {
+            /**
+             * @example arm64
+             * @enum {string}
+             */
+            arch: "arm64" | "x86_64";
+            /**
+             * @description native, rosetta (arm64 only) or unsupported, as the vendor states it
+             * @example native
+             * @enum {string}
+             */
+            support: "native" | "rosetta" | "unsupported";
+            /** @example 13 */
+            minimum: string | null;
+            /** @example null */
+            maximum: string | null;
+        };
+        /**
+         * @description Vendor-sourced macOS support kept beside Homebrew's requirements, never replacing them. With conflicts, show both as pending verification.
+         * @example {
+         *       "ranges": [
+         *         {
+         *           "arch": "arm64",
+         *           "support": "native",
+         *           "minimum": "12",
+         *           "maximum": null
+         *         }
+         *       ],
+         *       "appVersion": "5.2",
+         *       "sourceUrl": "https://vendor.example/docs/system-requirements",
+         *       "method": "vendor_docs",
+         *       "verifiedAt": "2026-10-13T08:00:00Z",
+         *       "stale": false,
+         *       "conflicts": [
+         *         "minimum"
+         *       ]
+         *     }
+         */
+        MacosSupplement: {
+            ranges: components["schemas"]["MacosRange"][];
+            /** @example 5.2 */
+            appVersion: string | null;
+            /** @example https://vendor.example/docs/system-requirements */
+            sourceUrl: string;
+            /**
+             * @example vendor_docs
+             * @enum {string}
+             */
+            method: "vendor_site" | "app_store" | "vendor_docs" | "in_app" | "other";
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            verifiedAt: string;
+            /** @example false */
+            stale: boolean;
+            /** @description Where the supplement and Homebrew disagree */
+            conflicts: ("minimum" | "maximum" | "arm64" | "x86_64")[];
+        };
+        /**
+         * @description A human-confirmed alternative, in editor order. Distinct from automatically related apps.
+         * @example {
+         *       "package": {
+         *         "kind": "cask",
+         *         "token": "zed",
+         *         "name": "Zed",
+         *         "displayName": "Zed",
+         *         "summary": "Code editor",
+         *         "iconUrl": null,
+         *         "accentColor": null,
+         *         "version": "0.200.0",
+         *         "primaryCategory": null,
+         *         "installs30d": 5100,
+         *         "rank30d": 40,
+         *         "autoUpdates": true,
+         *         "deprecated": false,
+         *         "disabled": false,
+         *         "isFont": false,
+         *         "isLibrary": false,
+         *         "editorChoice": false,
+         *         "versionChangedAt": "2026-09-30T08:00:00Z"
+         *       },
+         *       "reasons": [
+         *         "open_source",
+         *         "lighter"
+         *       ],
+         *       "limits": [
+         *         "fewer_features"
+         *       ],
+         *       "bestFor": "developers"
+         *     }
+         */
+        PackageAlternative: {
+            package: components["schemas"]["PackageSummary"];
+            /** @description Why someone would pick it; translate the codes */
+            reasons: ("free" | "open_source" | "lighter" | "more_features" | "simpler" | "native_ui" | "apple_silicon" | "privacy" | "offline" | "collaboration" | "cross_platform" | "one_time_purchase" | "active_development" | "customizable")[];
+            /** @description What to weigh before switching; translate the codes */
+            limits: ("paid" | "subscription" | "fewer_features" | "requires_account" | "learning_curve" | "different_workflow" | "no_apple_silicon" | "online_only" | "limited_languages")[];
+            /**
+             * @example developers
+             * @enum {string|null}
+             */
+            bestFor: "everyday" | "professionals" | "developers" | "teams" | "beginners" | "power_users" | null;
+        };
+        /**
+         * @example roundup
+         * @enum {string}
+         */
+        ArticleType: "recommendation" | "review" | "tutorial" | "roundup" | "news";
+        /**
+         * @example {
+         *       "slug": "lin-wei",
+         *       "name": "Lin Wei"
+         *     }
+         */
+        ArticleAuthorRef: {
+            /** @example lin-wei */
+            slug: string;
+            /** @example Lin Wei */
+            name: string;
+        };
+        /**
+         * @example {
+         *       "title": "Shottr documentation",
+         *       "url": "https://shottr.cc/kb"
+         *     }
+         */
+        ArticleSource: {
+            /** @example Shottr documentation */
+            title: string;
+            /** @example https://shottr.cc/kb */
+            url: string;
+        };
+        /**
+         * @example {
+         *       "url": "https://cdn.opennavo.example/screenshots/uploads/cover/a.png",
+         *       "width": 1280,
+         *       "height": 800
+         *     }
+         */
+        ArticleImage: {
+            /** @example https://cdn.opennavo.example/screenshots/uploads/cover/a.png */
+            url: string;
+            /** @example 1280 */
+            width: number | null;
+            /** @example 800 */
+            height: number | null;
+        };
+        /**
+         * @example {
+         *       "url": "https://cdn.opennavo.example/screenshots/uploads/cover/a.png",
+         *       "width": 1280,
+         *       "height": 720,
+         *       "alt": "Four screenshot apps side by side"
+         *     }
+         */
+        ArticleCover: {
+            /** @example https://cdn.opennavo.example/screenshots/uploads/cover/a.png */
+            url: string;
+            /** @example 1280 */
+            width: number | null;
+            /** @example 720 */
+            height: number | null;
+            /** @example Four screenshot apps side by side */
+            alt: string;
+        };
+        /**
+         * @example {
+         *       "slug": "choose-a-screenshot-app",
+         *       "type": "roundup",
+         *       "title": "How to choose a screenshot app for Mac",
+         *       "summary": "What to compare when picking a screenshot tool.",
+         *       "cover": null,
+         *       "author": null,
+         *       "publishedAt": "2026-10-12T10:00:00Z",
+         *       "updatedAt": "2026-10-12T10:00:00Z",
+         *       "readingMinutes": 6,
+         *       "locale": "en-US",
+         *       "machineTranslated": false
+         *     }
+         */
+        ArticleCard: {
+            /** @example choose-a-screenshot-app */
+            slug: string;
+            type: components["schemas"]["ArticleType"];
+            /** @example How to choose a screenshot app for Mac */
+            title: string;
+            /** @example What to compare when picking a screenshot tool. */
+            summary: string | null;
+            cover: components["schemas"]["ArticleCover"] | null;
+            /** @description null is the editorial byline (the site organization) */
+            author: components["schemas"]["ArticleAuthorRef"] | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            publishedAt: string;
+            /**
+             * Format: date-time
+             * @description Latest substantive update
+             * @example 2026-10-12T10:00:00Z
+             */
+            updatedAt: string;
+            /** @example 6 */
+            readingMinutes: number;
+            locale: components["schemas"]["Locale"];
+            /** @example false */
+            machineTranslated: boolean;
+        };
+        /**
+         * @example {
+         *       "slug": "lin-wei",
+         *       "name": "Lin Wei",
+         *       "role": "Editor",
+         *       "bio": "Tests Mac productivity apps.",
+         *       "avatarUrl": null,
+         *       "links": []
+         *     }
+         */
+        ArticleAuthor: {
+            /** @example lin-wei */
+            slug: string;
+            /** @example Lin Wei */
+            name: string;
+            /** @example Editor */
+            role: string | null;
+            /** @example Tests Mac productivity apps. */
+            bio: string | null;
+            /** @example null */
+            avatarUrl: string | null;
+            links: components["schemas"]["ArticleSource"][];
+        };
+        /**
+         * @example {
+         *       "slug": "choose-a-screenshot-app",
+         *       "type": "roundup",
+         *       "title": "How to choose a screenshot app for Mac",
+         *       "summary": "What to compare when picking a screenshot tool.",
+         *       "bodyMarkdown": "## What to compare",
+         *       "testNote": null,
+         *       "seoTitle": null,
+         *       "seoDescription": null,
+         *       "locale": "en-US",
+         *       "sourceLocale": "en-US",
+         *       "machineTranslated": false,
+         *       "availableLocales": [
+         *         "en-US"
+         *       ],
+         *       "author": null,
+         *       "cover": null,
+         *       "sources": [],
+         *       "packages": [],
+         *       "images": [],
+         *       "related": [],
+         *       "publishedAt": "2026-10-12T10:00:00Z",
+         *       "updatedAt": "2026-10-12T10:00:00Z",
+         *       "readingMinutes": 6,
+         *       "revision": 2
+         *     }
+         */
+        Article: {
+            /** @example choose-a-screenshot-app */
+            slug: string;
+            type: components["schemas"]["ArticleType"];
+            /** @example How to choose a screenshot app for Mac */
+            title: string;
+            /** @example What to compare when picking a screenshot tool. */
+            summary: string | null;
+            /**
+             * @description Markdown without raw HTML; ::app[token] lines embed current catalog cards (see packages).
+             * @example ## What to compare
+             *
+             *     ::app[shottr]
+             */
+            bodyMarkdown: string | null;
+            /** @example null */
+            testNote: string | null;
+            /** @example null */
+            seoTitle: string | null;
+            /** @example null */
+            seoDescription: string | null;
+            locale: components["schemas"]["Locale"];
+            sourceLocale: components["schemas"]["Locale"];
+            /** @example false */
+            machineTranslated: boolean;
+            /** @description Languages whose text is ready; pages in other languages show the source text and should not be indexed */
+            availableLocales: components["schemas"]["Locale"][];
+            author: components["schemas"]["ArticleAuthor"] | null;
+            cover: components["schemas"]["ArticleCover"] | null;
+            sources: components["schemas"]["ArticleSource"][];
+            /** @description Apps the article covers, as the catalog shows them now (not a snapshot) */
+            packages: components["schemas"]["PackageSummary"][];
+            /** @description Body images with their stored sizes; images not listed are not rendered */
+            images: components["schemas"]["ArticleImage"][];
+            /** @description Up to three other published articles: most shared apps first, then the same type, then the newest */
+            related: components["schemas"]["ArticleCard"][];
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            publishedAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            updatedAt: string;
+            /** @example 6 */
+            readingMinutes: number;
+            /**
+             * @description Published revision number
+             * @example 2
+             */
+            revision: number;
+        };
+        /**
+         * @example {
+         *       "state": "moved",
+         *       "slug": "choose-a-screenshot-app"
+         *     }
+         */
+        ArticleLookup: {
+            /**
+             * @example published
+             * @enum {string}
+             */
+            state: "published" | "moved" | "withdrawn";
+            /**
+             * @description Current slug; differs from the requested one when moved
+             * @example choose-a-screenshot-app
+             */
+            slug: string;
+            article?: components["schemas"]["Article"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "state": "moved",
+         *         "slug": "choose-a-screenshot-app"
+         *       }
+         *     }
+         */
+        ArticleLookupResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["ArticleLookup"];
+        };
+        /**
+         * @example {
+         *       "records": [],
+         *       "current": 1,
+         *       "size": 12,
+         *       "total": 0
+         *     }
+         */
+        ArticlePage: {
+            records: components["schemas"]["ArticleCard"][];
+            /** @example 1 */
+            current: number;
+            /** @example 12 */
+            size: number;
+            /** @example 1 */
+            total: number;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [],
+         *         "current": 1,
+         *         "size": 12,
+         *         "total": 0
+         *       }
+         *     }
+         */
+        ArticlePageResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["ArticlePage"];
+        };
+        /**
+         * @example {
+         *       "author": {
+         *         "slug": "lin-wei",
+         *         "name": "Lin Wei",
+         *         "role": "Editor",
+         *         "bio": "Tests Mac productivity apps.",
+         *         "avatarUrl": null,
+         *         "links": []
+         *       },
+         *       "articles": {
+         *         "records": [],
+         *         "current": 1,
+         *         "size": 12,
+         *         "total": 0
+         *       }
+         *     }
+         */
+        AuthorPage: {
+            author: components["schemas"]["ArticleAuthor"];
+            articles: components["schemas"]["ArticlePage"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "author": {
+         *           "slug": "lin-wei",
+         *           "name": "Lin Wei",
+         *           "role": "Editor",
+         *           "bio": "Tests Mac productivity apps.",
+         *           "avatarUrl": null,
+         *           "links": []
+         *         },
+         *         "articles": {
+         *           "records": [],
+         *           "current": 1,
+         *           "size": 12,
+         *           "total": 0
+         *         }
+         *       }
+         *     }
+         */
+        AuthorPageResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["AuthorPage"];
+        };
+        /**
+         * @example {
+         *       "slug": "choose-a-screenshot-app",
+         *       "locales": [
+         *         {
+         *           "locale": "en-US",
+         *           "lastmod": "2026-10-12T10:00:00Z"
+         *         }
+         *       ]
+         *     }
+         */
+        ArticleSitemapEntry: {
+            /** @example choose-a-screenshot-app */
+            slug: string;
+            locales: components["schemas"]["SitemapLocale"][];
+        };
+        /**
+         * @example {
+         *       "slug": "lin-wei",
+         *       "lastmod": "2026-10-12T10:00:00Z"
+         *     }
+         */
+        AuthorSitemapEntry: {
+            /** @example lin-wei */
+            slug: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            lastmod: string | null;
+        };
+        /**
+         * @example {
+         *       "articles": [],
+         *       "authors": []
+         *     }
+         */
+        ArticleSitemap: {
+            articles: components["schemas"]["ArticleSitemapEntry"][];
+            authors: components["schemas"]["AuthorSitemapEntry"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "articles": [],
+         *         "authors": []
+         *       }
+         *     }
+         */
+        ArticleSitemapResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["ArticleSitemap"];
+        };
+        /**
+         * @example {
+         *       "locale": "en-US",
+         *       "lastmod": "2026-09-30T08:00:00Z"
+         *     }
+         */
+        SitemapLocale: {
+            locale: components["schemas"]["Locale"];
+            /**
+             * Format: date-time
+             * @description Latest reliable content change for this language: Homebrew commit of the current version, published text or screenshots. Null when no reliable time exists.
+             */
+            lastmod: string | null;
+        };
+        /**
          * @example {
          *       "kind": "cask",
          *       "token": "visual-studio-code",
-         *       "updatedAt": "2026-09-30T08:00:00Z"
+         *       "updatedAt": "2026-09-30T08:00:00Z",
+         *       "isFont": false,
+         *       "notesCount": 12,
+         *       "locales": [
+         *         {
+         *           "locale": "en-US",
+         *           "lastmod": "2026-09-30T08:00:00Z"
+         *         },
+         *         {
+         *           "locale": "zh-CN",
+         *           "lastmod": "2026-09-30T08:00:00Z"
+         *         }
+         *       ]
          *     }
          */
         SitemapEntry: {
@@ -3838,9 +4969,19 @@ export interface components {
             token: string;
             /**
              * Format: date-time
+             * @description Deprecated: row update time, not a content date. Use locales[].lastmod.
              * @example 2026-09-30T08:00:00Z
              */
             updatedAt: string;
+            /** @example false */
+            isFont?: boolean;
+            /**
+             * @description Visible releases with their own notes; version pages need several to stand on their own.
+             * @example 12
+             */
+            notesCount?: number;
+            /** @description Languages to list, each with its own lastmod. */
+            locales?: components["schemas"]["SitemapLocale"][];
         };
         /**
          * @example {
@@ -5407,6 +6548,8 @@ export interface components {
         /** @description Homebrew token; may contain `@`, for example `python@3.14` */
         TokenPath: string;
         SlugPath: string;
+        ArticleSlugPath: string;
+        AuthorSlugPath: string;
         Current: number;
         Size: number;
     };
@@ -5652,6 +6795,161 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PackageSummaryListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getPackageLifecycle: {
+        parameters: {
+            query?: {
+                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                locale?: components["parameters"]["Locale"];
+            };
+            header?: never;
+            path: {
+                kind: components["parameters"]["KindPath"];
+                /** @description Homebrew token; may contain `@`, for example `python@3.14` */
+                token: components["parameters"]["TokenPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageLifecycleResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listArticles: {
+        parameters: {
+            query?: {
+                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                locale?: components["parameters"]["Locale"];
+                current?: components["parameters"]["Current"];
+                size?: number;
+                type?: components["schemas"]["ArticleType"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticlePageResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getArticle: {
+        parameters: {
+            query?: {
+                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                locale?: components["parameters"]["Locale"];
+            };
+            header?: never;
+            path: {
+                slug: components["parameters"]["ArticleSlugPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleLookupResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getAuthor: {
+        parameters: {
+            query?: {
+                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                locale?: components["parameters"]["Locale"];
+                current?: components["parameters"]["Current"];
+                size?: number;
+            };
+            header?: never;
+            path: {
+                slug: components["parameters"]["AuthorSlugPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorPageResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getArticleSitemap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleSitemapResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -6099,6 +7397,8 @@ export interface operations {
         parameters: {
             query?: {
                 current?: components["parameters"]["Current"];
+                /** @description apps excludes fonts; fonts lists only fonts; omitted lists both. */
+                group?: "apps" | "fonts";
                 size?: number;
             };
             header?: never;
@@ -6119,6 +7419,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SitemapPageResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getSiteSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    verifyIndexNowKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexNowKeyResponse"];
                 };
             };
             default: components["responses"]["Error"];

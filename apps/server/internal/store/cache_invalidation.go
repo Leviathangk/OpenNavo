@@ -21,6 +21,12 @@ func addCacheInvalidation(ctx context.Context, tx *gorm.DB, key string, patterns
 	return tx.WithContext(ctx).Exec(`INSERT INTO job_outbox(unique_key,job_type,payload) VALUES(?,'cache:invalidate',?::jsonb) ON CONFLICT(unique_key) DO UPDATE SET payload=EXCLUDED.payload,available_at=now()`, "cache:invalidate:"+key, string(payload)).Error
 }
 
+// QueueCacheInvalidation publishes patterns once tx commits. Rows share a key, so use one key per
+// independent change (a later row with the same key replaces the patterns).
+func QueueCacheInvalidation(ctx context.Context, tx *gorm.DB, key string, patterns ...string) error {
+	return addCacheInvalidation(ctx, tx, key, patterns...)
+}
+
 func addCatalogInvalidation(ctx context.Context, tx *gorm.DB) error {
 	return addCacheInvalidation(ctx, tx, "catalog", "c:pkg:*", "c:home:*", "c:rank:*", "c:cat:*", "c:sug:*", "c:dep:*", "c:related:*")
 }

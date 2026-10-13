@@ -11,18 +11,20 @@ import BasicTab from './modules/basic-tab.vue';
 import CategoryTab from './modules/category-tab.vue';
 import ChangelogTab from './modules/changelog-tab.vue';
 import DetailHeader from './modules/detail-header.vue';
+import FactsTab from './modules/facts-tab.vue';
 import I18nTab from './modules/i18n-tab.vue';
+import IndexTab from './modules/index-tab.vue';
 
 defineOptions({ name: 'CatalogPackageDetail' });
 
-// Package details (07 §7.3): summary header and six tabs; reload details after tab saves.
+// Package details (07 §7.3): summary header and tabs; reload details after tab saves.
 const route = useRoute();
 const { hasAuth } = useAuth();
 
 const id = computed(() => Number(route.params.id));
 const detail = ref<DataOf<'getAdminPackage'> | null>(null);
 const loading = ref(false);
-const TABS = ['basic', 'i18n', 'categories', 'assets', 'changelog', 'audit'];
+const TABS = ['basic', 'i18n', 'categories', 'assets', 'facts', 'changelog', 'index', 'audit'];
 const tab = ref(TABS.includes(String(route.query.tab)) ? String(route.query.tab) : 'basic');
 
 async function load() {
@@ -54,8 +56,19 @@ watch(id, load, { immediate: true });
           <NTabPane name="assets" :tab="$t('page.catalog.packageDetail.tabs.assets')">
             <AssetTab :detail="detail" @saved="load" />
           </NTabPane>
+          <NTabPane name="facts" :tab="$t('page.catalog.packageDetail.tabs.facts')" display-directive="if">
+            <FactsTab :key="detail.id" :package-id="detail.id" />
+          </NTabPane>
           <NTabPane name="changelog" :tab="$t('page.catalog.packageDetail.tabs.changelog')" display-directive="if">
             <ChangelogTab :key="detail.id" :package-id="detail.id" />
+          </NTabPane>
+          <NTabPane
+            v-if="hasAuth('system:seo:edit')"
+            name="index"
+            :tab="$t('page.catalog.packageDetail.tabs.index')"
+            display-directive="if"
+          >
+            <IndexTab :key="detail.id" :package-id="detail.id" />
           </NTabPane>
           <NTabPane
             v-if="hasAuth('system:audit:view')"

@@ -43,10 +43,13 @@ INSERT INTO package_screenshots(id,package_id,asset_id,source_locale) VALUES(100
 INSERT INTO collection_items(collection_id,package_id,source_locale) VALUES(100,100,'zh-CN');
 INSERT INTO desktop_releases(id,version,artifacts,source_locale) VALUES(100,'1','[]','zh-CN');
 INSERT INTO mirrors(id,key,probe_url,source_locale) VALUES(100,'history-types','https://example.com','zh-CN');
-INSERT INTO app_config(key,value) VALUES('desktop.announcement','{"sourceLocale":"zh-CN"}');`).Error)
+INSERT INTO app_config(key,value) VALUES('desktop.announcement','{"sourceLocale":"zh-CN"}');
+INSERT INTO article_authors(id,slug,name,source_locale) VALUES(100,'history-types','History Types','zh-CN');
+INSERT INTO articles(id,slug,status,working_revision_id,published_revision_id,first_published_at,content_updated_at) VALUES(100,'history-types','published',100,100,now(),now());
+INSERT INTO article_revisions(id,article_id,number,source_locale,type,published_at) VALUES(100,100,1,'zh-CN','tutorial',now());`).Error)
 	svc := &Service{Store: st}
 	translator := &contenttranslate.Service{Store: st, LLM: historyTranslator{}, Model: "fake", NoRetry: true}
-	fields := map[string]string{"package": "summary", "release": "summary", "category": "name", "collection": "title", "feature": "title", "screenshot": "caption", "collection_item": "note", "desktop_release": "notes", "mirror": "name", "announcement": "title"}
+	fields := map[string]string{"package": "summary", "release": "summary", "category": "name", "collection": "title", "feature": "title", "screenshot": "caption", "collection_item": "note", "desktop_release": "notes", "mirror": "name", "announcement": "title", "article": "title", "article_author": "bio"}
 	for _, entity := range content.Names() {
 		t.Run(entity, func(t *testing.T) {
 			ref := content.Ref{Entity: entity, ID: 100}

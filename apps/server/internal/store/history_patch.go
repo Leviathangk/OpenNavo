@@ -87,7 +87,7 @@ func historyRows(rows []map[string]any) map[string]map[string]any {
 		if id, exists := row["id"]; exists {
 			key["id"] = id
 		} else {
-			for _, field := range []string{"key", "package_id", "category_id", "collection_id", "feature_id", "release_id", "screenshot_id", "desktop_release_id", "mirror_id", "config_key", "locale"} {
+			for _, field := range []string{"key", "package_id", "alternative_id", "category_id", "collection_id", "feature_id", "release_id", "screenshot_id", "desktop_release_id", "mirror_id", "config_key", "locale"} {
 				if value, exists := row[field]; exists {
 					key[field] = value
 				}

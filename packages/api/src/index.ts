@@ -36,3 +36,4 @@ export type RankingEntry = Schemas['RankingEntry'];
 export type CatalogItem = Schemas['CatalogItem'];
 export type ClientConfig = Schemas['ClientConfig'];
 export type DesktopReleaseInfo = Schemas['DesktopReleaseInfo'];
+export type SiteSettings = Schemas['SiteSettings'];

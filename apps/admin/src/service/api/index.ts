@@ -4,6 +4,7 @@ export * from './dashboard';
 export * from './package';
 export * from './category';
 export * from './content';
+export * from './article';
 export * from './changelog';
 export * from './translation';
 export * from './job';

@@ -22,6 +22,27 @@
     },
     "summary": "Add screenshot"
   },
+  "createArticle": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleCreate"
+    },
+    "method": "POST",
+    "model": "CreateArticleInput",
+    "parameters": {
+      "path": [],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:edit"
+      ]
+    },
+    "summary": "Create an article draft"
+  },
   "createAssetUploadTicket": {
     "body": {
       "$ref": "#/components/schemas/AssetUploadTicketCreate"
@@ -296,6 +317,25 @@
     },
     "summary": "Correct a translation in one language"
   },
+  "getAdminArticle": {
+    "body": null,
+    "method": "GET",
+    "model": "GetAdminArticleInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": []
+    },
+    "path": "/articles/{id}",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:edit"
+      ]
+    },
+    "summary": "Read an article"
+  },
   "getAdminCollection": {
     "body": null,
     "method": "GET",
@@ -545,6 +585,25 @@
     },
     "summary": "Monthly LLM usage"
   },
+  "getPackageFacts": {
+    "body": null,
+    "method": "GET",
+    "model": "GetPackageFactsInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": []
+    },
+    "path": "/packages/{id}/facts",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:view"
+      ]
+    },
+    "summary": "Read sourced app facts"
+  },
   "getTranslationLog": {
     "body": null,
     "method": "GET",
@@ -617,6 +676,29 @@
       "introspection": true
     },
     "summary": "Internal token introspection"
+  },
+  "listAdminArticles": {
+    "body": null,
+    "method": "GET",
+    "model": "ListAdminArticlesInput",
+    "parameters": {
+      "path": [],
+      "query": [
+        "current",
+        "size",
+        "status",
+        "type",
+        "q"
+      ]
+    },
+    "path": "/articles",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:edit"
+      ]
+    },
+    "summary": "List articles"
   },
   "listAdminCatalogChanges": {
     "body": null,
@@ -1313,6 +1395,29 @@
     },
     "summary": "Atomically undo all changes by request ID"
   },
+  "setArticlePackages": {
+    "body": {
+      "$ref": "#/components/schemas/ArticlePackagesUpdate"
+    },
+    "method": "PUT",
+    "model": "SetArticlePackagesInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles/{id}/packages",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:edit"
+      ]
+    },
+    "summary": "Set the apps an article covers"
+  },
   "setCollectionItems": {
     "body": {
       "$ref": "#/components/schemas/CollectionItemsUpdate"
@@ -1335,6 +1440,29 @@
       ]
     },
     "summary": "Set collection items"
+  },
+  "setPackageAlternatives": {
+    "body": {
+      "$ref": "#/components/schemas/PackageAlternativesUpdate"
+    },
+    "method": "PUT",
+    "model": "SetPackageAlternativesInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/packages/{id}/alternatives",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Set confirmed alternatives"
   },
   "setPackageCategories": {
     "body": {
@@ -1381,6 +1509,75 @@
       ]
     },
     "summary": "Set icon"
+  },
+  "setPackageMacosSupport": {
+    "body": {
+      "$ref": "#/components/schemas/PackageMacosUpdate"
+    },
+    "method": "PUT",
+    "model": "SetPackageMacosSupportInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/packages/{id}/macos-support",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Set the manual macOS supplement"
+  },
+  "setPackagePrice": {
+    "body": {
+      "$ref": "#/components/schemas/PackagePriceUpdate"
+    },
+    "method": "PUT",
+    "model": "SetPackagePriceInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/packages/{id}/price",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Set price type with evidence"
+  },
+  "submitArticleReview": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleRevisionCheck"
+    },
+    "method": "POST",
+    "model": "SubmitArticleReviewInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles/{id}/submit",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:edit"
+      ]
+    },
+    "summary": "Submit the working revision for review"
   },
   "triggerJob": {
     "body": null,
@@ -1444,6 +1641,29 @@
       ]
     },
     "summary": "Save client announcement source text"
+  },
+  "updateArticle": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleUpdate"
+    },
+    "method": "PUT",
+    "model": "UpdateArticleInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles/{id}",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:edit"
+      ]
+    },
+    "summary": "Edit the working revision"
   },
   "updateCategory": {
     "body": {

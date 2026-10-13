@@ -1,4 +1,5 @@
 import { buildDeepLink } from '@opennavo/shared';
+import { trackEvent } from '~/utils/analytics';
 import { launchDeepLink } from '~/utils/deepLink';
 import type { PackageKind } from '@opennavo/shared';
 
@@ -22,6 +23,7 @@ export function useOpenInApp() {
   const { copy } = useCopyCommand();
 
   function open(target: OpenInAppTarget) {
+    trackEvent('open_in_app');
     const url = buildDeepLink({ type: 'package', kind: target.kind, token: target.token, action: 'install' });
     let left = false;
     const mark = () => {

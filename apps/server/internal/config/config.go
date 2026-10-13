@@ -39,6 +39,9 @@ type Config struct {
 	JWTAccessTTL                time.Duration `env:"JWT_ACCESS_TTL" envDefault:"2h"`
 	JWTRefreshTTL               time.Duration `env:"JWT_REFRESH_TTL" envDefault:"168h"`
 	GitHubSettingsEncryptionKey string        `env:"GITHUB_SETTINGS_ENCRYPTION_KEY"`
+	SEOSettingsEncryptionKey    string        `env:"SEO_SETTINGS_ENCRYPTION_KEY"`
+	WebInternalURL              string        `env:"WEB_INTERNAL_URL"`
+	WebInternalSecret           string        `env:"WEB_INTERNAL_SECRET"`
 	LLMEnabled                  bool          `env:"LLM_ENABLED" envDefault:"true"`
 	LLMBaseURL                  string        `env:"LLM_BASE_URL" envDefault:"https://api.openai.com/v1"`
 	LLMSettingsEncryptionKey    string        `env:"LLM_SETTINGS_ENCRYPTION_KEY"`
@@ -173,6 +176,13 @@ func (c Config) Validate() error {
 	}
 	if c.GitHubSettingsEncryptionKey != "" && len(c.GitHubSettingsEncryptionKey) < 32 {
 		return errors.New("GITHUB_SETTINGS_ENCRYPTION_KEY must contain at least 32 bytes")
+	}
+	if c.SEOSettingsEncryptionKey != "" && len(c.SEOSettingsEncryptionKey) < 32 {
+		return errors.New("SEO_SETTINGS_ENCRYPTION_KEY must contain at least 32 bytes")
+	}
+	// The URL change feed (WP4) refreshes page caches only with a secret; without one it is off.
+	if c.WebInternalSecret != "" && len(c.WebInternalSecret) < 32 {
+		return errors.New("WEB_INTERNAL_SECRET must contain at least 32 bytes")
 	}
 	if len(c.JWTSecret) < 32 {
 		return errors.New("JWT_SECRET must contain at least 32 bytes")

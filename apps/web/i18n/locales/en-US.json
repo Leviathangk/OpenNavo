@@ -9,6 +9,7 @@
     "discover": "Discover",
     "categories": "Categories",
     "rankings": "Rankings",
+    "articles": "Articles",
     "collections": "Collections",
     "download": "Download",
     "search": "Search apps",
@@ -54,6 +55,14 @@
     "tagline": "An open-source interface for Homebrew. Installs run through the macOS app or the brew command.",
     "copyright": "© {year} OpenNavo"
   },
+  "analytics": {
+    "label": "Analytics cookie settings",
+    "message": "OpenNavo uses Google Analytics to count visits and key actions, which sets analytics cookies in your browser. Allow it?",
+    "privacy": "Privacy details",
+    "accept": "Allow",
+    "decline": "Don't allow",
+    "settings": "Analytics settings"
+  },
   "error": {
     "notFoundTitle": "Page not found",
     "notFoundBody": "There’s nothing at this address. It may have moved or been removed from Homebrew.",
@@ -83,6 +92,7 @@
   "catalog": {
     "appsTitle": "Apps",
     "appsMetaTitle": "Mac Apps · OpenNavo",
+    "pageTitle": "Page {page}",
     "appsDescription": "macOS apps in Homebrew, with descriptions and release notes. Browse by installs, recent updates, or name.",
     "total": "{total} total | {total} total",
     "sortLabel": "Sort",
@@ -98,7 +108,10 @@
     "metaTitle": "Mac Software Categories · OpenNavo",
     "description": "Browse Homebrew apps by what they do.",
     "count": "{count} app | {count} apps",
-    "itemMetaTitle": "Best {name} for Mac · OpenNavo"
+    "itemMetaTitle": "Best {name} for Mac · OpenNavo",
+    "seo": {
+      "itemTitle": "Mac Apps: {name} · OpenNavo"
+    }
   },
   "rankings": {
     "title": "Rankings",
@@ -307,7 +320,164 @@
     "versionsMetaTitle": "{name} Release Notes · OpenNavo",
     "versionsMetaDescription": "{name} latest version {version} ({date}). See what changed in every release.",
     "metaTitleCask": "{name}: {summary} — Install with Homebrew · OpenNavo",
-    "metaDescription": "{summary}. Install: {command}. Latest version {version}, {installs} install in the last 30 days. | {summary}. Install: {command}. Latest version {version}, {installs} installs in the last 30 days."
+    "metaDescription": "{summary}. Install: {command}. Latest version {version}, {installs} install in the last 30 days. | {summary}. Install: {command}. Latest version {version}, {installs} installs in the last 30 days.",
+    "seo": {
+      "titleApp": "{name} for Mac – Download & Install · OpenNavo",
+      "titleFont": "{name} Font for Mac – Download & Install · OpenNavo",
+      "titleUnavailable": "{name} for Mac · OpenNavo",
+      "description": "{summary}. See how to install {name} on your Mac, along with its system requirements and release history.",
+      "descriptionNoSummary": "See how to install {name} on your Mac, along with its system requirements and release history.",
+      "descriptionUnavailable": "{summary}. Homebrew has disabled {name}; see its release history and similar apps.",
+      "descriptionUnavailableNoSummary": "Homebrew has disabled {name}; see its release history and similar apps.",
+      "versionsTitle": "{name} Release Notes · OpenNavo",
+      "versionsTitleLatest": "{name} Release Notes (Latest {version}) · OpenNavo",
+      "versionsDescriptionNoDate": "{name} latest version {version}. See what changed in every release.",
+      "versionsDescriptionNoVersion": "See what changed in every {name} release."
+    },
+    "removed": {
+      "metaTitle": "{name} Was Removed from Homebrew · OpenNavo",
+      "title": "{name} was removed from Homebrew",
+      "body": "The last version listed was {version}. Homebrew stopped offering it on {date}, so it can no longer be installed with Homebrew. This page stays for reference.",
+      "replacement": "Replacement named by Homebrew",
+      "alternatives": "Similar apps you can install",
+      "categories": "Categories"
+    },
+    "answer": {
+      "appCategory": "{name} is a {category} app for Mac.",
+      "app": "{name} is an app for Mac.",
+      "softwareCategory": "{name} is {category} software for Mac.",
+      "software": "{name} is software for Mac.",
+      "font": "{name} is a font you can install on a Mac.",
+      "price": {
+        "free": "It is free to use.",
+        "free_with_iap": "It is free to download and offers in-app purchases.",
+        "paid": "It is paid software.",
+        "subscription": "It requires a subscription.",
+        "trial": "It offers a free trial."
+      },
+      "requires": "It needs macOS {version} or later."
+    },
+    "guide": {
+      "title": "Install and uninstall",
+      "installApp": "Homebrew installs the app in your Applications folder.",
+      "installFont": "Homebrew installs the font in ~/Library/Fonts, where Font Book can use it.",
+      "installPkg": "Homebrew runs the {pkg} installer, which asks for an administrator password.",
+      "downloadTitle": "Install without Homebrew",
+      "downloadDirect": "Download the same file Homebrew uses:",
+      "downloadArch": "Download the file Homebrew uses for your chip:",
+      "downloadVaries": "The download differs by macOS version, so choose one on the official website:",
+      "downloadOfficial": "Download it from the official website:",
+      "sha": "SHA-256 only checks that the download is complete; it is not a security certification.",
+      "shaLink": "See the SHA-256 and download address",
+      "uninstallTitle": "Uninstall command",
+      "uninstall": "A regular uninstall removes the app and keeps its settings and caches.",
+      "zapTitle": "Deep clean (optional)",
+      "zap": "`--zap` also deletes the settings, caches and other files listed in the Homebrew definition. They can include data shared with other apps and cannot be restored, and it does not guarantee that nothing is left.",
+      "zapDetails": "See which files are removed"
+    },
+    "facts": {
+      "title": "Facts and sources",
+      "price": "Price",
+      "types": {
+        "free": "Free",
+        "free_with_iap": "Free with in-app purchases",
+        "paid": "Paid",
+        "subscription": "Subscription",
+        "trial": "Free trial available"
+      },
+      "perMonth": "{price} per month",
+      "perYear": "{price} per year",
+      "plan": "{plan} plan",
+      "region": "{region} price",
+      "checkedOn": "Checked {date}",
+      "checked": "Source: {source}, checked {date}.",
+      "stale": "May have changed",
+      "macos": "Vendor system requirements",
+      "support": {
+        "native": "Runs natively",
+        "rosetta": "Runs through Rosetta",
+        "unsupported": "Not supported"
+      },
+      "minimum": "macOS {version} or later",
+      "maximum": "up to macOS {version}",
+      "pending": "Pending verification",
+      "conflict": "Disagrees with Homebrew’s record ({fields}). Both are kept until one is verified.",
+      "conflictFields": {
+        "minimum": "minimum version",
+        "maximum": "maximum version",
+        "arm64": "Apple silicon",
+        "x86_64": "Intel"
+      },
+      "homebrewSays": "Homebrew records: {value}",
+      "version": "Version {version}",
+      "recorded": "Recorded by Homebrew on {date}",
+      "released": "Released by the vendor on {date}"
+    },
+    "alternatives": {
+      "title": "Alternatives",
+      "hint": "Apps our editors confirmed can do the same job, in recommended order.",
+      "reasons": {
+        "free": "Free",
+        "open_source": "Open source",
+        "lighter": "Lighter and faster",
+        "more_features": "More features",
+        "simpler": "Easier to learn",
+        "native_ui": "Native Mac interface",
+        "apple_silicon": "Native on Apple silicon",
+        "privacy": "Keeps data on your Mac",
+        "offline": "Works offline",
+        "collaboration": "Built for teamwork",
+        "cross_platform": "Also on Windows and Linux",
+        "one_time_purchase": "One-time purchase",
+        "active_development": "Actively developed",
+        "customizable": "Highly customizable"
+      },
+      "limits": {
+        "paid": "Paid",
+        "subscription": "Subscription",
+        "fewer_features": "Fewer features",
+        "requires_account": "Requires an account",
+        "learning_curve": "Takes time to learn",
+        "different_workflow": "Different workflow",
+        "no_apple_silicon": "Not native on Apple silicon",
+        "online_only": "Needs an internet connection",
+        "limited_languages": "Fewer interface languages"
+      },
+      "bestFor": "Best for: {audience}",
+      "audience": {
+        "everyday": "everyday use",
+        "professionals": "professional work",
+        "developers": "developers",
+        "teams": "teams",
+        "beginners": "beginners",
+        "power_users": "power users"
+      }
+    },
+    "faq": {
+      "title": "Questions",
+      "updateQ": "How do I update {name}?",
+      "updateAuto": "{name} updates itself. `brew upgrade` skips it by default; run `brew upgrade --cask --greedy {token}` when you need to.",
+      "updateBrew": "Run `brew upgrade --cask {token}` to get the latest version Homebrew records.",
+      "priceQ": "Is {name} free?",
+      "priceA": {
+        "free": "Yes, {name} is free to use.",
+        "free_with_iap": "{name} is free to download and offers in-app purchases.",
+        "paid": "No, {name} is paid software.",
+        "subscription": "No, {name} requires a subscription.",
+        "trial": "{name} offers a free trial, after which it is paid."
+      },
+      "siliconQ": "Does {name} run natively on Apple silicon?",
+      "siliconA": {
+        "native": "Yes. The vendor states it runs natively on Apple silicon.",
+        "rosetta": "Not natively. The vendor states it runs on Apple silicon through Rosetta.",
+        "unsupported": "The vendor states it does not support Macs with Apple silicon."
+      },
+      "withoutBrewQ": "Can I install {name} without Homebrew?",
+      "withoutBrewA": "Yes, download it from the official website, {site}."
+    },
+    "articles": {
+      "title": "Related articles"
+    }
   },
   "collections": {
     "title": "Collections",
@@ -320,6 +490,53 @@
     "addAll": "Add All to Brewfile",
     "addedAll": "Added {count} package | Added {count} packages",
     "export": "Export Brewfile"
+  },
+  "articles": {
+    "title": "Articles",
+    "subtitle": "Mac app picks, reviews, tutorials and roundups",
+    "metaTitle": "Mac App Articles: Picks, Reviews, Tutorials and Roundups · OpenNavo",
+    "typeMetaTitle": "{type} · Mac App Articles · OpenNavo",
+    "description": "Mac app picks, reviews, tutorials and roundups written by the OpenNavo editors, with their sources.",
+    "ogTitle": "Mac app articles",
+    "all": "All",
+    "typesLabel": "Article type",
+    "types": {
+      "recommendation": "Pick",
+      "review": "Review",
+      "tutorial": "Tutorial",
+      "roundup": "Roundup",
+      "news": "News"
+    },
+    "rss": "RSS feed",
+    "feedTitle": "OpenNavo Articles",
+    "emptyTitle": "No articles yet",
+    "emptyDescription": "Published articles will appear here.",
+    "readingTime": "{minutes} min read",
+    "published": "Published {date}",
+    "updated": "Updated {date}",
+    "editorial": "OpenNavo Editors",
+    "machineTranslated": "AI translation",
+    "viewOriginal": "View original",
+    "sourceText": "This article isn’t available in your language yet, so the original is shown below.",
+    "testNote": "How we tested:",
+    "toc": "Contents",
+    "sources": "Sources",
+    "appCardNote": "Current catalog data: the version and installs follow the catalog and may differ from when this was written.",
+    "installs": "30-day installs: {count}",
+    "mentionedApps": "Apps in this article",
+    "related": "Related articles",
+    "withdrawnTitle": "This article has been withdrawn",
+    "withdrawnBody": "It may be out of date or no longer accurate, so it is no longer available. Have a look at our other articles.",
+    "withdrawnMetaTitle": "Article Withdrawn · OpenNavo",
+    "backToList": "Browse all articles"
+  },
+  "authors": {
+    "label": "Author",
+    "metaTitle": "{name} · OpenNavo Author",
+    "description": "Mac app articles by {name} on OpenNavo.",
+    "count": "{count} article | {count} articles",
+    "links": "Author links",
+    "empty": "No published articles yet"
   },
   "brewfile": {
     "title": "Brewfile List",
@@ -430,7 +647,11 @@
     "homeTitle": "The Homebrew\nApp Store\nfor Mac.",
     "homeDescription": "Install apps. Read release notes.\nKeep your Mac up to date.",
     "discoverTitle": "Discover\nMac apps.",
-    "discoverDescription": "Browse apps. Read release notes.\nFind your next install."
+    "discoverDescription": "Browse apps. Read release notes.\nFind your next install.",
+    "category": "Category",
+    "collection": "Collection",
+    "downloadTitle": "Get OpenNavo\nfor Mac.",
+    "downloadDescription": "Install and update apps in one click,\nwith a record of every change."
   },
   "languageSuggestion": {
     "message": "Would you like to browse in {language}?",

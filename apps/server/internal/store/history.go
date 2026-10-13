@@ -50,7 +50,8 @@ func historyTables(ref content.Ref) []historyTable {
 	tw, ta := textWhere(ref)
 	out = append(out, historyTable{spec.Table, tw, "", ta})
 	if ref.Entity == "package" {
-		out = append(out, historyTable{"package_meta", "package_id=?", "", args}, historyTable{"package_categories", "package_id=?", "", args})
+		out = append(out, historyTable{"package_meta", "package_id=?", "", args}, historyTable{"package_categories", "package_id=?", "", args},
+			historyTable{"package_facts", "package_id=?", "", args}, historyTable{"package_alternatives", "package_id=?", "", args})
 	}
 	if ref.Entity == "collection" {
 		out = append(out, historyTable{"collection_items", "collection_id=?", "", args}, historyTable{"collection_item_i18n", "collection_id=?", "", args})

@@ -194,6 +194,24 @@ func (s *Store) ApplyCatalogBatchWithLifecycle(ctx context.Context, mutations []
 			if err := tx.WithContext(ctx).Exec("INSERT INTO catalog_changes (package_id,kind,token,op,reason,event_type,version,previous_version,previous_token) VALUES (?,?,?,'upsert','homebrew',?,?,?,?)", id, item.Kind, item.Token, eventType, item.VersionBase, previousVersion, nullable(mutation.RenamedFrom)).Error; err != nil {
 				return fmt.Errorf("record package change: %w", err)
 			}
+			// Former tokens keep resolving (WP2): the observed rename and the tokens Homebrew declares.
+			aliases := map[string]string{}
+			if item.Kind == "cask" {
+				for _, token := range item.OldTokens {
+					aliases[token] = "homebrew"
+				}
+			}
+			if mutation.RenamedFrom != "" {
+				aliases[mutation.RenamedFrom] = "renamed"
+			}
+			for token, source := range aliases {
+				if token == item.Token {
+					continue
+				}
+				if err := tx.WithContext(ctx).Exec("INSERT INTO package_aliases (kind,token,package_id,source) VALUES (?,?,?,?) ON CONFLICT (kind,token) DO UPDATE SET package_id=EXCLUDED.package_id,source=EXCLUDED.source", item.Kind, token, id, source).Error; err != nil {
+					return fmt.Errorf("record package alias: %w", err)
+				}
+			}
 			if isNew || versionChanged {
 				if err := tx.WithContext(ctx).Exec("INSERT INTO package_versions (package_id,version,version_base,first_seen_at) VALUES (?,?,?,now()) ON CONFLICT (package_id,version) DO NOTHING", id, item.Version, item.VersionBase).Error; err != nil {
 					return fmt.Errorf("record package version: %w", err)

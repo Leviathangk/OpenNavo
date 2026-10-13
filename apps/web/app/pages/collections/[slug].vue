@@ -60,6 +60,28 @@ function addAll() {
   toasts.push({ tone: 'success', title: t('collections.addedAll', { count: added }, { plural: added }) });
 }
 
+const crumbs = computed(() => [
+  { label: t('collections.title'), href: localePath('/collections') },
+  { label: data.value?.title ?? slug.value }
+]);
+useBreadcrumbSchema(crumbs);
+// Share image (WP13): the collection beside its first apps.
+if (data.value)
+  defineOgImage('OgList', {
+    locale: appLocale.value,
+    label: t('og.collection'),
+    title: data.value.title,
+    description: data.value.subtitle ?? undefined,
+    icons: data.value.items.slice(0, 4).map(item => ({
+      name: item.package.displayName,
+      token: item.package.token,
+      src: item.package.iconUrl,
+      accent: item.package.accentColor
+    })),
+    ...useOgFrame()
+  });
+useItemListSchema(() => entries.value.map(entry => ({ name: entry.name, path: entry.href })));
+
 usePageSeo({
   title: () => t('collections.itemMetaTitle', { title: data.value?.title ?? '' }),
   description: () => data.value?.subtitle ?? t('collections.description')
@@ -68,7 +90,7 @@ usePageSeo({
 
 <template>
   <OnCollectionView
-    :breadcrumb="[{ label: t('collections.title'), href: localePath('/collections') }, { label: data?.title ?? slug }]"
+    :breadcrumb="crumbs"
     :title="data?.title ?? null"
     :subtitle="data?.subtitle"
     :meta="meta"

@@ -28,6 +28,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/seo/index-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Apps the index rule keeps out of search results
+         * @description Lists apps the rule finds ineligible or that carry a manual override, with the reason and whether the current policy already enforces it, plus counts per reason across all apps. Review it in shadow mode before enforcing. Requires system:seo:edit, not grantable to Agents.
+         */
+        get: operations["listIndexReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/seo-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get SEO and analytics settings without returning credentials
+         * @description Requires system:seo:edit, not grantable to Agents. Returns the effective settings (stored values over defaults) and whether the IndexNow key and Cloudflare token are configured.
+         */
+        get: operations["getSeoSettings"];
+        /**
+         * Save SEO and analytics settings
+         * @description Saves the full settings document. The IndexNow key and Cloudflare token are write-only, stored with AES-GCM encryption and excluded from responses, audit and logs; empty/omitted values preserve the current credential and clear* flags remove it. Enabling IndexNow or Cloudflare purge requires the matching credential. Search engines and user-requested fetchers cannot be listed in crawler rules. Requires system:seo:edit, not grantable to Agents.
+         */
+        put: operations["updateSeoSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/translation-settings/models": {
         parameters: {
             query?: never;
@@ -227,7 +271,7 @@ export interface paths {
         };
         /**
          * Package list
-         * @description Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial checks non-hidden editorial notes for the current versionBase. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial checks non-hidden editorial notes for the current versionBase. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         get: operations["listAdminPackages"];
         put?: never;
@@ -271,6 +315,86 @@ export interface paths {
          * @description Requires catalog:package:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         put: operations["updatePackageMeta"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packages/{id}/facts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read sourced app facts
+         * @description Price, the manual macOS supplement and alternatives with their evidence, what Homebrew declares, where the two disagree, and the evidence gaps (unknown, stale, needs review, incomplete offer, missing app version). Pages show a fact only when it is verified; older than 365 days it is shown as possibly outdated. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["getPackageFacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packages/{id}/price": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set price type with evidence
+         * @description Records the price type with its source URL, method and verification time (now when omitted); the verifier is the calling admin or Agent. type unknown clears the price and takes no other field. Never infer free from a free download. amount needs currency and period; paid is one_time, subscription renews monthly or yearly; offers in structured data also need region and plan. status needs_review hides the price from pages until it is checked again. Writes a package revision that can be rolled back; dry_run lists the gaps left after the write in sourceGaps. Requires catalog:package:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        put: operations["setPackagePrice"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packages/{id}/macos-support": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the manual macOS supplement
+         * @description Records vendor-sourced support per architecture (native, rosetta for arm64 only, or unsupported) with optional minimum and maximum macOS versions, plus the evidence. It never replaces Homebrew's requirements: where they disagree, pages show both as pending verification. Chip support alone never implies native code. Empty ranges clear the supplement and take no other field. Writes a package revision that can be rolled back; dry_run lists the gaps left after the write in sourceGaps. Requires catalog:package:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        put: operations["setPackageMacosSupport"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packages/{id}/alternatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set confirmed alternatives
+         * @description Replaces the ordered list of human-confirmed alternatives (0 to 8; an empty list is valid, never pad it with unrelated apps). The relation is directional: listing B on A does not list A on B. Each entry names 1 to 4 reasons and up to 3 limits from fixed vocabularies, which pages translate; the optional note is internal. Alternatives must be apps in the catalog; hidden or disabled ones stay stored but pages skip them. Writes a package revision that can be rolled back; dry_run lists the gaps left after the write in sourceGaps. Requires catalog:package:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        put: operations["setPackageAlternatives"];
         post?: never;
         delete?: never;
         options?: never;
@@ -430,6 +554,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/packages/{id}/index-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Index eligibility of one app
+         * @description Returns the rule's verdict, whether the current policy enforces it for this app, the languages its pages would list and the manual override. Requires system:seo:edit, not grantable to Agents.
+         */
+        get: operations["getPackageIndexStatus"];
+        /**
+         * Override the index rule for one app
+         * @description auto follows the rule; index and noindex need a reason, which the impact report shows. Hidden apps stay out of the index whatever the override. Requires system:seo:edit, not grantable to Agents.
+         */
+        put: operations["setPackageIndexStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/packages/{id}/resync": {
         parameters: {
             query?: never;
@@ -529,6 +677,258 @@ export interface paths {
          * @description Returns 1006 if child categories or packages remain. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         delete: operations["deleteCategory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List articles
+         * @description Drafts, articles in review, published and withdrawn articles with their working revision. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["listAdminArticles"];
+        put?: never;
+        /**
+         * Create an article draft
+         * @description Creates a draft with revision 1. Text goes in the source language only; translations start after publication. idempotencyKey returns the same article when a call is retried. Problems that block review are listed in readiness. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        post: operations["createArticle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read an article
+         * @description The working revision with its source text, the published revision, language status of the published revision, revision history, review record and what blocks review (readiness). Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["getAdminArticle"];
+        /**
+         * Edit the working revision
+         * @description Changes only the fields sent; null clears optional fields. Editing a published article creates a new working revision and never changes the live page. Editing a submitted draft withdraws the submission. expectedRevision must equal the article revision. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        put: operations["updateArticle"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the apps an article covers
+         * @description Replaces the related apps of the working revision (at most 50, apps in the catalog). Same revision rules as updateArticle. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        put: operations["setArticlePackages"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit the working revision for review
+         * @description Fails while readiness lists problems (missing title, summary or body, unsafe Markdown, images that are not OpenNavo assets, unknown app cards, no sources for compilations, no test record for reviews). Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        post: operations["submitArticleReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish the submitted revision
+         * @description Makes the submitted working revision live and starts its translations; each language appears once its translation passes the checks. The first publication sets the publication date; later ones move the update date only when what readers see changed. Requires content:article:publish. Not available to Agents.
+         */
+        post: operations["publishArticle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw a published article
+         * @description Takes the article off the site (pages answer 410) and out of lists, the sitemap and feeds; restoreArticle brings it back. Requires content:article:publish. Not available to Agents.
+         */
+        post: operations["withdrawArticle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a withdrawn article
+         * @description Publishes the last published revision again. Requires content:article:publish. Not available to Agents.
+         */
+        post: operations["restoreArticle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an older revision as the working draft
+         * @description Copies an earlier revision into the working revision (a new one if the working revision is published), so it can be reviewed and published again. Apps no longer in the catalog are dropped. Requires content:article:edit. Not available to Agents.
+         */
+        post: operations["revertArticle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/slug": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change the article address
+         * @description Published slugs keep redirecting to the new address. Requires content:article:publish. Not available to Agents.
+         */
+        put: operations["setArticleSlug"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/locales/{locale}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Hold back or release one language
+         * @description A held language stays off the site even when its translation is ready; the page shows the source text there and is not indexed in that language. Requires content:article:publish. Not available to Agents.
+         */
+        put: operations["setArticleLocale"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/article-authors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List authors
+         * @description Authors available for bylines, with their published article counts. Requires content:article:edit. Not available to Agents.
+         */
+        get: operations["listArticleAuthors"];
+        put?: never;
+        /**
+         * Create an author
+         * @description Public profile for bylines and the author page; role and bio are translated. Requires content:article:publish. Not available to Agents.
+         */
+        post: operations["createArticleAuthor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/article-authors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Edit an author
+         * @description Requires content:article:publish. Not available to Agents.
+         */
+        put: operations["updateArticleAuthor"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2137,6 +2537,872 @@ export interface components {
          *     }
          */
         GitHubSettingsResponseResult: components["schemas"]["GitHubSettingsResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "eligible": false,
+         *       "reason": "missing_summary",
+         *       "indexable": true,
+         *       "enforced": false,
+         *       "locales": [
+         *         "en-US",
+         *         "zh-CN",
+         *         "ja-JP",
+         *         "es-ES",
+         *         "pt-BR",
+         *         "ru-RU"
+         *       ],
+         *       "override": "auto",
+         *       "overrideReason": null,
+         *       "overrideAt": null
+         *     }
+         */
+        PackageIndexStatus: {
+            /** @description Verdict of the rule and the override, whatever the policy mode. */
+            eligible: boolean;
+            /** @description Why the app is not eligible: hidden, forced_noindex, unavailable, missing_summary or thin. */
+            reason: string | null;
+            /** @description What pages and the sitemap do now under the current policy. */
+            indexable: boolean;
+            /** @description Whether the policy applies the verdict to this app (mode enforce and in scope). */
+            enforced: boolean;
+            /** @description Languages listed in hreflang and the sitemap. */
+            locales: components["schemas"]["Locale"][];
+            /** @enum {string} */
+            override: "auto" | "index" | "noindex";
+            overrideReason: string | null;
+            /** Format: date-time */
+            overrideAt: string | null;
+        };
+        /**
+         * @example {
+         *       "override": "noindex",
+         *       "reason": "Placeholder entry without a real description yet"
+         *     }
+         */
+        PackageIndexOverride: {
+            /** @enum {string} */
+            override: "auto" | "index" | "noindex";
+            /** @description Required for index and noindex. */
+            reason?: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "eligible": false,
+         *         "reason": "missing_summary",
+         *         "indexable": true,
+         *         "enforced": false,
+         *         "locales": [
+         *           "en-US",
+         *           "zh-CN",
+         *           "ja-JP",
+         *           "es-ES",
+         *           "pt-BR",
+         *           "ru-RU"
+         *         ],
+         *         "override": "auto",
+         *         "overrideReason": null,
+         *         "overrideAt": null
+         *       }
+         *     }
+         */
+        PackageIndexStatusResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["PackageIndexStatus"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "eligible": false,
+         *         "reason": "missing_summary",
+         *         "indexable": true,
+         *         "enforced": false,
+         *         "locales": [
+         *           "en-US",
+         *           "zh-CN",
+         *           "ja-JP",
+         *           "es-ES",
+         *           "pt-BR",
+         *           "ru-RU"
+         *         ],
+         *         "override": "auto",
+         *         "overrideReason": null,
+         *         "overrideAt": null
+         *       }
+         *     }
+         */
+        PackageIndexStatusResponseResult: components["schemas"]["PackageIndexStatusResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "id": 1,
+         *       "token": "visual-studio-code",
+         *       "displayName": "Visual Studio Code",
+         *       "firstSeenAt": "2026-10-01T08:00:00Z",
+         *       "eligible": false,
+         *       "reason": "missing_summary",
+         *       "enforced": false,
+         *       "override": "auto",
+         *       "overrideReason": null
+         *     }
+         */
+        IndexReportRow: {
+            /** Format: int64 */
+            id: number;
+            token: string;
+            displayName: string;
+            /** Format: date-time */
+            firstSeenAt: string;
+            eligible: boolean;
+            reason: string | null;
+            enforced: boolean;
+            /** @enum {string} */
+            override: "auto" | "index" | "noindex";
+            overrideReason: string | null;
+        };
+        /**
+         * @description Apps per reason across the whole catalog; forcedIndex counts apps kept in by an override.
+         * @example {
+         *       "hidden": 0,
+         *       "forcedNoindex": 0,
+         *       "unavailable": 12,
+         *       "missingSummary": 1,
+         *       "thin": 3,
+         *       "forcedIndex": 0
+         *     }
+         */
+        IndexReportCounts: {
+            hidden: number;
+            forcedNoindex: number;
+            unavailable: number;
+            missingSummary: number;
+            thin: number;
+            forcedIndex: number;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "id": 1,
+         *             "token": "visual-studio-code",
+         *             "displayName": "Visual Studio Code",
+         *             "firstSeenAt": "2026-10-01T08:00:00Z",
+         *             "eligible": false,
+         *             "reason": "missing_summary",
+         *             "enforced": false,
+         *             "override": "auto",
+         *             "overrideReason": null
+         *           }
+         *         ],
+         *         "current": 1,
+         *         "size": 24,
+         *         "total": 1,
+         *         "counts": {
+         *           "hidden": 0,
+         *           "forcedNoindex": 0,
+         *           "unavailable": 12,
+         *           "missingSummary": 1,
+         *           "thin": 3,
+         *           "forcedIndex": 0
+         *         }
+         *       }
+         *     }
+         */
+        IndexReportResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: {
+                records: components["schemas"]["IndexReportRow"][];
+                current: number;
+                size: number;
+                total: number;
+                counts: components["schemas"]["IndexReportCounts"];
+            };
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "id": 1,
+         *             "token": "visual-studio-code",
+         *             "displayName": "Visual Studio Code",
+         *             "firstSeenAt": "2026-10-01T08:00:00Z",
+         *             "eligible": false,
+         *             "reason": "missing_summary",
+         *             "enforced": false,
+         *             "override": "auto",
+         *             "overrideReason": null
+         *           }
+         *         ],
+         *         "current": 1,
+         *         "size": 24,
+         *         "total": 1,
+         *         "counts": {
+         *           "hidden": 0,
+         *           "forcedNoindex": 0,
+         *           "unavailable": 12,
+         *           "missingSummary": 1,
+         *           "thin": 3,
+         *           "forcedIndex": 0
+         *         }
+         *       }
+         *     }
+         */
+        IndexReportResponseResult: components["schemas"]["IndexReportResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @description Latest run of the URL change feed (WP4): page caches refreshed, Cloudflare purge and IndexNow results.
+         * @example {
+         *       "lastRunAt": "2026-10-13T08:00:00Z",
+         *       "lastUrls": 6,
+         *       "lastIndexnowStatus": "ok: 6 URLs",
+         *       "lastPurgeStatus": "",
+         *       "lastError": ""
+         *     }
+         */
+        ChangeFeedStatus: {
+            /** Format: date-time */
+            lastRunAt: string | null;
+            /** @description Page-cache prefixes refreshed in the last run with changes. */
+            lastUrls: number;
+            /** @description ok, accepted (key verification pending), skipped or error with details; empty when not used. */
+            lastIndexnowStatus: string;
+            lastPurgeStatus: string;
+            lastError: string;
+        };
+        /**
+         * @description Rule for one tunable crawler class. limit adds Crawl-delay and keeps the bots off payloads and dependency tabs; block disallows the whole site.
+         * @example {
+         *       "mode": "limit",
+         *       "delaySeconds": 10,
+         *       "bots": [
+         *         "ClaudeBot"
+         *       ]
+         *     }
+         */
+        SeoCrawlerRule: {
+            /** @enum {string} */
+            mode: "allow" | "limit" | "block";
+            delaySeconds: number;
+            bots: string[];
+        };
+        /**
+         * @description Non-secret SEO and analytics settings. Credentials are never part of this document.
+         * @example {
+         *       "identity": {
+         *         "name": "OpenNavo",
+         *         "alternateNames": [
+         *           "opennavo.com"
+         *         ],
+         *         "logoUrl": "https://opennavo.example/brand/logo-512.png",
+         *         "sameAs": [
+         *           "https://github.com/opennavo/OpenNavo",
+         *           "https://x.com/opennavo"
+         *         ]
+         *       },
+         *       "verification": {
+         *         "google": "",
+         *         "bing": ""
+         *       },
+         *       "analytics": {
+         *         "ga4Enabled": true,
+         *         "ga4MeasurementId": "G-EXAMPLE123",
+         *         "consentRegions": [
+         *           "AT",
+         *           "BE",
+         *           "BG",
+         *           "HR",
+         *           "CY",
+         *           "CZ",
+         *           "DK",
+         *           "EE",
+         *           "FI",
+         *           "FR",
+         *           "DE",
+         *           "GR",
+         *           "HU",
+         *           "IE",
+         *           "IT",
+         *           "LV",
+         *           "LT",
+         *           "LU",
+         *           "MT",
+         *           "NL",
+         *           "PL",
+         *           "PT",
+         *           "RO",
+         *           "SK",
+         *           "SI",
+         *           "ES",
+         *           "SE",
+         *           "IS",
+         *           "LI",
+         *           "NO",
+         *           "GB",
+         *           "CH"
+         *         ]
+         *       },
+         *       "indexNow": {
+         *         "enabled": false
+         *       },
+         *       "cloudflare": {
+         *         "zoneId": "",
+         *         "purgeEnabled": false
+         *       },
+         *       "edgeCache": {
+         *         "enabled": false
+         *       },
+         *       "crawlers": {
+         *         "training": {
+         *           "mode": "limit",
+         *           "delaySeconds": 10,
+         *           "bots": [
+         *             "ClaudeBot"
+         *           ]
+         *         },
+         *         "seoTools": {
+         *           "mode": "block",
+         *           "delaySeconds": 10,
+         *           "bots": [
+         *             "MJ12bot",
+         *             "SerpstatBot"
+         *           ]
+         *         }
+         *       },
+         *       "pages": {
+         *         "titleTemplate": "new",
+         *         "indexPolicy": {
+         *           "mode": "shadow",
+         *           "scope": "new",
+         *           "since": ""
+         *         },
+         *         "versionsSitemap": false
+         *       }
+         *     }
+         */
+        SeoSettings: {
+            identity: {
+                /** @description Site name for WebSite/Organization structured data and og:site_name. */
+                name: string;
+                alternateNames: string[];
+                /** @description HTTPS logo URL; empty uses the site icon. */
+                logoUrl: string;
+                sameAs: string[];
+            };
+            verification: {
+                google: string;
+                bing: string;
+            };
+            analytics: {
+                ga4Enabled: boolean;
+                ga4MeasurementId: string;
+                /** @description ISO 3166-1 alpha-2 regions where analytics cookies wait for consent. */
+                consentRegions: string[];
+            };
+            indexNow: {
+                enabled: boolean;
+            };
+            cloudflare: {
+                zoneId: string;
+                purgeEnabled: boolean;
+            };
+            edgeCache: {
+                enabled: boolean;
+            };
+            crawlers: {
+                training: components["schemas"]["SeoCrawlerRule"];
+                seoTools: components["schemas"]["SeoCrawlerRule"];
+            };
+            pages: {
+                /**
+                 * @description Temporary rollout switch; removed together with the legacy templates.
+                 * @enum {string}
+                 */
+                titleTemplate: "new" | "legacy";
+                indexPolicy: {
+                    /**
+                     * @description Temporary rollout switch for the index eligibility policy.
+                     * @enum {string}
+                     */
+                    mode: "off" | "shadow" | "enforce";
+                    /** @enum {string} */
+                    scope: "new" | "all";
+                    /** @description Set by the server when enforcement first covers new apps (RFC 3339); apps first seen after it are the new scope. Empty until then; saved values are kept. */
+                    since: string;
+                };
+                versionsSitemap: boolean;
+            };
+        };
+        /**
+         * @example {
+         *       "settings": {
+         *         "identity": {
+         *           "name": "OpenNavo",
+         *           "alternateNames": [
+         *             "opennavo.com"
+         *           ],
+         *           "logoUrl": "https://opennavo.example/brand/logo-512.png",
+         *           "sameAs": [
+         *             "https://github.com/opennavo/OpenNavo",
+         *             "https://x.com/opennavo"
+         *           ]
+         *         },
+         *         "verification": {
+         *           "google": "",
+         *           "bing": ""
+         *         },
+         *         "analytics": {
+         *           "ga4Enabled": true,
+         *           "ga4MeasurementId": "G-EXAMPLE123",
+         *           "consentRegions": [
+         *             "AT",
+         *             "BE",
+         *             "BG",
+         *             "HR",
+         *             "CY",
+         *             "CZ",
+         *             "DK",
+         *             "EE",
+         *             "FI",
+         *             "FR",
+         *             "DE",
+         *             "GR",
+         *             "HU",
+         *             "IE",
+         *             "IT",
+         *             "LV",
+         *             "LT",
+         *             "LU",
+         *             "MT",
+         *             "NL",
+         *             "PL",
+         *             "PT",
+         *             "RO",
+         *             "SK",
+         *             "SI",
+         *             "ES",
+         *             "SE",
+         *             "IS",
+         *             "LI",
+         *             "NO",
+         *             "GB",
+         *             "CH"
+         *           ]
+         *         },
+         *         "indexNow": {
+         *           "enabled": false
+         *         },
+         *         "cloudflare": {
+         *           "zoneId": "",
+         *           "purgeEnabled": false
+         *         },
+         *         "edgeCache": {
+         *           "enabled": false
+         *         },
+         *         "crawlers": {
+         *           "training": {
+         *             "mode": "limit",
+         *             "delaySeconds": 10,
+         *             "bots": [
+         *               "ClaudeBot"
+         *             ]
+         *           },
+         *           "seoTools": {
+         *             "mode": "block",
+         *             "delaySeconds": 10,
+         *             "bots": [
+         *               "MJ12bot",
+         *               "SerpstatBot"
+         *             ]
+         *           }
+         *         },
+         *         "pages": {
+         *           "titleTemplate": "new",
+         *           "indexPolicy": {
+         *             "mode": "shadow",
+         *             "scope": "new",
+         *             "since": ""
+         *           },
+         *           "versionsSitemap": false
+         *         }
+         *       }
+         *     }
+         */
+        SeoSettingsUpdate: {
+            settings: components["schemas"]["SeoSettings"];
+            /** @description IndexNow key; empty/omitted preserves the existing key. */
+            indexNowKey?: string;
+            /** @default false */
+            clearIndexNowKey: boolean;
+            /** @description Cloudflare API token limited to cache purge; empty/omitted preserves the existing token. */
+            cloudflareToken?: string;
+            /** @default false */
+            clearCloudflareToken: boolean;
+        };
+        /**
+         * @example {
+         *       "settings": {
+         *         "identity": {
+         *           "name": "OpenNavo",
+         *           "alternateNames": [
+         *             "opennavo.com"
+         *           ],
+         *           "logoUrl": "https://opennavo.example/brand/logo-512.png",
+         *           "sameAs": [
+         *             "https://github.com/opennavo/OpenNavo",
+         *             "https://x.com/opennavo"
+         *           ]
+         *         },
+         *         "verification": {
+         *           "google": "",
+         *           "bing": ""
+         *         },
+         *         "analytics": {
+         *           "ga4Enabled": true,
+         *           "ga4MeasurementId": "G-EXAMPLE123",
+         *           "consentRegions": [
+         *             "AT",
+         *             "BE",
+         *             "BG",
+         *             "HR",
+         *             "CY",
+         *             "CZ",
+         *             "DK",
+         *             "EE",
+         *             "FI",
+         *             "FR",
+         *             "DE",
+         *             "GR",
+         *             "HU",
+         *             "IE",
+         *             "IT",
+         *             "LV",
+         *             "LT",
+         *             "LU",
+         *             "MT",
+         *             "NL",
+         *             "PL",
+         *             "PT",
+         *             "RO",
+         *             "SK",
+         *             "SI",
+         *             "ES",
+         *             "SE",
+         *             "IS",
+         *             "LI",
+         *             "NO",
+         *             "GB",
+         *             "CH"
+         *           ]
+         *         },
+         *         "indexNow": {
+         *           "enabled": false
+         *         },
+         *         "cloudflare": {
+         *           "zoneId": "",
+         *           "purgeEnabled": false
+         *         },
+         *         "edgeCache": {
+         *           "enabled": false
+         *         },
+         *         "crawlers": {
+         *           "training": {
+         *             "mode": "limit",
+         *             "delaySeconds": 10,
+         *             "bots": [
+         *               "ClaudeBot"
+         *             ]
+         *           },
+         *           "seoTools": {
+         *             "mode": "block",
+         *             "delaySeconds": 10,
+         *             "bots": [
+         *               "MJ12bot",
+         *               "SerpstatBot"
+         *             ]
+         *           }
+         *         },
+         *         "pages": {
+         *           "titleTemplate": "new",
+         *           "indexPolicy": {
+         *             "mode": "shadow",
+         *             "scope": "new",
+         *             "since": ""
+         *           },
+         *           "versionsSitemap": false
+         *         }
+         *       },
+         *       "indexNowKeyConfigured": false,
+         *       "cloudflareTokenConfigured": false,
+         *       "updatedAt": "2026-10-13T08:00:00Z",
+         *       "revision": 1,
+         *       "siteUrl": "https://opennavo.example",
+         *       "changeFeed": {
+         *         "lastRunAt": "2026-10-13T08:00:00Z",
+         *         "lastUrls": 6,
+         *         "lastIndexnowStatus": "ok: 6 URLs",
+         *         "lastPurgeStatus": "",
+         *         "lastError": ""
+         *       }
+         *     }
+         */
+        SeoSettingsView: {
+            settings: components["schemas"]["SeoSettings"];
+            indexNowKeyConfigured: boolean;
+            cloudflareTokenConfigured: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            /**
+             * Format: int64
+             * @description Increments on every save; the public site settings carry the same value.
+             */
+            revision: number;
+            /**
+             * Format: uri
+             * @description Public web origin (WEB_BASE_URL), used for the robots.txt preview.
+             */
+            siteUrl: string;
+            changeFeed: components["schemas"]["ChangeFeedStatus"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "settings": {
+         *           "identity": {
+         *             "name": "OpenNavo",
+         *             "alternateNames": [
+         *               "opennavo.com"
+         *             ],
+         *             "logoUrl": "https://opennavo.example/brand/logo-512.png",
+         *             "sameAs": [
+         *               "https://github.com/opennavo/OpenNavo",
+         *               "https://x.com/opennavo"
+         *             ]
+         *           },
+         *           "verification": {
+         *             "google": "",
+         *             "bing": ""
+         *           },
+         *           "analytics": {
+         *             "ga4Enabled": true,
+         *             "ga4MeasurementId": "G-EXAMPLE123",
+         *             "consentRegions": [
+         *               "AT",
+         *               "BE",
+         *               "BG",
+         *               "HR",
+         *               "CY",
+         *               "CZ",
+         *               "DK",
+         *               "EE",
+         *               "FI",
+         *               "FR",
+         *               "DE",
+         *               "GR",
+         *               "HU",
+         *               "IE",
+         *               "IT",
+         *               "LV",
+         *               "LT",
+         *               "LU",
+         *               "MT",
+         *               "NL",
+         *               "PL",
+         *               "PT",
+         *               "RO",
+         *               "SK",
+         *               "SI",
+         *               "ES",
+         *               "SE",
+         *               "IS",
+         *               "LI",
+         *               "NO",
+         *               "GB",
+         *               "CH"
+         *             ]
+         *           },
+         *           "indexNow": {
+         *             "enabled": false
+         *           },
+         *           "cloudflare": {
+         *             "zoneId": "",
+         *             "purgeEnabled": false
+         *           },
+         *           "edgeCache": {
+         *             "enabled": false
+         *           },
+         *           "crawlers": {
+         *             "training": {
+         *               "mode": "limit",
+         *               "delaySeconds": 10,
+         *               "bots": [
+         *                 "ClaudeBot"
+         *               ]
+         *             },
+         *             "seoTools": {
+         *               "mode": "block",
+         *               "delaySeconds": 10,
+         *               "bots": [
+         *                 "MJ12bot",
+         *                 "SerpstatBot"
+         *               ]
+         *             }
+         *           },
+         *           "pages": {
+         *             "titleTemplate": "new",
+         *             "indexPolicy": {
+         *               "mode": "shadow",
+         *               "scope": "new",
+         *               "since": ""
+         *             },
+         *             "versionsSitemap": false
+         *           }
+         *         },
+         *         "indexNowKeyConfigured": false,
+         *         "cloudflareTokenConfigured": false,
+         *         "updatedAt": "2026-10-13T08:00:00Z",
+         *         "revision": 1,
+         *         "siteUrl": "https://opennavo.example",
+         *         "changeFeed": {
+         *           "lastRunAt": "2026-10-13T08:00:00Z",
+         *           "lastUrls": 6,
+         *           "lastIndexnowStatus": "ok: 6 URLs",
+         *           "lastPurgeStatus": "",
+         *           "lastError": ""
+         *         }
+         *       }
+         *     }
+         */
+        SeoSettingsResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["SeoSettingsView"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "settings": {
+         *           "identity": {
+         *             "name": "OpenNavo",
+         *             "alternateNames": [
+         *               "opennavo.com"
+         *             ],
+         *             "logoUrl": "https://opennavo.example/brand/logo-512.png",
+         *             "sameAs": [
+         *               "https://github.com/opennavo/OpenNavo",
+         *               "https://x.com/opennavo"
+         *             ]
+         *           },
+         *           "verification": {
+         *             "google": "",
+         *             "bing": ""
+         *           },
+         *           "analytics": {
+         *             "ga4Enabled": true,
+         *             "ga4MeasurementId": "G-EXAMPLE123",
+         *             "consentRegions": [
+         *               "AT",
+         *               "BE",
+         *               "BG",
+         *               "HR",
+         *               "CY",
+         *               "CZ",
+         *               "DK",
+         *               "EE",
+         *               "FI",
+         *               "FR",
+         *               "DE",
+         *               "GR",
+         *               "HU",
+         *               "IE",
+         *               "IT",
+         *               "LV",
+         *               "LT",
+         *               "LU",
+         *               "MT",
+         *               "NL",
+         *               "PL",
+         *               "PT",
+         *               "RO",
+         *               "SK",
+         *               "SI",
+         *               "ES",
+         *               "SE",
+         *               "IS",
+         *               "LI",
+         *               "NO",
+         *               "GB",
+         *               "CH"
+         *             ]
+         *           },
+         *           "indexNow": {
+         *             "enabled": false
+         *           },
+         *           "cloudflare": {
+         *             "zoneId": "",
+         *             "purgeEnabled": false
+         *           },
+         *           "edgeCache": {
+         *             "enabled": false
+         *           },
+         *           "crawlers": {
+         *             "training": {
+         *               "mode": "limit",
+         *               "delaySeconds": 10,
+         *               "bots": [
+         *                 "ClaudeBot"
+         *               ]
+         *             },
+         *             "seoTools": {
+         *               "mode": "block",
+         *               "delaySeconds": 10,
+         *               "bots": [
+         *                 "MJ12bot",
+         *                 "SerpstatBot"
+         *               ]
+         *             }
+         *           },
+         *           "pages": {
+         *             "titleTemplate": "new",
+         *             "indexPolicy": {
+         *               "mode": "shadow",
+         *               "scope": "new",
+         *               "since": ""
+         *             },
+         *             "versionsSitemap": false
+         *           }
+         *         },
+         *         "indexNowKeyConfigured": false,
+         *         "cloudflareTokenConfigured": false,
+         *         "updatedAt": "2026-10-13T08:00:00Z",
+         *         "revision": 1,
+         *         "siteUrl": "https://opennavo.example",
+         *         "changeFeed": {
+         *           "lastRunAt": "2026-10-13T08:00:00Z",
+         *           "lastUrls": 6,
+         *           "lastIndexnowStatus": "ok: 6 URLs",
+         *           "lastPurgeStatus": "",
+         *           "lastError": ""
+         *         }
+         *       }
+         *     }
+         */
+        SeoSettingsResponseResult: components["schemas"]["SeoSettingsResponse"] | components["schemas"]["BusinessErrorResponse"];
         /**
          * @example {
          *       "baseUrl": "https://gateway.example/v1"
@@ -3997,6 +5263,18 @@ export interface components {
          *           "agentGrantable": true
          *         },
          *         {
+         *           "code": "content:article:edit",
+         *           "name": "撰写文章草稿并提交审核",
+         *           "group": "content",
+         *           "agentGrantable": true
+         *         },
+         *         {
+         *           "code": "content:article:publish",
+         *           "name": "发布、撤回和恢复文章，管理作者",
+         *           "group": "content",
+         *           "agentGrantable": false
+         *         },
+         *         {
          *           "code": "content:feature:edit",
          *           "name": "编辑精选位",
          *           "group": "content",
@@ -4089,6 +5367,12 @@ export interface components {
          *         {
          *           "code": "system:github:edit",
          *           "name": "GitHub 设置",
+         *           "group": "system",
+         *           "agentGrantable": false
+         *         },
+         *         {
+         *           "code": "system:seo:edit",
+         *           "name": "SEO 与统计",
          *           "group": "system",
          *           "agentGrantable": false
          *         },
@@ -4194,6 +5478,8 @@ export interface components {
          *             "catalog:category:edit",
          *             "content:collection:edit",
          *             "content:collection:publish",
+         *             "content:article:edit",
+         *             "content:article:publish",
          *             "content:feature:edit",
          *             "changelog:release:edit",
          *             "translation:review",
@@ -4209,7 +5495,8 @@ export interface components {
          *             "system:role:edit",
          *             "system:audit:view",
          *             "i18n:settings",
-         *             "system:github:edit"
+         *             "system:github:edit",
+         *             "system:seo:edit"
          *           ],
          *           "userCount": 1
          *         },
@@ -4229,6 +5516,7 @@ export interface components {
          *             "catalog:category:edit",
          *             "content:collection:edit",
          *             "content:collection:publish",
+         *             "content:article:edit",
          *             "content:feature:edit",
          *             "content:glossary:edit",
          *             "changelog:release:edit",
@@ -4394,6 +5682,8 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "changelog:release:edit",
          *           "translation:review",
@@ -4410,6 +5700,7 @@ export interface components {
          *           "system:audit:view",
          *           "i18n:settings",
          *           "system:github:edit",
+         *           "system:seo:edit",
          *           "content:glossary:edit",
          *           "agent:log:view",
          *           "content:revision:restore",
@@ -4678,6 +5969,8 @@ export interface components {
          *         "catalog:category:edit",
          *         "content:collection:edit",
          *         "content:collection:publish",
+         *         "content:article:edit",
+         *         "content:article:publish",
          *         "content:feature:edit",
          *         "changelog:release:edit",
          *         "translation:review",
@@ -4694,6 +5987,7 @@ export interface components {
          *         "system:audit:view",
          *         "i18n:settings",
          *         "system:github:edit",
+         *         "system:seo:edit",
          *         "content:glossary:edit",
          *         "agent:log:view",
          *         "content:revision:restore",
@@ -4725,6 +6019,8 @@ export interface components {
              *       "catalog:category:edit",
              *       "content:collection:edit",
              *       "content:collection:publish",
+             *       "content:article:edit",
+             *       "content:article:publish",
              *       "content:feature:edit",
              *       "changelog:release:edit",
              *       "translation:review",
@@ -4740,7 +6036,8 @@ export interface components {
              *       "system:role:edit",
              *       "system:audit:view",
              *       "i18n:settings",
-             *       "system:github:edit"
+             *       "system:github:edit",
+             *       "system:seo:edit"
              *     ]
              */
             buttons: string[];
@@ -7803,6 +9100,8 @@ export interface components {
          *         "catalog:category:edit",
          *         "content:collection:edit",
          *         "content:collection:publish",
+         *         "content:article:edit",
+         *         "content:article:publish",
          *         "content:feature:edit",
          *         "changelog:release:edit",
          *         "translation:review",
@@ -7818,7 +9117,8 @@ export interface components {
          *         "system:role:edit",
          *         "system:audit:view",
          *         "i18n:settings",
-         *         "system:github:edit"
+         *         "system:github:edit",
+         *         "system:seo:edit"
          *       ],
          *       "userCount": 1
          *     }
@@ -7870,6 +9170,8 @@ export interface components {
          *         "catalog:category:edit",
          *         "content:collection:edit",
          *         "content:collection:publish",
+         *         "content:article:edit",
+         *         "content:article:publish",
          *         "content:feature:edit",
          *         "changelog:release:edit",
          *         "translation:review",
@@ -7885,7 +9187,8 @@ export interface components {
          *         "system:role:edit",
          *         "system:audit:view",
          *         "i18n:settings",
-         *         "system:github:edit"
+         *         "system:github:edit",
+         *         "system:seo:edit"
          *       ]
          *     }
          */
@@ -7991,6 +9294,8 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "changelog:release:edit",
          *           "translation:review",
@@ -8007,6 +9312,7 @@ export interface components {
          *           "system:audit:view",
          *           "i18n:settings",
          *           "system:github:edit",
+         *           "system:seo:edit",
          *           "content:glossary:edit",
          *           "agent:log:view",
          *           "content:revision:restore",
@@ -10082,6 +11388,8 @@ export interface components {
          *             "catalog:category:edit",
          *             "content:collection:edit",
          *             "content:collection:publish",
+         *             "content:article:edit",
+         *             "content:article:publish",
          *             "content:feature:edit",
          *             "changelog:release:edit",
          *             "translation:review",
@@ -10097,7 +11405,8 @@ export interface components {
          *             "system:role:edit",
          *             "system:audit:view",
          *             "i18n:settings",
-         *             "system:github:edit"
+         *             "system:github:edit",
+         *             "system:seo:edit"
          *           ],
          *           "userCount": 1
          *         },
@@ -10117,6 +11426,7 @@ export interface components {
          *             "catalog:category:edit",
          *             "content:collection:edit",
          *             "content:collection:publish",
+         *             "content:article:edit",
          *             "content:feature:edit",
          *             "content:glossary:edit",
          *             "changelog:release:edit",
@@ -10194,6 +11504,18 @@ export interface components {
          *           "name": "发布/下线合集",
          *           "group": "content",
          *           "agentGrantable": true
+         *         },
+         *         {
+         *           "code": "content:article:edit",
+         *           "name": "撰写文章草稿并提交审核",
+         *           "group": "content",
+         *           "agentGrantable": true
+         *         },
+         *         {
+         *           "code": "content:article:publish",
+         *           "name": "发布、撤回和恢复文章，管理作者",
+         *           "group": "content",
+         *           "agentGrantable": false
          *         },
          *         {
          *           "code": "content:feature:edit",
@@ -10288,6 +11610,12 @@ export interface components {
          *         {
          *           "code": "system:github:edit",
          *           "name": "GitHub 设置",
+         *           "group": "system",
+         *           "agentGrantable": false
+         *         },
+         *         {
+         *           "code": "system:seo:edit",
+         *           "name": "SEO 与统计",
          *           "group": "system",
          *           "agentGrantable": false
          *         },
@@ -11241,12 +12569,12 @@ export interface components {
          * @example package
          * @enum {string}
          */
-        ContentEntity: "package" | "release" | "category" | "collection" | "feature" | "screenshot" | "collection_item" | "desktop_release" | "mirror" | "announcement";
+        ContentEntity: "package" | "release" | "category" | "collection" | "feature" | "screenshot" | "collection_item" | "desktop_release" | "mirror" | "announcement" | "article" | "article_author";
         /**
          * @example package
          * @enum {string}
          */
-        HistoryEntity: "package" | "release" | "category" | "collection" | "feature" | "screenshot" | "collection_item" | "desktop_release" | "mirror" | "announcement" | "synonym" | "glossary" | "feedback" | "asset";
+        HistoryEntity: "package" | "release" | "category" | "collection" | "feature" | "screenshot" | "collection_item" | "desktop_release" | "mirror" | "announcement" | "synonym" | "glossary" | "feedback" | "asset" | "article" | "article_author";
         /**
          * @description announcement needs no id; other entities require a positive integer id. collection_item also requires secondaryId (packageId).
          * @example {
@@ -11314,6 +12642,16 @@ export interface components {
             notes?: string | null;
             /** @example null */
             bodyMarkdown?: string | null;
+            /** @example null */
+            testNote?: string | null;
+            /** @example null */
+            seoTitle?: string | null;
+            /** @example null */
+            seoDescription?: string | null;
+            /** @example null */
+            role?: string | null;
+            /** @example null */
+            bio?: string | null;
             /** @example [] */
             sections?: components["schemas"]["ReleaseSection"][];
         };
@@ -11458,6 +12796,8 @@ export interface components {
              *     ]
              */
             affectedUrls: string[];
+            /** @description App fact writes only: the evidence still missing or outdated after this write */
+            sourceGaps?: components["schemas"]["FactGap"][];
         };
         /**
          * @example {
@@ -13080,10 +14420,1414 @@ export interface components {
             notes: string;
         };
         /**
+         * @description unknown clears the price; a free download never implies free.
+         * @example subscription
+         * @enum {string}
+         */
+        PriceType: "free" | "free_with_iap" | "paid" | "subscription" | "trial" | "unknown";
+        /**
+         * @description How the fact was checked: vendor website or pricing page, Mac App Store listing, vendor documentation, inside the app, or other.
+         * @example vendor_site
+         * @enum {string}
+         */
+        FactMethod: "vendor_site" | "app_store" | "vendor_docs" | "in_app" | "other";
+        /**
+         * @description needs_review keeps the evidence but hides the fact from pages until it is checked again.
+         * @example verified
+         * @enum {string}
+         */
+        FactStatus: "verified" | "needs_review";
+        /**
+         * @example agent
+         * @enum {string}
+         */
+        FactVerifier: "admin" | "agent";
+        /**
+         * @description Missing or outdated evidence: no price, price marked for review, price older than 365 days, paid price without amount/currency/region/plan for offers, no app version; no macOS data from either source, supplement marked for review, older than 365 days, without app version, or disagreeing with Homebrew; alternatives pages currently skip.
+         * @example price.offer
+         * @enum {string}
+         */
+        FactGap: "price.unknown" | "price.review" | "price.stale" | "price.offer" | "price.version" | "macos.missing" | "macos.review" | "macos.stale" | "macos.version" | "macos.conflict" | "alternatives.unavailable";
+        /**
+         * @example minimum
+         * @enum {string}
+         */
+        MacosConflictCode: "minimum" | "maximum" | "arm64" | "x86_64";
+        /**
+         * @example {
+         *       "arch": "arm64",
+         *       "support": "native",
+         *       "minimum": "13",
+         *       "maximum": null
+         *     }
+         */
+        MacosRange: {
+            /**
+             * @example arm64
+             * @enum {string}
+             */
+            arch: "arm64" | "x86_64";
+            /**
+             * @description rosetta applies to arm64 only; unsupported takes no versions.
+             * @example native
+             * @enum {string}
+             */
+            support: "native" | "rosetta" | "unsupported";
+            /**
+             * @description macOS release such as 13 or 10.15
+             * @example 13
+             */
+            minimum?: string | null;
+            /** @example null */
+            maximum?: string | null;
+        };
+        /**
+         * @description Why someone would pick the alternative; pages translate the code.
+         * @example open_source
+         * @enum {string}
+         */
+        AlternativeReason: "free" | "open_source" | "lighter" | "more_features" | "simpler" | "native_ui" | "apple_silicon" | "privacy" | "offline" | "collaboration" | "cross_platform" | "one_time_purchase" | "active_development" | "customizable";
+        /**
+         * @description What to weigh before switching; pages translate the code.
+         * @example fewer_features
+         * @enum {string}
+         */
+        AlternativeLimit: "paid" | "subscription" | "fewer_features" | "requires_account" | "learning_curve" | "different_workflow" | "no_apple_silicon" | "online_only" | "limited_languages";
+        /**
+         * @description Every type except unknown requires sourceUrl and method.
+         * @example {
+         *       "type": "free",
+         *       "appVersion": "2.4",
+         *       "sourceUrl": "https://vendor.example/download",
+         *       "method": "vendor_site"
+         *     }
+         */
+        PackagePriceUpdate: {
+            type: components["schemas"]["PriceType"];
+            /**
+             * Format: double
+             * @description At most two decimals
+             * @example 9.99
+             */
+            amount?: number | null;
+            /** @example USD */
+            currency?: string | null;
+            /**
+             * @description ISO 3166-1 country the price was checked for
+             * @example US
+             */
+            region?: string | null;
+            /**
+             * @description Vendor plan name as the vendor writes it; not translated
+             * @example Pro
+             */
+            plan?: string | null;
+            /**
+             * @example month
+             * @enum {string|null}
+             */
+            period?: "one_time" | "month" | "year" | null;
+            /** @example 5.2 */
+            appVersion?: string | null;
+            /**
+             * Format: uri
+             * @example https://vendor.example/pricing
+             */
+            sourceUrl?: string | null;
+            /**
+             * @example vendor_site
+             * @enum {string|null}
+             */
+            method?: "vendor_site" | "app_store" | "vendor_docs" | "in_app" | "other" | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            verifiedAt?: string | null;
+            /**
+             * @example verified
+             * @enum {string|null}
+             */
+            status?: "verified" | "needs_review" | null;
+            /** @example Checked the US pricing page. */
+            note?: string | null;
+        };
+        /**
+         * @description Ranges other than an empty list require sourceUrl and method.
+         * @example {
+         *       "ranges": [
+         *         {
+         *           "arch": "arm64",
+         *           "support": "native",
+         *           "minimum": "13",
+         *           "maximum": null
+         *         }
+         *       ],
+         *       "sourceUrl": "https://vendor.example/docs/system-requirements",
+         *       "method": "vendor_docs"
+         *     }
+         */
+        PackageMacosUpdate: {
+            ranges: components["schemas"]["MacosRange"][];
+            /** @example 5.2 */
+            appVersion?: string | null;
+            /**
+             * Format: uri
+             * @example https://vendor.example/docs/system-requirements
+             */
+            sourceUrl?: string | null;
+            /**
+             * @example vendor_site
+             * @enum {string|null}
+             */
+            method?: "vendor_site" | "app_store" | "vendor_docs" | "in_app" | "other" | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            verifiedAt?: string | null;
+            /**
+             * @example verified
+             * @enum {string|null}
+             */
+            status?: "verified" | "needs_review" | null;
+            /** @example From the vendor's requirements page. */
+            note?: string | null;
+        };
+        /**
+         * @example {
+         *       "packageId": 2,
+         *       "reasons": [
+         *         "open_source",
+         *         "lighter"
+         *       ],
+         *       "limits": [
+         *         "fewer_features"
+         *       ],
+         *       "bestFor": "developers"
+         *     }
+         */
+        PackageAlternativeInput: {
+            /**
+             * Format: int64
+             * @example 2
+             */
+            packageId: number;
+            reasons: components["schemas"]["AlternativeReason"][];
+            limits?: components["schemas"]["AlternativeLimit"][];
+            /**
+             * @example developers
+             * @enum {string|null}
+             */
+            bestFor?: "everyday" | "professionals" | "developers" | "teams" | "beginners" | "power_users" | null;
+            /**
+             * @description Internal; never shown on pages
+             * @example Both edit code; this one starts faster.
+             */
+            note?: string | null;
+        };
+        /**
+         * @example {
+         *       "items": []
+         *     }
+         */
+        PackageAlternativesUpdate: {
+            /** @description Display order; an empty list removes all alternatives */
+            items: components["schemas"]["PackageAlternativeInput"][];
+        };
+        /**
+         * @example {
+         *       "type": "subscription",
+         *       "amount": 9.99,
+         *       "currency": "USD",
+         *       "region": "US",
+         *       "plan": "Pro",
+         *       "period": "month",
+         *       "appVersion": "5.2",
+         *       "sourceUrl": "https://vendor.example/pricing",
+         *       "method": "vendor_site",
+         *       "verifiedAt": "2026-10-13T08:00:00Z",
+         *       "verifiedBy": "Hermes",
+         *       "verifier": "agent",
+         *       "status": "verified",
+         *       "note": null,
+         *       "stale": false
+         *     }
+         */
+        PackagePrice: {
+            type: components["schemas"]["PriceType"];
+            /**
+             * Format: double
+             * @example 9.99
+             */
+            amount: number | null;
+            /** @example USD */
+            currency: string | null;
+            /** @example US */
+            region: string | null;
+            /** @example Pro */
+            plan: string | null;
+            /**
+             * @example month
+             * @enum {string|null}
+             */
+            period: "one_time" | "month" | "year" | null;
+            /** @example 5.2 */
+            appVersion: string | null;
+            /** @example https://vendor.example/pricing */
+            sourceUrl: string;
+            method: components["schemas"]["FactMethod"];
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            verifiedAt: string;
+            /** @example Hermes */
+            verifiedBy: string;
+            verifier: components["schemas"]["FactVerifier"];
+            status: components["schemas"]["FactStatus"];
+            /** @example null */
+            note: string | null;
+            /**
+             * @description Verified more than 365 days ago
+             * @example false
+             */
+            stale: boolean;
+        };
+        /**
+         * @example {
+         *       "ranges": [
+         *         {
+         *           "arch": "arm64",
+         *           "support": "native",
+         *           "minimum": "12",
+         *           "maximum": null
+         *         }
+         *       ],
+         *       "appVersion": "5.2",
+         *       "sourceUrl": "https://vendor.example/docs/system-requirements",
+         *       "method": "vendor_docs",
+         *       "verifiedAt": "2026-10-13T08:00:00Z",
+         *       "verifiedBy": "kaka",
+         *       "verifier": "admin",
+         *       "status": "verified",
+         *       "note": null,
+         *       "stale": false
+         *     }
+         */
+        PackageMacosSupplement: {
+            ranges: components["schemas"]["MacosRange"][];
+            /** @example 5.2 */
+            appVersion: string | null;
+            /** @example https://vendor.example/docs/system-requirements */
+            sourceUrl: string;
+            method: components["schemas"]["FactMethod"];
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            verifiedAt: string;
+            /** @example kaka */
+            verifiedBy: string;
+            verifier: components["schemas"]["FactVerifier"];
+            status: components["schemas"]["FactStatus"];
+            /** @example null */
+            note: string | null;
+            /** @example false */
+            stale: boolean;
+        };
+        /**
+         * @example {
+         *       "supportStatus": "known",
+         *       "arm64": true,
+         *       "x86_64": true,
+         *       "requiresRosetta": false,
+         *       "minimum": "13.0",
+         *       "maximum": null
+         *     }
+         */
+        HomebrewRequirements: {
+            /**
+             * @example known
+             * @enum {string}
+             */
+            supportStatus: "known" | "unknown";
+            /** @example true */
+            arm64: boolean;
+            /** @example true */
+            x86_64: boolean;
+            /** @example false */
+            requiresRosetta: boolean;
+            /** @example 13.0 */
+            minimum: string | null;
+            /** @example null */
+            maximum: string | null;
+        };
+        /**
+         * @example {
+         *       "packageId": 2,
+         *       "token": "zed",
+         *       "name": "Zed",
+         *       "displayName": "Zed",
+         *       "iconUrl": null,
+         *       "reasons": [
+         *         "open_source",
+         *         "lighter"
+         *       ],
+         *       "limits": [
+         *         "fewer_features"
+         *       ],
+         *       "bestFor": "developers",
+         *       "note": null,
+         *       "source": "admin",
+         *       "available": true
+         *     }
+         */
+        PackageAlternativeEntry: {
+            /**
+             * Format: int64
+             * @example 2
+             */
+            packageId: number;
+            /** @example zed */
+            token: string;
+            /** @example Zed */
+            name: string;
+            /** @example Zed */
+            displayName: string;
+            /** @example https://cdn.opennavo.example/icons/zed.png */
+            iconUrl: string | null;
+            reasons: components["schemas"]["AlternativeReason"][];
+            limits: components["schemas"]["AlternativeLimit"][];
+            /**
+             * @example developers
+             * @enum {string|null}
+             */
+            bestFor: "everyday" | "professionals" | "developers" | "teams" | "beginners" | "power_users" | null;
+            /** @example null */
+            note: string | null;
+            source: components["schemas"]["FactVerifier"];
+            /**
+             * @description False while the alternative is hidden, removed or disabled; pages skip it
+             * @example true
+             */
+            available: boolean;
+        };
+        /**
+         * @example {
+         *       "packageId": 1,
+         *       "price": null,
+         *       "macos": null,
+         *       "homebrew": {
+         *         "supportStatus": "known",
+         *         "arm64": true,
+         *         "x86_64": true,
+         *         "requiresRosetta": false,
+         *         "minimum": "13.0",
+         *         "maximum": null
+         *       },
+         *       "conflicts": [],
+         *       "alternatives": [],
+         *       "offerReady": false,
+         *       "gaps": [
+         *         "price.unknown"
+         *       ],
+         *       "updatedAt": null
+         *     }
+         */
+        PackageFacts: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            packageId: number;
+            /** @description null means unknown */
+            price: components["schemas"]["PackagePrice"] | null;
+            /** @description null means no supplement; Homebrew's requirements apply */
+            macos: components["schemas"]["PackageMacosSupplement"] | null;
+            homebrew: components["schemas"]["HomebrewRequirements"];
+            /** @description Where the supplement and Homebrew disagree; pages show both as pending verification */
+            conflicts: components["schemas"]["MacosConflictCode"][];
+            alternatives: components["schemas"]["PackageAlternativeEntry"][];
+            /**
+             * @description Structured data may publish an offer: verified, current, and free or complete
+             * @example true
+             */
+            offerReady: boolean;
+            gaps: components["schemas"]["FactGap"][];
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            updatedAt: string | null;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "packageId": 1,
+         *         "price": null,
+         *         "macos": null,
+         *         "homebrew": {
+         *           "supportStatus": "known",
+         *           "arm64": true,
+         *           "x86_64": true,
+         *           "requiresRosetta": false,
+         *           "minimum": "13.0",
+         *           "maximum": null
+         *         },
+         *         "conflicts": [],
+         *         "alternatives": [],
+         *         "offerReady": false,
+         *         "gaps": [
+         *           "price.unknown"
+         *         ],
+         *         "updatedAt": null
+         *       }
+         *     }
+         */
+        PackageFactsResponseResult: components["schemas"]["PackageFactsResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "packageId": 1,
+         *         "price": null,
+         *         "macos": null,
+         *         "homebrew": {
+         *           "supportStatus": "known",
+         *           "arm64": true,
+         *           "x86_64": true,
+         *           "requiresRosetta": false,
+         *           "minimum": "13.0",
+         *           "maximum": null
+         *         },
+         *         "conflicts": [],
+         *         "alternatives": [],
+         *         "offerReady": false,
+         *         "gaps": [
+         *           "price.unknown"
+         *         ],
+         *         "updatedAt": null
+         *       }
+         *     }
+         */
+        PackageFactsResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["PackageFacts"];
+        };
+        /**
+         * @description recommendation: picks for a need; review: hands-on test, needs a test record; tutorial; roundup: compares several apps; news
+         * @example roundup
+         * @enum {string}
+         */
+        ArticleType: "recommendation" | "review" | "tutorial" | "roundup" | "news";
+        /**
+         * @description draft and review: never published; published: live; archived: withdrawn, can be restored
+         * @example published
+         * @enum {string}
+         */
+        ArticleStatus: "draft" | "review" | "published" | "archived";
+        /**
+         * @description What blocks review or publication: missing title, summary or body; raw HTML; unsafe links; images without alt text or not stored as OpenNavo assets; too many images or app cards; app cards for apps not in the catalog; no sources for recommendations, roundups and news; no test record for reviews; a cover without alt text.
+         * @example sources
+         * @enum {string}
+         */
+        ArticleProblem: "title" | "summary" | "body" | "raw_html" | "unsafe_link" | "image_alt" | "image_host" | "too_many_images" | "too_many_app_cards" | "unknown_app" | "sources" | "test_note" | "cover_alt";
+        /**
+         * @example {
+         *       "title": "Shottr documentation",
+         *       "url": "https://shottr.cc/kb"
+         *     }
+         */
+        ArticleSource: {
+            /** @example Shottr documentation */
+            title: string;
+            /**
+             * Format: uri
+             * @example https://shottr.cc/kb
+             */
+            url: string;
+        };
+        /**
+         * @example {
+         *       "slug": "choose-a-screenshot-app",
+         *       "sourceLocale": "en-US",
+         *       "type": "roundup",
+         *       "title": "How to choose a screenshot app for Mac"
+         *     }
+         */
+        ArticleCreate: {
+            /** @example choose-a-screenshot-app */
+            slug: string;
+            sourceLocale: components["schemas"]["Locale"];
+            type: components["schemas"]["ArticleType"];
+            /** @example How to choose a screenshot app for Mac */
+            title: string;
+            /**
+             * @description Lead and default meta description
+             * @example What to compare when picking a screenshot tool.
+             */
+            summary?: string | null;
+            /**
+             * @description Markdown without raw HTML. Images must be OpenNavo assets with alt text; ::app[token] on its own line embeds an app's current catalog card. Keep tested versions and prices as plain tables: they are a snapshot, the card is live.
+             * @example ## What to compare
+             *
+             *     ::app[shottr]
+             */
+            bodyMarkdown?: string | null;
+            /**
+             * @description Test environment and method; required for reviews, and only when the test really happened
+             * @example MacBook Pro (M4), macOS 26, the same capture tasks in every app
+             */
+            testNote?: string | null;
+            /** @example null */
+            seoTitle?: string | null;
+            /** @example null */
+            seoDescription?: string | null;
+            /**
+             * Format: int64
+             * @description null signs the article as the editorial team (the site organization)
+             * @example null
+             */
+            authorId?: number | null;
+            /**
+             * Format: int64
+             * @example null
+             */
+            coverAssetId?: number | null;
+            /** @example null */
+            coverAlt?: string | null;
+            sources?: components["schemas"]["ArticleSource"][];
+            packageIds?: number[];
+            /**
+             * @description Retrying with the same key returns the article created the first time
+             * @example draft-2026-10-13-screenshots
+             */
+            idempotencyKey?: string;
+        };
+        /**
+         * @example {
+         *       "expectedRevision": 4,
+         *       "summary": "What to compare when picking a screenshot tool on a Mac."
+         *     }
+         */
+        ArticleUpdate: {
+            /**
+             * Format: int64
+             * @description The article revision from the last read; a mismatch means someone else changed it
+             * @example 4
+             */
+            expectedRevision: number;
+            sourceLocale?: components["schemas"]["Locale"];
+            type?: components["schemas"]["ArticleType"];
+            /** @example How to choose a screenshot app for Mac */
+            title?: string;
+            /** @example What to compare when picking a screenshot tool. */
+            summary?: string | null;
+            /** @example ## What to compare */
+            bodyMarkdown?: string | null;
+            /** @example null */
+            testNote?: string | null;
+            /** @example null */
+            seoTitle?: string | null;
+            /** @example null */
+            seoDescription?: string | null;
+            /**
+             * Format: int64
+             * @example null
+             */
+            authorId?: number | null;
+            /**
+             * Format: int64
+             * @example null
+             */
+            coverAssetId?: number | null;
+            /** @example null */
+            coverAlt?: string | null;
+            sources?: components["schemas"]["ArticleSource"][];
+        };
+        /**
+         * @example {
+         *       "expectedRevision": 4,
+         *       "packageIds": [
+         *         1,
+         *         2
+         *       ]
+         *     }
+         */
+        ArticlePackagesUpdate: {
+            /**
+             * Format: int64
+             * @example 4
+             */
+            expectedRevision: number;
+            packageIds: number[];
+        };
+        /**
+         * @example {
+         *       "expectedRevision": 4
+         *     }
+         */
+        ArticleRevisionCheck: {
+            /**
+             * Format: int64
+             * @example 4
+             */
+            expectedRevision: number;
+        };
+        /**
+         * @example {
+         *       "expectedRevision": 4
+         *     }
+         */
+        ArticleWithdraw: {
+            /**
+             * Format: int64
+             * @example 4
+             */
+            expectedRevision: number;
+            /** @example Prices changed; rewriting. */
+            reason?: string | null;
+        };
+        /**
+         * @example {
+         *       "expectedRevision": 4,
+         *       "revisionNumber": 2
+         *     }
+         */
+        ArticleRevert: {
+            /**
+             * Format: int64
+             * @example 4
+             */
+            expectedRevision: number;
+            /** @example 2 */
+            revisionNumber: number;
+        };
+        /**
+         * @example {
+         *       "expectedRevision": 4,
+         *       "slug": "screenshot-apps-for-mac"
+         *     }
+         */
+        ArticleSlugUpdate: {
+            /**
+             * Format: int64
+             * @example 4
+             */
+            expectedRevision: number;
+            /** @example screenshot-apps-for-mac */
+            slug: string;
+        };
+        /**
+         * @example {
+         *       "expectedRevision": 4,
+         *       "withheld": true
+         *     }
+         */
+        ArticleLocaleUpdate: {
+            /**
+             * Format: int64
+             * @example 4
+             */
+            expectedRevision: number;
+            /** @example true */
+            withheld: boolean;
+        };
+        /**
+         * @example {
+         *       "slug": "lin-wei",
+         *       "name": "Lin Wei",
+         *       "sourceLocale": "en-US",
+         *       "role": "Editor"
+         *     }
+         */
+        ArticleAuthorWrite: {
+            /** @example lin-wei */
+            slug: string;
+            /** @example Lin Wei */
+            name: string;
+            sourceLocale: components["schemas"]["Locale"];
+            /** @example Editor */
+            role?: string | null;
+            /** @example Tests Mac productivity apps. */
+            bio?: string | null;
+            links?: components["schemas"]["ArticleSource"][];
+            /**
+             * Format: int64
+             * @example null
+             */
+            avatarAssetId?: number | null;
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "slug": "lin-wei",
+         *       "name": "Lin Wei"
+         *     }
+         */
+        ArticleAuthorRef: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example lin-wei */
+            slug: string;
+            /** @example Lin Wei */
+            name: string;
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "token": "shottr",
+         *       "name": "Shottr",
+         *       "displayName": "Shottr",
+         *       "iconUrl": null
+         *     }
+         */
+        ArticlePackageRef: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example shottr */
+            token: string;
+            /** @example Shottr */
+            name: string;
+            /** @example Shottr */
+            displayName: string;
+            /** @example null */
+            iconUrl: string | null;
+        };
+        /**
+         * @example {
+         *       "number": 3,
+         *       "sourceLocale": "en-US",
+         *       "type": "roundup",
+         *       "authorId": null,
+         *       "author": null,
+         *       "coverAssetId": null,
+         *       "coverUrl": null,
+         *       "coverAlt": null,
+         *       "sources": [],
+         *       "packages": [],
+         *       "title": "How to choose a screenshot app for Mac",
+         *       "summary": null,
+         *       "bodyMarkdown": null,
+         *       "testNote": null,
+         *       "seoTitle": null,
+         *       "seoDescription": null,
+         *       "submittedAt": null,
+         *       "submittedByName": "",
+         *       "publishedAt": null,
+         *       "createdByName": "Hermes",
+         *       "createdAt": "2026-10-13T08:00:00Z",
+         *       "updatedAt": "2026-10-13T08:00:00Z"
+         *     }
+         */
+        AdminArticleRevision: {
+            /** @example 3 */
+            number: number;
+            sourceLocale: components["schemas"]["Locale"];
+            type: components["schemas"]["ArticleType"];
+            /**
+             * Format: int64
+             * @example null
+             */
+            authorId: number | null;
+            author: components["schemas"]["ArticleAuthorRef"] | null;
+            /**
+             * Format: int64
+             * @example null
+             */
+            coverAssetId: number | null;
+            /** @example null */
+            coverUrl: string | null;
+            /** @example null */
+            coverAlt: string | null;
+            sources: components["schemas"]["ArticleSource"][];
+            packages: components["schemas"]["ArticlePackageRef"][];
+            /** @example How to choose a screenshot app for Mac */
+            title: string;
+            /** @example What to compare when picking a screenshot tool. */
+            summary: string | null;
+            /** @example ## What to compare */
+            bodyMarkdown: string | null;
+            /** @example null */
+            testNote: string | null;
+            /** @example null */
+            seoTitle: string | null;
+            /** @example null */
+            seoDescription: string | null;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            submittedAt: string | null;
+            /** @example  */
+            submittedByName: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            publishedAt: string | null;
+            /** @example Hermes */
+            createdByName: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            updatedAt: string;
+        };
+        /**
+         * @example {
+         *       "locale": "zh-CN",
+         *       "status": "machine",
+         *       "withheld": false,
+         *       "source": false,
+         *       "failReason": null,
+         *       "translatedAt": "2026-10-13T09:00:00Z"
+         *     }
+         */
+        ArticleLocaleState: {
+            locale: components["schemas"]["Locale"];
+            /**
+             * @example machine
+             * @enum {string}
+             */
+            status: "source" | "machine" | "manual" | "pending" | "failed" | "missing";
+            /** @example false */
+            withheld: boolean;
+            /** @example false */
+            source: boolean;
+            /** @example null */
+            failReason: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-13T09:00:00Z
+             */
+            translatedAt: string | null;
+        };
+        /**
+         * @example {
+         *       "number": 2,
+         *       "title": "How to choose a screenshot app for Mac",
+         *       "createdAt": "2026-10-12T08:00:00Z",
+         *       "createdByName": "Hermes",
+         *       "submittedAt": "2026-10-12T09:00:00Z",
+         *       "publishedAt": "2026-10-12T10:00:00Z"
+         *     }
+         */
+        ArticleRevisionEntry: {
+            /** @example 2 */
+            number: number;
+            /** @example How to choose a screenshot app for Mac */
+            title: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T08:00:00Z
+             */
+            createdAt: string;
+            /** @example Hermes */
+            createdByName: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T09:00:00Z
+             */
+            submittedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            publishedAt: string | null;
+        };
+        /**
+         * @example {
+         *       "action": "publish",
+         *       "revisionNumber": 2,
+         *       "actorType": "admin",
+         *       "actorName": "kaka",
+         *       "detail": {},
+         *       "createdAt": "2026-10-12T10:00:00Z"
+         *     }
+         */
+        ArticleEvent: {
+            /**
+             * @example publish
+             * @enum {string}
+             */
+            action: "create" | "update" | "submit" | "review_invalidated" | "publish" | "withdraw" | "restore" | "slug" | "withhold" | "release" | "revert";
+            /** @example 2 */
+            revisionNumber: number | null;
+            /**
+             * @example admin
+             * @enum {string}
+             */
+            actorType: "admin" | "agent" | "system";
+            /** @example kaka */
+            actorName: string;
+            /** @example {} */
+            detail: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            createdAt: string;
+        };
+        /**
+         * @example {
+         *       "url": "https://cdn.opennavo.example/screenshots/uploads/cover/a.png",
+         *       "width": 1280,
+         *       "height": 800
+         *     }
+         */
+        ArticleImage: {
+            /** @example https://cdn.opennavo.example/screenshots/uploads/cover/a.png */
+            url: string;
+            /** @example 1280 */
+            width: number | null;
+            /** @example 800 */
+            height: number | null;
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "slug": "choose-a-screenshot-app",
+         *       "status": "draft",
+         *       "revision": 1,
+         *       "firstPublishedAt": null,
+         *       "contentUpdatedAt": null,
+         *       "archivedAt": null,
+         *       "createdAt": "2026-10-13T08:00:00Z",
+         *       "updatedAt": "2026-10-13T08:00:00Z",
+         *       "webUrl": null,
+         *       "aliases": [],
+         *       "working": {
+         *         "number": 1,
+         *         "sourceLocale": "en-US",
+         *         "type": "roundup",
+         *         "authorId": null,
+         *         "author": null,
+         *         "coverAssetId": null,
+         *         "coverUrl": null,
+         *         "coverAlt": null,
+         *         "sources": [],
+         *         "packages": [],
+         *         "title": "How to choose a screenshot app for Mac",
+         *         "summary": null,
+         *         "bodyMarkdown": null,
+         *         "testNote": null,
+         *         "seoTitle": null,
+         *         "seoDescription": null,
+         *         "submittedAt": null,
+         *         "submittedByName": "",
+         *         "publishedAt": null,
+         *         "createdByName": "Hermes",
+         *         "createdAt": "2026-10-13T08:00:00Z",
+         *         "updatedAt": "2026-10-13T08:00:00Z"
+         *       },
+         *       "published": null,
+         *       "hasPendingChanges": true,
+         *       "readiness": [
+         *         "summary",
+         *         "body",
+         *         "sources"
+         *       ],
+         *       "images": [],
+         *       "locales": [],
+         *       "revisions": [],
+         *       "events": []
+         *     }
+         */
+        AdminArticle: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example choose-a-screenshot-app */
+            slug: string;
+            status: components["schemas"]["ArticleStatus"];
+            /**
+             * Format: int64
+             * @description Change counter; send it back as expectedRevision
+             * @example 4
+             */
+            revision: number;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            firstPublishedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            contentUpdatedAt: string | null;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            archivedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T08:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            updatedAt: string;
+            /** @example https://opennavo.example/articles/choose-a-screenshot-app */
+            webUrl: string | null;
+            aliases: string[];
+            working: components["schemas"]["AdminArticleRevision"];
+            /**
+             * @example {
+             *       "number": 2,
+             *       "publishedAt": "2026-10-12T10:00:00Z"
+             *     }
+             */
+            published: {
+                /** @example 2 */
+                number: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-10-12T10:00:00Z
+                 */
+                publishedAt: string | null;
+            } | null;
+            /**
+             * @description The working revision is not the published one
+             * @example true
+             */
+            hasPendingChanges: boolean;
+            readiness: components["schemas"]["ArticleProblem"][];
+            images: components["schemas"]["ArticleImage"][];
+            /** @description Languages of the published revision */
+            locales: components["schemas"]["ArticleLocaleState"][];
+            revisions: components["schemas"]["ArticleRevisionEntry"][];
+            events: components["schemas"]["ArticleEvent"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "slug": "choose-a-screenshot-app",
+         *         "status": "draft",
+         *         "revision": 1,
+         *         "firstPublishedAt": null,
+         *         "contentUpdatedAt": null,
+         *         "archivedAt": null,
+         *         "createdAt": "2026-10-13T08:00:00Z",
+         *         "updatedAt": "2026-10-13T08:00:00Z",
+         *         "webUrl": null,
+         *         "aliases": [],
+         *         "working": {
+         *           "number": 1,
+         *           "sourceLocale": "en-US",
+         *           "type": "roundup",
+         *           "authorId": null,
+         *           "author": null,
+         *           "coverAssetId": null,
+         *           "coverUrl": null,
+         *           "coverAlt": null,
+         *           "sources": [],
+         *           "packages": [],
+         *           "title": "How to choose a screenshot app for Mac",
+         *           "summary": null,
+         *           "bodyMarkdown": null,
+         *           "testNote": null,
+         *           "seoTitle": null,
+         *           "seoDescription": null,
+         *           "submittedAt": null,
+         *           "submittedByName": "",
+         *           "publishedAt": null,
+         *           "createdByName": "Hermes",
+         *           "createdAt": "2026-10-13T08:00:00Z",
+         *           "updatedAt": "2026-10-13T08:00:00Z"
+         *         },
+         *         "published": null,
+         *         "hasPendingChanges": true,
+         *         "readiness": [
+         *           "summary",
+         *           "body",
+         *           "sources"
+         *         ],
+         *         "images": [],
+         *         "locales": [],
+         *         "revisions": [],
+         *         "events": []
+         *       }
+         *     }
+         */
+        AdminArticleResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["AdminArticle"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "slug": "choose-a-screenshot-app",
+         *         "status": "draft",
+         *         "revision": 1,
+         *         "firstPublishedAt": null,
+         *         "contentUpdatedAt": null,
+         *         "archivedAt": null,
+         *         "createdAt": "2026-10-13T08:00:00Z",
+         *         "updatedAt": "2026-10-13T08:00:00Z",
+         *         "webUrl": null,
+         *         "aliases": [],
+         *         "working": {
+         *           "number": 1,
+         *           "sourceLocale": "en-US",
+         *           "type": "roundup",
+         *           "authorId": null,
+         *           "author": null,
+         *           "coverAssetId": null,
+         *           "coverUrl": null,
+         *           "coverAlt": null,
+         *           "sources": [],
+         *           "packages": [],
+         *           "title": "How to choose a screenshot app for Mac",
+         *           "summary": null,
+         *           "bodyMarkdown": null,
+         *           "testNote": null,
+         *           "seoTitle": null,
+         *           "seoDescription": null,
+         *           "submittedAt": null,
+         *           "submittedByName": "",
+         *           "publishedAt": null,
+         *           "createdByName": "Hermes",
+         *           "createdAt": "2026-10-13T08:00:00Z",
+         *           "updatedAt": "2026-10-13T08:00:00Z"
+         *         },
+         *         "published": null,
+         *         "hasPendingChanges": true,
+         *         "readiness": [
+         *           "summary",
+         *           "body",
+         *           "sources"
+         *         ],
+         *         "images": [],
+         *         "locales": [],
+         *         "revisions": [],
+         *         "events": []
+         *       }
+         *     }
+         */
+        AdminArticleResponseResult: components["schemas"]["AdminArticleResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "id": 1,
+         *       "slug": "choose-a-screenshot-app",
+         *       "status": "published",
+         *       "revision": 4,
+         *       "type": "roundup",
+         *       "title": "How to choose a screenshot app for Mac",
+         *       "sourceLocale": "en-US",
+         *       "workingNumber": 3,
+         *       "publishedNumber": 2,
+         *       "submittedAt": null,
+         *       "hasPendingChanges": true,
+         *       "authorName": null,
+         *       "firstPublishedAt": "2026-10-12T10:00:00Z",
+         *       "contentUpdatedAt": "2026-10-12T10:00:00Z",
+         *       "updatedAt": "2026-10-13T08:00:00Z"
+         *     }
+         */
+        AdminArticleListItem: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example choose-a-screenshot-app */
+            slug: string;
+            status: components["schemas"]["ArticleStatus"];
+            /**
+             * Format: int64
+             * @example 4
+             */
+            revision: number;
+            type: components["schemas"]["ArticleType"];
+            /** @example How to choose a screenshot app for Mac */
+            title: string;
+            sourceLocale: components["schemas"]["Locale"];
+            /** @example 3 */
+            workingNumber: number;
+            /** @example 2 */
+            publishedNumber: number | null;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            submittedAt: string | null;
+            /** @example true */
+            hasPendingChanges: boolean;
+            /** @example null */
+            authorName: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            firstPublishedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-12T10:00:00Z
+             */
+            contentUpdatedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            updatedAt: string;
+        };
+        /**
+         * @example {
+         *       "records": [],
+         *       "current": 1,
+         *       "size": 20,
+         *       "total": 0
+         *     }
+         */
+        ArticlePage: {
+            records: components["schemas"]["AdminArticleListItem"][];
+            /** @example 1 */
+            current: number;
+            /** @example 20 */
+            size: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            total: number;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [],
+         *         "current": 1,
+         *         "size": 20,
+         *         "total": 0
+         *       }
+         *     }
+         */
+        ArticlePageResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["ArticlePage"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [],
+         *         "current": 1,
+         *         "size": 20,
+         *         "total": 0
+         *       }
+         *     }
+         */
+        ArticlePageResponseResult: components["schemas"]["ArticlePageResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "id": 1,
+         *       "slug": "lin-wei",
+         *       "name": "Lin Wei",
+         *       "links": [],
+         *       "avatarAssetId": null,
+         *       "avatarUrl": null,
+         *       "sourceLocale": "en-US",
+         *       "role": "Editor",
+         *       "bio": "Tests Mac productivity apps.",
+         *       "articleCount": 3,
+         *       "updatedAt": "2026-10-13T08:00:00Z"
+         *     }
+         */
+        ArticleAuthor: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example lin-wei */
+            slug: string;
+            /** @example Lin Wei */
+            name: string;
+            links: components["schemas"]["ArticleSource"][];
+            /**
+             * Format: int64
+             * @example null
+             */
+            avatarAssetId: number | null;
+            /** @example null */
+            avatarUrl: string | null;
+            sourceLocale: components["schemas"]["Locale"];
+            /** @example Editor */
+            role: string | null;
+            /** @example Tests Mac productivity apps. */
+            bio: string | null;
+            /** @example 3 */
+            articleCount: number;
+            /**
+             * Format: date-time
+             * @example 2026-10-13T08:00:00Z
+             */
+            updatedAt: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": []
+         *     }
+         */
+        ArticleAuthorListResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["ArticleAuthor"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": []
+         *     }
+         */
+        ArticleAuthorListResponseResult: components["schemas"]["ArticleAuthorListResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
          * @example zhName
          * @enum {string}
          */
-        ListingGap: "zhName" | "zhSummary" | "enSummary" | "primaryCategory" | "tags" | "icon" | "downloadSize" | "latestEditorial";
+        ListingGap: "zhName" | "zhSummary" | "enSummary" | "primaryCategory" | "tags" | "icon" | "downloadSize" | "latestEditorial" | "price";
         /**
          * @example {
          *       "seq": 1,
@@ -13244,7 +15988,7 @@ export interface components {
          * @example dashboard:view
          * @enum {string}
          */
-        AgentPermission: "dashboard:view" | "catalog:package:view" | "catalog:package:edit" | "catalog:package:resync" | "catalog:asset:upload" | "catalog:category:edit" | "content:collection:edit" | "content:collection:publish" | "content:feature:edit" | "content:glossary:edit" | "changelog:release:edit" | "translation:review" | "ops:job:view" | "ops:job:trigger" | "ops:search:view" | "ops:search:edit" | "ops:feedback:handle" | "agent:log:view" | "content:revision:restore" | "content:announcement:edit" | "release:desktop:notes";
+        AgentPermission: "dashboard:view" | "catalog:package:view" | "catalog:package:edit" | "catalog:package:resync" | "catalog:asset:upload" | "catalog:category:edit" | "content:collection:edit" | "content:collection:publish" | "content:article:edit" | "content:feature:edit" | "content:glossary:edit" | "changelog:release:edit" | "translation:review" | "ops:job:view" | "ops:job:trigger" | "ops:search:view" | "ops:search:edit" | "ops:feedback:handle" | "agent:log:view" | "content:revision:restore" | "content:announcement:edit" | "release:desktop:notes";
         /**
          * @example {
          *       "callsPerMinute": 120,
@@ -13311,6 +16055,7 @@ export interface components {
          *         "catalog:category:edit",
          *         "content:collection:edit",
          *         "content:collection:publish",
+         *         "content:article:edit",
          *         "content:feature:edit",
          *         "content:glossary:edit",
          *         "changelog:release:edit",
@@ -13347,6 +16092,7 @@ export interface components {
              *       "catalog:category:edit",
              *       "content:collection:edit",
              *       "content:collection:publish",
+             *       "content:article:edit",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -13391,6 +16137,7 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -13437,6 +16184,7 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -13683,6 +16431,7 @@ export interface components {
          *         "catalog:category:edit",
          *         "content:collection:edit",
          *         "content:collection:publish",
+         *         "content:article:edit",
          *         "content:feature:edit",
          *         "content:glossary:edit",
          *         "changelog:release:edit",
@@ -13714,6 +16463,7 @@ export interface components {
              *       "catalog:category:edit",
              *       "content:collection:edit",
              *       "content:collection:publish",
+             *       "content:article:edit",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -13765,6 +16515,7 @@ export interface components {
              *       "catalog:category:edit",
              *       "content:collection:edit",
              *       "content:collection:publish",
+             *       "content:article:edit",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -13809,6 +16560,7 @@ export interface components {
          *         "catalog:category:edit",
          *         "content:collection:edit",
          *         "content:collection:publish",
+         *         "content:article:edit",
          *         "content:feature:edit",
          *         "content:glossary:edit",
          *         "changelog:release:edit",
@@ -13858,6 +16610,7 @@ export interface components {
              *       "catalog:category:edit",
              *       "content:collection:edit",
              *       "content:collection:publish",
+             *       "content:article:edit",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -13934,6 +16687,7 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -13990,6 +16744,7 @@ export interface components {
          *               "catalog:category:edit",
          *               "content:collection:edit",
          *               "content:collection:publish",
+         *               "content:article:edit",
          *               "content:feature:edit",
          *               "content:glossary:edit",
          *               "changelog:release:edit",
@@ -14043,6 +16798,7 @@ export interface components {
                  *           "catalog:category:edit",
                  *           "content:collection:edit",
                  *           "content:collection:publish",
+                 *           "content:article:edit",
                  *           "content:feature:edit",
                  *           "content:glossary:edit",
                  *           "changelog:release:edit",
@@ -14108,6 +16864,7 @@ export interface components {
          *               "catalog:category:edit",
          *               "content:collection:edit",
          *               "content:collection:publish",
+         *               "content:article:edit",
          *               "content:feature:edit",
          *               "content:glossary:edit",
          *               "changelog:release:edit",
@@ -14160,6 +16917,7 @@ export interface components {
          *             "catalog:category:edit",
          *             "content:collection:edit",
          *             "content:collection:publish",
+         *             "content:article:edit",
          *             "content:feature:edit",
          *             "content:glossary:edit",
          *             "changelog:release:edit",
@@ -14214,6 +16972,7 @@ export interface components {
          *             "catalog:category:edit",
          *             "content:collection:edit",
          *             "content:collection:publish",
+         *             "content:article:edit",
          *             "content:feature:edit",
          *             "content:glossary:edit",
          *             "changelog:release:edit",
@@ -14262,6 +17021,7 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -14313,6 +17073,7 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -14359,6 +17120,7 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -14410,6 +17172,7 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -14490,6 +17253,7 @@ export interface components {
          *         "catalog:category:edit",
          *         "content:collection:edit",
          *         "content:collection:publish",
+         *         "content:article:edit",
          *         "content:feature:edit",
          *         "content:glossary:edit",
          *         "changelog:release:edit",
@@ -14557,6 +17321,7 @@ export interface components {
              *       "catalog:category:edit",
              *       "content:collection:edit",
              *       "content:collection:publish",
+             *       "content:article:edit",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -14615,6 +17380,7 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -14681,6 +17447,7 @@ export interface components {
          *           "catalog:category:edit",
          *           "content:collection:edit",
          *           "content:collection:publish",
+         *           "content:article:edit",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -16789,6 +19556,74 @@ export interface operations {
             };
         };
     };
+    listIndexReport: {
+        parameters: {
+            query?: {
+                current?: components["parameters"]["Current"];
+                size?: components["parameters"]["Size"];
+                reason?: "hidden" | "forced_noindex" | "unavailable" | "missing_summary" | "thin" | "forced_index";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexReportResponseResult"];
+                };
+            };
+        };
+    };
+    getSeoSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoSettingsResponseResult"];
+                };
+            };
+        };
+    };
+    updateSeoSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeoSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoSettingsResponseResult"];
+                };
+            };
+        };
+    };
     listTranslationModels: {
         parameters: {
             query?: never;
@@ -17244,6 +20079,216 @@ export interface operations {
             };
         };
     };
+    getPackageFacts: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageFactsResponseResult"];
+                };
+            };
+        };
+    };
+    setPackagePrice: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "type": "subscription",
+                 *       "amount": 9.99,
+                 *       "currency": "USD",
+                 *       "region": "US",
+                 *       "plan": "Pro",
+                 *       "period": "month",
+                 *       "appVersion": "5.2",
+                 *       "sourceUrl": "https://vendor.example/pricing",
+                 *       "method": "vendor_site",
+                 *       "note": "Checked the US pricing page."
+                 *     }
+                 */
+                "application/json": components["schemas"]["PackagePriceUpdate"];
+            };
+        };
+        responses: {
+            /** @description The facts after the write, or the dry-run preview */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageFactsResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    setPackageMacosSupport: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "ranges": [
+                 *         {
+                 *           "arch": "arm64",
+                 *           "support": "native",
+                 *           "minimum": "13",
+                 *           "maximum": null
+                 *         },
+                 *         {
+                 *           "arch": "x86_64",
+                 *           "support": "native",
+                 *           "minimum": "12",
+                 *           "maximum": null
+                 *         }
+                 *       ],
+                 *       "appVersion": "5.2",
+                 *       "sourceUrl": "https://vendor.example/docs/system-requirements",
+                 *       "method": "vendor_docs"
+                 *     }
+                 */
+                "application/json": components["schemas"]["PackageMacosUpdate"];
+            };
+        };
+        responses: {
+            /** @description The facts after the write, or the dry-run preview */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageFactsResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    setPackageAlternatives: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "items": [
+                 *         {
+                 *           "packageId": 2,
+                 *           "reasons": [
+                 *             "open_source",
+                 *             "lighter"
+                 *           ],
+                 *           "limits": [
+                 *             "fewer_features"
+                 *           ],
+                 *           "bestFor": "developers",
+                 *           "note": "Both edit code; this one starts faster."
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["PackageAlternativesUpdate"];
+            };
+        };
+        responses: {
+            /** @description The facts after the write, or the dry-run preview */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageFactsResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
     updatePackageI18n: {
         parameters: {
             query?: never;
@@ -17667,6 +20712,54 @@ export interface operations {
             };
         };
     };
+    getPackageIndexStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageIndexStatusResponseResult"];
+                };
+            };
+        };
+    };
+    setPackageIndexStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackageIndexOverride"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageIndexStatusResponseResult"];
+                };
+            };
+        };
+    };
     resyncPackage: {
         parameters: {
             query?: {
@@ -17933,6 +21026,553 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmptyResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    listAdminArticles: {
+        parameters: {
+            query?: {
+                current?: components["parameters"]["Current"];
+                size?: components["parameters"]["Size"];
+                status?: components["schemas"]["ArticleStatus"];
+                type?: components["schemas"]["ArticleType"];
+                /** @description Matches the slug or the working title */
+                q?: string;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticlePageResponseResult"];
+                };
+            };
+        };
+    };
+    createArticle: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "slug": "choose-a-screenshot-app",
+                 *       "sourceLocale": "en-US",
+                 *       "type": "roundup",
+                 *       "title": "How to choose a screenshot app for Mac",
+                 *       "summary": "What to compare when picking a screenshot tool.",
+                 *       "bodyMarkdown": "## What to compare\n\n::app[shottr]",
+                 *       "sources": [
+                 *         {
+                 *           "title": "Shottr documentation",
+                 *           "url": "https://shottr.cc/kb"
+                 *         }
+                 *       ],
+                 *       "packageIds": [
+                 *         1
+                 *       ],
+                 *       "idempotencyKey": "draft-2026-10-13-screenshots"
+                 *     }
+                 */
+                "application/json": components["schemas"]["ArticleCreate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    getAdminArticle: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                };
+            };
+        };
+    };
+    updateArticle: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "expectedRevision": 4,
+                 *       "summary": "What to compare when picking a screenshot tool on a Mac."
+                 *     }
+                 */
+                "application/json": components["schemas"]["ArticleUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    setArticlePackages: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "expectedRevision": 4,
+                 *       "packageIds": [
+                 *         1,
+                 *         2
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["ArticlePackagesUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    submitArticleReview: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "expectedRevision": 4
+                 *     }
+                 */
+                "application/json": components["schemas"]["ArticleRevisionCheck"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    publishArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleRevisionCheck"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                };
+            };
+        };
+    };
+    withdrawArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleWithdraw"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                };
+            };
+        };
+    };
+    restoreArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleRevisionCheck"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                };
+            };
+        };
+    };
+    revertArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleRevert"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                };
+            };
+        };
+    };
+    setArticleSlug: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleSlugUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                };
+            };
+        };
+    };
+    setArticleLocale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+                locale: components["parameters"]["LocalePath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleLocaleUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                };
+            };
+        };
+    };
+    listArticleAuthors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleAuthorListResponseResult"];
+                };
+            };
+        };
+    };
+    createArticleAuthor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleAuthorWrite"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdResponseResult"];
+                };
+            };
+        };
+    };
+    updateArticleAuthor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleAuthorWrite"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdResponseResult"];
                 };
             };
         };
@@ -20912,6 +24552,7 @@ export interface operations {
                  *         "catalog:category:edit",
                  *         "content:collection:edit",
                  *         "content:collection:publish",
+                 *         "content:article:edit",
                  *         "content:feature:edit",
                  *         "content:glossary:edit",
                  *         "changelog:release:edit",

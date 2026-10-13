@@ -34,6 +34,12 @@ func operationContext(ctx context.Context, op string, in Input) context.Context 
 }
 func historyPermission(op string) string {
 	switch {
+	case strings.Contains(op, "Article"):
+		// Before the package rule: SetArticlePackages edits an article, not packages.
+		if strings.Contains(op, "Author") || op == "PublishArticle" || op == "WithdrawArticle" || op == "RestoreArticle" || op == "SetArticleSlug" || op == "SetArticleLocale" {
+			return "content:article:publish"
+		}
+		return "content:article:edit"
 	case strings.Contains(op, "Screenshot") || strings.Contains(op, "Icon") || op == "UploadAsset":
 		return "catalog:asset:upload"
 	case strings.Contains(op, "Package"):
@@ -275,5 +281,5 @@ func mutationResult(ctx context.Context, st *store.Store, ref content.Ref) (any,
 func historyName(ref content.Ref) string { return fmt.Sprintf("%s:%s", ref.Entity, ref.Key()) }
 
 func entityPermission(entity string) string {
-	return map[string]string{"package": "catalog:package:edit", "release": "changelog:release:edit", "category": "catalog:category:edit", "collection": "content:collection:edit", "collection_item": "content:collection:edit", "feature": "content:feature:edit", "screenshot": "catalog:asset:upload", "asset": "catalog:asset:upload", "desktop_release": "release:desktop:notes", "announcement": "content:announcement:edit", "glossary": "content:glossary:edit", "synonym": "ops:search:edit", "feedback": "ops:feedback:handle"}[entity]
+	return map[string]string{"package": "catalog:package:edit", "release": "changelog:release:edit", "category": "catalog:category:edit", "collection": "content:collection:edit", "collection_item": "content:collection:edit", "feature": "content:feature:edit", "screenshot": "catalog:asset:upload", "asset": "catalog:asset:upload", "desktop_release": "release:desktop:notes", "announcement": "content:announcement:edit", "glossary": "content:glossary:edit", "synonym": "ops:search:edit", "feedback": "ops:feedback:handle", "article": "content:article:edit", "article_author": "content:article:publish"}[entity]
 }

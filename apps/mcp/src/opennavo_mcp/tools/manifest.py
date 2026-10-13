@@ -36,7 +36,8 @@ TOOLS = (
     tool(
         "package_get",
         "catalog:package:view",
-        "getAdminPackage listAdminPackages listPackageScreenshots getTranslationStatus",
+        "getAdminPackage listAdminPackages listPackageScreenshots getTranslationStatus "
+        "getPackageFacts",
     ),
     tool("package_versions", "catalog:package:view", "listPackageVersions listAdminPackages"),
     tool("listing_gaps", "catalog:package:view", "listAdminPackages"),
@@ -56,6 +57,24 @@ TOOLS = (
         "package_set_categories",
         "catalog:package:edit",
         "setPackageCategories listAdminPackages",
+        write=True,
+    ),
+    tool(
+        "package_set_price",
+        "catalog:package:edit",
+        "setPackagePrice listAdminPackages",
+        write=True,
+    ),
+    tool(
+        "package_set_macos_support",
+        "catalog:package:edit",
+        "setPackageMacosSupport listAdminPackages",
+        write=True,
+    ),
+    tool(
+        "package_set_alternatives",
+        "catalog:package:edit",
+        "setPackageAlternatives listAdminPackages",
         write=True,
     ),
     tool(
@@ -119,6 +138,12 @@ TOOLS = (
     tool(
         "collection_delete", "content:collection:edit", "deleteCollection", write=True, delete=True
     ),
+    tool("articles_list", "content:article:edit", "listAdminArticles"),
+    tool("article_get", "content:article:edit", "getAdminArticle"),
+    tool("article_create", "content:article:edit", "createArticle", write=True),
+    tool("article_update", "content:article:edit", "updateArticle", write=True),
+    tool("article_set_packages", "content:article:edit", "setArticlePackages", write=True),
+    tool("article_submit_review", "content:article:edit", "submitArticleReview", write=True),
     tool("features_list", "content:feature:edit", "listFeatures getFeature"),
     tool(
         "feature_upsert",
@@ -176,6 +201,7 @@ RESOURCE_PERMISSIONS = {
     "opennavo://guide/content-style": "",
     "opennavo://guide/app-intro": "",
     "opennavo://guide/release-notes": "",
+    "opennavo://guide/article-writing": "",
     "opennavo://meta/locales": "",
     "opennavo://catalog/categories": "catalog:package:view",
     "opennavo://meta/policy": "",

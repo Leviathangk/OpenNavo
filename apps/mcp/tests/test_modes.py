@@ -146,7 +146,7 @@ async def test_display_preview_fallback(backend: Backend) -> None:
         assert locales["ja-JP"]["textLocale"] == "en-US"
 
 
-async def test_all_80_operations_reached_by_tools(backend: Backend) -> None:
+async def test_all_90_operations_reached_by_tools(backend: Backend) -> None:
     from opennavo_mcp.contracts import OPERATIONS
     from opennavo_mcp.tools.manifest import TOOLS
 
@@ -158,7 +158,8 @@ async def test_all_80_operations_reached_by_tools(backend: Backend) -> None:
         for name in ("feature_upsert", "synonym_upsert"):
             await client.call_tool(name, arguments(BY_NAME[name]) | {"id": 1})
         await client.call_tool(
-            "package_get", {"package": 1, "include": ["screenshots", "translations", "display"]}
+            "package_get",
+            {"package": 1, "include": ["screenshots", "translations", "display", "facts"]},
         )
     assert {operation for operation, _ in backend.calls} == set(OPERATIONS)
 

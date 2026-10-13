@@ -292,6 +292,10 @@ func (s *Service) translations(ctx context.Context, in Input) (any, error) {
 		if entity == "release" || entity == "screenshot" || entity == "collection_item" {
 			where += " AND EXISTS(SELECT 1 FROM packages pk WHERE pk.id=p.package_id AND pk.kind='cask')"
 		}
+		if entity == "article" {
+			// Only the live revision of a published article is translated.
+			where += " AND EXISTS(SELECT 1 FROM articles a WHERE a.published_revision_id=p.id AND a.status='published')"
+		}
 		clauses = append(clauses, "SELECT '"+entity+"' entity,"+id+" id,"+secondary+" secondary_id FROM "+spec.Parent+" p WHERE "+where)
 	}
 	result := map[string]any{"records": []any{}, "current": current, "size": size, "total": 0}

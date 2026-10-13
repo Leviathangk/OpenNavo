@@ -4,3 +4,5 @@ export { default as OnMarkdown } from './components/OnMarkdown.vue';
 export type { OnMarkdownProps } from './components/OnMarkdown.vue';
 export { renderMarkdown } from './utils/markdown';
 export type { RenderMarkdownOptions } from './utils/markdown';
+export { ARTICLE_MAX_APP_CARDS, headingId, renderArticle } from './utils/article';
+export type { ArticleHeading, ArticleImageInfo, ArticleSegment, RenderedArticle } from './utils/article';

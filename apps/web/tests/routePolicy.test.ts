@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ROBOTS_PRIVATE_PATHS } from '@opennavo/shared';
 
 // Evaluate the actual Nuxt configuration without starting Nuxt or a browser.
 vi.stubGlobal('defineNuxtConfig', (config: unknown) => config);
@@ -14,30 +15,20 @@ const ttls: Record<string, number> = {
   '/apps/**': 600,
   '/categories/**': 900,
   '/rankings': 900,
-  '/download': 600
+  '/download': 600,
+  '/articles': 600,
+  '/articles/**': 600,
+  '/authors/**': 600
 };
 
-describe('robots.txt crawler groups', () => {
-  const robots = config.robots as {
-    disallow: string[];
-    groups: { userAgent: string[]; disallow: string[] }[];
-  };
-  const group = (agent: string) => robots.groups.find(entry => entry.userAgent.includes(agent));
+describe('robots module configuration', () => {
+  const robots = config.robots as { robotsTxt?: boolean; disallow: string[]; groups?: unknown[] };
 
-  it('blocks SEO-tool crawlers entirely', () => {
-    for (const agent of ['MJ12bot', 'SerpstatBot']) expect(group(agent)?.disallow).toEqual(['/']);
-  });
-
-  it('keeps ClaudeBot off private pages, payloads and dependency tabs', () => {
-    const claude = group('ClaudeBot');
-    for (const path of robots.disallow) expect(claude?.disallow).toContain(path);
-    expect(claude?.disallow).toEqual(expect.arrayContaining(['/*_payload.json', '/*/dependencies']));
-  });
-
-  it('leaves search engines and AI search agents on the default rules', () => {
-    for (const agent of ['Googlebot', 'Bingbot', 'Claude-SearchBot', 'Claude-User', 'OAI-SearchBot', 'ChatGPT-User'])
-      expect(group(agent), agent).toBeUndefined();
-    expect(robots.disallow).not.toContain('/*_payload.json');
+  it('leaves robots.txt to the runtime route and keeps page rules independent of the User-Agent', () => {
+    expect(robots.robotsTxt).toBe(false);
+    expect(robots.groups).toBeUndefined();
+    // Page-level noindex and robots.txt disallow the same private paths.
+    expect(robots.disallow).toEqual(ROBOTS_PRIVATE_PATHS);
   });
 });
 
@@ -57,12 +48,19 @@ describe('localized route policies', () => {
     expect(config.$production?.routeRules?.[search]).toBeUndefined();
     expect(config.routeRules?.[brewfile]).toEqual({ ssr: false });
     expect(config.$production?.routeRules?.[brewfile]).toBeUndefined();
-    const sitemap = config.sitemap as { sitemaps: { pages: { exclude: string[] } } };
+    const sitemap = config.sitemap as { sitemaps: { static: { exclude: string[] } } };
     const robots = config.robots as { disallow: string[] };
     for (const path of [search, brewfile]) {
-      expect(sitemap.sitemaps.pages.exclude).toContain(path);
+      expect(sitemap.sitemaps.static.exclude).toContain(path);
       expect(robots.disallow).toContain(path);
     }
+  });
+
+  it.each(prefixes)('lists %s articles in their own sitemap group only', prefix => {
+    const sitemap = config.sitemap as { sitemaps: Record<string, { includeAppSources?: boolean; exclude?: string[] }> };
+    expect(sitemap.sitemaps.static?.exclude).toContain(`${prefix}/articles`);
+    expect(sitemap.sitemaps.articles).toEqual({ includeAppSources: false });
+    expect(sitemap.sitemaps.authors).toEqual({ includeAppSources: false });
   });
 
   it.each(prefixes)('does not cache %s collection HTML or extracted payloads', prefix => {

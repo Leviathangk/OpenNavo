@@ -287,8 +287,85 @@ func (h *Handler) ListSitemapPackages(ctx context.Context, request publicapi.Lis
 	if h.Catalog == nil {
 		return nil, domain.Internal(nil)
 	}
-	data, err := h.Catalog.Sitemap(requestContext(ctx), fallback(request.Params.Current, 1), fallback(request.Params.Size, 5000))
+	group := ""
+	if request.Params.Group != nil {
+		group = string(*request.Params.Group)
+	}
+	data, err := h.Catalog.Sitemap(requestContext(ctx), group, fallback(request.Params.Current, 1), fallback(request.Params.Size, 5000))
 	return response[publicapi.ListSitemapPackages200JSONResponse](data, err)
+}
+
+func (h *Handler) GetPackageLifecycle(ctx context.Context, request publicapi.GetPackageLifecycleRequestObject) (publicapi.GetPackageLifecycleResponseObject, error) {
+	if h.Catalog == nil {
+		return nil, domain.Internal(nil)
+	}
+	data, err := h.Catalog.Lifecycle(requestContext(ctx), string(request.Kind), request.Token, locale(ctx, request.Params.Locale))
+	return response[publicapi.GetPackageLifecycle200JSONResponse](data, err)
+}
+
+func (h *Handler) ListArticles(ctx context.Context, request publicapi.ListArticlesRequestObject) (publicapi.ListArticlesResponseObject, error) {
+	if h.Catalog == nil {
+		return nil, domain.Internal(nil)
+	}
+	current, size, kind := 1, 12, ""
+	if request.Params.Current != nil {
+		current = *request.Params.Current
+	}
+	if request.Params.Size != nil {
+		size = *request.Params.Size
+	}
+	if request.Params.Type != nil {
+		kind = string(*request.Params.Type)
+	}
+	data, err := h.Catalog.Articles(requestContext(ctx), locale(ctx, request.Params.Locale), kind, current, size)
+	return response[publicapi.ListArticles200JSONResponse](data, err)
+}
+
+func (h *Handler) GetArticle(ctx context.Context, request publicapi.GetArticleRequestObject) (publicapi.GetArticleResponseObject, error) {
+	if h.Catalog == nil {
+		return nil, domain.Internal(nil)
+	}
+	data, err := h.Catalog.Article(requestContext(ctx), request.Slug, locale(ctx, request.Params.Locale))
+	return response[publicapi.GetArticle200JSONResponse](data, err)
+}
+
+func (h *Handler) GetAuthor(ctx context.Context, request publicapi.GetAuthorRequestObject) (publicapi.GetAuthorResponseObject, error) {
+	if h.Catalog == nil {
+		return nil, domain.Internal(nil)
+	}
+	current, size := 1, 12
+	if request.Params.Current != nil {
+		current = *request.Params.Current
+	}
+	if request.Params.Size != nil {
+		size = *request.Params.Size
+	}
+	data, err := h.Catalog.Author(requestContext(ctx), request.Slug, locale(ctx, request.Params.Locale), current, size)
+	return response[publicapi.GetAuthor200JSONResponse](data, err)
+}
+
+func (h *Handler) GetArticleSitemap(ctx context.Context, request publicapi.GetArticleSitemapRequestObject) (publicapi.GetArticleSitemapResponseObject, error) {
+	if h.Catalog == nil {
+		return nil, domain.Internal(nil)
+	}
+	data, err := h.Catalog.ArticleSitemap(requestContext(ctx))
+	return response[publicapi.GetArticleSitemap200JSONResponse](data, err)
+}
+
+func (h *Handler) GetSiteSettings(ctx context.Context, request publicapi.GetSiteSettingsRequestObject) (publicapi.GetSiteSettingsResponseObject, error) {
+	if h.Catalog == nil {
+		return nil, domain.Internal(nil)
+	}
+	data, err := h.Catalog.SiteSettings(requestContext(ctx))
+	return response[publicapi.GetSiteSettings200JSONResponse](data, err)
+}
+
+func (h *Handler) VerifyIndexNowKey(ctx context.Context, request publicapi.VerifyIndexNowKeyRequestObject) (publicapi.VerifyIndexNowKeyResponseObject, error) {
+	if h.Catalog == nil {
+		return nil, domain.Internal(nil)
+	}
+	data, err := h.Catalog.VerifyIndexNowKey(requestContext(ctx), request.Key)
+	return response[publicapi.VerifyIndexNowKey200JSONResponse](data, err)
 }
 
 func (h *Handler) contentCache(ctx context.Context) error {

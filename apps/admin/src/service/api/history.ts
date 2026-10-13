@@ -12,7 +12,8 @@ export const fetchContentRevision = (id: number) =>
 export const restoreRevision = (id: number, data: BodyOf<'restoreRevision'>) =>
   request<DataOf<'restoreRevision'>>({ url: `/content/revisions/${id}/restore`, method: 'post', data });
 
-export const fetchTrash = (params: QueryOf<'listTrash'>) => request<DataOf<'listTrash'>>({ url: '/content/trash', params });
+export const fetchTrash = (params: QueryOf<'listTrash'>) =>
+  request<DataOf<'listTrash'>>({ url: '/content/trash', params });
 
 export const fetchTrashItem = (id: number) => request<DataOf<'getTrashItem'>>({ url: `/content/trash/${id}` });
 
@@ -20,7 +21,10 @@ export const restoreTrash = (id: number) =>
   request<DataOf<'restoreTrash'>>({ url: `/content/trash/${id}/restore`, method: 'post' });
 
 export const revertRequest = (requestId: string) =>
-  request<DataOf<'revertRequest'>>({ url: `/content/requests/${encodeURIComponent(requestId)}/revert`, method: 'post' });
+  request<DataOf<'revertRequest'>>({
+    url: `/content/requests/${encodeURIComponent(requestId)}/revert`,
+    method: 'post'
+  });
 
 export const fetchTranslationLogs = (params: QueryOf<'listTranslationLogs'>) =>
   request<DataOf<'listTranslationLogs'>>({ url: '/translations/logs', params });

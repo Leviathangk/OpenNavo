@@ -17,8 +17,11 @@ export function useSiteNav() {
       const href = localePath(target);
       return path === href || path.startsWith(`${href}/`);
     };
-    for (const key of ['categories', 'rankings', 'collections', 'brewfile', 'about', 'feedback'] as const)
+    for (const key of ['categories', 'rankings', 'articles', 'collections', 'brewfile', 'about', 'feedback'] as const)
       if (under(`/${key}`)) return key;
+    // Author pages belong to the articles they list. There is no /authors page to resolve, so the
+    // prefix comes from the article list.
+    if (path.startsWith(`${localePath('/articles').replace(/\/articles$/, '')}/authors/`)) return 'articles';
     return under('/download') ? 'download' : 'discover';
   });
 
@@ -38,7 +41,8 @@ export function useSiteNav() {
       items: [
         item('discover', '/discover', 'lucide:compass'),
         item('categories', '/categories', 'lucide:layout-grid'),
-        item('rankings', '/rankings', 'lucide:chart-no-axes-column')
+        item('rankings', '/rankings', 'lucide:chart-no-axes-column'),
+        item('articles', '/articles', 'lucide:newspaper')
       ]
     },
     {

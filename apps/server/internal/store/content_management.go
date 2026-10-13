@@ -14,7 +14,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var textAPIFields = map[string]string{"displayName": "display_name", "bodyMarkdown": "body_markdown", "ctaLabel": "cta_label"}
+var textAPIFields = map[string]string{"displayName": "display_name", "bodyMarkdown": "body_markdown", "ctaLabel": "cta_label", "testNote": "test_note", "seoTitle": "seo_title", "seoDescription": "seo_description"}
 
 func textColumn(key string) string {
 	if v, ok := textAPIFields[key]; ok {
@@ -187,6 +187,36 @@ func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale st
 func (s *Store) ContentChanged(ctx context.Context, ref content.Ref) error {
 	id := ref.ID
 	switch ref.Entity {
+	case "article", "article_author":
+		var paths []string
+		if ref.Entity == "article" {
+			// Content refs identify revisions, not article identities. Only live text affects pages.
+			var articleID int64
+			if err := s.DB.WithContext(ctx).Raw("SELECT id FROM articles WHERE published_revision_id=? AND status='published'", id).Scan(&articleID).Error; err != nil {
+				return err
+			}
+			if articleID == 0 {
+				return nil
+			}
+			var err error
+			paths, err = s.ArticlePaths(ctx, articleID)
+			if err != nil {
+				return err
+			}
+		} else {
+			if err := s.DB.WithContext(ctx).Raw("SELECT '/authors/'||slug FROM article_authors WHERE id=?", id).Scan(&paths).Error; err != nil {
+				return err
+			}
+			var bylines []string
+			if err := s.DB.WithContext(ctx).Raw("SELECT '/articles/'||a.slug FROM articles a JOIN article_revisions r ON r.id=a.published_revision_id WHERE a.status='published' AND r.author_id=? ORDER BY a.id", id).Scan(&bylines).Error; err != nil {
+				return err
+			}
+			paths = append(paths, bylines...)
+		}
+		if err := s.EnqueueArticlePages(ctx, paths); err != nil {
+			return err
+		}
+		return QueueCacheInvalidation(ctx, s.DB, "translation:"+ref.Entity+":"+ref.Key(), ArticleCachePatterns(paths)...)
 	case "package":
 		if err := UpdateSearchIndex(ctx, s.DB, []int64{id}); err != nil {
 			return err

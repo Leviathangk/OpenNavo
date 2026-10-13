@@ -74,6 +74,12 @@ function onCategory(event: Event) {
   update({ category: (event.target as HTMLSelectElement).value || undefined });
 }
 
+// Positions follow the ranks on the page.
+useItemListSchema(
+  () => (error.value ? null : entries.value?.map(entry => ({ name: entry.pkg.displayName, path: entry.href }))),
+  () => entries.value?.[0]?.rank ?? 1
+);
+
 usePageSeo({ title: () => t('rankings.metaTitle'), description: () => t('rankings.description') });
 </script>
 

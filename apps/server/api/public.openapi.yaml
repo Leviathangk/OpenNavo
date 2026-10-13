@@ -27,6 +27,10 @@ tags:
     description: "Client-specific: snapshots, deltas, configuration and releases"
   - name: feedback
     description: "User feedback"
+  - name: site
+    description: "Website configuration: SEO and analytics settings"
+  - name: articles
+    description: "Published articles and author pages"
 
 paths:
   /home:
@@ -4327,6 +4331,318 @@ paths:
               example: Origin, Accept-Language
         default:
           $ref: "#/components/responses/Error"
+  /packages/{kind}/{token}/lifecycle:
+    get:
+      tags:
+        - catalog
+      operationId: getPackageLifecycle
+      summary: "Where a package URL should go"
+      description: "For URLs whose detail request returned 404 (WP2). active: serve the page; renamed: redirect permanently to token; removed: the app left Homebrew, answer 410 and show the read-only summary in removed. Unknown tokens return 404. A live package always wins over an alias."
+      parameters:
+        - $ref: "#/components/parameters/KindPath"
+        - $ref: "#/components/parameters/TokenPath"
+        - $ref: "#/components/parameters/Locale"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageLifecycleResponse"
+              examples:
+                en-US:
+                  summary: en-US
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      state: removed
+                      token: legacy-app
+                      removed:
+                        token: legacy-app
+                        displayName: Legacy App
+                        summary: Archived utility
+                        iconUrl: null
+                        lastVersion: 2.4.1
+                        removedAt: 2026-09-01T08:00:00Z
+                        replacement: null
+                        alternatives: []
+                        categories:
+                          - slug: utilities
+                            name: Utilities
+                            icon: lucide:wrench
+                zh-CN:
+                  summary: zh-CN
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      state: removed
+                      token: legacy-app
+                      removed:
+                        token: legacy-app
+                        displayName: Legacy App
+                        summary: Archived utility
+                        iconUrl: null
+                        lastVersion: 2.4.1
+                        removedAt: 2026-09-01T08:00:00Z
+                        replacement: null
+                        alternatives: []
+                        categories:
+                          - slug: utilities
+                            name: Utilities
+                            icon: lucide:wrench
+                ja-JP:
+                  summary: ja-JP
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      state: removed
+                      token: legacy-app
+                      removed:
+                        token: legacy-app
+                        displayName: Legacy App
+                        summary: Archived utility
+                        iconUrl: null
+                        lastVersion: 2.4.1
+                        removedAt: 2026-09-01T08:00:00Z
+                        replacement: null
+                        alternatives: []
+                        categories:
+                          - slug: utilities
+                            name: Utilities
+                            icon: lucide:wrench
+                es-ES:
+                  summary: es-ES
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      state: removed
+                      token: legacy-app
+                      removed:
+                        token: legacy-app
+                        displayName: Legacy App
+                        summary: Archived utility
+                        iconUrl: null
+                        lastVersion: 2.4.1
+                        removedAt: 2026-09-01T08:00:00Z
+                        replacement: null
+                        alternatives: []
+                        categories:
+                          - slug: utilities
+                            name: Utilities
+                            icon: lucide:wrench
+                pt-BR:
+                  summary: pt-BR
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      state: removed
+                      token: legacy-app
+                      removed:
+                        token: legacy-app
+                        displayName: Legacy App
+                        summary: Archived utility
+                        iconUrl: null
+                        lastVersion: 2.4.1
+                        removedAt: 2026-09-01T08:00:00Z
+                        replacement: null
+                        alternatives: []
+                        categories:
+                          - slug: utilities
+                            name: Utilities
+                            icon: lucide:wrench
+                ru-RU:
+                  summary: ru-RU
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      state: removed
+                      token: legacy-app
+                      removed:
+                        token: legacy-app
+                        displayName: Legacy App
+                        summary: Archived utility
+                        iconUrl: null
+                        lastVersion: 2.4.1
+                        removedAt: 2026-09-01T08:00:00Z
+                        replacement: null
+                        alternatives: []
+                        categories:
+                          - slug: utilities
+                            name: Utilities
+                            icon: lucide:wrench
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+        default:
+          $ref: "#/components/responses/Error"
+  /articles:
+    get:
+      tags:
+        - articles
+      operationId: listArticles
+      summary: "Published articles"
+      description: "Newest first. Each card uses the requested language when its translation is ready and not held back, otherwise the source language (locale tells which). Withdrawn articles are never listed."
+      parameters:
+        - $ref: "#/components/parameters/Locale"
+        - $ref: "#/components/parameters/Current"
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 12, example: 12 }
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/ArticleType"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticlePageResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/ArticlePageSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+        default:
+          $ref: "#/components/responses/Error"
+  /articles/{slug}:
+    get:
+      tags:
+        - articles
+      operationId: getArticle
+      summary: "One article"
+      description: "published: the published revision, in the requested language when its translation is ready and not held back (availableLocales lists those languages; others show the source text and should not be indexed). moved: a former slug, redirect permanently to slug. withdrawn: taken off the site, answer 410. Unknown slugs return 404. Drafts are never readable here."
+      parameters:
+        - $ref: "#/components/parameters/ArticleSlugPath"
+        - $ref: "#/components/parameters/Locale"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleLookupResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/ArticleLookupSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/ArticleLookupSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/ArticleLookupSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/ArticleLookupSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/ArticleLookupSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/ArticleLookupSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+        default:
+          $ref: "#/components/responses/Error"
+  /authors/{slug}:
+    get:
+      tags:
+        - articles
+      operationId: getAuthor
+      summary: "Author profile and published articles"
+      parameters:
+        - $ref: "#/components/parameters/AuthorSlugPath"
+        - $ref: "#/components/parameters/Locale"
+        - $ref: "#/components/parameters/Current"
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 12, example: 12 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthorPageResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/AuthorPageSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/AuthorPageSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/AuthorPageSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/AuthorPageSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/AuthorPageSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/AuthorPageSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+        default:
+          $ref: "#/components/responses/Error"
+  /sitemap/articles:
+    get:
+      tags:
+        - articles
+      operationId: getArticleSitemap
+      summary: "Article and author URLs for the sitemap"
+      description: "Published articles with the languages whose text is ready (lastmod per language: the latest substantive update or that language's translation), and authors with published articles."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleSitemapResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/ArticleSitemapSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/ArticleSitemapSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/ArticleSitemapSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/ArticleSitemapSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/ArticleSitemapSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/ArticleSitemapSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+        default:
+          $ref: "#/components/responses/Error"
   /packages/lookup:
     post:
       tags:
@@ -7639,8 +7955,16 @@ paths:
         - catalog
       operationId: listSitemapPackages
       summary: "Sitemap data for the web server"
+      description: "Indexable apps in stable id order. Under an enforced index policy only eligible apps and their published languages are listed; otherwise every listed app in all six languages."
       parameters:
         - $ref: "#/components/parameters/Current"
+        - name: group
+          in: query
+          description: "apps excludes fonts; fonts lists only fonts; omitted lists both."
+          schema:
+            type: string
+            enum: [apps, fonts]
+            example: apps
         - name: size
           in: query
           schema:
@@ -7743,6 +8067,324 @@ paths:
               example: Origin, Accept-Language
         default:
           $ref: "#/components/responses/Error"
+  /site/settings:
+    get:
+      tags:
+        - site
+      operationId: getSiteSettings
+      summary: "Public website SEO and analytics settings for the web server"
+      description: "Returns only non-secret values configured in admin (System > SEO & analytics), with defaults for unset fields. Credentials and CDN identifiers are never included."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteSettingsResponse"
+              examples:
+                en-US:
+                  summary: en-US
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      revision: 1
+                      identity:
+                        name: OpenNavo
+                        alternateNames: [opennavo.com]
+                        logoUrl: https://opennavo.example/brand/logo-512.png
+                        sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+                      verification:
+                        google: ""
+                        bing: ""
+                      analytics:
+                        ga4Enabled: true
+                        ga4MeasurementId: G-EXAMPLE123
+                        consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+                      edgeCache:
+                        enabled: false
+                      crawlers:
+                        training:
+                          mode: limit
+                          delaySeconds: 10
+                          bots: [ClaudeBot]
+                        seoTools:
+                          mode: block
+                          delaySeconds: 10
+                          bots: [MJ12bot, SerpstatBot]
+                      pages:
+                        titleTemplate: new
+                        indexPolicy:
+                          mode: shadow
+                          scope: new
+                          since: ""
+                        versionsSitemap: false
+                zh-CN:
+                  summary: zh-CN
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      revision: 1
+                      identity:
+                        name: OpenNavo
+                        alternateNames: [opennavo.com]
+                        logoUrl: https://opennavo.example/brand/logo-512.png
+                        sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+                      verification:
+                        google: ""
+                        bing: ""
+                      analytics:
+                        ga4Enabled: true
+                        ga4MeasurementId: G-EXAMPLE123
+                        consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+                      edgeCache:
+                        enabled: false
+                      crawlers:
+                        training:
+                          mode: limit
+                          delaySeconds: 10
+                          bots: [ClaudeBot]
+                        seoTools:
+                          mode: block
+                          delaySeconds: 10
+                          bots: [MJ12bot, SerpstatBot]
+                      pages:
+                        titleTemplate: new
+                        indexPolicy:
+                          mode: shadow
+                          scope: new
+                          since: ""
+                        versionsSitemap: false
+                ja-JP:
+                  summary: ja-JP
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      revision: 1
+                      identity:
+                        name: OpenNavo
+                        alternateNames: [opennavo.com]
+                        logoUrl: https://opennavo.example/brand/logo-512.png
+                        sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+                      verification:
+                        google: ""
+                        bing: ""
+                      analytics:
+                        ga4Enabled: true
+                        ga4MeasurementId: G-EXAMPLE123
+                        consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+                      edgeCache:
+                        enabled: false
+                      crawlers:
+                        training:
+                          mode: limit
+                          delaySeconds: 10
+                          bots: [ClaudeBot]
+                        seoTools:
+                          mode: block
+                          delaySeconds: 10
+                          bots: [MJ12bot, SerpstatBot]
+                      pages:
+                        titleTemplate: new
+                        indexPolicy:
+                          mode: shadow
+                          scope: new
+                          since: ""
+                        versionsSitemap: false
+                es-ES:
+                  summary: es-ES
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      revision: 1
+                      identity:
+                        name: OpenNavo
+                        alternateNames: [opennavo.com]
+                        logoUrl: https://opennavo.example/brand/logo-512.png
+                        sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+                      verification:
+                        google: ""
+                        bing: ""
+                      analytics:
+                        ga4Enabled: true
+                        ga4MeasurementId: G-EXAMPLE123
+                        consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+                      edgeCache:
+                        enabled: false
+                      crawlers:
+                        training:
+                          mode: limit
+                          delaySeconds: 10
+                          bots: [ClaudeBot]
+                        seoTools:
+                          mode: block
+                          delaySeconds: 10
+                          bots: [MJ12bot, SerpstatBot]
+                      pages:
+                        titleTemplate: new
+                        indexPolicy:
+                          mode: shadow
+                          scope: new
+                          since: ""
+                        versionsSitemap: false
+                pt-BR:
+                  summary: pt-BR
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      revision: 1
+                      identity:
+                        name: OpenNavo
+                        alternateNames: [opennavo.com]
+                        logoUrl: https://opennavo.example/brand/logo-512.png
+                        sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+                      verification:
+                        google: ""
+                        bing: ""
+                      analytics:
+                        ga4Enabled: true
+                        ga4MeasurementId: G-EXAMPLE123
+                        consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+                      edgeCache:
+                        enabled: false
+                      crawlers:
+                        training:
+                          mode: limit
+                          delaySeconds: 10
+                          bots: [ClaudeBot]
+                        seoTools:
+                          mode: block
+                          delaySeconds: 10
+                          bots: [MJ12bot, SerpstatBot]
+                      pages:
+                        titleTemplate: new
+                        indexPolicy:
+                          mode: shadow
+                          scope: new
+                          since: ""
+                        versionsSitemap: false
+                ru-RU:
+                  summary: ru-RU
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      revision: 1
+                      identity:
+                        name: OpenNavo
+                        alternateNames: [opennavo.com]
+                        logoUrl: https://opennavo.example/brand/logo-512.png
+                        sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+                      verification:
+                        google: ""
+                        bing: ""
+                      analytics:
+                        ga4Enabled: true
+                        ga4MeasurementId: G-EXAMPLE123
+                        consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+                      edgeCache:
+                        enabled: false
+                      crawlers:
+                        training:
+                          mode: limit
+                          delaySeconds: 10
+                          bots: [ClaudeBot]
+                        seoTools:
+                          mode: block
+                          delaySeconds: 10
+                          bots: [MJ12bot, SerpstatBot]
+                      pages:
+                        titleTemplate: new
+                        indexPolicy:
+                          mode: shadow
+                          scope: new
+                          since: ""
+                        versionsSitemap: false
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+        default:
+          $ref: "#/components/responses/Error"
+  /site/indexnow-keys/{key}:
+    get:
+      tags:
+        - site
+      operationId: verifyIndexNowKey
+      summary: "Confirm the IndexNow key file name"
+      description: "Returns the key when IndexNow is enabled and the path matches the stored key, so the web server can serve /{key}.txt without learning the key in advance. Any other key returns 404."
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9-]{8,128}$'
+            example: example-indexnow-key
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexNowKeyResponse"
+              examples:
+                en-US:
+                  summary: en-US
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      key: example-indexnow-key
+                zh-CN:
+                  summary: zh-CN
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      key: example-indexnow-key
+                ja-JP:
+                  summary: ja-JP
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      key: example-indexnow-key
+                es-ES:
+                  summary: es-ES
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      key: example-indexnow-key
+                pt-BR:
+                  summary: pt-BR
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      key: example-indexnow-key
+                ru-RU:
+                  summary: ru-RU
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      key: example-indexnow-key
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+        default:
+          $ref: "#/components/responses/Error"
 
 components:
   parameters:
@@ -7772,6 +8414,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^[a-z0-9][a-z0-9-]*$', maxLength: 64, example: new-mac }
+    ArticleSlugPath:
+      name: slug
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 100, example: choose-a-screenshot-app }
+    AuthorSlugPath:
+      name: slug
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 80, example: lin-wei }
     Current:
       name: current
       in: query
@@ -8594,8 +9246,38 @@ components:
               description: "SHA-256 of the downloadUrl file; null when absent upstream or no_check."
               pattern: ^[a-fA-F0-9]{64}$
               example: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            indexing:
+              $ref: "#/components/schemas/PackageIndexing"
+            versionCommittedAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: "When Homebrew committed the current version; versionChangedAt is when OpenNavo noticed it."
+              example: 2026-09-30T09:00:00Z
             releaseStats:
               $ref: "#/components/schemas/ReleaseStats"
+            price:
+              type: object
+              allOf:
+                - $ref: "#/components/schemas/AppPrice"
+              nullable: true
+              description: "Apps only; null when the price is unknown or under review"
+            macosSupplement:
+              type: object
+              allOf:
+                - $ref: "#/components/schemas/MacosSupplement"
+              nullable: true
+              description: "Apps only; null without a verified supplement"
+            alternatives:
+              type: array
+              description: "Apps only: human-confirmed alternatives (0 to 8) that pages can show"
+              items:
+                $ref: "#/components/schemas/PackageAlternative"
+            articles:
+              type: array
+              description: "Apps only: up to three published articles that cover this app, newest first"
+              items:
+                $ref: "#/components/schemas/ArticleCard"
       example:
         kind: cask
         token: visual-studio-code
@@ -8707,6 +9389,13 @@ components:
           sourceLocale: en-US
           machineTranslated: false
         downloadSha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        indexing:
+          indexable: true
+          reason: null
+          locales: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU]
+          enforced: false
+          notesCount: 12
+        versionCommittedAt: 2026-09-30T09:00:00Z
         releaseStats:
           count30d: 5
           cadence: weekly
@@ -11828,6 +12517,992 @@ components:
         appVersion: 0.3.0
         osVersion: "15.0"
         website: ""
+    SiteCrawlerRule:
+      type: object
+      required: [mode, delaySeconds, bots]
+      description: "Rule for one tunable crawler class. Search engines and user-requested fetchers always use the default group."
+      properties:
+        mode:
+          type: string
+          enum: [allow, limit, block]
+        delaySeconds:
+          type: integer
+          minimum: 1
+          maximum: 60
+        bots:
+          type: array
+          items:
+            type: string
+      example:
+        mode: limit
+        delaySeconds: 10
+        bots: [ClaudeBot]
+    SiteSettings:
+      type: object
+      required: [revision, identity, verification, analytics, edgeCache, crawlers, pages]
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+          description: "Increments on every admin save; use it to key caches."
+        identity:
+          type: object
+          required: [name, alternateNames, logoUrl, sameAs]
+          properties:
+            name:
+              type: string
+            alternateNames:
+              type: array
+              items:
+                type: string
+            logoUrl:
+              type: string
+            sameAs:
+              type: array
+              items:
+                type: string
+        verification:
+          type: object
+          required: [google, bing]
+          properties:
+            google:
+              type: string
+            bing:
+              type: string
+        analytics:
+          type: object
+          required: [ga4Enabled, ga4MeasurementId, consentRegions]
+          properties:
+            ga4Enabled:
+              type: boolean
+            ga4MeasurementId:
+              type: string
+            consentRegions:
+              type: array
+              items:
+                type: string
+        edgeCache:
+          type: object
+          required: [enabled]
+          properties:
+            enabled:
+              type: boolean
+        crawlers:
+          type: object
+          required: [training, seoTools]
+          properties:
+            training:
+              $ref: "#/components/schemas/SiteCrawlerRule"
+            seoTools:
+              $ref: "#/components/schemas/SiteCrawlerRule"
+        pages:
+          type: object
+          required: [titleTemplate, indexPolicy, versionsSitemap]
+          properties:
+            titleTemplate:
+              type: string
+              enum: [new, legacy]
+            indexPolicy:
+              type: object
+              required: [mode, scope, since]
+              properties:
+                mode:
+                  type: string
+                  enum: ["off", shadow, enforce]
+                scope:
+                  type: string
+                  enum: [new, all]
+                since:
+                  type: string
+            versionsSitemap:
+              type: boolean
+      example:
+        revision: 1
+        identity:
+          name: OpenNavo
+          alternateNames: [opennavo.com]
+          logoUrl: https://opennavo.example/brand/logo-512.png
+          sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+        verification:
+          google: ""
+          bing: ""
+        analytics:
+          ga4Enabled: true
+          ga4MeasurementId: G-EXAMPLE123
+          consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+        edgeCache:
+          enabled: false
+        crawlers:
+          training:
+            mode: limit
+            delaySeconds: 10
+            bots: [ClaudeBot]
+          seoTools:
+            mode: block
+            delaySeconds: 10
+            bots: [MJ12bot, SerpstatBot]
+        pages:
+          titleTemplate: new
+          indexPolicy:
+            mode: shadow
+            scope: new
+            since: ""
+          versionsSitemap: false
+    SiteSettingsResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/SiteSettings"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          revision: 1
+          identity:
+            name: OpenNavo
+            alternateNames: [opennavo.com]
+            logoUrl: https://opennavo.example/brand/logo-512.png
+            sameAs: [https://github.com/opennavo/OpenNavo, https://x.com/opennavo]
+          verification:
+            google: ""
+            bing: ""
+          analytics:
+            ga4Enabled: true
+            ga4MeasurementId: G-EXAMPLE123
+            consentRegions: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE, IS, LI, NO, GB, CH]
+          edgeCache:
+            enabled: false
+          crawlers:
+            training:
+              mode: limit
+              delaySeconds: 10
+              bots: [ClaudeBot]
+            seoTools:
+              mode: block
+              delaySeconds: 10
+              bots: [MJ12bot, SerpstatBot]
+          pages:
+            titleTemplate: new
+            indexPolicy:
+              mode: shadow
+              scope: new
+              since: ""
+            versionsSitemap: false
+    IndexNowKeyResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          type: object
+          required: [key]
+          properties:
+            key:
+              type: string
+              example: example-indexnow-key
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          key: example-indexnow-key
+    RemovedPackage:
+      type: object
+      required: [token, displayName, summary, iconUrl, lastVersion, removedAt, replacement, alternatives, categories]
+      description: "Read-only summary of an app Homebrew removed. Data stays in the database; the page returns to 200 if Homebrew adds it back."
+      properties:
+        token:
+          type: string
+        displayName:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        iconUrl:
+          type: string
+          nullable: true
+        lastVersion:
+          type: string
+        removedAt:
+          type: string
+          format: date-time
+        replacement:
+          allOf:
+            - $ref: "#/components/schemas/PackageSummary"
+          nullable: true
+          description: "The replacement Homebrew named when it disabled or deprecated the app, if still available."
+        alternatives:
+          type: array
+          maxItems: 6
+          description: "Popular available apps from the same primary category."
+          items:
+            $ref: "#/components/schemas/PackageSummary"
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryRef"
+      example:
+        token: legacy-app
+        displayName: Legacy App
+        summary: Archived utility
+        iconUrl: null
+        lastVersion: 2.4.1
+        removedAt: 2026-09-01T08:00:00Z
+        replacement: null
+        alternatives: []
+        categories:
+          - slug: utilities
+            name: Utilities
+            icon: lucide:wrench
+    PackageLifecycle:
+      type: object
+      required: [state, token]
+      properties:
+        state:
+          type: string
+          enum: [active, renamed, removed]
+        token:
+          type: string
+          description: "Current token; the redirect target for renamed."
+        removed:
+          $ref: "#/components/schemas/RemovedPackage"
+      example:
+        state: renamed
+        token: visual-studio-code
+    PackageLifecycleResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/PackageLifecycle"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          state: removed
+          token: legacy-app
+          removed:
+            token: legacy-app
+            displayName: Legacy App
+            summary: Archived utility
+            iconUrl: null
+            lastVersion: 2.4.1
+            removedAt: 2026-09-01T08:00:00Z
+            replacement: null
+            alternatives: []
+            categories:
+              - slug: utilities
+                name: Utilities
+                icon: lucide:wrench
+    PackageIndexing:
+      type: object
+      required: [indexable, reason, locales, enforced, notesCount]
+      description: "Index decision for the app's pages (WP11). Pages outside locales, or with indexable false, render noindex and stay out of hreflang and the sitemap."
+      properties:
+        indexable:
+          type: boolean
+        reason:
+          type: string
+          nullable: true
+          description: "hidden, forced_noindex, unavailable, missing_summary or thin when not indexable."
+        locales:
+          type: array
+          items:
+            $ref: "#/components/schemas/Locale"
+        enforced:
+          type: boolean
+          description: "Whether the index policy applies to this app. While false, pages keep today's behaviour."
+        notesCount:
+          type: integer
+          minimum: 0
+          description: "Visible releases with their own notes; the versions page needs several to be indexed on its own."
+      example:
+        indexable: true
+        reason: null
+        locales: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU]
+        enforced: false
+        notesCount: 12
+    AppPrice:
+      type: object
+      required: [type, amount, currency, region, plan, period, appVersion, sourceUrl, method, verifiedAt, stale, offer]
+      description: "Verified price type with its evidence (WP12). Absent when unknown or marked for review; a free download never implies free."
+      properties:
+        type:
+          type: string
+          enum: [free, free_with_iap, paid, subscription, trial]
+          example: subscription
+        amount:
+          type: number
+          format: double
+          nullable: true
+          example: 9.99
+        currency:
+          type: string
+          nullable: true
+          example: USD
+        region:
+          type: string
+          nullable: true
+          description: "ISO 3166-1 country the price was checked for"
+          example: US
+        plan:
+          type: string
+          nullable: true
+          description: "Vendor plan name as the vendor writes it; not translated"
+          example: Pro
+        period:
+          type: string
+          nullable: true
+          enum: [one_time, month, year]
+          example: month
+        appVersion:
+          type: string
+          nullable: true
+          example: "5.2"
+        sourceUrl:
+          type: string
+          example: https://vendor.example/pricing
+        method:
+          type: string
+          enum: [vendor_site, app_store, vendor_docs, in_app, other]
+          example: vendor_site
+        verifiedAt:
+          type: string
+          format: date-time
+          example: 2026-10-13T08:00:00Z
+        stale:
+          type: boolean
+          description: "Verified more than 365 days ago: show the date as possibly outdated"
+          example: false
+        offer:
+          type: boolean
+          description: "Structured data may publish an offer: current, and free to obtain (price 0) or a complete amount with currency, region and plan"
+          example: true
+      example:
+        type: free
+        amount: null
+        currency: null
+        region: null
+        plan: null
+        period: null
+        appVersion: "2.4"
+        sourceUrl: https://vendor.example/download
+        method: vendor_site
+        verifiedAt: 2026-10-13T08:00:00Z
+        stale: false
+        offer: true
+    MacosRange:
+      type: object
+      required: [arch, support, minimum, maximum]
+      properties:
+        arch:
+          type: string
+          enum: [arm64, x86_64]
+          example: arm64
+        support:
+          type: string
+          description: "native, rosetta (arm64 only) or unsupported, as the vendor states it"
+          enum: [native, rosetta, unsupported]
+          example: native
+        minimum:
+          type: string
+          nullable: true
+          example: "13"
+        maximum:
+          type: string
+          nullable: true
+          example: null
+      example:
+        arch: arm64
+        support: native
+        minimum: "13"
+        maximum: null
+    MacosSupplement:
+      type: object
+      required: [ranges, appVersion, sourceUrl, method, verifiedAt, stale, conflicts]
+      description: "Vendor-sourced macOS support kept beside Homebrew's requirements, never replacing them. With conflicts, show both as pending verification."
+      properties:
+        ranges:
+          type: array
+          items:
+            $ref: "#/components/schemas/MacosRange"
+        appVersion:
+          type: string
+          nullable: true
+          example: "5.2"
+        sourceUrl:
+          type: string
+          example: https://vendor.example/docs/system-requirements
+        method:
+          type: string
+          enum: [vendor_site, app_store, vendor_docs, in_app, other]
+          example: vendor_docs
+        verifiedAt:
+          type: string
+          format: date-time
+          example: 2026-10-13T08:00:00Z
+        stale:
+          type: boolean
+          example: false
+        conflicts:
+          type: array
+          description: "Where the supplement and Homebrew disagree"
+          items:
+            type: string
+            enum: [minimum, maximum, arm64, x86_64]
+            example: minimum
+      example:
+        ranges:
+          - arch: arm64
+            support: native
+            minimum: "12"
+            maximum: null
+        appVersion: "5.2"
+        sourceUrl: https://vendor.example/docs/system-requirements
+        method: vendor_docs
+        verifiedAt: 2026-10-13T08:00:00Z
+        stale: false
+        conflicts: [minimum]
+    PackageAlternative:
+      type: object
+      required: [package, reasons, limits, bestFor]
+      description: "A human-confirmed alternative, in editor order. Distinct from automatically related apps."
+      properties:
+        package:
+          $ref: "#/components/schemas/PackageSummary"
+        reasons:
+          type: array
+          description: "Why someone would pick it; translate the codes"
+          items:
+            type: string
+            enum: [free, open_source, lighter, more_features, simpler, native_ui, apple_silicon, privacy, offline, collaboration, cross_platform, one_time_purchase, active_development, customizable]
+            example: open_source
+        limits:
+          type: array
+          description: "What to weigh before switching; translate the codes"
+          items:
+            type: string
+            enum: [paid, subscription, fewer_features, requires_account, learning_curve, different_workflow, no_apple_silicon, online_only, limited_languages]
+            example: fewer_features
+        bestFor:
+          type: string
+          nullable: true
+          enum: [everyday, professionals, developers, teams, beginners, power_users]
+          example: developers
+      example:
+        package:
+          kind: cask
+          token: zed
+          name: Zed
+          displayName: Zed
+          summary: Code editor
+          iconUrl: null
+          accentColor: null
+          version: 0.200.0
+          primaryCategory: null
+          installs30d: 5100
+          rank30d: 40
+          autoUpdates: true
+          deprecated: false
+          disabled: false
+          isFont: false
+          isLibrary: false
+          editorChoice: false
+          versionChangedAt: 2026-09-30T08:00:00Z
+        reasons: [open_source, lighter]
+        limits: [fewer_features]
+        bestFor: developers
+    ArticleType:
+      type: string
+      enum: [recommendation, review, tutorial, roundup, news]
+      example: roundup
+    ArticleAuthorRef:
+      type: object
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+          example: lin-wei
+        name:
+          type: string
+          example: Lin Wei
+      example:
+        slug: lin-wei
+        name: Lin Wei
+    ArticleSource:
+      type: object
+      required: [title, url]
+      properties:
+        title:
+          type: string
+          example: Shottr documentation
+        url:
+          type: string
+          example: https://shottr.cc/kb
+      example:
+        title: Shottr documentation
+        url: https://shottr.cc/kb
+    ArticleImage:
+      type: object
+      required: [url, width, height]
+      properties:
+        url:
+          type: string
+          example: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
+        width:
+          type: integer
+          nullable: true
+          example: 1280
+        height:
+          type: integer
+          nullable: true
+          example: 800
+      example:
+        url: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
+        width: 1280
+        height: 800
+    ArticleCover:
+      type: object
+      required: [url, width, height, alt]
+      properties:
+        url:
+          type: string
+          example: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
+        width:
+          type: integer
+          nullable: true
+          example: 1280
+        height:
+          type: integer
+          nullable: true
+          example: 720
+        alt:
+          type: string
+          example: Four screenshot apps side by side
+      example:
+        url: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
+        width: 1280
+        height: 720
+        alt: Four screenshot apps side by side
+    ArticleCard:
+      type: object
+      required: [slug, type, title, summary, cover, author, publishedAt, updatedAt, readingMinutes, locale, machineTranslated]
+      properties:
+        slug:
+          type: string
+          example: choose-a-screenshot-app
+        type:
+          $ref: "#/components/schemas/ArticleType"
+        title:
+          type: string
+          example: How to choose a screenshot app for Mac
+        summary:
+          type: string
+          nullable: true
+          example: What to compare when picking a screenshot tool.
+        cover:
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/ArticleCover"
+          nullable: true
+        author:
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/ArticleAuthorRef"
+          nullable: true
+          description: "null is the editorial byline (the site organization)"
+        publishedAt:
+          type: string
+          format: date-time
+          example: 2026-10-12T10:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          description: "Latest substantive update"
+          example: 2026-10-12T10:00:00Z
+        readingMinutes:
+          type: integer
+          minimum: 1
+          example: 6
+        locale:
+          $ref: "#/components/schemas/Locale"
+        machineTranslated:
+          type: boolean
+          example: false
+      example:
+        slug: choose-a-screenshot-app
+        type: roundup
+        title: How to choose a screenshot app for Mac
+        summary: What to compare when picking a screenshot tool.
+        cover: null
+        author: null
+        publishedAt: 2026-10-12T10:00:00Z
+        updatedAt: 2026-10-12T10:00:00Z
+        readingMinutes: 6
+        locale: en-US
+        machineTranslated: false
+    ArticleAuthor:
+      type: object
+      required: [slug, name, role, bio, avatarUrl, links]
+      properties:
+        slug:
+          type: string
+          example: lin-wei
+        name:
+          type: string
+          example: Lin Wei
+        role:
+          type: string
+          nullable: true
+          example: Editor
+        bio:
+          type: string
+          nullable: true
+          example: Tests Mac productivity apps.
+        avatarUrl:
+          type: string
+          nullable: true
+          example: null
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleSource"
+      example:
+        slug: lin-wei
+        name: Lin Wei
+        role: Editor
+        bio: Tests Mac productivity apps.
+        avatarUrl: null
+        links: []
+    Article:
+      type: object
+      required: [slug, type, title, summary, bodyMarkdown, testNote, seoTitle, seoDescription, locale, sourceLocale, machineTranslated, availableLocales, author, cover, sources, packages, images, related, publishedAt, updatedAt, readingMinutes, revision]
+      properties:
+        slug:
+          type: string
+          example: choose-a-screenshot-app
+        type:
+          $ref: "#/components/schemas/ArticleType"
+        title:
+          type: string
+          example: How to choose a screenshot app for Mac
+        summary:
+          type: string
+          nullable: true
+          example: What to compare when picking a screenshot tool.
+        bodyMarkdown:
+          type: string
+          nullable: true
+          description: "Markdown without raw HTML; ::app[token] lines embed current catalog cards (see packages)."
+          example: "## What to compare\n\n::app[shottr]"
+        testNote:
+          type: string
+          nullable: true
+          example: null
+        seoTitle:
+          type: string
+          nullable: true
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          example: null
+        locale:
+          $ref: "#/components/schemas/Locale"
+        sourceLocale:
+          $ref: "#/components/schemas/Locale"
+        machineTranslated:
+          type: boolean
+          example: false
+        availableLocales:
+          type: array
+          description: "Languages whose text is ready; pages in other languages show the source text and should not be indexed"
+          items:
+            $ref: "#/components/schemas/Locale"
+        author:
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/ArticleAuthor"
+          nullable: true
+        cover:
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/ArticleCover"
+          nullable: true
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleSource"
+        packages:
+          type: array
+          description: "Apps the article covers, as the catalog shows them now (not a snapshot)"
+          items:
+            $ref: "#/components/schemas/PackageSummary"
+        images:
+          type: array
+          description: "Body images with their stored sizes; images not listed are not rendered"
+          items:
+            $ref: "#/components/schemas/ArticleImage"
+        related:
+          type: array
+          maxItems: 3
+          description: "Up to three other published articles: most shared apps first, then the same type, then the newest"
+          items:
+            $ref: "#/components/schemas/ArticleCard"
+        publishedAt:
+          type: string
+          format: date-time
+          example: 2026-10-12T10:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-10-12T10:00:00Z
+        readingMinutes:
+          type: integer
+          minimum: 1
+          example: 6
+        revision:
+          type: integer
+          description: "Published revision number"
+          example: 2
+      example:
+        slug: choose-a-screenshot-app
+        type: roundup
+        title: How to choose a screenshot app for Mac
+        summary: What to compare when picking a screenshot tool.
+        bodyMarkdown: "## What to compare"
+        testNote: null
+        seoTitle: null
+        seoDescription: null
+        locale: en-US
+        sourceLocale: en-US
+        machineTranslated: false
+        availableLocales: [en-US]
+        author: null
+        cover: null
+        sources: []
+        packages: []
+        images: []
+        related: []
+        publishedAt: 2026-10-12T10:00:00Z
+        updatedAt: 2026-10-12T10:00:00Z
+        readingMinutes: 6
+        revision: 2
+    ArticleLookup:
+      type: object
+      required: [state, slug]
+      properties:
+        state:
+          type: string
+          enum: [published, moved, withdrawn]
+          example: published
+        slug:
+          type: string
+          description: "Current slug; differs from the requested one when moved"
+          example: choose-a-screenshot-app
+        article:
+          $ref: "#/components/schemas/Article"
+      example:
+        state: moved
+        slug: choose-a-screenshot-app
+    ArticleLookupResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/ArticleLookup"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          state: moved
+          slug: choose-a-screenshot-app
+    ArticlePage:
+      type: object
+      required: [records, current, size, total]
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleCard"
+        current:
+          type: integer
+          example: 1
+        size:
+          type: integer
+          example: 12
+        total:
+          type: integer
+          example: 1
+      example:
+        records: []
+        current: 1
+        size: 12
+        total: 0
+    ArticlePageResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/ArticlePage"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          records: []
+          current: 1
+          size: 12
+          total: 0
+    AuthorPage:
+      type: object
+      required: [author, articles]
+      properties:
+        author:
+          $ref: "#/components/schemas/ArticleAuthor"
+        articles:
+          $ref: "#/components/schemas/ArticlePage"
+      example:
+        author:
+          slug: lin-wei
+          name: Lin Wei
+          role: Editor
+          bio: Tests Mac productivity apps.
+          avatarUrl: null
+          links: []
+        articles:
+          records: []
+          current: 1
+          size: 12
+          total: 0
+    AuthorPageResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/AuthorPage"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          author:
+            slug: lin-wei
+            name: Lin Wei
+            role: Editor
+            bio: Tests Mac productivity apps.
+            avatarUrl: null
+            links: []
+          articles:
+            records: []
+            current: 1
+            size: 12
+            total: 0
+    ArticleSitemapEntry:
+      type: object
+      required: [slug, locales]
+      properties:
+        slug:
+          type: string
+          example: choose-a-screenshot-app
+        locales:
+          type: array
+          items:
+            $ref: "#/components/schemas/SitemapLocale"
+      example:
+        slug: choose-a-screenshot-app
+        locales:
+          - locale: en-US
+            lastmod: 2026-10-12T10:00:00Z
+    AuthorSitemapEntry:
+      type: object
+      required: [slug, lastmod]
+      properties:
+        slug:
+          type: string
+          example: lin-wei
+        lastmod:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-10-12T10:00:00Z
+      example:
+        slug: lin-wei
+        lastmod: 2026-10-12T10:00:00Z
+    ArticleSitemap:
+      type: object
+      required: [articles, authors]
+      properties:
+        articles:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleSitemapEntry"
+        authors:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuthorSitemapEntry"
+      example:
+        articles: []
+        authors: []
+    ArticleSitemapResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/ArticleSitemap"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          articles: []
+          authors: []
+    SitemapLocale:
+      type: object
+      required: [locale, lastmod]
+      properties:
+        locale:
+          $ref: "#/components/schemas/Locale"
+        lastmod:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Latest reliable content change for this language: Homebrew commit of the current version, published text or screenshots. Null when no reliable time exists."
+      example:
+        locale: en-US
+        lastmod: 2026-09-30T08:00:00Z
     SitemapEntry:
       type: object
       required:
@@ -11843,11 +13518,32 @@ components:
         updatedAt:
           type: string
           format: date-time
+          description: "Deprecated: row update time, not a content date. Use locales[].lastmod."
           example: 2026-09-30T08:00:00Z
+        isFont:
+          type: boolean
+          example: false
+        notesCount:
+          type: integer
+          minimum: 0
+          description: "Visible releases with their own notes; version pages need several to stand on their own."
+          example: 12
+        locales:
+          type: array
+          description: "Languages to list, each with its own lastmod."
+          items:
+            $ref: "#/components/schemas/SitemapLocale"
       example:
         kind: cask
         token: visual-studio-code
         updatedAt: 2026-09-30T08:00:00Z
+        isFont: false
+        notesCount: 12
+        locales:
+          - locale: en-US
+            lastmod: 2026-09-30T08:00:00Z
+          - locale: zh-CN
+            lastmod: 2026-09-30T08:00:00Z
     HomeResponse:
       type: object
       required:
@@ -13303,3 +14999,147 @@ components:
         notes: Improve usability and stability.
         sourceLocale: en-US
         machineTranslated: false
+  examples:
+    ArticlePageSixLocales:
+      value:
+        code: "0000"
+        msg: ok
+        data:
+          records:
+            - slug: choose-a-screenshot-app
+              type: roundup
+              title: How to choose a screenshot app for Mac
+              summary: What to compare when picking a screenshot tool.
+              cover:
+                url: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
+                width: 1280
+                height: 720
+                alt: Four screenshot apps side by side
+              author:
+                slug: lin-wei
+                name: Lin Wei
+              publishedAt: 2026-10-12T10:00:00Z
+              updatedAt: 2026-10-12T10:00:00Z
+              readingMinutes: 6
+              locale: en-US
+              machineTranslated: false
+          current: 1
+          size: 12
+          total: 1
+    ArticleLookupSixLocales:
+      value:
+        code: "0000"
+        msg: ok
+        data:
+          state: published
+          slug: choose-a-screenshot-app
+          article:
+            slug: choose-a-screenshot-app
+            type: roundup
+            title: How to choose a screenshot app for Mac
+            summary: What to compare when picking a screenshot tool.
+            bodyMarkdown: "## What to compare\n\n![Shottr capture](https://cdn.opennavo.example/screenshots/uploads/cover/a.png)\n\n::app[shottr]"
+            testNote: null
+            seoTitle: null
+            seoDescription: null
+            locale: en-US
+            sourceLocale: en-US
+            machineTranslated: false
+            availableLocales: [en-US, zh-CN]
+            author:
+              slug: lin-wei
+              name: Lin Wei
+              role: Editor
+              bio: Tests Mac productivity apps.
+              avatarUrl: null
+              links:
+                - title: Personal site
+                  url: https://lin.example
+            cover: null
+            sources:
+              - title: Shottr documentation
+                url: https://shottr.cc/kb
+            packages:
+              - kind: cask
+                token: shottr
+                name: Shottr
+                displayName: Shottr
+                summary: Screenshot capture and annotation
+                iconUrl: null
+                accentColor: null
+                version: 1.9.3
+                primaryCategory: null
+                installs30d: 1852
+                rank30d: 120
+                autoUpdates: true
+                deprecated: false
+                disabled: false
+                isFont: false
+                isLibrary: false
+                editorChoice: false
+                versionChangedAt: 2026-10-07T00:00:00Z
+            images:
+              - url: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
+                width: 1280
+                height: 800
+            related:
+              - slug: manage-homebrew-without-terminal
+                type: tutorial
+                title: Manage Homebrew apps without the terminal
+                summary: null
+                cover: null
+                author: null
+                publishedAt: 2026-10-10T10:00:00Z
+                updatedAt: 2026-10-10T10:00:00Z
+                readingMinutes: 5
+                locale: en-US
+                machineTranslated: false
+            publishedAt: 2026-10-12T10:00:00Z
+            updatedAt: 2026-10-12T10:00:00Z
+            readingMinutes: 6
+            revision: 2
+    AuthorPageSixLocales:
+      value:
+        code: "0000"
+        msg: ok
+        data:
+          author:
+            slug: lin-wei
+            name: Lin Wei
+            role: Editor
+            bio: Tests Mac productivity apps.
+            avatarUrl: null
+            links: []
+          articles:
+            records:
+              - slug: choose-a-screenshot-app
+                type: roundup
+                title: How to choose a screenshot app for Mac
+                summary: What to compare when picking a screenshot tool.
+                cover: null
+                author:
+                  slug: lin-wei
+                  name: Lin Wei
+                publishedAt: 2026-10-12T10:00:00Z
+                updatedAt: 2026-10-12T10:00:00Z
+                readingMinutes: 6
+                locale: en-US
+                machineTranslated: false
+            current: 1
+            size: 12
+            total: 1
+    ArticleSitemapSixLocales:
+      value:
+        code: "0000"
+        msg: ok
+        data:
+          articles:
+            - slug: choose-a-screenshot-app
+              locales:
+                - locale: en-US
+                  lastmod: 2026-10-12T10:00:00Z
+                - locale: zh-CN
+                  lastmod: 2026-10-12T10:05:00Z
+          authors:
+            - slug: lin-wei
+              lastmod: 2026-10-12T10:00:00Z

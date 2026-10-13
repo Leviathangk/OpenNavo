@@ -100,7 +100,14 @@ describe('Translations belong to the current version', () => {
     let finish!: (value: ReturnType<typeof release>) => void;
     const response = release(1);
     response.data.i18n.push({ locale: 'ja-JP', summary: '日本語の説明', sections: [], bodyMarkdown: null });
-    api.load.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })).mockResolvedValueOnce(response);
+    api.load
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            finish = resolve;
+          })
+      )
+      .mockResolvedValueOnce(response);
     const wrapper = editor('zh-CN');
     await wrapper.setProps({ locale: 'ja-JP' });
     await flushPromises();

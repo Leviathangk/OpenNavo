@@ -1,0 +1,101 @@
+import { createServer, type IncomingMessage } from 'node:http';
+
+const MAX_BODY_BYTES = 1024 * 1024;
+const MAX_PATHS = 10000;
+
+function readJSON(request: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks: Buffer[] = [];
+    request.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        reject(new Error('body too large'));
+        request.destroy();
+      } else chunks.push(chunk);
+    });
+    request.on('end', () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch (error) {
+        reject(error);
+      }
+    });
+    request.on('error', reject);
+  });
+}
+
+// Internal port (NUXT_METRICS_PORT), reachable only inside the Docker network; Caddy never proxies
+// it. GET /metrics serves crawler counters (WP8); POST /cache/invalidate and /cache/probe let the Go
+// worker's URL change feed (WP4) drop cached pages and check them, authenticated with
+// NUXT_INTERNAL_SECRET.
+export default defineNitroPlugin(nitroApp => {
+  const config = useRuntimeConfig();
+  const port = Number(config.metricsPort);
+  if (import.meta.dev || !Number.isInteger(port) || port <= 0) return;
+  const counter = new RequestCounter();
+  nitroApp.hooks.hook('afterResponse', event => {
+    counter.add(
+      agentLabel(getHeader(event, 'user-agent')),
+      routeLabel(event.path),
+      statusLabel(getResponseStatus(event))
+    );
+  });
+  const server = createServer(async (request, response) => {
+    const reply = (status: number, body?: unknown) => {
+      response.writeHead(status, { 'Content-Type': body === undefined ? 'text/plain' : 'application/json' });
+      response.end(body === undefined ? '' : JSON.stringify(body));
+    };
+    if (request.method === 'GET' && request.url === '/metrics') {
+      response.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });
+      response.end(counter.render());
+      return;
+    }
+    if (request.method === 'POST' && request.url === '/cache/invalidate') {
+      if (!authorized(request.headers.authorization, String(config.internalSecret ?? ''))) return reply(401);
+      try {
+        const body = (await readJSON(request)) as { paths?: unknown };
+        const paths = Array.isArray(body.paths)
+          ? body.paths.filter((path): path is string => typeof path === 'string')
+          : [];
+        if (!paths.length || paths.length > MAX_PATHS) return reply(400);
+        // getKeys takes a namespace, not a string prefix: list the route caches and filter.
+        const storage = useStorage('cache');
+        const matches = pageCacheMatcher(paths);
+        let removed = 0;
+        for (const key of await storage.getKeys(PAGE_CACHE_BASE)) {
+          if (!matches(key)) continue;
+          await storage.removeItem(key);
+          removed += 1;
+        }
+        return reply(200, { removed });
+      } catch {
+        return reply(400);
+      }
+    }
+    // Renders a few changed pages in-process before IndexNow is told about them: it confirms the
+    // public state (200, 301 or 410 rather than 5xx) and warms the page cache.
+    if (request.method === 'POST' && request.url === '/cache/probe') {
+      if (!authorized(request.headers.authorization, String(config.internalSecret ?? ''))) return reply(401);
+      try {
+        const body = (await readJSON(request)) as { paths?: unknown };
+        const paths = Array.isArray(body.paths)
+          ? body.paths.filter((path): path is string => typeof path === 'string' && path.startsWith('/'))
+          : [];
+        if (!paths.length || paths.length > 10) return reply(400);
+        const statuses: Record<string, number> = {};
+        for (const path of paths) {
+          const result = await nitroApp.localFetch(path, { headers: { accept: 'text/html' }, redirect: 'manual' });
+          statuses[path] = result.status;
+        }
+        return reply(200, { statuses });
+      } catch {
+        return reply(400);
+      }
+    }
+    reply(404);
+  });
+  server.on('error', error => console.error('[opennavo] internal server failed', error));
+  server.listen(port, '0.0.0.0');
+  nitroApp.hooks.hook('close', () => new Promise<void>(resolve => server.close(() => resolve())));
+});

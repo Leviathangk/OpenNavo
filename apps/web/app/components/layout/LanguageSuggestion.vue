@@ -5,6 +5,11 @@ const { locale, t, setLocale, loadLocaleMessages } = useI18n();
 const suggestion = ref<Locale | null>(null);
 const chosen = useState('onv-language-choice', () => false);
 const busy = ref(false);
+// Shared so the analytics consent banner waits until this prompt is gone.
+const showing = useState('onv-language-suggestion', () => false);
+watchEffect(() => {
+  showing.value = Boolean(suggestion.value && !chosen.value);
+});
 const suggestedRoute = computed(() => (suggestion.value ? toRouteLocale(suggestion.value) : locale.value));
 const suggestedName = computed(() => (suggestion.value ? LOCALE_METADATA[suggestion.value].name : ''));
 

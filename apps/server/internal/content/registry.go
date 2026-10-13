@@ -28,6 +28,10 @@ var Registry = map[string]Spec{
 	"desktop_release": {"desktop_releases", "desktop_release_i18n", "desktop_release_id", map[string]int{"notes": 20000}, map[string]bool{"notes": true}},
 	"mirror":          {"mirrors", "mirror_i18n", "mirror_id", map[string]int{"name": 128}, nil},
 	"announcement":    {"app_config", "announcement_i18n", "config_key", map[string]int{"title": 200, "body": 2000}, nil},
+	// Articles translate per revision: the ID is the revision, and only the published revision of a
+	// published article is translatable, so late jobs for an older revision change nothing.
+	"article":        {"article_revisions", "article_revision_i18n", "revision_id", map[string]int{"title": 200, "summary": 400, "body_markdown": 100000, "test_note": 1000, "seo_title": 120, "seo_description": 300}, map[string]bool{"body_markdown": true}},
+	"article_author": {"article_authors", "article_author_i18n", "author_id", map[string]int{"role": 80, "bio": 1000}, nil},
 }
 
 type Ref struct {

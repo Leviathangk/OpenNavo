@@ -239,6 +239,9 @@ const local: App.I18n.Schema = {
     content: 'Content',
     content_collection: 'Collections',
     'content_collection-detail': 'Collection Detail',
+    content_article: 'Articles',
+    'content_article-detail': 'Edit Article',
+    'content_article-author': 'Authors',
     content_feature: 'Features',
     content_glossary: 'Glossary',
     content_announcement: 'Announcement',
@@ -259,6 +262,7 @@ const local: App.I18n.Schema = {
     system_role: 'Roles & Permissions',
     system_translation: 'Translation AI settings',
     system_github: 'GitHub settings',
+    system_seo: 'SEO & analytics',
     system_agent: 'Agent access',
     system_audit: 'Audit Log',
     'user-center': 'User Center'
