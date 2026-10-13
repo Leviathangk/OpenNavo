@@ -24,7 +24,7 @@ test('English details have English UI/body and complete SEO/hreflang', async ({ 
   await gotoReady(page, '/apps/visual-studio-code');
 
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page).toHaveTitle(/^Visual Studio Code: .+ — Install with Homebrew · OpenNavo$/);
+  await expect(page).toHaveTitle('Visual Studio Code for Mac – Download & Install · OpenNavo');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Visual Studio Code');
 
   // Left navigation (05 §11.2); Cask-only (ADR-018), without a command-line tools entry.
@@ -47,7 +47,10 @@ test('English details have English UI/body and complete SEO/hreflang', async ({ 
   expect(await page.locator('main').innerText()).not.toMatch(CJK);
 
   const head = await headInfo(page);
-  expect(head.description).toContain('brew install --cask visual-studio-code');
+  expect(head.description).toContain('Visual Studio Code');
+  expect(head.description).toContain(
+    'See how to install Visual Studio Code on your Mac, along with its system requirements and release history.'
+  );
   expect(head.description).not.toMatch(CJK);
   expect(head.ogLocale).toBe('en_US');
   expect(new URL(head.canonical).pathname).toBe('/apps/visual-studio-code');
@@ -64,7 +67,7 @@ test('English details have English UI/body and complete SEO/hreflang', async ({ 
 
 test('Every English detail tab has an English title', async ({ page }) => {
   const cases: [string, RegExp][] = [
-    ['/apps/visual-studio-code/versions', /^Visual Studio Code Release Notes · OpenNavo$/],
+    ['/apps/visual-studio-code/versions', /^Visual Studio Code Release Notes \(Latest 1\.140\.0\) · OpenNavo$/],
     ['/apps/visual-studio-code/dependencies', /^Visual Studio Code Dependencies · OpenNavo$/],
     ['/apps/visual-studio-code/details', /^Visual Studio Code Install Details · OpenNavo$/]
   ];

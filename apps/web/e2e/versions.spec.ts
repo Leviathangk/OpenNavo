@@ -17,7 +17,7 @@ test('Version navigation expands three entries initially with correct title/desc
   await expect(items.nth(2).locator('dl')).toBeVisible();
   await expect(items.nth(3)).toContainText('展开');
 
-  await expect(page).toHaveTitle(/版本记录与更新内容 · OpenNavo$/);
+  await expect(page).toHaveTitle('VS Code 编辑器 更新日志（最新 1.140.0）· OpenNavo');
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /最新版本 1\.140\.0/);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/apps\/visual-studio-code\/versions$/);
 });

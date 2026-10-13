@@ -3039,7 +3039,6 @@ paths:
       operationId: listArticleAuthors
       summary: "List authors"
       description: "Authors available for bylines, with their published article counts. Requires content:article:edit. Not available to Agents."
-      parameters:
       responses:
         "200":
           description: OK
@@ -3075,7 +3074,6 @@ paths:
       operationId: createArticleAuthor
       summary: "Create an author"
       description: "Public profile for bylines and the author page; role and bio are translated. Requires content:article:publish. Not available to Agents."
-      parameters:
       requestBody:
         required: true
         content:

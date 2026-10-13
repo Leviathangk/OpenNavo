@@ -78,6 +78,10 @@ const conflictText = computed(() =>
     : ''
 );
 
+function clearProblem(section: string) {
+  problems.value = Object.fromEntries(Object.entries(problems.value).filter(([key]) => key !== section));
+}
+
 function apply(value: Facts, section?: 'price' | 'macos' | 'alternatives') {
   facts.value = value;
   if (!section || section === 'price') price.value = priceForm(value.price);
@@ -88,7 +92,7 @@ function apply(value: Facts, section?: 'price' | 'macos' | 'alternatives') {
       reasons: [...item.reasons],
       limits: [...item.limits]
     }));
-  if (section) delete problems.value[section];
+  if (section) clearProblem(section);
   else problems.value = {};
 }
 
@@ -111,7 +115,7 @@ async function save(section: 'price' | 'macos' | 'alternatives', clear = false) 
   if (section === 'macos' && !clear) problem = macosProblem(macos.value);
   if (section === 'alternatives' && !alternativesValid(alternatives.value)) problem = 'reasonRequired';
   if (problem) problems.value[section] = problem;
-  else delete problems.value[section];
+  else clearProblem(section);
   if (problem) return;
   saving.value = section;
   try {
