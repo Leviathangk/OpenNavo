@@ -37,6 +37,7 @@ test('Superadmin dashboard shows scale and coverage', async ({ superPage: page }
 });
 
 test('Editing a package Chinese summary updates the public API', async ({ superPage: page }) => {
+  test.setTimeout(60_000);
   await page.goto('/catalog/package');
   await page.getByPlaceholder('token 或名称（任意语言）').fill('obsidian');
   await page.getByRole('button', { name: '搜索' }).click();
@@ -51,24 +52,33 @@ test('Editing a package Chinese summary updates the public API', async ({ superP
   const summary = column.getByRole('textbox').nth(1);
   const original = await summary.inputValue();
   const next = `E2E 简介 ${Date.now() % 100000}`;
-  try {
-    // After removing review (12), saving Chinese translations takes effect immediately.
-    await summary.fill(next);
+  async function saveSummary(value: string) {
+    await summary.fill(value);
+    const saved = page.waitForResponse(
+      response => response.request().method() === 'PUT' && new URL(response.url()).pathname.endsWith('/i18n/zh-CN')
+    );
     await column.getByRole('button', { name: '保存', exact: true }).click();
+    const response = await saved;
+    expect(response.ok()).toBe(true);
+    expect((await response.json()).code).toBe('0000');
     await expect(page.getByText('已保存', { exact: true })).toBeVisible();
+    // Consecutive writes share a 10-second cache invalidation window, including seed restoration.
     await expect
-      .poll(async () => (await publicGet<{ summary: string }>('/packages/cask/obsidian?locale=zh-CN')).summary)
-      .toBe(next);
+      .poll(async () => (await publicGet<{ summary: string }>('/packages/cask/obsidian?locale=zh-CN')).summary, {
+        timeout: 15_000,
+        message: 'Public summary should converge after cache invalidation'
+      })
+      .toBe(value);
+  }
+
+  try {
+    await saveSummary(next);
   } finally {
     // Saving reloads details and returns to the source tab; reopen Chinese before restoring seed data.
     await page.reload();
     await page.locator('.n-tabs-tab', { hasText: '文字与翻译' }).click();
     await page.locator('.n-tabs-tab', { hasText: '简体中文' }).click();
-    await summary.fill(original);
-    await column.getByRole('button', { name: '保存', exact: true }).click();
-    await expect
-      .poll(async () => (await publicGet<{ summary: string }>('/packages/cask/obsidian?locale=zh-CN')).summary)
-      .toBe(original);
+    await saveSummary(original);
   }
 });
 
