@@ -111,7 +111,10 @@ const preview = computed<ReleaseEntry | null>(() => {
   const sections = cleanSections();
   return {
     id: release.id,
-    version: release.version,
+    // Notes owned by one build preview with its build tag, as the public timeline shows them.
+    version: release.buildVersion ?? release.version,
+    versionBase: release.version,
+    build: release.buildVersion ? release.buildVersion.slice(release.version.length + 1) : undefined,
     title: release.title ?? null,
     publishedAt: release.publishedAt ?? null,
     brewCommittedAt: null,
@@ -130,7 +133,7 @@ const preview = computed<ReleaseEntry | null>(() => {
 
 <template>
   <NDrawer v-model:show="show" :width="960" placement="right">
-    <NDrawerContent :title="detail ? `${detail.packageName} ${detail.version}` : ''" closable :native-scrollbar="false">
+    <NDrawerContent :title="detail ? `${detail.packageName} ${detail.buildVersion ?? detail.version}` : ''" closable :native-scrollbar="false">
       <NSpin :show="loading">
         <div v-if="detail" class="flex-col gap-16px">
           <NAlert v-if="translation?.failReason" type="error" :bordered="false">

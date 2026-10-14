@@ -23,7 +23,7 @@ const { t } = useI18n();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 
-const { data: home, error, refresh } = await useHome();
+const [{ data: home, error, refresh }, { data: popularApps }] = await Promise.all([useHome(), usePopularApps()]);
 
 const detailPath = (token: string) => localePath(`/apps/${token}`);
 
@@ -171,11 +171,13 @@ defineOgImage('OgDefault', {
     :hero="heroView"
     :features="secondaryFeatures"
     :chips="chips"
-    :popular="home.popularApps"
+    :popular="popularApps ?? home.popularApps"
+    :popular-rows="3"
     :recent="home.recentlyUpdated"
     :collections="collections"
     :labels="labels"
     :rankings-href="localePath('/rankings')"
+    :recent-href="localePath('/recent')"
     :collections-href="localePath('/collections')"
     :link-as="NuxtLink"
   >

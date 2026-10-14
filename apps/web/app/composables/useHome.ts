@@ -10,6 +10,23 @@ export function useHome() {
   );
 }
 
+/** Match desktop discovery: enough popular apps for three responsive rows, with home data as fallback. */
+export function usePopularApps() {
+  const { locale } = useI18n();
+  const api = useApi();
+  return useAsyncData(
+    () => `home:popular:${locale.value}`,
+    () =>
+      unwrap(
+        api.GET('/packages', {
+          params: { query: { kind: 'cask', sort: 'popular', size: 30, includeFonts: true } }
+        })
+      )
+        .then(page => page.records)
+        .catch(() => null)
+  );
+}
+
 /** Weekly popular apps (top four over 30 days) are supplementary: null on failure hides the section without affecting the homepage. */
 export function useWeeklyTop() {
   const { locale } = useI18n();

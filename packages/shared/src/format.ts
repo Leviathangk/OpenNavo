@@ -275,6 +275,17 @@ export function formatVersion(version: string): string {
   return display.trim();
 }
 
+/**
+ * Release-timeline label. Entries for one build with notes of its own (casks that keep 0.1 and ship
+ * every build with new notes) add a short build tag, e.g. 0.1 (49); long hashes keep 12 characters.
+ */
+export function formatReleaseVersion(entry: { version: string; build?: string | null }): string {
+  const display = formatVersion(entry.version);
+  const tag = entry.build?.split(',').at(-1)?.trim() ?? '';
+  if (!tag) return display;
+  return `${display} (${tag.length > 20 ? tag.slice(0, 12) : tag})`;
+}
+
 /** Version change with spaced arrow, e.g. 1.139.1 → 1.140.0. */
 export function formatVersionChange(from: string, to: string): string {
   return `${formatVersion(from)} → ${formatVersion(to)}`;

@@ -15,6 +15,7 @@ const ttls: Record<string, number> = {
   '/apps/**': 600,
   '/categories/**': 900,
   '/rankings': 900,
+  '/recent': 300,
   '/download': 600,
   '/articles': 600,
   '/articles/**': 600,

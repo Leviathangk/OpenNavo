@@ -9,6 +9,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/searchtext"
+	"github.com/opennavo/opennavo/server/internal/store"
 )
 
 const adminUserJSON = `jsonb_build_object('id',u.id,'userName',u.user_name,'nickName',u.nick_name,'email',u.email,'avatarUrl',u.avatar_url,'status',u.status,'roles',COALESCE((SELECT jsonb_agg(r.role_code ORDER BY r.role_code) FROM admin_user_roles ur JOIN admin_roles r ON r.id=ur.role_id WHERE ur.user_id=u.id),'[]'::jsonb),'locked',COALESCE(u.locked_until>now(),false),'lastLoginAt',u.last_login_at,'lastLoginIp',u.last_login_ip,'createTime',u.created_at,'updateTime',u.updated_at,'createBy',creator.user_name,'updateBy',editor.user_name)`
@@ -157,8 +158,8 @@ SELECT jsonb_build_object(
    'done',(SELECT count(*) FROM eligible e JOIN package_meta m ON m.package_id=e.id WHERE m.icon_asset_id IS NOT NULL),
    'total',(SELECT count(*) FROM eligible)),
   'latestVersionNotes',jsonb_build_object(
-   'done',(SELECT count(DISTINCT e.id) FROM eligible e JOIN packages p ON p.id=e.id
-    JOIN releases r ON r.package_id=e.id AND r.version=p.version_base WHERE NOT r.hidden AND r.source='editorial'),
+   'done',(SELECT count(*) FROM eligible e JOIN packages p ON p.id=e.id
+    WHERE `+store.EditorialNoteSQL(currentBuild, "p.id", "p.version_base")+` IS NOT NULL),
    'total',(SELECT count(*) FROM eligible)),
   'sixLocaleContent',jsonb_build_object('done',(SELECT count(*) FROM complete_content),'total',(SELECT count(*) FROM eligible))),
  'feedbackOpen',(SELECT count(*) FROM feedback WHERE status='open'),

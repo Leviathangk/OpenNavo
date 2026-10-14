@@ -9,6 +9,7 @@
     "discover": "見つける",
     "categories": "カテゴリ",
     "rankings": "ランキング",
+    "recent": "最近更新",
     "installed": "インストール済み",
     "updates": "更新",
     "history": "更新履歴",
@@ -112,6 +113,10 @@
       "installs365d": "1年"
     },
     "noStats": "統計はありません"
+  },
+  "recent": {
+    "title": "最近更新",
+    "subtitle": "最近新バージョンが公開されたApp。新しい順に表示します"
   },
   "search": {
     "title": "検索",
@@ -277,7 +282,6 @@
       "autoNo": "Homebrewで更新",
       "uninstall": "アンインストール時",
       "arch": "アーキテクチャ",
-      "minMacos": "最小システム要件",
       "license": "ライセンス"
     },
     "deps": {

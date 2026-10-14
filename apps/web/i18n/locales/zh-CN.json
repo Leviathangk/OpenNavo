@@ -9,6 +9,7 @@
     "discover": "发现",
     "categories": "分类",
     "rankings": "排行榜",
+    "recent": "最近更新",
     "articles": "文章",
     "collections": "合集",
     "download": "下载客户端",
@@ -126,6 +127,11 @@
     "category": "分类",
     "allCategories": "全部分类"
   },
+  "recent": {
+    "title": "最近更新",
+    "metaTitle": "最近更新的 Mac App · OpenNavo",
+    "description": "Homebrew 中刚发布新版本的 Mac App，最新的排在最前面，附介绍与版本记录。"
+  },
   "search": {
     "title": "搜索",
     "metaTitle": "搜索「{q}」 · OpenNavo",
@@ -146,6 +152,7 @@
       "discover": "发现",
       "categories": "分类",
       "rankings": "排行榜",
+      "recent": "最近更新",
       "collections": "合集",
       "download": "下载客户端",
       "brewfile": "Brewfile 清单"
@@ -280,7 +287,6 @@
       "autoNo": "由 Homebrew 更新",
       "uninstall": "卸载时",
       "arch": "架构",
-      "minMacos": "最低系统",
       "license": "许可证"
     },
     "deps": {
@@ -455,9 +461,24 @@
     },
     "faq": {
       "title": "常见问题",
-      "updateQ": "怎样更新 {name}？",
-      "updateAuto": "{name} 会自行更新。`brew upgrade` 默认跳过它，需要时可以运行 `brew upgrade --cask --greedy {token}`。",
-      "updateBrew": "运行 `brew upgrade --cask {token}`，更新到 Homebrew 记录的最新版本。",
+      "safetyQ": "{name} 安全吗？",
+      "safetyListed": "{name} 收录在 Homebrew 官方软件库中，没有被停用。自 2026 年 9 月起，Homebrew 会停用没有通过 macOS Gatekeeper 检查的应用。",
+      "safetyDeprecated": "Homebrew 已把 {name} 标记为弃用（{reason}），之后会停止提供。",
+      "safetyDisabled": "Homebrew 已停用 {name}（{reason}），不能再用 Homebrew 安装。",
+      "disabledOn": "停用日期：{date}。",
+      "safetyChecksum": "安装时，Homebrew 会用 SHA-256 校验值核对来自 {host} 的安装包。",
+      "safetyNoChecksum": "安装包来自 {host}，Homebrew 安装时不核对校验值。",
+      "safetyInstalls": "过去 30 天，它通过 Homebrew 安装了 {count} 次。",
+      "reasons": {
+        "fails_gatekeeper_check": "没有通过 macOS Gatekeeper 检查",
+        "unsigned": "没有开发者签名",
+        "discontinued": "开发者已停止开发",
+        "unmaintained": "已经没有人维护",
+        "no_longer_available": "已经无法下载",
+        "no_longer_meets_criteria": "不再符合 Homebrew 的收录标准",
+        "moved_to_mas": "已改为只在 Mac App Store 提供",
+        "other": "原因见 Homebrew 的定义"
+      },
       "priceQ": "{name} 免费吗？",
       "priceA": {
         "free": "是的，{name} 可以免费使用。",
@@ -466,14 +487,73 @@
         "subscription": "不是，{name} 需要订阅才能使用。",
         "trial": "{name} 提供免费试用，之后需要付费。"
       },
-      "siliconQ": "{name} 能在 Apple 芯片上原生运行吗？",
+      "priceStoreFree": "Mac App Store 上的“{store}”可以免费下载。",
+      "priceStorePaid": "Mac App Store（{region}）上的“{store}”售价 {price}。",
+      "priceStoreNote": "Homebrew 安装的是开发者网站提供的版本，价格和功能可能与 App Store 版不同。",
+      "openSourceQ": "{name} 是开源软件吗？",
+      "openSourceA": "{name} 的源代码公开在 GitHub 上（{repo}），使用 {license} 许可证。",
+      "openSourceArchived": "这个仓库已经归档，不再更新。",
+      "uninstallQ": "怎样在 Mac 上彻底卸载 {name}？",
+      "uninstallRun": "运行 `brew uninstall --cask {token}`。",
+      "uninstallDoes": "它会{actions}。",
+      "uninstallZap": "要连设置和缓存一起删除，运行 `brew uninstall --zap --cask {token}`。",
+      "uninstallZapOne": "这会同时删除 {path}。",
+      "uninstallZapMany": "这会再删除 {count} 处文件和文件夹，包括 {path}。",
+      "actions": {
+        "quit": "退出应用",
+        "services": "停止 {count} 个后台服务",
+        "loginItems": "移除 {count} 个登录项",
+        "helpers": "删除 {count} 个特权辅助程序",
+        "receipts": "清除 {count} 条安装记录",
+        "kexts": "卸载 {count} 个内核扩展"
+      },
+      "chipsQ": "{name} 支持 Apple 芯片（M1 及更新）的 Mac 吗？",
+      "chips": {
+        "separate": "支持。Homebrew 会为 Apple 芯片和 Intel 芯片的 Mac 分别下载不同的安装包。",
+        "shared": "Apple 芯片和 Intel 芯片的 Mac 都能用 Homebrew 安装，两者使用同一个安装包。",
+        "rosetta": "可以安装，但在 Apple 芯片的 Mac 上要通过 Rosetta 2 运行。",
+        "armOnly": "支持，而且只能安装在 Apple 芯片的 Mac 上，不支持 Intel 芯片的 Mac。",
+        "intelOnly": "不支持。Homebrew 只能把它安装在 Intel 芯片的 Mac 上。"
+      },
       "siliconA": {
         "native": "能。厂商资料显示它原生支持 Apple 芯片。",
         "rosetta": "不能原生运行。厂商资料显示它要通过 Rosetta 在 Apple 芯片上运行。",
         "unsupported": "厂商资料显示它不支持搭载 Apple 芯片的 Mac。"
       },
-      "withoutBrewQ": "不用 Homebrew 能安装 {name} 吗？",
-      "withoutBrewA": "可以，从官网 {site} 下载安装。"
+      "languageQ": "{name} 支持中文吗？",
+      "languageYes": "Mac App Store 页面列出的界面语言包括中文。",
+      "languageNo": "Mac App Store 页面列出了 {count} 种界面语言，其中没有中文。",
+      "dataQ": "{name} 的设置和数据保存在哪里？",
+      "dataSettings": "设置保存在 {path}。",
+      "dataFolders": "数据保存在 {paths}。",
+      "dataSource": "这些位置来自 Homebrew 的清理清单。",
+      "versionQ": "{name} 的最新版本是多少？",
+      "versionA": "最新版本是 {version}。",
+      "versionDated": "最新版本是 {version}，Homebrew 收录于 {date}。",
+      "versionAuto": "{name} 会自动更新；想用 Homebrew 更新时，运行 `brew upgrade --cask --greedy {token}`。",
+      "versionBrew": "运行 `brew upgrade --cask {token}` 即可更新。",
+      "versionChannels": "Homebrew 还提供 {list}，不能与它同时安装。",
+      "extrasQ": "安装 {name} 还会装上什么？",
+      "extrasTools": "还会装上 {count} 个命令行工具：{list}。",
+      "extrasSomeTools": "还会装上 {count} 个命令行工具，包括 {list}。",
+      "extrasPkg": "它通过 .pkg 安装器安装，安装时需要输入管理员密码。",
+      "extrasPlugins": "还会安装{list}。",
+      "extrasConflicts": "它不能和 {list} 同时安装。",
+      "plugins": {
+        "quickLook": "快速查看插件",
+        "prefPane": "系统设置面板",
+        "screenSaver": "屏幕保护程序",
+        "inputMethod": "输入法",
+        "audio": "音频插件",
+        "spotlight": "Spotlight 插件",
+        "dictionary": "词典",
+        "colorPicker": "颜色选择器",
+        "keyboardLayout": "键盘布局",
+        "service": "服务菜单项",
+        "browser": "浏览器插件"
+      },
+      "alternativesQ": "{name} 有哪些替代品？",
+      "alternativesA": "可以考虑 {list}。"
     },
     "articles": {
       "title": "相关文章"

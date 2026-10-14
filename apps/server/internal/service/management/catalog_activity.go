@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/store"
 )
 
-const editorialAtVersion = `EXISTS(SELECT 1 FROM releases r WHERE r.package_id=p.id AND r.version=v.version_base AND r.source='editorial' AND NOT r.hidden)`
+// A build shows its own editorial note, otherwise the shared note of its base version.
+var editorialAtVersion = store.EditorialNoteSQL("v.id", "p.id", "v.version_base") + " IS NOT NULL"
 
 func (s *Service) adminVersions(ctx context.Context, in Input) (any, error) {
 	current, size, err := page(in)
@@ -33,7 +35,7 @@ func (s *Service) adminVersions(ctx context.Context, in Input) (any, error) {
 	if text(in.Params, "sort") == "popular" {
 		order = "p.popularity DESC,v.id DESC"
 	}
-	expr := `jsonb_build_object('packageVersionId',v.id,'packageId',p.id,'token',p.token,'version',v.version,'versionBase',v.version_base,'firstSeenAt',v.first_seen_at,'brewCommittedAt',v.brew_committed_at,'rank30d',p.rank_30d,'hasEditorial',` + editorialAtVersion + `,'editorialReleaseId',(SELECT id FROM releases r WHERE r.package_id=p.id AND r.version=v.version_base AND r.source='editorial' AND NOT r.hidden ORDER BY id DESC LIMIT 1),'historicalReleaseId',(SELECT id FROM releases r WHERE r.package_id=p.id AND r.version=v.version_base AND r.source<>'editorial' AND NOT r.hidden ORDER BY published_at DESC NULLS LAST,id DESC LIMIT 1))`
+	expr := `jsonb_build_object('packageVersionId',v.id,'packageId',p.id,'token',p.token,'version',v.version,'versionBase',v.version_base,'firstSeenAt',v.first_seen_at,'brewCommittedAt',v.brew_committed_at,'rank30d',p.rank_30d,'hasEditorial',` + editorialAtVersion + `,'editorialReleaseId',` + store.EditorialNoteSQL("v.id", "p.id", "v.version_base") + `,'editorialScope',` + store.EditorialScopeSQL("v.id", "p.id", "v.version_base") + `,'historicalReleaseId',(SELECT id FROM releases r WHERE r.package_id=p.id AND r.version=v.version_base AND r.source<>'editorial' AND NOT r.hidden ORDER BY published_at DESC NULLS LAST,id DESC LIMIT 1))`
 	return s.Store.AdminPage(ctx, expr, "FROM package_versions v JOIN packages p ON p.id=v.package_id", where, order, args, current, size)
 }
 func (s *Service) catalogActivity(ctx context.Context, in Input) (any, error) {
@@ -59,7 +61,9 @@ func (s *Service) catalogActivity(ctx context.Context, in Input) (any, error) {
 		where += " AND c.event_type=?"
 		args = append(args, kind)
 	}
-	hasExpr := `EXISTS(SELECT 1 FROM releases r WHERE r.package_id=c.package_id AND r.version=split_part(c.version,',',1) AND r.source='editorial' AND NOT r.hidden)`
+	// Events record the full build version (older rows only the base), so a build note counts only for its own build.
+	base := "split_part(c.version,',',1)"
+	hasExpr := store.EditorialNoteSQL("pv.id", "c.package_id", base) + " IS NOT NULL"
 	if has, ok := in.Params["haseditorial"].(bool); ok {
 		where += " AND (" + hasExpr + ")=?"
 		args = append(args, has)
@@ -68,10 +72,14 @@ func (s *Service) catalogActivity(ctx context.Context, in Input) (any, error) {
 	if text(in.Params, "sort") == "popular" {
 		order = "p.popularity DESC NULLS LAST,c.seq DESC"
 	}
-	expr := `jsonb_build_object('seq',c.seq,'packageId',c.package_id,'token',c.token,'type',c.event_type,'changedAt',c.created_at,'version',c.version,'previousVersion',c.previous_version,'previousToken',c.previous_token,'rank30d',p.rank_30d,'popularity',COALESCE(p.popularity,0),'hasEditorial',` + hasExpr + `,'webUrl',` + sqlString(strings.TrimRight(s.Config.WebBaseURL, "/")+"/apps/") + `||c.token)`
-	return s.Store.AdminPage(ctx, expr, "FROM catalog_changes c LEFT JOIN packages p ON p.id=c.package_id", where, order, args, current, size)
+	expr := `jsonb_build_object('seq',c.seq,'packageId',c.package_id,'token',c.token,'type',c.event_type,'changedAt',c.created_at,'version',c.version,'versionBase',` + base + `,'packageVersionId',pv.id,'previousVersion',c.previous_version,'previousToken',c.previous_token,'rank30d',p.rank_30d,'popularity',COALESCE(p.popularity,0),'hasEditorial',` + hasExpr + `,'editorialScope',` + store.EditorialScopeSQL("pv.id", "c.package_id", base) + `,'webUrl',` + sqlString(strings.TrimRight(s.Config.WebBaseURL, "/")+"/apps/") + `||c.token)`
+	return s.Store.AdminPage(ctx, expr, "FROM catalog_changes c LEFT JOIN packages p ON p.id=c.package_id LEFT JOIN package_versions pv ON pv.package_id=c.package_id AND pv.version=c.version", where, order, args, current, size)
 }
 func sqlString(v string) string { return "'" + strings.ReplaceAll(v, "'", "''") + "'" }
+
+// currentBuild is the recorded build of a package's current version.
+const currentBuild = `(SELECT b.id FROM package_versions b WHERE b.package_id=p.id AND b.version=p.version)`
+
 func gapConditions(in Input) (string, error) {
 	raw, present := in.Params["gaps"]
 	if !present {
@@ -82,7 +90,7 @@ func gapConditions(in Input) (string, error) {
 	if json.Unmarshal(encoded, &gaps) != nil {
 		return "", domain.Validation()
 	}
-	known := map[string]string{"zhName": `NOT EXISTS(SELECT 1 FROM package_i18n g WHERE g.package_id=p.id AND g.locale='zh-CN' AND btrim(COALESCE(g.display_name,''))<>'')`, "zhSummary": `NOT EXISTS(SELECT 1 FROM package_i18n g WHERE g.package_id=p.id AND g.locale='zh-CN' AND btrim(COALESCE(g.summary,''))<>'')`, "enSummary": `NOT EXISTS(SELECT 1 FROM package_i18n g WHERE g.package_id=p.id AND g.locale='en-US' AND btrim(COALESCE(g.summary,''))<>'')`, "primaryCategory": `NOT EXISTS(SELECT 1 FROM package_categories g WHERE g.package_id=p.id AND g.is_primary)`, "tags": `COALESCE(cardinality(m.tags),0)=0`, "icon": `m.icon_asset_id IS NULL`, "downloadSize": `p.download_size IS NULL`, "latestEditorial": `NOT EXISTS(SELECT 1 FROM releases r WHERE r.package_id=p.id AND r.version=p.version_base AND r.source='editorial' AND NOT r.hidden)`, "price": `NOT EXISTS(SELECT 1 FROM package_facts f WHERE f.package_id=p.id AND f.price->>'status'='verified' AND (f.price->>'verifiedAt')::timestamptz > now()-interval '365 days')`}
+	known := map[string]string{"zhName": `NOT EXISTS(SELECT 1 FROM package_i18n g WHERE g.package_id=p.id AND g.locale='zh-CN' AND btrim(COALESCE(g.display_name,''))<>'')`, "zhSummary": `NOT EXISTS(SELECT 1 FROM package_i18n g WHERE g.package_id=p.id AND g.locale='zh-CN' AND btrim(COALESCE(g.summary,''))<>'')`, "enSummary": `NOT EXISTS(SELECT 1 FROM package_i18n g WHERE g.package_id=p.id AND g.locale='en-US' AND btrim(COALESCE(g.summary,''))<>'')`, "primaryCategory": `NOT EXISTS(SELECT 1 FROM package_categories g WHERE g.package_id=p.id AND g.is_primary)`, "tags": `COALESCE(cardinality(m.tags),0)=0`, "icon": `m.icon_asset_id IS NULL`, "downloadSize": `p.download_size IS NULL`, "latestEditorial": store.EditorialNoteSQL(currentBuild, "p.id", "p.version_base") + " IS NULL", "latestBuildEditorial": `p.version<>p.version_base AND ` + store.BuildNoteSQL(currentBuild) + ` IS NULL AND (SELECT count(*) FROM package_versions b WHERE b.package_id=p.id AND b.version_base=p.version_base)>1`, "price": `NOT EXISTS(SELECT 1 FROM package_facts f WHERE f.package_id=p.id AND f.price->>'status'='verified' AND (f.price->>'verifiedAt')::timestamptz > now()-interval '365 days')`}
 	conditions := []string{}
 	for _, gap := range gaps {
 		v, ok := known[gap]

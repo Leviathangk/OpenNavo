@@ -328,12 +328,12 @@ class PackageChangelogSettingsResponse(BaseModel):
     data: PackageChangelogSettings
 
 
-class TriggerJobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup']]):
-    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup'], Field(examples=['catalog_sync'])]
+class TriggerJobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources']]):
+    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources'], Field(examples=['catalog_sync'])]
 
 
-class JobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup']]):
-    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup'], Field(examples=['catalog_sync'])]
+class JobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources']]):
+    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources'], Field(examples=['catalog_sync'])]
 
 
 class EmptyResponse(BaseModel):
@@ -421,7 +421,7 @@ class Packages(BaseModel):
 class Coverage(BaseModel):
     primaryCategory: Ratio
     icon: Ratio
-    latestVersionNotes: Annotated[Ratio, Field(description='Valid apps and fonts whose current versionBase has non-hidden editorial release notes; excludes historical versions and old upstream notes.')]
+    latestVersionNotes: Annotated[Ratio, Field(description='Valid apps and fonts whose current build shows non-hidden editorial release notes (its own or the shared note of its base version); excludes historical versions and old upstream notes.')]
     sixLocaleContent: Annotated[Ratio, Field(description='Valid apps and fonts with actual nonempty summaries and introductions in all six languages, status source/machine/manual, and source language/hash matching current source text. Excludes fallback, queued, failed and stale content.')]
 
 
@@ -523,6 +523,7 @@ class PackageVersion(BaseModel):
     releaseId: Annotated[int | None, Field(examples=[None])] = None
     hasEditorial: Annotated[bool | None, Field(examples=[False])] = None
     editorialReleaseId: Annotated[int | None, Field(examples=[None], ge=0)] = None
+    editorialScope: Annotated[Literal['build', 'base', 'none'] | None, Field(description='Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes', examples=['base'])] = None
 
 
 class CategoryI18n(BaseModel):
@@ -588,6 +589,7 @@ class AdminRelease(BaseModel):
     token: Annotated[str, Field(examples=['visual-studio-code'])]
     packageName: Annotated[str, Field(examples=['Visual Studio Code'])]
     version: Annotated[str, Field(examples=['1.140.0'])]
+    buildVersion: Annotated[str | None, Field(description='Full build version (0.1,49) when these editorial notes belong to one build; null for notes shared by a base version', examples=[None])] = None
     title: Annotated[str | None, Field(examples=[None])] = None
     publishedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
     source: ReleaseSource
@@ -1406,7 +1408,7 @@ class EditorialNotesClear(BaseModel):
 
 
 class EditorialNotesUpdate(RootModel[EditorialNotesWrite | EditorialNotesClear]):
-    root: Annotated[EditorialNotesWrite | EditorialNotesClear, Field(description='Only recorded Cask versions are allowed; version is the recorded versionBase. One editorial per package/version. Omitting publishedAt preserves the existing release date; new notes have no release date unless supplied. Explicit null clears the date. Year 0001 and invalid dates are rejected; ingestion time is never used as a release date. clear=true deletes every editorial language, checks deletion allowance and saves restorable revisions; no editorial returns 1002. Historical notes remain available as fallback after clearing.', examples=[{'sourceLocale': 'zh-CN', 'summary': '改善窗口管理体验', 'sections': [{'area': '改进', 'items': ['改善窗口管理体验。']}], 'bodyMarkdown': '## 改进\n\n改善窗口管理体验。'}])]
+    root: Annotated[EditorialNotesWrite | EditorialNotesClear, Field(description='Only recorded Cask versions are allowed. A full build version (0.1,49) writes or clears the notes that build owns; a base version (0.1, or any version without a build comma) writes or clears the note shared by builds without notes of their own. Neither scope changes the other, so writing the newest build never touches older builds. One editorial per scope. Omitting publishedAt preserves the existing release date; new notes have no release date unless supplied. Explicit null clears the date. Year 0001 and invalid dates are rejected; ingestion time is never used as a release date. clear=true deletes every editorial language, checks deletion allowance and saves restorable revisions; no editorial returns 1002. Historical notes remain available as fallback after clearing.', examples=[{'sourceLocale': 'zh-CN', 'summary': '改善窗口管理体验', 'sections': [{'area': '改进', 'items': ['改善窗口管理体验。']}], 'bodyMarkdown': '## 改进\n\n改善窗口管理体验。'}])]
 
 
 class ContentLocaleState(BaseModel):
@@ -2067,8 +2069,8 @@ class ArticleAuthorListResponseResult(RootModel[ArticleAuthorListResponse | Busi
     root: Annotated[ArticleAuthorListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': []}])]
 
 
-class ListingGap(RootModel[Literal['zhName', 'zhSummary', 'enSummary', 'primaryCategory', 'tags', 'icon', 'downloadSize', 'latestEditorial', 'price']]):
-    root: Annotated[Literal['zhName', 'zhSummary', 'enSummary', 'primaryCategory', 'tags', 'icon', 'downloadSize', 'latestEditorial', 'price'], Field(examples=['zhName'])]
+class ListingGap(RootModel[Literal['zhName', 'zhSummary', 'enSummary', 'primaryCategory', 'tags', 'icon', 'downloadSize', 'latestEditorial', 'latestBuildEditorial', 'price']]):
+    root: Annotated[Literal['zhName', 'zhSummary', 'enSummary', 'primaryCategory', 'tags', 'icon', 'downloadSize', 'latestEditorial', 'latestBuildEditorial', 'price'], Field(examples=['zhName'])]
 
 
 class CatalogActivity(BaseModel):
@@ -2080,12 +2082,15 @@ class CatalogActivity(BaseModel):
     packageId: Annotated[int, Field(examples=[1], ge=1)]
     token: Annotated[str, Field(examples=['visual-studio-code'], max_length=128)]
     previousToken: Annotated[str, Field(examples=[None], max_length=128)]
-    version: Annotated[str, Field(examples=[None], max_length=256)]
+    version: Annotated[str, Field(description='Full build version (0.1,49); events recorded before build notes hold only the base version', examples=[None], max_length=256)]
+    versionBase: Annotated[str, Field(examples=[None], max_length=256)]
+    packageVersionId: Annotated[int, Field(description='Recorded build of version; null when the event version is not a recorded build', examples=[None], ge=1)]
     previousVersion: Annotated[str, Field(examples=[None], max_length=256)]
     changedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
     rank30d: Annotated[int, Field(examples=[None], ge=0)]
     popularity: Annotated[float, Field(examples=[99.5])]
     hasEditorial: Annotated[bool, Field(examples=[False])]
+    editorialScope: Annotated[Literal['build', 'base', 'none'], Field(description='Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes', examples=['base'])]
     webUrl: Annotated[AnyUrl, Field(examples=[None])]
 
 
@@ -2093,7 +2098,7 @@ class Data19(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[CatalogActivity], Field(examples=[[{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'previousVersion': '1.139.0', 'changedAt': '2026-10-07 08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}]])]
+    records: Annotated[list[CatalogActivity], Field(examples=[[{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07 08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -2109,7 +2114,7 @@ class CatalogActivityResponse(BaseModel):
 
 
 class CatalogActivityResponseResult(RootModel[CatalogActivityResponse | BusinessErrorResponse]):
-    root: Annotated[CatalogActivityResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'previousVersion': '1.139.0', 'changedAt': '2026-10-07 08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[CatalogActivityResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07 08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class AgentPermission(RootModel[Literal['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']]):
@@ -2689,6 +2694,7 @@ class AdminCatalogVersion(BaseModel):
     rank30d: Annotated[int, Field(examples=[None], ge=0)]
     hasEditorial: Annotated[bool, Field(examples=[False])]
     editorialReleaseId: Annotated[int, Field(examples=[None], ge=0)]
+    editorialScope: Annotated[Literal['build', 'base', 'none'], Field(description='Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes', examples=['base'])]
     historicalReleaseId: Annotated[int, Field(examples=[None], ge=0)]
 
 
@@ -2696,7 +2702,7 @@ class Data26(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[AdminCatalogVersion], Field(examples=[[{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07 08:00:00+00:00', 'brewCommittedAt': '2026-10-07 07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'historicalReleaseId': None}]])]
+    records: Annotated[list[AdminCatalogVersion], Field(examples=[[{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07 08:00:00+00:00', 'brewCommittedAt': '2026-10-07 07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'editorialScope': 'none', 'historicalReleaseId': None}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -2712,7 +2718,7 @@ class AdminCatalogVersionsResponse(BaseModel):
 
 
 class AdminCatalogVersionsResponseResult(RootModel[AdminCatalogVersionsResponse | BusinessErrorResponse]):
-    root: Annotated[AdminCatalogVersionsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07 08:00:00+00:00', 'brewCommittedAt': '2026-10-07 07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'historicalReleaseId': None}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[AdminCatalogVersionsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07 08:00:00+00:00', 'brewCommittedAt': '2026-10-07 07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'editorialScope': 'none', 'historicalReleaseId': None}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class GetDashboardOverviewInput(BaseModel):

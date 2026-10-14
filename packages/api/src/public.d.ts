@@ -1279,6 +1279,11 @@ export interface components {
             alternatives?: components["schemas"]["PackageAlternative"][];
             /** @description Apps only: up to three published articles that cover this app, newest first */
             articles?: components["schemas"]["ArticleCard"][];
+            homebrewStatus?: components["schemas"]["HomebrewStatus"];
+            /** @description Apps only; null unless GitHub reports an OSI-approved license for a code repository the Homebrew definition points at */
+            openSource?: components["schemas"]["OpenSourceFact"] | null;
+            /** @description Apps only; null unless a Mac App Store listing shares a bundle identifier and a name with this app */
+            appStore?: components["schemas"]["AppStoreListing"] | null;
         };
         /**
          * @example {
@@ -1343,8 +1348,21 @@ export interface components {
              * @example 101
              */
             id?: number | null;
-            /** @example 1.140.0 */
+            /**
+             * @description Base version (before the Homebrew build comma), or the full build version (0.1,49) on an entry for one build with notes of its own
+             * @example 1.140.0
+             */
             version: string;
+            /**
+             * @description Version before the Homebrew build comma; equals version except on build entries
+             * @example 1.140.0
+             */
+            versionBase?: string;
+            /**
+             * @description Only on entries for one Homebrew build with notes of its own: the text after the first comma (0.1,49 gives 49). Builds without their own notes share the entry of their base version.
+             * @example 49
+             */
+            build?: string;
             /** @example September 2026 */
             title?: string | null;
             /**
@@ -4430,6 +4448,101 @@ export interface components {
              * @example true
              */
             offer: boolean;
+        };
+        /**
+         * @description Homebrew's own lifecycle for the package, apart from OpenNavo's catalog rules (the 90-day rule behind disabled). reason is Homebrew's code or text as written upstream, untranslated.
+         * @example {
+         *       "state": "active",
+         *       "reason": null,
+         *       "date": null
+         *     }
+         */
+        HomebrewStatus: {
+            /**
+             * @example disabled
+             * @enum {string}
+             */
+            state: "active" | "deprecated" | "disabled";
+            /** @example fails_gatekeeper_check */
+            reason: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-01
+             */
+            date: string | null;
+        };
+        /**
+         * @description License of the GitHub repository the Homebrew definition points at, read from the GitHub API by a scheduled job. Published only for public repositories with code under an OSI-approved license GitHub recognized.
+         * @example {
+         *       "repo": "gnachman/iTerm2",
+         *       "url": "https://github.com/gnachman/iTerm2",
+         *       "license": "GPL-2.0",
+         *       "archived": false,
+         *       "checkedAt": "2026-10-14T03:35:00Z"
+         *     }
+         */
+        OpenSourceFact: {
+            /** @example gnachman/iTerm2 */
+            repo: string;
+            /** @example https://github.com/gnachman/iTerm2 */
+            url: string;
+            /**
+             * @description SPDX identifier as GitHub reports it
+             * @example GPL-2.0
+             */
+            license: string;
+            /** @example false */
+            archived: boolean;
+            /**
+             * Format: date-time
+             * @example 2026-10-14T03:35:00Z
+             */
+            checkedAt: string;
+        };
+        /**
+         * @description The Mac App Store listing that shares a bundle identifier and a name with this app, read from Apple's lookup API for one storefront by a scheduled job. It describes the App Store edition, which can differ from the download Homebrew installs.
+         * @example {
+         *       "name": "Keka",
+         *       "url": "https://apps.apple.com/us/app/keka/id470158793?mt=12",
+         *       "bundleId": "com.aone.keka",
+         *       "price": 6.49,
+         *       "currency": "USD",
+         *       "region": "US",
+         *       "languages": [
+         *         "EN",
+         *         "JA",
+         *         "ZH"
+         *       ],
+         *       "checkedAt": "2026-10-14T03:35:00Z"
+         *     }
+         */
+        AppStoreListing: {
+            /** @example Keka */
+            name: string;
+            /** @example https://apps.apple.com/us/app/keka/id470158793?mt=12 */
+            url: string;
+            /** @example com.aone.keka */
+            bundleId: string;
+            /**
+             * Format: double
+             * @description 0 when the App Store edition is free to download
+             * @example 6.49
+             */
+            price: number;
+            /** @example USD */
+            currency: string;
+            /**
+             * @description ISO 3166-1 storefront the listing was read from
+             * @example US
+             */
+            region: string;
+            /** @description Interface languages as Apple lists them (ISO 639-1, upper case) */
+            languages: string[];
+            /**
+             * Format: date-time
+             * @example 2026-10-14T03:35:00Z
+             */
+            checkedAt: string;
         };
         /**
          * @example {

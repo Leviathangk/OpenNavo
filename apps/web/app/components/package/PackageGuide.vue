@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PackageDetail } from '@opennavo/api';
-import { displayUrl, OnIcon, OnInstallCommand, parseInline } from '@opennavo/ui';
+import { displayUrl, OnCodeText, OnIcon, OnInstallCommand, parseInline } from '@opennavo/ui';
 import { downloadChoice, hasZap, installNote } from '~/utils/appAnswer';
 import { packagePath } from '~/utils/packageView';
 
@@ -86,8 +86,8 @@ function onCopied(command: string) {
           <code
             v-if="part.type === 'code'"
             class="rounded-tiny bg-surface-inset px-4px font-mono text-11.5px text-component-mono-text"
-            >{{ part.text }}</code
-          >
+            ><OnCodeText :text="part.text"
+          /></code>
           <template v-else>{{ part.text }}</template>
         </template>
         <NuxtLink :to="detailsHref" class="ml-4px text-ink-secondary">{{ t('package.guide.zapDetails') }}</NuxtLink>

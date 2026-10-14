@@ -1,20 +1,11 @@
 <script setup lang="ts">
 import { useAppLocale as useFormattingLocale } from '@/composables/useAppLocale';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
-import {
-  architectures,
-  OnAppRow,
-  OnChip,
-  OnEmpty,
-  OnKeyValueList,
-  OnCaskPlatformSelect,
-  selectedCaskPlatform,
-  useUiMessages
-} from '@opennavo/ui';
+import { architectures, OnAppRow, OnChip, OnEmpty, OnKeyValueList, useUiMessages } from '@opennavo/ui';
 import type { OnKeyValueItem } from '@opennavo/ui';
 import RequestError from '@/components/common/RequestError.vue';
 import DependencyTree from '@/components/package/DependencyTree.vue';
@@ -31,25 +22,17 @@ const { appLocale } = useAppLocale();
 const { kind, token, detail } = usePackage();
 
 const messages = useUiMessages();
-const platformTag = ref('');
 const platforms = computed(() => detail.value?.platforms ?? []);
-const platform = computed(() =>
-  selectedCaskPlatform({ platforms: platforms.value, version: detail.value?.version ?? '' }, platformTag.value)
-);
-const activePlatformTag = computed(() => platform.value?.tag);
 
 const { data, error } = useRemoteLoader(
   'dependencies',
   () =>
     unwrap(
       api.GET('/packages/{kind}/{token}/dependencies', {
-        params: {
-          path: { kind: kind.value, token: token.value },
-          query: { platform: activePlatformTag.value }
-        }
+        params: { path: { kind: kind.value, token: token.value } }
       })
     ),
-  [kind, token, appLocale, activePlatformTag]
+  [kind, token, appLocale]
 );
 
 const groups = computed(() => {
@@ -64,6 +47,7 @@ const groups = computed(() => {
 const requirements = computed<OnKeyValueItem[]>(() => {
   const value = data.value;
   if (!value || kind.value !== 'cask') return [];
+  // Requirements differ per platform when a cask lists platforms, so one default list would mislead.
   if (platforms.value.length) return [];
   const items: OnKeyValueItem[] = [];
   const dependsOn = value.dependsOn;
@@ -97,7 +81,7 @@ const requirements = computed<OnKeyValueItem[]>(() => {
 });
 
 const conflicts = computed(() => {
-  const value = platform.value?.conflictsWith ?? data.value?.conflictsWith;
+  const value = data.value?.conflictsWith;
   return value
     ? [
         ...value.casks.map(name => ({ kind: 'cask' as const, token: name })),
@@ -109,7 +93,6 @@ const conflicts = computed(() => {
 const empty = computed(
   () =>
     data.value &&
-    !platforms.value.length &&
     !groups.value.runtime.length &&
     !groups.value.build.length &&
     !groups.value.other.length &&
@@ -124,12 +107,6 @@ const empty = computed(
   <RequestError v-if="error && !data" :error="error" />
   <div v-else-if="data" class="grid grid-cols-[minmax(0,1fr)_320px] gap-20px pt-4px">
     <div class="flex min-w-0 flex-col gap-16px">
-      <OnCaskPlatformSelect
-        v-if="platforms.length"
-        :model-value="platform?.tag"
-        :platforms="platforms"
-        @update:model-value="platformTag = $event"
-      />
       <OnEmpty
         v-if="empty"
         icon="lucide:boxes"

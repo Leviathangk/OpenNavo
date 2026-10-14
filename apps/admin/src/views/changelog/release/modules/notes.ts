@@ -1,4 +1,4 @@
-import type { BodyOf, DataOf, Schemas } from '@/typings/api/opennavo';
+import type { BodyOf, DataOf, RecordOf, Schemas } from '@/typings/api/opennavo';
 import { DEFAULT_SOURCE_LOCALE } from '@/utils/content-locale';
 import type { ContentLocale } from '@/utils/content-locale';
 
@@ -65,6 +65,18 @@ export function validateNotes(form: NotesForm): string | null {
     if (section.items.some(item => item.length > NOTES_LIMITS.item)) return 'page.changelog.notes.errors.itemTooLong';
   }
   return null;
+}
+
+type VersionRow = Pick<RecordOf<'listAdminVersions'>, 'version' | 'versionBase' | 'editorialScope'>;
+
+/** A build (0.1,49) owns its notes; any other recorded version writes the note its base version's builds share. */
+export function notesVersion(row: Pick<VersionRow, 'version' | 'versionBase'>): string {
+  return row.version === row.versionBase ? row.versionBase : row.version;
+}
+
+/** The row shows notes of its own, rather than its base version's shared note or nothing. */
+export function ownsNotes(row: VersionRow): boolean {
+  return row.version === row.versionBase ? row.editorialScope !== 'none' : row.editorialScope === 'build';
 }
 
 /** Form → payload: blank title/date/body become null to clear; dates use ISO timestamps. */

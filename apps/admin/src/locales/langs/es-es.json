@@ -809,7 +809,8 @@
           "changelog_schedule": "Programador de commits de Homebrew",
           "assets_icons": "Recopilación de iconos (retirada)",
           "assets_download-size": "Detección del tamaño de descarga",
-          "cleanup": "Limpieza"
+          "cleanup": "Limpieza",
+          "facts_sources": "Licencias y datos de App Store"
         },
         "triggers": {
           "schedule": "Programada",
@@ -1785,6 +1786,7 @@
         },
         "written": "Escrito",
         "notWritten": "Sin escribir",
+        "shared": "Comparte las notas de {version}",
         "historical": "Hay notas antiguas del proyecto original",
         "write": "Escribir notas",
         "edit": "Editar notas",

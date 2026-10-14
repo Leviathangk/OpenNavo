@@ -11,6 +11,7 @@ import {
   formatRelativeTime,
   formatSpeed,
   formatTime,
+  formatReleaseVersion,
   formatVersion,
   formatVersionChange
 } from '../src/format';
@@ -137,6 +138,20 @@ describe('Duration and version formatting', () => {
     expect(formatVersion('1.140.0')).toBe('1.140.0');
     expect(formatVersion('')).toBe('');
     expect(formatVersionChange('1.139.1', '1.140.0,123')).toBe('1.139.1 → 1.140.0');
+  });
+
+  it('Tags release entries that belong to one build', () => {
+    expect(formatReleaseVersion({ version: '0.1' })).toBe('0.1');
+    expect(formatReleaseVersion({ version: '0.1,49', build: '49' })).toBe('0.1 (49)');
+    expect(formatReleaseVersion({ version: '160.0a1,2026-10-13-21-09-59', build: '2026-10-13-21-09-59' })).toBe(
+      '160.0a1 (2026-10-13-21-09-59)'
+    );
+    expect(
+      formatReleaseVersion({
+        version: '1.142.0-insider,1791879736120,d5dfbe9aa2c84cc3cbc3d4926a5155983aceeef1',
+        build: '1791879736120,d5dfbe9aa2c84cc3cbc3d4926a5155983aceeef1'
+      })
+    ).toBe('1.142.0-insider (d5dfbe9aa2c8)');
   });
 });
 

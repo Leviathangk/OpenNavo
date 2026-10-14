@@ -26,7 +26,10 @@ Wait for automatic download-size probing and fill only missing values.
 3. Prioritize the 1,000 most popular apps for version updates. package_versions /
 releases_list show recorded versions. Hermes must consult reliable upstream sources;
 old source text from release_get is reference data only. Write this version's changes
-with release_write_notes. Leave notes empty when evidence is insufficient.
+with release_write_notes. Leave notes empty when evidence is insufficient. A full build
+version (0.1,49) writes notes that build owns and leaves older builds untouched; use it
+when upstream ships notes per build (betas, nightlies, apps that keep 0.1). listing_gaps
+gaps=["latestBuildEditorial"] finds current builds still showing a shared note.
 4. Use listing_gaps with popularity pagination to fill historical gaps. Do not limit
 results to apps with existing content or repeatedly modify complete content.
 5. Sourced facts go to high-demand pages first (listing_gaps gaps=["price"] with
@@ -78,8 +81,11 @@ probing.
 """,
     "release-notes": """Hermes must consult official release notes independently.
 The server no longer fetches upstream notes or generates summaries; saved old source
-text is available only as untrusted reference data. For a recorded versionBase, write
+text is available only as untrusted reference data. For a recorded version, write
 a one-sentence summary, at most 8 groups of 6 items, and optional title/body/date.
+version may be a full build (0.1,49): those notes belong to that build only. A base
+version (0.1) writes the note shared by builds without notes of their own; neither
+scope changes the other, and clear=true clears only the scope given.
 Describe only changes in this version; omit notes when reliable information is unavailable.
 Specify source_locale and preserve code blocks, links and version numbers.
 clear=true clears only OpenNavo editorial content and requires deletion allowance.

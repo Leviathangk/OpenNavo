@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { installCommand } from '@opennavo/shared';
-import { OnAppIcon, OnConfirm } from '@opennavo/ui';
+import { OnAppIcon, OnCodeText, OnConfirm } from '@opennavo/ui';
 import { useDeepLinkStore } from '@/composables/useDeepLink';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import { usePackageState } from '@/composables/usePackageState';
@@ -59,9 +59,9 @@ async function confirm() {
     <div v-if="target" class="mt-14px flex items-center gap-12px">
       <OnAppIcon v-bind="icon(target.kind, target.token)" :size="40" />
       <code
-        class="min-w-0 flex-1 break-all rounded-default bg-surface-inset px-12px py-10px font-mono text-12.5px text-ink-primary"
-        >{{ command }}</code
-      >
+        class="min-w-0 flex-1 rounded-default bg-surface-inset px-12px py-10px font-mono text-12.5px text-ink-primary"
+        ><OnCodeText :text="command"
+      /></code>
     </div>
   </OnConfirm>
 </template>

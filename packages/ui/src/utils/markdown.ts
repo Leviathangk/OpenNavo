@@ -2,6 +2,7 @@
 // Web SSR renders releases for SEO; isomorphic-dompurify uses jsdom on Node and native DOM in browsers.
 import { sanitize } from 'isomorphic-dompurify';
 import MarkdownIt from 'markdown-it';
+import { codeWordsHtml } from './codeText';
 
 // Allow only tags markdown-it emits with HTML/images disabled.
 const ALLOWED_TAGS = [
@@ -21,6 +22,7 @@ const ALLOWED_TAGS = [
   'p',
   'pre',
   's',
+  'span',
   'strong',
   'table',
   'tbody',
@@ -28,7 +30,8 @@ const ALLOWED_TAGS = [
   'th',
   'thead',
   'tr',
-  'ul'
+  'ul',
+  'wbr'
 ];
 const ALLOWED_ATTR = ['href', 'title', 'target', 'rel', 'class', 'start'];
 
@@ -77,6 +80,10 @@ md.core.ruler.push('on_link_target', state => {
     }
   }
 });
+
+// Inline code wraps between words only, like OnCodeText; OnMarkdownView styles .on-code-word.
+md.renderer.rules.code_inline = (tokens, index) =>
+  `<code>${codeWordsHtml(tokens[index]?.content ?? '', md.utils.escapeHtml)}</code>`;
 
 // Never render images as img (backend already rewrites them); fallback to original-image links labeled with alt text.
 md.renderer.rules.image = (tokens, index, options, env, self) => {

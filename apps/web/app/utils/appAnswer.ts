@@ -101,10 +101,11 @@ export function installNote(pkg: Pick<PackageDetail, 'artifacts' | 'isFont'>): I
 type Evidence = { sourceUrl: string; verifiedAt: string };
 
 export function evidenceLine(evidence: Evidence, t: Translate, locale: Locale): string {
+  // Abbreviated dates end with a period ("14 окт."); the sentence keeps just one.
   return t('package.facts.checked', {
     source: displayUrl(evidence.sourceUrl),
     date: formatDate(evidence.verifiedAt, { locale })
-  });
+  }).replace(/\.\.$/, '.');
 }
 
 /** Amount with currency and billing period, e.g. "$9.99 per month"; empty without an amount. */
@@ -119,55 +120,6 @@ export function priceAmount(price: NonNullable<PackageDetail['price']>, t: Trans
   if (price.period === 'month') return t('package.facts.perMonth', { price: amount });
   if (price.period === 'year') return t('package.facts.perYear', { price: amount });
   return amount;
-}
-
-export interface FaqItem {
-  key: string;
-  question: string;
-  answer: string;
-}
-
-type FaqFacts = Pick<PackageDetail, 'displayName' | 'token' | 'autoUpdates' | 'price' | 'macosSupplement' | 'homepage'>;
-
-/**
- * Questions the rest of the page does not already answer, each from a recorded fact. Install,
- * uninstall and requirements have their own sections and are left out.
- */
-export function faqItems(pkg: FaqFacts, t: Translate, locale: Locale): FaqItem[] {
-  const name = pkg.displayName;
-  const items: FaqItem[] = [
-    {
-      key: 'update',
-      question: t('package.faq.updateQ', { name }),
-      answer: pkg.autoUpdates
-        ? t('package.faq.updateAuto', { name, token: pkg.token })
-        : t('package.faq.updateBrew', { token: pkg.token })
-    }
-  ];
-  if (pkg.price)
-    items.push({
-      key: 'price',
-      question: t('package.faq.priceQ', { name }),
-      answer: joinSentences(
-        [t(`package.faq.priceA.${pkg.price.type}`, { name }), evidenceLine(pkg.price, t, locale)],
-        locale
-      )
-    });
-  const supplement = pkg.macosSupplement;
-  const arm = supplement?.ranges.find(range => range.arch === 'arm64');
-  if (supplement && arm && !supplement.conflicts.includes('arm64'))
-    items.push({
-      key: 'appleSilicon',
-      question: t('package.faq.siliconQ', { name }),
-      answer: joinSentences([t(`package.faq.siliconA.${arm.support}`), evidenceLine(supplement, t, locale)], locale)
-    });
-  if (pkg.homepage)
-    items.push({
-      key: 'withoutHomebrew',
-      question: t('package.faq.withoutBrewQ', { name }),
-      answer: t('package.faq.withoutBrewA', { site: displayUrl(pkg.homepage) })
-    });
-  return items;
 }
 
 /**

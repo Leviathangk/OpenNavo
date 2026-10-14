@@ -208,6 +208,7 @@ const chips = computed(() => [
     :collections="collections"
     :labels="labels"
     rankings-href="/rankings"
+    recent-href="/recent"
     collections-href="/collections"
     :link-as="RouterLink"
   >

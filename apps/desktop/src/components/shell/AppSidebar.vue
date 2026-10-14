@@ -55,7 +55,8 @@ const groups = computed<OnSidebarGroup[]>(() => [
     items: [
       item('discover', 'lucide:compass', t('nav.discover')),
       item('categories', 'lucide:layout-grid', t('nav.categories')),
-      item('rankings', 'lucide:chart-no-axes-column', t('nav.rankings'))
+      item('rankings', 'lucide:chart-no-axes-column', t('nav.rankings')),
+      item('recent', 'lucide:clock', t('nav.recent'))
     ]
   },
   {

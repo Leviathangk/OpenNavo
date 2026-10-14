@@ -115,6 +115,7 @@ describe('OnMarkdown', () => {
     expect(wrapper.classes()).toContain('max-w-[72ch]');
     expect(wrapper.get('h3').text()).toBe('新功能');
     expect(wrapper.get('code').text()).toBe('brew bundle');
+    expect(wrapper.findAll('code .on-code-word').map(word => word.text())).toEqual(['brew', 'bundle']);
     expect(wrapper.find('b').exists()).toBe(false);
     expect(wrapper.text()).toContain('<b>不是标签</b>');
   });

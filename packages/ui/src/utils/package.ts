@@ -1,5 +1,5 @@
 // Shared web/desktop detail calculations (08 §10.5, §11.7), pure for testing.
-import type { CaskPlatform, InstallStats, PackageDetail } from '@opennavo/api';
+import type { InstallStats } from '@opennavo/api';
 
 export interface MonthlyRow {
   key: 'd30' | 'avg90' | 'avg365';
@@ -35,17 +35,4 @@ export function architectures(supports: { arm64: boolean; x86_64: boolean }): ('
 /** Display URLs as host/path without scheme/trailing slash. */
 export function displayUrl(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-}
-
-/** Prefer current version initially; after platform switches, derive all information from the same platform. */
-export function selectedCaskPlatform(
-  pkg: Pick<PackageDetail, 'platforms' | 'version'>,
-  tag: string
-): CaskPlatform | undefined {
-  const platforms = pkg.platforms ?? [];
-  return (
-    platforms.find(platform => platform.tag === tag) ??
-    platforms.find(platform => platform.version === pkg.version) ??
-    platforms[0]
-  );
 }

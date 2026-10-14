@@ -9,6 +9,7 @@
     "discover": "Discover",
     "categories": "Categories",
     "rankings": "Rankings",
+    "recent": "Recently Updated",
     "articles": "Articles",
     "collections": "Collections",
     "download": "Download",
@@ -126,6 +127,11 @@
     "category": "Category",
     "allCategories": "All categories"
   },
+  "recent": {
+    "title": "Recently Updated",
+    "metaTitle": "Recently Updated Mac Apps · OpenNavo",
+    "description": "Mac apps in Homebrew with new releases, newest first, with descriptions and release notes."
+  },
   "search": {
     "title": "Search",
     "metaTitle": "Search “{q}” · OpenNavo",
@@ -146,6 +152,7 @@
       "discover": "Discover",
       "categories": "Categories",
       "rankings": "Rankings",
+      "recent": "Recently Updated",
       "collections": "Collections",
       "download": "Download the App",
       "brewfile": "Brewfile List"
@@ -280,7 +287,6 @@
       "autoNo": "Updated by Homebrew",
       "uninstall": "On uninstall",
       "arch": "Architecture",
-      "minMacos": "Requires",
       "license": "License"
     },
     "deps": {
@@ -455,9 +461,24 @@
     },
     "faq": {
       "title": "Questions",
-      "updateQ": "How do I update {name}?",
-      "updateAuto": "{name} updates itself. `brew upgrade` skips it by default; run `brew upgrade --cask --greedy {token}` when you need to.",
-      "updateBrew": "Run `brew upgrade --cask {token}` to get the latest version Homebrew records.",
+      "safetyQ": "Is {name} safe?",
+      "safetyListed": "{name} is in Homebrew’s official catalog and has not been disabled. Since September 2026, Homebrew disables apps that fail macOS Gatekeeper checks.",
+      "safetyDeprecated": "Homebrew has deprecated {name} ({reason}) and will stop offering it.",
+      "safetyDisabled": "Homebrew has disabled {name} ({reason}), so it can no longer be installed with Homebrew.",
+      "disabledOn": "It was disabled on {date}.",
+      "safetyChecksum": "When installing, Homebrew checks the download from {host} against its SHA-256 checksum.",
+      "safetyNoChecksum": "The download comes from {host}; Homebrew does not verify a checksum for it.",
+      "safetyInstalls": "It was installed {count} time through Homebrew in the last 30 days. | It was installed {count} times through Homebrew in the last 30 days.",
+      "reasons": {
+        "fails_gatekeeper_check": "it fails macOS Gatekeeper checks",
+        "unsigned": "it is not signed by its developer",
+        "discontinued": "its developer discontinued it",
+        "unmaintained": "it is no longer maintained",
+        "no_longer_available": "it is no longer available to download",
+        "no_longer_meets_criteria": "it no longer meets Homebrew’s criteria",
+        "moved_to_mas": "it is now only on the Mac App Store",
+        "other": "the Homebrew definition explains why"
+      },
       "priceQ": "Is {name} free?",
       "priceA": {
         "free": "Yes, {name} is free to use.",
@@ -466,14 +487,73 @@
         "subscription": "No, {name} requires a subscription.",
         "trial": "{name} offers a free trial, after which it is paid."
       },
-      "siliconQ": "Does {name} run natively on Apple silicon?",
+      "priceStoreFree": "“{store}” is free to download on the Mac App Store.",
+      "priceStorePaid": "“{store}” costs {price} on the Mac App Store ({region}).",
+      "priceStoreNote": "Homebrew installs the version from the developer’s website, which can differ from the App Store edition in price and features.",
+      "openSourceQ": "Is {name} open source?",
+      "openSourceA": "{name}’s source code is public on GitHub ({repo}) under the {license} license.",
+      "openSourceArchived": "The repository is archived and no longer updated.",
+      "uninstallQ": "How do I completely uninstall {name} on a Mac?",
+      "uninstallRun": "Run `brew uninstall --cask {token}`.",
+      "uninstallDoes": "It {actions}.",
+      "uninstallZap": "To delete its settings and caches as well, run `brew uninstall --zap --cask {token}`.",
+      "uninstallZapOne": "That also deletes {path}.",
+      "uninstallZapMany": "That also deletes {count} file or folder, including {path}. | That also deletes {count} files and folders, including {path}.",
+      "actions": {
+        "quit": "quits the app",
+        "services": "stops {count} background service | stops {count} background services",
+        "loginItems": "removes {count} login item | removes {count} login items",
+        "helpers": "deletes {count} privileged helper | deletes {count} privileged helpers",
+        "receipts": "forgets {count} installer receipt | forgets {count} installer receipts",
+        "kexts": "unloads {count} kernel extension | unloads {count} kernel extensions"
+      },
+      "chipsQ": "Does {name} run on Apple silicon (M1 and later) Macs?",
+      "chips": {
+        "separate": "Yes. Homebrew downloads separate builds for Apple silicon and Intel Macs.",
+        "shared": "Homebrew installs it on both Apple silicon and Intel Macs, from the same download.",
+        "rosetta": "It installs, but on Apple silicon Macs it runs through Rosetta 2.",
+        "armOnly": "Yes, and only there: it does not install on Intel Macs.",
+        "intelOnly": "No. Homebrew installs it only on Intel Macs."
+      },
       "siliconA": {
         "native": "Yes. The vendor states it runs natively on Apple silicon.",
         "rosetta": "Not natively. The vendor states it runs on Apple silicon through Rosetta.",
         "unsupported": "The vendor states it does not support Macs with Apple silicon."
       },
-      "withoutBrewQ": "Can I install {name} without Homebrew?",
-      "withoutBrewA": "Yes, download it from the official website, {site}."
+      "languageQ": "Is {name} available in English?",
+      "languageYes": "The Mac App Store listing includes English among its interface languages.",
+      "languageNo": "The Mac App Store listing names {count} interface language, and English is not one of them. | The Mac App Store listing names {count} interface languages, and English is not one of them.",
+      "dataQ": "Where does {name} store its settings and data?",
+      "dataSettings": "Its settings are in {path}.",
+      "dataFolders": "Its data is in {paths}.",
+      "dataSource": "These locations come from Homebrew’s clean-up list.",
+      "versionQ": "What is the latest version of {name}?",
+      "versionA": "The latest version is {version}.",
+      "versionDated": "The latest version is {version}, added to Homebrew on {date}.",
+      "versionAuto": "{name} updates itself; to update it with Homebrew, run `brew upgrade --cask --greedy {token}`.",
+      "versionBrew": "Run `brew upgrade --cask {token}` to update it.",
+      "versionChannels": "Homebrew also offers {list}, which cannot be installed alongside it.",
+      "extrasQ": "What else does installing {name} add?",
+      "extrasTools": "It also adds {count} command-line tool: {list}. | It also adds {count} command-line tools: {list}.",
+      "extrasSomeTools": "It also adds {count} command-line tool, including {list}. | It also adds {count} command-line tools, including {list}.",
+      "extrasPkg": "It installs through a .pkg installer, which asks for an administrator password.",
+      "extrasPlugins": "It also installs {list}.",
+      "extrasConflicts": "It cannot be installed alongside {list}.",
+      "plugins": {
+        "quickLook": "a Quick Look plug-in",
+        "prefPane": "a System Settings pane",
+        "screenSaver": "a screen saver",
+        "inputMethod": "an input method",
+        "audio": "audio plug-ins",
+        "spotlight": "a Spotlight importer",
+        "dictionary": "a dictionary",
+        "colorPicker": "a color picker",
+        "keyboardLayout": "a keyboard layout",
+        "service": "a Services menu item",
+        "browser": "a browser plug-in"
+      },
+      "alternativesQ": "What are some alternatives to {name}?",
+      "alternativesA": "Alternatives include {list}."
     },
     "articles": {
       "title": "Related articles"

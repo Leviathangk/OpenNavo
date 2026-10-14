@@ -48,18 +48,11 @@
     "title": "Comando de instalación"
   },
   "cask": {
-    "platform": "Sistema y arquitectura",
-    "platforms": "Disponibilidad en plataformas",
     "version": "Versión disponible",
-    "requirements": "Requisitos del sistema",
-    "formulae": "Dependencias de línea de comandos",
-    "casks": "Dependencias de aplicaciones",
     "unknown": "Sin confirmar",
     "noMac": "No se ha declarado compatibilidad con macOS",
     "rosetta": "Requiere Rosetta",
     "legacy": "Versiones anteriores disponibles en algunas plataformas",
-    "arm64": "Apple Silicon",
-    "x86_64": "Intel",
     "declarations": "Contenido de instalación y desinstalación",
     "install": "Instalar",
     "uninstall": "Desinstalar",

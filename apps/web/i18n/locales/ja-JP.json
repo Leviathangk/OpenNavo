@@ -9,6 +9,7 @@
     "discover": "見つける",
     "categories": "カテゴリ",
     "rankings": "ランキング",
+    "recent": "最近更新",
     "articles": "記事",
     "collections": "コレクション",
     "download": "クライアントをダウンロード",
@@ -126,6 +127,11 @@
     "category": "カテゴリ",
     "allCategories": "すべてのカテゴリ"
   },
+  "recent": {
+    "title": "最近更新",
+    "metaTitle": "最近更新された Mac App · OpenNavo",
+    "description": "Homebrew で新バージョンが公開された Mac アプリを新しい順に紹介します。説明とリリースノート付きです。"
+  },
   "search": {
     "title": "検索",
     "metaTitle": "「{q}」の検索 · OpenNavo",
@@ -146,6 +152,7 @@
       "discover": "見つける",
       "categories": "カテゴリ",
       "rankings": "ランキング",
+      "recent": "最近更新",
       "collections": "コレクション",
       "download": "クライアントをダウンロード",
       "brewfile": "Brewfile リスト"
@@ -280,7 +287,6 @@
       "autoNo": "Homebrewで更新",
       "uninstall": "アンインストール時",
       "arch": "アーキテクチャ",
-      "minMacos": "最小システム要件",
       "license": "ライセンス"
     },
     "deps": {
@@ -455,9 +461,24 @@
     },
     "faq": {
       "title": "よくある質問",
-      "updateQ": "{name} をアップデートするには？",
-      "updateAuto": "{name} は自動でアップデートされます。`brew upgrade` は通常これを飛ばすので、必要なときは `brew upgrade --cask --greedy {token}` を実行します。",
-      "updateBrew": "`brew upgrade --cask {token}` を実行すると、Homebrew に記録された最新バージョンになります。",
+      "safetyQ": "{name} は安全ですか？",
+      "safetyListed": "{name} は Homebrew の公式カタログに収録されており、無効化されていません。2026 年 9 月から、Homebrew は macOS の Gatekeeper チェックに通らないアプリを無効化しています。",
+      "safetyDeprecated": "Homebrew は {name} を非推奨にしました（{reason}）。今後は提供されなくなります。",
+      "safetyDisabled": "Homebrew は {name} を無効化したため（{reason}）、Homebrew ではインストールできません。",
+      "disabledOn": "無効化された日：{date}。",
+      "safetyChecksum": "インストール時に Homebrew は、{host} からダウンロードしたファイルを SHA-256 チェックサムで照合します。",
+      "safetyNoChecksum": "ファイルは {host} からダウンロードされ、Homebrew はチェックサムを照合しません。",
+      "safetyInstalls": "過去 30 日間に Homebrew 経由で {count} 回インストールされました。",
+      "reasons": {
+        "fails_gatekeeper_check": "macOS の Gatekeeper チェックに通らない",
+        "unsigned": "開発者の署名がない",
+        "discontinued": "開発が終了した",
+        "unmaintained": "メンテナンスされていない",
+        "no_longer_available": "ダウンロードできなくなった",
+        "no_longer_meets_criteria": "Homebrew の収録基準を満たさなくなった",
+        "moved_to_mas": "Mac App Store だけで提供されるようになった",
+        "other": "理由は Homebrew の定義に記載されています"
+      },
       "priceQ": "{name} は無料ですか？",
       "priceA": {
         "free": "はい、{name} は無料で使えます。",
@@ -466,14 +487,73 @@
         "subscription": "いいえ、{name} の利用にはサブスクリプションが必要です。",
         "trial": "{name} には無料トライアルがあり、その後は有料です。"
       },
-      "siliconQ": "{name} は Apple シリコンでネイティブに動きますか？",
+      "priceStoreFree": "Mac App Store の「{store}」は無料でダウンロードできます。",
+      "priceStorePaid": "Mac App Store（{region}）の「{store}」は {price} です。",
+      "priceStoreNote": "Homebrew がインストールするのは開発者のサイトで配布されている版で、価格や機能が App Store 版と異なることがあります。",
+      "openSourceQ": "{name} はオープンソースですか？",
+      "openSourceA": "{name} のソースコードは GitHub（{repo}）で公開されており、ライセンスは {license} です。",
+      "openSourceArchived": "このリポジトリはアーカイブされていて、更新されていません。",
+      "uninstallQ": "Mac から {name} を完全にアンインストールするには？",
+      "uninstallRun": "`brew uninstall --cask {token}` を実行します。",
+      "uninstallDoes": "これにより{actions}が行われます。",
+      "uninstallZap": "設定やキャッシュもまとめて削除するには、`brew uninstall --zap --cask {token}` を実行します。",
+      "uninstallZapOne": "これで {path} も削除されます。",
+      "uninstallZapMany": "これでさらに {count} 個のファイルとフォルダが削除されます（{path} など）。",
+      "actions": {
+        "quit": "アプリの終了",
+        "services": "バックグラウンドサービス {count} 個の停止",
+        "loginItems": "ログイン項目 {count} 個の削除",
+        "helpers": "特権ヘルパー {count} 個の削除",
+        "receipts": "インストール記録 {count} 件の消去",
+        "kexts": "カーネル拡張 {count} 個の取り外し"
+      },
+      "chipsQ": "{name} は Apple シリコン（M1 以降）の Mac に対応していますか？",
+      "chips": {
+        "separate": "はい。Homebrew は Apple シリコンと Intel の Mac で別々のファイルをダウンロードします。",
+        "shared": "Apple シリコンと Intel のどちらの Mac にも Homebrew でインストールでき、同じファイルを使います。",
+        "rosetta": "インストールはできますが、Apple シリコンの Mac では Rosetta 2 を介して動作します。",
+        "armOnly": "はい。Apple シリコンの Mac 専用で、Intel の Mac にはインストールできません。",
+        "intelOnly": "いいえ。Homebrew では Intel の Mac にしかインストールできません。"
+      },
       "siliconA": {
         "native": "はい。ベンダーの情報では Apple シリコンにネイティブ対応しています。",
         "rosetta": "ネイティブではありません。ベンダーの情報では Rosetta を使って Apple シリコンで動作します。",
         "unsupported": "ベンダーの情報では Apple シリコン搭載の Mac には対応していません。"
       },
-      "withoutBrewQ": "Homebrew を使わずに {name} をインストールできますか？",
-      "withoutBrewA": "はい、公式サイト {site} からダウンロードしてインストールできます。"
+      "languageQ": "{name} は日本語に対応していますか？",
+      "languageYes": "Mac App Store のページには、対応言語として日本語が記載されています。",
+      "languageNo": "Mac App Store のページには {count} 種類の対応言語が記載されていますが、日本語は含まれていません。",
+      "dataQ": "{name} の設定やデータはどこに保存されますか？",
+      "dataSettings": "設定は {path} に保存されます。",
+      "dataFolders": "データは {paths} に保存されます。",
+      "dataSource": "これらの場所は Homebrew のクリーンアップリストに基づいています。",
+      "versionQ": "{name} の最新バージョンは？",
+      "versionA": "最新バージョンは {version} です。",
+      "versionDated": "最新バージョンは {version} で、Homebrew には {date} に追加されました。",
+      "versionAuto": "{name} は自動でアップデートされます。Homebrew でアップデートするときは `brew upgrade --cask --greedy {token}` を実行します。",
+      "versionBrew": "`brew upgrade --cask {token}` を実行するとアップデートできます。",
+      "versionChannels": "Homebrew には {list} もありますが、同時にはインストールできません。",
+      "extrasQ": "{name} をインストールすると、ほかに何が入りますか？",
+      "extrasTools": "コマンドラインツール {count} 個（{list}）も追加されます。",
+      "extrasSomeTools": "{list} など、コマンドラインツール {count} 個も追加されます。",
+      "extrasPkg": ".pkg インストーラでインストールされるため、管理者パスワードの入力が必要です。",
+      "extrasPlugins": "{list}もインストールされます。",
+      "extrasConflicts": "{list} と同時にはインストールできません。",
+      "plugins": {
+        "quickLook": "クイックルックプラグイン",
+        "prefPane": "システム設定のパネル",
+        "screenSaver": "スクリーンセーバ",
+        "inputMethod": "入力メソッド",
+        "audio": "オーディオプラグイン",
+        "spotlight": "Spotlight プラグイン",
+        "dictionary": "辞書",
+        "colorPicker": "カラーピッカー",
+        "keyboardLayout": "キーボードレイアウト",
+        "service": "サービスメニューの項目",
+        "browser": "ブラウザプラグイン"
+      },
+      "alternativesQ": "{name} の代わりになるアプリは？",
+      "alternativesA": "{list} などがあります。"
     },
     "articles": {
       "title": "関連記事"

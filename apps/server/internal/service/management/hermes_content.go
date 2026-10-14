@@ -112,25 +112,29 @@ func (s *Service) upsertNotes(ctx context.Context, in Input) (any, error) {
 		return nil, domain.Validation()
 	}
 	return s.write(ctx, in, "UpsertReleaseNotes", "release", func(st *store.Store) (any, error) {
-		var version struct{ ID int64 }
-		if err := st.DB.WithContext(ctx).Raw(`SELECT v.id FROM package_versions v JOIN packages p ON p.id=v.package_id WHERE v.package_id=? AND v.version_base=? AND p.kind='cask' ORDER BY v.id DESC LIMIT 1`, in.ID, in.Version).Scan(&version).Error; err != nil {
+		// A full build version owns its notes; a base version writes the note its builds share.
+		// Each write and clear stays inside its own scope, so older builds keep their notes.
+		target, found, err := st.ResolveReleaseNotesTarget(ctx, in.ID, in.Version)
+		if err != nil {
 			return nil, err
 		}
-		if version.ID == 0 {
+		if !found {
 			return nil, fail(domain.CodeNotFound)
 		}
+		scope, scopeArgs := target.Scope()
+		inScope := func(extra ...any) []any { return append(append([]any{in.ID, target.Base}, scopeArgs...), extra...) }
 		var id int64
-		if err := st.DB.WithContext(ctx).Raw(`SELECT id FROM releases WHERE package_id=? AND version=? AND source='editorial' ORDER BY hidden,id DESC LIMIT 1`, in.ID, in.Version).Scan(&id).Error; err != nil {
+		if err := st.DB.WithContext(ctx).Raw(`SELECT id FROM releases WHERE package_id=? AND version=? AND source='editorial' AND `+scope+` ORDER BY hidden,id DESC LIMIT 1`, inScope()...).Scan(&id).Error; err != nil {
 			return nil, err
 		}
 		if boolean(in.Body, "clear") {
 			if id == 0 {
 				return nil, fail(domain.CodeNotFound)
 			}
-			if err := st.DB.WithContext(ctx).Exec("UPDATE releases SET hidden=true,updated_at=now() WHERE package_id=? AND version=? AND source='editorial'", in.ID, in.Version).Error; err != nil {
+			if err := st.DB.WithContext(ctx).Exec("UPDATE releases SET hidden=true,updated_at=now() WHERE package_id=? AND version=? AND source='editorial' AND "+scope, inScope()...).Error; err != nil {
 				return nil, err
 			}
-			if err := st.DB.WithContext(ctx).Exec("DELETE FROM release_i18n WHERE release_id IN (SELECT id FROM releases WHERE package_id=? AND version=? AND source='editorial')", in.ID, in.Version).Error; err != nil {
+			if err := st.DB.WithContext(ctx).Exec("DELETE FROM release_i18n WHERE release_id IN (SELECT id FROM releases WHERE package_id=? AND version=? AND source='editorial' AND "+scope+")", inScope()...).Error; err != nil {
 				return nil, err
 			}
 			ref := content.Ref{Entity: "release", ID: id}
@@ -157,11 +161,15 @@ func (s *Service) upsertNotes(ctx context.Context, in Input) (any, error) {
 			date = &parsed
 		}
 		if id == 0 {
-			if err := st.DB.WithContext(ctx).Raw(`INSERT INTO releases(package_id,source,source_key,version,published_at,source_locale) VALUES(?,'editorial',?,?,?,?) RETURNING id`, in.ID, "editorial:"+in.Version, in.Version, date, text(in.Body, "sourceLocale")).Scan(&id).Error; err != nil {
+			var build any
+			if target.PackageVersion > 0 {
+				build = target.PackageVersion
+			}
+			if err := st.DB.WithContext(ctx).Raw(`INSERT INTO releases(package_id,source,source_key,version,published_at,source_locale,package_version_id) VALUES(?,'editorial',?,?,?,?,?) RETURNING id`, in.ID, target.SourceKey(), target.Base, date, text(in.Body, "sourceLocale"), build).Scan(&id).Error; err != nil {
 				return nil, err
 			}
 		}
-		if err := st.DB.WithContext(ctx).Exec("UPDATE releases SET hidden=true,updated_at=now() WHERE package_id=? AND version=? AND source='editorial' AND id<>? AND NOT hidden", in.ID, in.Version, id).Error; err != nil {
+		if err := st.DB.WithContext(ctx).Exec("UPDATE releases SET hidden=true,updated_at=now() WHERE package_id=? AND version=? AND source='editorial' AND "+scope+" AND id<>? AND NOT hidden", inScope(id)...).Error; err != nil {
 			return nil, err
 		}
 		fields := map[string]any{"hidden": false, "updated_at": s.now()}

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { OnButton, OnModal } from '@opennavo/ui';
+import { OnButton, OnCodeText, OnModal } from '@opennavo/ui';
 import { useInstallConfirmStore } from '@/stores/installConfirm';
 
 const { t } = useI18n();
@@ -26,8 +26,8 @@ onBeforeUnmount(() => store.choose(false));
     @close="store.choose(false)"
   >
     <ul v-if="store.pending?.paths.length" class="m-0 flex list-none flex-col gap-8px p-0">
-      <li v-for="path in store.pending.paths" :key="path" class="break-all text-13px text-ink-secondary">
-        {{ path }}
+      <li v-for="path in store.pending.paths" :key="path" class="text-13px text-ink-secondary">
+        <OnCodeText :text="path" />
       </li>
     </ul>
     <p v-if="store.pending?.status === 'conflict'" class="mb-0 mt-16px text-13px leading-relaxed text-ink-secondary">

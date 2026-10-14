@@ -65,7 +65,8 @@ func (s *Service) versions(ctx context.Context, in Input) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s.Store.AdminPage(ctx, `jsonb_build_object('id',v.id,'version',v.version,'firstSeenAt',v.first_seen_at,'brewCommittedAt',v.brew_committed_at,'brewCommitSha',v.brew_commit_sha,'hasEditorial',EXISTS(SELECT 1 FROM releases r WHERE r.package_id=v.package_id AND r.version=v.version_base AND r.source='editorial' AND NOT r.hidden),'editorialReleaseId',(SELECT r.id FROM releases r WHERE r.package_id=v.package_id AND r.version=v.version_base AND r.source='editorial' AND NOT r.hidden ORDER BY r.id DESC LIMIT 1),'releaseId',(SELECT r.id FROM releases r WHERE r.package_id=v.package_id AND r.version=v.version_base AND NOT r.hidden ORDER BY r.published_at DESC NULLS LAST LIMIT 1))`, `FROM package_versions v`, `v.package_id=?`, `COALESCE(v.brew_committed_at,v.first_seen_at,v.created_at) DESC,v.id DESC`, []any{in.ID}, current, size)
+	note := store.EditorialNoteSQL("v.id", "v.package_id", "v.version_base")
+	return s.Store.AdminPage(ctx, `jsonb_build_object('id',v.id,'version',v.version,'firstSeenAt',v.first_seen_at,'brewCommittedAt',v.brew_committed_at,'brewCommitSha',v.brew_commit_sha,'hasEditorial',`+note+` IS NOT NULL,'editorialReleaseId',`+note+`,'editorialScope',`+store.EditorialScopeSQL("v.id", "v.package_id", "v.version_base")+`,'releaseId',COALESCE(`+store.BuildNoteSQL("v.id")+`,(SELECT r.id FROM releases r WHERE r.package_id=v.package_id AND r.version=v.version_base AND r.package_version_id IS NULL AND NOT r.hidden ORDER BY r.published_at DESC NULLS LAST LIMIT 1)))`, `FROM package_versions v`, `v.package_id=?`, `COALESCE(v.brew_committed_at,v.first_seen_at,v.created_at) DESC,v.id DESC`, []any{in.ID}, current, size)
 }
 
 var accentColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)

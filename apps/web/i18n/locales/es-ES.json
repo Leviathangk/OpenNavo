@@ -9,6 +9,7 @@
     "discover": "Explorar",
     "categories": "Categorías",
     "rankings": "Clasificación",
+    "recent": "Recién actualizadas",
     "articles": "Artículos",
     "collections": "Colecciones",
     "download": "Descargar la app",
@@ -126,6 +127,11 @@
     "category": "Categorías",
     "allCategories": "Todas las categorías"
   },
+  "recent": {
+    "title": "Actualizaciones recientes",
+    "metaTitle": "Apps para Mac actualizadas recientemente · OpenNavo",
+    "description": "Apps para Mac de Homebrew con nuevas versiones, de la más reciente a la más antigua, con descripciones y notas de versión."
+  },
   "search": {
     "title": "Buscar",
     "metaTitle": "Buscar «{q}» · OpenNavo",
@@ -146,6 +152,7 @@
       "discover": "Explorar",
       "categories": "Categorías",
       "rankings": "Clasificación",
+      "recent": "Actualizaciones recientes",
       "collections": "Colecciones",
       "download": "Descargar la app",
       "brewfile": "Lista de Brewfile"
@@ -280,7 +287,6 @@
       "autoNo": "Actualizada por Homebrew",
       "uninstall": "Al desinstalar",
       "arch": "Arquitectura",
-      "minMacos": "Sistema mínimo",
       "license": "Licencia"
     },
     "deps": {
@@ -455,9 +461,24 @@
     },
     "faq": {
       "title": "Preguntas frecuentes",
-      "updateQ": "¿Cómo actualizo {name}?",
-      "updateAuto": "{name} se actualiza sola. `brew upgrade` la omite de forma predeterminada; ejecuta `brew upgrade --cask --greedy {token}` cuando lo necesites.",
-      "updateBrew": "Ejecuta `brew upgrade --cask {token}` para obtener la última versión que registra Homebrew.",
+      "safetyQ": "¿Es seguro {name}?",
+      "safetyListed": "{name} está en el catálogo oficial de Homebrew y no está desactivada. Desde septiembre de 2026, Homebrew desactiva las apps que no superan las comprobaciones de Gatekeeper de macOS.",
+      "safetyDeprecated": "Homebrew marcó {name} como obsoleta ({reason}) y dejará de ofrecerla.",
+      "safetyDisabled": "Homebrew desactivó {name} ({reason}), así que ya no se puede instalar con Homebrew.",
+      "disabledOn": "Se desactivó el {date}.",
+      "safetyChecksum": "Al instalarla, Homebrew comprueba la descarga de {host} con su suma SHA-256.",
+      "safetyNoChecksum": "La descarga procede de {host} y Homebrew no comprueba ninguna suma de verificación.",
+      "safetyInstalls": "Se instaló {count} vez con Homebrew en los últimos 30 días. | Se instaló {count} veces con Homebrew en los últimos 30 días.",
+      "reasons": {
+        "fails_gatekeeper_check": "no supera las comprobaciones de Gatekeeper de macOS",
+        "unsigned": "no está firmada por su desarrollador",
+        "discontinued": "su desarrollador la abandonó",
+        "unmaintained": "ya nadie la mantiene",
+        "no_longer_available": "ya no se puede descargar",
+        "no_longer_meets_criteria": "ya no cumple los criterios de Homebrew",
+        "moved_to_mas": "ahora solo está en la Mac App Store",
+        "other": "la definición de Homebrew explica el motivo"
+      },
       "priceQ": "¿{name} es gratis?",
       "priceA": {
         "free": "Sí, {name} es de uso gratuito.",
@@ -466,14 +487,73 @@
         "subscription": "No, {name} requiere una suscripción.",
         "trial": "{name} ofrece una prueba gratuita y después es de pago."
       },
-      "siliconQ": "¿{name} funciona de forma nativa en chips de Apple?",
+      "priceStoreFree": "«{store}» se descarga gratis en la Mac App Store.",
+      "priceStorePaid": "«{store}» cuesta {price} en la Mac App Store ({region}).",
+      "priceStoreNote": "Homebrew instala la versión del sitio web del desarrollador, que puede diferir de la edición de la App Store en precio y funciones.",
+      "openSourceQ": "¿{name} es de código abierto?",
+      "openSourceA": "El código fuente de {name} es público en GitHub ({repo}) con la licencia {license}.",
+      "openSourceArchived": "El repositorio está archivado y ya no se actualiza.",
+      "uninstallQ": "¿Cómo desinstalo {name} por completo en un Mac?",
+      "uninstallRun": "Ejecuta `brew uninstall --cask {token}`.",
+      "uninstallDoes": "Este comando {actions}.",
+      "uninstallZap": "Para borrar también sus ajustes y cachés, ejecuta `brew uninstall --zap --cask {token}`.",
+      "uninstallZapOne": "Así también se borra {path}.",
+      "uninstallZapMany": "Así también se borra {count} archivo o carpeta, como {path}. | Así también se borran {count} archivos y carpetas, como {path}.",
+      "actions": {
+        "quit": "cierra la app",
+        "services": "detiene {count} servicio en segundo plano | detiene {count} servicios en segundo plano",
+        "loginItems": "quita {count} elemento de inicio | quita {count} elementos de inicio",
+        "helpers": "borra {count} asistente con privilegios | borra {count} asistentes con privilegios",
+        "receipts": "olvida {count} recibo de instalación | olvida {count} recibos de instalación",
+        "kexts": "descarga {count} extensión del kernel | descarga {count} extensiones del kernel"
+      },
+      "chipsQ": "¿{name} funciona en Macs con chip de Apple (M1 o posterior)?",
+      "chips": {
+        "separate": "Sí. Homebrew descarga versiones distintas para Macs con chip de Apple y con Intel.",
+        "shared": "Homebrew la instala tanto en Macs con chip de Apple como con Intel, con la misma descarga.",
+        "rosetta": "Se instala, pero en Macs con chip de Apple funciona mediante Rosetta 2.",
+        "armOnly": "Sí, y solo en ellos: no se instala en Macs con Intel.",
+        "intelOnly": "No. Homebrew solo la instala en Macs con Intel."
+      },
       "siliconA": {
         "native": "Sí. El fabricante indica que funciona de forma nativa en chips de Apple.",
         "rosetta": "No de forma nativa. El fabricante indica que funciona en chips de Apple mediante Rosetta.",
         "unsupported": "El fabricante indica que no es compatible con Macs con chip de Apple."
       },
-      "withoutBrewQ": "¿Puedo instalar {name} sin Homebrew?",
-      "withoutBrewA": "Sí, descárgala desde el sitio oficial, {site}."
+      "languageQ": "¿{name} está en español?",
+      "languageYes": "La ficha de la Mac App Store incluye el español entre sus idiomas.",
+      "languageNo": "La ficha de la Mac App Store indica {count} idioma, y el español no es uno de ellos. | La ficha de la Mac App Store indica {count} idiomas, y el español no está entre ellos.",
+      "dataQ": "¿Dónde guarda {name} sus ajustes y datos?",
+      "dataSettings": "Sus ajustes están en {path}.",
+      "dataFolders": "Sus datos están en {paths}.",
+      "dataSource": "Estas ubicaciones vienen de la lista de limpieza de Homebrew.",
+      "versionQ": "¿Cuál es la última versión de {name}?",
+      "versionA": "La última versión es la {version}.",
+      "versionDated": "La última versión es la {version}, que Homebrew añadió el {date}.",
+      "versionAuto": "{name} se actualiza sola; para actualizarla con Homebrew, ejecuta `brew upgrade --cask --greedy {token}`.",
+      "versionBrew": "Ejecuta `brew upgrade --cask {token}` para actualizarla.",
+      "versionChannels": "Homebrew también ofrece {list}; no se pueden instalar a la vez.",
+      "extrasQ": "¿Qué más instala {name}?",
+      "extrasTools": "También añade {count} herramienta de línea de comandos: {list}. | También añade {count} herramientas de línea de comandos: {list}.",
+      "extrasSomeTools": "También añade {count} herramienta de línea de comandos, entre ellas {list}. | También añade {count} herramientas de línea de comandos, entre ellas {list}.",
+      "extrasPkg": "Se instala con un instalador .pkg, que pide la contraseña de administrador.",
+      "extrasPlugins": "También instala {list}.",
+      "extrasConflicts": "No se puede instalar junto con {list}.",
+      "plugins": {
+        "quickLook": "un plugin de Vista Rápida",
+        "prefPane": "un panel de Ajustes del Sistema",
+        "screenSaver": "un salvapantallas",
+        "inputMethod": "un método de entrada",
+        "audio": "plugins de audio",
+        "spotlight": "un importador de Spotlight",
+        "dictionary": "un diccionario",
+        "colorPicker": "un selector de color",
+        "keyboardLayout": "una distribución de teclado",
+        "service": "un elemento del menú Servicios",
+        "browser": "un plugin de navegador"
+      },
+      "alternativesQ": "¿Qué alternativas hay a {name}?",
+      "alternativesA": "Algunas alternativas son {list}."
     },
     "articles": {
       "title": "Artículos relacionados"

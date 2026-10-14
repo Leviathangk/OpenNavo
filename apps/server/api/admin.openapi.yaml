@@ -743,7 +743,7 @@ paths:
               schema:
                 type: string
               example: Origin, Accept-Language
-      description: "Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial checks non-hidden editorial notes for the current versionBase. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      description: "Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial matches apps whose current build shows no non-hidden editorial notes (neither its own nor the shared note of its base version); latestBuildEditorial matches apps whose current version is one of several builds of its base version (0.1,49) and has no notes of its own. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
       x-permissions:
         - catalog:package:view
       x-agent-access:
@@ -6559,6 +6559,7 @@ paths:
         - name: version
           in: path
           required: true
+          description: "A recorded full build version (0.1,49) for notes that build owns, or a base version (0.1) for the note shared by builds without their own"
           schema:
             type: string
             maxLength: 256
@@ -11841,6 +11842,7 @@ components:
         - changelog_schedule
         - assets_download-size
         - cleanup
+        - facts_sources
       example: catalog_sync
     JobType:
       type: string
@@ -11854,6 +11856,7 @@ components:
         - assets_icons
         - assets_download-size
         - cleanup
+        - facts_sources
       example: catalog_sync
     EmptyResponse:
       type: object
@@ -12209,7 +12212,7 @@ components:
             icon:
               $ref: "#/components/schemas/Ratio"
             latestVersionNotes:
-              description: "Valid apps and fonts whose current versionBase has non-hidden editorial release notes; excludes historical versions and old upstream notes."
+              description: "Valid apps and fonts whose current build shows non-hidden editorial release notes (its own or the shared note of its base version); excludes historical versions and old upstream notes."
               allOf:
                 - $ref: "#/components/schemas/Ratio"
             sixLocaleContent:
@@ -13216,6 +13219,14 @@ components:
           minimum: 0
           example: null
           nullable: true
+        editorialScope:
+          type: string
+          enum:
+            - build
+            - base
+            - none
+          description: "Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes"
+          example: base
       example:
         id: 1
         version: 1.140.0
@@ -14312,6 +14323,11 @@ components:
         version:
           type: string
           example: 1.140.0
+        buildVersion:
+          type: string
+          nullable: true
+          description: "Full build version (0.1,49) when these editorial notes belong to one build; null for notes shared by a base version"
+          example: null
         title:
           type: string
           nullable: true
@@ -19982,7 +19998,7 @@ components:
           ## 改进
 
           改善窗口管理体验。
-      description: "Only recorded Cask versions are allowed; version is the recorded versionBase. One editorial per package/version. Omitting publishedAt preserves the existing release date; new notes have no release date unless supplied. Explicit null clears the date. Year 0001 and invalid dates are rejected; ingestion time is never used as a release date. clear=true deletes every editorial language, checks deletion allowance and saves restorable revisions; no editorial returns 1002. Historical notes remain available as fallback after clearing."
+      description: "Only recorded Cask versions are allowed. A full build version (0.1,49) writes or clears the notes that build owns; a base version (0.1, or any version without a build comma) writes or clears the note shared by builds without notes of their own. Neither scope changes the other, so writing the newest build never touches older builds. One editorial per scope. Omitting publishedAt preserves the existing release date; new notes have no release date unless supplied. Explicit null clears the date. Year 0001 and invalid dates are rejected; ingestion time is never used as a release date. clear=true deletes every editorial language, checks deletion allowance and saves restorable revisions; no editorial returns 1002. Historical notes remain available as fallback after clearing."
     ContentLocaleState:
       example: {"status":"manual","stale":false,"sourceHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","updatedAt":"2026-10-07T08:00:00Z","translatedAt":null,"machineTranslated":false,"model":null,"failReason":null,"fields":{"displayName":"示例应用","summary":"帮助管理日常工作的应用","description":"## 功能\n\n帮助整理日常工作。"}}
       type: object
@@ -23201,6 +23217,7 @@ components:
         - icon
         - downloadSize
         - latestEditorial
+        - latestBuildEditorial
         - price
       example: zhName
     CatalogActivity:
@@ -23213,11 +23230,14 @@ components:
         - token
         - previousToken
         - version
+        - versionBase
+        - packageVersionId
         - previousVersion
         - changedAt
         - rank30d
         - popularity
         - hasEditorial
+        - editorialScope
         - webUrl
       properties:
         seq:
@@ -23250,6 +23270,19 @@ components:
         version:
           type: string
           maxLength: 256
+          description: "Full build version (0.1,49); events recorded before build notes hold only the base version"
+          example: null
+          nullable: true
+        versionBase:
+          type: string
+          maxLength: 256
+          example: null
+          nullable: true
+        packageVersionId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: "Recorded build of version; null when the event version is not a recorded build"
           example: null
           nullable: true
         previousVersion:
@@ -23273,6 +23306,14 @@ components:
         hasEditorial:
           type: boolean
           example: false
+        editorialScope:
+          type: string
+          enum:
+            - build
+            - base
+            - none
+          description: "Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes"
+          example: base
         webUrl:
           type: string
           format: uri
@@ -23285,11 +23326,14 @@ components:
         token: visual-studio-code
         previousToken: null
         version: 1.140.0
+        versionBase: 1.140.0
+        packageVersionId: 1
         previousVersion: 1.139.0
         changedAt: 2026-10-07T08:00:00Z
         rank30d: 1
         popularity: 99.5
         hasEditorial: false
+        editorialScope: none
         webUrl: https://opennavo.example/apps/visual-studio-code
     CatalogActivityResponse:
       type: object
@@ -23325,11 +23369,14 @@ components:
                   token: visual-studio-code
                   previousToken: null
                   version: 1.140.0
+                  versionBase: 1.140.0
+                  packageVersionId: 1
                   previousVersion: 1.139.0
                   changedAt: 2026-10-07T08:00:00Z
                   rank30d: 1
                   popularity: 99.5
                   hasEditorial: false
+                  editorialScope: none
                   webUrl: https://opennavo.example/apps/visual-studio-code
             current:
               type: integer
@@ -23357,11 +23404,14 @@ components:
               token: visual-studio-code
               previousToken: null
               version: 1.140.0
+              versionBase: 1.140.0
+              packageVersionId: 1
               previousVersion: 1.139.0
               changedAt: 2026-10-07T08:00:00Z
               rank30d: 1
               popularity: 99.5
               hasEditorial: false
+              editorialScope: none
               webUrl: https://opennavo.example/apps/visual-studio-code
           current: 1
           size: 20
@@ -23381,11 +23431,14 @@ components:
               token: visual-studio-code
               previousToken: null
               version: 1.140.0
+              versionBase: 1.140.0
+              packageVersionId: 1
               previousVersion: 1.139.0
               changedAt: 2026-10-07T08:00:00Z
               rank30d: 1
               popularity: 99.5
               hasEditorial: false
+              editorialScope: none
               webUrl: https://opennavo.example/apps/visual-studio-code
           current: 1
           size: 20
@@ -26756,6 +26809,7 @@ components:
         - rank30d
         - hasEditorial
         - editorialReleaseId
+        - editorialScope
         - historicalReleaseId
       properties:
         packageVersionId:
@@ -26804,6 +26858,14 @@ components:
           minimum: 0
           example: null
           nullable: true
+        editorialScope:
+          type: string
+          enum:
+            - build
+            - base
+            - none
+          description: "Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes"
+          example: base
         historicalReleaseId:
           type: integer
           format: int64
@@ -26821,6 +26883,7 @@ components:
         rank30d: 1
         hasEditorial: false
         editorialReleaseId: null
+        editorialScope: none
         historicalReleaseId: null
     AdminCatalogVersionsResponse:
       type: object
@@ -26860,6 +26923,7 @@ components:
                   rank30d: 1
                   hasEditorial: false
                   editorialReleaseId: null
+                  editorialScope: none
                   historicalReleaseId: null
             current:
               type: integer
@@ -26891,6 +26955,7 @@ components:
               rank30d: 1
               hasEditorial: false
               editorialReleaseId: null
+              editorialScope: none
               historicalReleaseId: null
           current: 1
           size: 20
@@ -26914,6 +26979,7 @@ components:
               rank30d: 1
               hasEditorial: false
               editorialReleaseId: null
+              editorialScope: none
               historicalReleaseId: null
           current: 1
           size: 20
@@ -29470,11 +29536,14 @@ components:
               token: visual-studio-code
               previousToken: null
               version: 1.140.0
+              versionBase: 1.140.0
+              packageVersionId: 1
               previousVersion: 1.139.0
               changedAt: 2026-10-07T08:00:00Z
               rank30d: 1
               popularity: 99.5
               hasEditorial: false
+              editorialScope: none
               webUrl: https://opennavo.example/apps/visual-studio-code
           current: 1
           size: 20
@@ -30126,6 +30195,7 @@ components:
               rank30d: 1
               hasEditorial: false
               editorialReleaseId: null
+              editorialScope: none
               historicalReleaseId: null
           current: 1
           size: 20

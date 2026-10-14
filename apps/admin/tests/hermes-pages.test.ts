@@ -9,6 +9,8 @@ import {
   buildNotesBody,
   emptyNotes,
   normalizeSections,
+  notesVersion,
+  ownsNotes,
   validateNotes
 } from '../src/views/changelog/release/modules/notes';
 import { defaultRetranslateLocales } from '../src/views/changelog/review/modules/locales';
@@ -144,6 +146,16 @@ describe('Author release notes', () => {
       { area: ' 修复 ', items: [' 启动时崩溃 ', ''] },
       { area: '', items: [''] }
     ]
+  });
+
+  it('Writes builds under their full version and only builds with their own notes count as written', () => {
+    const build = { version: '0.1,49', versionBase: '0.1' };
+    expect(notesVersion(build)).toBe('0.1,49');
+    expect(notesVersion({ version: '1.140.0', versionBase: '1.140.0' })).toBe('1.140.0');
+    expect(ownsNotes({ ...build, editorialScope: 'build' })).toBe(true);
+    expect(ownsNotes({ ...build, editorialScope: 'base' })).toBe(false);
+    expect(ownsNotes({ version: '1.140.0', versionBase: '1.140.0', editorialScope: 'base' })).toBe(true);
+    expect(ownsNotes({ version: '1.140.0', versionBase: '1.140.0', editorialScope: 'none' })).toBe(false);
   });
 
   it('Remove empty highlights and groups', () => {

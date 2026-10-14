@@ -2,7 +2,7 @@
 import { ApiError, unwrap } from '@opennavo/api';
 import type { PublicComponents } from '@opennavo/api';
 import { isPackageKind, isValidToken } from '@opennavo/shared';
-import { OnButton, OnEmpty } from '@opennavo/ui';
+import { OnButton, OnCodeText, OnEmpty } from '@opennavo/ui';
 
 type FeedbackType = PublicComponents['schemas']['FeedbackCreateRequest']['type'];
 
@@ -116,9 +116,9 @@ usePageSeo({ title: () => t('feedback.metaTitle'), description: () => t('feedbac
       </div>
       <p v-if="pkg" class="m-0 flex items-center gap-8px text-13px text-ink-secondary">
         {{ t('feedback.package') }}
-        <code class="rounded-tiny bg-surface-inset px-6px py-2px font-mono text-12px text-ink-primary">{{
-          pkg.token
-        }}</code>
+        <code class="rounded-tiny bg-surface-inset px-6px py-2px font-mono text-12px text-ink-primary"
+          ><OnCodeText :text="pkg.token"
+        /></code>
         <button
           type="button"
           class="m-0 border-none bg-transparent p-0 font-sans text-12.5px text-ink-tertiary underline outline-none hover:text-ink-primary focus-visible:shadow-focus-ring"

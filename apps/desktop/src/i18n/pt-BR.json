@@ -9,6 +9,7 @@
     "discover": "Descobrir",
     "categories": "Categorias",
     "rankings": "Ranking",
+    "recent": "Recém-atualizados",
     "installed": "Instalados",
     "updates": "Atualizações",
     "history": "Histórico de atualizações",
@@ -112,6 +113,10 @@
       "installs365d": "Um ano"
     },
     "noStats": "Sem estatísticas"
+  },
+  "recent": {
+    "title": "Atualizados recentemente",
+    "subtitle": "Apps com novas versões, os mais recentes primeiro"
   },
   "search": {
     "title": "Buscar",
@@ -277,7 +282,6 @@
       "autoNo": "Atualizado pelo Homebrew",
       "uninstall": "Ao desinstalar",
       "arch": "Arquitetura",
-      "minMacos": "Sistema mínimo",
       "license": "Licença"
     },
     "deps": {

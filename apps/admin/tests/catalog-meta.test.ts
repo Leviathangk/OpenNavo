@@ -133,7 +133,8 @@ describe('Job center: types', () => {
       'snapshot_build',
       'changelog_schedule',
       'assets_download-size',
-      'cleanup'
+      'cleanup',
+      'facts_sources'
     ]);
     expect(TRIGGER_TYPES).not.toContain('enrich_schedule');
     expect(JOB_TYPES).toEqual(

@@ -110,7 +110,7 @@ const groups = computed<OnCommandGroup[]>(() => {
   payloads.clear();
   const q = query.value.trim();
   if (!q) {
-    const pages = ['discover', 'categories', 'rankings', 'installed', 'updates', 'settings'] as const;
+    const pages = ['discover', 'categories', 'rankings', 'recent', 'installed', 'updates', 'settings'] as const;
     return [
       {
         key: 'navigation',

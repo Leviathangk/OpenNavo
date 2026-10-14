@@ -48,18 +48,11 @@
     "title": "インストールコマンド"
   },
   "cask": {
-    "platform": "システムとアーキテクチャ",
-    "platforms": "プラットフォームの対応状況",
     "version": "利用可能なバージョン",
-    "requirements": "システム要件",
-    "formulae": "コマンドラインの依存関係",
-    "casks": "アプリの依存関係",
     "unknown": "未確認",
     "noMac": "macOSのサポートは宣言されていません",
     "rosetta": "Rosettaが必要です",
     "legacy": "一部のプラットフォームで旧バージョンを利用できます",
-    "arm64": "Appleシリコン",
-    "x86_64": "Intel",
     "declarations": "インストールとアンインストールの内容",
     "install": "インストール",
     "uninstall": "アンインストール",

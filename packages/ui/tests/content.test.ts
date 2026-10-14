@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import OnAppCard from '../src/components/OnAppCard.vue';
 import OnAppRow from '../src/components/OnAppRow.vue';
 import OnBreadcrumb from '../src/components/OnBreadcrumb.vue';
+import OnCodeText from '../src/components/OnCodeText.vue';
 import OnCategoryChips from '../src/components/OnCategoryChips.vue';
 import OnEmpty from '../src/components/OnEmpty.vue';
 import OnErrorState from '../src/components/OnErrorState.vue';
@@ -16,7 +17,8 @@ import OnOffline from '../src/components/OnOffline.vue';
 import OnPagination from '../src/components/OnPagination.vue';
 import OnRankRow from '../src/components/OnRankRow.vue';
 import OnSkeleton from '../src/components/OnSkeleton.vue';
-import { commandLines } from '../src/utils/command';
+import { codeParts, wordPieces } from '../src/utils/codeText';
+import { commandBreak } from '../src/utils/command';
 import { parseHighlight } from '../src/utils/highlight';
 import { paginationRange } from '../src/utils/pagination';
 import { packageSummary } from './fixtures';
@@ -46,19 +48,26 @@ describe('Content helpers', () => {
     expect(view(0, 0)).toEqual([1]);
   });
 
-  it('Wraps commands', () => {
-    expect(commandLines('brew install --cask uv')).toEqual(['brew install --cask uv']);
-    expect(commandLines('brew install --cask visual-studio-code')).toEqual([
-      'brew install --cask \\',
-      '    visual-studio-code'
-    ]);
-    expect(commandLines('brew install --formula imagemagick-full')).toEqual([
-      'brew install --formula \\',
-      '    imagemagick-full'
-    ]);
-    expect(commandLines('brew bundle --file=~/Downloads/Brewfile --no-lock')).toEqual([
-      'brew bundle --file=~/Downloads/Brewfile --no-lock'
-    ]);
+  it('Splits long commands after --cask/--formula', () => {
+    expect(commandBreak('brew install --cask uv')).toBeNull();
+    expect(commandBreak('brew install --cask visual-studio-code')).toEqual({
+      head: 'brew install --cask',
+      tail: 'visual-studio-code'
+    });
+    expect(commandBreak('brew install --formula imagemagick-full')).toEqual({
+      head: 'brew install --formula',
+      tail: 'imagemagick-full'
+    });
+    expect(commandBreak('brew install --cask visual-studio-code', 80)).toBeNull();
+    expect(commandBreak('brew bundle --file=~/Downloads/Brewfile --no-lock')).toBeNull();
+  });
+
+  it('Splits code text into words and long words after separators', () => {
+    expect(codeParts('brew upgrade  --cask\n  code')).toEqual(['brew', ' ', 'upgrade', '  ', '--cask', '\n', '  code']);
+    expect(codeParts('  "a",\n\n    "b"\n')).toEqual(['  "a",', '\n\n', '    "b"', '\n']);
+    expect(wordPieces('visual-studio-code')).toEqual(['visual-studio-code']);
+    expect(wordPieces('~/Library/com.apple.plist')).toEqual(['~/', 'Library/', 'com.', 'apple.', 'plist']);
+    expect(wordPieces('--filter=a.b')).toEqual(['--filter=', 'a.', 'b']);
   });
 });
 
@@ -164,6 +173,25 @@ describe('OnKeyValueList', () => {
   });
 });
 
+describe('OnCodeText', () => {
+  it('Keeps words whole and the text unchanged', () => {
+    const text = 'brew upgrade --cask --greedy visual-studio-code';
+    const wrapper = mount({
+      components: { OnCodeText },
+      template: `<code><OnCodeText :text="text" /></code>`,
+      data: () => ({ text })
+    });
+    expect(wrapper.findAll('.on-code-word').map(word => word.text())).toEqual(text.split(' '));
+    expect(wrapper.element.textContent).toBe(text);
+    const path = mount({
+      components: { OnCodeText },
+      template: `<pre><OnCodeText text="~/Library/a b.plist\n  x" /></pre>`
+    });
+    expect(path.element.textContent).toBe('~/Library/a b.plist\n  x');
+    expect(path.findAll('wbr')).toHaveLength(3);
+  });
+});
+
 describe('OnInstallCommand', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -171,11 +199,10 @@ describe('OnInstallCommand', () => {
   it('Copies the original wrapped command and restores the label after 1.5 seconds', async () => {
     const copy = vi.fn(async (_text: string) => {});
     const wrapper = mount(OnInstallCommand, { props: { command: 'brew install --cask visual-studio-code', copy } });
-    expect(wrapper.findAll('pre .block').map(line => line.text())).toEqual([
-      '$ brew install --cask \\',
-      'visual-studio-code'
-    ]);
-    expect(wrapper.findAll('pre .block')[1]?.element.textContent).toBe('      visual-studio-code');
+    // Both parts are always rendered; the row width decides in CSS whether the tail wraps.
+    expect(wrapper.get('.on-command-head').text()).toBe('$ brew install --cask \\');
+    expect(wrapper.get('.on-command-tail').text()).toBe('visual-studio-code');
+    expect(wrapper.get('pre code').attributes('style')).toBe('--on-command-head: 21ch; --on-command-line: 40ch;');
     await wrapper.get('button').trigger('click');
     await Promise.resolve();
     expect(copy).toHaveBeenCalledWith('brew install --cask visual-studio-code');

@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/cache"
 	pipeline "github.com/opennavo/opennavo/server/internal/changelog"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/store"
 )
 
 func (s *PublicService) ReleasePage(ctx context.Context, kind, token, locale string, current, size int, onlyWithNotes bool) (publicapi.ReleasePage, error) {
@@ -53,6 +55,10 @@ func (s *PublicService) ReleasePage(ctx context.Context, kind, token, locale str
 	}
 	return out, nil
 }
+
+// timeline lists one entry per base version plus one per build with an editorial note of its own:
+// casks such as Amore keep 0.1 while every build ships new notes. Builds without their own note
+// share the entry of their base version, dated by the first of them as before.
 func (s *PublicService) timeline(ctx context.Context, id int64, locale string) ([]publicapi.ReleaseEntry, error) {
 	versions, err := s.Store.TimelineVersions(ctx, id)
 	if err != nil {
@@ -62,19 +68,80 @@ func (s *PublicService) timeline(ctx context.Context, id int64, locale string) (
 	if err != nil {
 		return nil, err
 	}
-	items := map[string]publicapi.ReleaseEntry{}
+	type item struct {
+		entry  publicapi.ReleaseEntry
+		base   string
+		recent time.Time
+	}
+	newItem := func(version, base string) *item {
+		return &item{base: base, entry: publicapi.ReleaseEntry{Version: version, VersionBase: &base, Source: publicapi.ReleaseEntrySourceHomebrew, Sections: []publicapi.ReleaseSection{}, Translation: publicapi.TranslationInfo{Status: publicapi.TranslationInfoStatusNone}}}
+	}
+	// The first local observation is not an upstream commit timestamp; using it would fabricate ingestion latency.
+	earliestCommit := func(it *item, v store.TimelineVersion) {
+		if v.BrewCommittedAt != nil && (it.entry.BrewCommittedAt == nil || v.BrewCommittedAt.Before(*it.entry.BrewCommittedAt)) {
+			it.entry.BrewCommittedAt = v.BrewCommittedAt
+		}
+	}
+	builds, byBase, noted := map[int64]store.TimelineVersion{}, map[string][]store.TimelineVersion{}, map[int64]bool{}
 	for _, v := range versions {
-		// The first local observation is not an upstream commit timestamp; using it would fabricate ingestion latency.
-		items[v.VersionBase] = publicapi.ReleaseEntry{Version: v.VersionBase, Source: publicapi.ReleaseEntrySourceHomebrew, BrewCommittedAt: v.BrewCommittedAt, Sections: []publicapi.ReleaseSection{}, Translation: publicapi.TranslationInfo{Status: publicapi.TranslationInfoStatusNone}}
+		builds[v.ID] = v
+		byBase[v.VersionBase] = append(byBase[v.VersionBase], v)
+	}
+	for _, r := range releases {
+		if r.PackageVersionID != nil {
+			noted[*r.PackageVersionID] = true
+		}
+	}
+	items := map[string]*item{}
+	for _, v := range versions {
+		if noted[v.ID] {
+			continue
+		}
+		it := items[v.VersionBase]
+		if it == nil {
+			it = newItem(v.VersionBase, v.VersionBase)
+			items[v.VersionBase] = it
+		}
+		earliestCommit(it, v)
+		if seen := v.Seen(); seen.After(it.recent) {
+			it.recent = seen
+		}
 	}
 	chosen := map[string]bool{}
 	for _, r := range releases {
-		if chosen[r.Version] {
+		key := r.Version
+		var build *store.TimelineVersion
+		if r.PackageVersionID != nil {
+			v, ok := builds[*r.PackageVersionID]
+			if !ok {
+				continue
+			}
+			build, key = &v, v.Version
+		}
+		if chosen[key] {
 			continue
 		}
-		chosen[r.Version] = true
-		entry := items[r.Version]
-		entry.Version = r.Version
+		chosen[key] = true
+		it := items[key]
+		if it == nil {
+			it = newItem(key, r.Version)
+			if build != nil {
+				_, tail, _ := strings.Cut(build.Version, ",")
+				it.entry.Build = &tail
+				earliestCommit(it, *build)
+				it.recent = build.Seen()
+			} else {
+				// Every build of this base has its own note: the shared note belongs before all of them.
+				for _, v := range byBase[key] {
+					earliestCommit(it, v)
+					if seen := v.Seen(); it.recent.IsZero() || seen.Before(it.recent) {
+						it.recent = seen
+					}
+				}
+			}
+			items[key] = it
+		}
+		entry := &it.entry
 		entry.Id = &r.ID
 		entry.Title = r.Title
 		if r.TranslatedTitle != nil {
@@ -113,13 +180,26 @@ func (s *PublicService) timeline(ctx context.Context, id int64, locale string) (
 			}
 			entry.HasNotes = entry.HasNotes || (entry.BodyMarkdown != nil && *entry.BodyMarkdown != "") || (entry.Summary != nil && *entry.Summary != "") || len(entry.Sections) > 0
 		}
-		items[r.Version] = entry
 	}
-	out := make([]publicapi.ReleaseEntry, 0, len(items))
-	for _, entry := range items {
-		out = append(out, entry)
+	list := make([]*item, 0, len(items))
+	for _, it := range items {
+		list = append(list, it)
 	}
-	sort.Slice(out, func(i, j int) bool { return pipeline.VersionLess(out[i].Version, out[j].Version) })
+	// Newest base version first; within one, the newest builds first.
+	sort.Slice(list, func(i, j int) bool {
+		a, b := list[i], list[j]
+		if a.base != b.base {
+			return pipeline.VersionLess(a.base, b.base)
+		}
+		if !a.recent.Equal(b.recent) {
+			return a.recent.After(b.recent)
+		}
+		return pipeline.VersionLess(a.entry.Version, b.entry.Version)
+	})
+	out := make([]publicapi.ReleaseEntry, 0, len(list))
+	for _, it := range list {
+		out = append(out, it.entry)
+	}
 	if len(out) > 0 {
 		out[0].IsLatest = true
 	}

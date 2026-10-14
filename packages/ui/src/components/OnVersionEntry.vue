@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ReleaseEntry } from '@opennavo/api';
-import { formatDate, formatTime, formatVersion } from '@opennavo/shared';
+import { formatDate, formatReleaseVersion, formatTime } from '@opennavo/shared';
 import OnButton from './OnButton.vue';
 import OnChip from './OnChip.vue';
+import OnCodeText from './OnCodeText.vue';
 import OnIcon from './OnIcon.vue';
 import { useUiLocale, useUiMessages } from '../composables/locale';
 import { isMachineTranslated, isPatchVersion, parseInline } from '../utils/version';
@@ -92,6 +93,9 @@ const sections = computed(() =>
   }))
 );
 const heading = computed(() => `h${props.headingLevel}`);
+// Entries for one build show a short build tag; the full build version stays in the tooltip.
+const label = computed(() => formatReleaseVersion(props.entry));
+const fullVersion = computed(() => (props.entry.build ? props.entry.version : undefined));
 </script>
 
 <template>
@@ -109,8 +113,8 @@ const heading = computed(() => `h${props.headingLevel}`);
       :aria-expanded="false"
       @click="emit('toggle')"
     >
-      <component :is="heading" class="m-0 text-14px font-600 text-ink-primary">{{
-        formatVersion(entry.version)
+      <component :is="heading" class="m-0 text-14px font-600 text-ink-primary" :title="fullVersion">{{
+        label
       }}</component>
       <span class="text-12.5px text-ink-tertiary">{{ date }}</span>
       <span class="ml-auto flex items-center gap-4px text-12.5px text-ink-tertiary">
@@ -120,8 +124,8 @@ const heading = computed(() => `h${props.headingLevel}`);
     </button>
     <template v-else>
       <header class="flex flex-wrap items-center gap-x-10px gap-y-6px">
-        <component :is="heading" class="m-0 text-17px font-600 text-ink-primary">{{
-          formatVersion(entry.version)
+        <component :is="heading" class="m-0 text-17px font-600 text-ink-primary" :title="fullVersion">{{
+          label
         }}</component>
         <OnChip v-if="entry.isLatest" tone="accent">{{ text.latest }}</OnChip>
         <OnChip v-if="installed" tone="success" dot>{{ text.installed }}</OnChip>
@@ -197,7 +201,9 @@ const heading = computed(() => `h${props.headingLevel}`);
             <span v-for="(item, index) in section.items" :key="index">
               <template v-for="(segment, part) in item" :key="part">
                 <strong v-if="segment.type === 'strong'" class="font-600 text-ink-primary">{{ segment.text }}</strong>
-                <code v-else-if="segment.type === 'code'" class="on-version-entry__code">{{ segment.text }}</code>
+                <code v-else-if="segment.type === 'code'" class="on-version-entry__code"
+                  ><OnCodeText :text="segment.text"
+                /></code>
                 <template v-else>{{ segment.text }}</template>
               </template>
             </span>

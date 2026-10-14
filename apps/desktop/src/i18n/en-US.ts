@@ -36,6 +36,7 @@ const messages: MessageSchema = {
     discover: 'Discover',
     categories: 'Categories',
     rankings: 'Rankings',
+    recent: 'Recently Updated',
     installed: 'Installed',
     updates: 'Updates',
     history: 'History',
@@ -139,6 +140,10 @@ const messages: MessageSchema = {
       installs365d: '1 year'
     },
     noStats: 'No data yet'
+  },
+  recent: {
+    title: 'Recently Updated',
+    subtitle: 'Apps with new releases, newest first'
   },
   search: {
     title: 'Search',
@@ -305,7 +310,6 @@ const messages: MessageSchema = {
       autoNo: 'Updated by Homebrew',
       uninstall: 'On uninstall',
       arch: 'Architecture',
-      minMacos: 'Requires',
       license: 'License'
     },
     deps: {

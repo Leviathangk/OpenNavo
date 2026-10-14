@@ -188,4 +188,26 @@ describe('OnVersionTimeline', () => {
     await button?.trigger('click');
     expect(wrapper.emitted('update')?.[0]?.[0]).toMatchObject({ version: '1.140.0' });
   });
+  it('Labels build entries and marks the installed build on its own entry or its base version entry', () => {
+    const builds = [
+      entry('0.1,49', { isLatest: true, versionBase: '0.1', build: '49' }),
+      entry('0.1,48', { versionBase: '0.1', build: '48' }),
+      entry('0.1', { versionBase: '0.1' })
+    ];
+    const own = mount(OnVersionTimeline, {
+      props: { entries: builds, installedVersion: '0.1,48' },
+      global: withLocale('en-US')
+    });
+    const items = own.findAll('li');
+    expect(items[0]?.find('h3').text()).toBe('0.1 (49)');
+    expect(items[0]?.find('h3').attributes('title')).toBe('0.1,49');
+    expect(items[2]?.find('h3').text()).toBe('0.1');
+    expect(items[1]?.find('.on-version-timeline__dot--installed').exists()).toBe(true);
+    const shared = mount(OnVersionTimeline, {
+      props: { entries: builds, installedVersion: '0.1,40' },
+      global: withLocale('en-US')
+    });
+    expect(shared.findAll('li')[2]?.find('.on-version-timeline__dot--installed').exists()).toBe(true);
+    expect(shared.findAll('li')[1]?.find('.on-version-timeline__dot--installed').exists()).toBe(false);
+  });
 });

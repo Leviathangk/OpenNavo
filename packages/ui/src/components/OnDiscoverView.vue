@@ -68,6 +68,8 @@ export interface OnDiscoverViewProps {
   collections?: readonly OnDiscoverCollection[];
   labels: OnDiscoverLabels;
   rankingsHref: string;
+  /** Full recently updated list behind the section's See All link. */
+  recentHref: string;
   collectionsHref: string;
   linkAs?: string | Component;
 }
@@ -268,7 +270,13 @@ function featureLinkAttrs(feature: OnDiscoverFeature) {
       </section>
 
       <section v-if="recent.length">
-        <OnSectionHeader :title="labels.recentlyUpdated" :hint="labels.recentlyUpdatedHint" />
+        <OnSectionHeader
+          :title="labels.recentlyUpdated"
+          :hint="labels.recentlyUpdatedHint"
+          :more-label="labels.viewAll"
+          :more-href="recentHref"
+          :link-as="linkAs"
+        />
         <div :class="appGrid">
           <template v-for="pkg in recent.slice(0, 8)" :key="`${pkg.kind}/${pkg.token}`">
             <slot name="card" :pkg="pkg" section="recent" :stats="RECENT_STATS" />

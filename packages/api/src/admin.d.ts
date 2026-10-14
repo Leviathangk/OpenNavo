@@ -271,7 +271,7 @@ export interface paths {
         };
         /**
          * Package list
-         * @description Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial checks non-hidden editorial notes for the current versionBase. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Comma-separated gaps list; any matches any gap (default), all requires all gaps. Text checks actual nonempty values in the corresponding language, not display fallbacks; Chinese names include those supplied by Homebrew. latestEditorial matches apps whose current build shows no non-hidden editorial notes (neither its own nor the shared note of its base version); latestBuildEditorial matches apps whose current version is one of several builds of its base version (0.1,49) and has no notes of its own. price matches apps without a verified price checked within 365 days; fill it for high-demand apps first (sort=popular) rather than for every app. Omitting gaps preserves original filtering; sort=popular, hidden=false, disabled=false and isFont=false support Hermes worklists. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         get: operations["listAdminPackages"];
         put?: never;
@@ -5833,12 +5833,12 @@ export interface components {
          * @example catalog_sync
          * @enum {string}
          */
-        TriggerJobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "changelog_schedule" | "assets_download-size" | "cleanup";
+        TriggerJobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "changelog_schedule" | "assets_download-size" | "cleanup" | "facts_sources";
         /**
          * @example catalog_sync
          * @enum {string}
          */
-        JobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "enrich_schedule" | "translate_schedule" | "changelog_schedule" | "assets_icons" | "assets_download-size" | "cleanup";
+        JobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "enrich_schedule" | "translate_schedule" | "changelog_schedule" | "assets_icons" | "assets_download-size" | "cleanup" | "facts_sources";
         /**
          * @example {
          *       "code": "0000",
@@ -6180,7 +6180,7 @@ export interface components {
             coverage: {
                 primaryCategory: components["schemas"]["Ratio"];
                 icon: components["schemas"]["Ratio"];
-                /** @description Valid apps and fonts whose current versionBase has non-hidden editorial release notes; excludes historical versions and old upstream notes. */
+                /** @description Valid apps and fonts whose current build shows non-hidden editorial release notes (its own or the shared note of its base version); excludes historical versions and old upstream notes. */
                 latestVersionNotes: components["schemas"]["Ratio"];
                 /** @description Valid apps and fonts with actual nonempty summaries and introductions in all six languages, status source/machine/manual, and source language/hash matching current source text. Excludes fallback, queued, failed and stale content. */
                 sixLocaleContent: components["schemas"]["Ratio"];
@@ -7003,6 +7003,12 @@ export interface components {
              * @example null
              */
             editorialReleaseId?: number | null;
+            /**
+             * @description Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes
+             * @example base
+             * @enum {string}
+             */
+            editorialScope?: "build" | "base" | "none";
         };
         /**
          * @example {
@@ -7954,6 +7960,11 @@ export interface components {
             packageName: string;
             /** @example 1.140.0 */
             version: string;
+            /**
+             * @description Full build version (0.1,49) when these editorial notes belong to one build; null for notes shared by a base version
+             * @example null
+             */
+            buildVersion?: string | null;
             /** @example null */
             title?: string | null;
             /**
@@ -12936,7 +12947,7 @@ export interface components {
             clear: true;
         };
         /**
-         * @description Only recorded Cask versions are allowed; version is the recorded versionBase. One editorial per package/version. Omitting publishedAt preserves the existing release date; new notes have no release date unless supplied. Explicit null clears the date. Year 0001 and invalid dates are rejected; ingestion time is never used as a release date. clear=true deletes every editorial language, checks deletion allowance and saves restorable revisions; no editorial returns 1002. Historical notes remain available as fallback after clearing.
+         * @description Only recorded Cask versions are allowed. A full build version (0.1,49) writes or clears the notes that build owns; a base version (0.1, or any version without a build comma) writes or clears the note shared by builds without notes of their own. Neither scope changes the other, so writing the newest build never touches older builds. One editorial per scope. Omitting publishedAt preserves the existing release date; new notes have no release date unless supplied. Explicit null clears the date. Year 0001 and invalid dates are rejected; ingestion time is never used as a release date. clear=true deletes every editorial language, checks deletion allowance and saves restorable revisions; no editorial returns 1002. Historical notes remain available as fallback after clearing.
          * @example {
          *       "sourceLocale": "zh-CN",
          *       "summary": "改善窗口管理体验",
@@ -15827,7 +15838,7 @@ export interface components {
          * @example zhName
          * @enum {string}
          */
-        ListingGap: "zhName" | "zhSummary" | "enSummary" | "primaryCategory" | "tags" | "icon" | "downloadSize" | "latestEditorial" | "price";
+        ListingGap: "zhName" | "zhSummary" | "enSummary" | "primaryCategory" | "tags" | "icon" | "downloadSize" | "latestEditorial" | "latestBuildEditorial" | "price";
         /**
          * @example {
          *       "seq": 1,
@@ -15836,11 +15847,14 @@ export interface components {
          *       "token": "visual-studio-code",
          *       "previousToken": null,
          *       "version": "1.140.0",
+         *       "versionBase": "1.140.0",
+         *       "packageVersionId": 1,
          *       "previousVersion": "1.139.0",
          *       "changedAt": "2026-10-07T08:00:00Z",
          *       "rank30d": 1,
          *       "popularity": 99.5,
          *       "hasEditorial": false,
+         *       "editorialScope": "none",
          *       "webUrl": "https://opennavo.example/apps/visual-studio-code"
          *     }
          */
@@ -15864,8 +15878,19 @@ export interface components {
             token: string;
             /** @example null */
             previousToken: string | null;
-            /** @example null */
+            /**
+             * @description Full build version (0.1,49); events recorded before build notes hold only the base version
+             * @example null
+             */
             version: string | null;
+            /** @example null */
+            versionBase: string | null;
+            /**
+             * Format: int64
+             * @description Recorded build of version; null when the event version is not a recorded build
+             * @example null
+             */
+            packageVersionId: number | null;
             /** @example null */
             previousVersion: string | null;
             /**
@@ -15882,6 +15907,12 @@ export interface components {
             popularity: number;
             /** @example false */
             hasEditorial: boolean;
+            /**
+             * @description Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes
+             * @example base
+             * @enum {string}
+             */
+            editorialScope: "build" | "base" | "none";
             /**
              * Format: uri
              * @example null
@@ -15901,11 +15932,14 @@ export interface components {
          *             "token": "visual-studio-code",
          *             "previousToken": null,
          *             "version": "1.140.0",
+         *             "versionBase": "1.140.0",
+         *             "packageVersionId": 1,
          *             "previousVersion": "1.139.0",
          *             "changedAt": "2026-10-07T08:00:00Z",
          *             "rank30d": 1,
          *             "popularity": 99.5,
          *             "hasEditorial": false,
+         *             "editorialScope": "none",
          *             "webUrl": "https://opennavo.example/apps/visual-studio-code"
          *           }
          *         ],
@@ -15929,11 +15963,14 @@ export interface components {
                  *         "token": "visual-studio-code",
                  *         "previousToken": null,
                  *         "version": "1.140.0",
+                 *         "versionBase": "1.140.0",
+                 *         "packageVersionId": 1,
                  *         "previousVersion": "1.139.0",
                  *         "changedAt": "2026-10-07T08:00:00Z",
                  *         "rank30d": 1,
                  *         "popularity": 99.5,
                  *         "hasEditorial": false,
+                 *         "editorialScope": "none",
                  *         "webUrl": "https://opennavo.example/apps/visual-studio-code"
                  *       }
                  *     ]
@@ -15969,11 +16006,14 @@ export interface components {
          *             "token": "visual-studio-code",
          *             "previousToken": null,
          *             "version": "1.140.0",
+         *             "versionBase": "1.140.0",
+         *             "packageVersionId": 1,
          *             "previousVersion": "1.139.0",
          *             "changedAt": "2026-10-07T08:00:00Z",
          *             "rank30d": 1,
          *             "popularity": 99.5,
          *             "hasEditorial": false,
+         *             "editorialScope": "none",
          *             "webUrl": "https://opennavo.example/apps/visual-studio-code"
          *           }
          *         ],
@@ -19283,6 +19323,7 @@ export interface components {
          *       "rank30d": 1,
          *       "hasEditorial": false,
          *       "editorialReleaseId": null,
+         *       "editorialScope": "none",
          *       "historicalReleaseId": null
          *     }
          */
@@ -19326,6 +19367,12 @@ export interface components {
              */
             editorialReleaseId: number | null;
             /**
+             * @description Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes
+             * @example base
+             * @enum {string}
+             */
+            editorialScope: "build" | "base" | "none";
+            /**
              * Format: int64
              * @example null
              */
@@ -19348,6 +19395,7 @@ export interface components {
          *             "rank30d": 1,
          *             "hasEditorial": false,
          *             "editorialReleaseId": null,
+         *             "editorialScope": "none",
          *             "historicalReleaseId": null
          *           }
          *         ],
@@ -19375,6 +19423,7 @@ export interface components {
                  *         "rank30d": 1,
                  *         "hasEditorial": false,
                  *         "editorialReleaseId": null,
+                 *         "editorialScope": "none",
                  *         "historicalReleaseId": null
                  *       }
                  *     ]
@@ -19414,6 +19463,7 @@ export interface components {
          *             "rank30d": 1,
          *             "hasEditorial": false,
          *             "editorialReleaseId": null,
+         *             "editorialScope": "none",
          *             "historicalReleaseId": null
          *           }
          *         ],
@@ -23880,6 +23930,7 @@ export interface operations {
             };
             path: {
                 id: components["parameters"]["IdPath"];
+                /** @description A recorded full build version (0.1,49) for notes that build owns, or a base version (0.1) for the note shared by builds without their own */
                 version: string;
             };
             cookie?: never;

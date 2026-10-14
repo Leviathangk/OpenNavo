@@ -101,28 +101,6 @@ const info = computed<OnKeyValueItem[]>(() => {
       label: messages.value.cask.version,
       value: messages.value.cask.legacy
     });
-  if (value.platforms?.length) {
-    const requirements = architectures(value.supports).map(platformArch => {
-      const conditions = [
-        ...new Set(
-          value.platforms
-            ?.filter(platform => platform.arch === platformArch)
-            .map(platform => platform.dependsOn.macos ?? messages.value.cask.unknown)
-        )
-      ];
-      return `${t(`package.arch.${platformArch}`)}: ${conditions.join(' / ')}`;
-    });
-    items.push({
-      key: 'macos',
-      label: messages.value.cask.requirements,
-      value: requirements.join(' · ')
-    });
-  } else if (value.minMacos)
-    items.push({
-      key: 'macos',
-      label: t('package.info.minMacos'),
-      value: `macOS ${value.minMacos}`
-    });
   if (value.license) items.push({ key: 'license', label: t('package.info.license'), value: value.license });
   return items;
 });

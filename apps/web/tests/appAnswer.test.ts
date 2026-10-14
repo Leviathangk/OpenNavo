@@ -3,7 +3,6 @@ import type { PackageDetail } from '@opennavo/api';
 import { describe, expect, it } from 'vitest';
 import {
   downloadChoice,
-  faqItems,
   hasZap,
   installNote,
   joinSentences,
@@ -45,16 +44,6 @@ const price = {
   offer: true
 };
 
-const supplement = {
-  ranges: [{ arch: 'arm64' as const, support: 'native' as const, minimum: '12', maximum: null }],
-  appVersion: '5.2',
-  sourceUrl: 'https://vendor.example/requirements',
-  method: 'vendor_docs' as const,
-  verifiedAt: '2026-10-01T08:00:00Z',
-  stale: false,
-  conflicts: [] as ('minimum' | 'maximum' | 'arm64' | 'x86_64')[]
-};
-
 function app(overrides: Partial<PackageDetail> = {}): PackageDetail {
   return {
     kind: 'cask',
@@ -93,7 +82,6 @@ describe('WP9 lead', () => {
       app({ primaryCategory: null, artifacts: { ...app().artifacts, apps: [] } })
     ])
       expect(leadSentences(variant, t)[0]).toContain('Editor');
-    expect(faqItems(app({ price, macosSupplement: supplement, autoUpdates: true }), t, locale)).toHaveLength(4);
     expect(priceAmount(price, t, locale)).toMatch(/9[.,]99/);
   });
 
@@ -189,22 +177,6 @@ describe('WP9 install guide', () => {
 
 describe('WP9 questions and facts', () => {
   const t = translator('en-US');
-
-  it('Answers only from recorded facts', () => {
-    const basic = faqItems(app({ homepage: null }), t, 'en-US');
-    expect(basic.map(item => item.key)).toEqual(['update']);
-    expect(basic[0]!.answer).toBe('Run `brew upgrade --cask editor` to get the latest version Homebrew records.');
-    const auto = faqItems(app({ autoUpdates: true }), t, 'en-US');
-    expect(auto[0]!.answer).toContain('--greedy editor');
-    const full = faqItems(app({ price, macosSupplement: supplement }), t, 'en-US');
-    expect(full.map(item => item.key)).toEqual(['update', 'price', 'appleSilicon', 'withoutHomebrew']);
-    expect(full[1]!.answer).toBe(
-      'No, Editor requires a subscription. Source: vendor.example/pricing, checked Dec 1, 2025.'
-    );
-    // Where the vendor and Homebrew disagree about Apple silicon, the question is left out.
-    const disputed = faqItems(app({ macosSupplement: { ...supplement, conflicts: ['arm64'] } }), t, 'en-US');
-    expect(disputed.map(item => item.key)).not.toContain('appleSilicon');
-  });
 
   it('Formats amounts and keeps the two version dates apart', () => {
     expect(priceAmount(price, t, 'en-US')).toBe('$9.99 per month');

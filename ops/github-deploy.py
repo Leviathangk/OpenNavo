@@ -152,6 +152,11 @@ class Deployment:
             routes = routes.replace(old, replacement)
         routes = re.sub(r'X-OpenNavo-Release "[^"]+"', f'X-OpenNavo-Release "{self.payload["sha"][:12]}"', routes)
         overlay['services'].setdefault('worker', {})['image'] = self.payload['images']['server']
+        # The cache notifier must follow the new web service when the previous release retires.
+        worker_env = overlay['services']['worker'].get('environment', {})
+        if 'WEB_INTERNAL_URL' in worker_env:
+            for old, replacement in {**self.aliases, self.state['services']['web']: self.services['web']}.items():
+                worker_env['WEB_INTERNAL_URL'] = worker_env['WEB_INTERNAL_URL'].replace(old, replacement)
         write_private(self.directory / 'rolling.compose.json', overlay)
         (self.directory / 'release.env').write_text(update_env(self.env.read_text(), {
             'SERVER_IMAGE': self.payload['images']['server'], 'WEB_IMAGE': self.payload['images']['web'],

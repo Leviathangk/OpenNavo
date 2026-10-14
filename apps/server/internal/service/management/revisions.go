@@ -278,7 +278,7 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 				return err
 			}
 			if opName == "RevertRequest" {
-				if store.HistoryHash(current) != r.AfterHash {
+				if !store.HistoryHashMatches(current, r.AfterHash) {
 					return fail(domain.CodeConflict)
 				}
 				target, err = revisionState(r.BeforeData)

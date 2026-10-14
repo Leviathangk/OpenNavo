@@ -96,6 +96,28 @@ func HistoryHash(state HistoryState) string {
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
+
+// HistoryHashMatches accepts snapshots from before build-specific release notes.
+// Only the new column's migration default may be omitted: a real build binding
+// or any other edit must still cause a conflict. Never mutate the snapshot.
+func HistoryHashMatches(state HistoryState, expected string) bool {
+	if HistoryHash(state) == expected {
+		return true
+	}
+	rows := state["releases"]
+	if len(rows) == 0 {
+		return false
+	}
+	legacy := maps.Clone(state)
+	legacy["releases"] = make([]map[string]any, len(rows))
+	for i, row := range rows {
+		legacy["releases"][i] = maps.Clone(row)
+		if row["package_version_id"] == nil {
+			delete(legacy["releases"][i], "package_version_id")
+		}
+	}
+	return HistoryHash(legacy) == expected
+}
 func historyAssets(states ...HistoryState) []int64 {
 	ids := []int64{}
 	for _, state := range states {

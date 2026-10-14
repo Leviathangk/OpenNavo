@@ -4,10 +4,9 @@ import {
   displayUrl,
   OnButton,
   OnCaskArtifacts,
-  OnCaskPlatformSelect,
+  OnCodeText,
   OnInstallCommand,
   OnKeyValueList,
-  selectedCaskPlatform,
   useUiMessages
 } from '@opennavo/ui';
 import type { OnKeyValueItem } from '@opennavo/ui';
@@ -20,44 +19,40 @@ const toasts = useToasts();
 const { data: pkg, token } = await usePackage(props.kind);
 
 const messages = useUiMessages();
-const platformTag = ref('');
-const platform = computed(() => (pkg.value ? selectedCaskPlatform(pkg.value, platformTag.value) : undefined));
-const artifacts = computed(() => platform.value?.artifacts ?? pkg.value?.artifacts);
-const downloadUrl = computed(() => (platform.value ? platform.value.downloadUrl : pkg.value?.downloadUrl));
-const downloadSha = computed(() => (platform.value ? platform.value.downloadSha256 : pkg.value?.downloadSha256));
+const downloadSha = computed(() => pkg.value?.downloadSha256);
 
 const items = computed<OnKeyValueItem[]>(() => {
   const value = pkg.value;
   if (!value) return [];
-  const effectiveArtifacts = platform.value?.artifacts ?? value.artifacts;
+  const artifacts = value.artifacts;
   const list: OnKeyValueItem[] = [{ key: 'tap', label: t('package.details.tap'), value: value.tap, mono: true }];
   if (value.names.length > 1)
     list.push({ key: 'names', label: t('package.details.names'), value: value.names.join(' · ') });
-  if (!artifacts.value?.entries?.length && artifacts.value?.apps.length)
-    list.push({ key: 'apps', label: messages.value.cask.source, value: artifacts.value.apps.join(' · '), mono: true });
-  if (effectiveArtifacts.pkgs.length)
-    list.push({ key: 'pkgs', label: t('package.details.pkgs'), value: effectiveArtifacts.pkgs.join('  '), mono: true });
-  if (effectiveArtifacts.binaries.length)
+  if (!artifacts.entries?.length && artifacts.apps.length)
+    list.push({ key: 'apps', label: messages.value.cask.source, value: artifacts.apps.join(' · '), mono: true });
+  if (artifacts.pkgs.length)
+    list.push({ key: 'pkgs', label: t('package.details.pkgs'), value: artifacts.pkgs.join('  '), mono: true });
+  if (artifacts.binaries.length)
     list.push({
       key: 'binaries',
       label: t('package.info.binaries'),
-      value: effectiveArtifacts.binaries.join(' '),
+      value: artifacts.binaries.join(' '),
       mono: true
     });
-  if (effectiveArtifacts.uninstallNotes?.length)
+  if (artifacts.uninstallNotes?.length)
     list.push({
       key: 'uninstall',
       label: t('package.info.uninstall'),
-      value: effectiveArtifacts.uninstallNotes.join('；')
+      value: artifacts.uninstallNotes.join('；')
     });
   if (value.kegOnly)
     list.push({ key: 'keg', label: t('package.details.kegOnly'), value: t('package.details.kegOnlyValue') });
-  if (downloadUrl.value)
+  if (value.downloadUrl)
     list.push({
       key: 'download',
       label: t('package.details.download'),
-      value: displayUrl(downloadUrl.value),
-      href: downloadUrl.value
+      value: displayUrl(value.downloadUrl),
+      href: value.downloadUrl
     });
   // 08 §10.8: truncate displayed SHA-256; copy full value with the button below.
   if (downloadSha.value)
@@ -103,27 +98,21 @@ usePageSeo({
 <template>
   <div v-if="pkg" class="grid grid-cols-1 gap-20px pt-4px lg:grid-cols-[minmax(0,1fr)_320px]">
     <div class="flex min-w-0 flex-col gap-16px">
-      <OnCaskPlatformSelect
-        v-if="pkg.platforms?.length"
-        :model-value="platform?.tag"
-        :platforms="pkg.platforms"
-        @update:model-value="platformTag = $event"
-      />
       <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-4px">
         <OnKeyValueList :items="items" />
         <div v-if="downloadSha" class="flex justify-end pb-10px">
           <OnButton size="xs" icon="copy" @click="copySha">{{ t('download.copySha') }}</OnButton>
         </div>
       </section>
-      <OnCaskArtifacts v-if="artifacts?.entries?.length" :entries="artifacts.entries" />
+      <OnCaskArtifacts v-if="pkg.artifacts.entries?.length" :entries="pkg.artifacts.entries" />
       <section
         v-if="pkg.caveats"
         class="rounded-big border border-solid border-status-warning bg-surface-card px-18px py-14px"
       >
         <h2 class="m-0 text-13.5px font-600 text-status-warning">{{ t('package.caveats') }}</h2>
-        <pre class="m-0 mt-8px whitespace-pre-wrap font-mono text-12px leading-[1.6] text-ink-secondary">{{
-          pkg.caveats
-        }}</pre>
+        <pre class="m-0 mt-8px whitespace-pre-wrap font-mono text-12px leading-[1.6] text-ink-secondary"><OnCodeText
+          :text="pkg.caveats"
+        /></pre>
       </section>
     </div>
     <aside class="min-w-0">

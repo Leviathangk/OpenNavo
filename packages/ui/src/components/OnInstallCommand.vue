@@ -2,13 +2,13 @@
 import { computed, onBeforeUnmount, ref } from 'vue';
 import OnIcon from './OnIcon.vue';
 import { useUiMessages } from '../composables/locale';
-import { commandLines } from '../utils/command';
+import { commandBreak } from '../utils/command';
 
 export interface OnInstallCommandProps {
   command: string;
   /** Title defaults to Install command; desktop clarifies this is the command OpenNavo executes. */
   title?: string;
-  /** Wrap after --cask/--formula beyond this length. */
+  /** Beyond this length, wrap after --cask/--formula when the command does not fit its row. */
   wrapAt?: number;
   /** Copy implementation, browser clipboard by default; desktop may supply a plugin. */
   copy?: (text: string) => Promise<void>;
@@ -22,7 +22,16 @@ const messages = useUiMessages();
 const copied = ref(false);
 let timer: ReturnType<typeof setTimeout> | undefined;
 
-const lines = computed(() => commandLines(props.command, props.wrapAt));
+const split = computed(() => commandBreak(props.command, props.wrapAt));
+// Column counts for the clamps below: the head with its "$ " prompt, and the whole command on one line.
+const columns = computed(() => {
+  const value = split.value;
+  if (!value) return undefined;
+  return {
+    '--on-command-head': `${value.head.length + 2}ch`,
+    '--on-command-line': `${value.head.length + value.tail.length + 3}ch`
+  };
+});
 
 async function copyCommand() {
   const write = props.copy ?? ((text: string) => navigator.clipboard.writeText(text));
@@ -58,6 +67,24 @@ onBeforeUnmount(() => clearTimeout(timer));
     </div>
     <pre
       class="m-0 overflow-x-auto rounded-default border border-solid border-line-subtle bg-surface-inset px-14px py-12px font-mono text-11.5px leading-[1.6] text-ink-primary"
-    ><code><span v-for="(line, index) in lines" :key="index" class="block whitespace-pre"><span class="select-none" :class="index === 0 ? 'text-brand-salmon' : ''">{{ index === 0 ? '$ ' : '  ' }}</span>{{ line }}</span></code></pre>
+    ><code v-if="split" class="flex flex-wrap" :style="columns"><span class="on-command-head shrink-0 whitespace-pre"><span class="select-none text-brand-salmon">$ </span>{{ split.head }} \</span><span class="on-command-tail shrink-0 whitespace-pre">{{ split.tail }}</span></code><code v-else><span class="block whitespace-pre"><span class="select-none text-brand-salmon">$ </span>{{ command.trim() }}</span></code></pre>
   </div>
 </template>
+
+<style scoped>
+/*
+ * A long command stays on one line while it fits its row and otherwise wraps after --cask/--formula.
+ * Each clamp acts as a switch: (one-line width - row width) * 999 lands far below the minimum when the
+ * line fits and far above the maximum when it does not. Fitting rows clip the head's trailing " \"
+ * and leave one column before the tail; narrow rows show " \" and indent the wrapped tail six
+ * columns, under the command after its "$ " prompt.
+ */
+.on-command-head {
+  overflow: hidden;
+  width: clamp(var(--on-command-head), (var(--on-command-line) - 100%) * 999, var(--on-command-head) + 2ch);
+}
+
+.on-command-tail {
+  padding-left: clamp(1ch, (var(--on-command-line) - 100%) * 999, 6ch);
+}
+</style>

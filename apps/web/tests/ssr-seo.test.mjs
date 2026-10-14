@@ -47,9 +47,16 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       binaries: [],
       uninstallNotes: [],
       entries: [
-        { type: 'zap', phase: 'cleanup', sources: ['~/Library/Preferences/facts.plist'], target: null, declaration: {} }
+        {
+          type: 'zap',
+          phase: 'cleanup',
+          sources: [],
+          target: null,
+          declaration: { zap: [{ trash: ['~/Library/Preferences/facts.plist'] }] }
+        }
       ]
     },
+    homebrewStatus: { state: 'active', reason: null, date: null },
     price: {
       type: 'subscription',
       amount: 9.99,
@@ -177,6 +184,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   let revision = 1;
   let collectionState = 'empty';
   let collectionRequests = 0;
+  const packageQueries = [];
   const api = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     const match = /^\/api\/v1\/packages\/cask\/([^/]+)(\/related)?$/.exec(path);
@@ -205,6 +213,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     } else if (lifecycle === 'flaky-app') {
       status = 503;
     } else if (path === '/api/v1/packages') {
+      packageQueries.push(Object.fromEntries(query));
       const summary = {
         kind: 'cask',
         token: 'ordinary-app',
@@ -226,6 +235,18 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         versionChangedAt: '2026-01-01T00:00:00Z'
       };
       data = { current: Number(query.get('current') ?? 1), size: 24, total: 50, records: [summary] };
+    } else if (path === '/api/v1/packages/cask/plus-app++/releases') {
+      data = {
+        current: 1,
+        size: 20,
+        total: 0,
+        records: [],
+        stats: {
+          count30d: 0,
+          cadence: 'irregular',
+          brewLag: { medianMinutes: null, earlierCount: 0, compared: 0 }
+        }
+      };
     } else if (path === '/api/v1/desktop/releases/latest') {
       data = {
         version: '0.3.0',
@@ -239,7 +260,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       };
     } else if (
       match &&
-      ['versioned-app@11', 'ordinary-app', 'thin-app', 'font-sample', 'facts-app'].includes(match[1])
+      ['versioned-app@11', 'plus-app++', 'ordinary-app', 'thin-app', 'font-sample', 'facts-app'].includes(match[1])
     ) {
       const token = match[1];
       requestedTokens.add(token);
@@ -475,6 +496,22 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         assert.match(html, /<title>Example App @11 for Mac – Download &amp; Install · OpenNavo<\/title>/);
     });
   }
+  await t.test('encoded package tokens preserve path semantics in SSR and payload requests', async () => {
+    const redirect = await fetch(`${origin}/zh/apps/plus-app%2B%2B/versions?source=a%2Bb`, { redirect: 'manual' });
+    assert.equal(redirect.status, 301);
+    assert.equal(redirect.headers.get('location'), '/zh/apps/plus-app++/versions?source=a%2Bb');
+    for (const path of ['/apps/plus-app%2B%2B', '/zh/apps/plus-app%2b%2b/versions', '/apps/versioned-app%4011']) {
+      const response = await fetch(`${origin}${path}`);
+      assert.equal(response.status, 200, `${path}\n${logs}`);
+      const html = await response.text();
+      assert.ok(html.includes(path.includes('plus-app') ? 'plus-app++' : 'versioned-app@11'));
+    }
+    const payload = await fetch(`${origin}/ja/apps/plus-app%2B%2B/versions/_payload.json`);
+    assert.equal(payload.status, 200);
+    for (const token of ['plus-app%252B%252B', 'bad%20token', 'bad%2Ftoken', 'bad%ZZ']) {
+      assert.equal((await fetch(`${origin}/apps/${token}`)).status, 404, token);
+    }
+  });
   for (const path of ['/apps/ordinary-app', '/apps/versioned-app@11/details']) {
     await t.test(path, async () => {
       const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
@@ -520,7 +557,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     );
     assert.ok(!html.includes('"alternateName":[]'));
     const footer = /<footer[\s\S]*?<\/footer>/.exec(html)?.[0] ?? '';
-    for (const path of ['/categories', '/rankings', '/collections', '/download', '/about'])
+    for (const path of ['/categories', '/rankings', '/recent', '/collections', '/download', '/about'])
       assert.ok(footer.includes(`href="${path}"`), path);
   });
   await t.test('GA4 never loads from shared HTML and asks consent by region', async () => {
@@ -554,6 +591,30 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     // An older API without index decisions keeps every language.
     const legacy = await html('/apps/versioned-app@11');
     assert.equal([...legacy.matchAll(/<link[^>]+hreflang="/g)].length, 9);
+  });
+  await t.test('robots response headers match final page directives, including cached responses', async () => {
+    for (const path of [
+      '/apps/thin-app',
+      '/ja/apps/ordinary-app',
+      '/apps/ordinary-app/details',
+      '/apps/gone-app',
+      '/search?q=example',
+      '/articles?type=roundup',
+      '/ja/articles/choose-a-screenshot-app',
+      '/articles/pulled-article'
+    ]) {
+      for (const agent of ['Googlebot', 'Bingbot']) {
+        const response = await fetch(`${origin}${path}`, {
+          headers: { accept: 'text/html', 'user-agent': agent }
+        });
+        const html = await response.text();
+        const directives = [...html.matchAll(/<meta name="robots" content="([^"]*)"/g)].map(m => m[1]);
+        assert.deepEqual(directives, ['noindex, follow'], `${path}: ${agent}`);
+        assert.equal(response.headers.get('x-robots-tag'), directives[0], `${path}: ${agent}`);
+      }
+      const head = await fetch(`${origin}${path}`, { method: 'HEAD' });
+      assert.equal(head.headers.get('x-robots-tag'), 'noindex, follow', `${path}: HEAD`);
+    }
   });
   await t.test('sitemaps fail loudly and list grouped URLs with per-language lastmod', async () => {
     sitemapState = 'error';
@@ -673,6 +734,32 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     );
     assert.ok(!(await title('/apps')).includes('Page'), 'the first page has no page number');
   });
+  await t.test('recently updated lists the newest releases with real page links', async () => {
+    const page = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      return { status: response.status, html: await response.text() };
+    };
+    const canonical = html => /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(html)?.[1]?.replaceAll('&amp;', '&');
+    const before = packageQueries.length;
+    const first = await page('/recent');
+    assert.equal(first.status, 200, logs);
+    assert.deepEqual(
+      packageQueries.slice(before).map(({ sort, kind, current, size }) => ({ sort, kind, current, size })),
+      [{ sort: 'updated', kind: 'cask', current: '1', size: '24' }]
+    );
+    assert.match(first.html, /<title>Recently Updated Mac Apps · OpenNavo<\/title>/);
+    assert.match(first.html, /<h1[^>]*>Recently Updated<\/h1>/);
+    assert.equal(canonical(first.html), 'https://example.test/recent');
+    assert.ok(first.html.includes('href="/apps/ordinary-app"'));
+    assert.ok(first.html.includes('href="/recent?page=2"'), 'pages are real links');
+    assert.ok(first.html.includes('"ItemList"'), 'the listed apps are structured data');
+    assert.ok(/aria-current="page"[^>]*href="\/recent"|href="\/recent"[^>]*aria-current="page"/.test(first.html));
+    const second = await page('/zh/recent?page=2');
+    assert.equal(second.status, 200);
+    assert.match(second.html, /<title>最近更新的 Mac App · 第 2 页 · OpenNavo<\/title>/);
+    assert.equal(canonical(second.html), 'https://example.test/zh/recent?page=2', 'page 2 is its own canonical');
+    assert.equal((await page('/recent?page=4')).status, 404, 'past the last page');
+  });
   await t.test('robots.txt follows the admin crawler policy', async () => {
     const response = await fetch(`${origin}/robots.txt`);
     const text = await response.text();
@@ -735,8 +822,14 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(alternatives.includes('href="/apps/ordinary-app"'));
     assert.ok(alternatives.includes('Open source') && alternatives.includes('Fewer features'));
     const faq = section('package-faq');
-    assert.match(faq, /<details[\s\S]*How do I update Facts App\?/);
-    assert.ok(faq.includes('brew upgrade --cask --greedy facts-app'), 'collapsed answers are in the HTML');
+    // Questions are headings inside collapsed details, in search order.
+    assert.match(faq, /<details[\s\S]*?<summary[^>]*><h3[^>]*>Is Facts App safe\?<\/h3>/);
+    // Inline code renders each word in its own element (OnCodeText), so compare the text without tags.
+    const faqText = faq.replace(/<[^>]*>/g, '');
+    assert.ok(faqText.includes('Is Facts App free?') && faqText.includes('requires a subscription'), faqText);
+    assert.ok(faqText.includes('brew uninstall --zap --cask facts-app'), 'collapsed answers are in the HTML');
+    assert.ok(faqText.includes('Its settings are in ~/Library/Preferences/facts.plist.'), faqText);
+    assert.ok(!faqText.includes('without Homebrew'), 'no boilerplate question');
     // Only the minimum version is disputed, so the vendor's chip statement still answers this.
     assert.ok(faq.includes('The vendor states it runs natively on Apple silicon.'), faq);
     const [app] = graphOf(page).filter(node => node['@type'] === 'SoftwareApplication');
@@ -953,6 +1046,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     'facts-app',
     'font-sample',
     'ordinary-app',
+    'plus-app++',
     'thin-app',
     'versioned-app@11'
   ]);

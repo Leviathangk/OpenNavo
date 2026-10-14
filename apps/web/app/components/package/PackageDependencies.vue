@@ -2,17 +2,7 @@
 import { unwrap } from '@opennavo/api';
 import type { PackageKind } from '@opennavo/shared';
 import { formatCount } from '@opennavo/shared';
-import {
-  architectures,
-  OnAppRow,
-  OnChip,
-  OnEmpty,
-  OnErrorState,
-  OnKeyValueList,
-  OnCaskPlatformSelect,
-  selectedCaskPlatform,
-  useUiMessages
-} from '@opennavo/ui';
+import { architectures, OnAppRow, OnChip, OnEmpty, OnErrorState, OnKeyValueList, useUiMessages } from '@opennavo/ui';
 import type { OnKeyValueItem } from '@opennavo/ui';
 import { packageLink, packagePath } from '~/utils/packageView';
 
@@ -30,18 +20,14 @@ const NuxtLink = resolveComponent('NuxtLink');
 const { data: pkg, token } = await usePackage(props.kind);
 
 const messages = useUiMessages();
-const platformTag = ref('');
 const platforms = computed(() => pkg.value?.platforms ?? []);
-const platform = computed(() =>
-  selectedCaskPlatform({ platforms: platforms.value, version: pkg.value?.version ?? '' }, platformTag.value)
-);
 
 const { data, error, refresh } = await useAsyncData(
-  () => `dependencies:${props.kind}:${token.value}:${locale.value}:${platform.value?.tag ?? ''}`,
+  () => `dependencies:${props.kind}:${token.value}:${locale.value}`,
   () =>
     unwrap(
       api.GET('/packages/{kind}/{token}/dependencies', {
-        params: { path: { kind: props.kind, token: token.value }, query: { platform: platform.value?.tag } }
+        params: { path: { kind: props.kind, token: token.value } }
       })
     )
 );
@@ -58,6 +44,7 @@ const groups = computed(() => {
 const requirements = computed<OnKeyValueItem[]>(() => {
   const value = data.value;
   if (!value || props.kind !== 'cask') return [];
+  // Requirements differ per platform when a cask lists platforms, so one default list would mislead.
   if (platforms.value.length) return [];
   const items: OnKeyValueItem[] = [];
   const dependsOn = value.dependsOn;
@@ -81,7 +68,7 @@ const requirements = computed<OnKeyValueItem[]>(() => {
 });
 
 const conflicts = computed(() => {
-  const value = platform.value?.conflictsWith ?? data.value?.conflictsWith;
+  const value = data.value?.conflictsWith;
   return value
     ? [
         ...value.casks.map(name => ({ kind: 'cask' as const, token: name })),
@@ -93,7 +80,6 @@ const conflicts = computed(() => {
 const empty = computed(
   () =>
     data.value &&
-    !platforms.value.length &&
     !groups.value.runtime.length &&
     !groups.value.build.length &&
     !groups.value.other.length &&
@@ -102,7 +88,7 @@ const empty = computed(
     !data.value.dependents.count
 );
 
-// Without dependency relations this tab only repeats the overview's platform requirements;
+// Without dependency relations this tab has nothing of its own to show;
 // keep it out of search indexes while its links stay followable.
 if (
   data.value &&
@@ -125,12 +111,6 @@ usePageSeo({
   <OnErrorState v-if="error" @retry="refresh()" />
   <div v-else-if="data" class="grid grid-cols-1 gap-20px pt-4px lg:grid-cols-[minmax(0,1fr)_320px]">
     <div class="flex min-w-0 flex-col gap-16px">
-      <OnCaskPlatformSelect
-        v-if="platforms.length"
-        :model-value="platform?.tag"
-        :platforms="platforms"
-        @update:model-value="platformTag = $event"
-      />
       <OnEmpty
         v-if="empty"
         icon="lucide:boxes"

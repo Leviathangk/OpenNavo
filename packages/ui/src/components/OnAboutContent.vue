@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import type { PublicComponents } from '@opennavo/api';
 import OnChip from './OnChip.vue';
+import OnCodeText from './OnCodeText.vue';
 
 type Content = PublicComponents['schemas']['AboutContent'];
 const props = defineProps<{ content: Content; draftLabel: string }>();
@@ -62,9 +63,9 @@ const groups = computed(() => {
                 :href="item.url"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="min-w-0 break-all rounded-default text-ink-primary underline underline-offset-4 outline-none hover:text-accent focus-visible:shadow-focus-ring"
-                >{{ item.name }} <span class="text-ink-secondary">{{ item.version }}</span></a
-              >
+                class="min-w-0 rounded-default text-ink-primary underline [overflow-wrap:anywhere] underline-offset-4 outline-none hover:text-accent focus-visible:shadow-focus-ring"
+                >{{ item.name }} <span class="text-ink-secondary"><OnCodeText :text="item.version" /></span
+              ></a>
               <span class="break-words text-ink-secondary">{{ item.license }}</span>
             </li>
           </ul>

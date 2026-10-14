@@ -33,6 +33,7 @@ export default {
     discover: '发现',
     categories: '分类',
     rankings: '排行榜',
+    recent: '最近更新',
     installed: '已安装',
     updates: '更新',
     history: '更新记录',
@@ -136,6 +137,10 @@ export default {
       installs365d: '一年'
     },
     noStats: '暂无统计'
+  },
+  recent: {
+    title: '最近更新',
+    subtitle: '最近发布新版本的 App，最新的排在最前面'
   },
   search: {
     title: '搜索',
@@ -295,7 +300,6 @@ export default {
       autoNo: '由 Homebrew 更新',
       uninstall: '卸载时',
       arch: '架构',
-      minMacos: '最低系统',
       license: '许可证'
     },
     deps: {

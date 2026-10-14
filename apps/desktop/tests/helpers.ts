@@ -33,6 +33,12 @@ export const stubRoutes: RouteRecordRaw[] = [
     meta: { nav: 'rankings' }
   },
   {
+    path: '/recent',
+    name: 'recent',
+    component: stub('最近更新页'),
+    meta: { nav: 'recent' }
+  },
+  {
     path: '/search',
     name: 'search',
     component: stub('搜索页'),

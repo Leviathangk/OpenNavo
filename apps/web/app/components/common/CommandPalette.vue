@@ -51,6 +51,7 @@ const PAGES = [
   { key: 'discover', path: '/discover', icon: 'compass' },
   { key: 'categories', path: '/categories', icon: 'layout-grid' },
   { key: 'rankings', path: '/rankings', icon: 'chart-no-axes-column' },
+  { key: 'recent', path: '/recent', icon: 'clock' },
   { key: 'collections', path: '/collections', icon: 'boxes' },
   { key: 'download', path: '/download', icon: 'download' },
   { key: 'brewfile', path: '/brewfile', icon: 'file-text' }

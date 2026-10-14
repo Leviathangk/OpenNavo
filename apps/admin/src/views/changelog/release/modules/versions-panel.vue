@@ -12,12 +12,14 @@ import ReleaseEditor from '@/components/opennavo/release-editor.vue';
 import { booleanOptions, compactParams, formatDateTime, toBoolean } from '@/utils/opennavo';
 import { $t } from '@/locales';
 import NotesEditor from './notes-editor.vue';
+import { notesVersion, ownsNotes } from './notes';
 
 defineOptions({ name: 'ChangelogVersionsPanel' });
 
 type Row = RecordOf<'listAdminVersions'>;
 
 // Cataloged versions (07 §10.3): all versions, including those without notes; write/edit/clear our editorial notes.
+// A build (0.1,49) gets notes of its own; until then it shows its base version's shared note, tagged as shared.
 // Existing notes open the translation drawer; clearing removes only editorial notes, recoverable through recycle bin/revisions.
 const appStore = useAppStore();
 const { hasAuth } = useAuth();
@@ -77,8 +79,12 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
       width: 180,
       render: row => (
         <div class="flex flex-wrap gap-4px">
-          <NTag size="small" bordered={false} type={row.hasEditorial ? 'success' : 'default'}>
-            {row.hasEditorial ? $t('page.changelog.notes.written') : $t('page.changelog.notes.notWritten')}
+          <NTag size="small" bordered={false} type={ownsNotes(row) ? 'success' : row.hasEditorial ? 'info' : 'default'}>
+            {ownsNotes(row)
+              ? $t('page.changelog.notes.written')
+              : row.hasEditorial
+                ? $t('page.changelog.notes.shared', { version: row.versionBase })
+                : $t('page.changelog.notes.notWritten')}
           </NTag>
           {row.historicalReleaseId && (
             <NTag size="small" bordered={false}>
@@ -98,7 +104,7 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
         <div class="flex flex-wrap items-center justify-center gap-6px">
           {canWrite.value && (
             <NButton size="small" type="primary" ghost onClick={() => openEditor(row)}>
-              {row.hasEditorial ? $t('page.changelog.notes.edit') : $t('page.changelog.notes.write')}
+              {ownsNotes(row) ? $t('page.changelog.notes.edit') : $t('page.changelog.notes.write')}
             </NButton>
           )}
           {row.editorialReleaseId && (
@@ -106,7 +112,7 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
               {$t('page.changelog.notes.translations')}
             </NButton>
           )}
-          {canWrite.value && row.hasEditorial && (
+          {canWrite.value && ownsNotes(row) && (
             <NButton size="small" type="error" quaternary onClick={() => clear(row)}>
               {$t('page.changelog.notes.clear')}
             </NButton>
@@ -130,11 +136,11 @@ function openTranslations(id: number) {
 function clear(row: Row) {
   window.$dialog?.warning({
     title: $t('page.changelog.notes.clear'),
-    content: $t('page.changelog.notes.clearConfirm', { token: row.token, version: row.versionBase }),
+    content: $t('page.changelog.notes.clearConfirm', { token: row.token, version: notesVersion(row) }),
     positiveText: $t('common.confirm'),
     negativeText: $t('common.cancel'),
     onPositiveClick: async () => {
-      const { error } = await upsertReleaseNotes(row.packageId, row.versionBase, { clear: true });
+      const { error } = await upsertReleaseNotes(row.packageId, notesVersion(row), { clear: true });
       if (error) return;
       window.$message?.success($t('page.changelog.notes.cleared'));
       await getData();

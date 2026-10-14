@@ -95,7 +95,7 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
       width: 130,
       render: row => (
         <div class="flex items-center gap-6px">
-          <span class="font-mono">{row.version}</span>
+          <span class="font-mono">{row.buildVersion ?? row.version}</span>
           {row.hidden && (
             <NTag size="small" bordered={false}>
               {$t('page.changelog.release.hidden')}

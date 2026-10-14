@@ -198,6 +198,7 @@ const detail = samplePackages[1] as PackageSummary;
           :collections="collections"
           :labels="labels"
           rankings-href="#"
+          recent-href="#"
           collections-href="#"
         >
           <template #card="{ pkg, stats }">

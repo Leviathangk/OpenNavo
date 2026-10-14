@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CaskArtifact } from '@opennavo/api';
+import OnCodeText from './OnCodeText.vue';
 import { useUiMessages } from '../composables/locale';
 
 defineProps<{ entries: readonly CaskArtifact[] }>();
@@ -21,11 +22,11 @@ const messages = useUiMessages();
         <p class="m-0 text-ink-primary">
           {{ messages.cask[entry.phase] }} <code class="font-mono text-ink-tertiary">{{ entry.type }}</code>
         </p>
-        <p v-if="entry.sources.length" class="m-0 mt-4px break-all text-ink-secondary">
-          {{ messages.cask.source }}: <span class="font-mono">{{ entry.sources.join(' · ') }}</span>
+        <p v-if="entry.sources.length" class="m-0 mt-4px text-ink-secondary">
+          {{ messages.cask.source }}: <span class="font-mono"><OnCodeText :text="entry.sources.join(' · ')" /></span>
         </p>
-        <p v-if="entry.target" class="m-0 mt-4px break-all text-ink-secondary">
-          {{ messages.cask.target }}: <span class="font-mono">{{ entry.target }}</span>
+        <p v-if="entry.target" class="m-0 mt-4px text-ink-secondary">
+          {{ messages.cask.target }}: <span class="font-mono"><OnCodeText :text="entry.target" /></span>
         </p>
         <details class="mt-8px">
           <summary
@@ -34,9 +35,8 @@ const messages = useUiMessages();
             {{ messages.cask.declaration }}
           </summary>
           <pre
-            class="m-0 mt-8px max-w-full overflow-x-auto whitespace-pre-wrap break-all font-mono text-12px text-ink-secondary"
-            >{{ JSON.stringify(entry.declaration, null, 2) }}</pre
-          >
+            class="m-0 mt-8px max-w-full overflow-x-auto whitespace-pre-wrap font-mono text-12px text-ink-secondary"
+          ><OnCodeText :text="JSON.stringify(entry.declaration, null, 2)" /></pre>
         </details>
       </li>
     </ul>

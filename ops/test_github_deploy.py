@@ -33,6 +33,45 @@ def payload():
 
 
 class DeployTests(unittest.TestCase):
+    def test_prepare_moves_cache_notifier_to_new_web_and_preserves_rollback(self):
+        for use_alias in [False, True]:
+            with self.subTest(use_alias=use_alias), tempfile.TemporaryDirectory() as root:
+                directory = Path(root)
+                (directory / 'deploy').mkdir()
+                (directory / 'releases').mkdir()
+                assets = directory / 'assets'
+                assets.mkdir()
+                caddy = directory / 'admin.caddy'
+                caddy.write_text(':8081 {}')
+                services = {kind: kind + '_previous' for kind in ['api', 'web', 'mcp', 'admin']}
+                (directory / 'deploy/github-state.json').write_text(json.dumps({'services': services}))
+                overlay = {'services': {name: {'environment': {}, 'networks': {}} for name in services.values()}}
+                overlay['services'][services['web']].update({
+                    'networks': {'default': {'aliases': ['web-previous-alias']}},
+                    'volumes': [{'source': str(assets), 'target': '/app/.output/public/_nuxt'}]})
+                overlay['services'][services['admin']]['volumes'] = [
+                    {'source': str(caddy), 'target': '/etc/caddy/Caddyfile'},
+                    {'source': str(directory / 'admin'), 'target': '/srv/admin'}]
+                old_host = 'web-previous-alias' if use_alias else services['web']
+                overlay['services']['worker'] = {'environment': {
+                    'WEB_INTERNAL_URL': 'http://' + old_host + ':9091',
+                    'WEB_INTERNAL_SECRET': '${WEB_INTERNAL_SECRET}', 'OTHER_SETTING': 'unchanged'}}
+                rolling = directory / 'deploy/rolling.compose.json'
+                rolling.write_text(json.dumps(overlay))
+                (directory / 'current-release.env').write_text('SERVER_IMAGE=old\n')
+                (directory / 'live.caddy').write_text('reverse_proxy web-previous-alias:3000\n')
+                obj = deploy.Deployment({'root': root, 'caddy_file': 'live.caddy',
+                                         'compose_file': 'compose.yml', 'project': 'fixture'}, payload())
+                with patch.object(deploy, 'command', return_value='fixture-container'):
+                    obj.prepare(archive())
+                candidate = json.loads((obj.directory / 'rolling.compose.json').read_text())
+                expected_host = 'web-default-' + obj.release if use_alias else obj.services['web']
+                self.assertEqual(candidate['services']['worker']['environment'], {
+                    'WEB_INTERNAL_URL': 'http://' + expected_host + ':9091',
+                    'WEB_INTERNAL_SECRET': '${WEB_INTERNAL_SECRET}', 'OTHER_SETTING': 'unchanged'})
+                self.assertEqual(json.loads(rolling.read_text()), overlay)
+                self.assertEqual(candidate['services'][services['web']], overlay['services'][services['web']])
+
     def test_cleanup_stops_previous_release_and_removes_only_older_app_containers(self):
         obj = object.__new__(deploy.Deployment)
         obj.config = {'project': 'example-prod'}

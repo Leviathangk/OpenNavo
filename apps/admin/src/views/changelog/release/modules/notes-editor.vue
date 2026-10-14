@@ -5,7 +5,7 @@ import type { RecordOf } from '@/typings/api/opennavo';
 import MarkdownEditor from '@/components/opennavo/markdown-editor.vue';
 import { CONTENT_LOCALE_OPTIONS } from '@/utils/content-locale';
 import { $t } from '@/locales';
-import { NOTES_LIMITS, buildNotesBody, emptyNotes, notesFromRelease, validateNotes } from './notes';
+import { NOTES_LIMITS, buildNotesBody, emptyNotes, notesFromRelease, notesVersion, ownsNotes, validateNotes } from './notes';
 import type { NotesForm } from './notes';
 
 defineOptions({ name: 'ReleaseNotesEditor' });
@@ -20,13 +20,14 @@ const form = reactive<NotesForm>(emptyNotes());
 const loading = ref(false);
 const saving = ref(false);
 const title = computed(() =>
-  props.version ? $t('page.changelog.notes.editorTitle', { token: props.version.token, version: props.version.versionBase }) : ''
+  props.version ? $t('page.changelog.notes.editorTitle', { token: props.version.token, version: notesVersion(props.version) }) : ''
 );
 
 watch(show, async open => {
   if (!open || !props.version) return;
   Object.assign(form, emptyNotes());
-  if (!props.version.editorialReleaseId) return;
+  // A build still showing its base version's shared note starts empty: saving writes notes of its own.
+  if (!props.version.editorialReleaseId || !ownsNotes(props.version)) return;
   loading.value = true;
   const { data, error } = await fetchReleaseDetail(props.version.editorialReleaseId);
   loading.value = false;
@@ -51,7 +52,7 @@ async function save() {
     return;
   }
   saving.value = true;
-  const { error } = await upsertReleaseNotes(props.version.packageId, props.version.versionBase, buildNotesBody(form));
+  const { error } = await upsertReleaseNotes(props.version.packageId, notesVersion(props.version), buildNotesBody(form));
   saving.value = false;
   if (error) return;
   window.$message?.success($t('page.changelog.notes.saved'));

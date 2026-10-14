@@ -2,7 +2,16 @@
 import { computed, watch } from 'vue';
 import { Translation, useI18n } from 'vue-i18n';
 import { formatBytes } from '@opennavo/shared';
-import { OnAppIcon, OnButton, OnChip, OnModal, OnProgressMeter, OnSegmented, OnSkeleton } from '@opennavo/ui';
+import {
+  OnAppIcon,
+  OnButton,
+  OnChip,
+  OnCodeText,
+  OnModal,
+  OnProgressMeter,
+  OnSegmented,
+  OnSkeleton
+} from '@opennavo/ui';
 import type { DeleteMode, LocalApp, PlanItem } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import FullDiskAccessGate from '@/components/permissions/FullDiskAccessGate.vue';
@@ -174,10 +183,9 @@ watch(
         <span v-if="brewCommand && store.stage === 'review'" class="mt-4px block">
           <Translation keypath="uninstall.command" tag="span">
             <template #command>
-              <code
-                class="rounded-tiny bg-surface-inset px-5px py-1px font-mono text-11.5px text-component-mono-text"
-                >{{ brewCommand }}</code
-              >
+              <code class="rounded-tiny bg-surface-inset px-5px py-1px font-mono text-11.5px text-component-mono-text"
+                ><OnCodeText :text="brewCommand"
+              /></code>
             </template>
           </Translation>
         </span>

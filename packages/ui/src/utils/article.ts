@@ -5,6 +5,7 @@
 // card segments for the host to render, and headings get anchors for the table of contents.
 import { sanitize } from 'isomorphic-dompurify';
 import MarkdownIt from 'markdown-it';
+import { codeWordsHtml } from './codeText';
 
 const ALLOWED_TAGS = [
   'a',
@@ -22,6 +23,7 @@ const ALLOWED_TAGS = [
   'p',
   'pre',
   's',
+  'span',
   'strong',
   'table',
   'tbody',
@@ -29,7 +31,8 @@ const ALLOWED_TAGS = [
   'th',
   'thead',
   'tr',
-  'ul'
+  'ul',
+  'wbr'
 ];
 const ALLOWED_ATTR = [
   'href',
@@ -123,6 +126,10 @@ md.core.ruler.push('article_links', state => {
     }
   }
 });
+
+// Inline code wraps between words only, like OnCodeText; OnMarkdownView styles .on-code-word.
+md.renderer.rules.code_inline = (tokens, index) =>
+  `<code>${codeWordsHtml(tokens[index]?.content ?? '', md.utils.escapeHtml)}</code>`;
 
 md.renderer.rules.image = (tokens, index, options, env, self) => {
   const token = tokens[index];

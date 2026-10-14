@@ -89,13 +89,14 @@ func TestDefinitionsSchedulesAndRetryOptions(t *testing.T) {
 		"snapshot:build":       time.Date(2026, 10, 5, 3, 5, 0, 0, location),
 		"changelog:schedule":   time.Date(2026, 10, 5, 3, 0, 0, 0, location),
 		"assets:download-size": time.Date(2026, 10, 5, 5, 0, 0, 0, location), "cleanup": time.Date(2026, 10, 5, 4, 0, 0, 0, location),
+		"facts:sources": time.Date(2026, 10, 5, 3, 35, 0, 0, location),
 	}
-	require.Len(t, Definitions, 9)
+	require.Len(t, Definitions, 10)
 	var types []string
 	for _, definition := range Definitions {
 		types = append(types, definition.Type)
 	}
-	require.ElementsMatch(t, []string{"catalog:sync", "analytics:sync", "snapshot:build", "translate:content", "changelog:schedule", "changelog:resolve", "changelog:fetch", "assets:download-size", "cleanup"}, types)
+	require.ElementsMatch(t, []string{"catalog:sync", "analytics:sync", "snapshot:build", "translate:content", "changelog:schedule", "changelog:resolve", "changelog:fetch", "assets:download-size", "cleanup", "facts:sources"}, types)
 	for taskType, want := range expected {
 		next, err := NextSchedule(taskType, now, location)
 		require.NoError(t, err)

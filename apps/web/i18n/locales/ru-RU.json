@@ -9,6 +9,7 @@
     "discover": "Обзор",
     "categories": "Категории",
     "rankings": "Рейтинг",
+    "recent": "Новые версии",
     "articles": "Статьи",
     "collections": "Подборки",
     "download": "Загрузить приложение",
@@ -126,6 +127,11 @@
     "category": "Категории",
     "allCategories": "Все категории"
   },
+  "recent": {
+    "title": "Недавно обновлённые",
+    "metaTitle": "Недавно обновлённые приложения для Mac · OpenNavo",
+    "description": "Приложения для Mac в Homebrew с новыми версиями: сначала самые свежие, с описаниями и историей версий."
+  },
   "search": {
     "title": "Поиск",
     "metaTitle": "Поиск «{q}» · OpenNavo",
@@ -146,6 +152,7 @@
       "discover": "Обзор",
       "categories": "Категории",
       "rankings": "Рейтинг",
+      "recent": "Недавно обновлённые",
       "collections": "Подборки",
       "download": "Загрузить приложение",
       "brewfile": "Список Brewfile"
@@ -280,7 +287,6 @@
       "autoNo": "Обновляется через Homebrew",
       "uninstall": "При удалении",
       "arch": "Архитектура",
-      "minMacos": "Минимальная версия системы",
       "license": "Лицензия"
     },
     "deps": {
@@ -455,9 +461,24 @@
     },
     "faq": {
       "title": "Частые вопросы",
-      "updateQ": "Как обновить {name}?",
-      "updateAuto": "{name} обновляется само. `brew upgrade` по умолчанию его пропускает; при необходимости выполните `brew upgrade --cask --greedy {token}`.",
-      "updateBrew": "Выполните `brew upgrade --cask {token}`, чтобы получить последнюю версию, записанную в Homebrew.",
+      "safetyQ": "Безопасно ли {name}?",
+      "safetyListed": "{name} есть в официальном каталоге Homebrew и не отключено. С сентября 2026 года Homebrew отключает приложения, которые не проходят проверку Gatekeeper в macOS.",
+      "safetyDeprecated": "Homebrew пометил {name} как устаревшее ({reason}) и перестанет его предлагать.",
+      "safetyDisabled": "Homebrew отключил {name} ({reason}), поэтому установить его через Homebrew больше нельзя.",
+      "disabledOn": "Отключено {date}.",
+      "safetyChecksum": "При установке Homebrew сверяет файл с {host} по контрольной сумме SHA-256.",
+      "safetyNoChecksum": "Файл загружается с {host}, и Homebrew не сверяет контрольную сумму.",
+      "safetyInstalls": "За последние 30 дней его установили через Homebrew {count} раз. | За последние 30 дней его установили через Homebrew {count} раза. | За последние 30 дней его установили через Homebrew {count} раз. | За последние 30 дней его установили через Homebrew {count} раза.",
+      "reasons": {
+        "fails_gatekeeper_check": "не проходит проверку Gatekeeper в macOS",
+        "unsigned": "не подписано разработчиком",
+        "discontinued": "разработчик прекратил его развитие",
+        "unmaintained": "его больше никто не поддерживает",
+        "no_longer_available": "его больше нельзя скачать",
+        "no_longer_meets_criteria": "оно больше не соответствует критериям Homebrew",
+        "moved_to_mas": "теперь оно есть только в Mac App Store",
+        "other": "причина указана в описании Homebrew"
+      },
       "priceQ": "{name} бесплатно?",
       "priceA": {
         "free": "Да, {name} можно использовать бесплатно.",
@@ -466,14 +487,73 @@
         "subscription": "Нет, для {name} нужна подписка.",
         "trial": "У {name} есть бесплатный пробный период, после него программа платная."
       },
-      "siliconQ": "Работает ли {name} нативно на чипах Apple?",
+      "priceStoreFree": "«{store}» в Mac App Store можно скачать бесплатно.",
+      "priceStorePaid": "«{store}» в Mac App Store ({region}) стоит {price}.",
+      "priceStoreNote": "Homebrew устанавливает версию с сайта разработчика, а она может отличаться от версии из App Store ценой и возможностями.",
+      "openSourceQ": "Есть ли у {name} открытый исходный код?",
+      "openSourceA": "Исходный код {name} открыт на GitHub ({repo}) под лицензией {license}.",
+      "openSourceArchived": "Репозиторий архивирован и больше не обновляется.",
+      "uninstallQ": "Как полностью удалить {name} с Mac?",
+      "uninstallRun": "Выполните `brew uninstall --cask {token}`.",
+      "uninstallDoes": "Команда {actions}.",
+      "uninstallZap": "Чтобы удалить ещё и настройки с кэшем, выполните `brew uninstall --zap --cask {token}`.",
+      "uninstallZapOne": "Так удалится и {path}.",
+      "uninstallZapMany": "Так удалится ещё {count} файл или папка, например {path}. | Так удалятся ещё {count} файла и папки, например {path}. | Так удалятся ещё {count} файлов и папок, например {path}. | Так удалятся ещё {count} файла и папки, например {path}.",
+      "actions": {
+        "quit": "закрывает приложение",
+        "services": "останавливает {count} фоновую службу | останавливает {count} фоновые службы | останавливает {count} фоновых служб | останавливает {count} фоновой службы",
+        "loginItems": "удаляет {count} объект входа | удаляет {count} объекта входа | удаляет {count} объектов входа | удаляет {count} объекта входа",
+        "helpers": "удаляет {count} привилегированный помощник | удаляет {count} привилегированных помощника | удаляет {count} привилегированных помощников | удаляет {count} привилегированного помощника",
+        "receipts": "стирает {count} запись об установке | стирает {count} записи об установке | стирает {count} записей об установке | стирает {count} записи об установке",
+        "kexts": "выгружает {count} расширение ядра | выгружает {count} расширения ядра | выгружает {count} расширений ядра | выгружает {count} расширения ядра"
+      },
+      "chipsQ": "Работает ли {name} на Mac с чипами Apple (M1 и новее)?",
+      "chips": {
+        "separate": "Да. Homebrew скачивает отдельные сборки для Mac с чипами Apple и с Intel.",
+        "shared": "Homebrew устанавливает его и на Mac с чипами Apple, и на Mac с Intel из одного и того же файла.",
+        "rosetta": "Установить можно, но на Mac с чипами Apple оно работает через Rosetta 2.",
+        "armOnly": "Да, и только на них: на Mac с Intel оно не устанавливается.",
+        "intelOnly": "Нет. Homebrew устанавливает его только на Mac с Intel."
+      },
       "siliconA": {
         "native": "Да. По данным разработчика, программа работает на чипах Apple нативно.",
         "rosetta": "Не нативно. По данным разработчика, программа работает на чипах Apple через Rosetta.",
         "unsupported": "По данным разработчика, Mac с чипами Apple не поддерживаются."
       },
-      "withoutBrewQ": "Можно ли установить {name} без Homebrew?",
-      "withoutBrewA": "Да, скачайте программу на официальном сайте {site}."
+      "languageQ": "Есть ли у {name} русский язык?",
+      "languageYes": "На странице Mac App Store среди языков интерфейса указан русский.",
+      "languageNo": "На странице Mac App Store указан {count} язык интерфейса, и это не русский. | На странице Mac App Store указано {count} языка интерфейса, и русского среди них нет. | На странице Mac App Store указано {count} языков интерфейса, и русского среди них нет. | На странице Mac App Store указано {count} языка интерфейса, и русского среди них нет.",
+      "dataQ": "Где {name} хранит настройки и данные?",
+      "dataSettings": "Настройки хранятся в {path}.",
+      "dataFolders": "Данные хранятся в {paths}.",
+      "dataSource": "Эти пути взяты из списка очистки Homebrew.",
+      "versionQ": "Какая последняя версия {name}?",
+      "versionA": "Последняя версия — {version}.",
+      "versionDated": "Последняя версия — {version}, в Homebrew она появилась {date}.",
+      "versionAuto": "{name} обновляется само; чтобы обновить его через Homebrew, выполните `brew upgrade --cask --greedy {token}`.",
+      "versionBrew": "Чтобы обновить, выполните `brew upgrade --cask {token}`.",
+      "versionChannels": "В Homebrew есть также {list}; их нельзя установить одновременно.",
+      "extrasQ": "Что ещё устанавливается вместе с {name}?",
+      "extrasTools": "Также добавляется {count} утилита командной строки: {list}. | Также добавляются {count} утилиты командной строки: {list}. | Также добавляются {count} утилит командной строки: {list}. | Также добавляются {count} утилиты командной строки: {list}.",
+      "extrasSomeTools": "Также добавляется {count} утилита командной строки, в том числе {list}. | Также добавляются {count} утилиты командной строки, в том числе {list}. | Также добавляются {count} утилит командной строки, в том числе {list}. | Также добавляются {count} утилиты командной строки, в том числе {list}.",
+      "extrasPkg": "Установка идёт через установщик .pkg, который запрашивает пароль администратора.",
+      "extrasPlugins": "Также устанавливаются: {list}.",
+      "extrasConflicts": "Его нельзя установить вместе с {list}.",
+      "plugins": {
+        "quickLook": "плагин быстрого просмотра",
+        "prefPane": "панель «Системных настроек»",
+        "screenSaver": "заставка",
+        "inputMethod": "метод ввода",
+        "audio": "аудиоплагины",
+        "spotlight": "плагин Spotlight",
+        "dictionary": "словарь",
+        "colorPicker": "палитра цветов",
+        "keyboardLayout": "раскладка клавиатуры",
+        "service": "пункт меню «Службы»",
+        "browser": "плагин для браузера"
+      },
+      "alternativesQ": "Чем можно заменить {name}?",
+      "alternativesA": "Например, {list}."
     },
     "articles": {
       "title": "Статьи по теме"

@@ -809,7 +809,8 @@
           "changelog_schedule": "Homebrew コミット取得スケジューラー",
           "assets_icons": "アイコンの収集（廃止）",
           "assets_download-size": "ダウンロードサイズの検出",
-          "cleanup": "クリーンアップ"
+          "cleanup": "クリーンアップ",
+          "facts_sources": "ライセンスと App Store の情報"
         },
         "triggers": {
           "schedule": "スケジュール",
@@ -1785,6 +1786,7 @@
         },
         "written": "入力済み",
         "notWritten": "未入力",
+        "shared": "{version} の説明を共有",
         "historical": "上流の古い更新内容があります",
         "write": "更新内容を書く",
         "edit": "更新内容を編集",

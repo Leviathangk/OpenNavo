@@ -102,6 +102,12 @@ func (r *Resolver) readRequest(ctx context.Context, target string, maximum int64
 }
 func validateSourceURL(u *url.URL) error { return fetch.ValidateURL(u) }
 
+// Get is readRequest for other GitHub readers (source facts), sharing the token, the quota
+// observer and the no-redirect rule.
+func (r *Resolver) Get(ctx context.Context, target string, maximum int64, headers http.Header) ([]byte, int, http.Header, error) {
+	return r.readRequest(ctx, target, maximum, headers)
+}
+
 // Derive sources only from Homebrew definition paths; do not discover websites or upstream repositories over the network.
 func (r *Resolver) Resolve(ctx context.Context, p Candidate) ([]Source, map[string]any, error) {
 	if err := ctx.Err(); err != nil {

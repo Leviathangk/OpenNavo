@@ -481,7 +481,8 @@ const pages: PageMessages = {
         changelog_schedule: 'Homebrew commit scheduler',
         assets_icons: 'Icon harvest (retired)',
         'assets_download-size': 'Download size probe',
-        cleanup: 'Cleanup'
+        cleanup: 'Cleanup',
+        facts_sources: 'License and App Store facts'
       },
       triggers: { schedule: 'Scheduled', manual: 'Manual', event: 'Event' },
       statuses: { running: 'Running', succeeded: 'Succeeded', failed: 'Failed', partial: 'Partial' },
@@ -1431,6 +1432,7 @@ const pages: PageMessages = {
       },
       written: 'Written',
       notWritten: 'Not written',
+      shared: 'Shares {version} notes',
       historical: 'Has old upstream notes',
       write: 'Write notes',
       edit: 'Edit notes',

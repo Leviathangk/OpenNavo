@@ -239,6 +239,7 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 		d.Dependencies, d.DependsOn = dependencyData(p)
 		d.Deprecation = lifecycle(p.Deprecated, p.DeprecationDate, p.DeprecationReason, p.DeprecationReplacement)
 		d.Disable = packageDisable(p, locale)
+		d.HomebrewStatus = homebrewStatus(p)
 		d.SummaryTranslation.Status = publicapi.TranslationInfoStatusNone
 		if p.I18n.Summary != nil && *p.I18n.Summary != "" {
 			d.SummaryTranslation.Status = publicapi.TranslationInfoStatus(p.I18n.Status)
@@ -263,6 +264,9 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 				return d, err
 			}
 			if err := s.appFacts(ctx, &d, p.ID, locale); err != nil {
+				return d, err
+			}
+			if err := s.sourceFacts(ctx, &d, p.ID); err != nil {
 				return d, err
 			}
 			related, err := s.packageArticles(ctx, p.ID, locale)

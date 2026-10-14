@@ -9,7 +9,7 @@ export function useFooterLinks() {
     {
       key: 'browse',
       title: t('nav.browse'),
-      links: links(['discover', 'categories', 'rankings', 'articles', 'collections'])
+      links: links(['discover', 'categories', 'rankings', 'recent', 'articles', 'collections'])
     },
     { key: 'site', title: t('site.name'), links: links(['download', 'brewfile', 'about', 'feedback']) }
   ]);

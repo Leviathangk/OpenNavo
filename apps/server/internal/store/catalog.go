@@ -191,7 +191,7 @@ func (s *Store) ApplyCatalogBatchWithLifecycle(ctx context.Context, mutations []
 					}
 				}
 			}
-			if err := tx.WithContext(ctx).Exec("INSERT INTO catalog_changes (package_id,kind,token,op,reason,event_type,version,previous_version,previous_token) VALUES (?,?,?,'upsert','homebrew',?,?,?,?)", id, item.Kind, item.Token, eventType, item.VersionBase, previousVersion, nullable(mutation.RenamedFrom)).Error; err != nil {
+			if err := tx.WithContext(ctx).Exec("INSERT INTO catalog_changes (package_id,kind,token,op,reason,event_type,version,previous_version,previous_token) VALUES (?,?,?,'upsert','homebrew',?,?,?,?)", id, item.Kind, item.Token, eventType, item.Version, previousVersion, nullable(mutation.RenamedFrom)).Error; err != nil {
 				return fmt.Errorf("record package change: %w", err)
 			}
 			// Former tokens keep resolving (WP2): the observed rename and the tokens Homebrew declares.
@@ -304,7 +304,7 @@ func (s *Store) DispatchOutbox(ctx context.Context, deliver func(context.Context
 				ID               int64
 				JobType, Payload string
 			}
-			if err := tx.WithContext(ctx).Raw("SELECT id,job_type,payload::text FROM job_outbox o WHERE job_type IN ('catalog:sync','analytics:sync','snapshot:build','translate:content','cleanup','assets:download-size','changelog:schedule','changelog:resolve','changelog:fetch') AND available_at<=? AND NOT EXISTS (SELECT 1 FROM packages p WHERE p.kind='formula' AND (p.id=(o.payload->>'packageId')::bigint OR p.id=(SELECT cs.package_id FROM changelog_sources cs WHERE cs.id=(o.payload->>'sourceId')::bigint))) ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED", dueBefore).Scan(&rows).Error; err != nil {
+			if err := tx.WithContext(ctx).Raw("SELECT id,job_type,payload::text FROM job_outbox o WHERE job_type IN ('catalog:sync','analytics:sync','snapshot:build','translate:content','cleanup','assets:download-size','changelog:schedule','changelog:resolve','changelog:fetch','facts:sources') AND available_at<=? AND NOT EXISTS (SELECT 1 FROM packages p WHERE p.kind='formula' AND (p.id=(o.payload->>'packageId')::bigint OR p.id=(SELECT cs.package_id FROM changelog_sources cs WHERE cs.id=(o.payload->>'sourceId')::bigint))) ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED", dueBefore).Scan(&rows).Error; err != nil {
 				return fmt.Errorf("load job outbox: %w", err)
 			}
 			if len(rows) == 0 {

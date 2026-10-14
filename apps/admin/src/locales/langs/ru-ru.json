@@ -809,7 +809,8 @@
           "changelog_schedule": "Планировщик коммитов Homebrew",
           "assets_icons": "Сбор значков (отключен)",
           "assets_download-size": "Определение размера загрузки",
-          "cleanup": "Очистка"
+          "cleanup": "Очистка",
+          "facts_sources": "Лицензии и данные App Store"
         },
         "triggers": {
           "schedule": "По расписанию",
@@ -1785,6 +1786,7 @@
         },
         "written": "Написано",
         "notWritten": "Не написано",
+        "shared": "Общие заметки {version}",
         "historical": "Есть старые примечания от разработчика",
         "write": "Написать примечания",
         "edit": "Изменить примечания",

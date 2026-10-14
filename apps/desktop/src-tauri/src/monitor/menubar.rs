@@ -511,9 +511,20 @@ mod mac {
                 .collect()
         })
     }
+    /// Whether a click landed on a monitor item, whose `clicked:` toggles or switches the popover.
+    pub fn owns_window(window: &NSWindow, mtm: MainThreadMarker) -> bool {
+        ITEMS.with(|items| {
+            items.borrow().values().any(|item| {
+                item.status
+                    .button(mtm)
+                    .and_then(|button| button.window())
+                    .is_some_and(|own| std::ptr::eq(&*own, window))
+            })
+        })
+    }
 }
 #[cfg(target_os = "macos")]
-pub use mac::render as render_template;
+pub use mac::{owns_window, render as render_template};
 pub fn refresh(app: &tauri::AppHandle, p: Publication) {
     if !p.menu_due {
         return;

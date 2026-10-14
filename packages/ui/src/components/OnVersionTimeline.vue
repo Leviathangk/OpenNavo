@@ -57,9 +57,18 @@ function toggle(version: string) {
   toggled.value = next;
 }
 
+// The installed build has its own entry when it has notes of its own; otherwise it shares its base version's entry.
+const installedKey = computed(() => {
+  const installed = props.installedVersion;
+  if (!installed) return null;
+  if (props.entries.some(entry => entry.version === installed)) return installed;
+  const base = installed.split(',')[0]?.trim() ?? '';
+  return props.entries.some(entry => entry.version === base) ? base : null;
+});
+
 function marker(entry: ReleaseEntry, index: number) {
   if (entry.isLatest) return 'latest';
-  if (props.installedVersion && entry.version === props.installedVersion) return 'installed';
+  if (entry.version === installedKey.value) return 'installed';
   return isCollapsed(entry, index) ? 'minor' : 'default';
 }
 </script>
@@ -81,7 +90,7 @@ function marker(entry: ReleaseEntry, index: number) {
         ></span>
         <OnVersionEntry
           :entry="entry"
-          :installed="Boolean(installedVersion) && entry.version === installedVersion"
+          :installed="entry.version === installedKey"
           :collapsed="isCollapsed(entry, index)"
           :collapsible="!defaultCollapsed(index) ? false : !isCollapsed(entry, index)"
           :show-original="showOriginal"

@@ -17,6 +17,7 @@ import (
 	pipeline "github.com/opennavo/opennavo/server/internal/changelog"
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/fetch"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 	"github.com/opennavo/opennavo/server/internal/jobs"
 	"github.com/opennavo/opennavo/server/internal/llm/control"
@@ -28,7 +29,9 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/contenttranslate"
 	"github.com/opennavo/opennavo/server/internal/service/maintenance"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
+	"github.com/opennavo/opennavo/server/internal/service/sourcefacts"
 	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
+	sources "github.com/opennavo/opennavo/server/internal/sourcefacts"
 	"github.com/opennavo/opennavo/server/internal/storage"
 	"github.com/opennavo/opennavo/server/internal/store"
 )
@@ -103,6 +106,14 @@ func run(ctx context.Context) error {
 		return releaseService.Fetch(ctx, p.SourceID)
 	}
 	handlers["changelog:schedule"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return releaseService.Schedule(ctx) }
+	// Source facts read GitHub with the changelog's token and leave it the last tenth of the quota.
+	githubFacts := pipeline.NewResolver(cfg.FetchUserAgent)
+	githubFacts.ObserveQuota = st.ObserveGitHubQuota
+	githubFacts.TokenProvider = releaseService.Fetcher.HTTP.TokenProvider
+	factSources := &sourcefacts.Service{Store: st, GitHub: &sources.GitHub{HTTP: githubFacts},
+		AppStore:    &sources.AppStore{Client: fetch.NewClient(15 * time.Second), UserAgent: cfg.FetchUserAgent},
+		GitHubPause: 200 * time.Millisecond, AppStorePause: 3500 * time.Millisecond}
+	handlers["facts:sources"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return factSources.Run(ctx) }
 	// Independent delivery polling keeps the 30-second source-save debounce independent of catalog sync intervals.
 	dispatchCtx, cancelDispatch := context.WithCancel(ctx)
 	defer cancelDispatch()

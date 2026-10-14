@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PublicComponents } from '@opennavo/api';
-import { formatDate, formatVersion } from '@opennavo/shared';
-import { displayUrl, OnChip, OnIcon, parseInline } from '@opennavo/ui';
+import { formatDate, formatReleaseVersion } from '@opennavo/shared';
+import { displayUrl, OnChip, OnCodeText, OnIcon, parseInline } from '@opennavo/ui';
 
 type ReleaseEntry = PublicComponents['schemas']['ReleaseEntry'];
 
@@ -36,7 +36,7 @@ const meta = computed(() =>
   <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-18px py-16px">
     <h2 class="m-0 flex flex-wrap items-center gap-8px text-13.5px font-600 text-ink-primary">
       <OnChip v-if="release.isLatest" tone="accent">{{ t('package.release.new') }}</OnChip>
-      {{ t('package.release.title', { version: formatVersion(release.version) }) }}
+      {{ t('package.release.title', { version: formatReleaseVersion(release) }) }}
       <small class="text-12px font-400 text-ink-tertiary">{{ meta }}</small>
     </h2>
     <ul v-if="rows.length" class="m-0 mt-10px flex list-none flex-col gap-8px p-0">
@@ -48,8 +48,8 @@ const meta = computed(() =>
             <code
               v-else-if="part.type === 'code'"
               class="rounded-tiny bg-surface-inset px-6px py-1px font-mono text-12px text-component-mono-text"
-              >{{ part.text }}</code
-            >
+              ><OnCodeText :text="part.text"
+            /></code>
             <template v-else>{{ part.text }}</template>
           </template>
         </span>

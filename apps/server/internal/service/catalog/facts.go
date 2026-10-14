@@ -2,10 +2,14 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/facts"
+	sources "github.com/opennavo/opennavo/server/internal/sourcefacts"
+	"github.com/opennavo/opennavo/server/internal/store"
 )
 
 // appFacts adds the WP12 facts pages may show: only verified evidence, with old evidence flagged,
@@ -70,4 +74,53 @@ func (s *PublicService) appFacts(ctx context.Context, d *publicapi.PackageDetail
 	}
 	d.Alternatives = &alternatives
 	return nil
+}
+
+// sourceFacts adds what the facts:sources job read from GitHub and the Mac App Store. Rows are
+// published only when found; unreadable data is skipped rather than shown half-filled.
+func (s *PublicService) sourceFacts(ctx context.Context, d *publicapi.PackageDetail, id int64) error {
+	rows, err := s.Store.PublicSourceFacts(ctx, id)
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		switch row.Source {
+		case "github":
+			var open sources.OpenSource
+			if json.Unmarshal(row.Data, &open) != nil || open.Repo == "" || open.License == "" {
+				continue
+			}
+			d.OpenSource = &publicapi.OpenSourceFact{Repo: open.Repo, Url: open.URL, License: open.License, Archived: open.Archived, CheckedAt: row.CheckedAt}
+		case "app_store":
+			var listing sources.Listing
+			if json.Unmarshal(row.Data, &listing) != nil || listing.Name == "" || listing.URL == "" || listing.Currency == "" {
+				continue
+			}
+			languages := listing.Languages
+			if languages == nil {
+				languages = []string{}
+			}
+			d.AppStore = &publicapi.AppStoreListing{Name: listing.Name, Url: listing.URL, BundleId: listing.BundleID, Price: listing.Price,
+				Currency: listing.Currency, Region: listing.Region, Languages: languages, CheckedAt: row.CheckedAt}
+		}
+	}
+	return nil
+}
+
+// homebrewStatus is Homebrew's own lifecycle, which disabled mixes with OpenNavo's 90-day rule.
+func homebrewStatus(p store.PublicPackage) *publicapi.HomebrewStatus {
+	status := &publicapi.HomebrewStatus{State: publicapi.HomebrewActive}
+	var date *string
+	switch {
+	case p.UpstreamDisabled:
+		status.State, status.Reason, date = publicapi.HomebrewDisabled, p.DisableReason, p.DisableDate
+	case p.Deprecated:
+		status.State, status.Reason, date = publicapi.HomebrewDeprecated, p.DeprecationReason, p.DeprecationDate
+	}
+	if date != nil {
+		if value, err := time.Parse("2006-01-02", *date); err == nil {
+			status.Date = &openapi_types.Date{Time: value}
+		}
+	}
+	return status
 }

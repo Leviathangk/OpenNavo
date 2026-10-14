@@ -3,6 +3,7 @@ import type { Component } from 'vue';
 import type { PackageKind } from '@opennavo/shared';
 import OnAboutSection from './OnAboutSection.vue';
 import OnAppIcon from './OnAppIcon.vue';
+import OnCodeText from './OnCodeText.vue';
 import OnInstallCommand from './OnInstallCommand.vue';
 import OnKeyValueList from './OnKeyValueList.vue';
 import type { OnKeyValueItem } from './OnKeyValueList.vue';
@@ -79,9 +80,9 @@ defineSlots<{
         class="rounded-big border border-solid border-status-warning bg-surface-card px-18px py-14px"
       >
         <h2 class="m-0 text-13.5px font-600 text-status-warning">{{ caveatsTitle }}</h2>
-        <pre class="m-0 mt-8px whitespace-pre-wrap font-mono text-12px leading-[1.6] text-ink-secondary">{{
-          caveats
-        }}</pre>
+        <pre class="m-0 mt-8px whitespace-pre-wrap font-mono text-12px leading-[1.6] text-ink-secondary"><OnCodeText
+          :text="caveats"
+        /></pre>
       </section>
     </div>
     <aside class="flex min-w-0 flex-col gap-14px">

@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import type { ReleaseEntry } from '@opennavo/api';
-import { formatDate, formatVersion } from '@opennavo/shared';
+import { formatDate, formatReleaseVersion } from '@opennavo/shared';
 import { displayUrl, OnChip, OnIcon } from '@opennavo/ui';
 import { OnMarkdown } from '@opennavo/ui/markdown';
 import { useAppLocale } from '@/composables/useAppLocale';
@@ -38,7 +38,7 @@ const meta = computed(() =>
   <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-18px py-16px">
     <h2 class="m-0 flex flex-wrap items-center gap-8px text-13.5px font-600 text-ink-primary">
       <OnChip v-if="release.isLatest" tone="accent">{{ t('package.release.new') }}</OnChip>
-      {{ t('package.release.title', { version: formatVersion(release.version) }) }}
+      {{ t('package.release.title', { version: formatReleaseVersion(release) }) }}
       <small class="text-12px font-400 text-ink-tertiary">{{ meta }}</small>
     </h2>
     <ul v-if="rows.length" class="m-0 mt-10px flex list-none flex-col gap-8px p-0">

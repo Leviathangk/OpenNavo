@@ -17,7 +17,16 @@ export function useSiteNav() {
       const href = localePath(target);
       return path === href || path.startsWith(`${href}/`);
     };
-    for (const key of ['categories', 'rankings', 'articles', 'collections', 'brewfile', 'about', 'feedback'] as const)
+    for (const key of [
+      'categories',
+      'rankings',
+      'recent',
+      'articles',
+      'collections',
+      'brewfile',
+      'about',
+      'feedback'
+    ] as const)
       if (under(`/${key}`)) return key;
     // Author pages belong to the articles they list. There is no /authors page to resolve, so the
     // prefix comes from the article list.
@@ -42,6 +51,7 @@ export function useSiteNav() {
         item('discover', '/discover', 'lucide:compass'),
         item('categories', '/categories', 'lucide:layout-grid'),
         item('rankings', '/rankings', 'lucide:chart-no-axes-column'),
+        item('recent', '/recent', 'lucide:clock'),
         item('articles', '/articles', 'lucide:newspaper')
       ]
     },

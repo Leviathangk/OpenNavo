@@ -9,6 +9,7 @@ declare module 'vue-router' {
       | 'categories'
       | 'collections'
       | 'rankings'
+      | 'recent'
       | 'brewfile'
       | 'installed'
       | 'updates'
@@ -56,6 +57,12 @@ export const routes: RouteRecordRaw[] = [
     name: 'rankings',
     component: () => import('@/pages/RankingsPage.vue'),
     meta: { nav: 'rankings' }
+  },
+  {
+    path: '/recent',
+    name: 'recent',
+    component: () => import('@/pages/RecentPage.vue'),
+    meta: { nav: 'recent' }
   },
   {
     path: '/search',

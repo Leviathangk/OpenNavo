@@ -88,8 +88,14 @@ func historyRefs(ctx context.Context, st *store.Store, op, entity string, in Inp
 		return nil, nil
 	}
 	if op == "UpsertReleaseNotes" {
+		// Only the written scope: a build's notes never record the shared base note, nor the reverse.
+		target, found, err := st.ResolveReleaseNotesTarget(ctx, in.ID, in.Version)
+		if err != nil || !found {
+			return nil, err
+		}
+		scope, scopeArgs := target.Scope()
 		var ids []int64
-		if err := st.DB.WithContext(ctx).Raw("SELECT id FROM releases WHERE package_id=? AND version=? AND source='editorial' ORDER BY hidden,id DESC", in.ID, in.Version).Scan(&ids).Error; err != nil {
+		if err := st.DB.WithContext(ctx).Raw("SELECT id FROM releases WHERE package_id=? AND version=? AND source='editorial' AND "+scope+" ORDER BY hidden,id DESC", append([]any{in.ID, target.Base}, scopeArgs...)...).Scan(&ids).Error; err != nil {
 			return nil, err
 		}
 		refs := []content.Ref{}

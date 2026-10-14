@@ -146,6 +146,13 @@ withDefaults(defineProps<OnMarkdownViewProps>(), { size: 'sm' });
   font-size: 0.92em;
 }
 
+/* Inline code words (renderMarkdown/renderArticle) wrap as units, like OnCodeText. */
+.on-markdown code .on-code-word {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .on-markdown pre {
   overflow-x: auto;
   padding: 12px 14px;

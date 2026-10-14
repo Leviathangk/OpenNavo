@@ -27,6 +27,7 @@ var Definitions = []Definition{
 	{Type: "changelog:fetch", Queue: "changelog", Retries: 3, Ref: "source"},
 	{Type: "assets:download-size", Queue: "default", Cron: "0 5 * * *", Retries: 2, Ref: "package"},
 	{Type: "cleanup", Queue: "default", Cron: "0 4 * * *", Retries: 1},
+	{Type: "facts:sources", Queue: "default", Cron: "35 * * * *", Retries: 1},
 }
 
 type Payload struct {

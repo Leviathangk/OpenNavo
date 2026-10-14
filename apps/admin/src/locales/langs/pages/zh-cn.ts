@@ -460,7 +460,8 @@ const pages = {
         changelog_schedule: '提交记录抓取调度',
         assets_icons: '图标采集（已停用）',
         'assets_download-size': '下载大小探测',
-        cleanup: '清理'
+        cleanup: '清理',
+        facts_sources: '许可证与 App Store 资料'
       },
       triggers: { schedule: '定时', manual: '手动', event: '事件' },
       statuses: { running: '执行中', succeeded: '成功', failed: '失败', partial: '部分成功' },
@@ -1369,6 +1370,7 @@ const pages = {
       },
       written: '已写说明',
       notWritten: '未写',
+      shared: '共用 {version} 的说明',
       historical: '有旧的上游说明',
       write: '写更新说明',
       edit: '编辑说明',

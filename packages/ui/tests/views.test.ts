@@ -148,6 +148,7 @@ describe('OnDiscoverView', () => {
         recent: [],
         labels,
         rankingsHref: '/rankings',
+        recentHref: '/recent',
         collectionsHref: '/collections',
         linkAs: RouterLinkStub
       },
@@ -198,6 +199,7 @@ describe('OnDiscoverView', () => {
         recent: [],
         labels,
         rankingsHref: '/rankings',
+        recentHref: '/recent',
         collectionsHref: '/collections'
       }
     });
@@ -211,7 +213,15 @@ describe('OnDiscoverView', () => {
 
   it('Shows loading skeletons, renders loaded sections through host card slots, and includes recent-update statistics', () => {
     const loading = mount(OnDiscoverView, {
-      props: { chips: [], popular: null, recent: null, labels, rankingsHref: '/rankings', collectionsHref: '/c' }
+      props: {
+        chips: [],
+        popular: null,
+        recent: null,
+        labels,
+        rankingsHref: '/rankings',
+        recentHref: '/recent',
+        collectionsHref: '/c'
+      }
     });
     expect(loading.find('[aria-hidden="true"]').exists()).toBe(true);
 
@@ -227,6 +237,7 @@ describe('OnDiscoverView', () => {
         recent,
         labels,
         rankingsHref: '/rankings',
+        recentHref: '/recent',
         collectionsHref: '/collections',
         collections: [{ key: 'new', title: '新 Mac 必备', count: 6, icons: [], href: '/collections/new' }],
         linkAs: RouterLinkStub
@@ -243,6 +254,10 @@ describe('OnDiscoverView', () => {
     expect(cards[0]?.attributes('data-stats')).toBe('version,installs30d');
     expect(wrapper.text()).toContain('新 Mac 必备');
     expect(wrapper.find('a[href="#/rankings"]').exists()).toBe(true);
+    // Recently Updated links its full list from the section header, like Popular Apps links Rankings.
+    const recentHeader = wrapper.findAll('section')[1];
+    expect(recentHeader?.get('h2').text()).toContain('最近更新');
+    expect(recentHeader?.get('a[href="#/recent"]').text()).toContain('查看全部');
   });
 });
 
