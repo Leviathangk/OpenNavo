@@ -71,7 +71,7 @@ func TestHermesMigrationsPreserveDataAndEnforceCredentialBounds(t *testing.T) {
 	for _, value := range spec.Components.Schemas["AgentPermission"].Value.Enum {
 		expected = append(expected, value.(string))
 	}
-	require.Len(t, expected, 22)
+	require.Len(t, expected, 23)
 	slices.Sort(expected)
 	require.JSONEq(t, mustJSON(t, expected), permissionJSON)
 	for _, denied := range []string{"agent:manage", "i18n:settings", "system:config:edit", "system:user:edit", "system:role:edit", "system:audit:view", "release:desktop:edit", "release:desktop:publish"} {

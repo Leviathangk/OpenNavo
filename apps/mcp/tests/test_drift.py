@@ -12,12 +12,12 @@ from opennavo_mcp.tools.manifest import RESOURCE_PERMISSIONS, TOOLS
 
 
 def test_contract_and_permission_drift() -> None:
-    assert len(TOOLS) == len({tool.name for tool in TOOLS}) == 73
+    assert len(TOOLS) == len({tool.name for tool in TOOLS}) == 82
     assert len(RESOURCE_PERMISSIONS) == 8
-    assert len(PERMISSIONS) == len(set(PERMISSIONS)) == 22
+    assert len(PERMISSIONS) == len(set(PERMISSIONS)) == 23
     assert {tool.permission for tool in TOOLS} - {""} == set(PERMISSIONS)
     assert {op for tool in TOOLS for op in tool.operations} == set(OPERATIONS)
-    assert len(OPERATIONS) == 93
+    assert len(OPERATIONS) == 102
     actual: dict[str, Any] = {}
     for item in DOCUMENT["paths"].values():
         for raw in item.values():

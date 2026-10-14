@@ -38,6 +38,7 @@ describe('AppShell', () => {
       '/categories',
       '/rankings',
       '/recent',
+      '/articles',
       '/collections',
       '/brewfile',
       '/installed',
@@ -53,8 +54,8 @@ describe('AppShell', () => {
     const local = await commands.localAppsList();
     const count = local.status === 'ok' ? local.data.length : -1;
     expect(count).toBeGreaterThan(8);
-    expect(links[6]?.text()).toContain(String(count));
-    expect(links[7]?.text()).toContain('4');
+    expect(links.find(link => link.attributes('href') === '/installed')?.text()).toContain(String(count));
+    expect(links.find(link => link.attributes('href') === '/updates')?.text()).toContain('4');
     wrapper.unmount();
   });
 

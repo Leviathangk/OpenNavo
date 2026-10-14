@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/opennavo/opennavo/server/gen/adminapi"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/service/agent"
 	"github.com/opennavo/opennavo/server/internal/service/assets"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/seeds"
@@ -75,15 +76,36 @@ func TestHermesAgentSeedExactlyMatchesGrantableContract(t *testing.T) {
 			}
 		}
 	}
-	require.Len(t, granted, 22)
+	require.Len(t, granted, 23)
 	require.ElementsMatch(t, spec.Components.Schemas["AgentPermission"].Value.Enum, granted)
+	require.ElementsMatch(t, granted, agent.Grantable, "runtime grants must match the contract and seed")
+}
+
+func TestAllArticleRoutesAvailableToAgents(t *testing.T) {
+	spec, err := adminapi.GetSpec()
+	require.NoError(t, err)
+	policies := AgentPolicies(spec)
+	for route, permission := range map[string]string{
+		"POST /articles/:id/publish":        "content:article:publish",
+		"POST /articles/:id/withdraw":       "content:article:publish",
+		"POST /articles/:id/restore":        "content:article:publish",
+		"POST /articles/:id/revert":         "content:article:edit",
+		"PUT /articles/:id/slug":            "content:article:publish",
+		"PUT /articles/:id/locales/:locale": "content:article:publish",
+		"GET /article-authors":              "content:article:edit",
+		"POST /article-authors":             "content:article:publish",
+		"PUT /article-authors/:id":          "content:article:publish",
+	} {
+		require.Contains(t, policies, route)
+		require.Equal(t, []string{permission}, policies[route].Permissions, route)
+	}
 }
 
 func TestAgentRouteWhitelistCountAndForbiddenSurfaces(t *testing.T) {
 	spec, err := adminapi.GetSpec()
 	require.NoError(t, err)
 	policies := AgentPolicies(spec)
-	require.Len(t, policies, 93)
+	require.Len(t, policies, 102)
 	require.Contains(t, policies, "POST /introspect")
 	require.Equal(t, []string{"dashboard:view"}, policies["GET /dashboard/llm-usage"].Permissions)
 	require.Equal(t, []string{"catalog:asset:upload"}, policies["POST /assets/upload-tickets"].Permissions)

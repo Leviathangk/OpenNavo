@@ -9,14 +9,15 @@ const recentCached = resourceCache<{ total: number; records: PackageSummary[] }>
 export const RECENT_PAGE_SIZE = 24;
 export const peekHome = (locale: string) => cached.peek(locale);
 export const peekPopularApps = (locale: string) => popularCached.peek(locale);
-export const peekRecentApps = (locale: string, page: number) => recentCached.peek(`${locale}:${page}`);
+export const peekRecentApps = (locale: string, page: number, size = RECENT_PAGE_SIZE) =>
+  recentCached.peek(`${locale}:${page}:${size}`);
 
 // The home endpoint only provides twelve apps; fetch enough for three rows in wide desktop windows.
 export function fetchPopularApps(locale: string): Promise<PackageSummary[]> {
   return popularCached(locale, async () => {
     const page = await unwrap(
       api.GET('/packages', {
-        params: { query: { kind: 'cask', sort: 'popular', size: 30, includeFonts: true } },
+        params: { query: { kind: 'cask', sort: 'popular', size: 100, includeFonts: true } },
         headers: { 'Accept-Language': locale }
       })
     );
@@ -25,11 +26,15 @@ export function fetchPopularApps(locale: string): Promise<PackageSummary[]> {
 }
 
 // Recently Updated page: the newest-version-first list that Discover's section previews, one page at a time.
-export function fetchRecentApps(locale: string, page: number): Promise<{ total: number; records: PackageSummary[] }> {
-  return recentCached(`${locale}:${page}`, async () => {
+export function fetchRecentApps(
+  locale: string,
+  page: number,
+  size = RECENT_PAGE_SIZE
+): Promise<{ total: number; records: PackageSummary[] }> {
+  return recentCached(`${locale}:${page}:${size}`, async () => {
     const result = await unwrap(
       api.GET('/packages', {
-        params: { query: { kind: 'cask', sort: 'updated', current: page, size: RECENT_PAGE_SIZE, includeFonts: true } },
+        params: { query: { kind: 'cask', sort: 'updated', current: page, size, includeFonts: true } },
         headers: { 'Accept-Language': locale }
       })
     );
@@ -39,4 +44,19 @@ export function fetchRecentApps(locale: string, page: number): Promise<{ total: 
 
 export function fetchHome(locale: string): Promise<HomeData> {
   return cached(locale, () => unwrap(api.GET('/home', { headers: { 'Accept-Language': locale } })));
+}
+
+// Discover needs more than the short home preview to fill three responsive rows.
+const recentPreviewCached = resourceCache<PackageSummary[]>();
+export const peekRecentPreview = (locale: string) => recentPreviewCached.peek(locale);
+export function fetchRecentPreview(locale: string): Promise<PackageSummary[]> {
+  return recentPreviewCached(locale, async () => {
+    const page = await unwrap(
+      api.GET('/packages', {
+        params: { query: { kind: 'cask', sort: 'updated', size: 100, includeFonts: true } },
+        headers: { 'Accept-Language': locale }
+      })
+    );
+    return page.records;
+  });
 }

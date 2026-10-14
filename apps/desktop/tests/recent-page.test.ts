@@ -8,6 +8,7 @@ import type { ListQuery } from '@/ipc/bindings';
 import { refreshPage } from '@/composables/usePageRefresh';
 import { startLocalState } from '@/stores';
 import RecentPage from '@/pages/RecentPage.vue';
+import PackageLayout from '@/pages/package/PackageLayout.vue';
 import { setup } from './helpers';
 
 const wrappers: VueWrapper[] = [];
@@ -52,7 +53,9 @@ function app(token: string, version: string): PackageSummary {
 }
 
 const cardLinks = (wrapper: VueWrapper) =>
-  wrapper.findAll('article a.on-stretched').map(link => link.attributes('href'));
+  wrapper
+    .findAll('article a.on-stretched')
+    .map(link => new URL(link.attributes('href')!, 'https://example.invalid').pathname);
 const requestUrl = (input: RequestInfo | URL) => new URL(input instanceof Request ? input.url : String(input));
 const OFFLINE = '无法连接 OpenNavo 服务';
 
@@ -116,6 +119,11 @@ describe('Recently Updated page', () => {
       includeFonts: 'true'
     });
     expect(cardLinks(wrapper)).toEqual(['/package/cask/newest', '/package/cask/older']);
+    expect(
+      new URL(wrapper.get('article a.on-stretched').attributes('href')!, 'https://example.invalid').searchParams.get(
+        'returnTo'
+      )
+    ).toBe('/recent?page=1&size=24');
     expect(wrapper.text()).not.toContain(OFFLINE);
     // Same card stats as Discover's section: version first, then 30-day installs.
     const stats = wrapper.get('article').text();
@@ -131,4 +139,24 @@ describe('Recently Updated page', () => {
     expect(cardLinks(wrapper)).toEqual(['/package/cask/next-page']);
     expect(list.mock.calls.length).toBe(localReads);
   });
+});
+
+it('Uses Recently Updated as the parent and keeps it when switching detail tabs', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Offline')));
+  const returnTo = '/recent?page=2&size=28';
+  const { pinia, router } = await setup(`/package/cask/ghostty?returnTo=${encodeURIComponent(returnTo)}`);
+  const wrapper = mount(PackageLayout, {
+    props: { kind: 'cask', token: 'ghostty' },
+    global: { plugins: [pinia, router, i18n] }
+  });
+  wrappers.push(wrapper);
+  await flushPromises();
+  const crumbs = wrapper.findComponent({ name: 'OnBreadcrumb' });
+  expect(crumbs.props('items')[0]).toEqual({ label: '最近更新', href: returnTo });
+  const versions = wrapper.findAll('a').find(link => link.attributes('href')?.includes('/versions?'))!;
+  expect(versions.exists()).toBe(true);
+  await versions.trigger('click');
+  await flushPromises();
+  expect(router.currentRoute.value.query.returnTo).toBe(returnTo);
+  expect(crumbs.props('items')[0].href).toBe(returnTo);
 });

@@ -123,6 +123,78 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 	call("POST", "/desktop-releases", "{}", "1004", true)
 	// After object permission is revoked, retained translation/restore permissions must not let old revisions or requests write the object.
 	tokenPath := "/agent/tokens/" + strconv.FormatInt(credential.Token.ID, 10)
+	t.Run("complete article management through agent gateway", func(t *testing.T) {
+		call("PUT", tokenPath, `{"permissions":["content:article:edit"]}`, "0000", false)
+		call("GET", "/article-authors", "", "0000", true)
+		var article struct {
+			ID       int64
+			Revision int64
+			Status   string
+		}
+		raw := call("POST", "/articles", `{"slug":"agent-guide","sourceLocale":"en-US","type":"tutorial","title":"Agent guide","summary":"A tutorial","bodyMarkdown":"## Steps\n\nFollow these steps."}`, "0000", true)
+		require.NoError(t, json.Unmarshal(raw, &article))
+		path := "/articles/" + strconv.FormatInt(article.ID, 10)
+		change := func(method, suffix string, fields map[string]any, expected string) json.RawMessage {
+			t.Helper()
+			fields["expectedRevision"] = article.Revision
+			body, err := json.Marshal(fields)
+			require.NoError(t, err)
+			return call(method, path+suffix, string(body), expected, true)
+		}
+		raw = change("POST", "/submit", map[string]any{}, "0000")
+		require.NoError(t, json.Unmarshal(raw, &article))
+		change("POST", "/publish", map[string]any{}, "1004")
+		call("POST", "/article-authors", `{"slug":"agent-editor","name":"Editor","sourceLocale":"en-US"}`, "1004", true)
+		call("PUT", tokenPath, `{"permissions":["content:article:edit","content:article:publish"]}`, "0000", false)
+		change("POST", "/publish?dryRun=true", map[string]any{}, "0000")
+		var previewState struct {
+			Revision int64
+			Status   string
+		}
+		require.NoError(t, json.Unmarshal(call("GET", path, "", "0000", true), &previewState))
+		require.Equal(t, article.Revision, previewState.Revision)
+		require.Equal(t, "review", previewState.Status)
+		var quotaBefore struct {
+			Limits struct{ LLMOpsPerDay int }
+			Quota  struct{ LLMOpsRemaining, WritesRemaining int }
+		}
+		require.NoError(t, json.Unmarshal(call("POST", "/introspect", "", "0000", true), &quotaBefore))
+		require.Positive(t, quotaBefore.Quota.WritesRemaining)
+		llmKey := "agent:quota:" + strconv.FormatInt(credential.Token.ID, 10) + ":llm:" + time.Now().UTC().Format("20060102")
+		require.NoError(t, st.Redis.Set(ctx, llmKey, quotaBefore.Limits.LLMOpsPerDay, time.Hour).Err())
+		change("POST", "/publish", map[string]any{}, "1005")
+		require.NoError(t, json.Unmarshal(call("GET", path, "", "0000", true), &previewState))
+		require.Equal(t, "review", previewState.Status)
+		require.Equal(t, article.Revision, previewState.Revision)
+		require.NoError(t, st.Redis.Set(ctx, llmKey, quotaBefore.Limits.LLMOpsPerDay-quotaBefore.Quota.LLMOpsRemaining, time.Hour).Err())
+		raw = change("POST", "/publish", map[string]any{}, "0000")
+		require.NoError(t, json.Unmarshal(raw, &article))
+		require.Equal(t, "published", article.Status)
+		var quotaAfter struct {
+			Quota struct{ LLMOpsRemaining, WritesRemaining int }
+		}
+		require.NoError(t, json.Unmarshal(call("POST", "/introspect", "", "0000", true), &quotaAfter))
+		require.Equal(t, quotaBefore.Quota.LLMOpsRemaining-1, quotaAfter.Quota.LLMOpsRemaining)
+		require.Equal(t, quotaBefore.Quota.WritesRemaining-1, quotaAfter.Quota.WritesRemaining)
+
+		call("PUT", path+"/slug", `{"expectedRevision":1,"slug":"stale-guide"}`, "1003", true)
+		raw = change("PUT", "/slug", map[string]any{"slug": "renamed-agent-guide"}, "0000")
+		require.NoError(t, json.Unmarshal(raw, &article))
+		raw = change("PUT", "/locales/zh-CN", map[string]any{"withheld": true}, "0000")
+		require.NoError(t, json.Unmarshal(raw, &article))
+		raw = change("POST", "/withdraw", map[string]any{"reason": "Updating tutorial"}, "0000")
+		require.NoError(t, json.Unmarshal(raw, &article))
+		require.Equal(t, "archived", article.Status)
+		raw = change("POST", "/restore", map[string]any{}, "0000")
+		require.NoError(t, json.Unmarshal(raw, &article))
+		require.Equal(t, "published", article.Status)
+		change("POST", "/revert", map[string]any{"revisionNumber": 1}, "0000")
+		var author struct{ ID int64 }
+		raw = call("POST", "/article-authors", `{"slug":"agent-editor","name":"Editor","sourceLocale":"en-US"}`, "0000", true)
+		require.NoError(t, json.Unmarshal(raw, &author))
+		require.Positive(t, author.ID)
+		call("PUT", "/article-authors/"+strconv.FormatInt(author.ID, 10), `{"slug":"agent-editor","name":"Updated Editor","sourceLocale":"en-US"}`, "0000", true)
+	})
 	call("PUT", tokenPath, `{"permissions":["catalog:package:edit","translation:review","agent:log:view","content:revision:restore"]}`, "0000", false)
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES('cask','revoked-history','revoked-history','homebrew/cask','Revoked History','1','1','{}','hash')`).Error)
 	var packageID int64

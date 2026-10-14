@@ -2170,8 +2170,8 @@ class CatalogActivityResponseResult(RootModel[CatalogActivityResponse | Business
     root: Annotated[CatalogActivityResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07 08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
-class AgentPermission(RootModel[Literal['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']]):
-    root: Annotated[Literal['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], Field(examples=['dashboard:view'])]
+class AgentPermission(RootModel[Literal['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']]):
+    root: Annotated[Literal['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], Field(examples=['dashboard:view'])]
 
 
 class AgentLimits(BaseModel):
@@ -2199,7 +2199,7 @@ class AgentSettings(BaseModel):
     enabled: Annotated[bool, Field(examples=[True])]
     limits: AgentLimits
     mcpUrl: Annotated[AnyUrl, Field(examples=['https://admin.opennavo.example/mcp'])]
-    grantablePermissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']])]
+    grantablePermissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']])]
     updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
 
 
@@ -2213,7 +2213,7 @@ class AgentSettingsResponse(BaseModel):
 
 
 class AgentSettingsResponseResult(RootModel[AgentSettingsResponse | BusinessErrorResponse]):
-    root: Annotated[AgentSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'mcpUrl': 'https://admin.opennavo.example/mcp', 'grantablePermissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
+    root: Annotated[AgentSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'mcpUrl': 'https://admin.opennavo.example/mcp', 'grantablePermissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
 
 
 class AgentClientCreate(BaseModel):
@@ -2294,7 +2294,7 @@ class AgentTokenCreate(BaseModel):
         extra='forbid',
     )
     name: Annotated[str, Field(examples=['日常运营'], max_length=128, min_length=1)]
-    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=22)] = None
+    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=23)] = None
     allowDelete: Annotated[bool | None, Field(examples=[True])] = True
     expiresAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
     ipAllowlist: Annotated[list[IpAllowlistItem] | None, Field(examples=[[]], max_length=100)] = None
@@ -2305,7 +2305,7 @@ class AgentTokenUpdate(BaseModel):
         extra='forbid',
     )
     name: Annotated[str | None, Field(examples=['日常运营'], max_length=128, min_length=1)] = None
-    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=22)] = None
+    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=23)] = None
     allowDelete: Annotated[bool | None, Field(examples=[True])] = True
     expiresAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
     ipAllowlist: Annotated[list[IpAllowlistItem] | None, Field(examples=[[]], max_length=100)] = None
@@ -2318,7 +2318,7 @@ class AgentToken(BaseModel):
     id: Annotated[int, Field(examples=[1], ge=1)]
     clientId: Annotated[int, Field(examples=[1], ge=1)]
     name: Annotated[str, Field(examples=['日常运营'], max_length=128, min_length=1)]
-    permissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=22)]
+    permissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=23)]
     allowDelete: Annotated[bool, Field(examples=[True])]
     expiresAt: Annotated[AwareDatetime, Field(examples=[None])]
     ipAllowlist: Annotated[list[IpAllowlistItem], Field(examples=[[]], max_length=100)]
@@ -2344,7 +2344,7 @@ class Data21(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[AgentToken], Field(examples=[[{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}]])]
+    records: Annotated[list[AgentToken], Field(examples=[[{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -2360,7 +2360,7 @@ class AgentTokensResponse(BaseModel):
 
 
 class AgentTokensResponseResult(RootModel[AgentTokensResponse | BusinessErrorResponse]):
-    root: Annotated[AgentTokensResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[AgentTokensResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class AgentTokenCreatedResponse(BaseModel):
@@ -2373,7 +2373,7 @@ class AgentTokenCreatedResponse(BaseModel):
 
 
 class AgentTokenCreatedResponseResult(RootModel[AgentTokenCreatedResponse | BusinessErrorResponse]):
-    root: Annotated[AgentTokenCreatedResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'token': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}, 'plaintext': 'MOCK_ONLY_NOT_A_VALID_AGENT_TOKEN'}}])]
+    root: Annotated[AgentTokenCreatedResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'token': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}, 'plaintext': 'MOCK_ONLY_NOT_A_VALID_AGENT_TOKEN'}}])]
 
 
 class AgentTokenResponse(BaseModel):
@@ -2386,7 +2386,7 @@ class AgentTokenResponse(BaseModel):
 
 
 class AgentTokenResponseResult(RootModel[AgentTokenResponse | BusinessErrorResponse]):
-    root: Annotated[AgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}}])]
+    root: Annotated[AgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}}])]
 
 
 class RevokedAgentTokenResponse(BaseModel):
@@ -2399,7 +2399,7 @@ class RevokedAgentTokenResponse(BaseModel):
 
 
 class RevokedAgentTokenResponseResult(RootModel[RevokedAgentTokenResponse | BusinessErrorResponse]):
-    root: Annotated[RevokedAgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': '2026-10-07 08:00:00+00:00', 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'revoked', 'expiringSoon': False}}])]
+    root: Annotated[RevokedAgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': '2026-10-07 08:00:00+00:00', 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'revoked', 'expiringSoon': False}}])]
 
 
 class AgentQuota(BaseModel):
@@ -2422,7 +2422,7 @@ class AgentIntrospection(BaseModel):
     clientName: Annotated[str, Field(examples=['Hermes · 家里电脑'], max_length=200)]
     tokenId: Annotated[int, Field(examples=[1], ge=1)]
     tokenPrefix: Annotated[str, Field(examples=['onv_demo'], max_length=8)]
-    permissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']])]
+    permissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']])]
     allowDelete: Annotated[bool, Field(examples=[True])]
     paused: Annotated[bool, Field(examples=[False])]
     limits: AgentLimits
@@ -2441,7 +2441,7 @@ class AgentIntrospectionResponse(BaseModel):
 
 
 class AgentIntrospectionResponseResult(RootModel[AgentIntrospectionResponse | BusinessErrorResponse]):
-    root: Annotated[AgentIntrospectionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'active': True, 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'paused': False, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'quota': {'callsRemaining': 119, 'writesRemaining': 2999, 'llmOpsRemaining': 999, 'minuteResetsAt': '2026-10-07 08:01:00+00:00', 'dayResetsAt': '2026-10-08 00:00:00+00:00'}, 'locales': ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'], 'expiresAt': '2027-01-05 08:00:00+00:00'}}])]
+    root: Annotated[AgentIntrospectionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'active': True, 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'paused': False, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'quota': {'callsRemaining': 119, 'writesRemaining': 2999, 'llmOpsRemaining': 999, 'minuteResetsAt': '2026-10-07 08:01:00+00:00', 'dayResetsAt': '2026-10-08 00:00:00+00:00'}, 'locales': ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'], 'expiresAt': '2027-01-05 08:00:00+00:00'}}])]
 
 
 class HistoryActor(BaseModel):
@@ -3024,6 +3024,84 @@ class SubmitArticleReviewInput(BaseModel):
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool | None, Field(examples=[False])] = False
     body: ArticleRevisionCheck
+
+
+class PublishArticleInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    body: ArticleRevisionCheck
+
+
+class WithdrawArticleInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    body: ArticleWithdraw
+
+
+class RestoreArticleInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    body: ArticleRevisionCheck
+
+
+class RevertArticleInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    body: ArticleRevert
+
+
+class SetArticleSlugInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    body: ArticleSlugUpdate
+
+
+class SetArticleLocaleInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    locale: Locale
+    body: ArticleLocaleUpdate
+
+
+class ListArticleAuthorsInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+
+
+class CreateArticleAuthorInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: ArticleAuthorWrite
+
+
+class UpdateArticleAuthorInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    body: ArticleAuthorWrite
 
 
 class ListAdminCollectionsInput(BaseModel):
@@ -3677,7 +3755,7 @@ class PackageVersionPageResponseResult(RootModel[PackageVersionPageResponse | Bu
 
 
 class PermissionListResponseResult(RootModel[PermissionListResponse | BusinessErrorResponse]):
-    root: Annotated[PermissionListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'code': 'dashboard:view', 'name': '查看仪表盘', 'group': 'dashboard', 'agentGrantable': True}, {'code': 'catalog:package:view', 'name': '查看包', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:package:edit', 'name': '编辑包信息、分类、隐藏、推荐', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:package:resync', 'name': '重新同步', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:asset:upload', 'name': '上传图标与截图', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:category:edit', 'name': '编辑分类', 'group': 'catalog', 'agentGrantable': True}, {'code': 'content:collection:edit', 'name': '编辑合集', 'group': 'content', 'agentGrantable': True}, {'code': 'content:collection:publish', 'name': '发布/下线合集', 'group': 'content', 'agentGrantable': True}, {'code': 'content:article:edit', 'name': '撰写文章草稿并提交审核', 'group': 'content', 'agentGrantable': True}, {'code': 'content:article:publish', 'name': '发布、撤回和恢复文章，管理作者', 'group': 'content', 'agentGrantable': False}, {'code': 'content:feature:edit', 'name': '编辑精选位', 'group': 'content', 'agentGrantable': True}, {'code': 'changelog:release:edit', 'name': '隐藏版本、编辑原文', 'group': 'changelog', 'agentGrantable': True}, {'code': 'translation:review', 'name': '编辑与审核译文', 'group': 'translation', 'agentGrantable': True}, {'code': 'ops:job:view', 'name': '查看任务', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:job:trigger', 'name': '手动触发任务', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:search:view', 'name': '搜索洞察', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:search:edit', 'name': '同义词管理', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:feedback:handle', 'name': '处理反馈', 'group': 'ops', 'agentGrantable': True}, {'code': 'release:desktop:edit', 'name': '编辑客户端版本', 'group': 'release', 'agentGrantable': False}, {'code': 'release:desktop:publish', 'name': '发布/回滚客户端', 'group': 'release', 'agentGrantable': False}, {'code': 'system:config:edit', 'name': '远程配置、镜像', 'group': 'system', 'agentGrantable': False}, {'code': 'system:user:edit', 'name': '管理员管理', 'group': 'system', 'agentGrantable': False}, {'code': 'system:role:edit', 'name': '角色与权限', 'group': 'system', 'agentGrantable': False}, {'code': 'system:audit:view', 'name': '审计日志', 'group': 'system', 'agentGrantable': False}, {'code': 'i18n:settings', 'name': '翻译 AI 设置', 'group': 'i18n', 'agentGrantable': False}, {'code': 'system:github:edit', 'name': 'GitHub 设置', 'group': 'system', 'agentGrantable': False}, {'code': 'system:seo:edit', 'name': 'SEO 与统计', 'group': 'system', 'agentGrantable': False}, {'code': 'content:glossary:edit', 'name': '术语表管理', 'group': 'content', 'agentGrantable': True}, {'code': 'agent:log:view', 'name': 'Agent 与 AI 日志', 'group': 'agent', 'agentGrantable': True}, {'code': 'content:revision:restore', 'name': '内容修订与恢复', 'group': 'content', 'agentGrantable': True}, {'code': 'agent:manage', 'name': 'Agent 接入管理', 'group': 'agent', 'agentGrantable': False}, {'code': 'content:announcement:edit', 'name': '客户端公告', 'group': 'content', 'agentGrantable': True}, {'code': 'release:desktop:notes', 'name': '客户端更新说明', 'group': 'release', 'agentGrantable': True}]}])]
+    root: Annotated[PermissionListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'code': 'dashboard:view', 'name': '查看仪表盘', 'group': 'dashboard', 'agentGrantable': True}, {'code': 'catalog:package:view', 'name': '查看包', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:package:edit', 'name': '编辑包信息、分类、隐藏、推荐', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:package:resync', 'name': '重新同步', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:asset:upload', 'name': '上传图标与截图', 'group': 'catalog', 'agentGrantable': True}, {'code': 'catalog:category:edit', 'name': '编辑分类', 'group': 'catalog', 'agentGrantable': True}, {'code': 'content:collection:edit', 'name': '编辑合集', 'group': 'content', 'agentGrantable': True}, {'code': 'content:collection:publish', 'name': '发布/下线合集', 'group': 'content', 'agentGrantable': True}, {'code': 'content:article:edit', 'name': '撰写文章草稿并提交审核', 'group': 'content', 'agentGrantable': True}, {'code': 'content:article:publish', 'name': '发布、撤回和恢复文章，管理作者', 'group': 'content', 'agentGrantable': True}, {'code': 'content:feature:edit', 'name': '编辑精选位', 'group': 'content', 'agentGrantable': True}, {'code': 'changelog:release:edit', 'name': '隐藏版本、编辑原文', 'group': 'changelog', 'agentGrantable': True}, {'code': 'translation:review', 'name': '编辑与审核译文', 'group': 'translation', 'agentGrantable': True}, {'code': 'ops:job:view', 'name': '查看任务', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:job:trigger', 'name': '手动触发任务', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:search:view', 'name': '搜索洞察', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:search:edit', 'name': '同义词管理', 'group': 'ops', 'agentGrantable': True}, {'code': 'ops:feedback:handle', 'name': '处理反馈', 'group': 'ops', 'agentGrantable': True}, {'code': 'release:desktop:edit', 'name': '编辑客户端版本', 'group': 'release', 'agentGrantable': False}, {'code': 'release:desktop:publish', 'name': '发布/回滚客户端', 'group': 'release', 'agentGrantable': False}, {'code': 'system:config:edit', 'name': '远程配置、镜像', 'group': 'system', 'agentGrantable': False}, {'code': 'system:user:edit', 'name': '管理员管理', 'group': 'system', 'agentGrantable': False}, {'code': 'system:role:edit', 'name': '角色与权限', 'group': 'system', 'agentGrantable': False}, {'code': 'system:audit:view', 'name': '审计日志', 'group': 'system', 'agentGrantable': False}, {'code': 'i18n:settings', 'name': '翻译 AI 设置', 'group': 'i18n', 'agentGrantable': False}, {'code': 'system:github:edit', 'name': 'GitHub 设置', 'group': 'system', 'agentGrantable': False}, {'code': 'system:seo:edit', 'name': 'SEO 与统计', 'group': 'system', 'agentGrantable': False}, {'code': 'content:glossary:edit', 'name': '术语表管理', 'group': 'content', 'agentGrantable': True}, {'code': 'agent:log:view', 'name': 'Agent 与 AI 日志', 'group': 'agent', 'agentGrantable': True}, {'code': 'content:revision:restore', 'name': '内容修订与恢复', 'group': 'content', 'agentGrantable': True}, {'code': 'agent:manage', 'name': 'Agent 接入管理', 'group': 'agent', 'agentGrantable': False}, {'code': 'content:announcement:edit', 'name': '客户端公告', 'group': 'content', 'agentGrantable': True}, {'code': 'release:desktop:notes', 'name': '客户端更新说明', 'group': 'release', 'agentGrantable': True}]}])]
 
 
 class QueryStatPageResponseResult(RootModel[QueryStatPageResponse | BusinessErrorResponse]):
@@ -3689,7 +3767,7 @@ class QueueStatListResponseResult(RootModel[QueueStatListResponse | BusinessErro
 
 
 class RoleListResponseResult(RootModel[RoleListResponse | BusinessErrorResponse]):
-    root: Annotated[RoleListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'roleCode': 'R_EDITOR', 'roleName': '编辑', 'roleDesc': None, 'status': '1', 'builtin': True, 'permissionCodes': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'i18n:settings', 'system:github:edit', 'system:seo:edit'], 'userCount': 1}, {'id': 6, 'roleCode': 'R_AGENT', 'roleName': 'Agent', 'roleDesc': '内部机器账号，不可登录后台', 'status': '1', 'builtin': True, 'permissionCodes': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'userCount': 1}]}])]
+    root: Annotated[RoleListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'roleCode': 'R_EDITOR', 'roleName': '编辑', 'roleDesc': None, 'status': '1', 'builtin': True, 'permissionCodes': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'release:desktop:edit', 'release:desktop:publish', 'system:config:edit', 'system:user:edit', 'system:role:edit', 'system:audit:view', 'i18n:settings', 'system:github:edit', 'system:seo:edit'], 'userCount': 1}, {'id': 6, 'roleCode': 'R_AGENT', 'roleName': 'Agent', 'roleDesc': '内部机器账号，不可登录后台', 'status': '1', 'builtin': True, 'permissionCodes': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'userCount': 1}]}])]
 
 
 class SynonymPageResponseResult(RootModel[SynonymPageResponse | BusinessErrorResponse]):

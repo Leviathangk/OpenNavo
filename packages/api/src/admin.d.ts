@@ -825,7 +825,7 @@ export interface paths {
         put?: never;
         /**
          * Publish the submitted revision
-         * @description Makes the submitted working revision live and starts its translations; each language appears once its translation passes the checks. The first publication sets the publication date; later ones move the update date only when what readers see changed. Requires content:article:publish. Not available to Agents.
+         * @description Makes the submitted working revision live and starts its translations; each language appears once its translation passes the checks. The first publication sets the publication date; later ones move the update date only when what readers see changed. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         post: operations["publishArticle"];
         delete?: never;
@@ -845,7 +845,7 @@ export interface paths {
         put?: never;
         /**
          * Withdraw a published article
-         * @description Takes the article off the site (pages answer 410) and out of lists, the sitemap and feeds; restoreArticle brings it back. Requires content:article:publish. Not available to Agents.
+         * @description Takes the article off the site (pages answer 410) and out of lists, the sitemap and feeds; restoreArticle brings it back. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         post: operations["withdrawArticle"];
         delete?: never;
@@ -865,7 +865,7 @@ export interface paths {
         put?: never;
         /**
          * Restore a withdrawn article
-         * @description Publishes the last published revision again. Requires content:article:publish. Not available to Agents.
+         * @description Publishes the last published revision again. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         post: operations["restoreArticle"];
         delete?: never;
@@ -885,7 +885,7 @@ export interface paths {
         put?: never;
         /**
          * Restore an older revision as the working draft
-         * @description Copies an earlier revision into the working revision (a new one if the working revision is published), so it can be reviewed and published again. Apps no longer in the catalog are dropped. Requires content:article:edit. Not available to Agents.
+         * @description Copies an earlier revision into the working revision (a new one if the working revision is published), so it can be reviewed and published again. Apps no longer in the catalog are dropped. Requires content:article:edit. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         post: operations["revertArticle"];
         delete?: never;
@@ -904,7 +904,7 @@ export interface paths {
         get?: never;
         /**
          * Change the article address
-         * @description Published slugs keep redirecting to the new address. Requires content:article:publish. Not available to Agents.
+         * @description Published slugs keep redirecting to the new address. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         put: operations["setArticleSlug"];
         post?: never;
@@ -924,7 +924,7 @@ export interface paths {
         get?: never;
         /**
          * Hold back or release one language
-         * @description A held language stays off the site even when its translation is ready; the page shows the source text there and is not indexed in that language. Requires content:article:publish. Not available to Agents.
+         * @description A held language stays off the site even when its translation is ready; the page shows the source text there and is not indexed in that language. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         put: operations["setArticleLocale"];
         post?: never;
@@ -943,13 +943,13 @@ export interface paths {
         };
         /**
          * List authors
-         * @description Authors available for bylines, with their published article counts. Requires content:article:edit. Not available to Agents.
+         * @description Authors available for bylines, with their published article counts. Requires content:article:edit. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         get: operations["listArticleAuthors"];
         put?: never;
         /**
          * Create an author
-         * @description Public profile for bylines and the author page; role and bio are translated. Requires content:article:publish. Not available to Agents.
+         * @description Public profile for bylines and the author page; role and bio are translated. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         post: operations["createArticleAuthor"];
         delete?: never;
@@ -968,7 +968,7 @@ export interface paths {
         get?: never;
         /**
          * Edit an author
-         * @description Requires content:article:publish. Not available to Agents.
+         * @description Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         put: operations["updateArticleAuthor"];
         post?: never;
@@ -5316,7 +5316,7 @@ export interface components {
          *           "code": "content:article:publish",
          *           "name": "发布、撤回和恢复文章，管理作者",
          *           "group": "content",
-         *           "agentGrantable": false
+         *           "agentGrantable": true
          *         },
          *         {
          *           "code": "content:feature:edit",
@@ -5561,6 +5561,7 @@ export interface components {
          *             "content:collection:edit",
          *             "content:collection:publish",
          *             "content:article:edit",
+         *             "content:article:publish",
          *             "content:feature:edit",
          *             "content:glossary:edit",
          *             "changelog:release:edit",
@@ -11695,6 +11696,7 @@ export interface components {
          *             "content:collection:edit",
          *             "content:collection:publish",
          *             "content:article:edit",
+         *             "content:article:publish",
          *             "content:feature:edit",
          *             "content:glossary:edit",
          *             "changelog:release:edit",
@@ -11783,7 +11785,7 @@ export interface components {
          *           "code": "content:article:publish",
          *           "name": "发布、撤回和恢复文章，管理作者",
          *           "group": "content",
-         *           "agentGrantable": false
+         *           "agentGrantable": true
          *         },
          *         {
          *           "code": "content:feature:edit",
@@ -16285,7 +16287,7 @@ export interface components {
          * @example dashboard:view
          * @enum {string}
          */
-        AgentPermission: "dashboard:view" | "catalog:package:view" | "catalog:package:edit" | "catalog:package:resync" | "catalog:asset:upload" | "catalog:category:edit" | "content:collection:edit" | "content:collection:publish" | "content:article:edit" | "content:feature:edit" | "content:glossary:edit" | "changelog:release:edit" | "translation:review" | "ops:job:view" | "ops:job:trigger" | "ops:search:view" | "ops:search:edit" | "ops:feedback:handle" | "agent:log:view" | "content:revision:restore" | "content:announcement:edit" | "release:desktop:notes";
+        AgentPermission: "dashboard:view" | "catalog:package:view" | "catalog:package:edit" | "catalog:package:resync" | "catalog:asset:upload" | "catalog:category:edit" | "content:collection:edit" | "content:collection:publish" | "content:article:edit" | "content:article:publish" | "content:feature:edit" | "content:glossary:edit" | "changelog:release:edit" | "translation:review" | "ops:job:view" | "ops:job:trigger" | "ops:search:view" | "ops:search:edit" | "ops:feedback:handle" | "agent:log:view" | "content:revision:restore" | "content:announcement:edit" | "release:desktop:notes";
         /**
          * @example {
          *       "callsPerMinute": 120,
@@ -16353,6 +16355,7 @@ export interface components {
          *         "content:collection:edit",
          *         "content:collection:publish",
          *         "content:article:edit",
+         *         "content:article:publish",
          *         "content:feature:edit",
          *         "content:glossary:edit",
          *         "changelog:release:edit",
@@ -16390,6 +16393,7 @@ export interface components {
              *       "content:collection:edit",
              *       "content:collection:publish",
              *       "content:article:edit",
+             *       "content:article:publish",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -16435,6 +16439,7 @@ export interface components {
          *           "content:collection:edit",
          *           "content:collection:publish",
          *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -16482,6 +16487,7 @@ export interface components {
          *           "content:collection:edit",
          *           "content:collection:publish",
          *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -16716,7 +16722,7 @@ export interface components {
          */
         AgentClientsResponseResult: components["schemas"]["AgentClientsResponse"] | components["schemas"]["BusinessErrorResponse"];
         /**
-         * @description Omitted permissions defaults to all 21 permissions; an empty array grants no business permissions. Omitted expiresAt defaults to 90 days after creation, explicit null never expires, and non-null must be in the future. Plaintext is returned once only.
+         * @description Omitted permissions defaults to all grantable permissions; an empty array grants no business permissions. Omitted expiresAt defaults to 90 days after creation, explicit null never expires, and non-null must be in the future. Plaintext is returned once only.
          * @example {
          *       "name": "日常运营",
          *       "permissions": [
@@ -16729,6 +16735,7 @@ export interface components {
          *         "content:collection:edit",
          *         "content:collection:publish",
          *         "content:article:edit",
+         *         "content:article:publish",
          *         "content:feature:edit",
          *         "content:glossary:edit",
          *         "changelog:release:edit",
@@ -16761,6 +16768,7 @@ export interface components {
              *       "content:collection:edit",
              *       "content:collection:publish",
              *       "content:article:edit",
+             *       "content:article:publish",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -16813,6 +16821,7 @@ export interface components {
              *       "content:collection:edit",
              *       "content:collection:publish",
              *       "content:article:edit",
+             *       "content:article:publish",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -16858,6 +16867,7 @@ export interface components {
          *         "content:collection:edit",
          *         "content:collection:publish",
          *         "content:article:edit",
+         *         "content:article:publish",
          *         "content:feature:edit",
          *         "content:glossary:edit",
          *         "changelog:release:edit",
@@ -16908,6 +16918,7 @@ export interface components {
              *       "content:collection:edit",
              *       "content:collection:publish",
              *       "content:article:edit",
+             *       "content:article:publish",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -16985,6 +16996,7 @@ export interface components {
          *           "content:collection:edit",
          *           "content:collection:publish",
          *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -17042,6 +17054,7 @@ export interface components {
          *               "content:collection:edit",
          *               "content:collection:publish",
          *               "content:article:edit",
+         *               "content:article:publish",
          *               "content:feature:edit",
          *               "content:glossary:edit",
          *               "changelog:release:edit",
@@ -17096,6 +17109,7 @@ export interface components {
                  *           "content:collection:edit",
                  *           "content:collection:publish",
                  *           "content:article:edit",
+                 *           "content:article:publish",
                  *           "content:feature:edit",
                  *           "content:glossary:edit",
                  *           "changelog:release:edit",
@@ -17162,6 +17176,7 @@ export interface components {
          *               "content:collection:edit",
          *               "content:collection:publish",
          *               "content:article:edit",
+         *               "content:article:publish",
          *               "content:feature:edit",
          *               "content:glossary:edit",
          *               "changelog:release:edit",
@@ -17215,6 +17230,7 @@ export interface components {
          *             "content:collection:edit",
          *             "content:collection:publish",
          *             "content:article:edit",
+         *             "content:article:publish",
          *             "content:feature:edit",
          *             "content:glossary:edit",
          *             "changelog:release:edit",
@@ -17270,6 +17286,7 @@ export interface components {
          *             "content:collection:edit",
          *             "content:collection:publish",
          *             "content:article:edit",
+         *             "content:article:publish",
          *             "content:feature:edit",
          *             "content:glossary:edit",
          *             "changelog:release:edit",
@@ -17319,6 +17336,7 @@ export interface components {
          *           "content:collection:edit",
          *           "content:collection:publish",
          *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -17371,6 +17389,7 @@ export interface components {
          *           "content:collection:edit",
          *           "content:collection:publish",
          *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -17418,6 +17437,7 @@ export interface components {
          *           "content:collection:edit",
          *           "content:collection:publish",
          *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -17470,6 +17490,7 @@ export interface components {
          *           "content:collection:edit",
          *           "content:collection:publish",
          *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -17551,6 +17572,7 @@ export interface components {
          *         "content:collection:edit",
          *         "content:collection:publish",
          *         "content:article:edit",
+         *         "content:article:publish",
          *         "content:feature:edit",
          *         "content:glossary:edit",
          *         "changelog:release:edit",
@@ -17619,6 +17641,7 @@ export interface components {
              *       "content:collection:edit",
              *       "content:collection:publish",
              *       "content:article:edit",
+             *       "content:article:publish",
              *       "content:feature:edit",
              *       "content:glossary:edit",
              *       "changelog:release:edit",
@@ -17678,6 +17701,7 @@ export interface components {
          *           "content:collection:edit",
          *           "content:collection:publish",
          *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -17745,6 +17769,7 @@ export interface components {
          *           "content:collection:edit",
          *           "content:collection:publish",
          *           "content:article:edit",
+         *           "content:article:publish",
          *           "content:feature:edit",
          *           "content:glossary:edit",
          *           "changelog:release:edit",
@@ -21727,8 +21752,18 @@ export interface operations {
     };
     publishArticle: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
             path: {
                 id: components["parameters"]["IdPath"];
             };
@@ -21751,15 +21786,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
     };
     withdrawArticle: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
             path: {
                 id: components["parameters"]["IdPath"];
             };
@@ -21782,15 +21827,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
     };
     restoreArticle: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
             path: {
                 id: components["parameters"]["IdPath"];
             };
@@ -21813,15 +21868,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
     };
     revertArticle: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
             path: {
                 id: components["parameters"]["IdPath"];
             };
@@ -21844,15 +21909,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
     };
     setArticleSlug: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
             path: {
                 id: components["parameters"]["IdPath"];
             };
@@ -21875,15 +21950,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
     };
     setArticleLocale: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
             path: {
                 id: components["parameters"]["IdPath"];
                 locale: components["parameters"]["LocalePath"];
@@ -21907,7 +21992,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminArticleResponseResult"];
+                    "application/json": components["schemas"]["AdminArticleResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
@@ -21915,7 +22000,14 @@ export interface operations {
     listArticleAuthors: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -21939,8 +22031,18 @@ export interface operations {
     };
     createArticleAuthor: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -21961,15 +22063,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["IdResponseResult"];
+                    "application/json": components["schemas"]["IdResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
     };
     updateArticleAuthor: {
         parameters: {
-            query?: never;
-            header?: never;
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
             path: {
                 id: components["parameters"]["IdPath"];
             };
@@ -21992,7 +22104,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["IdResponseResult"];
+                    "application/json": components["schemas"]["IdResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
@@ -24974,6 +25086,7 @@ export interface operations {
                  *         "content:collection:edit",
                  *         "content:collection:publish",
                  *         "content:article:edit",
+                 *         "content:article:publish",
                  *         "content:feature:edit",
                  *         "content:glossary:edit",
                  *         "changelog:release:edit",

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { withRecentReturn } from '@opennavo/shared';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -18,7 +19,14 @@ import type { ListQuery } from '@/ipc/bindings';
 import type { LocalItem } from '@/ipc/client';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { refreshPage } from '@/composables/usePageRefresh';
-import { fetchHome, fetchPopularApps, peekHome, peekPopularApps } from '@/composables/useHome';
+import {
+  fetchHome,
+  fetchPopularApps,
+  peekHome,
+  peekPopularApps,
+  fetchRecentPreview,
+  peekRecentPreview
+} from '@/composables/useHome';
 import { useLoader } from '@/composables/useLoader';
 import { useCatalogLoader } from '@/composables/useCatalogLoader';
 import { usePackageSummary } from '@/composables/usePackageSummary';
@@ -50,6 +58,14 @@ const { data: popularApps } = useLoader(
   () => peekPopularApps(appLocale.value)
 );
 
+const { data: recentApps } = useLoader(
+  () => fetchRecentPreview(appLocale.value),
+  [appLocale],
+  undefined,
+  [appLocale],
+  () => peekRecentPreview(appLocale.value)
+);
+
 const base: Omit<ListQuery, 'sort' | 'limit'> = {
   kind: 'cask',
   category: null,
@@ -69,8 +85,8 @@ const { data: offline, error: offlineError } = useCatalogLoader(
   async () => {
     if (home.value) return null;
     const [apps, recent] = await Promise.all([
-      localList({ sort: 'installs30d', limit: 30 }),
-      localList({ sort: 'updated', limit: 8 })
+      localList({ sort: 'installs30d', limit: 100 }),
+      localList({ sort: 'updated', limit: 100 })
     ]);
     return { apps, recent };
   },
@@ -82,7 +98,7 @@ const sections = computed(() => {
   if (home.value)
     return {
       apps: popularApps.value ?? home.value.popularApps,
-      recent: home.value.recentlyUpdated
+      recent: recentApps.value ?? home.value.recentlyUpdated
     };
   return offline.value
     ? { apps: offline.value.apps.map(toSummary), recent: offline.value.recent.map(toSummary) }
@@ -245,8 +261,12 @@ const chips = computed(() => [
         <OnIcon name="arrow-up-right" :size="15" />
       </OnButton>
     </template>
-    <template #card="{ pkg, stats }">
-      <PackageCard :pkg="pkg" :stats="stats" />
+    <template #card="{ pkg, stats, section }">
+      <PackageCard
+        :pkg="pkg"
+        :stats="stats"
+        :href="withRecentReturn(`/package/${pkg.kind}/${pkg.token}`, section === 'recent' ? '/recent' : undefined)"
+      />
     </template>
   </OnDiscoverView>
 </template>

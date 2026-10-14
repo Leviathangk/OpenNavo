@@ -21,6 +21,8 @@ export const PERMISSION_GROUPS: { key: string; codes: AgentPermission[] }[] = [
     codes: [
       'content:collection:edit',
       'content:collection:publish',
+      'content:article:edit',
+      'content:article:publish',
       'content:feature:edit',
       'content:glossary:edit',
       'content:announcement:edit'

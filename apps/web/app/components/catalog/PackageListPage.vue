@@ -9,7 +9,7 @@ const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 
 // App list /apps (05 §4, 08 §10.2): shared OnPackageListView (ADR-017), Cask-only (ADR-018).
-const PAGE_SIZE = 24;
+const { pageSize, fitPage } = useGridPageSize();
 
 const { t, locale } = useI18n();
 const api = useApi();
@@ -22,7 +22,7 @@ const sort = computed(() => readEnum(query.value.sort, CATALOG_SORTS, 'popular')
 const includeDisabled = computed(() => readFlag(query.value.disabled));
 
 const { data, error, refresh } = await useAsyncData(
-  () => `packages:cask:${sort.value}:${page.value}:${includeDisabled.value}:${locale.value}`,
+  () => `packages:cask:${sort.value}:${page.value}:${pageSize.value}:${includeDisabled.value}:${locale.value}`,
   () =>
     unwrap(
       api.GET('/packages', {
@@ -32,7 +32,7 @@ const { data, error, refresh } = await useAsyncData(
             includeFonts: true,
             sort: sort.value,
             current: page.value,
-            size: PAGE_SIZE,
+            size: pageSize.value,
             includeDisabled: includeDisabled.value
           }
         }
@@ -40,7 +40,7 @@ const { data, error, refresh } = await useAsyncData(
     )
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
+const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / pageSize.value)));
 const sorts = useCatalogSorts();
 const subtitle = computed(() =>
   data.value
@@ -53,7 +53,7 @@ useItemListSchema(
     error.value
       ? null
       : data.value?.records.map(pkg => ({ name: pkg.displayName, path: localePath(packagePath(pkg.token)) })),
-  () => (page.value - 1) * PAGE_SIZE + 1
+  () => (page.value - 1) * pageSize.value + 1
 );
 
 usePageSeo({
@@ -72,6 +72,7 @@ usePageSeo({
     :sort-label="t('catalog.sortLabel')"
     :items="error ? [] : (data?.records ?? null)"
     :link-as="NuxtLink"
+    @page-size="fitPage"
     @update:sort="update({ sort: $event })"
   >
     <template #filters>

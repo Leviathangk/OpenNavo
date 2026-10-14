@@ -1,4 +1,36 @@
 {
+  "articles": {
+    "viewTranslation": "Ver tradução",
+    "title": "Artigos",
+    "subtitle": "Recomendações, análises, tutoriais e coletâneas de apps para Mac",
+    "all": "Todos",
+    "typesLabel": "Tipo de artigo",
+    "types": {
+      "recommendation": "Recomendação",
+      "review": "Análise",
+      "tutorial": "Tutorial",
+      "roundup": "Coletânea",
+      "news": "Notícias"
+    },
+    "emptyTitle": "Ainda não há artigos",
+    "emptyDescription": "Os artigos publicados aparecerão aqui.",
+    "readingTime": "{minutes} min de leitura",
+    "published": "Publicado em {date}",
+    "updated": "Atualizado em {date}",
+    "editorial": "Equipe editorial do OpenNavo",
+    "machineTranslated": "Tradução por IA",
+    "viewOriginal": "Ver original",
+    "sourceText": "Este artigo ainda não está disponível no seu idioma, por isso o original é exibido abaixo.",
+    "testNote": "Como testamos:",
+    "toc": "Conteúdo",
+    "sources": "Fontes",
+    "appCardNote": "Dados atuais do catálogo: a versão e as instalações acompanham o catálogo e podem ser diferentes de quando o artigo foi escrito.",
+    "mentionedApps": "Apps citados no artigo",
+    "related": "Artigos relacionados",
+    "withdrawnTitle": "Este artigo foi retirado",
+    "withdrawnBody": "Ele pode estar desatualizado ou não ser mais preciso, por isso não está mais disponível. Veja nossos outros artigos.",
+    "backToList": "Ver todos os artigos"
+  },
   "app": {
     "name": "OpenNavo"
   },

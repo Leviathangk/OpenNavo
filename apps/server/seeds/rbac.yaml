@@ -115,7 +115,8 @@
       "code": "content:article:publish",
       "name": "Publish, withdraw and restore articles; manage authors",
       "roles": [
-        "R_ADMIN"
+        "R_ADMIN",
+        "R_AGENT"
       ]
     },
     {

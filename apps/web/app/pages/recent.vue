@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { withRecentReturn } from '@opennavo/shared';
 import { unwrap } from '@opennavo/api';
 import { OnEmpty, OnErrorState, OnPackageListView, OnPagination } from '@opennavo/ui';
 import type { OnAppCardStat } from '@opennavo/ui';
@@ -7,7 +8,7 @@ import { packagePath } from '~/utils/packageView';
 
 // Recently Updated: Discover's section in full, newest version first, with real page links. Shared
 // OnPackageListView (ADR-017), Cask-only (ADR-018). Pages past the end answer 404.
-const PAGE_SIZE = 24;
+const { pageSize, fitPage } = useGridPageSize();
 const STATS: readonly OnAppCardStat[] = ['version', 'installs30d'];
 
 const { t, locale } = useI18n();
@@ -18,18 +19,18 @@ const { query, hrefWith } = useCatalogQuery({ page: 1 });
 const page = computed(() => readPage(query.value.page));
 
 const { data, error, refresh } = await useAsyncData(
-  () => `recent:${page.value}:${locale.value}`,
+  () => `recent:${page.value}:${pageSize.value}:${locale.value}`,
   () =>
     unwrap(
       api.GET('/packages', {
         params: {
-          query: { kind: 'cask', includeFonts: true, sort: 'updated', current: page.value, size: PAGE_SIZE }
+          query: { kind: 'cask', includeFonts: true, sort: 'updated', current: page.value, size: pageSize.value }
         }
       })
     )
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
+const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / pageSize.value)));
 if (data.value && page.value > pageCount.value)
   throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true });
 
@@ -38,7 +39,7 @@ useItemListSchema(
     error.value
       ? null
       : data.value?.records.map(pkg => ({ name: pkg.displayName, path: localePath(packagePath(pkg.token)) })),
-  () => (page.value - 1) * PAGE_SIZE + 1
+  () => (page.value - 1) * pageSize.value + 1
 );
 
 usePageSeo({ title: () => t('recent.metaTitle'), page, description: () => t('recent.description') });
@@ -50,10 +51,15 @@ usePageSeo({ title: () => t('recent.metaTitle'), page, description: () => t('rec
     :subtitle="t('recent.description')"
     :items="error ? [] : (data?.records ?? null)"
     :link-as="NuxtLink"
+    @page-size="fitPage"
   >
     <OnErrorState v-if="error" @retry="refresh()" />
     <template #card="{ pkg }">
-      <AppCard :pkg="pkg" :stats="STATS" />
+      <AppCard
+        :pkg="pkg"
+        :stats="STATS"
+        :href="withRecentReturn(localePath(packagePath(pkg.token)), `/recent?page=${page}&size=${pageSize}`)"
+      />
     </template>
     <template #empty>
       <OnEmpty v-if="!error" :title="t('catalog.emptyTitle')" />

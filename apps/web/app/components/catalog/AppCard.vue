@@ -4,11 +4,11 @@ import { OnAppCard } from '@opennavo/ui';
 import type { OnAppCardStat } from '@opennavo/ui';
 
 // Web app card: shared OnAppCard with web Get menu (open client / copy command / add to list), linking to details.
-const props = defineProps<{ pkg: PackageSummary; stats?: readonly OnAppCardStat[] }>();
+const props = defineProps<{ pkg: PackageSummary; href?: string; stats?: readonly OnAppCardStat[] }>();
 
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
-const href = computed(() => localePath(`/apps/${props.pkg.token}`));
+const href = computed(() => props.href ?? localePath(`/apps/${props.pkg.token}`));
 </script>
 
 <template>

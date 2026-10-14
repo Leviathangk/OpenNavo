@@ -21,7 +21,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var Grantable = []string{"dashboard:view", "catalog:package:view", "catalog:package:edit", "catalog:package:resync", "catalog:asset:upload", "catalog:category:edit", "content:collection:edit", "content:collection:publish", "content:feature:edit", "content:glossary:edit", "changelog:release:edit", "translation:review", "ops:job:view", "ops:job:trigger", "ops:search:view", "ops:search:edit", "ops:feedback:handle", "agent:log:view", "content:revision:restore", "content:announcement:edit", "release:desktop:notes"}
+var Grantable = []string{"dashboard:view", "catalog:package:view", "catalog:package:edit", "catalog:package:resync", "catalog:asset:upload", "catalog:category:edit", "content:collection:edit", "content:collection:publish", "content:article:edit", "content:article:publish", "content:feature:edit", "content:glossary:edit", "changelog:release:edit", "translation:review", "ops:job:view", "ops:job:trigger", "ops:search:view", "ops:search:edit", "ops:feedback:handle", "agent:log:view", "content:revision:restore", "content:announcement:edit", "release:desktop:notes"}
 
 type Limits struct {
 	CallsPerMinute int `json:"callsPerMinute"`

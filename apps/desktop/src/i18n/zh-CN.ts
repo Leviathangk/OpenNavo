@@ -1,4 +1,36 @@
 export default {
+  articles: {
+    viewTranslation: '查看译文',
+    title: '文章',
+    subtitle: 'Mac 软件推荐、评测、教程和合集',
+    all: '全部',
+    typesLabel: '文章类型',
+    types: {
+      recommendation: '推荐',
+      review: '评测',
+      tutorial: '教程',
+      roundup: '合集',
+      news: '新闻'
+    },
+    emptyTitle: '还没有文章',
+    emptyDescription: '文章发布后会显示在这里。',
+    readingTime: '阅读约 {minutes} 分钟',
+    published: '{date} 发布',
+    updated: '{date} 更新',
+    editorial: 'OpenNavo 编辑部',
+    machineTranslated: 'AI 翻译',
+    viewOriginal: '查看原文',
+    sourceText: '这篇文章还没有当前语言的版本，下面显示的是原文。',
+    testNote: '测试环境：',
+    toc: '目录',
+    sources: '参考来源',
+    appCardNote: '当前目录数据：版本和安装量随目录更新，可能与撰写时不同。',
+    mentionedApps: '文中提到的 App',
+    related: '相关文章',
+    withdrawnTitle: '这篇文章已撤下',
+    withdrawnBody: '文章内容可能已过时或不再准确，因此不再提供。可以看看其他文章。',
+    backToList: '浏览全部文章'
+  },
   brewfile: {
     installTitle: '安装清单中的软件',
     title: '我的清单',

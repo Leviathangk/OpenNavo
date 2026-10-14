@@ -8,7 +8,7 @@ import { usePackageState } from '@/composables/usePackageState';
 import { useTasksStore } from '@/stores';
 
 // App card: shared OnAppCard plus local state (get / update / open / progress).
-const props = defineProps<{ pkg: PackageSummary; stats?: readonly OnAppCardStat[] }>();
+const props = defineProps<{ pkg: PackageSummary; href?: string; stats?: readonly OnAppCardStat[] }>();
 
 const { stateOf, act } = usePackageState();
 const tasks = useTasksStore();
@@ -27,7 +27,7 @@ function cancel() {
     :progress="current.progress"
     :action-title="current.label"
     :stats="stats"
-    :href="`/package/${pkg.kind}/${pkg.token}`"
+    :href="href ?? `/package/${pkg.kind}/${pkg.token}`"
     :link-as="RouterLink"
     @action="act(pkg.kind, pkg.token, current.state)"
     @cancel="cancel"

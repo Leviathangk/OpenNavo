@@ -62,7 +62,7 @@ export interface OnDiscoverViewProps {
   chips: readonly OnCategoryChip<string>[];
   /** null means loading; show skeletons. */
   popular: readonly PackageSummary[] | null;
-  /** Fit popular-app rows to the available width, with a partial final row; omitted keeps the six-app preview. */
+  /** Fit both app sections to the available width, leaving two final-row slots empty when at least three columns fit. */
   popularRows?: number;
   recent: readonly PackageSummary[] | null;
   collections?: readonly OnDiscoverCollection[];
@@ -94,7 +94,7 @@ const contentWidth = ref(0);
 const popularLimit = computed(() => {
   if (!props.popularRows) return 6;
   const columns = Math.max(1, Math.floor((contentWidth.value + 12) / (220 + 12)));
-  const lastRow = columns === 1 ? 1 : Math.min(columns - 1, Math.ceil(columns * 0.6));
+  const lastRow = Math.max(1, columns - 2);
   return columns * (props.popularRows - 1) + lastRow;
 });
 let observer: ResizeObserver | undefined;
@@ -278,7 +278,7 @@ function featureLinkAttrs(feature: OnDiscoverFeature) {
           :link-as="linkAs"
         />
         <div :class="appGrid">
-          <template v-for="pkg in recent.slice(0, 8)" :key="`${pkg.kind}/${pkg.token}`">
+          <template v-for="pkg in recent.slice(0, popularRows ? popularLimit : 8)" :key="`${pkg.kind}/${pkg.token}`">
             <slot name="card" :pkg="pkg" section="recent" :stats="RECENT_STATS" />
           </template>
         </div>

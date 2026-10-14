@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { recentReturnPath, withRecentReturn } from '@opennavo/shared';
 import { unwrap } from '@opennavo/api';
 import type { PackageKind } from '@opennavo/shared';
 import { OnBreadcrumb, OnErrorState, OnPackageNotice, OnTabs } from '@opennavo/ui';
@@ -63,32 +64,38 @@ const tab = computed<Tab>(() => {
   return last === 'versions' || last === 'dependencies' || last === 'details' ? last : 'overview';
 });
 
+const returnTo = computed(() => recentReturnPath(route.query.returnTo));
 const tabs = computed(() => [
   {
     value: 'overview' as const,
     label: t('package.tabs.overview'),
-    href: localePath(packagePath(token.value))
+    href: withRecentReturn(localePath(packagePath(token.value)), returnTo.value)
   },
   {
     value: 'versions' as const,
     label: t('package.tabs.versions'),
     count: pkg.value?.releaseCount || undefined,
-    href: localePath(packagePath(token.value, 'versions'))
+    href: withRecentReturn(localePath(packagePath(token.value, 'versions')), returnTo.value)
   },
   {
     value: 'dependencies' as const,
     label: t('package.tabs.dependencies'),
-    href: localePath(packagePath(token.value, 'dependencies'))
+    href: withRecentReturn(localePath(packagePath(token.value, 'dependencies')), returnTo.value)
   },
   {
     value: 'details' as const,
     label: t('package.tabs.details'),
-    href: localePath(packagePath(token.value, 'details'))
+    href: withRecentReturn(localePath(packagePath(token.value, 'details')), returnTo.value)
   }
 ]);
 
 // Breadcrumbs match desktop: Discover › primary category › app. Structured data uses the same list.
 const breadcrumb = computed(() => {
+  if (returnTo.value)
+    return [
+      { label: t('recent.title'), href: localePath(returnTo.value) },
+      { label: pkg.value?.displayName ?? token.value }
+    ];
   const category = pkg.value?.primaryCategory;
   return [
     { label: t('nav.discover'), href: localePath('/discover') },

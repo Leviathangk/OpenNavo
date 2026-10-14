@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { unwrap } from '@opennavo/api';
-import { formatCount, formatVersion } from '@opennavo/shared';
+import { formatCount, formatVersion, withRecentReturn } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
 import { architectures, displayUrl, OnPackageOverview, useUiMessages } from '@opennavo/ui';
 import type { OnKeyValueItem, OnRelatedPackage } from '@opennavo/ui';
@@ -17,6 +17,7 @@ const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 // Right: install command → information → monthly installs → similar apps.
 const props = defineProps<{ kind: PackageKind }>();
 
+const route = useRoute();
 const { t, locale } = useI18n();
 const api = useApi();
 const localePath = useLocalePath();
@@ -192,7 +193,7 @@ usePageSeo({
           v-if="pkg.latestRelease"
           :release="pkg.latestRelease"
           :total="pkg.releaseCount"
-          :versions-href="localePath(packagePath(pkg.token, 'versions'))"
+          :versions-href="withRecentReturn(localePath(packagePath(pkg.token, 'versions')), route.query.returnTo)"
         />
         <template v-if="pkg.kind === 'cask'">
           <PackageGuide :pkg="pkg" />

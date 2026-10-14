@@ -19,7 +19,23 @@ export function usePopularApps() {
     () =>
       unwrap(
         api.GET('/packages', {
-          params: { query: { kind: 'cask', sort: 'popular', size: 30, includeFonts: true } }
+          params: { query: { kind: 'cask', sort: 'popular', size: 100, includeFonts: true } }
+        })
+      )
+        .then(page => page.records)
+        .catch(() => null)
+  );
+}
+
+export function useRecentPreview() {
+  const { locale } = useI18n();
+  const api = useApi();
+  return useAsyncData(
+    () => `home:recent:${locale.value}`,
+    () =>
+      unwrap(
+        api.GET('/packages', {
+          params: { query: { kind: 'cask', sort: 'updated', size: 100, includeFonts: true } }
         })
       )
         .then(page => page.records)

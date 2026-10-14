@@ -2973,8 +2973,12 @@ paths:
         - content
       operationId: publishArticle
       summary: "Publish the submitted revision"
-      description: "Makes the submitted working revision live and starts its translations; each language appears once its translation passes the checks. The first publication sets the publication date; later ones move the update date only when what readers see changed. Requires content:article:publish. Not available to Agents."
+      description: "Makes the submitted working revision live and starts its translations; each language appears once its translation passes the checks. The first publication sets the publication date; later ones move the update date only when what readers see changed. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced."
       parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
         - $ref: "#/components/parameters/IdPath"
       requestBody:
         required: true
@@ -2988,7 +2992,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminArticleResponseResult"
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
               examples:
                 en-US:
                   $ref: "#/components/examples/AdminArticleSixLocales"
@@ -3002,6 +3008,8 @@ paths:
                   $ref: "#/components/examples/AdminArticleSixLocales"
                 ru-RU:
                   $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
           headers:
             Vary:
               description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
@@ -3010,15 +3018,29 @@ paths:
               example: Origin, Accept-Language
       x-permissions:
         - content:article:publish
-      x-agent-access: false
+      x-agent-access:
+        permissions:
+          - content:article:publish
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
   /articles/{id}/withdraw:
     post:
       tags:
         - content
       operationId: withdrawArticle
       summary: "Withdraw a published article"
-      description: "Takes the article off the site (pages answer 410) and out of lists, the sitemap and feeds; restoreArticle brings it back. Requires content:article:publish. Not available to Agents."
+      description: "Takes the article off the site (pages answer 410) and out of lists, the sitemap and feeds; restoreArticle brings it back. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced."
       parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
         - $ref: "#/components/parameters/IdPath"
       requestBody:
         required: true
@@ -3032,7 +3054,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminArticleResponseResult"
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
               examples:
                 en-US:
                   $ref: "#/components/examples/AdminArticleSixLocales"
@@ -3046,6 +3070,8 @@ paths:
                   $ref: "#/components/examples/AdminArticleSixLocales"
                 ru-RU:
                   $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
           headers:
             Vary:
               description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
@@ -3054,15 +3080,29 @@ paths:
               example: Origin, Accept-Language
       x-permissions:
         - content:article:publish
-      x-agent-access: false
+      x-agent-access:
+        permissions:
+          - content:article:publish
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
   /articles/{id}/restore:
     post:
       tags:
         - content
       operationId: restoreArticle
       summary: "Restore a withdrawn article"
-      description: "Publishes the last published revision again. Requires content:article:publish. Not available to Agents."
+      description: "Publishes the last published revision again. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced."
       parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
         - $ref: "#/components/parameters/IdPath"
       requestBody:
         required: true
@@ -3076,7 +3116,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminArticleResponseResult"
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
               examples:
                 en-US:
                   $ref: "#/components/examples/AdminArticleSixLocales"
@@ -3090,6 +3132,8 @@ paths:
                   $ref: "#/components/examples/AdminArticleSixLocales"
                 ru-RU:
                   $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
           headers:
             Vary:
               description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
@@ -3098,15 +3142,29 @@ paths:
               example: Origin, Accept-Language
       x-permissions:
         - content:article:publish
-      x-agent-access: false
+      x-agent-access:
+        permissions:
+          - content:article:publish
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
   /articles/{id}/revert:
     post:
       tags:
         - content
       operationId: revertArticle
       summary: "Restore an older revision as the working draft"
-      description: "Copies an earlier revision into the working revision (a new one if the working revision is published), so it can be reviewed and published again. Apps no longer in the catalog are dropped. Requires content:article:edit. Not available to Agents."
+      description: "Copies an earlier revision into the working revision (a new one if the working revision is published), so it can be reviewed and published again. Apps no longer in the catalog are dropped. Requires content:article:edit. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced."
       parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
         - $ref: "#/components/parameters/IdPath"
       requestBody:
         required: true
@@ -3120,7 +3178,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminArticleResponseResult"
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
               examples:
                 en-US:
                   $ref: "#/components/examples/AdminArticleSixLocales"
@@ -3134,6 +3194,8 @@ paths:
                   $ref: "#/components/examples/AdminArticleSixLocales"
                 ru-RU:
                   $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
           headers:
             Vary:
               description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
@@ -3142,15 +3204,29 @@ paths:
               example: Origin, Accept-Language
       x-permissions:
         - content:article:edit
-      x-agent-access: false
+      x-agent-access:
+        permissions:
+          - content:article:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
   /articles/{id}/slug:
     put:
       tags:
         - content
       operationId: setArticleSlug
       summary: "Change the article address"
-      description: "Published slugs keep redirecting to the new address. Requires content:article:publish. Not available to Agents."
+      description: "Published slugs keep redirecting to the new address. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced."
       parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
         - $ref: "#/components/parameters/IdPath"
       requestBody:
         required: true
@@ -3164,7 +3240,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminArticleResponseResult"
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
               examples:
                 en-US:
                   $ref: "#/components/examples/AdminArticleSixLocales"
@@ -3178,6 +3256,8 @@ paths:
                   $ref: "#/components/examples/AdminArticleSixLocales"
                 ru-RU:
                   $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
           headers:
             Vary:
               description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
@@ -3186,15 +3266,29 @@ paths:
               example: Origin, Accept-Language
       x-permissions:
         - content:article:publish
-      x-agent-access: false
+      x-agent-access:
+        permissions:
+          - content:article:publish
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
   /articles/{id}/locales/{locale}:
     put:
       tags:
         - content
       operationId: setArticleLocale
       summary: "Hold back or release one language"
-      description: "A held language stays off the site even when its translation is ready; the page shows the source text there and is not indexed in that language. Requires content:article:publish. Not available to Agents."
+      description: "A held language stays off the site even when its translation is ready; the page shows the source text there and is not indexed in that language. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced."
       parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
         - $ref: "#/components/parameters/IdPath"
         - $ref: "#/components/parameters/LocalePath"
       requestBody:
@@ -3209,7 +3303,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminArticleResponseResult"
+                anyOf:
+                  - $ref: "#/components/schemas/AdminArticleResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
               examples:
                 en-US:
                   $ref: "#/components/examples/AdminArticleSixLocales"
@@ -3223,6 +3319,8 @@ paths:
                   $ref: "#/components/examples/AdminArticleSixLocales"
                 ru-RU:
                   $ref: "#/components/examples/AdminArticleSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/AdminArticleDryRun"
           headers:
             Vary:
               description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
@@ -3231,14 +3329,28 @@ paths:
               example: Origin, Accept-Language
       x-permissions:
         - content:article:publish
-      x-agent-access: false
+      x-agent-access:
+        permissions:
+          - content:article:publish
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
   /article-authors:
     get:
       tags:
         - content
       operationId: listArticleAuthors
       summary: "List authors"
-      description: "Authors available for bylines, with their published article counts. Requires content:article:edit. Not available to Agents."
+      description: "Authors available for bylines, with their published article counts. Requires content:article:edit. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced."
+      parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
       responses:
         "200":
           description: OK
@@ -3267,13 +3379,28 @@ paths:
               example: Origin, Accept-Language
       x-permissions:
         - content:article:edit
-      x-agent-access: false
+      x-agent-access:
+        permissions:
+          - content:article:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
     post:
       tags:
         - content
       operationId: createArticleAuthor
       summary: "Create an author"
-      description: "Public profile for bylines and the author page; role and bio are translated. Requires content:article:publish. Not available to Agents."
+      description: "Public profile for bylines and the author page; role and bio are translated. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced."
+      parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
       requestBody:
         required: true
         content:
@@ -3286,7 +3413,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IdResponseResult"
+                anyOf:
+                  - $ref: "#/components/schemas/IdResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
               examples:
                 en-US:
                   $ref: "#/components/examples/IdResponseResultSixLocales"
@@ -3300,6 +3429,8 @@ paths:
                   $ref: "#/components/examples/IdResponseResultSixLocales"
                 ru-RU:
                   $ref: "#/components/examples/IdResponseResultSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/ArticleAuthorDryRun"
           headers:
             Vary:
               description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
@@ -3308,15 +3439,29 @@ paths:
               example: Origin, Accept-Language
       x-permissions:
         - content:article:publish
-      x-agent-access: false
+      x-agent-access:
+        permissions:
+          - content:article:publish
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
   /article-authors/{id}:
     put:
       tags:
         - content
       operationId: updateArticleAuthor
       summary: "Edit an author"
-      description: "Requires content:article:publish. Not available to Agents."
+      description: "Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced."
       parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
         - $ref: "#/components/parameters/IdPath"
       requestBody:
         required: true
@@ -3330,7 +3475,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/IdResponseResult"
+                anyOf:
+                  - $ref: "#/components/schemas/IdResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
               examples:
                 en-US:
                   $ref: "#/components/examples/IdResponseResultSixLocales"
@@ -3344,6 +3491,8 @@ paths:
                   $ref: "#/components/examples/IdResponseResultSixLocales"
                 ru-RU:
                   $ref: "#/components/examples/IdResponseResultSixLocales"
+                dry-run:
+                  $ref: "#/components/examples/ArticleAuthorDryRun"
           headers:
             Vary:
               description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
@@ -3352,7 +3501,17 @@ paths:
               example: Origin, Accept-Language
       x-permissions:
         - content:article:publish
-      x-agent-access: false
+      x-agent-access:
+        permissions:
+          - content:article:publish
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
   /collections:
     get:
       tags:
@@ -7958,6 +8117,7 @@ paths:
                 - content:collection:edit
                 - content:collection:publish
                 - content:article:edit
+                - content:article:publish
                 - content:feature:edit
                 - content:glossary:edit
                 - changelog:release:edit
@@ -11499,7 +11659,7 @@ components:
           - code: content:article:publish
             name: 发布、撤回和恢复文章，管理作者
             group: content
-            agentGrantable: false
+            agentGrantable: true
           - code: content:feature:edit
             name: 编辑精选位
             group: content
@@ -11685,6 +11845,7 @@ components:
               - content:collection:edit
               - content:collection:publish
               - content:article:edit
+              - content:article:publish
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -18666,6 +18827,7 @@ components:
               - content:collection:edit
               - content:collection:publish
               - content:article:edit
+              - content:article:publish
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -18739,7 +18901,7 @@ components:
           - code: content:article:publish
             name: 发布、撤回和恢复文章，管理作者
             group: content
-            agentGrantable: false
+            agentGrantable: true
           - code: content:feature:edit
             name: 编辑精选位
             group: content
@@ -23885,6 +24047,7 @@ components:
         - content:collection:edit
         - content:collection:publish
         - content:article:edit
+        - content:article:publish
         - content:feature:edit
         - content:glossary:edit
         - changelog:release:edit
@@ -23989,6 +24152,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -24025,6 +24189,7 @@ components:
           - content:collection:edit
           - content:collection:publish
           - content:article:edit
+          - content:article:publish
           - content:feature:edit
           - content:glossary:edit
           - changelog:release:edit
@@ -24077,6 +24242,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -24116,6 +24282,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -24406,6 +24573,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -24420,7 +24588,7 @@ components:
             - content:announcement:edit
             - release:desktop:notes
           uniqueItems: true
-          maxItems: 22
+          maxItems: 23
         allowDelete:
           type: boolean
           example: true
@@ -24452,6 +24620,7 @@ components:
           - content:collection:edit
           - content:collection:publish
           - content:article:edit
+          - content:article:publish
           - content:feature:edit
           - content:glossary:edit
           - changelog:release:edit
@@ -24467,7 +24636,7 @@ components:
           - release:desktop:notes
         allowDelete: true
         ipAllowlist: []
-      description: "Omitted permissions defaults to all 21 permissions; an empty array grants no business permissions. Omitted expiresAt defaults to 90 days after creation, explicit null never expires, and non-null must be in the future. Plaintext is returned once only."
+      description: "Omitted permissions defaults to all grantable permissions; an empty array grants no business permissions. Omitted expiresAt defaults to 90 days after creation, explicit null never expires, and non-null must be in the future. Plaintext is returned once only."
     AgentTokenUpdate:
       type: object
       additionalProperties: false
@@ -24492,6 +24661,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -24506,7 +24676,7 @@ components:
             - content:announcement:edit
             - release:desktop:notes
           uniqueItems: true
-          maxItems: 22
+          maxItems: 23
         allowDelete:
           type: boolean
           example: true
@@ -24581,6 +24751,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -24595,7 +24766,7 @@ components:
             - content:announcement:edit
             - release:desktop:notes
           uniqueItems: true
-          maxItems: 22
+          maxItems: 23
         allowDelete:
           type: boolean
           example: true
@@ -24667,6 +24838,7 @@ components:
           - content:collection:edit
           - content:collection:publish
           - content:article:edit
+          - content:article:publish
           - content:feature:edit
           - content:glossary:edit
           - changelog:release:edit
@@ -24721,6 +24893,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -24787,6 +24960,7 @@ components:
                     - content:collection:edit
                     - content:collection:publish
                     - content:article:edit
+                    - content:article:publish
                     - content:feature:edit
                     - content:glossary:edit
                     - changelog:release:edit
@@ -24844,6 +25018,7 @@ components:
                 - content:collection:edit
                 - content:collection:publish
                 - content:article:edit
+                - content:article:publish
                 - content:feature:edit
                 - content:glossary:edit
                 - changelog:release:edit
@@ -24893,6 +25068,7 @@ components:
                 - content:collection:edit
                 - content:collection:publish
                 - content:article:edit
+                - content:article:publish
                 - content:feature:edit
                 - content:glossary:edit
                 - changelog:release:edit
@@ -24954,6 +25130,7 @@ components:
               - content:collection:edit
               - content:collection:publish
               - content:article:edit
+              - content:article:publish
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -25001,6 +25178,7 @@ components:
               - content:collection:edit
               - content:collection:publish
               - content:article:edit
+              - content:article:publish
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -25059,6 +25237,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -25104,6 +25283,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -25161,6 +25341,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -25206,6 +25387,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -25320,6 +25502,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -25377,6 +25560,7 @@ components:
           - content:collection:edit
           - content:collection:publish
           - content:article:edit
+          - content:article:publish
           - content:feature:edit
           - content:glossary:edit
           - changelog:release:edit
@@ -25446,6 +25630,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -25503,6 +25688,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -27554,6 +27740,23 @@ components:
               after:
                 status: review
           affectedUrls: []
+    ArticleAuthorDryRun:
+      value:
+        code: '0000'
+        msg: ok
+        data:
+          dryRun: true
+          requestId: demo-author-preview-001
+          changes:
+            - object:
+                entity: article_author
+                objectKey: "1"
+              action: update
+              before:
+                name: Editor
+              after:
+                name: Updated Editor
+          affectedUrls: []
     ArticlePageSixLocales:
       value:
         code: '0000'
@@ -29445,6 +29648,7 @@ components:
               - content:collection:edit
               - content:collection:publish
               - content:article:edit
+              - content:article:publish
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -29504,7 +29708,7 @@ components:
           - code: content:article:publish
             name: 发布、撤回和恢复文章，管理作者
             group: content
-            agentGrantable: false
+            agentGrantable: true
           - code: content:feature:edit
             name: 编辑精选位
             group: content
@@ -30039,6 +30243,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -30107,6 +30312,7 @@ components:
                 - content:collection:edit
                 - content:collection:publish
                 - content:article:edit
+                - content:article:publish
                 - content:feature:edit
                 - content:glossary:edit
                 - changelog:release:edit
@@ -30153,6 +30359,7 @@ components:
               - content:collection:edit
               - content:collection:publish
               - content:article:edit
+              - content:article:publish
               - content:feature:edit
               - content:glossary:edit
               - changelog:release:edit
@@ -30196,6 +30403,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -30238,6 +30446,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit
@@ -30281,6 +30490,7 @@ components:
             - content:collection:edit
             - content:collection:publish
             - content:article:edit
+            - content:article:publish
             - content:feature:edit
             - content:glossary:edit
             - changelog:release:edit

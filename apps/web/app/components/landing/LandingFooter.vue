@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { OnLogo } from '@opennavo/ui';
+import { OnIcon, OnLogo } from '@opennavo/ui';
 
-// Landing footer (08 §10.14): brand/copy, locale selector moved here on mobile, two internal-link groups.
+// Landing footer (08 §10.14): brand/copy, locale selector moved here on mobile, two link groups.
 const { t } = useI18n();
 const localePath = useLocalePath();
 const year = new Date().getFullYear();
@@ -31,9 +31,11 @@ const consent = useAnalyticsConsent();
             <li v-for="link in column.links" :key="link.key">
               <NuxtLink
                 :to="link.href"
-                class="rounded-tiny text-13.5px text-ink-secondary no-underline outline-none transition-colors duration-fast ease-standard hover:text-ink-primary focus-visible:shadow-focus-ring"
+                :target="link.external ? '_blank' : undefined"
+                class="inline-flex items-center gap-2px rounded-tiny text-13.5px text-ink-secondary no-underline outline-none transition-colors duration-fast ease-standard hover:text-ink-primary focus-visible:shadow-focus-ring"
               >
                 {{ link.label }}
+                <OnIcon v-if="link.external" name="arrow-up-right" :size="12" />
               </NuxtLink>
             </li>
           </ul>

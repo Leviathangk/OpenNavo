@@ -559,6 +559,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const footer = /<footer[\s\S]*?<\/footer>/.exec(html)?.[0] ?? '';
     for (const path of ['/categories', '/rankings', '/recent', '/collections', '/download', '/about'])
       assert.ok(footer.includes(`href="${path}"`), path);
+    const github = /<a[^>]*href="https:\/\/github\.com\/opennavo\/OpenNavo"[^>]*>/.exec(footer)?.[0] ?? '';
+    assert.match(github, /target="_blank"/, 'the GitHub link opens in a new tab');
+    assert.match(github, /rel="noopener noreferrer"/);
   });
   await t.test('GA4 never loads from shared HTML and asks consent by region', async () => {
     const html = await (await fetch(`${origin}/apps/ordinary-app`, { headers: { accept: 'text/html' } })).text();

@@ -14,3 +14,5 @@ export * from './version';
 export * from './webRoute';
 export { DEFAULT_LOCALE, AUTHORING_LOCALE, LOCALE_METADATA } from './locales.gen';
 export * from './brewfileList';
+
+export * from './recentNavigation';

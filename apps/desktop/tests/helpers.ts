@@ -56,6 +56,8 @@ export const stubRoutes: RouteRecordRaw[] = [
     component: stub('合集页'),
     meta: { nav: 'discover' }
   },
+  { path: '/articles', name: 'articles', component: stub('文章页'), meta: { nav: 'articles' } },
+  { path: '/articles/:slug', name: 'article', component: stub('文章详情'), meta: { nav: 'articles' } },
   { path: '/brewfile', name: 'brewfile', component: stub('我的清单'), meta: { nav: 'brewfile' } },
   {
     path: '/installed',

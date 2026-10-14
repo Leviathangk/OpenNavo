@@ -134,7 +134,8 @@ describe('Job center: types', () => {
       'changelog_schedule',
       'assets_download-size',
       'cleanup',
-      'facts_sources'
+      'facts_sources',
+      'taps_sync'
     ]);
     expect(TRIGGER_TYPES).not.toContain('enrich_schedule');
     expect(JOB_TYPES).toEqual(
@@ -145,6 +146,7 @@ describe('Job center: types', () => {
   it('Convert asynq colons to underscores, preserving unknown names', () => {
     expect(jobLabel('assets:download-size')).toBe('page.ops.job.types.assets_download-size');
     expect(jobLabel('catalog:sync')).toBe('page.ops.job.types.catalog_sync');
+    expect(jobLabel('taps:sync')).toBe('page.ops.job.types.taps_sync');
     expect(jobLabel('enrich:package')).toBe('enrich:package');
   });
 });

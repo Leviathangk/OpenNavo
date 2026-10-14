@@ -22,7 +22,7 @@ func TestMCPGeneratedOperationsMatchAgentPolicies(t *testing.T) {
 	spec, err := adminapi.GetSpec()
 	require.NoError(t, err)
 	policies := AgentPolicies(spec)
-	require.Len(t, generated, 93)
+	require.Len(t, generated, 102)
 	require.Len(t, policies, len(generated))
 	parameters := regexp.MustCompile(`\{([^}]+)\}`)
 	for operation, item := range generated {

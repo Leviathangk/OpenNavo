@@ -11,7 +11,7 @@ const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 
 // Category page (08 §10.2): shared OnPackageListView (ADR-017), breadcrumbs, title/description, sort and Show disabled,
 // card grid, pagination. Cask-only (ADR-018).
-const PAGE_SIZE = 24;
+const { pageSize, fitPage } = useGridPageSize();
 
 const { t, locale } = useI18n();
 const api = useApi();
@@ -38,7 +38,8 @@ if (tree.value && !category.value) {
 }
 
 const { data, error, refresh } = await useAsyncData(
-  () => `packages:category:${slug.value}:${sort.value}:${page.value}:${includeDisabled.value}:${locale.value}`,
+  () =>
+    `packages:category:${slug.value}:${sort.value}:${page.value}:${pageSize.value}:${includeDisabled.value}:${locale.value}`,
   () =>
     unwrap(
       api.GET('/packages', {
@@ -49,7 +50,7 @@ const { data, error, refresh } = await useAsyncData(
             includeFonts: true,
             sort: sort.value,
             current: page.value,
-            size: PAGE_SIZE,
+            size: pageSize.value,
             includeDisabled: includeDisabled.value
           }
         }
@@ -57,7 +58,7 @@ const { data, error, refresh } = await useAsyncData(
     )
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
+const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / pageSize.value)));
 const sorts = useCatalogSorts();
 // Description and count; desktop has only count.
 const subtitle = computed(() => {
@@ -99,7 +100,7 @@ useItemListSchema(
     error.value
       ? null
       : data.value?.records.map(pkg => ({ name: pkg.displayName, path: localePath(packagePath(pkg.token)) })),
-  () => (page.value - 1) * PAGE_SIZE + 1
+  () => (page.value - 1) * pageSize.value + 1
 );
 
 // WP1: no "best" in titles; the legacy title is the rollout fallback selected in admin.
@@ -125,6 +126,7 @@ usePageSeo({
     :sort-label="t('catalog.sortLabel')"
     :items="error ? [] : (data?.records ?? null)"
     :link-as="NuxtLink"
+    @page-size="fitPage"
     @update:sort="update({ sort: $event })"
   >
     <template #filters>

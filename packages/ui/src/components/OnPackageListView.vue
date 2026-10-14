@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="S extends string">
+import { onMounted, onBeforeUnmount, ref } from 'vue';
 import type { Component } from 'vue';
 import type { PackageSummary } from '@opennavo/api';
 import OnBreadcrumb from './OnBreadcrumb.vue';
@@ -24,7 +25,37 @@ export interface OnPackageListViewProps<V extends string> {
 
 withDefaults(defineProps<OnPackageListViewProps<S>>(), { breadcrumb: () => [], sorts: () => [], linkAs: 'a' });
 
-const emit = defineEmits<{ 'update:sort': [value: S] }>();
+const emit = defineEmits<{ 'update:sort': [value: S]; pageSize: [value: number] }>();
+
+// Keep complete rows near the original 24-card page size. Hosts use this size for both requests and pagination.
+const root = ref<HTMLElement>();
+const pageSize = ref(24);
+let observer: ResizeObserver | undefined;
+let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+function fitPage(width: number) {
+  if (width <= 0) return;
+  const columns = Math.max(1, Math.floor((width + 12) / 272));
+  const rows = Math.max(1, Math.min(Math.ceil(24 / columns), Math.floor(100 / columns)));
+  pageSize.value = Math.min(100, columns * rows);
+  emit('pageSize', pageSize.value);
+}
+onMounted(() => {
+  if (!root.value) return;
+  fitPage(root.value.clientWidth);
+  if (typeof ResizeObserver === 'undefined') return;
+  let previous = root.value.clientWidth;
+  observer = new ResizeObserver(([entry]) => {
+    if (!entry || entry.contentRect.width === previous) return;
+    previous = entry.contentRect.width;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => fitPage(previous), 120);
+  });
+  observer.observe(root.value);
+});
+onBeforeUnmount(() => {
+  observer?.disconnect();
+  clearTimeout(resizeTimer);
+});
 
 defineSlots<{
   /** Filter left of sorting, e.g. web Show disabled. */
@@ -40,7 +71,7 @@ defineSlots<{
 </script>
 
 <template>
-  <div class="flex flex-col">
+  <div ref="root" class="flex flex-col">
     <OnBreadcrumb v-if="breadcrumb.length" class="pt-6px" :items="breadcrumb" :link-as="linkAs" />
     <OnPageHeader :title="title" :subtitle="subtitle">
       <template v-if="$slots.filters || (sorts.length && sort)" #actions>
@@ -57,7 +88,7 @@ defineSlots<{
     </OnPageHeader>
     <slot />
     <div v-if="items === null" class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-12px" aria-hidden="true">
-      <OnSkeleton v-for="index in 8" :key="index" height="148px" radius="big" />
+      <OnSkeleton v-for="index in pageSize" :key="index" height="148px" radius="big" />
     </div>
     <div v-else-if="items.length" class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-12px">
       <template v-for="pkg in items" :key="`${pkg.kind}/${pkg.token}`">

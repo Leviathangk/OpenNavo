@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { recentReturnPath, withRecentReturn } from '@opennavo/shared';
 import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -32,20 +33,25 @@ const tab = computed<Tab>(() => {
 });
 
 const base = computed(() => `/package/${props.kind}/${props.token}`);
+const returnTo = computed(() => recentReturnPath(route.query.returnTo));
 const tabs = computed(() => [
-  { value: 'overview' as const, label: t('package.tabs.overview'), href: base.value },
+  { value: 'overview' as const, label: t('package.tabs.overview'), href: withRecentReturn(base.value, returnTo.value) },
   {
     value: 'versions' as const,
     label: t('package.tabs.versions'),
     count: detail.value?.releaseCount || undefined,
-    href: `${base.value}/versions`
+    href: withRecentReturn(`${base.value}/versions`, returnTo.value)
   },
   {
     value: 'dependencies' as const,
     label: t('package.tabs.dependencies'),
-    href: `${base.value}/dependencies`
+    href: withRecentReturn(`${base.value}/dependencies`, returnTo.value)
   },
-  { value: 'details' as const, label: t('package.tabs.details'), href: `${base.value}/details` }
+  {
+    value: 'details' as const,
+    label: t('package.tabs.details'),
+    href: withRecentReturn(`${base.value}/details`, returnTo.value)
+  }
 ]);
 
 const name = computed(
@@ -54,11 +60,15 @@ const name = computed(
     (local.value ? pick(local.value.displayName, local.value.name, local.value.sourceLocale) : props.token)
 );
 const category = computed(() => detail.value?.primaryCategory);
-const breadcrumb = computed(() => [
-  { label: t('nav.discover'), href: '/discover' },
-  ...(category.value ? [{ label: category.value.name, href: `/categories/${category.value.slug}` }] : []),
-  { label: name.value }
-]);
+const breadcrumb = computed(() =>
+  returnTo.value
+    ? [{ label: t('recent.title'), href: returnTo.value }, { label: name.value }]
+    : [
+        { label: t('nav.discover'), href: '/discover' },
+        ...(category.value ? [{ label: category.value.name, href: `/categories/${category.value.slug}` }] : []),
+        { label: name.value }
+      ]
+);
 
 const notice = computed(() => {
   const value = detail.value;

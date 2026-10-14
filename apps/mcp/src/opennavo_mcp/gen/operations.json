@@ -64,6 +64,27 @@
     },
     "summary": "Create an article draft"
   },
+  "createArticleAuthor": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleAuthorWrite"
+    },
+    "method": "POST",
+    "model": "CreateArticleAuthorInput",
+    "parameters": {
+      "path": [],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/article-authors",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:publish"
+      ]
+    },
+    "summary": "Create an author"
+  },
   "createAssetUploadTicket": {
     "body": {
       "$ref": "#/components/schemas/AssetUploadTicketCreate"
@@ -885,6 +906,23 @@
     },
     "summary": "Query Agent call logs"
   },
+  "listArticleAuthors": {
+    "body": null,
+    "method": "GET",
+    "model": "ListArticleAuthorsInput",
+    "parameters": {
+      "path": [],
+      "query": []
+    },
+    "path": "/article-authors",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:edit"
+      ]
+    },
+    "summary": "List authors"
+  },
   "listAssets": {
     "body": null,
     "method": "GET",
@@ -1259,6 +1297,29 @@
     },
     "summary": "Zero-result search queries"
   },
+  "publishArticle": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleRevisionCheck"
+    },
+    "method": "POST",
+    "model": "PublishArticleInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles/{id}/publish",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:publish"
+      ]
+    },
+    "summary": "Publish the submitted revision"
+  },
   "publishCollection": {
     "body": {
       "$ref": "#/components/schemas/PublishRequest"
@@ -1347,6 +1408,29 @@
     },
     "summary": "Reorder screenshots"
   },
+  "restoreArticle": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleRevisionCheck"
+    },
+    "method": "POST",
+    "model": "RestoreArticleInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles/{id}/restore",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:publish"
+      ]
+    },
+    "summary": "Restore a withdrawn article"
+  },
   "restoreRevision": {
     "body": {
       "$ref": "#/components/schemas/RestoreOptions"
@@ -1433,6 +1517,29 @@
     },
     "summary": "Retranslate a specified object"
   },
+  "revertArticle": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleRevert"
+    },
+    "method": "POST",
+    "model": "RevertArticleInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles/{id}/revert",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:edit"
+      ]
+    },
+    "summary": "Restore an older revision as the working draft"
+  },
   "revertRequest": {
     "body": null,
     "method": "POST",
@@ -1453,6 +1560,30 @@
       ]
     },
     "summary": "Atomically undo all changes by request ID"
+  },
+  "setArticleLocale": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleLocaleUpdate"
+    },
+    "method": "PUT",
+    "model": "SetArticleLocaleInput",
+    "parameters": {
+      "path": [
+        "id",
+        "locale"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles/{id}/locales/{locale}",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:publish"
+      ]
+    },
+    "summary": "Hold back or release one language"
   },
   "setArticlePackages": {
     "body": {
@@ -1476,6 +1607,29 @@
       ]
     },
     "summary": "Set the apps an article covers"
+  },
+  "setArticleSlug": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleSlugUpdate"
+    },
+    "method": "PUT",
+    "model": "SetArticleSlugInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles/{id}/slug",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:publish"
+      ]
+    },
+    "summary": "Change the article address"
   },
   "setCollectionItems": {
     "body": {
@@ -1723,6 +1877,29 @@
       ]
     },
     "summary": "Edit the working revision"
+  },
+  "updateArticleAuthor": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleAuthorWrite"
+    },
+    "method": "PUT",
+    "model": "UpdateArticleAuthorInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/article-authors/{id}",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:publish"
+      ]
+    },
+    "summary": "Edit an author"
   },
   "updateCategory": {
     "body": {
@@ -2054,5 +2231,28 @@
       ]
     },
     "summary": "Write or clear editorial release notes"
+  },
+  "withdrawArticle": {
+    "body": {
+      "$ref": "#/components/schemas/ArticleWithdraw"
+    },
+    "method": "POST",
+    "model": "WithdrawArticleInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/articles/{id}/withdraw",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "content:article:publish"
+      ]
+    },
+    "summary": "Withdraw a published article"
   }
 }

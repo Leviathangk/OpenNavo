@@ -1,4 +1,36 @@
 {
+  "articles": {
+    "viewTranslation": "翻訳を表示",
+    "title": "記事",
+    "subtitle": "Mac アプリのおすすめ、レビュー、使い方、まとめ",
+    "all": "すべて",
+    "typesLabel": "記事の種類",
+    "types": {
+      "recommendation": "おすすめ",
+      "review": "レビュー",
+      "tutorial": "使い方",
+      "roundup": "まとめ",
+      "news": "ニュース"
+    },
+    "emptyTitle": "記事はまだありません",
+    "emptyDescription": "記事が公開されるとここに表示されます。",
+    "readingTime": "約 {minutes} 分で読めます",
+    "published": "{date} 公開",
+    "updated": "{date} 更新",
+    "editorial": "OpenNavo 編集部",
+    "machineTranslated": "AI 翻訳",
+    "viewOriginal": "原文を見る",
+    "sourceText": "この記事はまだお使いの言語で読めないため、原文を表示しています。",
+    "testNote": "テスト環境：",
+    "toc": "目次",
+    "sources": "参考情報",
+    "appCardNote": "現在のカタログ情報：バージョンとインストール数はカタログに合わせて更新されるため、執筆時と異なる場合があります。",
+    "mentionedApps": "記事で紹介したアプリ",
+    "related": "関連記事",
+    "withdrawnTitle": "この記事は取り下げられました",
+    "withdrawnBody": "内容が古くなったか正確でなくなった可能性があるため、公開を終了しました。ほかの記事もご覧ください。",
+    "backToList": "すべての記事を見る"
+  },
   "app": {
     "name": "OpenNavo"
   },

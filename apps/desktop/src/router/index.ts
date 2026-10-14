@@ -8,6 +8,7 @@ declare module 'vue-router' {
       | 'discover'
       | 'categories'
       | 'collections'
+      | 'articles'
       | 'rankings'
       | 'recent'
       | 'brewfile'
@@ -111,6 +112,19 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/CollectionPage.vue'),
     props: true,
     meta: { nav: 'collections' }
+  },
+  {
+    path: '/articles',
+    name: 'articles',
+    component: () => import('@/pages/ArticlesPage.vue'),
+    meta: { nav: 'articles' }
+  },
+  {
+    path: '/articles/:slug',
+    name: 'article',
+    component: () => import('@/pages/ArticlePage.vue'),
+    props: true,
+    meta: { nav: 'articles' }
   },
   {
     path: '/brewfile',

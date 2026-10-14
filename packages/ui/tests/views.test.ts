@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
-import { h } from 'vue';
+import { describe, expect, it, vi } from 'vitest';
+import { h, nextTick } from 'vue';
 import OnAboutSection from '../src/components/OnAboutSection.vue';
 import OnAppShell from '../src/components/OnAppShell.vue';
 import OnCategoriesView from '../src/components/OnCategoriesView.vue';
@@ -118,6 +118,42 @@ describe('OnSidebar and OnToolbar', () => {
 });
 
 describe('OnDiscoverView', () => {
+  it('Keeps both sections at three responsive rows with two empty final slots', async () => {
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get');
+    try {
+      for (const [pixels, count] of [
+        [1612, 19],
+        [916, 10],
+        [684, 7],
+        [452, 5],
+        [220, 3]
+      ]) {
+        width.mockReturnValue(pixels!);
+        const apps = Array.from({ length: 30 }, (_, index) => ({ ...packageSummary(), token: `app-${index}` }));
+        const wrapper = mount(OnDiscoverView, {
+          props: {
+            chips: [],
+            popular: apps,
+            recent: apps,
+            popularRows: 3,
+            labels,
+            rankingsHref: '/rankings',
+            recentHref: '/recent',
+            collectionsHref: '/collections'
+          },
+          slots: { card: ({ section }: { section: string }) => h('div', { 'data-section': section }) },
+          global: withLocale('zh-CN')
+        });
+        await nextTick();
+        expect(wrapper.findAll('[data-section="popular"]')).toHaveLength(count!);
+        expect(wrapper.findAll('[data-section="recent"]')).toHaveLength(count!);
+        wrapper.unmount();
+      }
+    } finally {
+      width.mockRestore();
+    }
+  });
+
   it('Displays a primary pick and clickable secondary tiles with app, collection, and external destinations', () => {
     const wrapper = mount(OnDiscoverView, {
       props: {
@@ -506,5 +542,31 @@ describe('Detail views', () => {
     expect(wrapper.text()).toContain('需要重启');
     expect(wrapper.text()).toContain('brew install --cask ghostty');
     expect(wrapper.find('a[href="#/apps/a"]').text()).toBe('A');
+  });
+});
+
+describe('Responsive app-list pagination', () => {
+  it('Requests complete rows for narrow and wide containers without dropping supplied items', () => {
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get');
+    try {
+      for (const [pixels, size] of [
+        [260, 24],
+        [1076, 24],
+        [1892, 28],
+        [2164, 24]
+      ]) {
+        width.mockReturnValue(pixels!);
+        const items = Array.from({ length: 24 }, (_, i) => packageSummary({ token: `app-${i}` }));
+        const wrapper = mount(OnPackageListView, {
+          props: { title: 'Apps', items },
+          slots: { card: ({ pkg }: { pkg: { token: string } }) => h('div', { 'data-app': pkg.token }) }
+        });
+        expect(wrapper.emitted('pageSize')).toEqual([[size]]);
+        expect(wrapper.findAll('[data-app]')).toHaveLength(24);
+        wrapper.unmount();
+      }
+    } finally {
+      width.mockRestore();
+    }
   });
 });

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { withRecentReturn } from '@opennavo/shared';
 import type { PackageSummary, PublicComponents } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { collectionIcons, OnAppCard, OnButton, OnDiscoverView, OnErrorState, OnIcon } from '@opennavo/ui';
@@ -23,7 +24,11 @@ const { t } = useI18n();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 
-const [{ data: home, error, refresh }, { data: popularApps }] = await Promise.all([useHome(), usePopularApps()]);
+const [{ data: home, error, refresh }, { data: popularApps }, { data: recentApps }] = await Promise.all([
+  useHome(),
+  usePopularApps(),
+  useRecentPreview()
+]);
 
 const detailPath = (token: string) => localePath(`/apps/${token}`);
 
@@ -173,7 +178,7 @@ defineOgImage('OgDefault', {
     :chips="chips"
     :popular="popularApps ?? home.popularApps"
     :popular-rows="3"
-    :recent="home.recentlyUpdated"
+    :recent="recentApps ?? home.recentlyUpdated"
     :collections="collections"
     :labels="labels"
     :rankings-href="localePath('/rankings')"
@@ -202,8 +207,14 @@ defineOgImage('OgDefault', {
         <OnIcon name="arrow-up-right" :size="15" />
       </OnButton>
     </template>
-    <template #card="{ pkg, stats }">
-      <OnAppCard :pkg="pkg" state="get" :stats="stats" :href="detailPath(pkg.token)" :link-as="NuxtLink">
+    <template #card="{ pkg, stats, section }">
+      <OnAppCard
+        :pkg="pkg"
+        state="get"
+        :stats="stats"
+        :href="withRecentReturn(detailPath(pkg.token), section === 'recent' ? '/recent' : undefined)"
+        :link-as="NuxtLink"
+      >
         <template #action>
           <GetMenu :kind="pkg.kind" :token="pkg.token" :name="pkg.displayName" />
         </template>

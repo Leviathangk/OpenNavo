@@ -1,6 +1,40 @@
 import type { MessageSchema } from './index';
 
 const messages: MessageSchema = {
+  articles: {
+    viewTranslation: 'View translation',
+    title: 'Articles',
+    subtitle: 'Mac app picks, reviews, tutorials and roundups',
+    all: 'All',
+    typesLabel: 'Article type',
+    types: {
+      recommendation: 'Pick',
+      review: 'Review',
+      tutorial: 'Tutorial',
+      roundup: 'Roundup',
+      news: 'News'
+    },
+    emptyTitle: 'No articles yet',
+    emptyDescription: 'Published articles will appear here.',
+    readingTime: '{minutes} min read',
+    published: 'Published {date}',
+    updated: 'Updated {date}',
+    editorial: 'OpenNavo Editors',
+    machineTranslated: 'AI translation',
+    viewOriginal: 'View original',
+    sourceText: 'This article isn’t available in your language yet, so the original is shown below.',
+    testNote: 'How we tested:',
+    toc: 'Contents',
+    sources: 'Sources',
+    appCardNote:
+      'Current catalog data: the version and installs follow the catalog and may differ from when this was written.',
+    mentionedApps: 'Apps in this article',
+    related: 'Related articles',
+    withdrawnTitle: 'This article has been withdrawn',
+    withdrawnBody:
+      'It may be out of date or no longer accurate, so it is no longer available. Have a look at our other articles.',
+    backToList: 'Browse all articles'
+  },
   brewfile: {
     installTitle: 'Install apps from My List',
     title: 'My list',

@@ -237,6 +237,10 @@ func touchAgentToken(c *gin.Context, svc *agent.Service, id agent.Identity, ip s
 	return true
 }
 func consumesLLM(op string, body map[string]any) bool {
+	// Publishing schedules translation even though its body has no localized fields.
+	if op == "publishArticle" {
+		return true
+	}
 	if body["clear"] == true {
 		return false
 	}

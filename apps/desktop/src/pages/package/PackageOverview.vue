@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
-import { installCommand } from '@opennavo/shared';
+import { installCommand, withRecentReturn } from '@opennavo/shared';
 import { architectures, displayUrl, OnPackageOverview, useUiMessages } from '@opennavo/ui';
 import type { OnKeyValueItem, OnRelatedPackage } from '@opennavo/ui';
 import { OnMarkdown } from '@opennavo/ui/markdown';
+import ArticleCard from '@/components/article/ArticleCard.vue';
 import LatestRelease from '@/components/package/LatestRelease.vue';
 import MonthlyInstallsCard from '@/components/package/MonthlyInstallsCard.vue';
 import { api } from '@/api';
@@ -17,6 +18,7 @@ import { useToasts } from '@/composables/useToasts';
 
 // Overview (mockup 03): shared OnPackageOverview (ADR-017); left: screenshots → introduction → latest release → caveats.
 // Right: install command → information → monthly installs → similar apps. Offline shows only the local summary and install command.
+const route = useRoute();
 const { t } = useI18n();
 const { pick, appLocale } = useAppLocale();
 const toasts = useToasts();
@@ -149,8 +151,12 @@ function onCopied(text: string) {
         v-if="detail?.latestRelease"
         :release="detail.latestRelease"
         :total="detail.releaseCount"
-        :versions-to="`/package/${kind}/${token}/versions`"
+        :versions-to="withRecentReturn(`/package/${kind}/${token}/versions`, route.query.returnTo)"
       />
+      <section v-if="detail?.articles?.length" class="mt-24px" aria-labelledby="package-articles">
+        <h2 id="package-articles" class="m-0 text-15px font-600 text-ink-primary">{{ t('articles.related') }}</h2>
+        <ArticleCard v-for="card in detail.articles" :key="card.slug" :card="card" compact :heading-level="3" />
+      </section>
     </template>
     <template #aside>
       <MonthlyInstallsCard v-if="detail" :installs="detail.installs" />

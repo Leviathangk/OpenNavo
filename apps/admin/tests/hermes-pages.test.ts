@@ -22,9 +22,12 @@ vi.mock('@/service/api', () => ({ createAgentToken: api.create, updateAgentToken
 const ALL: AgentPermission[] = PERMISSION_GROUPS.flatMap(group => group.codes);
 
 describe('Agent access: permissions and tokens', () => {
-  it('All 21 grantable permissions are grouped, excluding system, mirrors, configuration, and desktop publishing', () => {
-    expect(ALL).toHaveLength(21);
-    expect(new Set(ALL).size).toBe(21);
+  it('All 23 grantable permissions are grouped, excluding system, mirrors, configuration, and desktop publishing', () => {
+    expect(ALL).toHaveLength(23);
+    expect(new Set(ALL).size).toBe(23);
+    expect(groupPermissions(['content:article:edit', 'content:article:publish'])).toEqual([
+      { key: 'content', codes: ['content:article:edit', 'content:article:publish'] }
+    ]);
     for (const forbidden of [
       'system:config:edit',
       'system:user:edit',
@@ -55,7 +58,7 @@ describe('Agent access: permissions and tokens', () => {
     const byDefault = buildTokenBody({ ...base, expiry: 'default' });
     expect(byDefault).not.toHaveProperty('expiresAt');
     expect(byDefault).toMatchObject({ name: '每日更新', allowDelete: true, ipAllowlist: ['203.0.113.0/24'] });
-    expect(byDefault.permissions).toHaveLength(21);
+    expect(byDefault.permissions).toHaveLength(23);
     expect(buildTokenBody({ ...base, expiry: 'never' }).expiresAt).toBeNull();
     const at = Date.UTC(2027, 0, 1);
     expect(buildTokenBody({ ...base, expiry: 'custom', expiresAt: at }).expiresAt).toBe('2027-01-01T00:00:00.000Z');
@@ -102,7 +105,7 @@ describe('New token form', () => {
         h('button', { onClick: () => emit('click') }, slots.default?.())
   });
 
-  it('Already-open mounting still selects all 21 permissions and submits default 90-day expiry', async () => {
+  it('Already-open mounting still selects all 23 permissions and submits default 90-day expiry', async () => {
     api.create.mockReset();
     api.create.mockResolvedValue({ data: { plaintext: 'MOCK_ONLY' }, error: undefined });
     const wrapper = mount(TokenForm, {
@@ -125,14 +128,14 @@ describe('New token form', () => {
         }
       }
     });
-    expect(wrapper.find('[data-picked]').attributes('data-picked')!.split(',')).toHaveLength(21);
+    expect(wrapper.find('[data-picked]').attributes('data-picked')!.split(',')).toHaveLength(23);
     await wrapper.find('input').setValue('每日更新');
     const buttons = wrapper.findAll('button');
     await buttons[buttons.length - 1].trigger('click');
     await flushPromises();
     const [clientId, body] = api.create.mock.calls[0];
     expect(clientId).toBe(7);
-    expect(body.permissions).toHaveLength(21);
+    expect(body.permissions).toHaveLength(23);
     expect(body).not.toHaveProperty('expiresAt');
     expect(body).toMatchObject({ name: '每日更新', allowDelete: true, ipAllowlist: [] });
   });

@@ -111,8 +111,16 @@ asset_upload_ticket with kind cover or screenshot) from sources you may use, eac
 No raw HTML.
 Flow: article_create (slug, type, title; idempotency_key for retries), article_update and
 article_set_packages with expected_revision from the last read, then article_get and fix every
-code in readiness before article_submit_review. Preview with dry_run. Publishing, withdrawing and
-restoring happen in admin; editing a published article only creates a new draft.
+code in readiness before article_submit_review, then article_publish with the latest
+expected_revision. Preview writes with dry_run. Publishing, withdrawing, restoring, changing
+slug or language visibility, and creating/updating authors require content:article:publish;
+writing, reverting drafts and listing authors require content:article:edit. Use
+article_authors_list to choose an author, or article_author_create / article_author_update to
+manage profiles. article_withdraw takes a page out of public lists; article_restore brings back
+its last published revision. article_revert copies an older revision into a draft that must be
+submitted and published again. article_set_slug preserves redirects from published addresses.
+article_set_locale controls withheld for one language. Editing a published article only creates
+a new draft; use article_get for revisions and language status.
 """,
 }
 

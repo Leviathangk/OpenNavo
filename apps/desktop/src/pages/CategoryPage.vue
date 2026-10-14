@@ -13,7 +13,7 @@ import { useCatalogStore } from '@/stores';
 
 // Category details (local catalog): sorting and pagination, apps only (ADR-018); retain font packages in their own category. Shared web view (ADR-017).
 const props = defineProps<{ slug: string }>();
-const PAGE_SIZE = 24;
+const pageSize = ref(24);
 
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
@@ -22,6 +22,12 @@ const catalog = useCatalogStore();
 
 const sort = ref<Extract<ListSort, 'popular' | 'updated' | 'name'>>('popular');
 const page = ref(1);
+function fitPage(size: number) {
+  if (size === pageSize.value) return;
+  const first = (page.value - 1) * pageSize.value;
+  page.value = Math.floor(first / size) + 1;
+  pageSize.value = size;
+}
 
 const category = computed(() => catalog.categories.find(item => item.slug === props.slug));
 const parent = computed(() => catalog.categories.find(item => item.slug === category.value?.parent));
@@ -40,17 +46,17 @@ const { data, error } = useCatalogLoader(
         includeFonts: true,
         includeLibraries: false,
         includeDisabled: false,
-        limit: PAGE_SIZE,
-        offset: (page.value - 1) * PAGE_SIZE
+        limit: pageSize.value,
+        offset: (page.value - 1) * pageSize.value
       })
     );
     return result;
   },
-  [() => props.slug, sort, page, appLocale],
+  [() => props.slug, sort, page, appLocale, pageSize],
   result => result.items
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
+const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / pageSize.value)));
 const sorts = computed(() =>
   (['popular', 'updated', 'name'] as const).map(value => ({
     value,
@@ -75,6 +81,7 @@ const breadcrumb = computed(() => [
     :sort-label="t('categories.sortLabel')"
     :items="items"
     :link-as="RouterLink"
+    @page-size="fitPage"
   >
     <template #card="{ pkg }">
       <PackageCard :pkg="pkg" />

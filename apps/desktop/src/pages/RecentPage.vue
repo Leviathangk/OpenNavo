@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { recentReturnPath, withRecentReturn } from '@opennavo/shared';
+import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import type { PackageSummary } from '@opennavo/api';
 import { OnEmpty, OnPackageListView, OnPagination } from '@opennavo/ui';
@@ -11,7 +12,7 @@ import PackageCard from '@/components/package/PackageCard.vue';
 import { commands, unwrap } from '@/ipc/client';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { useCatalogLoader } from '@/composables/useCatalogLoader';
-import { fetchRecentApps, peekRecentApps, RECENT_PAGE_SIZE } from '@/composables/useHome';
+import { fetchRecentApps, peekRecentApps } from '@/composables/useHome';
 import { useLoader } from '@/composables/useLoader';
 import { usePackageSummary } from '@/composables/usePackageSummary';
 
@@ -24,14 +25,28 @@ const { t } = useI18n();
 const { appLocale } = useAppLocale();
 const { toSummary } = usePackageSummary();
 
-const page = ref(1);
+const route = useRoute();
+const initialQuery = new URLSearchParams(
+  recentReturnPath(
+    `/recent${route.fullPath.includes('?') ? route.fullPath.slice(route.fullPath.indexOf('?')) : ''}`
+  )?.split('?')[1]
+);
+const pageSize = ref(Number(initialQuery.get('size') ?? 24));
+const page = ref(Number(initialQuery.get('page') ?? 1));
+const returnTo = computed(() => `/recent?page=${page.value}&size=${pageSize.value}`);
+function fitPage(size: number) {
+  if (size === pageSize.value) return;
+  const first = (page.value - 1) * pageSize.value;
+  page.value = Math.floor(first / size) + 1;
+  pageSize.value = size;
+}
 
 const { data: remote, error: remoteError } = useLoader(
-  () => fetchRecentApps(appLocale.value, page.value),
-  [page, appLocale],
+  () => fetchRecentApps(appLocale.value, page.value, pageSize.value),
+  [page, appLocale, pageSize],
   undefined,
-  [page, appLocale],
-  () => peekRecentApps(appLocale.value, page.value)
+  [page, appLocale, pageSize],
+  () => peekRecentApps(appLocale.value, page.value, pageSize.value)
 );
 
 const { data: local, error: localError } = useCatalogLoader(
@@ -45,12 +60,12 @@ const { data: local, error: localError } = useCatalogLoader(
         includeFonts: true,
         includeLibraries: false,
         includeDisabled: false,
-        limit: RECENT_PAGE_SIZE,
-        offset: (page.value - 1) * RECENT_PAGE_SIZE
+        limit: pageSize.value,
+        offset: (page.value - 1) * pageSize.value
       })
     );
   },
-  [remoteError, page, appLocale],
+  [remoteError, page, appLocale, pageSize],
   result => result?.items ?? []
 );
 
@@ -60,16 +75,22 @@ const items = computed<PackageSummary[] | null>(() => {
   return localError.value ? [] : null;
 });
 const pageCount = computed(() =>
-  Math.max(1, Math.ceil((remote.value?.total ?? local.value?.total ?? 0) / RECENT_PAGE_SIZE))
+  Math.max(1, Math.ceil((remote.value?.total ?? local.value?.total ?? 0) / pageSize.value))
 );
 </script>
 
 <template>
-  <OnPackageListView :title="t('recent.title')" :subtitle="t('recent.subtitle')" :items="items" :link-as="RouterLink">
+  <OnPackageListView
+    :title="t('recent.title')"
+    :subtitle="t('recent.subtitle')"
+    :items="items"
+    :link-as="RouterLink"
+    @page-size="fitPage"
+  >
     <RequestError v-if="localError && !remote" :error="localError" />
     <OfflineNotice v-else-if="remoteError && !remote" class="mb-16px" />
     <template #card="{ pkg }">
-      <PackageCard :pkg="pkg" :stats="STATS" />
+      <PackageCard :pkg="pkg" :stats="STATS" :href="withRecentReturn(`/package/${pkg.kind}/${pkg.token}`, returnTo)" />
     </template>
     <template #empty>
       <OnEmpty v-if="!localError" :title="t('common.empty')" />
