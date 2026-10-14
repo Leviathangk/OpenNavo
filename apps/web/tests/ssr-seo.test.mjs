@@ -753,7 +753,13 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.match(first.html, /<title>Recently Updated Mac Apps · OpenNavo<\/title>/);
     assert.match(first.html, /<h1[^>]*>Recently Updated<\/h1>/);
     assert.equal(canonical(first.html), 'https://example.test/recent');
-    assert.ok(first.html.includes('href="/apps/ordinary-app"'));
+    const appLink = html => {
+      const href = /href="([^"]*\/apps\/ordinary-app\?[^"]*)"/.exec(html)?.[1];
+      assert.ok(href, 'app cards retain their return location');
+      return new URL(href.replaceAll('&amp;', '&'), origin);
+    };
+    assert.equal(appLink(first.html).pathname, '/apps/ordinary-app');
+    assert.equal(appLink(first.html).searchParams.get('returnTo'), '/recent?page=1&size=24');
     assert.ok(first.html.includes('href="/recent?page=2"'), 'pages are real links');
     assert.ok(first.html.includes('"ItemList"'), 'the listed apps are structured data');
     assert.ok(/aria-current="page"[^>]*href="\/recent"|href="\/recent"[^>]*aria-current="page"/.test(first.html));
@@ -761,6 +767,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(second.status, 200);
     assert.match(second.html, /<title>最近更新的 Mac App · 第 2 页 · OpenNavo<\/title>/);
     assert.equal(canonical(second.html), 'https://example.test/zh/recent?page=2', 'page 2 is its own canonical');
+    assert.equal(appLink(second.html).pathname, '/zh/apps/ordinary-app');
+    assert.equal(appLink(second.html).searchParams.get('returnTo'), '/recent?page=2&size=24');
     assert.equal((await page('/recent?page=4')).status, 404, 'past the last page');
   });
   await t.test('robots.txt follows the admin crawler policy', async () => {
