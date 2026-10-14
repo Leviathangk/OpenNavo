@@ -95,7 +95,7 @@ fn auto_updates_ignore_legacy_formula_flag_and_respect_cask_pins_and_ignores() {
 fn core(root: &Path) -> Arc<DesktopCore> {
     let fake = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fake-brew/brew");
     let path = root.join("brew_fixture");
-    let info = serde_json::json!({"formulae":[{"name":"node","installed":[{"version":"1"}]},{"name":"pcre2","installed":[{"version":"1"}],"pinned":true}],"casks":[{"token":"ghostty","name":["Ghostty"],"installed":"1","version":"2","artifacts":[]},{"token":"visual-studio-code","name":["VS Code"],"installed":"1","version":"2","artifacts":[]}]});
+    let info = serde_json::json!({"formulae":[{"name":"node","installed":[{"version":"1"}]},{"name":"pcre2","installed":[{"version":"1"}],"pinned":true}],"casks":[{"token":"ghostty","tap":"homebrew/cask","name":["Ghostty"],"installed":"1","version":"2","artifacts":[]},{"token":"visual-studio-code","tap":"homebrew/cask","name":["VS Code"],"installed":"1","version":"2","artifacts":[]}]});
     let outdated = serde_json::json!({"formulae":[{"name":"node","installed_versions":["1"],"current_version":"2"},{"name":"pcre2","installed_versions":["1"],"current_version":"2","pinned":true}],"casks":[{"name":"ghostty","installed_versions":["1"],"current_version":"2"},{"name":"visual-studio-code","installed_versions":["1"],"current_version":"2"}]});
     let python_string = |value: &str| serde_json::to_string(value).unwrap();
     // Local wrapper writes forward only to the public-log simulator, never the development machine's Homebrew.

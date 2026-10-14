@@ -60,7 +60,10 @@ func TestMigrationsAndSeedAreIdempotent(t *testing.T) {
 	}
 	var agentPermissions int64
 	require.NoError(t, db.Raw("SELECT count(*) FROM admin_role_permissions rp JOIN admin_roles r ON r.id=rp.role_id WHERE r.role_code='R_AGENT'").Scan(&agentPermissions).Error)
-	require.EqualValues(t, 22, agentPermissions)
+	require.EqualValues(t, 23, agentPermissions)
+	var articlePermissions []string
+	require.NoError(t, db.Raw("SELECT rp.permission_code FROM admin_role_permissions rp JOIN admin_roles r ON r.id=rp.role_id WHERE r.role_code='R_AGENT' AND rp.permission_code LIKE 'content:article:%'").Scan(&articlePermissions).Error)
+	require.ElementsMatch(t, []string{"content:article:edit", "content:article:publish"}, articlePermissions)
 	var super bool
 	require.NoError(t, db.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM admin_user_roles ur JOIN admin_roles r ON r.id=ur.role_id WHERE r.role_code='R_SUPER')").Scan(&super).Error)
 	require.True(t, super)
