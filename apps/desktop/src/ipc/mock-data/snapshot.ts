@@ -20,7 +20,9 @@ export const catalogBaseSnapshot: Schema['CatalogBaseSnapshot'] = {
             kind: item.kind,
             popularity: item.popularity ?? 0,
             installs90d: item.installs90d ?? undefined,
-            installs365d: item.installs365d ?? undefined
+            installs365d: item.installs365d ?? undefined,
+            appTargets: item.appTargets ?? undefined,
+            tap: item.tap ?? undefined
           }
         ]
       : []

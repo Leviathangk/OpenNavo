@@ -482,7 +482,8 @@ const pages: PageMessages = {
         assets_icons: 'Icon harvest (retired)',
         'assets_download-size': 'Download size probe',
         cleanup: 'Cleanup',
-        facts_sources: 'License and App Store facts'
+        facts_sources: 'License and App Store facts',
+        taps_sync: 'Third-party tap sync'
       },
       triggers: { schedule: 'Scheduled', manual: 'Manual', event: 'Event' },
       statuses: { running: 'Running', succeeded: 'Succeeded', failed: 'Failed', partial: 'Partial' },

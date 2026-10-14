@@ -80,6 +80,15 @@ TOOLS = (
     tool(
         "package_refresh", "catalog:package:resync", "resyncPackage listAdminPackages", write=True
     ),
+    tool("tap_packages_list", "catalog:package:view", "listTapPackages"),
+    tool("tap_package_add", "catalog:package:edit", "addTapPackage", write=True),
+    tool(
+        "tap_package_remove",
+        "catalog:package:edit",
+        "removeTapPackage listAdminPackages",
+        write=True,
+        delete=True,
+    ),
     tool("asset_upload_from_url", "catalog:asset:upload", "uploadAsset", write=True),
     tool("asset_upload_ticket", "catalog:asset:upload", "createAssetUploadTicket", write=True),
     tool("assets_list", "catalog:asset:upload", "listAssets"),

@@ -14,6 +14,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/opennavo/opennavo/server/internal/cache"
+	pipeline "github.com/opennavo/opennavo/server/internal/changelog"
 	"github.com/opennavo/opennavo/server/internal/config"
 	httpserver "github.com/opennavo/opennavo/server/internal/http"
 	"github.com/opennavo/opennavo/server/internal/http/admin"
@@ -28,6 +29,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/search"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
+	"github.com/opennavo/opennavo/server/internal/service/taps"
 	"github.com/opennavo/opennavo/server/internal/storage"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
@@ -93,7 +95,11 @@ func run(ctx context.Context) error {
 		return err
 	}
 	desktopService := &desktop.Service{Store: st, Objects: desktop.S3Objects{S3Objects: assets.S3Objects{Client: objects}}}
-	adminService := &management.Service{Desktop: desktopService, Store: st, Config: cfg, Queue: &jobs.Enqueuer{Client: asynq.NewClientFromRedisClient(st.Redis), Redis: st.Redis}, IconAccent: assetService.IconAccent}
+	// Adding a third-party tap cask reads it from GitHub with the changelog's token and quota observer.
+	tapGitHub := pipeline.NewResolver(cfg.FetchUserAgent)
+	tapGitHub.ObserveQuota = st.ObserveGitHubQuota
+	tapGitHub.TokenProvider = func(ctx context.Context) (string, error) { return st.GitHubToken(ctx, cfg) }
+	adminService := &management.Service{Desktop: desktopService, Store: st, Config: cfg, Queue: &jobs.Enqueuer{Client: asynq.NewClientFromRedisClient(st.Redis), Redis: st.Redis}, IconAccent: assetService.IconAccent, Taps: &taps.Service{Store: st, GitHub: tapGitHub}}
 	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient)}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}, Catalog: &catalog.PublicService{Store: st, Cache: cacheBackend, WebBaseURL: cfg.WebBaseURL, Secrets: cfg}, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
 	if err != nil {
 		return fmt.Errorf("create HTTP server: %w", err)

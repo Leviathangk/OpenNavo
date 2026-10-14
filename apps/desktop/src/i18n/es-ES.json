@@ -150,6 +150,7 @@
     "deprecated": "Obsoleta",
     "homepage": "Inicio",
     "fromTap": "De",
+    "thirdPartyTap": "Repositorio de terceros",
     "stats": {
       "label": "Datos",
       "installs30d": "Instalaciones en los últimos 30 días",
@@ -940,6 +941,12 @@
     "confirm": "Confirmar adopción",
     "blockedTitle": "Todavía no se puede instalar {name}",
     "blockedDescription": "No se pudo verificar la ubicación de instalación o la app existente. No se realizó ninguna instalación ni adopción. Comprueba la app y los detalles de instalación y vuelve a intentarlo."
+  },
+  "tapConfirm": {
+    "title": "¿Instalar {name} desde un repositorio de terceros?",
+    "description": "{name} no está en el repositorio oficial de Homebrew. Lo mantiene el autor del repositorio de origen indicado abajo y Homebrew no lo ha revisado.",
+    "hint": "En la primera instalación, Homebrew descarga este repositorio desde GitHub y confía en la app; los mirrors no se aplican. Continúa solo si confías en su autor.",
+    "confirm": "Continuar instalación"
   },
   "runningApps": {
     "title": "Hay aplicaciones en ejecución",

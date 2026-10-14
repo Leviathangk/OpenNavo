@@ -270,3 +270,54 @@ func TestV2SparsePacksCategoryChangesAndInterruptedPublication(t *testing.T) {
 	require.Greater(t, fresh.TextPacks.EnUS.Version, latest.TextPacks.EnUS.Version)
 	require.NotEqual(t, latest.Sha256, fresh.Sha256)
 }
+
+// Exercise the published gzip, including CatalogItem -> CatalogBaseItem conversion.
+func TestV2PublishedSnapshotPreservesTapAppTargets(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	raw, err := homebrew.ParseCaskSource(`cask "demo" do
+version "1"
+name "Demo"
+sha256 :no_check
+url "https://example.com/demo.zip"
+app "Source.app", target: "Renamed.app"
+app "folder/Other.app"
+end`, homebrew.CaskSource{Tap: "example/tap", Token: "demo"}, time.Now())
+	require.NoError(t, err)
+	pkg, err := homebrew.Normalize("cask", raw)
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: pkg}}))
+	objects := memoryObjects{}
+	svc := &Service{Store: st, Objects: objects}
+	_, err = svc.Build(ctx)
+	require.NoError(t, err)
+	latest, err := svc.Latest(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 2, latest.FormatVersion)
+	data, ok := objects[strings.TrimPrefix(latest.Url, objects.URL(""))]
+	require.True(t, ok, "manifest must reference the uploaded base snapshot")
+	sum := sha256.Sum256(data)
+	require.Equal(t, latest.Sha256, hex.EncodeToString(sum[:]))
+	reader, err := gzip.NewReader(bytes.NewReader(data))
+	require.NoError(t, err)
+	decoded, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	require.NoError(t, reader.Close())
+	// Decode without generated models so a missing field cannot be hidden by a default.
+	var document map[string]any
+	require.NoError(t, json.Unmarshal(decoded, &document))
+	entries := document["items"].([]any)
+	require.Len(t, entries, 1)
+	entry := entries[0].(map[string]any)
+	require.Equal(t, "example/tap", entry["tap"])
+	require.Equal(t, []any{"Source.app", "folder/Other.app"}, entry["apps"])
+	require.Equal(t, []any{"/Applications/Renamed.app", "/Applications/Other.app"}, entry["appTargets"])
+	spec, err := publicapi.GetSpec()
+	require.NoError(t, err)
+	require.NoError(t, spec.Components.Schemas["CatalogBaseSnapshot"].Value.VisitJSON(document))
+	changes, err := svc.Changes(ctx, 0, 100)
+	require.NoError(t, err)
+	require.Len(t, changes.Changes, 1)
+	require.NotNil(t, changes.Changes[0].Item.AppTargets)
+	require.Equal(t, []string{"/Applications/Renamed.app", "/Applications/Other.app"}, *changes.Changes[0].Item.AppTargets)
+}

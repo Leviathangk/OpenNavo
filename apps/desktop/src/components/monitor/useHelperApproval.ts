@@ -2,25 +2,28 @@ import { onBeforeUnmount, watch } from 'vue';
 import { useMonitorStore } from '@/stores/monitor';
 
 /**
- * macOS asks for the fan helper's approval in System Settings. While that is pending, check again every couple of
- * seconds (only while this window is visible), so the view moves on without another click.
+ * Registration and daemon startup can settle after an app update or approval in System Settings.
+ * Recheck unresolved states while visible, so recovery never requires repeated clicks.
  */
 export function useHelperApproval(every = 2000) {
   const store = useMonitorStore();
   let timer: ReturnType<typeof setInterval> | undefined;
+  const unresolved = () => store.helper?.status !== 'enabled' && store.helper?.status !== 'unsupported';
   const check = () => {
-    if (document.visibilityState === 'visible') void store.loadHelper().catch(() => undefined);
+    if (document.visibilityState === 'visible' && unresolved()) void store.loadHelper().catch(() => undefined);
   };
   const stop = watch(
     () => store.helper?.status,
-    status => {
+    () => {
       clearInterval(timer);
-      timer = status === 'requires_approval' ? setInterval(check, every) : undefined;
+      timer = unresolved() ? setInterval(check, every) : undefined;
     },
     { immediate: true }
   );
+  document.addEventListener('visibilitychange', check);
   onBeforeUnmount(() => {
     stop();
     clearInterval(timer);
+    document.removeEventListener('visibilitychange', check);
   });
 }

@@ -22,6 +22,27 @@
     },
     "summary": "Add screenshot"
   },
+  "addTapPackage": {
+    "body": {
+      "$ref": "#/components/schemas/TapPackageAdd"
+    },
+    "method": "POST",
+    "model": "AddTapPackageInput",
+    "parameters": {
+      "path": [],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/taps/packages",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Add a third-party tap cask"
+  },
   "createArticle": {
     "body": {
       "$ref": "#/components/schemas/ArticleCreate"
@@ -1101,6 +1122,23 @@
     },
     "summary": "List synonyms"
   },
+  "listTapPackages": {
+    "body": null,
+    "method": "GET",
+    "model": "ListTapPackagesInput",
+    "parameters": {
+      "path": [],
+      "query": []
+    },
+    "path": "/taps/packages",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:view"
+      ]
+    },
+    "summary": "Third-party tap casks"
+  },
   "listTopQueries": {
     "body": null,
     "method": "GET",
@@ -1243,6 +1281,27 @@
       ]
     },
     "summary": "Publish collection"
+  },
+  "removeTapPackage": {
+    "body": null,
+    "method": "DELETE",
+    "model": "RemoveTapPackageInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/packages/{id}/tap",
+    "policy": {
+      "deleteAction": "always",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Remove a third-party tap cask"
   },
   "reorderCategories": {
     "body": {

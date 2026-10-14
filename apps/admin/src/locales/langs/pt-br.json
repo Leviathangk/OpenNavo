@@ -810,7 +810,8 @@
           "assets_icons": "Coleta de ícones (desativada)",
           "assets_download-size": "Detecção do tamanho do download",
           "cleanup": "Limpeza",
-          "facts_sources": "Licenças e dados da App Store"
+          "facts_sources": "Licenças e dados da App Store",
+          "taps_sync": "Sincronização de repositórios de terceiros"
         },
         "triggers": {
           "schedule": "Agendado",

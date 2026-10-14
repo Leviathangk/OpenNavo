@@ -14,8 +14,8 @@ import (
 )
 
 type Candidate struct {
-	ID                                                                      int64
-	Kind, Token, Homepage, DownloadURL, RepoURL, RubySourcePath, TapGitHead string
+	ID                                                                           int64
+	Kind, Token, Tap, Homepage, DownloadURL, RepoURL, RubySourcePath, TapGitHead string
 }
 type Source struct {
 	Type     string
@@ -43,6 +43,10 @@ func NewResolver(agent string) *Resolver {
 var rubySafe = regexp.MustCompile(`^[A-Za-z0-9_./+@-]+[.]rb$`)
 
 func HomebrewSource(p Candidate) (Source, bool) {
+	// Third-party taps keep their own history; the tap sync dates their versions instead.
+	if p.Tap != "" && !strings.HasPrefix(p.Tap, "homebrew/") {
+		return Source{}, false
+	}
 	if !rubySafe.MatchString(p.RubySourcePath) || strings.Contains(p.RubySourcePath, "..") {
 		return Source{}, false
 	}

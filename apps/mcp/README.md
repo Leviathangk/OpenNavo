@@ -1,6 +1,6 @@
 # OpenNavo MCP
 
-Python 3.13 + uv, using FastMCP 4.0.x. The 61 tools and 7 resources adapt only the internal `/agent-api`.
+Python 3.13 + uv, using FastMCP 4.0.x. The 73 tools and 8 resources adapt only the internal `/agent-api`.
 
 Run `uv sync --locked` in this directory. From the repository root, run `make gen-mcp lint-mcp test-mcp build-mcp` to generate and check artifacts. `make gen` and `make lint test` also include MCP. The authoritative tool manifest is `src/opennavo_mcp/tools/manifest.py`.
 

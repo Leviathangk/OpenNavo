@@ -10,6 +10,7 @@ export const JOB_TYPES: Schemas['JobType'][] = [
   'assets_download-size',
   'cleanup',
   'facts_sources',
+  'taps_sync',
   'enrich_schedule',
   'translate_schedule',
   'assets_icons'
@@ -23,7 +24,8 @@ export const TRIGGER_TYPES: Schemas['TriggerJobType'][] = [
   'changelog_schedule',
   'assets_download-size',
   'cleanup',
-  'facts_sources'
+  'facts_sources',
+  'taps_sync'
 ];
 
 /** History uses asynq names (assets:download-size); replace colons with underscores for translation lookup, preserving unknown names. */

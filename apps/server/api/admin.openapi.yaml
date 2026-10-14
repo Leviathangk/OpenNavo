@@ -2003,6 +2003,206 @@ paths:
         - bearerAuth: []
         - agentToken: []
           agentGateway: []
+  /taps/packages:
+    get:
+      tags:
+        - packages
+      operationId: listTapPackages
+      summary: "Third-party tap casks"
+      description: "Requires catalog:package:view. Lists casks added from third-party Homebrew taps with the outcome of their last tap sync (lastError is null when healthy). This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TapPackageListResponseResult"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/TapPackageListResponseResultSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/TapPackageListResponseResultSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/TapPackageListResponseResultSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/TapPackageListResponseResultSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/TapPackageListResponseResultSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/TapPackageListResponseResultSixLocales"
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - catalog:package:view
+      x-agent-access:
+        permissions:
+          - catalog:package:view
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+    post:
+      tags:
+        - packages
+      operationId: addTapPackage
+      summary: "Add a third-party tap cask"
+      description: "Requires catalog:package:edit. Reads Casks/<token>.rb from the tap's GitHub repository (owner/homebrew-<tap>), evaluates the declarative cask DSL without running Ruby and adds the cask to the catalog; the desktop app then installs it with brew install --cask <owner>/<tap>/<token>. Per-architecture or per-OS blocks (arch, on_arm, on_intel, on_<macos>), language blocks and local variables are rejected with the offending line. A tap sync job keeps the cask current. Tokens used by an official Homebrew cask cannot be added. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TapPackageAdd"
+            example:
+              cask: swiftvm-app/tap/swiftvm
+      responses:
+        "200":
+          description: "Returns the added cask; a dry run returns what would be written"
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/TapPackageResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/TapPackageResponseResultSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/TapPackageResponseResultSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/TapPackageResponseResultSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/TapPackageResponseResultSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/TapPackageResponseResultSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/TapPackageResponseResultSixLocales"
+                dry-run:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      dryRun: true
+                      requestId: demo-preview-001
+                      changes:
+                        - object:
+                            entity: package
+                            objectKey: swiftvm-app/tap/swiftvm
+                          action: create
+                          before: null
+                          after:
+                            token: swiftvm
+                            fullToken: swiftvm-app/tap/swiftvm
+                            tap: swiftvm-app/tap
+                            name: SwiftVM
+                            version: 1.3.0
+                      affectedUrls: []
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - catalog:package:edit
+      x-agent-access:
+        permissions:
+          - catalog:package:edit
+        deleteAction: never
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+  /packages/{id}/tap:
+    delete:
+      tags:
+        - packages
+      operationId: removeTapPackage
+      summary: "Remove a third-party tap cask"
+      description: "Requires catalog:package:edit. Stops tracking the tap cask and removes it from the catalog the way Homebrew removals are handled; desktop apps drop it at their next sync. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed."
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+        - $ref: "#/components/parameters/DryRun"
+      responses:
+        "200":
+          description: "On success data is null; see code for failures"
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/EmptyResponseResult"
+                  - $ref: "#/components/schemas/AgentDryRunResponse"
+              examples:
+                en-US:
+                  $ref: "#/components/examples/EmptyResponseResultSixLocales"
+                zh-CN:
+                  $ref: "#/components/examples/EmptyResponseResultSixLocales"
+                ja-JP:
+                  $ref: "#/components/examples/EmptyResponseResultSixLocales"
+                es-ES:
+                  $ref: "#/components/examples/EmptyResponseResultSixLocales"
+                pt-BR:
+                  $ref: "#/components/examples/EmptyResponseResultSixLocales"
+                ru-RU:
+                  $ref: "#/components/examples/EmptyResponseResultSixLocales"
+                dry-run:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      dryRun: true
+                      requestId: demo-preview-001
+                      changes:
+                        - object:
+                            entity: package
+                            objectKey: "1"
+                          action: delete
+                          before:
+                            fullToken: swiftvm-app/tap/swiftvm
+                          after: null
+                      affectedUrls: []
+          headers:
+            Vary:
+              description: "Includes at least Origin and Accept-Language; preserves existing Vary values."
+              schema:
+                type: string
+              example: Origin, Accept-Language
+      x-permissions:
+        - catalog:package:edit
+      x-agent-access:
+        permissions:
+          - catalog:package:edit
+        deleteAction: always
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
   /categories/tree:
     get:
       tags:
@@ -11843,6 +12043,7 @@ components:
         - assets_download-size
         - cleanup
         - facts_sources
+        - taps_sync
       example: catalog_sync
     JobType:
       type: string
@@ -11857,6 +12058,7 @@ components:
         - assets_download-size
         - cleanup
         - facts_sources
+        - taps_sync
       example: catalog_sync
     EmptyResponse:
       type: object
@@ -14741,6 +14943,234 @@ components:
         startedAt: 2026-09-30T08:00:00Z
         finishedAt: null
         durationMs: null
+    TapPackage:
+      type: object
+      additionalProperties: false
+      description: "A cask added from a third-party Homebrew tap and the outcome of its last tap sync."
+      required:
+        - id
+        - token
+        - fullToken
+        - tap
+        - name
+        - version
+        - sourcePath
+        - sourceUrl
+        - headSha
+        - checkedAt
+        - lastError
+        - removed
+        - createdAt
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Package ID
+          example: 1
+        token:
+          type: string
+          example: swiftvm
+        fullToken:
+          type: string
+          description: "Name brew installs, <owner>/<tap>/<token>"
+          example: swiftvm-app/tap/swiftvm
+        tap:
+          type: string
+          example: swiftvm-app/tap
+        name:
+          type: string
+          example: SwiftVM
+        version:
+          type: string
+          example: 1.3.0
+        sourcePath:
+          type: string
+          example: Casks/swiftvm.rb
+        sourceUrl:
+          type: string
+          format: uri
+          example: https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+        headSha:
+          type: string
+          nullable: true
+          description: Commit the cask file was last read at
+          example: 99e3218a057f2311e945835cb747efdaf992b981
+        checkedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-10-14T08:00:00Z"
+        lastError:
+          type: string
+          nullable: true
+          description: "Why the last tap sync could not update the cask (the catalog keeps the last good version); null when healthy"
+          example: null
+        removed:
+          type: boolean
+          description: True when the cask file was deleted from the tap and the package left the catalog
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-10-14T08:00:00Z"
+      example:
+        id: 1
+        token: swiftvm
+        fullToken: swiftvm-app/tap/swiftvm
+        tap: swiftvm-app/tap
+        name: SwiftVM
+        version: 1.3.0
+        sourcePath: Casks/swiftvm.rb
+        sourceUrl: https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+        headSha: 99e3218a057f2311e945835cb747efdaf992b981
+        checkedAt: "2026-10-14T08:00:00Z"
+        lastError: null
+        removed: false
+        createdAt: "2026-10-14T08:00:00Z"
+    TapPackageList:
+      type: object
+      additionalProperties: false
+      required:
+        - records
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/TapPackage"
+      example:
+        records:
+          - id: 1
+            token: swiftvm
+            fullToken: swiftvm-app/tap/swiftvm
+            tap: swiftvm-app/tap
+            name: SwiftVM
+            version: 1.3.0
+            sourcePath: Casks/swiftvm.rb
+            sourceUrl: https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+            headSha: 99e3218a057f2311e945835cb747efdaf992b981
+            checkedAt: "2026-10-14T08:00:00Z"
+            lastError: null
+            removed: false
+            createdAt: "2026-10-14T08:00:00Z"
+    TapPackageAdd:
+      type: object
+      additionalProperties: false
+      required:
+        - cask
+      properties:
+        cask:
+          type: string
+          minLength: 5
+          maxLength: 300
+          pattern: "^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9+_.@-]*$"
+          description: "Fully qualified cask name as passed to brew install --cask, <owner>/<tap>/<token>"
+          example: swiftvm-app/tap/swiftvm
+      example:
+        cask: swiftvm-app/tap/swiftvm
+    TapPackageListResponse:
+      type: object
+      required:
+        - code
+        - msg
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/TapPackageList"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          records:
+            - id: 1
+              token: swiftvm
+              fullToken: swiftvm-app/tap/swiftvm
+              tap: swiftvm-app/tap
+              name: SwiftVM
+              version: 1.3.0
+              sourcePath: Casks/swiftvm.rb
+              sourceUrl: https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+              headSha: 99e3218a057f2311e945835cb747efdaf992b981
+              checkedAt: "2026-10-14T08:00:00Z"
+              lastError: null
+              removed: false
+              createdAt: "2026-10-14T08:00:00Z"
+    TapPackageListResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/TapPackageListResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          records:
+            - id: 1
+              token: swiftvm
+              fullToken: swiftvm-app/tap/swiftvm
+              tap: swiftvm-app/tap
+              name: SwiftVM
+              version: 1.3.0
+              sourcePath: Casks/swiftvm.rb
+              sourceUrl: https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+              headSha: 99e3218a057f2311e945835cb747efdaf992b981
+              checkedAt: "2026-10-14T08:00:00Z"
+              lastError: null
+              removed: false
+              createdAt: "2026-10-14T08:00:00Z"
+    TapPackageResponse:
+      type: object
+      required:
+        - code
+        - msg
+      properties:
+        code:
+          $ref: "#/components/schemas/Code"
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: "#/components/schemas/TapPackage"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          id: 1
+          token: swiftvm
+          fullToken: swiftvm-app/tap/swiftvm
+          tap: swiftvm-app/tap
+          name: SwiftVM
+          version: 1.3.0
+          sourcePath: Casks/swiftvm.rb
+          sourceUrl: https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+          headSha: 99e3218a057f2311e945835cb747efdaf992b981
+          checkedAt: "2026-10-14T08:00:00Z"
+          lastError: null
+          removed: false
+          createdAt: "2026-10-14T08:00:00Z"
+    TapPackageResponseResult:
+      anyOf:
+        - $ref: "#/components/schemas/TapPackageResponse"
+        - $ref: "#/components/schemas/BusinessErrorResponse"
+      example:
+        code: "0000"
+        msg: ok
+        data:
+          id: 1
+          token: swiftvm
+          fullToken: swiftvm-app/tap/swiftvm
+          tap: swiftvm-app/tap
+          name: SwiftVM
+          version: 1.3.0
+          sourcePath: Casks/swiftvm.rb
+          sourceUrl: https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+          headSha: 99e3218a057f2311e945835cb747efdaf992b981
+          checkedAt: "2026-10-14T08:00:00Z"
+          lastError: null
+          removed: false
+          createdAt: "2026-10-14T08:00:00Z"
     QueueStat:
       type: object
       required:
@@ -28543,6 +28973,45 @@ components:
           startedAt: 2026-09-30T08:00:00Z
           finishedAt: null
           durationMs: null
+    TapPackageListResponseResultSixLocales:
+      summary: Six-language fields and translation status
+      value:
+        code: "0000"
+        msg: ok
+        data:
+          records:
+            - id: 1
+              token: swiftvm
+              fullToken: swiftvm-app/tap/swiftvm
+              tap: swiftvm-app/tap
+              name: SwiftVM
+              version: 1.3.0
+              sourcePath: Casks/swiftvm.rb
+              sourceUrl: https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+              headSha: 99e3218a057f2311e945835cb747efdaf992b981
+              checkedAt: "2026-10-14T08:00:00Z"
+              lastError: null
+              removed: false
+              createdAt: "2026-10-14T08:00:00Z"
+    TapPackageResponseResultSixLocales:
+      summary: Six-language fields and translation status
+      value:
+        code: "0000"
+        msg: ok
+        data:
+          id: 1
+          token: swiftvm
+          fullToken: swiftvm-app/tap/swiftvm
+          tap: swiftvm-app/tap
+          name: SwiftVM
+          version: 1.3.0
+          sourcePath: Casks/swiftvm.rb
+          sourceUrl: https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+          headSha: 99e3218a057f2311e945835cb747efdaf992b981
+          checkedAt: "2026-10-14T08:00:00Z"
+          lastError: null
+          removed: false
+          createdAt: "2026-10-14T08:00:00Z"
     QueueStatListResponseResultSixLocales:
       summary: Six-language fields and translation status
       value:

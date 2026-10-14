@@ -166,5 +166,12 @@ pub async fn install_preflight(
     state: State<'_, Arc<DesktopCore>>,
     target: TaskTarget,
 ) -> Result<InstallPreflight, AppError> {
-    crate::install_preflight::inspect(&state.queue.settings()?, &target).await
+    let database = state.queue.database.clone();
+    let token = target.token.clone();
+    let item = if target.kind == Kind::Cask {
+        crate::blocking(move || crate::catalog::get(&database, Kind::Cask, &token)).await?
+    } else {
+        None
+    };
+    crate::install_preflight::inspect_listed(&state.queue.settings()?, &target, item).await
 }

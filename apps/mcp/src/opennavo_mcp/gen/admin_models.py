@@ -328,12 +328,12 @@ class PackageChangelogSettingsResponse(BaseModel):
     data: PackageChangelogSettings
 
 
-class TriggerJobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources']]):
-    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources'], Field(examples=['catalog_sync'])]
+class TriggerJobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync']]):
+    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'changelog_schedule', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync'], Field(examples=['catalog_sync'])]
 
 
-class JobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources']]):
-    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources'], Field(examples=['catalog_sync'])]
+class JobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync']]):
+    root: Annotated[Literal['catalog_sync', 'analytics_sync', 'snapshot_build', 'enrich_schedule', 'translate_schedule', 'changelog_schedule', 'assets_icons', 'assets_download-size', 'cleanup', 'facts_sources', 'taps_sync'], Field(examples=['catalog_sync'])]
 
 
 class EmptyResponse(BaseModel):
@@ -630,6 +630,59 @@ class JobRun(BaseModel):
     startedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
     finishedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
     durationMs: Annotated[int | None, Field(examples=[None])] = None
+
+
+class TapPackage(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(description='Package ID', examples=[1])]
+    token: Annotated[str, Field(examples=['swiftvm'])]
+    fullToken: Annotated[str, Field(description='Name brew installs, <owner>/<tap>/<token>', examples=['swiftvm-app/tap/swiftvm'])]
+    tap: Annotated[str, Field(examples=['swiftvm-app/tap'])]
+    name: Annotated[str, Field(examples=['SwiftVM'])]
+    version: Annotated[str, Field(examples=['1.3.0'])]
+    sourcePath: Annotated[str, Field(examples=['Casks/swiftvm.rb'])]
+    sourceUrl: Annotated[AnyUrl, Field(examples=['https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb'])]
+    headSha: Annotated[str, Field(description='Commit the cask file was last read at', examples=['99e3218a057f2311e945835cb747efdaf992b981'])]
+    checkedAt: Annotated[AwareDatetime, Field(examples=['2026-10-14T08:00:00Z'])]
+    lastError: Annotated[str, Field(description='Why the last tap sync could not update the cask (the catalog keeps the last good version); null when healthy', examples=[None])]
+    removed: Annotated[bool, Field(description='True when the cask file was deleted from the tap and the package left the catalog', examples=[False])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-14T08:00:00Z'])]
+
+
+class TapPackageList(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    records: list[TapPackage]
+
+
+class TapPackageAdd(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    cask: Annotated[str, Field(description='Fully qualified cask name as passed to brew install --cask, <owner>/<tap>/<token>', examples=['swiftvm-app/tap/swiftvm'], max_length=300, min_length=5, pattern='^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9+_.@-]*$')]
+
+
+class TapPackageListResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: TapPackageList | None = None
+
+
+class TapPackageListResponseResult(RootModel[TapPackageListResponse | BusinessErrorResponse]):
+    root: Annotated[TapPackageListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'token': 'swiftvm', 'fullToken': 'swiftvm-app/tap/swiftvm', 'tap': 'swiftvm-app/tap', 'name': 'SwiftVM', 'version': '1.3.0', 'sourcePath': 'Casks/swiftvm.rb', 'sourceUrl': 'https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb', 'headSha': '99e3218a057f2311e945835cb747efdaf992b981', 'checkedAt': '2026-10-14T08:00:00Z', 'lastError': None, 'removed': False, 'createdAt': '2026-10-14T08:00:00Z'}]}}])]
+
+
+class TapPackageResponse(BaseModel):
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'])]
+    data: TapPackage | None = None
+
+
+class TapPackageResponseResult(RootModel[TapPackageResponse | BusinessErrorResponse]):
+    root: Annotated[TapPackageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'token': 'swiftvm', 'fullToken': 'swiftvm-app/tap/swiftvm', 'tap': 'swiftvm-app/tap', 'name': 'SwiftVM', 'version': '1.3.0', 'sourcePath': 'Casks/swiftvm.rb', 'sourceUrl': 'https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb', 'headSha': '99e3218a057f2311e945835cb747efdaf992b981', 'checkedAt': '2026-10-14T08:00:00Z', 'lastError': None, 'removed': False, 'createdAt': '2026-10-14T08:00:00Z'}}])]
 
 
 class QueueStat(BaseModel):
@@ -2869,6 +2922,28 @@ class ListPackageVersionsInput(BaseModel):
 
 
 class ResyncPackageInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+
+
+class ListTapPackagesInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+
+
+class AddTapPackageInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: TapPackageAdd
+
+
+class RemoveTapPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )

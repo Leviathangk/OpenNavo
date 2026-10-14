@@ -83,6 +83,13 @@ describe('Formats commands for display', () => {
   it('Follows server installation rules', () => {
     expect(installCommand('cask', 'visual-studio-code')).toBe('brew install --cask visual-studio-code');
     expect(installCommand('formula', 'wget')).toBe('brew install --formula wget');
+    // Casks from a third-party tap install by their qualified name; official taps never qualify one.
+    expect(installCommand('cask', 'swiftvm', 'swiftvm-app/tap')).toBe('brew install --cask swiftvm-app/tap/swiftvm');
+    expect(installCommand('cask', 'firefox', 'homebrew/cask')).toBe('brew install --cask firefox');
+    expect(installCommand('cask', 'firefox', null)).toBe('brew install --cask firefox');
+    expect(installCommand('formula', 'wget', 'someone/tap')).toBe('brew install --formula wget');
+    for (const tap of ['x', 'a/b/c', 'A/b', 'a/b;id', 'a/ b'])
+      expect(() => installCommand('cask', 'swiftvm', tap)).toThrow(InvalidTokenError);
     expect(formatBrewCommand(['outdated', '--json=v2'])).toBe('brew outdated --json=v2');
   });
 });

@@ -127,9 +127,11 @@ const set = (module: DisplayModule, patch: { enabled?: boolean; style?: MenuBarS
           :hint="
             fanLocked
               ? t('monitor.fans.unsupported')
-              : t('monitor.settings.helperHint', {
-                  status: t(`monitor.settings.helperStatus.${helper?.status ?? 'not_installed'}`)
-                })
+              : helper == null
+                ? t('common.loading')
+                : t('monitor.settings.helperHint', {
+                    status: t(`monitor.settings.helperStatus.${helper.status}`)
+                  })
           "
         >
           <OnButton

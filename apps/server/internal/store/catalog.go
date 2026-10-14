@@ -55,7 +55,8 @@ func (s *Store) WithAdvisoryLock(ctx context.Context, key string, fn func(contex
 func (s *Store) CatalogRows(ctx context.Context, kind string) (map[string]*CatalogRow, error) {
 	var rows []CatalogRow
 	// The kind/token unique index locates the type; read only hashes and change-detection fields instead of loading all raw JSON into memory.
-	err := s.DB.WithContext(ctx).Raw("SELECT p.id,p.kind,p.token,p.raw_hash,p.version,coalesce(p.desc_en,'') AS desc_en,p.removed_at,coalesce(i.status,'') AS i18n_status,coalesce(p.dependencies->>'normalizationVersion','') AS normalization_version FROM packages p LEFT JOIN package_i18n i ON i.package_id=p.id AND i.locale='zh-CN' WHERE p.kind=?", kind).Scan(&rows).Error
+	// Casks from third-party taps belong to the tap sync, so the official feed never removes or renames them.
+	err := s.DB.WithContext(ctx).Raw("SELECT p.id,p.kind,p.token,p.raw_hash,p.version,coalesce(p.desc_en,'') AS desc_en,p.removed_at,coalesce(i.status,'') AS i18n_status,coalesce(p.dependencies->>'normalizationVersion','') AS normalization_version FROM packages p LEFT JOIN package_i18n i ON i.package_id=p.id AND i.locale='zh-CN' WHERE p.kind=? AND "+OfficialTapSQL, kind).Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("load catalog rows: %w", err)
 	}
@@ -66,9 +67,22 @@ func (s *Store) CatalogRows(ctx context.Context, kind string) (map[string]*Catal
 	return result, nil
 }
 
+// CatalogRow loads the change-detection fields of one package whatever its tap; nil when the token is unused.
+func (s *Store) CatalogRow(ctx context.Context, kind, token string) (*CatalogRow, error) {
+	var rows []CatalogRow
+	err := s.DB.WithContext(ctx).Raw("SELECT p.id,p.kind,p.token,p.raw_hash,p.version,coalesce(p.desc_en,'') AS desc_en,p.removed_at,'' AS i18n_status,coalesce(p.dependencies->>'normalizationVersion','') AS normalization_version FROM packages p WHERE p.kind=? AND p.token=?", kind, token).Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("load catalog row: %w", err)
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	return &rows[0], nil
+}
+
 // Read only active Casks with raw Homebrew definitions; leave historical placeholders for the next full upstream sync.
 func (s *Store) VisitOutdatedCasks(ctx context.Context, version string, consume func(json.RawMessage) error) error {
-	rows, err := s.DB.WithContext(ctx).Raw("SELECT raw FROM packages WHERE kind='cask' AND removed_at IS NULL AND dependencies->>'normalizationVersion' IS DISTINCT FROM ? AND jsonb_exists(raw,'token') ORDER BY id", version).Rows()
+	rows, err := s.DB.WithContext(ctx).Raw("SELECT raw FROM packages p WHERE kind='cask' AND removed_at IS NULL AND dependencies->>'normalizationVersion' IS DISTINCT FROM ? AND jsonb_exists(raw,'token') AND "+OfficialTapSQL+" ORDER BY id", version).Rows()
 	if err != nil {
 		return fmt.Errorf("read outdated cask definitions: %w", err)
 	}
@@ -84,6 +98,9 @@ func (s *Store) VisitOutdatedCasks(ctx context.Context, version string, consume 
 	}
 	return rows.Err()
 }
+
+// OfficialTapSQL matches packages owned by the official Homebrew sync (alias p); third-party taps are tracked in tap_casks.
+const OfficialTapSQL = "p.tap LIKE 'homebrew/%'"
 
 var catalogColumns = []string{"kind", "token", "full_token", "tap", "name", "names", "desc_en", "homepage", "version", "version_base", "license", "auto_updates", "deprecated", "deprecation_date", "deprecation_reason", "deprecation_replacement", "disabled", "disable_date", "disable_reason", "disable_replacement", "download_url", "artifacts", "dependencies", "conflicts_with", "caveats", "min_macos", "supports_arm64", "supports_x86_64", "keg_only", "ruby_source_path", "tap_git_head", "generated_date", "is_font", "raw", "raw_hash"}
 
@@ -304,7 +321,7 @@ func (s *Store) DispatchOutbox(ctx context.Context, deliver func(context.Context
 				ID               int64
 				JobType, Payload string
 			}
-			if err := tx.WithContext(ctx).Raw("SELECT id,job_type,payload::text FROM job_outbox o WHERE job_type IN ('catalog:sync','analytics:sync','snapshot:build','translate:content','cleanup','assets:download-size','changelog:schedule','changelog:resolve','changelog:fetch','facts:sources') AND available_at<=? AND NOT EXISTS (SELECT 1 FROM packages p WHERE p.kind='formula' AND (p.id=(o.payload->>'packageId')::bigint OR p.id=(SELECT cs.package_id FROM changelog_sources cs WHERE cs.id=(o.payload->>'sourceId')::bigint))) ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED", dueBefore).Scan(&rows).Error; err != nil {
+			if err := tx.WithContext(ctx).Raw("SELECT id,job_type,payload::text FROM job_outbox o WHERE job_type IN ('catalog:sync','analytics:sync','snapshot:build','translate:content','cleanup','assets:download-size','changelog:schedule','changelog:resolve','changelog:fetch','facts:sources','taps:sync') AND available_at<=? AND NOT EXISTS (SELECT 1 FROM packages p WHERE p.kind='formula' AND (p.id=(o.payload->>'packageId')::bigint OR p.id=(SELECT cs.package_id FROM changelog_sources cs WHERE cs.id=(o.payload->>'sourceId')::bigint))) ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED", dueBefore).Scan(&rows).Error; err != nil {
 				return fmt.Errorf("load job outbox: %w", err)
 			}
 			if len(rows) == 0 {

@@ -412,6 +412,30 @@ func (h *Handler) ResyncPackage(ctx context.Context, request adminapi.ResyncPack
 	return response[adminapi.ResyncPackage200JSONResponse](data, err)
 }
 
+func (h *Handler) ListTapPackages(ctx context.Context, request adminapi.ListTapPackagesRequestObject) (adminapi.ListTapPackagesResponseObject, error) {
+	if h.Management == nil {
+		return nil, domain.Internal(nil)
+	}
+	data, err := h.manage(ctx, "ListTapPackages", request)
+	return response[adminapi.ListTapPackages200JSONResponse](data, err)
+}
+
+func (h *Handler) AddTapPackage(ctx context.Context, request adminapi.AddTapPackageRequestObject) (adminapi.AddTapPackageResponseObject, error) {
+	if h.Management == nil {
+		return nil, domain.Internal(nil)
+	}
+	data, err := h.manage(ctx, "AddTapPackage", request)
+	return response[adminapi.AddTapPackage200JSONResponse](data, err)
+}
+
+func (h *Handler) RemoveTapPackage(ctx context.Context, request adminapi.RemoveTapPackageRequestObject) (adminapi.RemoveTapPackageResponseObject, error) {
+	if h.Management == nil {
+		return nil, domain.Internal(nil)
+	}
+	data, err := h.manage(ctx, "RemoveTapPackage", request)
+	return response[adminapi.RemoveTapPackage200JSONResponse](data, err)
+}
+
 func (h *Handler) ListPackageScreenshots(ctx context.Context, request adminapi.ListPackageScreenshotsRequestObject) (adminapi.ListPackageScreenshotsResponseObject, error) {
 	if h.Management == nil {
 		return nil, domain.Internal(nil)

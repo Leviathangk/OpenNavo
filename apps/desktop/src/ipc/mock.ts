@@ -465,7 +465,9 @@ export function installMockIpc(
       return {
         name: item?.name ?? target.token,
         paths: conflict ? [`/Applications/${item?.name ?? target.token}.app`] : [],
-        status: managed ? 'managed' : flags.has('install-blocked') ? 'blocked' : conflict ? 'conflict' : 'ready'
+        status: managed ? 'managed' : flags.has('install-blocked') ? 'blocked' : conflict ? 'conflict' : 'ready',
+        // The real preflight reads the tap from the local catalog (third-party casks only).
+        tap: item?.tap ?? null
       };
     },
     apps_running: args =>

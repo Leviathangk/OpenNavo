@@ -215,8 +215,8 @@ func TestAllPlaceholderRoutesFollowContracts(t *testing.T) {
 			}
 		}
 	}
-	if count != 186 {
-		t.Fatalf("expected 186 contracted routes, got %d", count)
+	if count != 189 {
+		t.Fatalf("expected 189 contracted routes, got %d", count)
 	}
 }
 func TestHealthValidationLocaleAndCORS(t *testing.T) {

@@ -136,7 +136,12 @@ pub fn scan(
         if installed_version.is_empty() {
             continue;
         }
-        let catalog = crate::catalog::get(database, Kind::Cask, &cask.token)?;
+        // A cask installed from another tap under the same token is a different app.
+        let catalog = crate::catalog::get(database, Kind::Cask, &cask.token)?.filter(|item| {
+            cask.tap
+                .as_deref()
+                .is_none_or(|installed| installed == item.tap.as_deref().unwrap_or("homebrew/cask"))
+        });
         let latest = catalog.as_ref().map(|i| i.version.clone());
         let app_paths = app_paths(cask);
         let actual = app_paths

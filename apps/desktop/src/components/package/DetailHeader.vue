@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { PackageDetail } from '@opennavo/api';
-import { formatDate } from '@opennavo/shared';
+import { formatDate, isThirdPartyTap } from '@opennavo/shared';
 import { architectures, OnButton, OnMenu, OnPackageHeader } from '@opennavo/ui';
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import PackageGetButton from './PackageGetButton.vue';
@@ -66,6 +66,8 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
   const list: OnPackageHeaderChip[] = [{ key: 'kind', label: props.kind === 'cask' ? 'Cask' : 'Formula' }];
   const category = props.detail?.primaryCategory;
   if (category) list.push({ key: 'category', label: category.name });
+  if (isThirdPartyTap(props.detail?.tap ?? props.local?.tap))
+    list.push({ key: 'tap', label: t('package.thirdPartyTap'), tone: 'warning', outline: true });
   if (props.detail?.autoUpdates ?? props.local?.autoUpdates)
     list.push({ key: 'auto', label: t('package.autoUpdates'), tone: 'info' });
   if (arch.value) list.push({ key: 'arch', label: arch.value });

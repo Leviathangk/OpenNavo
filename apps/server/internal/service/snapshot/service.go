@@ -6,10 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"path"
 	"time"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/homebrew"
 	"github.com/opennavo/opennavo/server/internal/pinyin"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
@@ -48,7 +50,7 @@ func nonnil[T any](v []T) []T {
 	return v
 }
 func item(zh, en store.PublicPackage) (publicapi.CatalogItem, error) {
-	var art struct{ Apps, Binaries []string }
+	var art homebrew.CaskArtifacts
 	if len(zh.Artifacts) > 0 {
 		if err := json.Unmarshal(zh.Artifacts, &art); err != nil {
 			return publicapi.CatalogItem{}, err
@@ -61,6 +63,32 @@ func item(zh, en store.PublicPackage) (publicapi.CatalogItem, error) {
 	r := publicapi.CatalogItem{Kind: publicapi.PackageKind(zh.Kind), Token: zh.Token, Name: zh.Name, Names: nonnil(zh.Names), DisplayName: publicapi.LocalizedNullableString{ZhCN: zh.I18n.DisplayName, EnUS: en.I18n.DisplayName}, Summary: publicapi.LocalizedNullableString{ZhCN: zh.I18n.Summary, EnUS: summaryEN}, Version: zh.Version, Homepage: zh.Homepage, AutoUpdates: zh.AutoUpdates, Deprecated: zh.Deprecated, Disabled: zh.Disabled, Hidden: zh.Meta.Hidden, IsFont: zh.IsFont, IsLibrary: zh.IsLibrary, Categories: []string{}, Tags: nonnil(zh.Meta.Tags), Installs30d: zh.Installs30d, Rank30d: zh.Rank30d, Popularity: float32(zh.Popularity), IconUrl: zh.IconURL, AccentColor: zh.Meta.AccentColor, Apps: nonnil(art.Apps), Binaries: nonnil(art.Binaries), VersionChangedAt: zh.VersionChangedAt.UTC()}
 	r.DownloadSize = zh.DownloadSize
 	r.Installs90d, r.Installs365d = &zh.Installs90d, &zh.Installs365d
+	// Only third-party casks carry their tap, so official items and fixtures keep their shape.
+	if !homebrew.IsOfficialTap(zh.Tap) {
+		tap := zh.Tap
+		r.Tap = &tap
+		if zh.Kind == "cask" && art.Entries != nil {
+			targets := []string{}
+			complete := true
+			for _, entry := range art.Entries {
+				if entry.Type != "app" {
+					continue
+				}
+				if len(entry.Sources) != 1 {
+					complete = false
+					break
+				}
+				destination := path.Base(entry.Sources[0])
+				if entry.Target != nil {
+					destination = *entry.Target
+				}
+				targets = append(targets, destination)
+			}
+			if complete && len(targets) == len(art.Apps) {
+				r.AppTargets = &targets
+			}
+		}
+	}
 	if zh.Kind == "formula" {
 		r.OnRequest = &struct {
 			D30  int `json:"d30"`

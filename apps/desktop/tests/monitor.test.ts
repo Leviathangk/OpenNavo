@@ -4,6 +4,7 @@ import type { Router } from 'vue-router';
 import { defineComponent } from 'vue';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import MenuBarWidget from '@/components/monitor/MenuBarWidget.vue';
+import FanControl from '@/components/monitor/FanControl.vue';
 import MonitorNotifier from '@/components/monitor/MonitorNotifier.vue';
 import { useMonitorNames } from '@/components/monitor/meta';
 import { useHelperApproval } from '@/components/monitor/useHelperApproval';
@@ -205,6 +206,121 @@ describe('Monitor store', () => {
 });
 
 describe('Fan control', () => {
+  it('Ignores repeated mode clicks while the hardware command is pending and releases busy on failure', async () => {
+    const ctx = await context('/monitor', 'fan-helper-ready');
+    const store = useMonitorStore();
+    await store.subscribe('detail', ['sensors']);
+    const wrapper = mountWith(FanControl, ctx);
+    await vi.waitFor(() => expect(store.helper?.status).toBe('enabled'));
+    let reject!: (error: Error) => void;
+    const command = vi.spyOn(commands, 'fanSetMode').mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        })
+    );
+    const manual = find(wrapper.element, '[role="radio"]', '手动')!;
+    manual.click();
+    manual.click();
+    await flushPromises();
+    expect(command).toHaveBeenCalledTimes(1);
+    expect(wrapper.attributes('aria-busy')).toBe('true');
+    expect(wrapper.find('[role="radiogroup"]').attributes('inert')).toBeDefined();
+    expect(manual.getAttribute('aria-checked')).toBe('false');
+    reject(new Error('unavailable'));
+    await flushPromises();
+    expect(wrapper.attributes('aria-busy')).toBe('false');
+    expect(wrapper.find('[role="radiogroup"]').attributes('inert')).toBeUndefined();
+    expect(toasts().at(-1)?.tone).toBe('danger');
+    await click(manual);
+    expect(command).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(store.fans?.every(fan => fan.mode === 'manual')).toBe(true));
+  });
+
+  it('Shares pending helper probes and ignores a stale not-installed result after installation', async () => {
+    await context();
+    const store = useMonitorStore();
+    let resolve!: (value: Awaited<ReturnType<typeof commands.fanHelperStatus>>) => void;
+    const status = vi.spyOn(commands, 'fanHelperStatus').mockImplementationOnce(
+      () =>
+        new Promise(done => {
+          resolve = done;
+        })
+    );
+    const first = store.loadHelper();
+    const second = store.loadHelper();
+    expect(status).toHaveBeenCalledTimes(1);
+    await store.installHelper();
+    expect(store.helper?.status).toBe('requires_approval');
+    resolve({ status: 'ok', data: { status: 'not_installed', support: 'unverified', manualAllowed: true } });
+    await Promise.all([first, second]);
+    expect(store.helper?.status).toBe('requires_approval');
+    await store.loadHelper();
+    expect(status).toHaveBeenCalledTimes(2);
+  });
+
+  it('Waits for installation during polling and preserves a queued uninstall from another view', async () => {
+    await context();
+    const store = useMonitorStore();
+    let resolve!: (value: Awaited<ReturnType<typeof commands.fanHelperInstall>>) => void;
+    vi.spyOn(commands, 'fanHelperInstall').mockImplementationOnce(
+      () =>
+        new Promise(done => {
+          resolve = done;
+        })
+    );
+    const status = vi.spyOn(commands, 'fanHelperStatus');
+    const uninstall = vi.spyOn(commands, 'fanHelperUninstall');
+    const installation = store.installHelper();
+    const probe = store.loadHelper();
+    const removal = store.uninstallHelper();
+    expect(status).not.toHaveBeenCalled();
+    expect(uninstall).not.toHaveBeenCalled();
+    resolve({ status: 'ok', data: { status: 'requires_approval', support: 'unverified', manualAllowed: true } });
+    await Promise.all([installation, probe, removal]);
+    expect(uninstall).toHaveBeenCalledTimes(1);
+    expect(store.helper?.status).toBe('not_installed');
+  });
+
+  it.each(['not_installed', 'error'] as const)('Automatically recovers a transient %s after an update', async state => {
+    const ctx = await context('/monitor', 'fan-helper-ready');
+    const store = useMonitorStore();
+    store.helper = { status: state, support: 'unverified', manualAllowed: true };
+    const status = vi.spyOn(commands, 'fanHelperStatus');
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const Probe = defineComponent({
+      setup() {
+        useHelperApproval(10);
+        return () => null;
+      }
+    });
+    mountWith(Probe, ctx);
+    await vi.waitFor(() => expect(store.helper?.status).toBe('enabled'));
+    const calls = status.mock.calls.length;
+    await new Promise(resolve => setTimeout(resolve, 40));
+    expect(status.mock.calls.length).toBe(calls);
+  });
+
+  it('Shows loading instead of not installed before the first helper status arrives', async () => {
+    const ctx = await context('/settings/monitor', 'fan-helper-ready');
+    const store = useMonitorStore();
+    await store.loadAvailable();
+    let resolve!: (value: Awaited<ReturnType<typeof commands.fanHelperStatus>>) => void;
+    vi.spyOn(commands, 'fanHelperStatus').mockImplementationOnce(
+      () =>
+        new Promise(done => {
+          resolve = done;
+        })
+    );
+    const wrapper = mountWith(MonitorSettings, ctx);
+    await flushPromises();
+    expect(wrapper.text()).toContain('正在加载');
+    expect(wrapper.text()).not.toContain('未安装');
+    resolve({ status: 'ok', data: { status: 'enabled', support: 'unverified', manualAllowed: true } });
+    await flushPromises();
+    expect(store.helper?.status).toBe('enabled');
+  });
+
   it('Offers the helper right away, waits for approval, then switches to manual; Automatic hands fans back', async () => {
     const ctx = await context('/monitor?detail=sensors');
     await page(ctx);

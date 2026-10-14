@@ -8,6 +8,7 @@ import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useTasksStore } from '@/stores';
+import { useNamesStore } from '@/stores/names';
 
 // Deep-link install confirmation (06 §10): explain the web origin and show complete brew commands; enqueue only after consent (trigger=deeplink).
 const { t } = useI18n();
@@ -15,6 +16,7 @@ const deeplink = useDeepLinkStore();
 const tasks = useTasksStore();
 const toasts = useToasts();
 const { displayName, icon } = usePackageIdentity();
+const names = useNamesStore();
 const { errorText } = usePackageState();
 const queueing = ref(false);
 
@@ -28,7 +30,9 @@ const target = computed(() => deeplink.install);
 const name = computed(() => (target.value ? displayName(target.value.kind, target.value.token) : ''));
 // Deep links only ever request Homebrew packages, never local `app` targets.
 const command = computed(() =>
-  target.value && target.value.kind !== 'app' ? installCommand(target.value.kind, target.value.token) : ''
+  target.value && target.value.kind !== 'app'
+    ? installCommand(target.value.kind, target.value.token, names.lookup(target.value.kind, target.value.token)?.tap)
+    : ''
 );
 
 async function confirm() {

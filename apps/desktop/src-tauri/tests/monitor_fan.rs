@@ -329,6 +329,7 @@ struct FakeTransport {
     now: u64,
     /// The helper is registered but does not answer (crashed at start, killed, replaced).
     down: bool,
+    exchanges: usize,
 }
 impl Transport for FakeTransport {
     fn state(&self) -> FanHelperState {
@@ -343,6 +344,7 @@ impl Transport for FakeTransport {
         Ok(())
     }
     fn exchange(&mut self, request: Request) -> Result<Reply, AppError> {
+        self.exchanges += 1;
         if self.down {
             return Err(AppError::new("E_FAN_HELPER_UNAVAILABLE", "xpc"));
         }
@@ -356,6 +358,7 @@ fn client(state: FanHelperState) -> Client<FakeTransport> {
             state,
             now: 0,
             down: false,
+            exchanges: 0,
         },
         FanControlSupport::Unverified,
         Arc::new(|_| {}),
@@ -375,6 +378,54 @@ fn allowed_is_independent_of_helper_and_approval() {
         "E_FAN_HELPER_NOT_ENABLED"
     );
 }
+#[test]
+fn established_control_uses_one_exchange_and_replays_safety_events() {
+    let mut client = client(FanHelperState::Enabled);
+    client.status().unwrap();
+    let before = client.transport.exchanges;
+    let fans = client.mode(None, FanMode::Manual).unwrap();
+    assert!(fans.iter().all(|fan| fan.mode == FanMode::Manual));
+    assert_eq!(client.transport.exchanges - before, 1);
+
+    client.transport.control.watchdog(15000);
+    client.transport.now = 15000;
+    let before = client.transport.exchanges;
+    let fans = client.speed(None, 3000).unwrap();
+    assert!(fans.iter().all(|fan| fan.target_rpm == Some(3000)));
+    assert_eq!(client.transport.exchanges - before, 1);
+    // The command consumed the watchdog event and remembered the new target, not the old speed.
+    client.sleep();
+    client.wake();
+    assert!(
+        client
+            .transport
+            .control
+            .hardware
+            .fans
+            .iter()
+            .all(|fan| fan.target_rpm == Some(3000))
+    );
+
+    let before = client.transport.exchanges;
+    client.mode(None, FanMode::Auto).unwrap();
+    assert_eq!(client.transport.exchanges - before, 1);
+}
+
+#[test]
+fn first_control_resets_previous_session_and_failure_does_not_retry_writes() {
+    let mut client = client(FanHelperState::Enabled);
+    client.mode(None, FanMode::Manual).unwrap();
+    // Initial status, mandatory session reset, then the requested control command.
+    assert_eq!(client.transport.exchanges, 3);
+    client.transport.down = true;
+    let before = client.transport.exchanges;
+    assert_eq!(
+        client.mode(None, FanMode::Auto).unwrap_err().code,
+        "E_FAN_HELPER_UNAVAILABLE"
+    );
+    assert_eq!(client.transport.exchanges - before, 1);
+}
+
 #[test]
 fn silent_helper_reads_as_error_and_can_still_be_uninstalled() {
     let mut client = client(FanHelperState::Enabled);
@@ -402,6 +453,7 @@ fn reconnect_replays_each_safety_reason_once_and_helper_epoch_resets_cursor() {
             state: FanHelperState::Enabled,
             now: 0,
             down: false,
+            exchanges: 0,
         },
         FanControlSupport::Unverified,
         Arc::new(move |c| sink.lock().unwrap().push(c.reason)),
@@ -697,6 +749,7 @@ fn helper_sleep_can_precede_app_callback_without_losing_wake_targets() {
             state: FanHelperState::Enabled,
             now: 0,
             down: false,
+            exchanges: 0,
         },
         FanControlSupport::Unverified,
         Arc::new(move |c| sink.lock().unwrap().push(c.reason)),

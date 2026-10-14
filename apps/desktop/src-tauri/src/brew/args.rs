@@ -17,10 +17,53 @@ pub fn validate_token(token: &str) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Third-party tap names as brew spells them (`owner/name`); Homebrew's own taps never come from the catalog.
+pub fn validate_tap(tap: &str) -> Result<(), AppError> {
+    let invalid = || AppError::new("E_INVALID_ARG", "tap");
+    let (owner, name) = tap.split_once('/').ok_or_else(invalid)?;
+    let segment = |value: &str, max: usize, extra: &[u8]| {
+        let bytes = value.as_bytes();
+        !bytes.is_empty()
+            && bytes.len() <= max
+            && (bytes[0].is_ascii_lowercase() || bytes[0].is_ascii_digit())
+            && bytes
+                .iter()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || extra.contains(b))
+    };
+    if !segment(owner, 39, b"-") || !segment(name, 100, b"-_.") || owner == "homebrew" {
+        return Err(invalid());
+    }
+    Ok(())
+}
+
+/// The name brew installs: `<tap>/<token>` for third-party taps, otherwise the token itself.
+pub fn qualified_token(tap: Option<&str>, token: &str) -> Result<String, AppError> {
+    validate_token(token)?;
+    match tap {
+        Some(tap) => {
+            validate_tap(tap)?;
+            Ok(format!("{tap}/{token}"))
+        }
+        None => Ok(token.to_owned()),
+    }
+}
+
 pub fn write_args(
     op: TaskOp,
     target: Option<&TaskTarget>,
     options: &TaskOptions,
+) -> Result<Vec<String>, AppError> {
+    write_args_in_tap(op, target, options, None)
+}
+
+/// write_args for a cask the catalog lists from a third-party tap. Install, reinstall and upgrade name it
+/// `<tap>/<token>`: brew then taps the repository if needed and trusts that one cask (Homebrew 7 refuses
+/// to load casks from untrusted taps). Uninstall and pinning act on the installed cask by token.
+pub fn write_args_in_tap(
+    op: TaskOp,
+    target: Option<&TaskTarget>,
+    options: &TaskOptions,
+    tap: Option<&str>,
 ) -> Result<Vec<String>, AppError> {
     if options.plan_id.is_some() || options.item_ids.is_some() || options.delete_mode.is_some() {
         return Err(AppError::new(
@@ -81,7 +124,11 @@ pub fn write_args(
     if options.adopt {
         args.push("--adopt".into());
     }
-    args.push(target.token.clone());
+    let tap = tap.filter(|_| {
+        matches!(op, TaskOp::Install | TaskOp::Reinstall | TaskOp::Upgrade)
+            && target.kind == Kind::Cask
+    });
+    args.push(qualified_token(tap, &target.token)?);
     Ok(args)
 }
 
@@ -99,7 +146,13 @@ pub enum ReadOp {
 pub fn read_args(op: ReadOp, token: Option<&str>) -> Result<Vec<String>, AppError> {
     if let ReadOp::Info(kind) = op {
         let token = token.ok_or_else(|| AppError::new("E_INVALID_ARG", "token"))?;
-        validate_token(token)?;
+        match token.rsplit_once('/') {
+            // Install preflight reads third-party casks by their qualified name.
+            Some((tap, name)) if kind == Kind::Cask => {
+                qualified_token(Some(tap), name)?;
+            }
+            _ => validate_token(token)?,
+        }
         return Ok(vec![
             "info".into(),
             "--json=v2".into(),
@@ -212,6 +265,73 @@ mod tests {
             read_args(ReadOp::Installed, None).expect("args"),
             ["info", "--json=v2", "--installed"]
         );
+    }
+    #[test]
+    fn third_party_taps_qualify_install_upgrade_and_reinstall_only() {
+        for good in ["swiftvm-app/tap", "user/homebrew-tap.v2", "a1/b_c"] {
+            assert!(validate_tap(good).is_ok(), "{good}");
+        }
+        for bad in [
+            "",
+            "tap",
+            "homebrew/cask",
+            "a/b/c",
+            "A/b",
+            "-a/b",
+            "a/../b",
+            "a/.b",
+            "a /b",
+            "a/b\n",
+            "a/b;id",
+        ] {
+            assert!(validate_tap(bad).is_err(), "{bad}");
+        }
+        let target = TaskTarget {
+            kind: Kind::Cask.into(),
+            token: "swiftvm".into(),
+        };
+        let tap = Some("swiftvm-app/tap");
+        let none = TaskOptions::default();
+        assert_eq!(
+            write_args_in_tap(TaskOp::Install, Some(&target), &none, tap).expect("args"),
+            ["install", "--cask", "swiftvm-app/tap/swiftvm"]
+        );
+        assert_eq!(
+            write_args_in_tap(TaskOp::Upgrade, Some(&target), &none, tap).expect("args"),
+            ["upgrade", "--cask", "--greedy", "swiftvm-app/tap/swiftvm"]
+        );
+        assert_eq!(
+            write_args_in_tap(TaskOp::Reinstall, Some(&target), &none, tap).expect("args"),
+            ["reinstall", "--cask", "swiftvm-app/tap/swiftvm"]
+        );
+        // The Caskroom keys installed casks by token, so removal never names the tap.
+        assert_eq!(
+            write_args_in_tap(TaskOp::Uninstall, Some(&target), &none, tap).expect("args"),
+            ["uninstall", "--cask", "swiftvm"]
+        );
+        let formula = TaskTarget {
+            kind: Kind::Formula.into(),
+            token: "swiftvm".into(),
+        };
+        assert_eq!(
+            write_args_in_tap(TaskOp::Install, Some(&formula), &none, tap).expect("args"),
+            ["install", "--formula", "swiftvm"]
+        );
+        assert!(
+            write_args_in_tap(TaskOp::Install, Some(&target), &none, Some("homebrew/cask"))
+                .is_err()
+        );
+        assert_eq!(
+            read_args(ReadOp::Info(Kind::Cask), Some("swiftvm-app/tap/swiftvm")).expect("args"),
+            ["info", "--json=v2", "--cask", "swiftvm-app/tap/swiftvm"]
+        );
+        for bad in ["a/b", "x/y/--help", "homebrew/cask/firefox", "a/b/c/d"] {
+            assert!(
+                read_args(ReadOp::Info(Kind::Cask), Some(bad)).is_err(),
+                "{bad}"
+            );
+        }
+        assert!(read_args(ReadOp::Info(Kind::Formula), Some("swiftvm-app/tap/swiftvm")).is_err());
     }
     #[test]
     fn every_whitelisted_operation_has_fixed_arguments() {

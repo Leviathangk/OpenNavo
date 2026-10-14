@@ -178,6 +178,7 @@ const messages: MessageSchema = {
     deprecated: 'Deprecated',
     homepage: 'Homepage',
     fromTap: 'From',
+    thirdPartyTap: 'Third-party tap',
     stats: {
       label: 'Stats',
       installs30d: '30-day installs',
@@ -980,6 +981,13 @@ const messages: MessageSchema = {
     blockedTitle: 'Cannot install {name} yet',
     blockedDescription:
       'The installation location or existing app could not be verified. No installation or adoption was performed. Check the app and installation details, then try again.'
+  },
+  tapConfirm: {
+    title: 'Install {name} from a third-party tap?',
+    description:
+      '{name} isn’t in Homebrew’s official repository. The author of the tap below maintains it, and Homebrew hasn’t reviewed it.',
+    hint: 'On first install, Homebrew downloads this tap from GitHub and trusts the app. Mirrors don’t apply to it. Continue only if you trust the author.',
+    confirm: 'Install'
   },
   runningApps: {
     title: 'Apps are running',

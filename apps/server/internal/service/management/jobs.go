@@ -42,6 +42,16 @@ func (s *Service) trigger(ctx context.Context, op string, in Input) (any, error)
 	switch op {
 	case "ResyncPackage":
 		taskType = "catalog:sync"
+		// Casks from third-party taps are read by the tap sync, one package at a time.
+		if in.ID > 0 {
+			cask, err := s.Store.TapCask(ctx, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			if cask != nil {
+				taskType, payload.PackageID = "taps:sync", in.ID
+			}
+		}
 	case "TriggerJob":
 		for _, d := range jobs.Definitions {
 			if d.Cron != "" && strings.Replace(d.Type, ":", "_", 1) == in.JobType {
@@ -84,7 +94,7 @@ func (s *Service) trigger(ctx context.Context, op string, in Input) (any, error)
 	if boolean(in.Params, "dryrun") {
 		return result, nil
 	}
-	if op == "ResyncPackage" {
+	if taskType == "catalog:sync" && op == "ResyncPackage" {
 		if err := s.Store.Redis.Del(ctx, "etag:homebrew:cask", "etag:homebrew:formula").Err(); err != nil {
 			return nil, err
 		}

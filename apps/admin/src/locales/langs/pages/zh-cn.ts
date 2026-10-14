@@ -461,7 +461,8 @@ const pages = {
         assets_icons: '图标采集（已停用）',
         'assets_download-size': '下载大小探测',
         cleanup: '清理',
-        facts_sources: '许可证与 App Store 资料'
+        facts_sources: '许可证与 App Store 资料',
+        taps_sync: '第三方仓库同步'
       },
       triggers: { schedule: '定时', manual: '手动', event: '事件' },
       statuses: { running: '执行中', succeeded: '成功', failed: '失败', partial: '部分成功' },

@@ -15,6 +15,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/jobs"
 	"github.com/opennavo/opennavo/server/internal/service/desktop"
+	"github.com/opennavo/opennavo/server/internal/service/taps"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 )
@@ -30,6 +31,7 @@ type Service struct {
 	Config     config.Config
 	Now        func() time.Time
 	IconAccent func(context.Context, int64) (*string, error)
+	Taps       *taps.Service // reads third-party tap casks for AddTapPackage
 }
 type Input struct {
 	ID, ScreenshotID                         int64
@@ -440,6 +442,12 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 		return s.systemWrite(ctx, op, in)
 	case "ListQueues":
 		return s.queues(ctx)
+	case "ListTapPackages":
+		return s.listTapPackages(ctx)
+	case "AddTapPackage":
+		return s.addTapPackage(ctx, op, in)
+	case "RemoveTapPackage":
+		return s.removeTapPackage(ctx, op, in)
 	case "ResyncPackage", "TriggerJob":
 		return s.trigger(ctx, op, in)
 	case "GetPackageChangelogSettings":

@@ -48,6 +48,12 @@ SELECTORS: dict[str, dict[str, Any]] = {
 PARTIAL = {"category_update", "collection_update", "feature_upsert"}
 # Image bytes never pass through MCP or model output; clients send local files straight to Go.
 USAGE = {
+    "tap_package_add": (
+        " cask is what brew install --cask takes, e.g. swiftvm-app/tap/swiftvm (tap"
+        " swiftvm-app/tap = github.com/swiftvm-app/homebrew-tap). The cask file is read from"
+        " GitHub without running Ruby; arch, on_arm, on_intel, on_<macos> and language blocks or"
+        " local variables are rejected with their line. Official Homebrew tokens cannot be added."
+    ),
     "asset_upload_ticket": (
         " Then, before expiresAt, POST the local PNG/JPEG/WebP file (at most maxBytes) as the only"
         " multipart field named by fileField to uploadUrl without Authorization, e.g."

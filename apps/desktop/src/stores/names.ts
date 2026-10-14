@@ -10,6 +10,8 @@ export interface PackageIdentity {
   displayName: LocalizedText;
   iconUrl: string | null;
   accentColor: string | null;
+  /** Third-party tap of the cask, for brew commands shown before an install. */
+  tap?: string | null;
 }
 
 /**
@@ -54,7 +56,8 @@ export const useNamesStore = defineStore('names', () => {
         sourceLocale: item.sourceLocale,
         displayName: item.displayName,
         iconUrl: item.iconUrl,
-        accentColor: item.accentColor
+        accentColor: item.accentColor,
+        tap: item.tap ?? null
       };
     }
   }

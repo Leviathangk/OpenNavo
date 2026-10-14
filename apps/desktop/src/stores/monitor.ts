@@ -177,24 +177,55 @@ export const useMonitorStore = defineStore('monitor', () => {
   const openActivityMonitor = () => unwrap(commands.monitorOpenActivityMonitor());
   const openMenuBarSettings = () => unwrap(commands.monitorOpenMenuBarSettings());
 
-  async function loadHelper() {
-    helper.value = await unwrap(commands.fanHelperStatus());
-    return helper.value;
+  let helperRevision = 0;
+  let helperRequest: { revision: number; promise: Promise<FanHelperStatus> } | null = null;
+  let helperMutation: Promise<FanHelperStatus> | null = null;
+  function loadHelper(): Promise<FanHelperStatus> {
+    // Settings and the fan sheet may both poll. Never queue more probes behind a slow XPC exchange.
+    if (helperMutation) return helperMutation;
+    if (helperRequest?.revision === helperRevision) return helperRequest.promise;
+    const revision = helperRevision;
+    const promise = unwrap(commands.fanHelperStatus())
+      .then(result => {
+        // A probe started before install/uninstall must not overwrite the newer result.
+        if (revision === helperRevision) helper.value = result;
+        return result;
+      })
+      .finally(() => {
+        if (helperRequest?.promise === promise) helperRequest = null;
+      });
+    helperRequest = { revision, promise };
+    return promise;
   }
-  async function installHelper() {
-    helper.value = await unwrap(commands.fanHelperInstall());
-    return helper.value;
+  function changeHelper(operation: () => Promise<FanHelperStatus>): Promise<FanHelperStatus> {
+    // Preserve a different action from another view instead of reporting the pending action as its result.
+    if (helperMutation) return helperMutation.then(() => changeHelper(operation));
+    helperRevision++;
+    helperMutation = operation()
+      .then(result => {
+        helper.value = result;
+        return result;
+      })
+      .finally(() => {
+        helperMutation = null;
+      });
+    return helperMutation;
   }
+  const installHelper = () => changeHelper(() => unwrap(commands.fanHelperInstall()));
   /** Opens Login Items & Extensions, where macOS asks the user to allow the helper (requires_approval). */
   const openApproval = () => unwrap(commands.fanHelperOpenApproval());
   async function uninstallHelper() {
-    await unwrap(commands.fanHelperUninstall());
-    await loadHelper();
+    await changeHelper(async () => {
+      await unwrap(commands.fanHelperUninstall());
+      return unwrap(commands.fanHelperStatus());
+    });
   }
   /** A helper that is installed but not answering (status error) is registered again from scratch. */
   async function reinstallHelper() {
-    await unwrap(commands.fanHelperUninstall());
-    return installHelper();
+    return changeHelper(async () => {
+      await unwrap(commands.fanHelperUninstall());
+      return unwrap(commands.fanHelperInstall());
+    });
   }
   async function setFanMode(fanId: number | null, mode: FanMode) {
     fanOverride.value = await unwrap(commands.fanSetMode(fanId, mode));

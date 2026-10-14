@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const candidateSQL = `SELECT p.id,p.kind,p.token,COALESCE(p.homepage,'') homepage,COALESCE(p.download_url,'') download_url,COALESCE(m.repo_url,'') repo_url,COALESCE(p.raw->>'ruby_source_path','') ruby_source_path,COALESCE(p.raw->>'tap_git_head','') tap_git_head FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id`
+const candidateSQL = `SELECT p.id,p.kind,p.token,p.tap,COALESCE(p.homepage,'') homepage,COALESCE(p.download_url,'') download_url,COALESCE(m.repo_url,'') repo_url,COALESCE(p.raw->>'ruby_source_path','') ruby_source_path,COALESCE(p.raw->>'tap_git_head','') tap_git_head FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id`
 
 func (s *Store) ChangelogCandidate(ctx context.Context, id int64) (changelog.Candidate, error) {
 	var row changelog.Candidate
@@ -163,6 +163,6 @@ func (s *Store) ChangelogFailure(ctx context.Context, id int64, status, message 
 
 func (s *Store) UnresolvedHomebrewSources(ctx context.Context) ([]changelog.Candidate, error) {
 	var rows []changelog.Candidate
-	err := s.DB.WithContext(ctx).Raw(candidateSQL + ` WHERE NOT COALESCE(m.changelog_excluded,false) AND p.kind='cask' AND p.removed_at IS NULL AND NOT p.disabled AND p.ruby_source_path IS NOT NULL AND NOT EXISTS(SELECT 1 FROM changelog_sources s WHERE s.package_id=p.id AND s.type='homebrew_commits') ORDER BY p.popularity DESC,p.id`).Scan(&rows).Error
+	err := s.DB.WithContext(ctx).Raw(candidateSQL + ` WHERE NOT COALESCE(m.changelog_excluded,false) AND p.kind='cask' AND p.removed_at IS NULL AND NOT p.disabled AND p.ruby_source_path IS NOT NULL AND ` + OfficialTapSQL + ` AND NOT EXISTS(SELECT 1 FROM changelog_sources s WHERE s.package_id=p.id AND s.type='homebrew_commits') ORDER BY p.popularity DESC,p.id`).Scan(&rows).Error
 	return rows, err
 }

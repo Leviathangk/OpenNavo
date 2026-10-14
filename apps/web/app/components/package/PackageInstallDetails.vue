@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isThirdPartyTap } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
 import {
   displayUrl,
@@ -63,12 +64,14 @@ const items = computed<OnKeyValueItem[]>(() => {
     value: displayUrl(value.sourceUrl),
     href: value.sourceUrl
   });
-  list.push({
-    key: 'formulae',
-    label: 'formulae.brew.sh',
-    value: displayUrl(value.formulaeUrl),
-    href: value.formulaeUrl
-  });
+  // formulae.brew.sh only lists Homebrew's own taps.
+  if (!isThirdPartyTap(value.tap))
+    list.push({
+      key: 'formulae',
+      label: 'formulae.brew.sh',
+      value: displayUrl(value.formulaeUrl),
+      href: value.formulaeUrl
+    });
   if (value.repoUrl)
     list.push({ key: 'repo', label: t('package.details.repo'), value: displayUrl(value.repoUrl), href: value.repoUrl });
   return list;

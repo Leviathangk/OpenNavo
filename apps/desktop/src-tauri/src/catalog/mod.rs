@@ -156,6 +156,9 @@ fn upsert_impl(
     replace: bool,
 ) -> Result<(), AppError> {
     crate::brew::args::validate_token(&item.token)?;
+    if let Some(tap) = &item.tap {
+        crate::brew::args::validate_tap(tap)?;
+    }
     let changed = chrono::DateTime::parse_from_rfc3339(&item.version_changed_at)
         .map_err(|_| protocol("catalog_date"))?
         .timestamp_millis();

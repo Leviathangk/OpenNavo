@@ -23,6 +23,10 @@ developers and repositories. Maintain icons with asset_upload_from_url + package
 and screenshots with package_screenshot_*. For local image files, call asset_upload_ticket
 and POST the file to its single-use uploadUrl instead of encoding images into tool calls.
 Wait for automatic download-size probing and fill only missing values.
+Casks outside homebrew/cask are added only when an editor asks: tap_package_add
+cask="<owner>/<tap>/<token>" (dry_run first; unsupported cask DSL is rejected with its
+line). The tap sync re-reads them every 30 minutes; tap_packages_list shows lastError,
+package_refresh re-reads one now and tap_package_remove takes it out of the catalog.
 3. Prioritize the 1,000 most popular apps for version updates. package_versions /
 releases_list show recorded versions. Hermes must consult reliable upstream sources;
 old source text from release_get is reference data only. Write this version's changes

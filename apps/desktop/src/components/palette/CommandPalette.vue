@@ -70,7 +70,7 @@ watch([query, appLocale, () => catalog.revision], async ([value]) => {
 });
 
 type Payload =
-  | { type: 'package'; kind: Kind; token: string }
+  | { type: 'package'; kind: Kind; token: string; tap: string | null }
   | { type: 'update'; kind: Kind; token: string }
   | { type: 'reveal'; kind: Kind; token: string }
   | { type: 'search'; q: string }
@@ -87,7 +87,7 @@ function packageItem(hit: LocalSearchHit): OnCommandItem {
     : pick(item.summary, '', item.sourceLocale);
   const current = stateOf(item.kind, item.token, item.disabled);
   const key = `package:${item.kind}/${item.token}`;
-  payloads.set(key, { type: 'package', kind: item.kind, token: item.token });
+  payloads.set(key, { type: 'package', kind: item.kind, token: item.token, tap: item.tap ?? null });
   return {
     key,
     label: pick(item.displayName, item.name, item.sourceLocale),
@@ -186,7 +186,7 @@ async function select(item: OnCommandItem, options: { meta: boolean }) {
 async function copy(item: OnCommandItem) {
   const payload = payloads.get(item.key);
   if (!payload || payload.type !== 'package') return;
-  const command = installCommand(payload.kind, payload.token);
+  const command = installCommand(payload.kind, payload.token, payload.tap);
   await navigator.clipboard.writeText(command);
   toasts.push({ tone: 'success', title: t('palette.copied', { command }) });
 }

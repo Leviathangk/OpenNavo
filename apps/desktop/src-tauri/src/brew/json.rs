@@ -49,6 +49,9 @@ pub struct RuntimeDependency {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Cask {
     pub token: String,
+    /// homebrew/cask for official casks; null for casks brew no longer finds in any tap.
+    #[serde(default)]
+    pub tap: Option<String>,
     #[serde(default)]
     pub name: Vec<String>,
     pub version: String,

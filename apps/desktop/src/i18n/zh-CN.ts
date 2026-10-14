@@ -174,6 +174,7 @@ export default {
     deprecated: '已弃用',
     homepage: '主页',
     fromTap: '来自',
+    thirdPartyTap: '第三方仓库',
     stats: {
       label: '数据',
       installs30d: '近 30 天安装',
@@ -959,6 +960,12 @@ export default {
     confirm: '确认接管',
     blockedTitle: '暂时无法安装 {name}',
     blockedDescription: '无法确认安装位置或现有应用的状态。未执行安装或接管，请检查应用与安装信息后重试。'
+  },
+  tapConfirm: {
+    title: '从第三方仓库安装 {name}？',
+    description: '{name} 不在 Homebrew 官方仓库里，由下面这个来源仓库的作者维护，没有经过 Homebrew 审核。',
+    hint: '第一次安装时，Homebrew 会从 GitHub 下载这个仓库并信任该应用，镜像源对它不起作用。请只在信任作者时继续。',
+    confirm: '继续安装'
   },
   runningApps: {
     title: '应用正在运行',

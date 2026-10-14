@@ -74,6 +74,8 @@ export const commands = {
 	iconUrl: string | null,
 	accentColor: string | null,
 	apps: string[],
+	/**  Complete installation destinations; absent in older catalogs. */
+	appTargets?: string[] | null,
 	binaries: string[],
 	pinyin: string | null,
 	versionChangedAt: string,
@@ -81,6 +83,8 @@ export const commands = {
 	installs365d?: number | null,
 	downloadSize: number | null,
 	onRequest: OnRequest | null,
+	/**  Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`. */
+	tap?: string | null,
 } | null, AppError>(__TAURI_INVOKE("catalog_get", { kind, token })),
 	catalogCategories: () => typedError<CategoryItem[], AppError>(__TAURI_INVOKE("catalog_categories")),
 	libraryList: () => typedError<InstalledItem[], AppError>(__TAURI_INVOKE("library_list")),
@@ -252,6 +256,8 @@ export type CatalogItem_Deserialize = {
 	iconUrl: string | null,
 	accentColor: string | null,
 	apps: string[],
+	/**  Complete installation destinations; absent in older catalogs. */
+	appTargets?: string[] | null,
 	binaries: string[],
 	pinyin: string | null,
 	versionChangedAt: string,
@@ -259,6 +265,8 @@ export type CatalogItem_Deserialize = {
 	installs365d?: number | null,
 	downloadSize: number | null,
 	onRequest: OnRequest | null,
+	/**  Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`. */
+	tap?: string | null,
 };
 
 /**  Date strings retain the HTTP catalog format; local IPC times use Unix milliseconds. */
@@ -286,6 +294,8 @@ export type CatalogItem_Serialize = {
 	iconUrl: string | null,
 	accentColor: string | null,
 	apps: string[],
+	/**  Complete installation destinations; absent in older catalogs. */
+	appTargets?: string[] | null,
 	binaries: string[],
 	pinyin: string | null,
 	versionChangedAt: string,
@@ -293,6 +303,8 @@ export type CatalogItem_Serialize = {
 	installs365d?: number | null,
 	downloadSize: number | null,
 	onRequest: OnRequest | null,
+	/**  Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`. */
+	tap?: string | null,
 };
 
 export type CatalogStatus = {
@@ -579,6 +591,8 @@ export type InstallPreflight = {
 	name: string,
 	paths: string[],
 	status: InstallPreflightStatus,
+	/**  Set for casks from a third-party tap, which brew clones from GitHub on first install. */
+	tap: string | null,
 };
 
 export type InstallPreflightStatus = "ready" | "managed" | "conflict" | "blocked";

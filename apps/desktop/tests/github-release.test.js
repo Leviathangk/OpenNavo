@@ -50,6 +50,7 @@ describe('GitHub releases and failure recovery', () => {
     const client = fixture({ exists: false });
     await run(client);
     expect(client.create).toHaveBeenCalledWith('desktop-v0.3.0', false);
+    expect(client.publish).toHaveBeenCalledWith(1, false);
     expect(client.updateNotes).toHaveBeenCalledWith(1, `# OpenNavo ${version}\n\n${notesEn}\n`);
     expect(client.publish.mock.invocationCallOrder[0]).toBeGreaterThan(client.updateNotes.mock.invocationCallOrder[0]);
     expect(client.publish.mock.invocationCallOrder[0]).toBeGreaterThan(client.upload.mock.invocationCallOrder[0]);
@@ -90,6 +91,7 @@ describe('GitHub releases and failure recovery', () => {
     const client = fixture({ exists: false });
     await publishRelease({ repository, version: '0.3.0-beta.1', assets, client, notesEn });
     expect(client.create).toHaveBeenCalledWith('desktop-v0.3.0-beta.1', true);
+    expect(client.publish).toHaveBeenCalledWith(1, true);
   });
   it('Verifies downloads without tokens and rejects size or hash mismatches', async () => {
     const fetcher = vi.fn(async () => new Response('content'));
@@ -105,14 +107,19 @@ describe('GitHub releases and failure recovery', () => {
       verifyDownload('https://github.com/asset', assets[0], async () => new Response('', { status: 404 }))
     ).rejects.toThrow('404');
   });
-  it('Disallows authenticated API redirects and explicitly disables latest on creation and publication', async () => {
+  it('Disallows authenticated API redirects and marks only stable publications as latest', async () => {
     const fetcher = vi.fn(async () => Response.json({ id: 1 }));
     const client = githubClient(repository, 'fixture-only', fetcher);
     await client.create('desktop-v0.3.0', false);
-    await client.publish(1);
+    await client.publish(1, false);
+    await client.publish(2, true);
+    expect(fetcher.mock.calls.map(([, options]) => JSON.parse(options.body).make_latest)).toEqual([
+      'false',
+      'true',
+      'false'
+    ]);
     for (const [, options] of fetcher.mock.calls) {
       expect(options.redirect).toBe('error');
-      expect(JSON.parse(options.body).make_latest).toBe('false');
     }
   });
 });

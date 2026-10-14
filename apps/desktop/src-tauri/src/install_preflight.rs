@@ -10,25 +10,68 @@ pub async fn inspect(
     settings: &Settings,
     target: &TaskTarget,
 ) -> Result<InstallPreflight, AppError> {
+    inspect_listed(settings, target, None).await
+}
+
+/// Preflight with the catalog entry, if any. Casks from a third-party tap are read by their qualified
+/// name; before the tap is cloned brew cannot read them, so the catalog must provide complete destination metadata for the fallback.
+pub async fn inspect_listed(
+    settings: &Settings,
+    target: &TaskTarget,
+    item: Option<CatalogItem>,
+) -> Result<InstallPreflight, AppError> {
     crate::brew::args::validate_token(&target.token)?;
     if target.kind != Kind::Cask {
         return Err(AppError::new("E_INVALID_ARG", "cask_only"));
     }
+    let tap = item.as_ref().and_then(|i| i.tap.clone());
+    let name = crate::brew::args::qualified_token(tap.as_deref(), &target.token)?;
     let brew = locate::locate(settings).await?;
-    let json = locate::read(
-        &brew,
-        settings,
-        ReadOp::Info(Kind::Cask),
-        Some(&target.token),
-    )
-    .await?;
+    let json = match locate::read(&brew, settings, ReadOp::Info(Kind::Cask), Some(&name)).await {
+        Ok(json) => json,
+        // Before the first install the tap is not cloned (and its casks are not trusted), so brew
+        // cannot read the cask; the install itself taps and trusts it.
+        Err(error) if tap.is_some() => {
+            let item = item.ok_or(error)?;
+            let artifacts = item.app_targets.map(|targets| {
+                targets
+                    .into_iter()
+                    .map(|target| serde_json::json!({"app": ["catalog.app", {"target": target}]}))
+                    .collect()
+            });
+            let cask = Cask {
+                token: target.token.clone(),
+                tap: tap.clone(),
+                name: vec![item.name],
+                version: item.version,
+                installed: serde_json::Value::Null,
+                installed_time: None,
+                pinned: false,
+                outdated: false,
+                auto_updates: item.auto_updates,
+                artifacts,
+            };
+            return crate::blocking(move || {
+                let mut result = check(&cask, Path::new("/Applications"))?;
+                result.tap = tap;
+                Ok(result)
+            })
+            .await;
+        }
+        Err(error) => return Err(error),
+    };
     let info: Info = serde_json::from_str(&json)?;
     let cask = info
         .casks
         .into_iter()
         .find(|c| c.token == target.token)
         .ok_or_else(|| AppError::new("E_INVALID_ARG", "cask_missing"))?;
-    crate::blocking(move || check(&cask, Path::new("/Applications"))).await
+    crate::blocking(move || {
+        let mut result = check(&cask, Path::new("/Applications"))?;
+        result.tap = tap;
+        Ok(result)
+    })
+    .await
 }
 
 fn check(cask: &Cask, appdir: &Path) -> Result<InstallPreflight, AppError> {
@@ -40,6 +83,7 @@ fn check(cask: &Cask, appdir: &Path) -> Result<InstallPreflight, AppError> {
             .unwrap_or_else(|| cask.token.clone()),
         paths: Vec::new(),
         status: InstallPreflightStatus::Ready,
+        tap: None,
     };
     if cask.installed.as_str().is_some_and(|s| !s.is_empty())
         || cask.installed.as_array().is_some_and(|a| !a.is_empty())
@@ -68,7 +112,8 @@ fn check(cask: &Cask, appdir: &Path) -> Result<InstallPreflight, AppError> {
                 Some(target) => PathBuf::from(target),
                 None => PathBuf::from(Path::new(source).file_name()?),
             };
-            if path.extension().is_none_or(|e| e != "app")
+            if path.to_string_lossy().contains(['$', '~', '#'])
+                || path.extension().is_none_or(|e| e != "app")
                 || path.components().any(|c| matches!(c, Component::ParentDir))
             {
                 return None;

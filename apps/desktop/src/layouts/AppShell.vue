@@ -12,6 +12,7 @@ import PermissionPrompt from '@/components/shell/PermissionPrompt.vue';
 import DeepLinkConfirm from '@/components/shell/DeepLinkConfirm.vue';
 import QuitConfirm from '@/components/shell/QuitConfirm.vue';
 import InstallConfirm from '@/components/shell/InstallConfirm.vue';
+import TapConfirm from '@/components/shell/TapConfirm.vue';
 import CleanupNotifier from '@/components/cleanup/CleanupNotifier.vue';
 import MonitorNotifier from '@/components/monitor/MonitorNotifier.vue';
 import UninstallDialog from '@/components/uninstall/UninstallDialog.vue';
@@ -105,6 +106,7 @@ watch(
       <RestorePrompt />
       <RunningAppsConfirm />
       <InstallConfirm />
+      <TapConfirm />
       <UninstallDialog />
       <CleanupNotifier />
       <MonitorNotifier />

@@ -11042,6 +11042,11 @@ components:
         token:
           type: string
           example: visual-studio-code
+        tap:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9_.-]*$"
+          description: "Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>."
+          example: swiftvm-app/tap
         name:
           type: string
           example: Microsoft Visual Studio Code
@@ -11108,6 +11113,11 @@ components:
           items:
             type: string
             example: Visual Studio Code.app
+        appTargets:
+          type: array
+          description: Complete app installation destinations for third-party casks. Relative paths use the default app directory. Omitted when unavailable.
+          items:
+            type: string
         binaries:
           type: array
           items:
@@ -11455,6 +11465,11 @@ components:
         token:
           type: string
           example: visual-studio-code
+        tap:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9_.-]*$"
+          description: "Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>."
+          example: swiftvm-app/tap
         name:
           type: string
           example: Microsoft Visual Studio Code
@@ -11525,6 +11540,11 @@ components:
           items:
             type: string
             example: Visual Studio Code.app
+        appTargets:
+          type: array
+          description: Complete app installation destinations for third-party casks. Relative paths use the default app directory. Omitted when unavailable.
+          items:
+            type: string
         binaries:
           type: array
           items:

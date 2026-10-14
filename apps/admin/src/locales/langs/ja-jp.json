@@ -810,7 +810,8 @@
           "assets_icons": "アイコンの収集（廃止）",
           "assets_download-size": "ダウンロードサイズの検出",
           "cleanup": "クリーンアップ",
-          "facts_sources": "ライセンスと App Store の情報"
+          "facts_sources": "ライセンスと App Store の情報",
+          "taps_sync": "サードパーティのリポジトリ同期"
         },
         "triggers": {
           "schedule": "スケジュール",

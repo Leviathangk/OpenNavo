@@ -810,7 +810,8 @@
           "assets_icons": "Сбор значков (отключен)",
           "assets_download-size": "Определение размера загрузки",
           "cleanup": "Очистка",
-          "facts_sources": "Лицензии и данные App Store"
+          "facts_sources": "Лицензии и данные App Store",
+          "taps_sync": "Синхронизация сторонних репозиториев"
         },
         "triggers": {
           "schedule": "По расписанию",

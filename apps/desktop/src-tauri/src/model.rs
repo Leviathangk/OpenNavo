@@ -80,6 +80,9 @@ pub struct CatalogItem {
     pub icon_url: Option<String>,
     pub accent_color: Option<String>,
     pub apps: Vec<String>,
+    /// Complete installation destinations; absent in older catalogs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_targets: Option<Vec<String>>,
     pub binaries: Vec<String>,
     pub pinyin: Option<String>,
     pub version_changed_at: String,
@@ -89,6 +92,9 @@ pub struct CatalogItem {
     pub installs_365d: Option<u64>,
     pub download_size: Option<u64>,
     pub on_request: Option<OnRequest>,
+    /// Third-party tap (owner/name) of casks outside Homebrew's own; installs use `<tap>/<token>`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tap: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq, Copy, Eq, Hash)]
@@ -809,6 +815,8 @@ pub struct InstallPreflight {
     pub name: String,
     pub paths: Vec<String>,
     pub status: InstallPreflightStatus,
+    /// Set for casks from a third-party tap, which brew clones from GitHub on first install.
+    pub tap: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq, Hash)]

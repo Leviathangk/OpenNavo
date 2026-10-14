@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import type { Task, TaskKind, TaskLogEvent, TaskOp, TaskOptions, TaskTarget, TaskTrigger } from '@/ipc/bindings';
 import { commands, packageKey, unwrap } from '@/ipc/client';
 import { useInstallConfirmStore } from './installConfirm';
+import { useTapConfirmStore } from './tapConfirm';
 import { useLibraryStore } from './library';
 import { useUpdatesStore } from './updates';
 import { useRunningAppsStore } from './runningApps';
@@ -125,6 +126,11 @@ export const useTasksStore = defineStore('tasks', () => {
         await useLibraryStore().refresh();
         await useUpdatesStore().load();
         return null;
+      }
+      // Homebrew has not reviewed third-party taps; installing from one is the user's call every time.
+      if (check.tap) {
+        if (trigger === 'schedule') return null;
+        if (!(await useTapConfirmStore().ask({ name: check.name, tap: check.tap }))) return null;
       }
       let adopt = false;
       if (check.status === 'conflict' || check.status === 'blocked') {

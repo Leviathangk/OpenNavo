@@ -28,6 +28,7 @@ var Definitions = []Definition{
 	{Type: "assets:download-size", Queue: "default", Cron: "0 5 * * *", Retries: 2, Ref: "package"},
 	{Type: "cleanup", Queue: "default", Cron: "0 4 * * *", Retries: 1},
 	{Type: "facts:sources", Queue: "default", Cron: "35 * * * *", Retries: 1},
+	{Type: "taps:sync", Queue: "default", Cron: "20,50 * * * *", Retries: 1, Ref: "package"},
 }
 
 type Payload struct {

@@ -18,9 +18,10 @@ impl Transport for NativeTransport {
         #[cfg(target_os = "macos")]
         {
             match unsafe { bridge::on_service_status() } {
-                0 | 3 => FanHelperState::NotInstalled,
+                0 => FanHelperState::NotInstalled,
                 1 => FanHelperState::Enabled,
                 2 => FanHelperState::RequiresApproval,
+                // notFound (3) is a lookup/registration error, not evidence it was never installed.
                 _ => FanHelperState::Error,
             }
         }
@@ -246,16 +247,20 @@ impl<T: Transport> Client<T> {
         if mode == FanMode::Manual {
             self.manual_gate()?;
         }
-        self.status()?;
-        self.poll()?;
+        // The first command must still reset a previous app session. Once started, the command's
+        // reply already carries current fans and all unseen safety events; no status round trips.
+        if !self.session_started {
+            self.start_session()?;
+        }
         let reply = self.send(Request::SetMode { fan_id: id, mode })?;
         self.remember(&reply.fans);
         Ok(reply.fans)
     }
     pub fn speed(&mut self, id: Option<u32>, rpm: u32) -> Result<Vec<FanState>, AppError> {
         self.manual_gate()?;
-        self.status()?;
-        self.poll()?;
+        if !self.session_started {
+            self.start_session()?;
+        }
         let reply = self.send(Request::SetSpeed { fan_id: id, rpm })?;
         self.remember(&reply.fans);
         Ok(reply.fans)

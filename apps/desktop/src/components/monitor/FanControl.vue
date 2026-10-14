@@ -77,6 +77,7 @@ function report(tone: 'success' | 'danger', title: string, description?: string)
 }
 
 async function attempt(operation: () => Promise<unknown>, done?: { title: string; description?: string }) {
+  if (busy.value) return;
   busy.value = true;
   notice.value = null;
   try {
@@ -90,7 +91,7 @@ async function attempt(operation: () => Promise<unknown>, done?: { title: string
 }
 
 function choose(next: FanMode) {
-  if (next === mode.value) return;
+  if (busy.value || next === mode.value) return;
   if (next === 'auto') {
     void attempt(() => store.setFanMode(null, 'auto'), { title: t('monitor.fans.toasts.auto') });
     return;
@@ -126,15 +127,19 @@ const restoreLast = () => attempt(() => store.restoreLastFans(), { title: t('mon
     class="flex flex-col gap-10px rounded-panel border border-solid border-line-subtle p-12px"
     :class="props.compact ? 'bg-[rgba(255,255,255,0.03)]' : 'bg-surface-card'"
     data-testid="fan-control"
+    :aria-busy="busy"
   >
     <div class="flex items-center gap-8px">
       <b class="flex-1 text-13px font-600 text-ink-primary">{{ t('monitor.fans.control') }}</b>
+      <OnIcon v-if="busy" name="loader-circle" :size="14" class="animate-spin text-ink-tertiary" />
       <OnSegmented
         v-if="switchable"
         :model-value="mode"
         :options="modes"
         size="sm"
         :aria-label="t('monitor.fans.control')"
+        :inert="busy ? '' : undefined"
+        :aria-disabled="busy"
         @update:model-value="choose"
       />
       <span v-else class="text-12px text-ink-tertiary">{{ t('monitor.fans.auto') }}</span>
@@ -224,6 +229,8 @@ const restoreLast = () => attempt(() => store.restoreLastFans(), { title: t('mon
         }}</OnButton>
       </div>
     </div>
+
+    <p v-else-if="status == null" role="status" class="m-0 text-12px text-ink-tertiary">{{ t('common.loading') }}</p>
 
     <template v-else-if="status === 'enabled'">
       <p class="m-0 text-12px leading-[1.55] text-ink-tertiary">{{ t('monitor.fans.autoNote') }}</p>

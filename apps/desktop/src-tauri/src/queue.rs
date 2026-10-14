@@ -1,7 +1,7 @@
 use crate::{
     AppError,
     brew::{
-        args::write_args,
+        args::{write_args, write_args_in_tap},
         env::construct,
         locate,
         pty::{Execution, Progress, execute},
@@ -532,9 +532,38 @@ impl TaskQueue {
                 .await
                 .ok()
                 .map(PathBuf::from);
+            // Installs use the catalog; upgrades/reinstalls retain the installed source and reject catalog conflicts.
+            let catalog_tap = match (&task.target, task.op) {
+                (Some(target), TaskOp::Install | TaskOp::Reinstall | TaskOp::Upgrade)
+                    if target.kind == Kind::Cask =>
+                {
+                    let database = self.database.clone();
+                    let token = target.token.clone();
+                    crate::blocking(move || {
+                        Ok(crate::catalog::get(&database, Kind::Cask, &token)?.map(|i| i.tap))
+                    })
+                    .await?
+                }
+                _ => None,
+            };
+            let mut tap = catalog_tap.clone().flatten();
+            if matches!(task.op, TaskOp::Upgrade | TaskOp::Reinstall)
+                && let Some(target) = &task.target
+                && target.kind == Kind::Cask
+            {
+                let json =
+                    locate::read(&brew, &settings, crate::brew::args::ReadOp::Installed, None)
+                        .await?;
+                let installed: crate::brew::json::Info = serde_json::from_str(&json)?;
+                tap = verify_installed_cask_tap(
+                    &installed,
+                    &target.token,
+                    catalog_tap.as_ref().map(|tap| tap.as_deref()),
+                )?;
+            }
             (
                 PathBuf::from(brew.path),
-                write_args(task.op, task.target.as_ref(), &task.options)?,
+                write_args_in_tap(task.op, task.target.as_ref(), &task.options, tap.as_deref())?,
                 brew.prefix,
                 cache,
             )
@@ -897,13 +926,19 @@ mod tests {
     ) {
         let directory = tempfile::tempdir().expect("directory");
         let database = Database::open(&directory.path().join("test.db")).expect("database");
+        let wrapper = directory.path().join("brew");
+        let fake = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fake-brew/brew");
+        std::fs::write(&wrapper, format!(r#"#!/usr/bin/python3 -I
+import json, os, sys
+if sys.argv[1:] == ['info', '--json=v2', '--installed']:
+    print(json.dumps({{'casks': [{{'token': token, 'tap': 'homebrew/cask', 'version': '1', 'installed': '1'}} for token in ['calibre', 'target', 'other']]}}))
+else:
+    os.execv({fake:?}, [{fake:?}] + sys.argv[1:])
+"#)).unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o700)).unwrap();
         let settings = Settings {
-            brew_path: Some(
-                Path::new(env!("CARGO_MANIFEST_DIR"))
-                    .join("tests/fake-brew/brew")
-                    .to_string_lossy()
-                    .into(),
-            ),
+            brew_path: Some(wrapper.to_string_lossy().into()),
             ..Default::default()
         };
         let events = Arc::new(Mutex::new(Vec::new()));
@@ -1299,6 +1334,60 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn unknown_installed_source_never_executes_upgrade_or_reinstall() {
+        for op in [TaskOp::Upgrade, TaskOp::Reinstall] {
+            let (directory, queue, _) = fixture("install_ok");
+            let wrapper = directory.path().join("brew");
+            let source = std::fs::read_to_string(&wrapper).unwrap();
+            std::fs::write(&wrapper, source.replace("'homebrew/cask'", "None")).unwrap();
+            let task = queue
+                .enqueue(
+                    op,
+                    Some(target("calibre")),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .unwrap();
+            queue.start();
+            let ended = terminal(&queue, &task.id).await;
+            assert_eq!(ended.state, TaskState::Failed);
+            assert_eq!(ended.error.unwrap().code, "E_INVALID_ARG");
+            assert_eq!(ended.exit_code, None);
+            assert!(queue.log(&task.id, None).unwrap().is_empty());
+            queue.shutdown();
+        }
+    }
+
+    #[tokio::test]
+    async fn uncatalogued_third_party_cask_keeps_installed_tap() {
+        for op in [TaskOp::Upgrade, TaskOp::Reinstall] {
+            let (directory, queue, _) = fixture("install_ok");
+            let wrapper = directory.path().join("brew");
+            let source = std::fs::read_to_string(&wrapper).unwrap();
+            let source = source.replace("homebrew/cask", "owner/tap");
+            // Make the fake write fail if the selected repository is lost or changed.
+            let source = source.replace("    os.execv", "    if sys.argv[1] in ['upgrade', 'reinstall'] and sys.argv[-1] != 'owner/tap/calibre': sys.exit(99)\n    os.execv");
+            std::fs::write(&wrapper, source).unwrap();
+            assert!(
+                crate::catalog::get(&queue.database, Kind::Cask, "calibre")
+                    .unwrap()
+                    .is_none()
+            );
+            let task = queue
+                .enqueue(
+                    op,
+                    Some(target("calibre")),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .unwrap();
+            queue.start();
+            assert_eq!(terminal(&queue, &task.id).await.state, TaskState::Succeeded);
+            queue.shutdown();
+        }
+    }
+
+    #[tokio::test]
     async fn history_export_is_persistent_and_filtered() {
         let (directory, queue, _) = fixture("install_ok");
         let task = queue
@@ -1562,7 +1651,7 @@ mod tests {
         std::fs::write(&wrapper, format!(r#"#!/usr/bin/python3 -I
 import json, os, sys
 if sys.argv[1:2] == ['info']:
-    print(json.dumps({{'casks':[{{'token':'example','version':'1','installed':'1','artifacts':[{{'app':[{app_path:?}]}}]}}]}}))
+    print(json.dumps({{'casks':[{{'token':'example','tap':'homebrew/cask','version':'1','installed':'1','artifacts':[{{'app':[{app_path:?}]}}]}}]}}))
 else:
     os.execv({fake:?}, [{fake:?}] + sys.argv[1:])
 "#)).unwrap();
@@ -1762,5 +1851,89 @@ else:
         let recovered = queue.database.recover_tasks(1).unwrap();
         assert!(!recovered[0].options.quit_running);
         assert!(!recovered[0].options.reopen);
+    }
+}
+
+// Fail closed when brew cannot establish the installed source. Never let catalog metadata
+// silently authorize a different repository for an existing installation.
+// catalog_tap: None means absent from the catalog; Some(None) means an official cask.
+fn verify_installed_cask_tap(
+    installed: &crate::brew::json::Info,
+    token: &str,
+    catalog_tap: Option<Option<&str>>,
+) -> Result<Option<String>, AppError> {
+    let source = installed
+        .casks
+        .iter()
+        .find(|cask| cask.token == token)
+        .and_then(|cask| cask.tap.as_deref());
+    if source.is_none()
+        || catalog_tap.is_some_and(|tap| source != Some(tap.unwrap_or("homebrew/cask")))
+    {
+        return Err(AppError::new(
+            "E_INVALID_ARG",
+            "installed_cask_tap_mismatch",
+        ));
+    }
+    match source {
+        Some("homebrew/cask") => Ok(None),
+        Some(tap) => {
+            crate::brew::args::validate_tap(tap)?;
+            Ok(Some(tap.to_owned()))
+        }
+        None => unreachable!("unknown source rejected above"),
+    }
+}
+
+#[cfg(test)]
+mod tap_source_tests {
+    use super::*;
+    #[test]
+    fn upgrade_and_reinstall_require_known_matching_installed_source() {
+        for (source, catalog, allowed) in [
+            (Some("owner/tap"), Some(Some("owner/tap")), true),
+            (Some("homebrew/cask"), None, true),
+            (Some("other/tap"), Some(Some("owner/tap")), false),
+            (Some("homebrew/cask"), Some(Some("owner/tap")), false),
+            (Some("owner/tap"), Some(None), false),
+            (Some("owner/tap"), None, true),
+            (Some("homebrew/cask"), Some(None), true),
+            (Some("invalid/tap/extra"), None, false),
+            (None, None, false),
+            (None, Some(Some("owner/tap")), false),
+        ] {
+            let info = serde_json::from_value(serde_json::json!({
+                "casks": [{"token": "example", "tap": source, "version": "1", "installed": "1"}]
+            }))
+            .unwrap();
+            let result = verify_installed_cask_tap(&info, "example", catalog);
+            assert_eq!(result.is_ok(), allowed);
+            if allowed {
+                let tap = result.unwrap();
+                assert_eq!(tap.as_deref(), source.filter(|s| *s != "homebrew/cask"));
+                for op in [TaskOp::Upgrade, TaskOp::Reinstall] {
+                    let target = TaskTarget {
+                        kind: Kind::Cask.into(),
+                        token: "example".into(),
+                    };
+                    let args = write_args_in_tap(
+                        op,
+                        Some(&target),
+                        &TaskOptions::default(),
+                        tap.as_deref(),
+                    )
+                    .unwrap();
+                    let expected = tap
+                        .as_ref()
+                        .map(|tap| format!("{tap}/example"))
+                        .unwrap_or("example".into());
+                    assert_eq!(args.last(), Some(&expected));
+                }
+            }
+        }
+        assert!(
+            verify_installed_cask_tap(&crate::brew::json::Info::default(), "missing", None)
+                .is_err()
+        );
     }
 }

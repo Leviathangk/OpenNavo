@@ -598,6 +598,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/taps/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Third-party tap casks
+         * @description Requires catalog:package:view. Lists casks added from third-party Homebrew taps with the outcome of their last tap sync (lastError is null when healthy). This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        get: operations["listTapPackages"];
+        put?: never;
+        /**
+         * Add a third-party tap cask
+         * @description Requires catalog:package:edit. Reads Casks/<token>.rb from the tap's GitHub repository (owner/homebrew-<tap>), evaluates the declarative cask DSL without running Ruby and adds the cask to the catalog; the desktop app then installs it with brew install --cask <owner>/<tap>/<token>. Per-architecture or per-OS blocks (arch, on_arm, on_intel, on_<macos>), language blocks and local variables are rejected with the offending line. A tap sync job keeps the cask current. Tokens used by an official Homebrew cask cannot be added. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        post: operations["addTapPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packages/{id}/tap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a third-party tap cask
+         * @description Requires catalog:package:edit. Stops tracking the tap cask and removes it from the catalog the way Homebrew removals are handled; desktop apps drop it at their next sync. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         */
+        delete: operations["removeTapPackage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/categories/tree": {
         parameters: {
             query?: never;
@@ -5833,12 +5877,12 @@ export interface components {
          * @example catalog_sync
          * @enum {string}
          */
-        TriggerJobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "changelog_schedule" | "assets_download-size" | "cleanup" | "facts_sources";
+        TriggerJobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "changelog_schedule" | "assets_download-size" | "cleanup" | "facts_sources" | "taps_sync";
         /**
          * @example catalog_sync
          * @enum {string}
          */
-        JobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "enrich_schedule" | "translate_schedule" | "changelog_schedule" | "assets_icons" | "assets_download-size" | "cleanup" | "facts_sources";
+        JobType: "catalog_sync" | "analytics_sync" | "snapshot_build" | "enrich_schedule" | "translate_schedule" | "changelog_schedule" | "assets_icons" | "assets_download-size" | "cleanup" | "facts_sources" | "taps_sync";
         /**
          * @example {
          *       "code": "0000",
@@ -8317,6 +8361,219 @@ export interface components {
              */
             durationMs?: number | null;
         };
+        /**
+         * @description A cask added from a third-party Homebrew tap and the outcome of its last tap sync.
+         * @example {
+         *       "id": 1,
+         *       "token": "swiftvm",
+         *       "fullToken": "swiftvm-app/tap/swiftvm",
+         *       "tap": "swiftvm-app/tap",
+         *       "name": "SwiftVM",
+         *       "version": "1.3.0",
+         *       "sourcePath": "Casks/swiftvm.rb",
+         *       "sourceUrl": "https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb",
+         *       "headSha": "99e3218a057f2311e945835cb747efdaf992b981",
+         *       "checkedAt": "2026-10-14T08:00:00Z",
+         *       "lastError": null,
+         *       "removed": false,
+         *       "createdAt": "2026-10-14T08:00:00Z"
+         *     }
+         */
+        TapPackage: {
+            /**
+             * Format: int64
+             * @description Package ID
+             * @example 1
+             */
+            id: number;
+            /** @example swiftvm */
+            token: string;
+            /**
+             * @description Name brew installs, <owner>/<tap>/<token>
+             * @example swiftvm-app/tap/swiftvm
+             */
+            fullToken: string;
+            /** @example swiftvm-app/tap */
+            tap: string;
+            /** @example SwiftVM */
+            name: string;
+            /** @example 1.3.0 */
+            version: string;
+            /** @example Casks/swiftvm.rb */
+            sourcePath: string;
+            /**
+             * Format: uri
+             * @example https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb
+             */
+            sourceUrl: string;
+            /**
+             * @description Commit the cask file was last read at
+             * @example 99e3218a057f2311e945835cb747efdaf992b981
+             */
+            headSha: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-14T08:00:00Z
+             */
+            checkedAt: string | null;
+            /**
+             * @description Why the last tap sync could not update the cask (the catalog keeps the last good version); null when healthy
+             * @example null
+             */
+            lastError: string | null;
+            /**
+             * @description True when the cask file was deleted from the tap and the package left the catalog
+             * @example false
+             */
+            removed: boolean;
+            /**
+             * Format: date-time
+             * @example 2026-10-14T08:00:00Z
+             */
+            createdAt: string;
+        };
+        /**
+         * @example {
+         *       "records": [
+         *         {
+         *           "id": 1,
+         *           "token": "swiftvm",
+         *           "fullToken": "swiftvm-app/tap/swiftvm",
+         *           "tap": "swiftvm-app/tap",
+         *           "name": "SwiftVM",
+         *           "version": "1.3.0",
+         *           "sourcePath": "Casks/swiftvm.rb",
+         *           "sourceUrl": "https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb",
+         *           "headSha": "99e3218a057f2311e945835cb747efdaf992b981",
+         *           "checkedAt": "2026-10-14T08:00:00Z",
+         *           "lastError": null,
+         *           "removed": false,
+         *           "createdAt": "2026-10-14T08:00:00Z"
+         *         }
+         *       ]
+         *     }
+         */
+        TapPackageList: {
+            records: components["schemas"]["TapPackage"][];
+        };
+        /**
+         * @example {
+         *       "cask": "swiftvm-app/tap/swiftvm"
+         *     }
+         */
+        TapPackageAdd: {
+            /**
+             * @description Fully qualified cask name as passed to brew install --cask, <owner>/<tap>/<token>
+             * @example swiftvm-app/tap/swiftvm
+             */
+            cask: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "id": 1,
+         *             "token": "swiftvm",
+         *             "fullToken": "swiftvm-app/tap/swiftvm",
+         *             "tap": "swiftvm-app/tap",
+         *             "name": "SwiftVM",
+         *             "version": "1.3.0",
+         *             "sourcePath": "Casks/swiftvm.rb",
+         *             "sourceUrl": "https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb",
+         *             "headSha": "99e3218a057f2311e945835cb747efdaf992b981",
+         *             "checkedAt": "2026-10-14T08:00:00Z",
+         *             "lastError": null,
+         *             "removed": false,
+         *             "createdAt": "2026-10-14T08:00:00Z"
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        TapPackageListResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data?: components["schemas"]["TapPackageList"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "id": 1,
+         *             "token": "swiftvm",
+         *             "fullToken": "swiftvm-app/tap/swiftvm",
+         *             "tap": "swiftvm-app/tap",
+         *             "name": "SwiftVM",
+         *             "version": "1.3.0",
+         *             "sourcePath": "Casks/swiftvm.rb",
+         *             "sourceUrl": "https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb",
+         *             "headSha": "99e3218a057f2311e945835cb747efdaf992b981",
+         *             "checkedAt": "2026-10-14T08:00:00Z",
+         *             "lastError": null,
+         *             "removed": false,
+         *             "createdAt": "2026-10-14T08:00:00Z"
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        TapPackageListResponseResult: components["schemas"]["TapPackageListResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "token": "swiftvm",
+         *         "fullToken": "swiftvm-app/tap/swiftvm",
+         *         "tap": "swiftvm-app/tap",
+         *         "name": "SwiftVM",
+         *         "version": "1.3.0",
+         *         "sourcePath": "Casks/swiftvm.rb",
+         *         "sourceUrl": "https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb",
+         *         "headSha": "99e3218a057f2311e945835cb747efdaf992b981",
+         *         "checkedAt": "2026-10-14T08:00:00Z",
+         *         "lastError": null,
+         *         "removed": false,
+         *         "createdAt": "2026-10-14T08:00:00Z"
+         *       }
+         *     }
+         */
+        TapPackageResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data?: components["schemas"]["TapPackage"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "token": "swiftvm",
+         *         "fullToken": "swiftvm-app/tap/swiftvm",
+         *         "tap": "swiftvm-app/tap",
+         *         "name": "SwiftVM",
+         *         "version": "1.3.0",
+         *         "sourcePath": "Casks/swiftvm.rb",
+         *         "sourceUrl": "https://github.com/swiftvm-app/homebrew-tap/blob/HEAD/Casks/swiftvm.rb",
+         *         "headSha": "99e3218a057f2311e945835cb747efdaf992b981",
+         *         "checkedAt": "2026-10-14T08:00:00Z",
+         *         "lastError": null,
+         *         "removed": false,
+         *         "createdAt": "2026-10-14T08:00:00Z"
+         *       }
+         *     }
+         */
+        TapPackageResponseResult: components["schemas"]["TapPackageResponse"] | components["schemas"]["BusinessErrorResponse"];
         /**
          * @example {
          *       "queue": "本地演示样本",
@@ -20811,6 +21068,119 @@ export interface operations {
         };
     };
     resyncPackage: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description On success data is null; see code for failures */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmptyResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    listTapPackages: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TapPackageListResponseResult"];
+                };
+            };
+        };
+    };
+    addTapPackage: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "cask": "swiftvm-app/tap/swiftvm"
+                 *     }
+                 */
+                "application/json": components["schemas"]["TapPackageAdd"];
+            };
+        };
+        responses: {
+            /** @description Returns the added cask; a dry run returns what would be written */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TapPackageResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    removeTapPackage: {
         parameters: {
             query?: {
                 /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */

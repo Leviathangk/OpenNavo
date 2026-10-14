@@ -30,6 +30,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/maintenance"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
 	"github.com/opennavo/opennavo/server/internal/service/sourcefacts"
+	"github.com/opennavo/opennavo/server/internal/service/taps"
 	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	sources "github.com/opennavo/opennavo/server/internal/sourcefacts"
 	"github.com/opennavo/opennavo/server/internal/storage"
@@ -114,6 +115,10 @@ func run(ctx context.Context) error {
 		AppStore:    &sources.AppStore{Client: fetch.NewClient(15 * time.Second), UserAgent: cfg.FetchUserAgent},
 		GitHubPause: 200 * time.Millisecond, AppStorePause: 3500 * time.Millisecond}
 	handlers["facts:sources"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return factSources.Run(ctx) }
+	tapCasks := &taps.Service{Store: st, GitHub: githubFacts}
+	handlers["taps:sync"] = func(ctx context.Context, p jobs.Payload) (map[string]any, error) {
+		return tapCasks.Run(ctx, p.PackageID)
+	}
 	// Independent delivery polling keeps the 30-second source-save debounce independent of catalog sync intervals.
 	dispatchCtx, cancelDispatch := context.WithCancel(ctx)
 	defer cancelDispatch()

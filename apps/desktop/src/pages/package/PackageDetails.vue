@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { installCommand } from '@opennavo/shared';
+import { installCommand, isThirdPartyTap } from '@opennavo/shared';
 import {
   displayUrl,
   OnButton,
@@ -21,7 +21,7 @@ import { useLibraryStore } from '@/stores';
 const { t } = useI18n();
 const toasts = useToasts();
 const library = useLibraryStore();
-const { kind, token, detail, error } = usePackage();
+const { kind, token, detail, local, error } = usePackage();
 
 const messages = useUiMessages();
 const downloadSha = computed(() => detail.value?.downloadSha256);
@@ -96,12 +96,14 @@ const items = computed<OnKeyValueItem[]>(() => {
     value: displayUrl(value.sourceUrl),
     href: value.sourceUrl
   });
-  list.push({
-    key: 'formulae',
-    label: 'formulae.brew.sh',
-    value: displayUrl(value.formulaeUrl),
-    href: value.formulaeUrl
-  });
+  // formulae.brew.sh only lists Homebrew's own taps.
+  if (!isThirdPartyTap(value.tap))
+    list.push({
+      key: 'formulae',
+      label: 'formulae.brew.sh',
+      value: displayUrl(value.formulaeUrl),
+      href: value.formulaeUrl
+    });
   if (value.repoUrl)
     list.push({
       key: 'repo',
@@ -112,7 +114,9 @@ const items = computed<OnKeyValueItem[]>(() => {
   return list;
 });
 
-const command = computed(() => detail.value?.installCommand ?? installCommand(kind.value, token.value));
+const command = computed(
+  () => detail.value?.installCommand ?? installCommand(kind.value, token.value, local.value?.tap)
+);
 
 function onCopied(text: string) {
   toasts.push({ tone: 'success', title: t('common.copied'), description: text });

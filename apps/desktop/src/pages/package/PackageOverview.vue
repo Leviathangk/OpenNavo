@@ -46,7 +46,9 @@ const description = computed(
     detail.value?.summary ??
     (local.value ? pick(local.value.summary, '', local.value.sourceLocale) : '')
 );
-const command = computed(() => detail.value?.installCommand ?? installCommand(kind.value, token.value));
+const command = computed(
+  () => detail.value?.installCommand ?? installCommand(kind.value, token.value, local.value?.tap)
+);
 
 const messages = useUiMessages();
 

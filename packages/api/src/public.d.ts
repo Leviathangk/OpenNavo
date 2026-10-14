@@ -2796,6 +2796,11 @@ export interface components {
             kind: "cask";
             /** @example visual-studio-code */
             token: string;
+            /**
+             * @description Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>.
+             * @example swiftvm-app/tap
+             */
+            tap?: string;
             /** @example Microsoft Visual Studio Code */
             name: string;
             names: string[];
@@ -2828,6 +2833,8 @@ export interface components {
             /** @example null */
             accentColor?: string | null;
             apps: string[];
+            /** @description Complete app installation destinations for third-party casks. Relative paths use the default app directory. Omitted when unavailable. */
+            appTargets?: string[];
             binaries: string[];
             /** @example bianjiqi bjq */
             pinyin?: string | null;
@@ -3120,6 +3127,11 @@ export interface components {
             kind: components["schemas"]["PackageKind"];
             /** @example visual-studio-code */
             token: string;
+            /**
+             * @description Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>.
+             * @example swiftvm-app/tap
+             */
+            tap?: string;
             /** @example Microsoft Visual Studio Code */
             name: string;
             names: string[];
@@ -3154,6 +3166,8 @@ export interface components {
             /** @example null */
             accentColor?: string | null;
             apps: string[];
+            /** @description Complete app installation destinations for third-party casks. Relative paths use the default app directory. Omitted when unavailable. */
+            appTargets?: string[];
             binaries: string[];
             /** @example bianjiqi bjq */
             pinyin?: string | null;

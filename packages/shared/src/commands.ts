@@ -38,7 +38,19 @@ export function formatBrewCommand(args: readonly string[]): string {
   return ['brew', ...args].join(' ');
 }
 
-/** Install command, matching server installCommand rules (04 §4). */
-export function installCommand(kind: PackageKind, token: string): string {
-  return formatBrewCommand(brewArgs({ op: 'install', kind, token }));
+/** Third-party tap names (owner/name) as the catalog lists them; Homebrew's own taps never qualify a token. */
+export const TAP_PATTERN = /^[a-z0-9][a-z0-9-]{0,38}\/[a-z0-9][a-z0-9_.-]{0,99}$/;
+
+export function isThirdPartyTap(tap: string | null | undefined): tap is string {
+  return Boolean(tap) && !tap!.startsWith('homebrew/');
+}
+
+/** Install command, matching server installCommand rules (04 §4); casks from a third-party tap use `<tap>/<token>`. */
+export function installCommand(kind: PackageKind, token: string, tap?: string | null): string {
+  const args = brewArgs({ op: 'install', kind, token });
+  if (kind === 'cask' && isThirdPartyTap(tap)) {
+    if (!TAP_PATTERN.test(tap)) throw new InvalidTokenError(`${tap}/${token}`);
+    args[args.length - 1] = `${tap}/${token}`;
+  }
+  return formatBrewCommand(args);
 }
