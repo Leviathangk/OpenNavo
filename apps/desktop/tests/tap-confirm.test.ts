@@ -6,10 +6,13 @@ import { commands } from '@/ipc/client';
 import { useTasksStore } from '@/stores/tasks';
 import { useTapConfirmStore } from '@/stores/tapConfirm';
 import { setup } from './helpers';
+import type { TestContext } from './helpers';
 
 const target = { kind: 'cask' as const, token: 'notion' };
+let activeContext: TestContext | undefined;
 async function init() {
   const context = await setup('/discover', { tickMs: 1 });
+  activeContext = context;
   context.state.installed = context.state.installed.filter(item => item.token !== target.token);
   // The real preflight reports the tap the local catalog lists for this cask.
   vi.spyOn(commands, 'installPreflight').mockResolvedValue({
@@ -18,8 +21,15 @@ async function init() {
   });
   return context;
 }
-afterEach(() => {
-  vi.restoreAllMocks();
+afterEach(async () => {
+  try {
+    // The simulated runner emits IPC events until the queued installation finishes.
+    // Keep the mocks and jsdom alive until those callbacks have drained.
+    await vi.waitFor(() => expect(activeContext?.state.active ?? []).toHaveLength(0));
+  } finally {
+    activeContext = undefined;
+    vi.restoreAllMocks();
+  }
 });
 
 describe('Installing from a third-party tap', () => {
