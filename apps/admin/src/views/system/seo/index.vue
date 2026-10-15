@@ -63,6 +63,7 @@ const clearIndexNowKey = ref(false);
 const clearCloudflareToken = ref(false);
 const form = ref<FormInst>();
 const loading = ref(false);
+const reportRevision = ref(0);
 const saving = ref(false);
 const loadFailed = ref(false);
 const saveFailed = ref(false);
@@ -172,6 +173,7 @@ const rules = computed<FormRules>(() => {
 });
 
 function apply(value: View) {
+  reportRevision.value += 1;
   ready.value = true;
   view.value = value;
   draft.value = structuredClone(value.settings);
@@ -529,7 +531,7 @@ void load();
         </NText>
         <NText depth="3" class="mb-20px block">{{ text('overrideHint') }}</NText>
         <NFormItem :label="text('report.title')">
-          <IndexReport />
+          <IndexReport :revision="reportRevision" />
         </NFormItem>
 
         <NAlert v-if="saveFailed" type="error" class="mb-20px">{{ text('saveFailed') }}</NAlert>

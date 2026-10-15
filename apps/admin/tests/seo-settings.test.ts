@@ -112,6 +112,22 @@ beforeEach(() => {
 });
 
 describe('SEO settings page', () => {
+  it('Refreshes the impact report after reload and save', async () => {
+    const wrapper = page();
+    await flushPromises();
+    const revision = () => wrapper.find('index-report-stub').attributes('revision');
+    const initial = revision();
+    await button(wrapper, 'common.refresh').trigger('click');
+    await flushPromises();
+    expect(revision()).not.toBe(initial);
+    const refreshed = revision();
+    await keyInput(wrapper).setValue('fixture-indexnow-key-0001');
+    await button(wrapper, 'page.system.seo.save').trigger('click');
+    await flushPromises();
+    expect(revision()).not.toBe(refreshed);
+    wrapper.unmount();
+  });
+
   it('Previews the robots.txt the web server will serve for the current policy', async () => {
     const wrapper = page();
     await flushPromises();

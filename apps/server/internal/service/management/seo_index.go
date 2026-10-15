@@ -118,7 +118,10 @@ func (s *Service) packageIndexStatus(ctx context.Context, op string, in Input) (
 			return err
 		}
 		result = indexStatusView(after, policy)
-		// Only this app's cached detail pages change.
+		// Refresh API data, then let the URL worker refresh HTML and CDN pages.
+		if err := st.AppendContentChange(ctx, in.ID); err != nil {
+			return err
+		}
 		if err := store.QueueCacheInvalidation(ctx, tx, "seo-index:"+before.Token, "c:pkg:c3:cask:"+before.Token+":*"); err != nil {
 			return err
 		}
@@ -142,12 +145,14 @@ func (s *Service) indexReport(ctx context.Context, in Input) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.Store.AllIndexRows(ctx)
+	rows, err := s.Store.IndexReportRows(ctx)
 	if err != nil {
 		return nil, err
 	}
 	counts := map[string]int{seo.ReasonHidden: 0, seo.ReasonForcedNoindex: 0, seo.ReasonUnavailable: 0, seo.ReasonMissingSummary: 0, seo.ReasonThin: 0, reasonForcedIndex: 0}
 	records := []map[string]any{}
+	total := 0
+	start := (current - 1) * size
 	for _, row := range rows {
 		d := seo.Decide(row.Facts(), policy)
 		key := d.EligibleReason
@@ -161,16 +166,18 @@ func (s *Service) indexReport(ctx context.Context, in Input) (any, error) {
 		if filter != "" && filter != key {
 			continue
 		}
+		total++
+		if total <= start || len(records) >= size {
+			continue
+		}
 		records = append(records, map[string]any{
 			"id": row.ID, "token": row.Token, "displayName": row.DisplayName, "firstSeenAt": row.FirstSeenAt.UTC().Format(time.RFC3339),
 			"eligible": d.Eligible, "reason": nullableText(d.EligibleReason), "enforced": d.Enforced,
 			"override": row.Override, "overrideReason": row.OverrideReason,
 		})
 	}
-	total := len(records)
-	start := min((current-1)*size, total)
 	return map[string]any{
-		"records": records[start:min(start+size, total)], "current": current, "size": size, "total": total,
+		"records": records, "current": current, "size": size, "total": total,
 		"counts": map[string]int{
 			"hidden": counts[seo.ReasonHidden], "forcedNoindex": counts[seo.ReasonForcedNoindex], "unavailable": counts[seo.ReasonUnavailable],
 			"missingSummary": counts[seo.ReasonMissingSummary], "thin": counts[seo.ReasonThin], "forcedIndex": counts[reasonForcedIndex],

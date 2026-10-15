@@ -1,3 +1,4 @@
+import { packageSitemaps } from './shared/utils/sitemapBuckets';
 import { LOCALES, LOCALE_METADATA, DEFAULT_LOCALE } from '@opennavo/shared/locales';
 
 // Expand each policy over the same prefixes used to generate localized page routes.
@@ -113,9 +114,7 @@ export default defineNuxtConfig({
   sitemap: {
     sitemaps: {
       static: { includeAppSources: true, exclude: [...privatePagePaths, ...articleListPaths] },
-      apps: { includeAppSources: false, chunks: 10000 },
-      fonts: { includeAppSources: false, chunks: 10000 },
-      versions: { includeAppSources: false, chunks: 10000 },
+      ...packageSitemaps,
       categories: { includeAppSources: false },
       collections: { includeAppSources: false },
       articles: { includeAppSources: false },

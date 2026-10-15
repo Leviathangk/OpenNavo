@@ -137,6 +137,44 @@ describe('Index tab', () => {
 });
 
 describe('Impact report', () => {
+  it('Retries a failed initial request and refreshes when settings change', async () => {
+    api.report.mockResolvedValueOnce({ data: undefined, error: new Error('Unavailable') });
+    const wrapper = mount(IndexReport, {
+      global: { components, stubs: { RouterLink: { template: '<a><slot /></a>' } } }
+    });
+    await flushPromises();
+    expect(wrapper.text()).toContain('page.system.seo.report.loadFailed');
+    await wrapper.find('button').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Thin App');
+    expect(wrapper.text()).not.toContain('page.system.seo.report.loadFailed');
+    await wrapper.setProps({ revision: 1 });
+    await flushPromises();
+    expect(api.report).toHaveBeenCalledTimes(3);
+    wrapper.unmount();
+  });
+
+  it('Ignores a slow response from before a settings refresh', async () => {
+    let resolveOld!: (value: unknown) => void;
+    api.report.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveOld = resolve;
+        })
+    );
+    const wrapper = mount(IndexReport, {
+      global: { components, stubs: { RouterLink: { template: '<a><slot /></a>' } } }
+    });
+    await wrapper.setProps({ revision: 1 });
+    await flushPromises();
+    expect(wrapper.text()).toContain('Thin App');
+    resolveOld({ error: new Error('Old failure') });
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('page.system.seo.report.loadFailed');
+    expect(wrapper.text()).toContain('Thin App');
+    wrapper.unmount();
+  });
+
   it('Lists affected apps with counts and filters by reason', async () => {
     const wrapper = mount(IndexReport, {
       global: { components, stubs: { RouterLink: { template: '<a><slot /></a>' } } }

@@ -663,23 +663,33 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   });
   await t.test('sitemaps fail loudly and list grouped URLs with per-language lastmod', async () => {
     sitemapState = 'error';
-    const failed = await fetch(`${origin}/__sitemap__/fonts-0.xml`);
+    const failed = await fetch(`${origin}/__sitemap__/fonts-bucket-0.xml`);
     assert.ok(failed.status >= 500, `a failed API must not render an empty sitemap (${failed.status})`);
     sitemapState = 'ok';
     const index = await (await fetch(`${origin}/sitemap_index.xml`)).text();
     // static is split per language by the i18n integration; the large groups shard.
-    for (const name of ['en-static', 'zh-Hans-static', 'apps-0', 'versions-0', 'categories', 'collections'])
+    for (const name of ['en-static', 'zh-Hans-static', 'categories', 'collections'])
       assert.ok(index.includes(`/__sitemap__/${name}.xml`), name);
-    const appsUrl = /<loc>([^<]*\/__sitemap__\/apps(?:-0)?\.xml)<\/loc>/.exec(index)?.[1];
-    assert.ok(appsUrl, index);
-    const apps = await (await fetch(appsUrl.replace('https://example.test', origin))).text();
+    const appsUrls = [...index.matchAll(/<loc>([^<]*\/__sitemap__\/apps-bucket-\d+\.xml)<\/loc>/g)].map(
+      match => match[1]
+    );
+    assert.ok(appsUrls.length > 0, index);
+    const apps = (
+      await Promise.all(appsUrls.map(async url => (await fetch(url.replace('https://example.test', origin))).text()))
+    ).join('');
     const urlEntry = loc => new RegExp(`<url>\\s*<loc>${loc}</loc>([\\s\\S]*?)</url>`).exec(apps)?.[1];
     assert.match(urlEntry('https://example.test/apps/ordinary-app') ?? '', /<lastmod>2025-03-18/);
     assert.ok(!/<lastmod>/.test(urlEntry('https://example.test/zh/apps/ordinary-app') ?? 'missing <lastmod>'));
     assert.ok(!apps.includes('/ja/apps/ordinary-app'), 'unpublished languages stay out');
     assert.ok(!apps.includes('2026-10-07'), 'sync times never become lastmod');
-    const versionsUrl = /<loc>([^<]*\/__sitemap__\/versions(?:-0)?\.xml)<\/loc>/.exec(index)?.[1];
-    const versions = await (await fetch(versionsUrl.replace('https://example.test', origin))).text();
+    const versionsUrls = [...index.matchAll(/<loc>([^<]*\/__sitemap__\/versions-bucket-\d+\.xml)<\/loc>/g)].map(
+      match => match[1]
+    );
+    const versions = (
+      await Promise.all(
+        versionsUrls.map(async url => (await fetch(url.replace('https://example.test', origin))).text())
+      )
+    ).join('');
     assert.ok(versions.includes('https://example.test/apps/ordinary-app/versions'));
   });
   await t.test('renamed, removed and unavailable apps get 301, 410 and 503', async () => {
@@ -1069,7 +1079,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.ok(!empty.includes('/__sitemap__/articles.xml'), empty);
       assert.ok(!empty.includes('/__sitemap__/authors.xml'), empty);
       assert.ok(empty.includes('/__sitemap__/en-static.xml'), empty);
-      assert.ok(empty.includes('/__sitemap__/apps-0.xml'), empty);
+      assert.ok(/\/__sitemap__\/apps-bucket-\d+\.xml/.test(empty), empty);
 
       articleSitemapState = 'no-authors';
       const partial = await (await readIndex()).text();

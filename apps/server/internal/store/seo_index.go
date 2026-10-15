@@ -149,9 +149,27 @@ func (s *Store) SitemapIndexRows(ctx context.Context, group string, current, siz
 	return rows, total, err
 }
 
-// AllIndexRows loads every listed cask for the admin impact report.
-func (s *Store) AllIndexRows(ctx context.Context) ([]IndexRow, error) {
-	return s.indexRows(ctx, "TRUE", "ORDER BY p.first_seen_at DESC,p.id DESC")
+// IndexReportRows loads only decision facts for report counts and pagination. Unlike sitemap
+// rows, these do not need per-package version, screenshot, release or translation aggregates.
+func (s *Store) IndexReportRows(ctx context.Context) ([]IndexRow, error) {
+	var rows []indexRowScan
+	err := s.DB.WithContext(ctx).Raw(`SELECT p.id,p.token,p.name,p.version,p.installs_30d,p.first_seen_at,
+ COALESCE(NULLIF(btrim(si.summary),''),p.desc_en,'') AS summary,
+ COALESCE(NULLIF(si.display_name,''),p.name) AS display_name,
+ COALESCE(m.hidden,false) AS hidden,` + PackageDisabledSQL + ` AS disabled,
+ (p.min_macos IS NOT NULL OR p.raw->'depends_on'->'macos' IS NOT NULL) AS has_requirements,
+ COALESCE(m.index_override,'auto') AS override,m.index_override_reason AS override_reason
+ FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id
+ LEFT JOIN package_i18n si ON si.package_id=p.id AND si.locale=p.source_locale
+ WHERE p.kind='cask' AND p.removed_at IS NULL ORDER BY p.first_seen_at DESC,p.id DESC`).Scan(&rows).Error
+	out := make([]IndexRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, IndexRow{ID: row.ID, Token: row.Token, Name: row.Name, DisplayName: row.DisplayName,
+			Version: row.Version, Summary: row.Summary, Installs30d: row.Installs30d, FirstSeenAt: row.FirstSeenAt,
+			Hidden: row.Hidden, Disabled: row.Disabled, HasRequirements: row.HasRequirements,
+			Override: row.Override, OverrideReason: row.OverrideReason})
+	}
+	return out, err
 }
 
 // IndexPolicy reads the policy part of the admin SEO settings.

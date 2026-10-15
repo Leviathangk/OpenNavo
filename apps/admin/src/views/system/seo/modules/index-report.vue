@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { fetchIndexReport } from '@/service/api';
 import type { DataOf, QueryOf } from '@/typings/api/opennavo';
 import { $t } from '@/locales';
 import { formatDateTime } from '@/utils/opennavo';
 
 defineOptions({ name: 'IndexReport' });
+const props = withDefaults(defineProps<{ revision?: number }>(), { revision: 0 });
+let request = 0;
+onBeforeUnmount(() => {
+  request += 1;
+});
 
 // Impact report (WP11): apps the rule finds ineligible or that carry an override, with counts per
 // reason. Review it in "Observe only" before enforcing.
@@ -31,6 +36,7 @@ const reasonLabel = (value: string) => $t(`page.system.seo.reasons.${value}` as 
 const overrideLabel = (value: string) => $t(`page.catalog.packageDetail.index.overrides.${value}` as App.I18n.I18nKey);
 
 async function load() {
+  const id = ++request;
   loading.value = true;
   failed.value = false;
   try {
@@ -39,10 +45,13 @@ async function load() {
       size: SIZE,
       ...(filter.value ? { reason: filter.value } : {})
     });
+    if (id !== request) return;
     if (error) failed.value = true;
     else report.value = data;
+  } catch {
+    if (id === request) failed.value = true;
   } finally {
-    loading.value = false;
+    if (id === request) loading.value = false;
   }
 }
 
@@ -57,13 +66,23 @@ function turn(page: number) {
   void load();
 }
 
-void load();
+watch(
+  () => props.revision,
+  () => {
+    current.value = 1;
+    void load();
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
   <div class="w-full">
     <NText depth="3" class="mb-12px block">{{ text('hint') }}</NText>
-    <NAlert v-if="failed" type="error" class="mb-12px">{{ text('loadFailed') }}</NAlert>
+    <NAlert v-if="failed" type="error" class="mb-12px">
+      {{ text('loadFailed') }}
+      <NButton size="small" :loading="loading" @click="load">{{ $t('common.refresh') }}</NButton>
+    </NAlert>
     <div v-if="report" class="mb-12px flex flex-wrap gap-8px" data-testid="index-report-counts">
       <NTag
         v-for="item in REASONS"

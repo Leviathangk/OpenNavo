@@ -286,6 +286,11 @@ func (s *Service) seoSettings(ctx context.Context, op string, in Input) (any, er
 		}
 		// Cached app details carry the index decision; refresh them when the policy changes.
 		if previous.Pages.IndexPolicy != after.Settings.Pages.IndexPolicy {
+			// The decision is also embedded in SSR HTML; feed the existing cache-purge worker.
+			if err := tx.WithContext(ctx).Exec(`INSERT INTO catalog_changes(package_id,kind,token,op,reason)
+                SELECT id,kind,token,'upsert','content' FROM packages WHERE kind='cask' AND removed_at IS NULL`).Error; err != nil {
+				return err
+			}
 			if err := store.QueueCacheInvalidation(ctx, tx, "seo-policy", "c:pkg:c3:*"); err != nil {
 				return err
 			}

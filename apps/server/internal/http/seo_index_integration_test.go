@@ -154,7 +154,13 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.True(t, detail("no-summary").Indexable)
 
 	// Enforcing everything applies the rule and limits languages to published text.
+	var policyCursor int64
+	require.NoError(t, st.DB.Raw("SELECT COALESCE(max(seq),0) FROM catalog_changes").Scan(&policyCursor).Error)
 	require.Equal(t, "", setPolicy("enforce", "all", "")["since"])
+	var policyChanges []string
+	require.NoError(t, st.DB.Raw("SELECT token FROM catalog_changes WHERE seq>? AND reason='content'", policyCursor).Scan(&policyChanges).Error)
+	require.ElementsMatch(t, []string{"good-app", "no-summary", "gone-upstream", "font-good", "hidden-app"}, policyChanges)
+
 	apps = sitemap("apps")
 	require.Equal(t, []string{"good-app"}, keys(apps))
 	require.Equal(t, []publicapi.Locale{"en-US", "zh-CN"}, locales(apps["good-app"]))
@@ -171,6 +177,8 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	path := func(id int64) string { return "/packages/" + strconv.FormatInt(id, 10) + "/index-status" }
 	adminCall("PUT", path(noSummaryID), map[string]any{"override": "index"}, "1001")
 	adminCall("PUT", path(noSummaryID), map[string]any{"override": "index", "reason": " "}, "1001")
+	var changeCursor int64
+	require.NoError(t, st.DB.Raw("SELECT COALESCE(max(seq),0) FROM catalog_changes").Scan(&changeCursor).Error)
 	forced := adminCall("PUT", path(noSummaryID), map[string]any{"override": "index", "reason": "Placeholder text is being written"}, "0000")
 	require.Equal(t, true, forced["eligible"])
 	require.Equal(t, true, forced["indexable"])
@@ -178,6 +186,12 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	var queued int
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM job_outbox WHERE unique_key='cache:invalidate:seo-index:no-summary' AND payload::text LIKE '%c:pkg:c3:cask:no-summary:*%'").Scan(&queued).Error)
 	require.Equal(t, 1, queued)
+	var changes []store.URLChange
+	require.NoError(t, st.DB.Raw("SELECT * FROM catalog_changes WHERE seq>?", changeCursor).Scan(&changes).Error)
+	require.Len(t, changes, 1)
+	require.Equal(t, noSummaryID, changes[0].PackageID)
+	require.Equal(t, "content", changes[0].Reason)
+	require.Equal(t, "upsert", changes[0].Op)
 	adminCall("PUT", path(goodID), map[string]any{"override": "noindex", "reason": "Duplicate of another entry"}, "0000")
 	apps = sitemap("apps")
 	require.Equal(t, []string{"no-summary"}, keys(apps))
@@ -189,6 +203,17 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	report := adminCall("GET", "/seo/index-report?size=10", nil, "0000")
 	require.Equal(t, map[string]any{"hidden": 1.0, "forcedNoindex": 1.0, "unavailable": 1.0, "missingSummary": 0.0, "thin": 0.0, "forcedIndex": 1.0}, report["counts"])
 	require.EqualValues(t, 4, report["total"])
+	full := report["records"].([]any)
+	for current := 1; current <= 5; current++ {
+		paged := adminCall("GET", "/seo/index-report?size=1&current="+strconv.Itoa(current), nil, "0000")
+		require.Equal(t, report["counts"], paged["counts"])
+		require.Equal(t, report["total"], paged["total"])
+		if current <= len(full) {
+			require.Equal(t, []any{full[current-1]}, paged["records"])
+		} else {
+			require.Empty(t, paged["records"])
+		}
+	}
 	filtered := adminCall("GET", "/seo/index-report?reason=forced_index", nil, "0000")
 	require.Len(t, filtered["records"], 1)
 	require.Equal(t, "no-summary", filtered["records"].([]any)[0].(map[string]any)["token"])
