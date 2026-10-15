@@ -373,5 +373,17 @@ describe('Welcome with Homebrew', () => {
     button('开启 App 管理')?.click();
     await vi.waitFor(() => expect(text()).toContain('重新打开 OpenNavo 后生效'), { timeout: 3000 });
     expect(button('重新打开')).toBeDefined();
+    // The row says it waits for the reopen instead of offering Enable again.
+    expect(text()).toContain('重新打开后生效');
+    expect(button('开启 App 管理')).toBeUndefined();
+  });
+
+  it('Full Disk Access turned on before a reopen keeps Start locked and offers Reopen', async () => {
+    await open({ brew: true, flags: 'first-run,permission-relaunch' });
+    button('开启完全磁盘访问权限')?.click();
+    await vi.waitFor(() => expect(text()).toContain('重新打开后生效'), { timeout: 3000 });
+    expect(button('开启完全磁盘访问权限')).toBeUndefined();
+    expect(button('重新打开')).toBeDefined();
+    expect(start()?.disabled).toBe(true);
   });
 });

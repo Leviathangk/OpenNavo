@@ -34,7 +34,7 @@ pub fn install(app: &tauri::AppHandle, locale: Locale) -> Result<(), AppError> {
                     &P::hide(app, Some(&t("menu.hide")?)).map_err(error)?,
                     &P::hide_others(app, Some(&t("menu.hideOthers")?)).map_err(error)?,
                     &P::separator(app).map_err(error)?,
-                    // Keep the native quit action and route it through the same ExitRequested confirmation flow.
+                    // Keep the native quit action: lifecycle answers its applicationShouldTerminate: with the same confirmation flow as ExitRequested.
                     &P::quit(app, Some(&t("menu.quit")?)).map_err(error)?,
                 ],
             )

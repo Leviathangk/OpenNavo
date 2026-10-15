@@ -620,7 +620,7 @@
       "appManagement": "Gerenciamento de apps",
       "appManagementHint": "Necessário para atualizar e desinstalar apps",
       "fullDiskAccess": "Acesso Total ao Disco",
-      "fullDiskAccessHint": "Necessário para excluir os dados do app durante a desinstalação",
+      "fullDiskAccessHint": "Necessário para ver quanto espaço os apps ocupam, desinstalá-los e desfazer pelo Lixo",
       "enable": "Ativar",
       "waiting": "Aguardando…",
       "granted": "Ativado",
@@ -749,7 +749,9 @@
   "permission": {
     "relaunch": {
       "body": "Ativado nos Ajustes do Sistema. Reabra o OpenNavo para aplicar a alteração.",
-      "action": "Reabrir"
+      "action": "Reabrir",
+      "pending": "Reabra para aplicar",
+      "busy": "Há uma tarefa em andamento. Reabra quando ela terminar"
     },
     "guide": {
       "appManagement": "Gerenciamento de apps",

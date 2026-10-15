@@ -670,7 +670,7 @@ export default {
       appManagement: 'App 管理',
       appManagementHint: '更新和卸载 App 时需要',
       fullDiskAccess: '完全磁盘访问权限',
-      fullDiskAccessHint: '卸载时一并删除应用数据需要',
+      fullDiskAccessHint: '查看占用空间、卸载 App 和从废纸篓撤销时需要',
       enable: '开启',
       waiting: '等待开启…',
       granted: '已开启',
@@ -767,7 +767,9 @@ export default {
   permission: {
     relaunch: {
       body: '已在系统设置中开启，重新打开 OpenNavo 后生效。',
-      action: '重新打开'
+      action: '重新打开',
+      pending: '重新打开后生效',
+      busy: '有任务正在进行，完成后再重新打开'
     },
     guide: {
       appManagement: 'App 管理',

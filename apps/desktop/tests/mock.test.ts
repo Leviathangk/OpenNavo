@@ -76,7 +76,38 @@ describe('Task queue simulation (06 §9)', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+    window.history.replaceState(null, '', '/');
   });
+
+  it.each(['upgrade', 'uninstall'] as const)(
+    '%s remains blocked when App Management is granted but pending relaunch',
+    async op => {
+      window.history.replaceState(null, '', '/?mock=no-app-management,permission-relaunch');
+      await setup('/updates', { tickMs: 10 });
+      const updates: Task[] = [];
+      await events.taskUpdated.listen(event => updates.push(event.payload));
+      const enqueue = () => unwrap(commands.taskEnqueue(op, { kind: 'cask', token: 'ghostty' }, {}, 'manual'));
+      await enqueue();
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(updates.at(-1)?.error?.code).toBe('E_PERMISSION');
+
+      await unwrap(commands.permissionGuideOpen('app_management'));
+      await vi.advanceTimersByTimeAsync(100);
+      expect(await unwrap(commands.permissionsGet())).toMatchObject({
+        appManagement: 'granted',
+        appManagementPending: true,
+        relaunchRequired: true
+      });
+
+      const retry = await enqueue();
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(updates.at(-1)).toMatchObject({
+        id: retry.id,
+        state: 'failed',
+        error: { code: 'E_PERMISSION' }
+      });
+    }
+  );
 
   it('Updates emit staged events, leave available updates, and enter history on completion', async () => {
     await setup('/updates', { tickMs: 10 });

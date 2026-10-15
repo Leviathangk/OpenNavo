@@ -5,6 +5,7 @@ import { color } from '@opennavo/tokens';
 
 // All 1200×630 cards keep the bottom 126 px empty for X's title overlay.
 // Satori needs inline styles, numeric SVG dimensions and static font families.
+// Image URLs hash only the top-level template (see useOgFrame), so a change here alone keeps old images cached.
 const props = defineProps<{ tagline: string; platform: string; site?: string; locale?: string }>();
 defineSlots<{ default?: () => unknown }>();
 const font = computed(() => (props.locale?.startsWith('ja') ? 'Inter, OG Noto Sans JP' : 'Inter, OG Noto Sans SC'));

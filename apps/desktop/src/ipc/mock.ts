@@ -161,7 +161,7 @@ function mockFailure(
     };
   if (
     flags.has('no-app-management') &&
-    permissions.appManagement !== 'granted' &&
+    (permissions.appManagement !== 'granted' || permissions.appManagementPending) &&
     target?.kind === 'cask' &&
     (task.op === 'upgrade' || task.op === 'uninstall')
   ) {
@@ -232,18 +232,23 @@ export function installMockIpc(
   };
   // Privacy permissions (06 §12.3, §12.6, matching Rust preflight): App Management allowed by default; Full Disk Access disabled.
   // no-brew / first-run / no-app-management start without App Management; full_disk_access enables Full Disk Access.
-  // no-permission-check simulates unavailable preflight (unknown state); permission-relaunch requires reopening after permission is enabled.
+  // no-permission-check simulates unavailable preflight (unknown state); permission-relaunch follows real macOS, where a
+  // permission turned on while OpenNavo runs applies only after it reopens (always so for Full Disk Access).
   let permissions: Permissions = {
     appManagement: noBrew || flags.has('first-run') || flags.has('no-app-management') ? 'denied' : 'granted',
     fullDiskAccess: flags.has('full_disk_access') ? 'granted' : 'denied',
-    relaunchRequired: false
+    relaunchRequired: false,
+    appManagementPending: false,
+    fullDiskAccessPending: false
   };
   if (flags.has('full_disk_access')) permissions.appManagement = 'granted';
   if (flags.has('no-permission-check'))
     permissions = {
       appManagement: 'unknown',
       fullDiskAccess: 'unknown',
-      relaunchRequired: false
+      relaunchRequired: false,
+      appManagementPending: false,
+      fullDiskAccessPending: false
     };
   let env: EnvInfo = {
     ...envFixture(),
@@ -263,7 +268,12 @@ export function installMockIpc(
   const guideDelayMs = options.tickMs === undefined ? 2200 : options.tickMs * 10;
   const grant = (pane: PrivacyPane) => {
     if (flags.has('permission-relaunch')) {
-      setPermissions({ ...permissions, relaunchRequired: true });
+      // Full Disk Access stays denied until the reopen; App Management turns on but stays blocked.
+      setPermissions(
+        pane === 'full_disk_access'
+          ? { ...permissions, relaunchRequired: true, fullDiskAccessPending: true }
+          : { ...permissions, appManagement: 'granted', relaunchRequired: true, appManagementPending: true }
+      );
       return;
     }
     if (pane === 'full_disk_access')
@@ -627,6 +637,7 @@ export function installMockIpc(
     app_reveal: () => null,
     system_open_privacy: () => null,
     app_quit: () => null,
+    app_cancel_quit: () => null,
     permissions_get: () => permissions,
     permission_guide_open: args => {
       const pane = args.pane as PrivacyPane;
@@ -634,6 +645,7 @@ export function installMockIpc(
       return null;
     },
     permission_guide_close: () => null,
+    permission_guide_fit: () => null,
     permission_guide_info: () => ({ draggable: true }),
     permission_guide_drag: () => null,
     // Self-update (a new version exists with ?mock=update); downloads emit no progress.

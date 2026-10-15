@@ -41,5 +41,6 @@ async function quit() {
     :cancel-label="t('quit.cancel')"
     :loading="quitting"
     @confirm="quit"
+    @cancel="commands.appCancelQuit()"
   />
 </template>

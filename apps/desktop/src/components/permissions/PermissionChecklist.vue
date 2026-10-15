@@ -42,6 +42,8 @@ const rows = computed(() =>
       required: props.required.includes(row.pane),
       body: props.bodies[row.pane] ?? t(`welcome.permissions.${row.key}.body`),
       state: row.pane === 'app_management' ? permissions.appManagement : permissions.fullDiskAccess,
+      // On in System Settings but awaiting a reopen: Enable would only reopen the same switch; the notice below reopens OpenNavo.
+      pending: permissions.pending(row.pane),
       waiting: permissions.guiding === row.pane
     }))
 );
@@ -66,12 +68,14 @@ async function enable(pane: GuidePane) {
         <span
           class="grid h-34px w-34px shrink-0 place-items-center rounded-default"
           :class="
-            row.state === 'granted'
-              ? 'bg-status-success-subtle text-status-success'
-              : 'bg-surface-chip text-ink-secondary'
+            row.pending
+              ? 'bg-status-warning-subtle text-status-warning'
+              : row.state === 'granted'
+                ? 'bg-status-success-subtle text-status-success'
+                : 'bg-surface-chip text-ink-secondary'
           "
         >
-          <OnIcon :name="row.state === 'granted' ? 'check' : row.icon" :size="16" />
+          <OnIcon :name="row.pending ? 'refresh-cw' : row.state === 'granted' ? 'check' : row.icon" :size="16" />
         </span>
         <span class="min-w-0 flex-1">
           <!-- Wrap long translations (e.g. Russian) without truncating headings. -->
@@ -85,7 +89,10 @@ async function enable(pane: GuidePane) {
           </span>
           <span class="mt-2px block text-12.5px leading-[1.5] text-ink-tertiary">{{ row.body }}</span>
         </span>
-        <span v-if="row.state === 'granted'" class="shrink-0 text-13px text-status-success">
+        <span v-if="row.pending" class="shrink-0 text-13px text-status-warning">
+          {{ t('permission.relaunch.pending') }}
+        </span>
+        <span v-else-if="row.state === 'granted'" class="shrink-0 text-13px text-status-success">
           {{ t('welcome.permissions.granted') }}
         </span>
         <!-- Show waiting during guidance; restore the button on returning to OpenNavo so guidance can reopen. -->

@@ -935,15 +935,17 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.match(html, /<meta property="og:image:width" content="1200">/);
       assert.match(html, /<meta property="og:image:height" content="630">/);
       assert.ok(html.includes(`<meta name="twitter:image" content="${url.replaceAll('&', '&amp;')}">`), path);
+      // The template's hash is in the URL, so an edited template gets new URLs past immutable caches.
+      assert.match(url, /,ch_\w+/, path);
       return url;
     };
-    assert.match(await image('/apps/ordinary-app/versions'), /c_OgPackage/);
-    assert.match(await image('/categories/utilities'), /c_OgList,.*label_Category/);
-    assert.match(await image('/collections/editors'), /c_OgList,.*label_Collection/);
-    assert.match(await image('/download'), /c_OgDefault,.*variant_home/);
-    assert.match(await image('/articles'), /c_OgList,.*label_Articles/);
-    assert.match(await image('/articles/choose-a-screenshot-app'), /c_OgList,.*label_Roundup/);
-    assert.match(await image('/authors/lin-wei'), /c_OgList,.*label_Author/);
+    assert.match(await image('/apps/ordinary-app/versions'), /c_OgPackageSatori,/);
+    assert.match(await image('/categories/utilities'), /c_OgListSatori,.*label_Category/);
+    assert.match(await image('/collections/editors'), /c_OgListSatori,.*label_Collection/);
+    assert.match(await image('/download'), /c_OgDefaultSatori,.*variant_home/);
+    assert.match(await image('/articles'), /c_OgListSatori,.*label_Articles/);
+    assert.match(await image('/articles/choose-a-screenshot-app'), /c_OgListSatori,.*label_Roundup/);
+    assert.match(await image('/authors/lin-wei'), /c_OgListSatori,.*label_Author/);
     // The image itself renders, here with the Russian label.
     const rendered = await fetch((await image('/ru/categories/utilities')).replace('https://example.test', origin));
     assert.equal(rendered.status, 200, logs);

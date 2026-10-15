@@ -126,7 +126,7 @@ function onCopied(command: string) {
 usePageSeo({ title: () => t('download.metaTitle'), description: () => t('download.description') });
 
 // Share image (WP13): OpenNavo itself, with the brand icon.
-defineOgImage('OgDefault', {
+defineOgImage('OgDefaultSatori', {
   locale: appLocale.value,
   variant: 'home',
   title: t('og.downloadTitle'),

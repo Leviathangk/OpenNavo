@@ -45,3 +45,12 @@ pub async fn app_quit(
 ) -> Result<(), AppError> {
     crate::lifecycle::confirmed_quit(app, state.inner().clone()).await
 }
+
+#[tauri::command]
+#[specta::specta]
+pub fn app_cancel_quit(app: tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(lifecycle) = app.try_state::<Arc<crate::lifecycle::Lifecycle>>() {
+        lifecycle.cancel();
+    }
+}

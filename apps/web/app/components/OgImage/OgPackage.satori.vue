@@ -26,6 +26,7 @@ const titleSize = computed(() => {
 
 <template>
   <OgFrame :tagline="tagline" :platform="platform" :site="site" :locale="locale">
+    <!-- Satori clamps only block text and requires divs to be flex, so clamped text sits in block spans. -->
     <div
       :style="{
         display: 'flex',
@@ -35,9 +36,10 @@ const titleSize = computed(() => {
         gap: '22px'
       }"
     >
-      <div
+      <span
         class="font-semibold"
         :style="{
+          display: 'block',
           fontSize: `${titleSize}px`,
           fontWeight: 600,
           lineHeight: 1.1,
@@ -47,10 +49,13 @@ const titleSize = computed(() => {
         }"
       >
         {{ name }}
-      </div>
-      <div v-if="summary" :style="{ fontSize: '32px', lineHeight: 1.4, color: color.text.secondary, lineClamp: 2 }">
+      </span>
+      <span
+        v-if="summary"
+        :style="{ display: 'block', fontSize: '32px', lineHeight: 1.4, color: color.text.secondary, lineClamp: 2 }"
+      >
         {{ summary }}
-      </div>
+      </span>
     </div>
     <OgAppIcon :name="name" :token="token" :kind="kind" :src="iconUrl" :accent="accent" :size="300" />
   </OgFrame>

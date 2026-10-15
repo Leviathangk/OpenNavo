@@ -8,6 +8,7 @@ import { commands, events } from '@/ipc/client';
 import type { Permissions } from '@/ipc/bindings';
 import { startGuideState, startLocalState, usePermissionsStore } from '@/stores';
 import { useUninstallStore } from '@/stores/uninstall';
+import { useToasts } from '@/composables/useToasts';
 import { setup } from './helpers';
 
 // Privacy permissions (06 §12.3, §12.6, §12.7): uninstall scans need Full Disk Access for app containers; guidance overlay and settings permission rows.
@@ -25,6 +26,7 @@ async function context(path: string, flags = '') {
 afterEach(() => {
   document.body.innerHTML = '';
   window.history.replaceState(null, '', '/');
+  useToasts().clear();
   vi.restoreAllMocks();
 });
 
@@ -96,11 +98,38 @@ describe('Permission guidance overlay', () => {
     usePermissionsStore().apply({
       appManagement: 'granted',
       fullDiskAccess: 'denied',
-      relaunchRequired: false
+      relaunchRequired: false,
+      appManagementPending: false,
+      fullDiskAccessPending: false
     });
     await flushPromises();
     expect(text()).toContain('已允许 OpenNavo 管理 App');
     expect(button('拖动 OpenNavo 图标')).toBeUndefined();
+  });
+
+  // macOS applies Full Disk Access only after OpenNavo reopens: once the switch is on, the overlay is done and says to
+  // click Quit & Reopen, instead of asking to drag the icon again.
+  it('Full Disk Access awaiting a reopen completes the overlay', async () => {
+    await mountGuide('full_disk_access');
+    usePermissionsStore().apply({
+      appManagement: 'denied',
+      fullDiskAccess: 'denied',
+      relaunchRequired: true,
+      appManagementPending: false,
+      fullDiskAccessPending: true
+    });
+    await flushPromises();
+    expect(text()).toContain('已开启完全磁盘访问权限');
+    expect(text()).toContain('如果系统提示「退出并重新打开」，点它即可。');
+    expect(button('拖动 OpenNavo 图标')).toBeUndefined();
+  });
+
+  it('Reports the height its wrapped text needs so the window fits it', async () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ height: 145.2 } as DOMRect);
+    const fit = vi.spyOn(commands, 'permissionGuideFit');
+    await mountGuide('full_disk_access');
+    expect(fit).toHaveBeenCalledWith(146);
+    expect(fit).toHaveBeenCalledTimes(1);
   });
 
   it('Development builds that cannot drag instruct using + instead', async () => {
@@ -141,18 +170,68 @@ describe('Settings: Privacy', () => {
     await flushPromises();
     expect(text()).not.toContain('未开启');
   });
+
+  async function mountSettings(flags: string) {
+    const { pinia, router } = await context('/settings/privacy', flags);
+    await startLocalState();
+    mount(SettingsPage, { global: { plugins: [pinia, router, i18n] }, attachTo: document.body });
+    await flushPromises();
+  }
+
+  // Real macOS: Full Disk Access turned on while OpenNavo runs stays off for this process until it reopens.
+  it('A permission awaiting a reopen says so instead of Off + Enable, next to the reopen notice', async () => {
+    await mountSettings('permission-relaunch');
+    button('开启完全磁盘访问权限')?.click();
+    await vi.waitFor(() => expect(text()).toContain('重新打开后生效'), { timeout: 3000 });
+    expect(usePermissionsStore().fullDiskAccess).toBe('denied');
+    expect(usePermissionsStore().guiding).toBeNull();
+    expect(button('开启完全磁盘访问权限')).toBeUndefined();
+    expect(text()).not.toContain('未开启');
+    expect(text()).toContain('已在系统设置中开启，重新打开 OpenNavo 后生效。');
+    expect(button('重新打开')).toBeDefined();
+  });
+
+  it('Reopening while tasks run says to wait instead of showing an error code', async () => {
+    await mountSettings('permission-relaunch');
+    button('开启完全磁盘访问权限')?.click();
+    await vi.waitFor(() => expect(button('重新打开')).toBeDefined(), { timeout: 3000 });
+    // Rust refuses to restart with running or queued tasks.
+    const internals = (
+      window as unknown as { __TAURI_INTERNALS__: { invoke: (...args: unknown[]) => Promise<unknown> } }
+    )['__TAURI_INTERNALS__'];
+    const invoke = internals.invoke;
+    vi.spyOn(internals, 'invoke').mockImplementation((command, ...rest) =>
+      command === 'plugin:process|restart' ? Promise.reject('active_tasks') : invoke(command, ...rest)
+    );
+    button('重新打开')?.click();
+    await flushPromises();
+    const titles = useToasts().items.value.map(item => item.title);
+    expect(titles).toContain('有任务正在进行，完成后再重新打开');
+    expect(titles).not.toContain('操作失败');
+  });
+
+  it('Shows when macOS cannot report a permission and keeps Enable', async () => {
+    await mountSettings('no-permission-check');
+    expect(text().match(/无法检测/g)).toHaveLength(2);
+    expect(button('开启 App 管理')).toBeDefined();
+    expect(button('开启完全磁盘访问权限')).toBeDefined();
+  });
 });
 
 describe('Permission response ordering', () => {
   const oldStatus: Permissions = {
     appManagement: 'denied',
     fullDiskAccess: 'denied',
-    relaunchRequired: false
+    relaunchRequired: false,
+    appManagementPending: false,
+    fullDiskAccessPending: false
   };
   const newStatus: Permissions = {
     appManagement: 'granted',
     fullDiskAccess: 'granted',
-    relaunchRequired: true
+    relaunchRequired: true,
+    appManagementPending: true,
+    fullDiskAccessPending: false
   };
 
   function deferredQuery() {

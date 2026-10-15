@@ -98,6 +98,8 @@ pub fn combine(signals: Signals) -> Permissions {
         app_management,
         full_disk_access,
         relaunch_required: full_disk_pending || app_management_pending,
+        app_management_pending,
+        full_disk_access_pending: full_disk_pending,
     }
 }
 
@@ -200,13 +202,17 @@ mod tests {
         // Effective Full Disk Access also permits modifying other apps.
         assert_eq!(readable.app_management, PermissionState::Granted);
         assert!(!readable.relaunch_required);
+        assert!(!readable.full_disk_access_pending);
 
+        // Turned on in System Settings while running: not effective yet, but the guide is done and only a reopen remains.
         let pending = combine(Signals {
             all_files: Some(Preflight::Granted),
             ..base()
         });
         assert_eq!(pending.full_disk_access, PermissionState::Denied);
         assert!(pending.relaunch_required);
+        assert!(pending.full_disk_access_pending);
+        assert!(!pending.app_management_pending);
 
         let no_probe = combine(Signals {
             full_disk_readable: None,
@@ -254,6 +260,8 @@ mod tests {
         });
         assert_eq!(blocked.app_management, PermissionState::Granted);
         assert!(blocked.relaunch_required);
+        assert!(blocked.app_management_pending);
+        assert!(!blocked.full_disk_access_pending);
         // If preflight does not allow access, failure means missing authorization, not a relaunch requirement.
         let not_granted = combine(Signals {
             app_bundles: Some(Preflight::Denied),
@@ -261,6 +269,7 @@ mod tests {
             ..base()
         });
         assert!(!not_granted.relaunch_required);
+        assert!(!not_granted.app_management_pending);
     }
 
     #[test]

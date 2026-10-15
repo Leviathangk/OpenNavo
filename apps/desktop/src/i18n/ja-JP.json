@@ -620,7 +620,7 @@
       "appManagement": "アプリ管理",
       "appManagementHint": "アプリのアップデートとアンインストールに必要です",
       "fullDiskAccess": "フルディスクアクセス",
-      "fullDiskAccessHint": "アンインストール時のアプリデータ削除に必要です",
+      "fullDiskAccessHint": "アプリの使用容量の確認、アンインストール、ゴミ箱からの取り消しに必要です",
       "enable": "オンにする",
       "waiting": "許可を待っています…",
       "granted": "オン",
@@ -749,7 +749,9 @@
   "permission": {
     "relaunch": {
       "body": "システム設定でオンにしました。設定を適用するには、OpenNavoを再度開いてください。",
-      "action": "再度開く"
+      "action": "再度開く",
+      "pending": "再度開くと有効",
+      "busy": "タスクの実行中です。完了してから再度開いてください"
     },
     "guide": {
       "appManagement": "アプリ管理",

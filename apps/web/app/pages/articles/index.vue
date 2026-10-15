@@ -66,7 +66,7 @@ useHead(() =>
       }
     : {}
 );
-defineOgImage('OgList', {
+defineOgImage('OgListSatori', {
   locale: toAppLocale(locale.value),
   label: t('nav.articles'),
   title: t('articles.ogTitle'),

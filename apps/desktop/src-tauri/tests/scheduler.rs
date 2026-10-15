@@ -399,6 +399,7 @@ fn compiled_capabilities_isolate_native_commands_between_windows() {
         "cleanup_summary",
         "system_open_privacy",
         "app_quit",
+        "app_cancel_quit",
         "plugin:opener|open_url",
     ] {
         assert!(

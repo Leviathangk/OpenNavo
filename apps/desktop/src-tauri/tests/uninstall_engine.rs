@@ -352,6 +352,8 @@ fn permissions() -> Permissions {
         app_management: PermissionState::Granted,
         full_disk_access: PermissionState::Granted,
         relaunch_required: false,
+        app_management_pending: false,
+        full_disk_access_pending: false,
     }
 }
 async fn terminal(queue: &TaskQueue, id: &str) -> Task {

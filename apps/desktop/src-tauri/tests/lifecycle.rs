@@ -1,6 +1,6 @@
 use opennavo_desktop_lib::{
     core::DesktopCore,
-    lifecycle::{self, CloseAction, ExitDecision, Lifecycle},
+    lifecycle::{self, CloseAction, ExitDecision, Lifecycle, TerminateReply},
     model::*,
     notifications::TaskNotices,
     scheduler::Notice,
@@ -41,6 +41,46 @@ fn enqueue(core: &DesktopCore, token: &str) -> Task {
         .unwrap()
 }
 
+/// macOS quit requests (⌘Q, the Dock, System Settings' "Quit & Reopen", logout) share the confirmation flow: tasks are
+/// inspected before macOS gets its answer.
+#[test]
+fn system_quit_requests_inspect_tasks_first() {
+    let lifecycle = Lifecycle::default();
+    assert_eq!(lifecycle.defer_termination(|_| {}).0, TerminateReply::Later);
+    // A second request while the first is inspected leaves it to finish.
+    assert_eq!(
+        lifecycle.defer_termination(|_| {}).0,
+        TerminateReply::Cancel
+    );
+    let busy = QuitRequested {
+        running: 1,
+        queued: 0,
+    };
+    assert_eq!(
+        lifecycle.inspected(busy.clone()),
+        ExitDecision::Confirm(busy)
+    );
+    // Keep the request pending until an explicit cancellation.
+    assert!(!lifecycle.begin_request());
+    lifecycle.cancel();
+    // The next system quit asks again.
+    assert_eq!(lifecycle.defer_termination(|_| {}).0, TerminateReply::Later);
+    assert_eq!(
+        lifecycle.inspected(QuitRequested {
+            running: 0,
+            queued: 0
+        }),
+        ExitDecision::Cleanup
+    );
+    assert_eq!(
+        lifecycle.defer_termination(|_| {}).0,
+        TerminateReply::Cancel
+    );
+    lifecycle.ready();
+    // Cleanup done (OpenNavo's own quit or the answered request): macOS may quit at once.
+    assert_eq!(lifecycle.defer_termination(|_| {}).0, TerminateReply::Now);
+}
+
 #[test]
 fn exit_confirmation_and_cleanup_are_idempotent() {
     let lifecycle = Lifecycle::default();
@@ -56,7 +96,9 @@ fn exit_confirmation_and_cleanup_are_idempotent() {
         ExitDecision::Confirm(counts)
     );
     assert!(!lifecycle.exit_ready());
-    // Canceling needs no new IPC; choosing to keep running still requires confirmation on the next quit.
+    // The cancel IPC resets the pending confirmation before another request.
+    assert!(!lifecycle.begin_request());
+    lifecycle.cancel();
     assert!(lifecycle.begin_request());
     assert!(lifecycle.confirm());
     assert_eq!(
@@ -267,7 +309,7 @@ fn process_plugin_keeps_existing_ipc_and_rejects_restart_while_tasks_are_active(
         .manage(Arc::new(Lifecycle::default()))
         .plugin(tauri_plugin_process::init())
         .plugin(lifecycle::guarded_process())
-        .build(tauri::generate_context!())
+        .build(context())
         .unwrap();
     let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
         .build()
@@ -312,4 +354,279 @@ fn process_plugin_keeps_existing_ipc_and_rejects_restart_while_tasks_are_active(
             )
             .is_err()
     );
+}
+
+#[test]
+fn native_reply_waits_for_user_decision_and_cleanup() {
+    for accepted in [false, true] {
+        for counts in [
+            QuitRequested {
+                running: 1,
+                queued: 0,
+            },
+            QuitRequested {
+                running: 0,
+                queued: 2,
+            },
+        ] {
+            let lifecycle = Lifecycle::default();
+            let replies = Arc::new(Mutex::new(Vec::new()));
+            let received = replies.clone();
+            assert_eq!(
+                lifecycle.defer_termination(move |answer| received.lock().unwrap().push(answer)),
+                (TerminateReply::Later, true)
+            );
+            assert!(matches!(
+                lifecycle.inspected(counts),
+                ExitDecision::Confirm(_)
+            ));
+            assert!(replies.lock().unwrap().is_empty());
+            assert!(!lifecycle.begin_request());
+            assert_eq!(
+                lifecycle.defer_termination(|_| panic!("duplicate reply")),
+                (TerminateReply::Cancel, false)
+            );
+            if accepted {
+                assert!(lifecycle.confirm());
+                lifecycle.cancel(); // Cannot cancel cleanup after consent.
+                assert!(replies.lock().unwrap().is_empty());
+                lifecycle.ready();
+                lifecycle.take_system_reply().unwrap()(true);
+                assert!(lifecycle.take_system_reply().is_none());
+                assert!(lifecycle.exit_ready());
+            } else {
+                lifecycle.cancel();
+                lifecycle.cancel(); // Reply exactly once.
+                assert!(lifecycle.begin_request());
+            }
+            assert_eq!(*replies.lock().unwrap(), vec![accepted]);
+        }
+    }
+}
+
+#[test]
+fn confirmed_system_quit_replies_only_after_queue_cleanup() {
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core(tmp.path(), false);
+    enqueue(&core, "ghostty");
+    let lifecycle = Arc::new(Lifecycle::default());
+    let app = tauri::test::mock_builder()
+        .manage(core.clone())
+        .manage(lifecycle.clone())
+        .build(context())
+        .unwrap();
+    let replies = Arc::new(Mutex::new(Vec::new()));
+    let received = replies.clone();
+    let state = lifecycle.clone();
+    let queue = core.queue.clone();
+    assert_eq!(
+        lifecycle.defer_termination(move |answer| {
+            assert!(state.exit_ready());
+            assert!(queue.is_stopping());
+            received.lock().unwrap().push(answer);
+        }),
+        (TerminateReply::Later, true)
+    );
+    assert!(matches!(
+        lifecycle.inspected(core.queue.prepare_exit().unwrap()),
+        ExitDecision::Confirm(_)
+    ));
+    assert!(replies.lock().unwrap().is_empty());
+    tauri::async_runtime::block_on(lifecycle::confirmed_quit(
+        app.handle().clone(),
+        core.clone(),
+    ))
+    .unwrap();
+    assert_eq!(*replies.lock().unwrap(), vec![true]);
+    tauri::async_runtime::block_on(lifecycle::confirmed_quit(app.handle().clone(), core)).unwrap();
+    assert_eq!(*replies.lock().unwrap(), vec![true]);
+}
+
+fn context() -> tauri::Context<tauri::test::MockRuntime> {
+    tauri::generate_context!()
+}
+
+#[test]
+fn system_quit_joins_existing_in_app_confirmation() {
+    for accepted in [false, true] {
+        let tmp = tempfile::tempdir().unwrap();
+        let core = core(tmp.path(), false);
+        enqueue(&core, "ghostty");
+        let lifecycle = Arc::new(Lifecycle::default());
+        let app = tauri::test::mock_builder()
+            .manage(core.clone())
+            .manage(lifecycle.clone())
+            .build(context())
+            .unwrap();
+        assert!(lifecycle.begin_request());
+        assert!(matches!(
+            lifecycle.inspected(core.queue.prepare_exit().unwrap()),
+            ExitDecision::Confirm(_)
+        ));
+        let replies = Arc::new(Mutex::new(Vec::new()));
+        let received = replies.clone();
+        let state = lifecycle.clone();
+        let queue = core.queue.clone();
+        assert_eq!(
+            lifecycle.defer_termination(move |answer| {
+                assert_eq!(state.exit_ready(), answer);
+                assert_eq!(queue.is_stopping(), answer);
+                received.lock().unwrap().push(answer);
+            }),
+            (TerminateReply::Later, false)
+        ); // Reuse the dialog; do not inspect or clean up again.
+        assert!(replies.lock().unwrap().is_empty());
+        assert_eq!(
+            lifecycle.defer_termination(|_| panic!("replaced original reply")),
+            (TerminateReply::Cancel, false)
+        );
+        if accepted {
+            tauri::async_runtime::block_on(lifecycle::confirmed_quit(
+                app.handle().clone(),
+                core.clone(),
+            ))
+            .unwrap();
+            tauri::async_runtime::block_on(lifecycle::confirmed_quit(
+                app.handle().clone(),
+                core.clone(),
+            ))
+            .unwrap();
+        } else {
+            lifecycle.cancel();
+            lifecycle.cancel();
+            assert!(lifecycle.begin_request());
+        }
+        assert_eq!(*replies.lock().unwrap(), vec![accepted]);
+        core.queue.shutdown();
+    }
+}
+
+#[test]
+fn first_system_request_joins_inspection_or_cleanup_without_restarting_work() {
+    for stopping in [false, true] {
+        let lifecycle = Lifecycle::default();
+        assert!(lifecycle.begin_request());
+        if stopping {
+            assert!(matches!(
+                lifecycle.inspected(QuitRequested {
+                    running: 1,
+                    queued: 0
+                }),
+                ExitDecision::Confirm(_)
+            ));
+            assert!(lifecycle.confirm());
+        }
+        let replies = Arc::new(Mutex::new(Vec::new()));
+        let received = replies.clone();
+        assert_eq!(
+            lifecycle.defer_termination(move |answer| received.lock().unwrap().push(answer)),
+            (TerminateReply::Later, false)
+        );
+        assert_eq!(
+            lifecycle.defer_termination(|_| panic!("duplicate callback")),
+            (TerminateReply::Cancel, false)
+        );
+        assert!(replies.lock().unwrap().is_empty());
+        if !stopping {
+            assert_eq!(
+                lifecycle.inspected(QuitRequested {
+                    running: 0,
+                    queued: 0
+                }),
+                ExitDecision::Cleanup
+            );
+        }
+        lifecycle.ready();
+        lifecycle.take_system_reply().unwrap()(true);
+        assert!(lifecycle.take_system_reply().is_none());
+        assert_eq!(*replies.lock().unwrap(), vec![true]);
+    }
+}
+
+#[test]
+fn failed_in_app_inspection_answers_joined_system_request_and_allows_retry() {
+    let lifecycle = Lifecycle::default();
+    assert!(lifecycle.begin_request());
+    let replies = Arc::new(Mutex::new(Vec::new()));
+    let received = replies.clone();
+    assert_eq!(
+        lifecycle.defer_termination(move |answer| received.lock().unwrap().push(answer)),
+        (TerminateReply::Later, false)
+    );
+    lifecycle.inspection_failed();
+    lifecycle.inspection_failed();
+    assert_eq!(*replies.lock().unwrap(), vec![false]);
+    assert!(lifecycle.begin_request());
+}
+
+#[test]
+fn repeated_tray_and_system_requests_preserve_existing_confirmation() {
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core(tmp.path(), false);
+    enqueue(&core, "ghostty");
+    let lifecycle = Arc::new(Lifecycle::default());
+    let app = tauri::test::mock_builder()
+        .manage(core.clone())
+        .manage(lifecycle.clone())
+        .build(context())
+        .unwrap();
+    let window = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .visible(false)
+        .build()
+        .unwrap();
+    assert!(lifecycle.begin_request());
+    assert!(matches!(
+        lifecycle.inspected(core.queue.prepare_exit().unwrap()),
+        ExitDecision::Confirm(_)
+    ));
+    window.hide().unwrap();
+    lifecycle::request_exit(app.handle(), 0);
+    assert!(lifecycle.confirmation_pending());
+    window.hide().unwrap();
+    let replies = Arc::new(Mutex::new(Vec::new()));
+    let received = replies.clone();
+    assert_eq!(
+        lifecycle::terminate_requested(app.handle(), move |answer| received
+            .lock()
+            .unwrap()
+            .push(answer)),
+        TerminateReply::Later
+    );
+    assert!(replies.lock().unwrap().is_empty());
+    window.hide().unwrap();
+    assert_eq!(
+        lifecycle::terminate_requested(app.handle(), |_| panic!("duplicate callback")),
+        TerminateReply::Cancel
+    );
+    assert!(lifecycle.confirmation_pending());
+    lifecycle.cancel();
+    assert_eq!(*replies.lock().unwrap(), vec![false]);
+    assert!(!core.queue.is_stopping());
+    core.queue.shutdown();
+}
+
+#[test]
+fn only_pending_confirmation_requests_restore_the_window() {
+    let lifecycle = Lifecycle::default();
+    let restored = std::cell::Cell::new(0);
+    let restore = || restored.set(restored.get() + 1);
+    lifecycle.restore_confirmation(restore);
+    assert!(lifecycle.begin_request());
+    lifecycle.restore_confirmation(restore);
+    assert_eq!(restored.get(), 0);
+    assert!(matches!(
+        lifecycle.inspected(QuitRequested {
+            running: 1,
+            queued: 0
+        }),
+        ExitDecision::Confirm(_)
+    ));
+    lifecycle.restore_confirmation(restore);
+    lifecycle.restore_confirmation(restore);
+    assert_eq!(restored.get(), 2);
+    assert!(lifecycle.confirm());
+    lifecycle.restore_confirmation(restore);
+    lifecycle.ready();
+    lifecycle.restore_confirmation(restore);
+    assert_eq!(restored.get(), 2);
 }

@@ -248,7 +248,10 @@ fn main_window_fit(
 }
 
 // Calculate final bounds before any setters: macOS may apply window changes asynchronously.
-fn fit_main_to_work_area(window: &tauri::WebviewWindow, welcome: bool) -> tauri::Result<()> {
+fn fit_main_to_work_area<R: tauri::Runtime>(
+    window: &tauri::WebviewWindow<R>,
+    welcome: bool,
+) -> tauri::Result<()> {
     let Some(monitor) = window.current_monitor()?.or(window.primary_monitor()?) else {
         return Ok(());
     };
@@ -274,7 +277,7 @@ fn fit_main_to_work_area(window: &tauri::WebviewWindow, welcome: bool) -> tauri:
     Ok(())
 }
 
-pub fn show_main(app: &tauri::AppHandle) {
+pub fn show_main<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
         // Resize to Welcome before first display to avoid flashing the full app frame.
         let welcome = app

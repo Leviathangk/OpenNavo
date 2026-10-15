@@ -15,10 +15,13 @@ const restarting = ref(false);
 async function restart() {
   restarting.value = true;
   try {
-    // With tasks present, Rust first requests quit confirmation (06 §4.3).
+    // Rust refuses while tasks run or wait (active_tasks) instead of interrupting them; it also refuses during another quit.
     await relaunch();
   } catch (error) {
-    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+    const reason = String(error);
+    if (reason.includes('active_tasks')) toasts.push({ tone: 'warning', title: t('permission.relaunch.busy') });
+    else if (!reason.includes('exit_in_progress'))
+      toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
   } finally {
     restarting.value = false;
   }

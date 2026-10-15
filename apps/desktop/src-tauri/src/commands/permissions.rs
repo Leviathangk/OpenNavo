@@ -26,6 +26,14 @@ pub async fn permission_guide_close(app: tauri::AppHandle) -> Result<(), AppErro
     Ok(())
 }
 
+/// Size the overlay to the height its page needs: longer translations wrap onto more lines.
+#[tauri::command]
+#[specta::specta]
+pub async fn permission_guide_fit(app: tauri::AppHandle, height: u32) -> Result<(), AppError> {
+    crate::guide::fit(&app, height);
+    Ok(())
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn permission_guide_info() -> Result<PermissionGuideInfo, AppError> {

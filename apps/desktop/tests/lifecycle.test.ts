@@ -45,6 +45,29 @@ describe('Menu-bar popover', () => {
 });
 
 describe('Quit and recovery', () => {
+  it('Notifies the backend only when the user cancels the quit request', async () => {
+    const context = await setup('/discover', { tickMs: 1000 });
+    const cancel = vi.spyOn(commands, 'appCancelQuit');
+    const quit = vi.spyOn(commands, 'appQuit');
+    const wrapper = mount(QuitConfirm, {
+      global: { plugins: [context.pinia, i18n] },
+      attachTo: document.body
+    });
+    await flushPromises();
+    await events.appQuitRequested.emit({ running: 1, queued: 2 });
+    await flushPromises();
+    expect(cancel).not.toHaveBeenCalled();
+    expect(quit).not.toHaveBeenCalled();
+    document.body.querySelector<HTMLButtonElement>('[data-on-cancel]')!.click();
+    await flushPromises();
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(quit).not.toHaveBeenCalled();
+    expect(document.body.textContent).not.toContain('还有 3 个任务没有完成');
+    wrapper.unmount();
+    cancel.mockRestore();
+    quit.mockRestore();
+  });
+
   it('Confirm app:quit-requested before calling app_quit', async () => {
     const context = await setup('/discover', { tickMs: 1000 });
     const wrapper = mount(QuitConfirm, {

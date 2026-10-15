@@ -10,7 +10,7 @@ commands.allow = [
   "library_list", "library_refresh", "library_storage", "updates_list", "updates_check", "updates_ignore", "updates_unignore", "updates_status",
   "install_preflight", "apps_running", "task_enqueue", "task_enqueue_many", "task_cancel", "task_list_active", "task_log", "history_list", "history_clear", "history_export_csv",
   "locale_get", "system_locale_get", "settings_get", "settings_set", "mirror_probe", "brewfile_export", "brewfile_preview", "brewfile_install", "doctor_run",
-  "app_open", "app_reveal", "system_open_privacy", "app_quit",
+  "app_open", "app_reveal", "system_open_privacy", "app_quit", "app_cancel_quit",
   "permissions_get", "permission_guide_open", "permission_guide_close"
 ]
 
@@ -24,9 +24,9 @@ commands.allow = [
 
 [[permission]]
 identifier = "native-guide"
-description = "Permission overlay can only read effective locale and permissions, start dragging the OpenNavo icon, and close itself"
+description = "Permission overlay can only read effective locale and permissions, start dragging the OpenNavo icon, fit its height and close itself"
 commands.allow = [
-  "locale_get", "permissions_get", "permission_guide_info", "permission_guide_drag", "permission_guide_close"
+  "locale_get", "permissions_get", "permission_guide_info", "permission_guide_drag", "permission_guide_fit", "permission_guide_close"
 ]
 
 [[permission]]

@@ -120,9 +120,11 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::system::app_reveal,
             commands::system::system_open_privacy,
             commands::system::app_quit,
+            commands::system::app_cancel_quit,
             commands::permissions::permissions_get,
             commands::permissions::permission_guide_open,
             commands::permissions::permission_guide_close,
+            commands::permissions::permission_guide_fit,
             commands::permissions::permission_guide_info,
             commands::permissions::permission_guide_drag
         ])

@@ -15,6 +15,8 @@ const props = defineProps<{
   icons?: { name: string; token: string; src?: string | null; accent?: string | null }[];
 }>();
 const titleLines = computed(() => props.title.split('\n'));
+// Under a title of at most two lines the description has room for a third (the Russian download copy needs it).
+const descriptionLines = computed(() => (titleLines.value.length > 2 ? 2 : 3));
 // Missing discovery data falls back to the real brand asset, never invented app icons.
 const iconRows = computed(() => {
   const icons = props.icons?.slice(0, 4) ?? [];
@@ -24,6 +26,7 @@ const iconRows = computed(() => {
 
 <template>
   <OgFrame :tagline="tagline" :platform="platform" :site="site" :locale="locale">
+    <!-- Satori clamps only block text and requires divs to be flex, so clamped text sits in block spans. -->
     <div
       :style="{
         display: 'flex',
@@ -44,20 +47,21 @@ const iconRows = computed(() => {
           letterSpacing: '-0.03em'
         }"
       >
-        <div v-for="line in titleLines" :key="line" :style="{ lineClamp: 1 }">{{ line }}</div>
+        <span v-for="line in titleLines" :key="line" :style="{ display: 'block', lineClamp: 1 }">{{ line }}</span>
       </div>
-      <div
+      <span
         v-if="description"
         :style="{
+          display: 'block',
           fontSize: '30px',
           lineHeight: 1.4,
           color: color.text.secondary,
           whiteSpace: 'pre-wrap',
-          lineClamp: 2
+          lineClamp: descriptionLines
         }"
       >
         {{ description }}
-      </div>
+      </span>
     </div>
     <div
       v-if="variant === 'discover' && iconRows.length"

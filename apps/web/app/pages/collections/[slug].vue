@@ -67,7 +67,7 @@ const crumbs = computed(() => [
 useBreadcrumbSchema(crumbs);
 // Share image (WP13): the collection beside its first apps.
 if (data.value)
-  defineOgImage('OgList', {
+  defineOgImage('OgListSatori', {
     locale: appLocale.value,
     label: t('og.collection'),
     title: data.value.title,

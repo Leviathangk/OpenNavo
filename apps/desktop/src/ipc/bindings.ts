@@ -121,11 +121,14 @@ export const commands = {
 	appReveal: (target: TaskTarget) => typedError<null, AppError>(__TAURI_INVOKE("app_reveal", { target })),
 	systemOpenPrivacy: (pane: PrivacyPane) => typedError<null, AppError>(__TAURI_INVOKE("system_open_privacy", { pane })),
 	appQuit: () => typedError<null, AppError>(__TAURI_INVOKE("app_quit")),
+	appCancelQuit: () => __TAURI_INVOKE<void>("app_cancel_quit"),
 	/**  Current privacy permissions (06 §12.3, §12.6): read-only, without prompts. */
 	permissionsGet: () => typedError<Permissions, AppError>(__TAURI_INVOKE("permissions_get")),
 	/**  Open the corresponding System Settings panel and adjacent guidance overlay (06 §12.7). */
 	permissionGuideOpen: (pane: PrivacyPane) => typedError<null, AppError>(__TAURI_INVOKE("permission_guide_open", { pane })),
 	permissionGuideClose: () => typedError<null, AppError>(__TAURI_INVOKE("permission_guide_close")),
+	/**  Size the overlay to the height its page needs: longer translations wrap onto more lines. */
+	permissionGuideFit: (height: number) => typedError<null, AppError>(__TAURI_INVOKE("permission_guide_fit", { height })),
 	permissionGuideInfo: () => typedError<PermissionGuideInfo, AppError>(__TAURI_INVOKE("permission_guide_info")),
 	/**  Drag OpenNavo's icon from the overlay. This synchronous command runs on the main thread while the current event is still mouse-down. */
 	permissionGuideDrag: () => typedError<null, AppError>(__TAURI_INVOKE("permission_guide_drag")),
@@ -864,6 +867,10 @@ export type Permissions = {
 	fullDiskAccess: PermissionState,
 	/**  Enabled in System Settings but not yet effective; quit and reopen OpenNavo. */
 	relaunchRequired: boolean,
+	/**  App Management is on in System Settings, but this process is still blocked until it reopens. */
+	appManagementPending: boolean,
+	/**  Full Disk Access is on in System Settings, but macOS applies it only after OpenNavo reopens. */
+	fullDiskAccessPending: boolean,
 };
 
 /**  Permission changes detected by guidance polling (06 §12.7), broadcast to all windows. */

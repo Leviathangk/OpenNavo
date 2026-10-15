@@ -9,7 +9,7 @@ import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { usePermissionPromptStore, usePermissionsStore, useTasksStore } from '@/stores';
-import { paneState } from '@/stores/permissions';
+import { paneDone } from '@/stores/permissions';
 import { recheckRoute, retryOptions } from '@/stores/permissionPrompt';
 
 // Permission guidance (06 §12.3, §12.6) for E_PERMISSION (App Management) or E_FULL_DISK_ACCESS (zap data removal).
@@ -43,7 +43,8 @@ const key = computed(() => (store.pane === 'full_disk_access' ? 'fullDiskAccess'
 const items = computed(() =>
   store.items.flatMap(task => (task.target ? [{ task, target: task.target as TaskTarget }] : []))
 );
-const granted = computed(() => store.pane !== null && paneState(store.pane, permissions.status) === 'granted');
+// On in System Settings (in effect or awaiting a reopen): Enable has nothing left to do; the notice reopens OpenNavo.
+const done = computed(() => store.pane !== null && paneDone(store.pane, permissions.status));
 
 // Read current state on opening: permission may already be enabled and only require relaunch.
 watch(
@@ -103,7 +104,7 @@ async function retry() {
     <RelaunchNotice v-if="permissions.relaunchRequired" class="mt-12px" />
     <template #footer>
       <OnButton variant="ghost" :disabled="retrying" @click="open = false">{{ t('permission.prompt.later') }}</OnButton>
-      <OnButton v-if="!granted" variant="secondary" :loading="permissions.guiding === store.pane" @click="enable">{{
+      <OnButton v-if="!done" variant="secondary" :loading="permissions.guiding === store.pane" @click="enable">{{
         permissions.guiding === store.pane ? t('permission.prompt.waiting') : t('permission.prompt.enable')
       }}</OnButton>
       <OnButton v-if="retryable.length" variant="primary" :loading="retrying" @click="retry">{{

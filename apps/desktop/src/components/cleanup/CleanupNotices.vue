@@ -99,7 +99,7 @@ async function grant() {
       <OnIcon :name="notice.icon" :size="15" class="mt-2px shrink-0" :class="ICON[notice.tone]" />
       <span class="min-w-0 flex-1">{{ notice.text }}</span>
       <OnButton
-        v-if="notice.access"
+        v-if="notice.access && !permissions.fullDiskAccessPending"
         variant="secondary"
         size="xs"
         class="shrink-0 self-center"

@@ -87,6 +87,20 @@ describe('Permission prompt', () => {
     expect(text()).not.toContain(DISK_TITLE);
   });
 
+  // Full Disk Access turned on in System Settings applies after OpenNavo reopens: Enable would only reopen the same switch.
+  it('Full Disk Access awaiting a reopen drops Enable and offers the reopen notice', async () => {
+    await open('permission-relaunch');
+    await unwrap(commands.taskEnqueue('uninstall', { kind: 'cask', token: 'ghostty' }, { zap: true }, 'manual'));
+    await vi.waitFor(() => expect(text()).toContain(DISK_TITLE), { timeout: 3000 });
+    button('开启')?.click();
+    await vi.waitFor(() => expect(usePermissionsStore().fullDiskAccessPending).toBe(true), { timeout: 3000 });
+    await flushPromises();
+    expect(usePermissionsStore().fullDiskAccess).toBe('denied');
+    expect(button('开启')).toBeUndefined();
+    expect(text()).toContain('重新打开 OpenNavo 后生效');
+    expect(button('重新打开')).toBeDefined();
+  });
+
   it('Prioritize Full Disk Access before App Management when both fail', async () => {
     await open();
     const store = usePermissionPromptStore();

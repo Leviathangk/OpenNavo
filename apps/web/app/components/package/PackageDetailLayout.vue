@@ -20,7 +20,7 @@ const { data: pkg, error, refresh, token, removed } = await usePackage(props.kin
 // Share image (08 §14, WP13): every tab reuses the app's card; removed apps keep their name.
 const formattingLocale = toAppLocale(locale.value);
 if (pkg.value)
-  defineOgImage('OgPackage', {
+  defineOgImage('OgPackageSatori', {
     locale: formattingLocale,
     name: pkg.value.displayName,
     summary: pkg.value.summary ?? undefined,
@@ -31,7 +31,7 @@ if (pkg.value)
     ...useOgFrame()
   });
 else if (removed.value)
-  defineOgImage('OgPackage', {
+  defineOgImage('OgPackageSatori', {
     locale: formattingLocale,
     name: removed.value.displayName,
     summary: removed.value.summary ?? undefined,

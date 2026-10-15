@@ -86,7 +86,7 @@ usePageSeo({
 });
 useSeoMeta({ robots: () => (data.value && !total.value ? 'noindex, follow' : undefined) });
 if (author.value)
-  defineOgImage('OgList', {
+  defineOgImage('OgListSatori', {
     locale: toAppLocale(locale.value),
     label: t('authors.label'),
     title: author.value.name,

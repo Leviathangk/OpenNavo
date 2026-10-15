@@ -9,28 +9,45 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tauri::{LogicalPosition, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_specta::Event;
 
 pub const LABEL: &str = "permission-guide";
-/// Window size includes 12 px transparent margins around the 336×88 panel; frontend draws corners/shadows.
-pub const WIDTH: f64 = 360.;
-pub const HEIGHT: f64 = 112.;
+/// Window size includes 12 px transparent margins around the 376 px wide panel; frontend draws corners/shadows.
+pub const WIDTH: f64 = 400.;
+/// Height for three single-line rows; longer translations wrap, and the page reports the height it needs (`fit`).
+pub const HEIGHT: f64 = 122.;
+const MIN_HEIGHT: f64 = 100.;
+const MAX_HEIGHT: f64 = 240.;
 const POLL: Duration = Duration::from_millis(250);
 /// Check permissions every two iterations (about 0.5 seconds).
 const STATUS_EVERY: u32 = 2;
 /// Delay before closing after showing Enabled.
 const DONE_DELAY: Duration = Duration::from_millis(1600);
+/// Full Disk Access applies only after OpenNavo reopens, and macOS asks to Quit & Reopen right away: leave the hint
+/// that says to click it up for longer.
+const RELAUNCH_DONE_DELAY: Duration = Duration::from_secs(6);
 /// Treat System Settings as closed if its window is absent longer than this.
 const SETTINGS_GONE: Duration = Duration::from_millis(1500);
 /// Show at screen bottom if System Settings cannot be found.
 const FALLBACK_AFTER: Duration = Duration::from_millis(1500);
+/// Show the window once the page has reported its height, or after this long without it.
+const FIT_WAIT: Duration = Duration::from_millis(1000);
 const MAX_LIFETIME: Duration = Duration::from_secs(600);
 
 /// Increment generation on every open/close; old polling threads exit when the generation changes.
 #[derive(Default)]
 pub struct Guide {
     generation: AtomicU64,
+    /// Height the page asked for (`f64` bits); 0 until the current window reports one.
+    height: AtomicU64,
+}
+
+impl Guide {
+    fn height(&self) -> Option<f64> {
+        let height = f64::from_bits(self.height.load(Ordering::Acquire));
+        (height > 0.).then_some(height)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -64,30 +81,50 @@ pub fn granted(pane: PrivacyPane, permissions: &Permissions) -> bool {
     }
 }
 
+/// On in System Settings, but this process gets it only after reopening.
+pub fn pending(pane: PrivacyPane, permissions: &Permissions) -> bool {
+    match pane {
+        PrivacyPane::AppManagement => permissions.app_management_pending,
+        PrivacyPane::FullDiskAccess => permissions.full_disk_access_pending,
+        PrivacyPane::Notifications => false,
+    }
+}
+
+/// The user's part is done once the pane is on: in effect, or waiting for a reopen. Full Disk Access is always the latter,
+/// since macOS applies it to new processes only.
+pub fn done(pane: PrivacyPane, permissions: &Permissions) -> bool {
+    granted(pane, permissions) || pending(pane, permissions)
+}
+
 /// Center below System Settings' content area (right of sidebar); if insufficient space, align inside its bottom edge, staying within usable screen bounds.
-pub fn anchor(settings: Frame, screen: Frame) -> (f64, f64) {
+pub fn anchor(settings: Frame, screen: Frame, height: f64) -> (f64, f64) {
     const GAP: f64 = 2.;
     const INSET: f64 = 8.;
     let sidebar = (settings.width * 0.3).clamp(180., 260.);
     let column_width = (settings.width - sidebar).max(0.);
     let x = settings.x + sidebar + (column_width - WIDTH) / 2.;
     let below = settings.y + settings.height + GAP;
-    let y = if below + HEIGHT <= screen.y + screen.height {
+    let y = if below + height <= screen.y + screen.height {
         below
     } else {
-        settings.y + settings.height - HEIGHT - INSET
+        settings.y + settings.height - height - INSET
     };
     let max_x = (screen.x + screen.width - WIDTH).max(screen.x);
-    let max_y = (screen.y + screen.height - HEIGHT).max(screen.y);
+    let max_y = (screen.y + screen.height - height).max(screen.y);
     (x.clamp(screen.x, max_x), y.clamp(screen.y, max_y))
 }
 
 /// Center at screen bottom if System Settings cannot be found.
-pub fn fallback(screen: Frame) -> (f64, f64) {
+pub fn fallback(screen: Frame, height: f64) -> (f64, f64) {
     (
         screen.x + (screen.width - WIDTH) / 2.,
-        (screen.y + screen.height - HEIGHT - 72.).max(screen.y),
+        (screen.y + screen.height - height - 72.).max(screen.y),
     )
+}
+
+/// Height the page needs, kept within bounds.
+pub fn fitted_height(height: u32) -> f64 {
+    f64::from(height).clamp(MIN_HEIGHT, MAX_HEIGHT)
 }
 
 /// Running .app bundle; development builds are not draggable .app bundles.
@@ -105,18 +142,16 @@ fn error(error: impl std::fmt::Display) -> AppError {
 pub async fn open(app: &tauri::AppHandle, pane: PrivacyPane) -> Result<(), AppError> {
     let slug = slug(pane)?;
     crate::system::open(&[crate::system::privacy_url(pane, &app.config().identifier)?]).await?;
-    let generation = app
-        .state::<Arc<Guide>>()
-        .generation
-        .fetch_add(1, Ordering::AcqRel)
-        + 1;
+    let guide = app.state::<Arc<Guide>>();
+    let generation = guide.generation.fetch_add(1, Ordering::AcqRel) + 1;
     match app.get_webview_window(LABEL) {
-        // If already open, change only content; the new polling thread continues positioning.
+        // If already open, change only content; the page reports its new height and the new polling thread continues positioning.
         Some(window) => window
             .eval(format!("location.hash = '#/permission-guide/{slug}'"))
             .map_err(error)?,
         None => {
-            WebviewWindowBuilder::new(
+            guide.height.store(0, Ordering::Release);
+            let window = WebviewWindowBuilder::new(
                 app,
                 LABEL,
                 WebviewUrl::App(format!("index.html#/permission-guide/{slug}").into()),
@@ -138,10 +173,27 @@ pub async fn open(app: &tauri::AppHandle, pane: PrivacyPane) -> Result<(), AppEr
             .accept_first_mouse(true)
             .build()
             .map_err(error)?;
+            // Queued before the polling thread can show it, so the first click already leaves System Settings in front.
+            #[cfg(target_os = "macos")]
+            {
+                let overlay = window.clone();
+                window
+                    .run_on_main_thread(move || native::prevent_activation(&overlay))
+                    .map_err(error)?;
+            }
         }
     }
     watch(app.clone(), pane, generation);
     Ok(())
+}
+
+/// The page's text wraps differently in each language: it reports the height it needs and polling resizes the window.
+pub fn fit(app: &tauri::AppHandle, height: u32) {
+    if let Some(guide) = app.try_state::<Arc<Guide>>() {
+        guide
+            .height
+            .store(fitted_height(height).to_bits(), Ordering::Release);
+    }
 }
 
 pub fn close(app: &tauri::AppHandle) {
@@ -170,28 +222,35 @@ fn screens(app: &tauri::AppHandle) -> Vec<Frame> {
         .collect()
 }
 
-/// Polling: follow System Settings, push permission changes, close shortly after authorization or when Settings closes/times out.
+/// Polling: follow System Settings, size the window to the page, push permission changes, close shortly after the pane is
+/// on or when Settings closes/times out.
 fn watch(app: tauri::AppHandle, pane: PrivacyPane, generation: u64) {
     std::thread::spawn(move || {
         let started = Instant::now();
         let mut tick: u32 = 0;
         let mut last: Option<Permissions> = None;
         let mut position: Option<(f64, f64)> = None;
+        let mut size: Option<f64> = None;
         let mut shown = false;
         let mut seen_settings = false;
         let mut settings_missing: Option<Instant> = None;
-        let mut done_at: Option<Instant> = None;
-        loop {
-            let current = app
-                .try_state::<Arc<Guide>>()
-                .map(|guide| guide.generation.load(Ordering::Acquire));
-            if current != Some(generation) {
+        let mut done_at: Option<(Instant, Duration)> = None;
+        while let Some(guide) = app.try_state::<Arc<Guide>>() {
+            if guide.generation.load(Ordering::Acquire) != generation {
                 break;
             }
             let Some(window) = app.get_webview_window(LABEL) else {
                 break;
             };
             let now = Instant::now();
+            let fitted = guide.height();
+            let height = fitted.unwrap_or(HEIGHT);
+            if size != Some(height) {
+                let _ = window.set_size(LogicalSize::new(WIDTH, height));
+                size = Some(height);
+                // macOS keeps the bottom edge when resizing; place the top edge again right away.
+                position = None;
+            }
             let next = match settings_frame() {
                 Some(frame) => {
                     seen_settings = true;
@@ -201,7 +260,7 @@ fn watch(app: tauri::AppHandle, pane: PrivacyPane, generation: u64) {
                         .iter()
                         .find(|screen| screen.contains_center_of(frame))
                         .or(screens.first())
-                        .map(|screen| anchor(frame, *screen))
+                        .map(|screen| anchor(frame, *screen, height))
                 }
                 None if seen_settings => {
                     if now.duration_since(*settings_missing.get_or_insert(now)) > SETTINGS_GONE {
@@ -210,8 +269,11 @@ fn watch(app: tauri::AppHandle, pane: PrivacyPane, generation: u64) {
                     }
                     None
                 }
-                None if !shown && now.duration_since(started) > FALLBACK_AFTER => {
-                    screens(&app).first().map(|screen| fallback(*screen))
+                // Not placed yet, or resized since: bottom center of the screen.
+                None if position.is_none() && now.duration_since(started) > FALLBACK_AFTER => {
+                    screens(&app)
+                        .first()
+                        .map(|screen| fallback(*screen, height))
                 }
                 None => None,
             };
@@ -221,7 +283,11 @@ fn watch(app: tauri::AppHandle, pane: PrivacyPane, generation: u64) {
                 let _ = window.set_position(LogicalPosition::new(next.0, next.1));
                 position = Some(next);
             }
-            if position.is_some() && !shown {
+            // Wait for the page's height so long translations never show clipped first.
+            if position.is_some()
+                && !shown
+                && (fitted.is_some() || now.duration_since(started) > FIT_WAIT)
+            {
                 let _ = window.show();
                 shown = true;
             }
@@ -233,11 +299,16 @@ fn watch(app: tauri::AppHandle, pane: PrivacyPane, generation: u64) {
                     let _ = PermissionsChanged(status).emit(&app);
                     last = Some(status);
                 }
-                if granted(pane, &status) && done_at.is_none() {
-                    done_at = Some(now);
+                if done_at.is_none() && done(pane, &status) {
+                    let delay = if granted(pane, &status) {
+                        DONE_DELAY
+                    } else {
+                        RELAUNCH_DONE_DELAY
+                    };
+                    done_at = Some((now, delay));
                 }
             }
-            if done_at.is_some_and(|at| now.duration_since(at) > DONE_DELAY)
+            if done_at.is_some_and(|(at, delay)| now.duration_since(at) > delay)
                 || now.duration_since(started) > MAX_LIFETIME
             {
                 close(&app);
@@ -354,14 +425,40 @@ mod native {
         AnyThread, MainThreadMarker, MainThreadOnly, define_class, msg_send,
         rc::Retained,
         runtime::{AnyObject, ProtocolObject},
+        sel,
     };
     use objc2_app_kit::{
         NSApplication, NSDragOperation, NSDraggingContext, NSDraggingItem, NSDraggingSession,
-        NSDraggingSource, NSEventType, NSView, NSWorkspace,
+        NSDraggingSource, NSEventType, NSView, NSWindow, NSWorkspace,
     };
     use objc2_foundation::{
         NSArray, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString, NSURL,
     };
+
+    /// A click on a window of an inactive app makes the window server activate that app, which brought OpenNavo's main
+    /// window over System Settings as soon as the icon was pressed. Non-activating NSPanels avoid that with a window-server
+    /// tag that `-[NSWindow _setPreventsActivation:]` sets on any window, so set it on Tao's own window: its class, ivars and
+    /// overrides stay as Tao built them. (A non-NSPanel window drops the NonactivatingPanel style bit, so that is not used.)
+    pub fn prevent_activation(window: &tauri::WebviewWindow) {
+        let Ok(pointer) = window.ns_window() else {
+            return;
+        };
+        // SAFETY: Tauri supplies this window's NSWindow pointer, alive as long as the WebviewWindow; this runs on the main thread.
+        let Some(ns_window) = (unsafe { pointer.cast::<NSWindow>().as_ref() }) else {
+            return;
+        };
+        let prevents = sel!(_setPreventsActivation:);
+        if !ns_window.respondsToSelector(prevents) {
+            log::warn!(
+                "Permission overlay clicks may activate OpenNavo: no _setPreventsActivation:"
+            );
+            return;
+        }
+        // SAFETY: private NSWindow setter taking a BOOL (`v@:B`), checked to exist above.
+        unsafe {
+            let _: () = msg_send![ns_window, _setPreventsActivation: true];
+        }
+    }
 
     define_class!(
         // SAFETY: NSObject imposes no subclassing requirements; DragSource does not implement Drop.
@@ -461,9 +558,9 @@ mod tests {
             width: 715.,
             height: 600.,
         };
-        let (x, y) = anchor(settings, SCREEN);
-        // Sidebar about 215; content center = 300 + 215 + 250 = 765; overlay left = 765 - 180.
-        assert!((x - 585.).abs() < 1.);
+        let (x, y) = anchor(settings, SCREEN, HEIGHT);
+        // Sidebar about 215; content center = 300 + 215 + 250 = 765; overlay left = 765 - 200.
+        assert!((x - 565.).abs() < 1.);
         assert!((y - 722.).abs() < 1.);
     }
 
@@ -475,9 +572,12 @@ mod tests {
             width: 715.,
             height: 640.,
         };
-        let (_, y) = anchor(settings, SCREEN);
+        let (_, y) = anchor(settings, SCREEN, HEIGHT);
         assert!((y - (300. + 640. - HEIGHT - 8.)).abs() < 1.);
         assert!(y + HEIGHT <= SCREEN.y + SCREEN.height);
+        // A taller window for wrapped translations still keeps its bottom edge on screen.
+        let (_, y) = anchor(settings, SCREEN, 180.);
+        assert!(y + 180. <= SCREEN.y + SCREEN.height);
     }
 
     #[test]
@@ -488,11 +588,18 @@ mod tests {
             width: 400.,
             height: 300.,
         };
-        let (x, _) = anchor(settings, SCREEN);
+        let (x, _) = anchor(settings, SCREEN, HEIGHT);
         assert!(x >= SCREEN.x);
-        let (x, y) = fallback(SCREEN);
+        let (x, y) = fallback(SCREEN, HEIGHT);
         assert!((x - (1512. - WIDTH) / 2.).abs() < 1.);
         assert!(y + HEIGHT < SCREEN.y + SCREEN.height);
+    }
+
+    #[test]
+    fn page_heights_stay_within_bounds() {
+        assert_eq!(fitted_height(141), 141.);
+        assert_eq!(fitted_height(24), MIN_HEIGHT);
+        assert_eq!(fitted_height(4000), MAX_HEIGHT);
     }
 
     /// Exercise real window-list/process-path reads: None with Settings closed; valid bounds when open.
@@ -511,13 +618,33 @@ mod tests {
             app_management: PermissionState::Granted,
             full_disk_access: PermissionState::Denied,
             relaunch_required: false,
+            app_management_pending: false,
+            full_disk_access_pending: false,
         };
         assert!(granted(PrivacyPane::AppManagement, &permissions));
         assert!(!granted(PrivacyPane::FullDiskAccess, &permissions));
+        assert!(!done(PrivacyPane::FullDiskAccess, &permissions));
+        assert!(!done(PrivacyPane::Notifications, &permissions));
         assert!(slug(PrivacyPane::Notifications).is_err());
         assert_eq!(
             slug(PrivacyPane::FullDiskAccess).ok(),
             Some("full_disk_access")
         );
+    }
+
+    /// Full Disk Access turned on while OpenNavo runs stays denied until it reopens: the guide still finishes.
+    #[test]
+    fn full_disk_access_waiting_for_a_reopen_completes_the_guide() {
+        let permissions = Permissions {
+            app_management: PermissionState::Denied,
+            full_disk_access: PermissionState::Denied,
+            relaunch_required: true,
+            app_management_pending: false,
+            full_disk_access_pending: true,
+        };
+        assert!(!granted(PrivacyPane::FullDiskAccess, &permissions));
+        assert!(pending(PrivacyPane::FullDiskAccess, &permissions));
+        assert!(done(PrivacyPane::FullDiskAccess, &permissions));
+        assert!(!done(PrivacyPane::AppManagement, &permissions));
     }
 }

@@ -173,7 +173,7 @@ async function enable(pane: GuidePane) {
       <OnIcon :name="notice.icon" :size="15" class="mt-2px shrink-0" :class="ICON[notice.tone]" />
       <span class="min-w-0 flex-1">{{ notice.text }}</span>
       <OnButton
-        v-if="notice.pane"
+        v-if="notice.pane && !permissions.pending(notice.pane)"
         variant="secondary"
         size="xs"
         class="shrink-0 self-center"

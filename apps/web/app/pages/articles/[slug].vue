@@ -97,7 +97,7 @@ const feedPath = useArticleFeed();
 // Share image: the headline beside the apps it covers. Its path also stands in for a missing cover
 // in structured data; kept in state so hydration sees the server's value.
 const ogPaths = article.value
-  ? defineOgImage('OgList', {
+  ? defineOgImage('OgListSatori', {
       locale: appLocale.value,
       label: typeLabel.value,
       title: article.value.title,

@@ -68,7 +68,7 @@ useRevealOnScroll(root);
 
 useSeoMeta({ title: () => t('site.title'), description: () => description.value });
 
-defineOgImage('OgDefault', {
+defineOgImage('OgDefaultSatori', {
   locale: formattingLocale.value,
   variant: 'home',
   title: t('og.homeTitle'),

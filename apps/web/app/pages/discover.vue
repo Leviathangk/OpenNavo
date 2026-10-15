@@ -154,7 +154,7 @@ useSeoMeta({
     )
 });
 
-defineOgImage('OgDefault', {
+defineOgImage('OgDefaultSatori', {
   locale: formattingLocale.value,
   variant: 'discover',
   title: t('og.discoverTitle'),

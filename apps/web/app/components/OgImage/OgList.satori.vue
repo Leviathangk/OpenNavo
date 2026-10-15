@@ -4,7 +4,7 @@ import { color } from '@opennavo/tokens';
 import OgAppIcon from '../og/OgAppIcon.vue';
 import OgFrame from '../og/OgFrame.vue';
 
-// Category and collection share images (WP13): a label, the page title and subtitle beside up to four
+// List and article share images (WP13): a label, the page title and subtitle beside up to four
 // apps the page lists. Without app icons the brand icon stands in; icons are never invented.
 const props = defineProps<{
   label: string;
@@ -16,10 +16,12 @@ const props = defineProps<{
   site?: string;
   icons?: { name: string; token: string; src?: string | null; accent?: string | null }[];
 }>();
-// Wide CJK characters and long titles need smaller lettering within the fixed canvas.
-const titleSize = computed(() => {
+// Wide CJK characters and long titles need smaller lettering within the fixed canvas; article
+// headlines too long for two lines get a third. Every size still fits the frame's 332 px.
+const titleStyle = computed(() => {
   const length = Array.from(props.title).reduce((sum, char) => sum + (char.codePointAt(0)! > 0x024f ? 2 : 1), 0);
-  return length > 36 ? 56 : length > 22 ? 66 : 80;
+  if (length > 48) return { fontSize: '48px', lineClamp: 3 };
+  return { fontSize: `${length > 36 ? 56 : length > 22 ? 66 : 80}px`, lineClamp: 2 };
 });
 // Two icons a row; rows center in the column, so a lone icon (or the last of three) sits in its middle.
 const iconRows = computed(() => {
@@ -30,24 +32,30 @@ const iconRows = computed(() => {
 
 <template>
   <OgFrame :tagline="tagline" :platform="platform" :site="site" :locale="locale">
+    <!-- Satori clamps only block text and requires divs to be flex, so clamped text sits in block spans. -->
     <div :style="{ display: 'flex', flexDirection: 'column', width: '724px', flexShrink: 0, gap: '18px' }">
-      <div :style="{ fontSize: '26px', lineHeight: 1.3, color: color.text.secondary, lineClamp: 1 }">{{ label }}</div>
-      <div
+      <span :style="{ display: 'block', fontSize: '26px', lineHeight: 1.3, color: color.text.secondary, lineClamp: 1 }">
+        {{ label }}
+      </span>
+      <span
         class="font-semibold"
         :style="{
-          fontSize: `${titleSize}px`,
+          display: 'block',
+          ...titleStyle,
           fontWeight: 600,
           lineHeight: 1.1,
           letterSpacing: '-0.03em',
-          wordBreak: 'break-word',
-          lineClamp: 2
+          wordBreak: 'break-word'
         }"
       >
         {{ title }}
-      </div>
-      <div v-if="description" :style="{ fontSize: '30px', lineHeight: 1.4, color: color.text.secondary, lineClamp: 2 }">
+      </span>
+      <span
+        v-if="description"
+        :style="{ display: 'block', fontSize: '30px', lineHeight: 1.4, color: color.text.secondary, lineClamp: 2 }"
+      >
         {{ description }}
-      </div>
+      </span>
     </div>
     <div
       v-if="iconRows.length"

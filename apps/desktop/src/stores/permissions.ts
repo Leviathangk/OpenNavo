@@ -11,9 +11,20 @@ export function paneState(pane: GuidePane, status: Permissions | null): Permissi
   return pane === 'app_management' ? status.appManagement : status.fullDiskAccess;
 }
 
+/** On in System Settings, but OpenNavo gets it only after reopening (Full Disk Access always does). */
+export function panePending(pane: GuidePane, status: Permissions | null): boolean {
+  if (!status) return false;
+  return pane === 'app_management' ? status.appManagementPending : status.fullDiskAccessPending;
+}
+
+/** The user's part is done: the permission is in effect or waits only for a reopen. */
+export function paneDone(pane: GuidePane, status: Permissions | null): boolean {
+  return paneState(pane, status) === 'granted' || panePending(pane, status);
+}
+
 /**
  * Privacy permissions: read at startup, receive permissions:changed from guidance polling, and reread on returning to the main window.
- * guiding identifies the panel being guided; clear it when permission is granted or the user returns to OpenNavo.
+ * guiding identifies the panel being guided; clear it once the permission is on (in effect or awaiting a reopen) or the user returns to OpenNavo.
  */
 export const usePermissionsStore = defineStore('permissions', () => {
   const status = ref<Permissions | null>(null);
@@ -26,6 +37,8 @@ export const usePermissionsStore = defineStore('permissions', () => {
   const appManagement = computed(() => paneState('app_management', status.value));
   const fullDiskAccess = computed(() => paneState('full_disk_access', status.value));
   const relaunchRequired = computed(() => status.value?.relaunchRequired ?? false);
+  const appManagementPending = computed(() => panePending('app_management', status.value));
+  const fullDiskAccessPending = computed(() => panePending('full_disk_access', status.value));
   /**
    * Installed and uninstalling start only with Full Disk Access (2026-10-12): without it app data in other apps'
    * containers cannot be measured or found, and the Trash cannot be read back for Undo.
@@ -36,7 +49,11 @@ export const usePermissionsStore = defineStore('permissions', () => {
 
   function setStatus(next: Permissions) {
     status.value = next;
-    if (guiding.value && paneState(guiding.value, next) === 'granted') guiding.value = null;
+    if (guiding.value && paneDone(guiding.value, next)) guiding.value = null;
+  }
+
+  function pending(pane: GuidePane) {
+    return panePending(pane, status.value);
   }
 
   function apply(next: Permissions) {
@@ -78,6 +95,9 @@ export const usePermissionsStore = defineStore('permissions', () => {
     fullDiskAccess,
     fullDiskReady,
     relaunchRequired,
+    appManagementPending,
+    fullDiskAccessPending,
+    pending,
     apply,
     refresh,
     guide,

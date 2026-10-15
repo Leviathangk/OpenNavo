@@ -67,6 +67,7 @@ function selectLanguage(value: string) {
 }
 
 // Privacy permissions (06 §12.3, §12.6): Enable opens System Settings and guidance; state updates live.
+// A permission already on in System Settings but awaiting a reopen offers no Enable: the notice below reopens OpenNavo.
 const permissions = usePermissionsStore();
 const privacyRows = computed(() =>
   (
@@ -74,7 +75,7 @@ const privacyRows = computed(() =>
       { pane: 'app_management', key: 'appManagement', state: permissions.appManagement },
       { pane: 'full_disk_access', key: 'fullDiskAccess', state: permissions.fullDiskAccess }
     ] as const
-  ).map(row => ({ ...row, waiting: permissions.guiding === row.pane }))
+  ).map(row => ({ ...row, pending: permissions.pending(row.pane), waiting: permissions.guiding === row.pane }))
 );
 async function enablePermission(pane: GuidePane) {
   try {
@@ -346,14 +347,16 @@ onMounted(async () => {
             :label="t(`settings.privacy.${row.key}`)"
             :hint="t(`settings.privacy.${row.key}Hint`)"
           >
-            <OnChip v-if="row.state !== 'unknown'" :tone="row.state === 'granted' ? 'success' : 'neutral'" dot>
+            <OnChip v-if="row.pending" tone="warning" dot>{{ t('permission.relaunch.pending') }}</OnChip>
+            <OnChip v-else :tone="row.state === 'granted' ? 'success' : 'neutral'" dot>
               {{ t(`settings.privacy.${row.state}`) }}
             </OnChip>
             <OnButton
-              v-if="row.state !== 'granted'"
+              v-if="row.state !== 'granted' && !row.pending"
               variant="secondary"
               size="sm"
               :loading="row.waiting"
+              :aria-label="row.waiting ? undefined : t(`welcome.permissions.${row.key}.enable`)"
               @click="enablePermission(row.pane)"
             >
               {{ row.waiting ? t('settings.privacy.waiting') : t('settings.privacy.enable') }}

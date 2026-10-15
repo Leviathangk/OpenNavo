@@ -1,6 +1,10 @@
 /**
  * Header shared by every share image (08 §14): tagline and platform label in the page language,
  * plus this site's domain (NUXT_PUBLIC_SITE_URL in production), so self-hosted instances show their own.
+ *
+ * Callers name the template in full (defineOgImage('OgListSatori', …)): only then does nuxt-og-image
+ * put the template file's hash in the image URL, so an edited template gets new URLs past the
+ * immutable CDN and social-site caches. Edits to og/OgFrame.vue or og/OgAppIcon.vue alone do not.
  */
 export function useOgFrame() {
   const { t } = useI18n();

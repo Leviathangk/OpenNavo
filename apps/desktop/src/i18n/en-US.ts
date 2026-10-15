@@ -684,7 +684,7 @@ const messages: MessageSchema = {
       appManagement: 'App Management',
       appManagementHint: 'Needed to update and uninstall apps',
       fullDiskAccess: 'Full Disk Access',
-      fullDiskAccessHint: 'Needed to delete app data when uninstalling',
+      fullDiskAccessHint: 'Needed to see how much space apps take, uninstall them and undo from the Trash',
       enable: 'Turn On',
       waiting: 'Waiting…',
       granted: 'On',
@@ -781,7 +781,9 @@ const messages: MessageSchema = {
   permission: {
     relaunch: {
       body: 'Turned on in System Settings. Reopen OpenNavo to apply it.',
-      action: 'Reopen'
+      action: 'Reopen',
+      pending: 'Reopen to apply',
+      busy: 'Tasks are running; reopen after they finish'
     },
     guide: {
       appManagement: 'App Management',

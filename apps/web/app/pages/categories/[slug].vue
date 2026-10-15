@@ -82,7 +82,7 @@ const crumbs = computed(() => [
 useBreadcrumbSchema(crumbs);
 // Share image (WP13): the category beside the first apps it lists.
 if (category.value)
-  defineOgImage('OgList', {
+  defineOgImage('OgListSatori', {
     locale: formattingLocale.value,
     label: t('og.category'),
     title: category.value.name,

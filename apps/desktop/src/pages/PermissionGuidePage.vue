@@ -1,30 +1,45 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { OnIcon } from '@opennavo/ui';
 import { commands, unwrap } from '@/ipc/client';
-import { paneState } from '@/stores/permissions';
+import { paneDone } from '@/stores/permissions';
 import type { GuidePane } from '@/stores/permissions';
 import { usePermissionsStore } from '@/stores';
 import appIcon from '../../src-tauri/icons/128x128@2x.png';
 
 // Permission overlay (06 §12.7): appears below System Settings. Drag the icon into the list above to add OpenNavo.
-// Development builds are not .app bundles, so instruct users to select with + instead. Show completion once enabled; Rust closes the window shortly afterward.
+// Development builds are not .app bundles, so instruct users to select with + instead. Show completion once the switch is on;
+// Full Disk Access applies only after OpenNavo reopens, so "on, awaiting a reopen" completes too. Rust closes the window shortly afterward.
 const { t } = useI18n();
 const route = useRoute();
 const permissions = usePermissionsStore();
 const draggable = ref(false);
+const frame = ref<HTMLElement | null>(null);
 
 const pane = computed<GuidePane>(() =>
   route.params.pane === 'app_management' ? 'app_management' : 'full_disk_access'
 );
 const name = computed(() => (pane.value === 'app_management' ? 'appManagement' : 'fullDiskAccess'));
-const done = computed(() => paneState(pane.value, permissions.status) === 'granted');
+const done = computed(() => paneDone(pane.value, permissions.status));
+
+// The window is as tall as the panel: longer translations wrap, so report the height whenever it changes.
+let fitted = 0;
+function fit() {
+  const height = Math.ceil(frame.value?.getBoundingClientRect().height ?? 0);
+  if (!height || height === fitted) return;
+  fitted = height;
+  void commands.permissionGuideFit(height);
+}
+const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
 
 onMounted(async () => {
+  if (frame.value) observer?.observe(frame.value);
+  fit();
   draggable.value = (await unwrap(commands.permissionGuideInfo()).catch(() => null))?.draggable ?? false;
 });
+onBeforeUnmount(() => observer?.disconnect());
 
 function drag(event: MouseEvent) {
   if (!draggable.value || event.button !== 0) return;
@@ -38,9 +53,9 @@ function close() {
 </script>
 
 <template>
-  <div class="flex h-dvh p-12px">
+  <div ref="frame" class="p-12px">
     <section
-      class="relative flex min-w-0 flex-1 items-center gap-14px rounded-huge border border-solid border-line-default bg-surface-card px-16px"
+      class="relative flex min-h-88px min-w-0 items-center gap-14px rounded-huge border border-solid border-line-default bg-surface-card px-16px py-10px"
       role="dialog"
       :aria-label="t(`permission.guide.${name}`)"
     >
@@ -103,7 +118,7 @@ function close() {
 </template>
 
 <style>
-/* Reset only the guidance document; the transparent window displays only the rounded panel. */
+/* Reset only the guidance document; the transparent window displays only the rounded panel, sized to it by Rust. */
 html[data-opennavo-window='guide'] {
   background: transparent;
   color-scheme: normal;
