@@ -64,6 +64,7 @@ const iconRows = computed(() => {
       :style="{
         display: 'flex',
         flexDirection: 'column',
+        alignItems: 'center',
         gap: '20px',
         width: '300px',
         flexShrink: 0

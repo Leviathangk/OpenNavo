@@ -41,13 +41,27 @@ function fitPage(size: number) {
   pageSize.value = size;
 }
 
-const { data: remote, error: remoteError } = useLoader(
-  () => fetchRecentApps(appLocale.value, page.value, pageSize.value),
+// Paging and page-size changes (window resizes) keep the cards and pagination on screen until the next page lands.
+// Each page remembers its position, so a failed page change falls back to the local catalog instead of the old page.
+const { data: loaded, error: remoteError } = useLoader(
+  async () => {
+    const at = { page: page.value, size: pageSize.value };
+    return { ...(await fetchRecentApps(appLocale.value, at.page, at.size)), ...at };
+  },
   [page, appLocale, pageSize],
   undefined,
-  [page, appLocale, pageSize],
-  () => peekRecentApps(appLocale.value, page.value, pageSize.value)
+  [appLocale],
+  () => {
+    const cached = peekRecentApps(appLocale.value, page.value, pageSize.value);
+    return cached && { ...cached, page: page.value, size: pageSize.value };
+  }
 );
+const remote = computed(() => {
+  const value = loaded.value;
+  return value && (!remoteError.value || (value.page === page.value && value.size === pageSize.value))
+    ? value
+    : undefined;
+});
 
 const { data: local, error: localError } = useCatalogLoader(
   async () => {
@@ -66,7 +80,8 @@ const { data: local, error: localError } = useCatalogLoader(
     );
   },
   [remoteError, page, appLocale, pageSize],
-  result => result?.items ?? []
+  result => result?.items ?? [],
+  [remoteError]
 );
 
 const items = computed<PackageSummary[] | null>(() => {

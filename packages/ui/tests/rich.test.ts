@@ -21,6 +21,10 @@ function parse(html: string): HTMLElement {
 }
 
 describe('renderMarkdown', () => {
+  it('Closes bold next to CJK punctuation in release notes too', () => {
+    expect(renderMarkdown('修复：**同步失败。**Intel 机型')).toContain('修复：<strong>同步失败。</strong>Intel');
+  });
+
   it('Displays raw HTML as text', () => {
     const html = renderMarkdown('<script>alert(1)</script>\n\n<img src=x onerror=alert(1)> **粗体**');
     const root = parse(html);

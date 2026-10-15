@@ -5,6 +5,7 @@
 // card segments for the host to render, and headings get anchors for the table of contents.
 import { sanitize } from 'isomorphic-dompurify';
 import MarkdownIt from 'markdown-it';
+import { cjkFriendlyEmphasis } from './cjkEmphasis';
 import { codeWordsHtml } from './codeText';
 
 const ALLOWED_TAGS = [
@@ -73,6 +74,7 @@ export interface RenderedArticle {
 type ArticleEnv = { images: Map<string, ArticleImageInfo>; ids: Set<string>; toc: ArticleHeading[] };
 
 const md = new MarkdownIt({ html: false, linkify: true });
+cjkFriendlyEmphasis(md);
 
 /** Anchor from heading text: letters and digits of any script, joined by hyphens. */
 export function headingId(text: string): string {
@@ -146,9 +148,18 @@ md.renderer.rules.image = (tokens, index, options, env, self) => {
 
 const DIRECTIVE = /^::app\[([a-z0-9][a-z0-9@+._-]*)\]\s*$/;
 const FENCE = /^\s{0,3}(`{3,}|~{3,})/;
+const HEADING = /^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
+const plain = (text: string) => text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
 
-/** Markdown → sanitized HTML segments, app card segments and the h2 table of contents. */
-export function renderArticle(source: string, options: { images?: readonly ArticleImageInfo[] } = {}): RenderedArticle {
+/**
+ * Markdown → sanitized HTML segments, app card segments and the h2 table of contents. The page shows the
+ * title as its only h1, so a body opening with a heading of the same words leaves that heading out: it
+ * would repeat the title and lead the table of contents.
+ */
+export function renderArticle(
+  source: string,
+  options: { images?: readonly ArticleImageInfo[]; title?: string } = {}
+): RenderedArticle {
   const env: ArticleEnv = {
     images: new Map((options.images ?? []).map(image => [image.url, image])),
     ids: new Set(),
@@ -167,7 +178,11 @@ export function renderArticle(source: string, options: { images?: readonly Artic
       html: sanitize(md.render(text, env), { ALLOWED_TAGS, ALLOWED_ATTR, ALLOW_DATA_ATTR: false })
     });
   };
-  for (const line of source.replace(/\r\n/g, '\n').split('\n')) {
+  const lines = source.replace(/\r\n/g, '\n').split('\n');
+  const first = lines.findIndex(line => line.trim());
+  const opening = first < 0 ? undefined : HEADING.exec(lines[first]!)?.[1];
+  if (options.title?.trim() && opening !== undefined && plain(opening) === plain(options.title)) lines.splice(first, 1);
+  for (const line of lines) {
     const marker = FENCE.exec(line)?.[1];
     if (marker && (fence === null || marker.startsWith(fence))) fence = fence === null ? marker[0]!.repeat(3) : null;
     const token = fence === null ? DIRECTIVE.exec(line)?.[1] : undefined;

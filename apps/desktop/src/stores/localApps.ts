@@ -7,9 +7,11 @@ import type {
   Footprint,
   FootprintProgress,
   LocalApp,
-  LocalAppsChangedReason
+  LocalAppsChangedReason,
+  Task
 } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
+import { SETTLE_LIMIT } from './library';
 
 /** Days without opening an app before Installed suggests it under "Unused". */
 export const UNUSED_DAYS = 90;
@@ -53,6 +55,16 @@ export const useLocalAppsStore = defineStore('localApps', () => {
   let disposed = false;
   const retrying = new Set<string>();
   const pending = new Map<string, Promise<Footprint | null>>();
+  // Apps whose uninstall or adoption just succeeded: the list Rust rereads after the task (for casks, after the
+  // Homebrew inventory) lands seconds later, so the change applies here until then. Rust announces that reread,
+  // and any undo, as a "task" change; `signal` counts those, and a read started after one ends the override.
+  let signal = 0;
+  const removals = new Map<string, { at: number; signal: number }>();
+  const adoptions = new Map<string, { cask: string; at: number; signal: number }>();
+  const adopted = (app: LocalApp): LocalApp => {
+    const adoption = adoptions.get(app.id);
+    return adoption ? { ...app, cask: adoption.cask, source: 'homebrew' } : app;
+  };
   const occupiedBytes = (id: string): number | null => {
     const value = footprints.value[id];
     return value ? value.appBytes + value.dataBytes + value.cacheBytes : null;
@@ -129,28 +141,61 @@ export const useLocalAppsStore = defineStore('localApps', () => {
   const find = (id: string) => byId.value.get(id);
   const findCask = (token: string) => byCask.value.get(token);
 
-  function accept(current: number, result: LocalApp[]) {
+  /** seen: the task changes announced when the read started, so it reflects them. */
+  function accept(current: number, result: LocalApp[], seen: number) {
     if (current !== sequence) return;
-    items.value = result;
+    const listed = new Map(result.map(app => [app.id, app]));
+    const now = Date.now();
+    const settled = (entry: { at: number; signal: number }) => seen > entry.signal || now - entry.at > SETTLE_LIMIT;
+    for (const [id, removal] of removals) if (!listed.has(id) || settled(removal)) removals.delete(id);
+    for (const [id, adoption] of adoptions) {
+      const app = listed.get(id);
+      if (!app || app.cask === adoption.cask || settled(adoption)) adoptions.delete(id);
+    }
+    const list = result.filter(app => !removals.has(app.id)).map(adopted);
+    items.value = list;
     loaded.value = true;
     for (const id of Object.keys(footprints.value)) {
-      if (!result.some(app => app.id === id)) delete footprints.value[id];
+      if (!list.some(app => app.id === id)) delete footprints.value[id];
     }
     void loadFootprints();
   }
 
+  /**
+   * Apply a finished uninstall (drop the app, or a cask's apps) or adoption (the app turns Homebrew-managed)
+   * before Rust's reread shows it.
+   */
+  function settle(task: Task) {
+    if (task.state !== 'succeeded' || !task.target) return;
+    const { kind, token } = task.target;
+    const at = task.finishedAt ?? Date.now();
+    if (task.op === 'install' && kind === 'cask' && task.options.adopt) {
+      const taken = items.value.filter(app => !app.cask && app.catalogToken === token && app.source !== 'app_store');
+      for (const app of taken) adoptions.set(app.id, { cask: token, at, signal });
+      if (taken.length) items.value = items.value.map(adopted);
+      return;
+    }
+    if (task.op !== 'uninstall') return;
+    const gone = items.value.filter(app => (kind === 'app' ? app.id === token : kind === 'cask' && app.cask === token));
+    if (!gone.length) return;
+    for (const app of gone) removals.set(app.id, { at, signal });
+    items.value = items.value.filter(app => !removals.has(app.id));
+  }
+
   async function load() {
     const current = ++sequence;
-    accept(current, await unwrap(commands.localAppsList()));
+    const seen = signal;
+    accept(current, await unwrap(commands.localAppsList()), seen);
   }
 
   /** Re-enumerate the Applications folders; sizes keep arriving through local-apps:changed. */
   async function refresh() {
     if (refreshing.value) return;
     const current = ++sequence;
+    const seen = signal;
     refreshing.value = true;
     try {
-      accept(current, await unwrap(commands.localAppsRefresh()));
+      accept(current, await unwrap(commands.localAppsRefresh()), seen);
     } finally {
       refreshing.value = false;
     }
@@ -161,6 +206,7 @@ export const useLocalAppsStore = defineStore('localApps', () => {
   let reportTimer: ReturnType<typeof setTimeout> | undefined;
   function changed(reason: LocalAppsChangedReason) {
     if (disposed) return;
+    if (reason === 'task') signal++;
     if (reason === 'footprints') {
       reportTimer ??= setTimeout(() => {
         reportTimer = undefined;
@@ -201,6 +247,7 @@ export const useLocalAppsStore = defineStore('localApps', () => {
     findCask,
     load,
     refresh,
-    changed
+    changed,
+    settle
   };
 });

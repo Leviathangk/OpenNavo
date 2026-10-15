@@ -9,8 +9,8 @@ defineOptions({ name: 'ArticlePreview' });
 
 // The site's renderer, so reviewers see what readers get: only listed assets render as images and
 // ::app[token] lines become app cards (shown here as placeholders).
-const props = defineProps<{ source: string; images: ArticleImageInfo[] }>();
-const rendered = computed(() => renderArticle(props.source, { images: props.images }));
+const props = defineProps<{ source: string; images: ArticleImageInfo[]; title?: string }>();
+const rendered = computed(() => renderArticle(props.source, { images: props.images, title: props.title }));
 </script>
 
 <template>

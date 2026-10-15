@@ -67,4 +67,35 @@ describe('renderArticle', () => {
     expect(headingId('???')).toBe('section');
     expect(renderArticle('').segments).toEqual([]);
   });
+
+  it('leaves out an opening heading that repeats the title, here and in the table of contents', () => {
+    const body = ['## SwiftVM：在 Mac 菜单栏里试机', '', 'Intro', '', '## Setup', 'Steps'].join('\n');
+    const html = (rendered: ReturnType<typeof renderArticle>) =>
+      rendered.segments.map(segment => (segment.type === 'html' ? segment.html : '')).join('');
+    const titled = renderArticle(body, { title: 'SwiftVM:在 Mac 菜单栏里试机 ' });
+    expect(html(titled)).not.toContain('菜单栏里试机');
+    expect(titled.toc).toEqual([{ id: 'setup', text: 'Setup' }]);
+    // Other openings, and callers that give no title, keep the heading.
+    expect(renderArticle(body, { title: 'Something else' }).toc).toHaveLength(2);
+    expect(renderArticle(body).toc).toHaveLength(2);
+    expect(html(renderArticle(`Intro\n\n${body}`, { title: 'SwiftVM：在 Mac 菜单栏里试机' }))).toContain(
+      '菜单栏里试机'
+    );
+  });
+
+  it('closes bold next to CJK punctuation and keeps CommonMark rules elsewhere', () => {
+    const html = (source: string) => {
+      const [segment] = renderArticle(source).segments;
+      return segment?.type === 'html' ? segment.html : '';
+    };
+    expect(html('门槛：**要求 macOS 27 或更新版本。**Intel Mac 不受支持')).toContain(
+      '门槛：<strong>要求 macOS 27 或更新版本。</strong>Intel Mac'
+    );
+    expect(html('他说**“先备份”**再升级')).toContain('他说<strong>“先备份”</strong>再升级');
+    expect(html('（**注意**）不要删除')).toContain('（<strong>注意</strong>）');
+    expect(html('foo**bar**baz')).toContain('foo<strong>bar</strong>baz');
+    // CommonMark: a closer after punctuation needs whitespace or punctuation after it in Latin text.
+    expect(html('**foo,**bar')).toContain('**foo,**bar');
+    expect(html('a ** b ** c')).toContain('a ** b ** c');
+  });
 });

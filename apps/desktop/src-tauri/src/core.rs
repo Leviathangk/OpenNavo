@@ -802,9 +802,69 @@ impl DesktopCore {
         (self.sink)(CoreEvent::Env(self.detect_environment().await?));
         Ok(())
     }
+    /// A successful task settles its target in the update list at once: an upgrade, reinstall or uninstall
+    /// drops it, a pin or unpin flips its pinned flag. The cached brew outdated output changes with it, so
+    /// rebuilds agree, and no window (nor the menu bar count) keeps the old state while the post-task library
+    /// scan and brew outdated check below (seconds) rebuild the list.
+    async fn settle_updates(self: &Arc<Self>, task: &Task) -> Result<(), AppError> {
+        let pinned = match task.op {
+            TaskOp::Upgrade | TaskOp::Reinstall | TaskOp::Uninstall => None,
+            TaskOp::Pin => Some(true),
+            TaskOp::Unpin => Some(false),
+            _ => return Ok(()),
+        };
+        if task.state != TaskState::Succeeded {
+            return Ok(());
+        }
+        let Some(target) = task.target.clone() else {
+            return Ok(());
+        };
+        let Ok(kind) = target.kind.brew_kind() else {
+            return Ok(());
+        };
+        let core = self.clone();
+        crate::blocking(move || {
+            let matches = |item: &OutdatedItem| item.kind == kind && item.token == target.token;
+            let mut source = core.outdated_source.write().map_err(poisoned)?;
+            let entries = match kind {
+                Kind::Cask => &mut source.casks,
+                Kind::Formula => &mut source.formulae,
+            };
+            let Some(index) = entries.iter().position(|entry| entry.name == target.token) else {
+                return Ok(());
+            };
+            match pinned {
+                None => {
+                    entries.remove(index);
+                }
+                Some(pinned) => entries[index].pinned = pinned,
+            }
+            core.database
+                .set_meta("outdated_source", &serde_json::to_string(&*source)?)?;
+            drop(source);
+            let mut updates = core.updates.write().map_err(poisoned)?;
+            match pinned {
+                None => updates.retain(|item| !matches(item)),
+                Some(pinned) => updates
+                    .iter_mut()
+                    .filter(|item| matches(item))
+                    .for_each(|item| item.pinned = pinned),
+            }
+            core.database
+                .set_meta("updates_cache", &serde_json::to_string(&*updates)?)?;
+            let count = updates.len() as u32;
+            drop(updates);
+            (core.sink)(CoreEvent::Updates(UpdatesChanged { count }));
+            Ok(())
+        })
+        .await
+    }
     pub async fn after_task(self: &Arc<Self>, task: &Task) {
         if self.queue.is_stopping() {
             return;
+        }
+        if let Err(error) = self.settle_updates(task).await {
+            log::info!("Could not settle updates after the task: {}", error.code);
         }
         if let Err(error) = self.infer_app_management(task).await {
             log::warn!(
@@ -848,12 +908,8 @@ impl DesktopCore {
         if let Err(error) = self.refresh_library(LibraryChangeReason::Task, None).await {
             log::info!("Post-task scan temporarily unavailable: {}", error.code);
         }
-        if let Err(error) = self.check_updates(false).await {
-            log::info!(
-                "Post-task update check temporarily unavailable: {}",
-                error.code
-            );
-        }
+        // The app list reads the inventory just written, not the update check; refresh it first so Installed
+        // shows the change without waiting for brew outdated.
         if task.options.plan_id.is_some()
             || (task
                 .target
@@ -866,6 +922,12 @@ impl DesktopCore {
         {
             let engine = self.queue.uninstall_engine.clone();
             let _ = crate::blocking(move || engine.refresh(LocalAppsChangedReason::Task)).await;
+        }
+        if let Err(error) = self.check_updates(false).await {
+            log::info!(
+                "Post-task update check temporarily unavailable: {}",
+                error.code
+            );
         }
         if let Ok(permissions) = self.permissions().await {
             let _ = self

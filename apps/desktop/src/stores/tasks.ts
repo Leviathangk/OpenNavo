@@ -5,6 +5,7 @@ import { commands, packageKey, unwrap } from '@/ipc/client';
 import { useInstallConfirmStore } from './installConfirm';
 import { useTapConfirmStore } from './tapConfirm';
 import { useLibraryStore } from './library';
+import { useLocalAppsStore } from './localApps';
 import { useUpdatesStore } from './updates';
 import { useRunningAppsStore } from './runningApps';
 
@@ -50,6 +51,10 @@ export const useTasksStore = defineStore('tasks', () => {
     }
     if (index >= 0) active.value.splice(index, 1);
     finished.value = [task, ...finished.value.filter(item => item.id !== task.id)].slice(0, FINISHED_LIMIT);
+    // In the same update as the finished task, so no frame shows its target's state from before it ran.
+    useUpdatesStore().settle(task);
+    useLibraryStore().settle(task);
+    useLocalAppsStore().settle(task);
     pruneLogs();
   }
 

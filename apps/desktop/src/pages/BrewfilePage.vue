@@ -40,7 +40,9 @@ const { data, loading, error } = useCatalogLoader(
     return rows;
   },
   [() => brewfile.items.map(item => item.token).join(','), appLocale],
-  rows => [...rows.values()].filter(item => item !== null)
+  rows => [...rows.values()].filter(item => item !== null),
+  // Adding, removing and reordering keep the names and icons of listed apps until the reread lands.
+  []
 );
 function nameOf(token: string) {
   const item = data.value?.get(token);

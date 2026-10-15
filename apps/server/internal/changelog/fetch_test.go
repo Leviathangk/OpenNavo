@@ -39,6 +39,46 @@ func TestHomebrewCommitHistoryAndBottleExclusion(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, result.NotModified)
 }
+func TestHomebrewCommitTitlesWithAnnotationsAndNewCaskFiles(t *testing.T) {
+	created, missing := strings.Repeat("1", 40), strings.Repeat("2", 40)
+	commits := `[{"sha":"a","commit":{"message":"app 2.3 (new cask) (#456)","committer":{"date":"2026-09-30T01:00:00Z"}}},` +
+		`{"sha":"b","commit":{"message":"app 2.2 (arm only)","committer":{"date":"2026-09-20T01:00:00Z"}}},` +
+		`{"sha":"c","commit":{"message":"app 2.1 (#123)","committer":{"date":"2026-09-10T01:00:00Z"}}},` +
+		`{"sha":"d","commit":{"message":"app: add livecheck (#7)","committer":{"date":"2026-09-05T01:00:00Z"}}},` +
+		`{"sha":"e","commit":{"message":"app latest (new cask)","committer":{"date":"2026-09-04T01:00:00Z"}}},` +
+		`{"sha":"` + missing + `","commit":{"message":"Add App (new cask)","committer":{"date":"2026-09-02T01:00:00Z"}}},` +
+		`{"sha":"` + created + `","commit":{"message":"feat(app): add cask (new cask)","committer":{"date":"2026-09-01T01:00:00Z"}}}]`
+	rawStatus := http.StatusOK
+	f := NewFetcher("test")
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Host {
+		case "api.github.com":
+			return reply(200, commits), nil
+		case "raw.githubusercontent.com":
+			if r.URL.Path == "/Homebrew/homebrew-cask/"+created+"/Casks/a/app.rb" {
+				return reply(rawStatus, "cask \"app\" do\n  version \"0.9-beta.1\"\nend\n"), nil
+			}
+			return reply(404, ""), nil
+		}
+		t.Fatalf("unexpected request %s", r.URL)
+		return nil, nil
+	})
+	source := FetchSource{Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/a/app.rb"}}
+	result, err := f.Fetch(context.Background(), Candidate{Token: "app"}, source)
+	require.NoError(t, err)
+	versions := []string{}
+	for _, version := range result.Versions {
+		versions = append(versions, version.Version)
+	}
+	require.Equal(t, []string{"2.3", "2.2", "2.1", "0.9-beta.1"}, versions)
+	require.Equal(t, created, result.Versions[3].SHA)
+	require.Equal(t, time.Date(2026, 9, 1, 1, 0, 0, 0, time.UTC), result.Versions[3].CommittedAt)
+
+	// A failed file read fails the fetch, so the bounded history is read again on retry.
+	rawStatus = http.StatusBadGateway
+	_, err = f.Fetch(context.Background(), Candidate{Token: "app"}, source)
+	require.Error(t, err)
+}
 func TestFetchErrorsAndMarkdownSanitizing(t *testing.T) {
 	f := NewFetcher("test")
 	for _, source := range []FetchSource{{Type: "invalid"}, {Type: "github_releases", Config: map[string]any{"repo": "../bad"}}, {Type: "homebrew_commits", Config: map[string]any{"repo": "bad"}}, {Type: "sparkle", Config: map[string]any{"url": "http://127.0.0.1/private"}}, {Type: "webpage"}} {

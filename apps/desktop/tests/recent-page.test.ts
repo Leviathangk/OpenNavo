@@ -160,3 +160,48 @@ it('Uses Recently Updated as the parent and keeps it when switching detail tabs'
   expect(router.currentRoute.value.query.returnTo).toBe(returnTo);
   expect(crumbs.props('items')[0].href).toBe(returnTo);
 });
+
+it('Paging keeps the cards and pagination until the next page lands; a failed page falls back to the local catalog', async () => {
+  let held: Promise<void> | undefined;
+  const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+    const url = requestUrl(input);
+    if (!url.pathname.endsWith('/packages')) return new Response(null, { status: 404 });
+    const current = Number(url.searchParams.get('current'));
+    if (current === 3) throw new TypeError('Failed to fetch');
+    if (current === 2) await held;
+    const records = [app(`page-${current}`, '1.0')];
+    return new Response(JSON.stringify({ code: '0000', msg: '', data: { current, size: 12, total: 36, records } }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const list = vi.spyOn(commands, 'catalogList');
+  // A page size of its own keeps this case clear of pages other cases cached.
+  const { pinia, router } = await setup('/recent?size=12');
+  await startLocalState();
+  const wrapper = mount(RecentPage, { global: { plugins: [pinia, router, i18n] } });
+  wrappers.push(wrapper);
+  await flushPromises();
+  const page = (label: string) =>
+    wrapper
+      .findAll('nav button')
+      .find(button => button.text() === label)!
+      .trigger('click');
+  expect(cardLinks(wrapper)).toEqual(['/package/cask/page-1']);
+
+  let release: () => void = () => {};
+  held = new Promise(resolve => (release = resolve));
+  await page('2');
+  await flushPromises();
+  expect(cardLinks(wrapper)).toEqual(['/package/cask/page-1']);
+  expect(wrapper.findAll('nav button').some(button => button.text() === '3')).toBe(true);
+  release();
+  await flushPromises();
+  expect(cardLinks(wrapper)).toEqual(['/package/cask/page-2']);
+
+  await page('3');
+  await flushPromises();
+  expect(list).toHaveBeenCalledWith(expect.objectContaining({ sort: 'updated', limit: 12, offset: 24 }));
+  expect(cardLinks(wrapper)).not.toContain('/package/cask/page-2');
+  expect(wrapper.text()).toContain(OFFLINE);
+});

@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/opennavo/opennavo/server/internal/homebrew"
 )
 
 type FetchSource struct {
@@ -106,14 +108,19 @@ func (f *Fetcher) commits(ctx context.Context, p Candidate, s FetchSource) (Fetc
 		return out, err
 	}
 	out = result
-	pattern := regexp.MustCompile(`^` + regexp.QuoteMeta(p.Token) + `(?: |: update to )(\S+)$`)
+	// "token 1.2.3" or "token: update to 1.2.3", optionally annotated: (new cask), (arm only), (#123).
+	pattern := regexp.MustCompile(`^` + regexp.QuoteMeta(p.Token) + `(?: |: update to )(\S+)(?: \([^()]*\))*$`)
 	for _, e := range entries {
 		title := strings.SplitN(e.Commit.Message, "\n", 2)[0]
-		m := pattern.FindStringSubmatch(title)
-		if m == nil {
-			continue
+		version := ""
+		if m := pattern.FindStringSubmatch(title); m != nil {
+			version = m[1]
+		} else if repo == "Homebrew/homebrew-cask" && strings.Contains(strings.ToLower(title), "(new cask)") {
+			// A new cask titled outside the convention still adds a version: read it from the file.
+			if version, err = f.caskVersionAt(ctx, repo, e.SHA, path); err != nil {
+				return out, err
+			}
 		}
-		version := m[1]
 		if TagVersion(version, p.Token) == "" {
 			continue
 		}
@@ -124,6 +131,26 @@ func (f *Fetcher) commits(ctx context.Context, p Candidate, s FetchSource) (Fetc
 		out.Versions = append(out.Versions, BrewVersion{Version: version, SHA: e.SHA, CommittedAt: date})
 	}
 	return out, nil
+}
+
+var commitSHA = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// caskVersionAt reads the version a cask file declared at one commit; a file missing there declares none.
+func (f *Fetcher) caskVersionAt(ctx context.Context, repo, sha, path string) (string, error) {
+	if !commitSHA.MatchString(sha) {
+		return "", nil
+	}
+	body, status, headers, err := f.HTTP.readRequest(ctx, "https://raw.githubusercontent.com/"+repo+"/"+sha+"/"+path, 256<<10, nil)
+	if err != nil {
+		return "", err
+	}
+	if status == http.StatusNotFound {
+		return "", nil
+	}
+	if err := checkStatus(status, headers); err != nil {
+		return "", err
+	}
+	return homebrew.CaskSourceVersion(string(body)), nil
 }
 
 // Read at most 100 commits per initial page; on 5xx, reduce page size and restart at page one to avoid losing history.

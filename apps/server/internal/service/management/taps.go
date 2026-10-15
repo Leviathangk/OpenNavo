@@ -78,7 +78,11 @@ func (s *Service) addTapPackage(ctx context.Context, op string, in Input) (any, 
 		if err != nil {
 			return nil, err
 		}
-		if err := st.RegisterTapCask(ctx, id, candidate.Tap, candidate.SourcePath, candidate.ETag, candidate.HeadSHA, now); err != nil {
+		if err := st.RegisterTapCask(ctx, id, candidate.Tap, candidate.SourcePath, candidate.ETag, candidate.HeadSHA, candidate.HistorySHA, now); err != nil {
+			return nil, err
+		}
+		// Versions from the file's history accept release notes as soon as the cask is added.
+		if _, err := st.RecordTapVersions(ctx, id, candidate.History, now); err != nil {
 			return nil, err
 		}
 		cask, err := st.TapCask(ctx, id)
@@ -99,6 +103,14 @@ func tapPreview(ctx context.Context, candidate *taps.Candidate, owner *store.Cas
 		"desc": item.Desc, "homepage": item.Homepage, "downloadUrl": item.DownloadURL, "autoUpdates": item.AutoUpdates,
 		"apps": artifacts.Apps, "binaries": artifacts.Binaries, "pkgs": artifacts.Pkgs, "supportsArm64": item.SupportsArm64,
 		"supportsX86_64": item.SupportsX8664, "minMacos": item.MinMacos, "sourcePath": candidate.SourcePath, "headSha": candidate.HeadSHA,
+	}
+	// The versions the file's history declares, newest first; package_versions lists them after the add.
+	if candidate.HistorySHA != "" {
+		versions := make([]string, 0, len(candidate.History))
+		for i := len(candidate.History) - 1; i >= 0; i-- {
+			versions = append(versions, candidate.History[i].Version)
+		}
+		after["versions"] = versions
 	}
 	action, key := "create", item.FullToken
 	var before any

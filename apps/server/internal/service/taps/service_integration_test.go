@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -24,24 +25,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeGitHub serves one tap repository: the newest commit of each cask path and file contents per commit.
+// fakeGitHub serves one tap repository: the commits of each cask path and file contents per commit.
 type fakeGitHub struct {
 	mu      sync.Mutex
-	head    map[string]string // path -> commit sha ("" = no history)
+	history map[string][]string // path -> commit shas, newest first
 	dates   map[string]time.Time
 	files   map[string]string // sha + "/" + path -> contents
+	broken  map[string]bool   // shas whose file reads fail
 	calls   []string
 	limited bool
 }
 
 func newFakeGitHub() *fakeGitHub {
-	return &fakeGitHub{head: map[string]string{}, dates: map[string]time.Time{}, files: map[string]string{}}
+	return &fakeGitHub{history: map[string][]string{}, dates: map[string]time.Time{}, files: map[string]string{}, broken: map[string]bool{}}
 }
 
+// commit adds a commit touching path; empty contents delete the file and an empty sha drops the path's history.
 func (f *fakeGitHub) commit(path, sha, contents string, date time.Time) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.head[path], f.dates[sha] = sha, date
+	if sha == "" {
+		f.history[path] = nil
+		return
+	}
+	f.history[path], f.dates[sha] = append([]string{sha}, f.history[path]...), date
 	if contents != "" {
 		f.files[sha+"/"+path] = contents
 	}
@@ -63,19 +70,28 @@ func (f *fakeGitHub) Get(_ context.Context, target string, _ int64, headers http
 		if parsed.Path != "/repos/swiftvm-app/homebrew-tap/commits" {
 			return nil, http.StatusNotFound, http.Header{}, nil
 		}
-		path := parsed.Query().Get("path")
-		sha := f.head[path]
-		etag := `"` + sha + `"`
-		if sha != "" && headers.Get("If-None-Match") == etag {
-			return nil, http.StatusNotModified, http.Header{"Etag": {etag}}, nil
-		}
-		if sha == "" {
+		shas := f.history[parsed.Query().Get("path")]
+		if len(shas) == 0 {
 			return []byte(`[]`), http.StatusOK, http.Header{"Etag": {`"empty"`}}, nil
 		}
-		body, _ := json.Marshal([]any{map[string]any{"sha": sha, "commit": map[string]any{"committer": map[string]any{"date": f.dates[sha]}}}})
+		etag := `"` + shas[0] + `"`
+		if headers.Get("If-None-Match") == etag {
+			return nil, http.StatusNotModified, http.Header{"Etag": {etag}}, nil
+		}
+		if limit, err := strconv.Atoi(parsed.Query().Get("per_page")); err == nil && limit < len(shas) {
+			shas = shas[:limit]
+		}
+		entries := []any{}
+		for _, sha := range shas {
+			entries = append(entries, map[string]any{"sha": sha, "commit": map[string]any{"committer": map[string]any{"date": f.dates[sha]}}})
+		}
+		body, _ := json.Marshal(entries)
 		return body, http.StatusOK, http.Header{"Etag": {etag}}, nil
 	case "raw.githubusercontent.com":
 		key := strings.TrimPrefix(parsed.Path, "/swiftvm-app/homebrew-tap/")
+		if f.broken[strings.SplitN(key, "/", 2)[0]] {
+			return nil, http.StatusBadGateway, http.Header{}, nil
+		}
 		if contents, ok := f.files[key]; ok {
 			return []byte(contents), http.StatusOK, http.Header{}, nil
 		}
@@ -287,6 +303,9 @@ func TestTapCaskLifecycle(t *testing.T) {
 	cask, err = st.TapCask(ctx, id)
 	require.NoError(t, err)
 	require.Empty(t, cask.LastError)
+	// The tap shipped 1.4.0 in a revision the reader rejected; its history still records the version.
+	require.NoError(t, st.DB.Raw("SELECT brew_committed_at FROM package_versions WHERE package_id=? AND version='1.4.0'", id).Scan(&committed).Error)
+	require.WithinDuration(t, updated.Add(time.Hour), committed, 0)
 
 	// package_refresh reads one tap cask through the tap sync.
 	_, err = admin.Execute(ctx, "ResyncPackage", management.Input{ID: id})
@@ -317,6 +336,115 @@ func TestTapCaskLifecycle(t *testing.T) {
 }
 
 func jsonNumber(value int64) string { return string(must(json.Marshal(value))) }
+
+func TestTapCaskVersionHistory(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	github := newFakeGitHub()
+	day := time.Date(2026, 10, 11, 8, 0, 0, 0, time.UTC)
+	path := "Casks/swiftvm.rb"
+	github.commit(path, sha(0), swiftvm("1.0.0", ""), day)
+	github.commit(path, sha(1), swiftvm("1.1.0", ""), day.Add(24*time.Hour))
+	github.commit(path, sha(2), swiftvm("1.1.0", "  auto_updates true\n"), day.Add(30*time.Hour))
+	github.commit(path, sha(3), swiftvm("1.2.0", `  arch arm: "arm64", intel: "x64"`), day.Add(36*time.Hour))
+	github.commit(path, sha(4), swiftvm("1.3.0", ""), day.Add(48*time.Hour))
+	tapService := &taps.Service{Store: st, GitHub: github}
+	admin := &management.Service{Store: st, Taps: tapService, Queue: &queue{}}
+	dates := func(id int64) map[string]time.Time {
+		t.Helper()
+		var rows []struct {
+			Version         string
+			BrewCommittedAt time.Time
+		}
+		require.NoError(t, st.DB.Raw("SELECT version,brew_committed_at FROM package_versions WHERE package_id=?", id).Scan(&rows).Error)
+		out := map[string]time.Time{}
+		for _, row := range rows {
+			out[row.Version] = row.BrewCommittedAt.UTC()
+		}
+		return out
+	}
+
+	// The preview lists the versions the file's history declares, newest first.
+	preview, err := admin.Execute(ctx, "AddTapPackage", management.Input{Params: map[string]any{"dryrun": true}, Body: map[string]any{"cask": "swiftvm-app/tap/swiftvm"}})
+	require.NoError(t, err)
+	require.Contains(t, string(must(json.Marshal(preview))), `"versions":["1.3.0","1.2.0","1.1.0","1.0.0"]`)
+
+	// Adding records each version with the oldest commit declaring it, including the revision the
+	// reader rejects, so notes can be written for older versions right away.
+	added, err := admin.Execute(ctx, "AddTapPackage", management.Input{Body: map[string]any{"cask": "swiftvm-app/tap/swiftvm"}})
+	require.NoError(t, err)
+	id := added.(map[string]any)["id"].(int64)
+	require.Equal(t, map[string]time.Time{"1.0.0": day, "1.1.0": day.Add(24 * time.Hour), "1.2.0": day.Add(36 * time.Hour), "1.3.0": day.Add(48 * time.Hour)}, dates(id))
+	cask, err := st.TapCask(ctx, id)
+	require.NoError(t, err)
+	require.Equal(t, sha(4), cask.HistorySHA)
+	var invalidations int64
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM job_outbox WHERE unique_key=?", "cache:invalidate:changelog:"+jsonNumber(id)).Scan(&invalidations).Error)
+	require.Equal(t, int64(1), invalidations, "the release timeline cache drops the new versions")
+	_, err = admin.Execute(ctx, "UpsertReleaseNotes", management.Input{ID: id, Version: "1.1.0", Body: map[string]any{"sourceLocale": "en-US", "summary": "Adds shared folders."}})
+	require.NoError(t, err)
+
+	// Versions committed between two syncs are both recorded.
+	github.commit(path, sha(5), swiftvm("1.4.0", ""), day.Add(72*time.Hour))
+	github.commit(path, sha(6), swiftvm("1.5.0", ""), day.Add(73*time.Hour))
+	stats, err := tapService.Run(ctx, 0)
+	require.NoError(t, err)
+	require.Equal(t, 1, stats["updated"])
+	require.Equal(t, 1, stats["versions"], "1.5.0 is written with the catalog row; 1.4.0 comes from the history")
+	require.Equal(t, day.Add(72*time.Hour), dates(id)["1.4.0"])
+	require.Equal(t, day.Add(73*time.Hour), dates(id)["1.5.0"])
+
+	// Casks added before history was read (or whose read failed) are read on the next sync.
+	require.NoError(t, st.DB.Exec("UPDATE tap_casks SET history_sha=NULL WHERE package_id=?", id).Error)
+	require.NoError(t, st.DB.Exec("DELETE FROM package_versions WHERE package_id=? AND version IN ('1.0.0','1.2.0')", id).Error)
+	stats, err = tapService.Run(ctx, 0)
+	require.NoError(t, err)
+	require.Equal(t, 1, stats["unchanged"])
+	require.Equal(t, 2, stats["versions"])
+	require.Len(t, dates(id), 6)
+	stats, err = tapService.Run(ctx, 0)
+	require.NoError(t, err)
+	require.Equal(t, 0, stats["versions"], "a history read once is not read again")
+	require.Equal(t, 1, stats["unchanged"])
+}
+
+func TestTapCaskHistoryReadFailureIsRetried(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	github := newFakeGitHub()
+	day := time.Date(2026, 10, 11, 8, 0, 0, 0, time.UTC)
+	github.commit("Casks/swiftvm.rb", sha(0), swiftvm("1.0.0", ""), day)
+	github.commit("Casks/swiftvm.rb", sha(1), swiftvm("1.1.0", ""), day.Add(time.Hour))
+	github.broken[sha(0)] = true
+	tapService := &taps.Service{Store: st, GitHub: github}
+	admin := &management.Service{Store: st, Taps: tapService, Queue: &queue{}}
+
+	// A failed history read does not block the add; the current version is recorded as before.
+	added, err := admin.Execute(ctx, "AddTapPackage", management.Input{Body: map[string]any{"cask": "swiftvm-app/tap/swiftvm"}})
+	require.NoError(t, err)
+	id := added.(map[string]any)["id"].(int64)
+	var versions []string
+	require.NoError(t, st.DB.Raw("SELECT version FROM package_versions WHERE package_id=? ORDER BY version", id).Scan(&versions).Error)
+	require.Equal(t, []string{"1.1.0"}, versions)
+	cask, err := st.TapCask(ctx, id)
+	require.NoError(t, err)
+	require.Empty(t, cask.HistorySHA)
+
+	// The sync keeps the cask healthy while the read fails and records the history once it works.
+	stats, err := tapService.Run(ctx, 0)
+	require.NoError(t, err)
+	require.Equal(t, 1, stats["unchanged"])
+	cask, err = st.TapCask(ctx, id)
+	require.NoError(t, err)
+	require.Empty(t, cask.LastError)
+	require.Empty(t, cask.HistorySHA)
+	github.broken[sha(0)] = false
+	stats, err = tapService.Run(ctx, 0)
+	require.NoError(t, err)
+	require.Equal(t, 1, stats["versions"])
+	require.NoError(t, st.DB.Raw("SELECT version FROM package_versions WHERE package_id=? ORDER BY version", id).Scan(&versions).Error)
+	require.Equal(t, []string{"1.0.0", "1.1.0"}, versions)
+}
 
 func TestOfficialCaskTakesOverTapToken(t *testing.T) {
 	ctx := context.Background()

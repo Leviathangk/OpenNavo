@@ -40,17 +40,25 @@ const { data, error } = useCatalogLoader(
         offset: 0
       })
     );
-    return result;
+    return { q, result };
   },
   [query, appLocale],
-  result => result?.items.map(hit => hit.item) ?? []
+  value => value?.result.items.map(hit => hit.item) ?? [],
+  // Each keystroke starts a new search; keep the last results on screen until it lands so the page never empties and refills.
+  []
 );
 
+// The results on screen belong to shown.q, which trails the field by one search while typing. A failed search
+// keeps results for the current query on screen, never those of an earlier one.
+const shown = computed(() => {
+  const q = query.value.trim();
+  return q && data.value && (!error.value || data.value.q === q) ? data.value : null;
+});
 const results = computed<OnSearchResult[] | null>(() =>
   !query.value.trim()
     ? []
-    : data.value
-      ? data.value.items.map(hit => ({
+    : shown.value
+      ? shown.value.result.items.map(hit => ({
           key: `${hit.item.kind}/${hit.item.token}`,
           kind: hit.item.kind,
           token: hit.item.token,
@@ -66,16 +74,17 @@ const results = computed<OnSearchResult[] | null>(() =>
         ? []
         : null
 );
-const disabledOf = (token: string) => data.value?.items.find(hit => hit.item.token === token)?.item.disabled;
+// The count line keeps its height without a count (no query, first search pending), so the field never moves.
+const subtitle = computed(() =>
+  shown.value
+    ? t('search.results', { q: shown.value.q, count: shown.value.result.total }, { plural: shown.value.result.total })
+    : '\u00a0'
+);
+const disabledOf = (token: string) => shown.value?.result.items.find(hit => hit.item.token === token)?.item.disabled;
 </script>
 
 <template>
-  <OnSearchResultsView
-    :title="t('search.title')"
-    :subtitle="data ? t('search.results', { q: query.trim(), count: data.total }, { plural: data.total }) : undefined"
-    :results="results"
-    :link-as="RouterLink"
-  >
+  <OnSearchResultsView :title="t('search.title')" :subtitle="subtitle" :results="results" :link-as="RouterLink">
     <template #search>
       <OnSearchField v-model="query" :placeholder="t('search.prompt')" clearable />
     </template>
@@ -83,13 +92,14 @@ const disabledOf = (token: string) => data.value?.items.find(hit => hit.item.tok
       <PackageGetButton :kind="result.kind" :token="result.token" :disabled="disabledOf(result.token)" />
     </template>
     <template #empty>
+      <!-- The prompt also covers the first search in flight, so the area never blanks before results arrive. -->
+      <OnEmpty v-if="!shown" :title="t('search.prompt')" icon="lucide:search" />
       <OnEmpty
-        v-if="data"
-        :title="t('search.empty', { q: query.trim() })"
+        v-else
+        :title="t('search.empty', { q: shown.q })"
         :description="t('search.emptyHint')"
         icon="lucide:search"
       />
-      <OnEmpty v-else-if="!query.trim()" :title="t('search.prompt')" icon="lucide:search" />
     </template>
   </OnSearchResultsView>
 </template>

@@ -398,7 +398,12 @@ const articlePath = computed(() => `/articles/${detail.value?.slug ?? ''}`);
                     class="font-mono"
                     :input-props="{ 'aria-label': text('body') }"
                   />
-                  <ArticlePreview v-if="view !== 'edit'" :source="form.bodyMarkdown" :images="images" />
+                  <ArticlePreview
+                    v-if="view !== 'edit'"
+                    :source="form.bodyMarkdown"
+                    :images="images"
+                    :title="form.title"
+                  />
                 </div>
               </div>
             </NFormItem>

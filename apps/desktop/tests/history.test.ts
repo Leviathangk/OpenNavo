@@ -98,6 +98,46 @@ it('Updates history loads 20 initially and stops at the latest 50', async () => 
   wrapper.unmount();
 });
 
+it('A finished task rereads history in the background without collapsing loaded rows', async () => {
+  const context = await setup('/updates');
+  const sample = context.state.history[0]!;
+  context.state.history = Array.from({ length: 110 }, (_, i) => ({
+    ...sample,
+    op: 'upgrade',
+    id: `reread-${i}`
+  }));
+  const list = commands.historyList;
+  let holding = false;
+  let release: () => void = () => {};
+  const held = new Promise<void>(resolve => (release = resolve));
+  const spy = vi.spyOn(commands, 'historyList').mockImplementation(async query => {
+    if (holding && query.offset === 0) await held;
+    return list(query);
+  });
+  const wrapper = mount(UpdatesPage, {
+    global: { plugins: [context.pinia, context.router, i18n] }
+  });
+  await flushPromises();
+  for (let i = 0; i < 2; i++) {
+    intersect([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    await flushPromises();
+  }
+  expect(wrapper.findComponent(HistoryList).props('tasks')).toHaveLength(50);
+
+  holding = true;
+  useTasksStore().applyUpdate({ ...sample, id: 'just-finished', state: 'succeeded', finishedAt: Date.now() });
+  await flushPromises();
+  // The reread is in flight: the rows stay and no loading line replaces them.
+  expect(wrapper.findComponent(HistoryList).props('tasks')).toHaveLength(50);
+  expect(wrapper.text()).not.toContain(i18n.global.t('common.loading'));
+
+  release();
+  await flushPromises();
+  expect(spy.mock.calls.at(-1)![0]).toMatchObject({ offset: 0, limit: 50 });
+  expect(wrapper.findComponent(HistoryList).props('tasks')).toHaveLength(50);
+  wrapper.unmount();
+});
+
 it('Monthly history traverses all pages without 200/500-entry truncation', async () => {
   const { loadHistory } = await import('@/utils/history');
   const context = await setup('/updates');

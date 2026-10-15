@@ -21,6 +21,7 @@ const titleSize = computed(() => {
   const length = Array.from(props.title).reduce((sum, char) => sum + (char.codePointAt(0)! > 0x024f ? 2 : 1), 0);
   return length > 36 ? 56 : length > 22 ? 66 : 80;
 });
+// Two icons a row; rows center in the column, so a lone icon (or the last of three) sits in its middle.
 const iconRows = computed(() => {
   const icons = props.icons?.slice(0, 4) ?? [];
   return [icons.slice(0, 2), icons.slice(2, 4)].filter(row => row.length);
@@ -50,7 +51,14 @@ const iconRows = computed(() => {
     </div>
     <div
       v-if="iconRows.length"
-      :style="{ display: 'flex', flexDirection: 'column', gap: '20px', width: '300px', flexShrink: 0 }"
+      :style="{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '20px',
+        width: '300px',
+        flexShrink: 0
+      }"
     >
       <div v-for="(row, index) in iconRows" :key="index" :style="{ display: 'flex', gap: '20px' }">
         <OgAppIcon

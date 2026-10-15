@@ -41,6 +41,25 @@ describe('My List page', () => {
     await flushPromises();
     expect(enqueue).toHaveBeenCalledWith('install', [{ kind: 'cask', token: 'zed' }], 'bundle');
   });
+  it('keeps app names while a reorder rereads the list', async () => {
+    const { wrapper, list } = await page();
+    expect(wrapper.text()).toContain('VS Code 编辑器');
+    const get = commands.catalogGet;
+    let release: () => void = () => {};
+    const held = new Promise<void>(resolve => (release = resolve));
+    vi.spyOn(commands, 'catalogGet').mockImplementation(async (kind, token) => {
+      await held;
+      return get(kind, token);
+    });
+    list.move(2, 0);
+    await flushPromises();
+    // The reread is in flight: rows keep their names instead of falling back to tokens.
+    expect(wrapper.text()).toContain('VS Code 编辑器');
+    expect(wrapper.text()).toContain('Zed 代码编辑器');
+    release();
+    await flushPromises();
+    expect(wrapper.text()).toContain('VS Code 编辑器');
+  });
   it('exports the saved list, including unavailable and installed apps, in the selected order', async () => {
     const { wrapper, list } = await page();
     list.move(2, 0);

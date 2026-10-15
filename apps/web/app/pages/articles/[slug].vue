@@ -55,7 +55,7 @@ const { data: body } = await useAsyncData(
     const value = article.value;
     if (!value?.bodyMarkdown) return { segments: [], toc: [] };
     const { renderArticle } = await import('@opennavo/ui/markdown');
-    return renderArticle(value.bodyMarkdown, { images: value.images });
+    return renderArticle(value.bodyMarkdown, { images: value.images, title: value.title });
   }
 );
 
@@ -156,9 +156,10 @@ useSeoMeta({
   <div class="box-border pt-6px">
     <ArticleWithdrawn v-if="withdrawn" />
     <OnErrorState v-else-if="error && !article" @retry="refresh()" />
+    <!-- A reading column (and the table of contents beside it on wide screens), centered in the page. -->
     <div
       v-else-if="article"
-      class="flex flex-col gap-14px xl:grid xl:grid-cols-[minmax(0,720px)_240px] xl:items-start xl:gap-56px"
+      class="mx-auto flex w-full max-w-720px flex-col gap-14px xl:grid xl:max-w-[1016px] xl:grid-cols-[minmax(0,1fr)_240px] xl:items-start xl:gap-56px"
     >
       <article class="min-w-0" :lang="textLang" data-testid="article">
         <OnBreadcrumb :items="crumbs" :link-as="NuxtLink" />

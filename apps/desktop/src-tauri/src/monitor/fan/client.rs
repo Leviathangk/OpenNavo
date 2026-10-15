@@ -328,8 +328,9 @@ pub fn install(app: &tauri::AppHandle, chip: &str, fan_count: usize) {
         support,
         Arc::new(move |change| {
             use tauri_specta::Event;
+            // Before the windows hear of it, so no later sample shows the fans as they were.
             if let Some(sampler) = ui.try_state::<Arc<super::super::sampler::Sampler>>() {
-                sampler.fan_reason(change.reason);
+                sampler.fan_changed(&change);
             }
             let _ = crate::events::FanChanged(change).emit(&ui);
         }),

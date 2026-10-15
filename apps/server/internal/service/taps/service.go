@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/domain"
@@ -57,11 +59,15 @@ func (s *Service) rawBase() string {
 }
 
 // Candidate is a tap cask read from GitHub and normalized, ready to be written to the catalog.
+// History holds the versions its file's recent commits declared, read up to HistorySHA; an empty
+// HistorySHA means the read failed and the tap sync reads it later.
 type Candidate struct {
 	Tap, Token, SourcePath string
 	ETag, HeadSHA          string
 	CommittedAt            time.Time
 	Package                homebrew.Package
+	History                []store.TapVersion
+	HistorySHA             string
 }
 
 func invalid(format string, args ...any) error {
@@ -78,27 +84,34 @@ type commit struct {
 	Missing   bool // the path has no history on the default branch
 }
 
-// lastCommit returns the newest default-branch commit touching path. A 304 returns a zero commit.
-func (s *Service) lastCommit(ctx context.Context, tap, path, etag string) (commit, bool, error) {
-	target := s.apiBase() + "/repos/" + homebrew.TapRepository(tap) + "/commits?" + url.Values{"path": {path}, "per_page": {"1"}}.Encode()
+// historyLimit bounds a history read to one page of GitHub's commit list; historyReaders bounds the
+// file reads in flight.
+const (
+	historyLimit   = 100
+	historyReaders = 8
+)
+
+// commits lists the newest default-branch commits touching path, newest first. A 304 returns notModified.
+func (s *Service) commits(ctx context.Context, tap, path, etag string, limit int) ([]commit, string, bool, error) {
+	target := s.apiBase() + "/repos/" + homebrew.TapRepository(tap) + "/commits?" + url.Values{"path": {path}, "per_page": {strconv.Itoa(limit)}}.Encode()
 	headers := http.Header{}
 	if etag != "" {
 		headers.Set("If-None-Match", etag)
 	}
-	body, status, responseHeaders, err := s.GitHub.Get(ctx, target, 1<<20, headers)
+	body, status, responseHeaders, err := s.GitHub.Get(ctx, target, 8<<20, headers)
 	if err != nil {
-		return commit{}, false, upstream("GitHub request failed: %v", err)
+		return nil, "", false, upstream("GitHub request failed: %v", err)
 	}
 	switch status {
 	case http.StatusOK:
 	case http.StatusNotModified:
-		return commit{ETag: etag}, true, nil
+		return nil, etag, true, nil
 	case http.StatusNotFound:
-		return commit{}, false, invalid("GitHub repository %s was not found", homebrew.TapRepository(tap))
+		return nil, "", false, invalid("GitHub repository %s was not found", homebrew.TapRepository(tap))
 	case http.StatusForbidden, http.StatusTooManyRequests:
-		return commit{}, false, upstream("GitHub rate limit reached; try again later")
+		return nil, "", false, upstream("GitHub rate limit reached; try again later")
 	default:
-		return commit{}, false, upstream("GitHub returned HTTP %d", status)
+		return nil, "", false, upstream("GitHub returned HTTP %d", status)
 	}
 	var entries []struct {
 		SHA    string `json:"sha"`
@@ -109,18 +122,79 @@ func (s *Service) lastCommit(ctx context.Context, tap, path, etag string) (commi
 		} `json:"commit"`
 	}
 	if err := json.Unmarshal(body, &entries); err != nil {
-		return commit{}, false, upstream("GitHub returned an unexpected commit list")
+		return nil, "", false, upstream("GitHub returned an unexpected commit list")
 	}
-	out := commit{ETag: responseHeaders.Get("ETag")}
-	if len(entries) == 0 {
-		out.Missing = true
-		return out, false, nil
+	out := make([]commit, 0, len(entries))
+	for _, entry := range entries {
+		if len(entry.SHA) != 40 {
+			return nil, "", false, upstream("GitHub returned an unexpected commit list")
+		}
+		out = append(out, commit{SHA: entry.SHA, Date: entry.Commit.Committer.Date})
 	}
-	if len(entries[0].SHA) != 40 {
-		return commit{}, false, upstream("GitHub returned an unexpected commit list")
+	return out, responseHeaders.Get("ETag"), false, nil
+}
+
+// lastCommit returns the newest default-branch commit touching path. A 304 returns a zero commit.
+func (s *Service) lastCommit(ctx context.Context, tap, path, etag string) (commit, bool, error) {
+	list, etag, notModified, err := s.commits(ctx, tap, path, etag, 1)
+	if err != nil || notModified {
+		return commit{ETag: etag}, notModified, err
 	}
-	out.SHA, out.Date = entries[0].SHA, entries[0].Commit.Committer.Date
-	return out, false, nil
+	if len(list) == 0 {
+		return commit{ETag: etag, Missing: true}, false, nil
+	}
+	head := list[0]
+	head.ETag = etag
+	return head, false, nil
+}
+
+// history reads the versions the cask file at path declared in its newest commits, stopping before stop,
+// the newest commit read last time. known holds versions already read (the head's). Each version comes
+// with the oldest commit in this window that declared it, oldest first. Revisions the full reader would
+// reject still count, since only their version stanza is read.
+func (s *Service) history(ctx context.Context, tap, path, stop string, known map[string]string) ([]store.TapVersion, error) {
+	list, _, _, err := s.commits(ctx, tap, path, "", historyLimit)
+	if err != nil {
+		return nil, err
+	}
+	for i, entry := range list {
+		if entry.SHA == stop {
+			list = list[:i]
+			break
+		}
+	}
+	versions, failures := make([]string, len(list)), make([]error, len(list))
+	slots := make(chan struct{}, historyReaders)
+	var readers sync.WaitGroup
+	for i, entry := range list {
+		if version, ok := known[entry.SHA]; ok {
+			versions[i] = version
+			continue
+		}
+		readers.Go(func() {
+			slots <- struct{}{}
+			defer func() { <-slots }()
+			source, err := s.readFile(ctx, tap, entry.SHA, path)
+			if errors.Is(err, errDeleted) {
+				return // this commit removed the file
+			}
+			versions[i], failures[i] = homebrew.CaskSourceVersion(source), err
+		})
+	}
+	readers.Wait()
+	for _, err := range failures {
+		if err != nil {
+			return nil, err
+		}
+	}
+	out, seen := []store.TapVersion{}, map[string]bool{}
+	for i := len(list) - 1; i >= 0; i-- {
+		if version := versions[i]; version != "" && version != "latest" && !seen[version] {
+			seen[version] = true
+			out = append(out, store.TapVersion{Version: version, SHA: list[i].SHA, CommittedAt: list[i].Date})
+		}
+	}
+	return out, nil
 }
 
 var errDeleted = errors.New("the cask file was deleted from the tap")
@@ -158,7 +232,14 @@ func (s *Service) Read(ctx context.Context, fullToken string) (*Candidate, error
 		if errors.Is(err, errDeleted) {
 			continue
 		}
-		return candidate, err
+		if err != nil {
+			return nil, err
+		}
+		// Older versions let editors write notes for them right away. A failed read is not fatal.
+		if versions, err := s.history(ctx, tap, path, "", map[string]string{head.SHA: candidate.Package.Version}); err == nil {
+			candidate.History, candidate.HistorySHA = versions, head.SHA
+		}
+		return candidate, nil
 	}
 	return nil, invalid("%s has no cask file %s in %s", fullToken, strings.Join(homebrew.TapCaskPaths(token), " or "), homebrew.TapRepository(tap))
 }
@@ -225,7 +306,7 @@ func Write(ctx context.Context, st *store.Store, candidate *Candidate, now time.
 
 // Run reads every tracked tap cask again (or one package) and writes the ones whose file changed.
 func (s *Service) Run(ctx context.Context, packageID int64) (map[string]any, error) {
-	stats := map[string]any{"checked": 0, "updated": 0, "unchanged": 0, "failed": 0, "removed": 0}
+	stats := map[string]any{"checked": 0, "updated": 0, "unchanged": 0, "failed": 0, "removed": 0, "versions": 0}
 	count := func(key string) { stats[key] = stats[key].(int) + 1 }
 	err := s.Store.WithAdvisoryLock(ctx, "taps:sync", func(ctx context.Context) error {
 		casks, err := s.Store.TapCasks(ctx)
@@ -240,7 +321,8 @@ func (s *Service) Run(ctx context.Context, packageID int64) (map[string]any, err
 				return err
 			}
 			count("checked")
-			outcome, err := s.refresh(ctx, cask)
+			outcome, versions, err := s.refresh(ctx, cask)
+			stats["versions"] = stats["versions"].(int) + versions
 			if err != nil {
 				count("failed")
 				message := err.Error()
@@ -260,10 +342,10 @@ func (s *Service) Run(ctx context.Context, packageID int64) (map[string]any, err
 	return stats, err
 }
 
-func (s *Service) refresh(ctx context.Context, cask store.TapCask) (string, error) {
+func (s *Service) refresh(ctx context.Context, cask store.TapCask) (string, int, error) {
 	if cask.PackageTap != cask.Tap {
 		// Homebrew adopted the token in homebrew/cask; the official sync owns the package now.
-		return "", fmt.Errorf("the catalog now lists this token from %s; remove the tap cask", cask.PackageTap)
+		return "", 0, fmt.Errorf("the catalog now lists this token from %s; remove the tap cask", cask.PackageTap)
 	}
 	current := cask.NormalizationVersion == fmt.Sprint(homebrew.CaskNormalizationVersion)
 	etag := cask.ETag
@@ -272,7 +354,7 @@ func (s *Service) refresh(ctx context.Context, cask store.TapCask) (string, erro
 	}
 	head, notModified, err := s.lastCommit(ctx, cask.Tap, cask.SourcePath, etag)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	// Lifecycle dates can become active even when GitHub's content has not changed.
 	today := s.now().Format("2006-01-02")
@@ -285,28 +367,51 @@ func (s *Service) refresh(ctx context.Context, cask store.TapCask) (string, erro
 		return s.refreshMoved(ctx, cask, head)
 	}
 	if (notModified || head.SHA == cask.HeadSHA) && current && cask.RemovedAt == nil && !due {
-		return s.finishRefresh(ctx, cask, nil, head, false)
+		return s.finishRefresh(ctx, cask, nil, head, false, s.readHistory(ctx, cask, cask.SourcePath, head, nil))
 	}
 	candidate, err := s.evaluate(ctx, cask.Tap, cask.Token, cask.SourcePath, head)
 	if errors.Is(err, errDeleted) {
 		return s.refreshMoved(ctx, cask, head)
 	}
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return s.finishRefresh(ctx, cask, candidate, head, false)
+	return s.finishRefresh(ctx, cask, candidate, head, false, s.readHistory(ctx, cask, cask.SourcePath, head, candidate))
+}
+
+// tapHistory is one read of a cask file's history, up to the commit SHA.
+type tapHistory struct {
+	SHA      string
+	Versions []store.TapVersion
+}
+
+// readHistory reads the commits after the newest one read before, when head is newer. It returns nil
+// when there is nothing new or the read failed; history_sha then stays behind and the next sync retries.
+func (s *Service) readHistory(ctx context.Context, cask store.TapCask, path string, head commit, candidate *Candidate) *tapHistory {
+	if head.SHA == "" || head.SHA == cask.HistorySHA {
+		return nil
+	}
+	known := map[string]string{}
+	if candidate != nil {
+		known[head.SHA] = candidate.Package.Version
+	}
+	versions, err := s.history(ctx, cask.Tap, path, cask.HistorySHA, known)
+	if err != nil {
+		return nil
+	}
+	return &tapHistory{SHA: head.SHA, Versions: versions}
 }
 
 // A deleted path can be a move between Homebrew's supported layouts. Only remove the
 // package after all alternate paths have been checked; upstream/parse failures keep it intact.
-func (s *Service) refreshMoved(ctx context.Context, cask store.TapCask, oldHead commit) (string, error) {
+func (s *Service) refreshMoved(ctx context.Context, cask store.TapCask, oldHead commit) (string, int, error) {
 	for _, path := range homebrew.TapCaskPaths(cask.Token) {
 		if path == cask.SourcePath {
 			continue
 		}
 		head, _, err := s.lastCommit(ctx, cask.Tap, path, "")
 		if err != nil {
-			return "", err
+			return "", 0, err
 		}
 		if head.Missing {
 			continue
@@ -316,17 +421,17 @@ func (s *Service) refreshMoved(ctx context.Context, cask store.TapCask, oldHead 
 			continue
 		}
 		if err != nil {
-			return "", err
+			return "", 0, err
 		}
-		return s.finishRefresh(ctx, cask, candidate, head, false)
+		return s.finishRefresh(ctx, cask, candidate, head, false, s.readHistory(ctx, cask, path, head, candidate))
 	}
-	return s.finishRefresh(ctx, cask, nil, oldHead, true)
+	return s.finishRefresh(ctx, cask, nil, oldHead, true, nil)
 }
 
 // Network reads happen outside the transaction; every result must revalidate ownership under the
 // same catalog lock used by registration, removal, and the official sync.
-func (s *Service) finishRefresh(ctx context.Context, cask store.TapCask, candidate *Candidate, head commit, deleted bool) (string, error) {
-	outcome := "unchanged"
+func (s *Service) finishRefresh(ctx context.Context, cask store.TapCask, candidate *Candidate, head commit, deleted bool, history *tapHistory) (string, int, error) {
+	outcome, versions := "unchanged", 0
 	err := s.Store.WithTx(ctx, func(tx *gorm.DB) error {
 		if err := store.LockCatalogWrites(ctx, tx); err != nil {
 			return err
@@ -354,13 +459,21 @@ func (s *Service) finishRefresh(ctx context.Context, cask store.TapCask, candida
 			}
 			outcome = "updated"
 		}
+		if history != nil && !deleted {
+			if versions, err = st.RecordTapVersions(ctx, cask.PackageID, history.Versions, s.now()); err != nil {
+				return err
+			}
+			if err := st.RecordTapHistory(ctx, cask.PackageID, history.SHA); err != nil {
+				return err
+			}
+		}
 		path := cask.SourcePath
 		if candidate != nil {
 			path = candidate.SourcePath
 		}
 		return st.RecordTapCheck(ctx, cask.PackageID, path, head.ETag, head.SHA, message, s.now())
 	})
-	return outcome, err
+	return outcome, versions, err
 }
 
 // A package ID is reused after removal. Compare the registration generation as well as its source.

@@ -66,11 +66,13 @@ function releaseFetcher() {
     );
 }
 
-// Append older versions page by page; restart at page one when filters or locale change.
-const { data, error } = useLoader(
+// Append older versions page by page; restart at page one when filters or locale change. Switching filters or
+// the original text keeps the toolbar and timeline on screen until the new pages land.
+const { data: loaded, error } = useLoader(
   async () => {
-    const onlyWithNotes = filter.value === 'notes';
-    const mine = filter.value === 'mine';
+    const shown = { filter: filter.value, original: original.value };
+    const onlyWithNotes = shown.filter === 'notes';
+    const mine = shown.filter === 'mine';
     const pageCount = pages.value;
     const fetchReleases = releaseFetcher();
     const all: ReleasePage[] = [];
@@ -81,16 +83,24 @@ const { data, error } = useLoader(
       if (!page.records.length || current * page.size >= page.total) break;
     }
     const last = all.at(-1);
-    return last ? { ...last, records: all.flatMap(page => page.records) } : undefined;
+    return last ? { ...last, records: all.flatMap(page => page.records), ...shown } : undefined;
   },
   [kind, token, filter, original, pages, appLocale],
   undefined,
-  [kind, token, filter, original, appLocale]
+  [kind, token, appLocale]
 );
-const { data: other } = useLoader(
-  () => releaseFetcher()(1, filter.value !== 'notes', 1),
-  [kind, token, () => filter.value === 'notes', original, appLocale]
+// A failed switch never leaves the previous filter's timeline on screen.
+const data = computed(() =>
+  loaded.value && (!error.value || (loaded.value.filter === filter.value && loaded.value.original === original.value))
+    ? loaded.value
+    : undefined
 );
+// Label totals follow the app and language mode; switching filters never changes them.
+const { data: totals } = useLoader(async () => {
+  const fetchReleases = releaseFetcher();
+  const [all, notes] = await Promise.all([fetchReleases(1, false, 1), fetchReleases(1, true, 1)]);
+  return { all: all.total, notes: notes.total };
+}, [kind, token, appLocale, original]);
 
 // Local records: latest successful install/update per version.
 const { data: local } = useLoader(
@@ -126,15 +136,11 @@ const installed = computed(() => library.find(kind.value, token.value));
 const installedVersion = computed(() => installed.value?.actualVersion ?? installed.value?.installedVersion ?? null);
 const outdated = computed(() => updates.find(kind.value, token.value));
 
-const counts = computed(() => {
-  const current = data.value?.total ?? 0;
-  const rest = other.value?.total ?? 0;
-  return {
-    all: filter.value === 'notes' ? rest : current,
-    notes: filter.value === 'notes' ? current : rest,
-    mine: local.value?.size ?? 0
-  };
-});
+const counts = computed(() => ({
+  all: totals.value?.all ?? 0,
+  notes: totals.value?.notes ?? 0,
+  mine: local.value?.size ?? 0
+}));
 const filterOptions = computed(() => [
   {
     value: 'all' as const,
@@ -277,7 +283,7 @@ const pinHint = computed(() =>
         v-else
         :entries="entries"
         :installed-version="installedVersion"
-        :show-original="original"
+        :show-original="data.original"
         :can-update="canUpdate"
         :more-count="moreCount"
         :has-local="entry => Boolean(localText(entry))"

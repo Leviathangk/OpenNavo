@@ -16,6 +16,17 @@ const PAGE_SIZE = 5000;
 // HTTP sources: the module turns a failed source into a shorter 200 response, which crawlers read
 // as removed URLs. An API error here fails the request instead, so crawlers retry later.
 export default defineNitroPlugin(nitroApp => {
+  nitroApp.hooks.hook('sitemap:index-resolved', async ctx => {
+    // Non-chunked groups are listed even when empty. Filter the rendered index,
+    // without mutating its cached entries, so newly published content can reappear.
+    // Let API failures propagate: an outage must not look like removed content.
+    const { articles, authors } = await articleSitemap();
+    ctx.sitemaps = ctx.sitemaps.filter(({ _sitemapName: sitemapName }) => {
+      if (sitemapName === 'articles') return articles.length > 0;
+      if (sitemapName === 'authors') return authors.length > 0;
+      return true;
+    });
+  });
   nitroApp.hooks.hook('sitemap:input', async ctx => {
     const load = GROUPS[ctx.sitemapName];
     if (load) ctx.urls.push(...(await load()));

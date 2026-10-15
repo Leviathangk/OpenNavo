@@ -53,6 +53,14 @@ USAGE = {
         " swiftvm-app/tap = github.com/swiftvm-app/homebrew-tap). The cask file is read from"
         " GitHub without running Ruby; arch, on_arm, on_intel, on_<macos> and language blocks or"
         " local variables are rejected with their line. Official Homebrew tokens cannot be added."
+        " Adding records every version the file's newest 100 commits declare (the dry run lists"
+        " them as versions), so release notes can be written for them right away."
+    ),
+    "release_write_notes": (
+        " version must be one package_versions lists. Code 1002 means it is not recorded: Homebrew"
+        " or the tap never shipped it under this token (for example, the cask was added at a later"
+        " version), so skip it instead of waiting. When asked for the latest few versions, count"
+        " recorded versions only."
     ),
     "asset_upload_ticket": (
         " Then, before expiresAt, POST the local PNG/JPEG/WebP file (at most maxBytes) as the only"

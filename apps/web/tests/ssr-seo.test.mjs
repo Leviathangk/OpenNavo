@@ -180,6 +180,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     revision: 2
   });
   let sitemapState = 'ok';
+  let articleSitemapState = 'ok';
   // Changes what ordinary-app's description says, to see whether a page came from the cache.
   let revision = 1;
   let collectionState = 'empty';
@@ -236,13 +237,33 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       };
       data = { current: Number(query.get('current') ?? 1), size: 24, total: 50, records: [summary] };
     } else if (path === '/api/v1/packages/cask/plus-app++/releases') {
+      const original = query.get('original') === 'true';
+      const locale = query.get('locale');
+      const notesCount = original ? 2 : locale === 'zh-CN' ? 1 : 3;
+      const total = query.get('onlyWithNotes') === 'true' ? notesCount : 3;
+      const size = Number(query.get('size') ?? 20);
       data = {
         current: 1,
-        size: 20,
-        total: 0,
-        records: [],
+        size,
+        total,
+        records: Array.from({ length: Math.min(total, size) }, (_, index) => ({
+          id: null,
+          version: `1.${index}.0`,
+          title: null,
+          publishedAt: '2026-10-01T00:00:00Z',
+          brewCommittedAt: null,
+          source: 'github_release',
+          sourceUrl: 'https://example.test/releases',
+          isLatest: index === 0,
+          isPrerelease: false,
+          hasNotes: true,
+          summary: null,
+          sections: [],
+          bodyMarkdown: 'Release fixture notes',
+          translation: { status: 'manual', locale: locale ?? 'en-US' }
+        })),
         stats: {
-          count30d: 0,
+          count30d: 3,
           cadence: 'irregular',
           brewLag: { medianMinutes: null, earlierCount: 0, compared: 0 }
         }
@@ -351,6 +372,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     } else if (path === '/api/v1/authors/lin-wei') {
       data = { author, articles: { current: 1, size: 12, total: 1, records: [roundupCard(false)] } };
     } else if (path === '/api/v1/sitemap/articles') {
+      status = articleSitemapState === 'error' ? 503 : 200;
       data = {
         articles: [
           {
@@ -363,6 +385,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         ],
         authors: [{ slug: 'lin-wei', lastmod: '2026-10-14T10:00:00Z' }]
       };
+      if (articleSitemapState === 'empty') data = { articles: [], authors: [] };
+      if (articleSitemapState === 'no-authors') data.authors = [];
     } else if (path === '/api/v1/collections/editors') {
       data = {
         slug: 'editors',
@@ -496,6 +520,24 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         assert.match(html, /<title>Example App @11 for Mac – Download &amp; Install · OpenNavo<\/title>/);
     });
   }
+  await t.test('release label totals match locale and original mode', async () => {
+    for (const [prefix, original, count, label, locale] of [
+      ['/zh', false, 1, '有更新说明', 'zh-CN'],
+      ['/zh', true, 2, '有更新说明', 'zh-CN'],
+      ['', false, 3, 'With notes', 'en-US'],
+      ['', true, 2, 'With notes', 'en-US']
+    ]) {
+      const response = await fetch(`${origin}${prefix}/apps/plus-app++/versions?notes=1&original=${original ? 1 : 0}`);
+      const html = await response.text();
+      assert.equal(response.status, 200, logs);
+      assert.ok(html.includes(`${label} ${count}`), `${prefix} original=${original}: label count`);
+      assert.equal((html.match(/Release fixture notes<\/p>/g) ?? []).length, count);
+      assert.ok(
+        html.includes(`releases-count:cask:plus-app++:${locale}:${original}`),
+        'cache key includes language mode'
+      );
+    }
+  });
   await t.test('encoded package tokens preserve path semantics in SSR and payload requests', async () => {
     const redirect = await fetch(`${origin}/zh/apps/plus-app%2B%2B/versions?source=a%2Bb`, { redirect: 'manual' });
     assert.equal(redirect.status, 301);
@@ -1016,6 +1058,34 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok((await payload.text()).includes('withdrawn'));
     assert.equal((await fetch(`${origin}/articles/missing-article`)).status, 404);
     assert.equal((await fetch(`${origin}/articles/Bad_Slug`)).status, 404);
+  });
+  await t.test('sitemap index omits empty article groups and restores them when content returns', async () => {
+    const readIndex = () => fetch(`${origin}/sitemap_index.xml`);
+    try {
+      articleSitemapState = 'empty';
+      const response = await readIndex();
+      assert.equal(response.status, 200);
+      const empty = await response.text();
+      assert.ok(!empty.includes('/__sitemap__/articles.xml'), empty);
+      assert.ok(!empty.includes('/__sitemap__/authors.xml'), empty);
+      assert.ok(empty.includes('/__sitemap__/en-static.xml'), empty);
+      assert.ok(empty.includes('/__sitemap__/apps-0.xml'), empty);
+
+      articleSitemapState = 'no-authors';
+      const partial = await (await readIndex()).text();
+      assert.ok(partial.includes('/__sitemap__/articles.xml'), partial);
+      assert.ok(!partial.includes('/__sitemap__/authors.xml'), partial);
+
+      articleSitemapState = 'error';
+      assert.ok((await readIndex()).status >= 500, 'API failure must not become an empty successful index');
+    } finally {
+      articleSitemapState = 'ok';
+    }
+    const restored = await readIndex();
+    assert.equal(restored.status, 200);
+    const xml = await restored.text();
+    assert.ok(xml.includes('/__sitemap__/articles.xml'), xml);
+    assert.ok(xml.includes('/__sitemap__/authors.xml'), xml);
   });
   await t.test('author pages, feeds and sitemaps cover published articles', async () => {
     const response = await fetch(`${origin}/authors/lin-wei`, { headers: { accept: 'text/html' } });

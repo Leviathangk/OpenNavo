@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
+import { OnSegmented } from '@opennavo/ui';
 import { formatDate, formatTime } from '@opennavo/shared';
 import type { ReleaseEntry } from '@opennavo/api';
 import { providePackage } from '@/composables/usePackageDetail';
@@ -29,9 +30,18 @@ function release(version: string, isLatest = false): ReleaseEntry {
   };
 }
 
-const scenario = vi.hoisted(() => ({ older: false }));
+const scenario = vi.hoisted(() => ({
+  older: false,
+  localizedCounts: false,
+  // With notes: only the newest release qualifies; hold delays that list (not its count) until released.
+  notesSubset: false,
+  hold: undefined as Promise<void> | undefined
+}));
 afterEach(() => {
   scenario.older = false;
+  scenario.localizedCounts = false;
+  scenario.notesSubset = false;
+  scenario.hold = undefined;
 });
 
 const ok = (data: unknown) => ({
@@ -46,13 +56,30 @@ vi.mock('@/api', () => ({
       async (
         path: string,
         options: {
-          params?: { query?: { onlyWithNotes?: boolean; size?: number; current?: number } };
+          params?: {
+            query?: {
+              onlyWithNotes?: boolean;
+              size?: number;
+              current?: number;
+              locale?: string;
+              original?: boolean;
+            };
+          };
         }
       ) => {
         if (path === '/packages/{kind}/{token}/releases') {
-          const records = scenario.older
+          const withNotes = scenario.notesSubset && options.params?.query?.onlyWithNotes;
+          if (withNotes && options.params?.query?.size !== 1) await scenario.hold;
+          const all = scenario.older
             ? Array.from({ length: 45 }, (_, index) => release(`2.${102 - index}.0`, index === 0))
             : [release('2.102.0', true), release('2.101.0'), release('2.100.0')];
+          const query = options.params?.query;
+          const localized = scenario.localizedCounts && query?.onlyWithNotes;
+          const records = localized
+            ? all.slice(0, query?.original ? 3 : query?.locale === 'en-US' ? 2 : 1)
+            : withNotes
+              ? all.slice(0, 1)
+              : all;
           const size = options.params?.query?.size ?? 20;
           return ok({
             current: options.params?.query?.current ?? 1,
@@ -133,4 +160,69 @@ it('Previously installed finds page-three versions and local history entry 201',
   expect(versions).toHaveLength(2);
   expect(versions.some(text => text.includes('2.60.0'))).toBe(true);
   wrapper.unmount();
+});
+
+it('Switching filters keeps the toolbar, the timeline and the label counts while the new list loads', async () => {
+  scenario.notesSubset = true;
+  let unblock: () => void = () => {};
+  scenario.hold = new Promise(resolve => (unblock = resolve));
+  const context = await setup('/package/formula/gh/versions');
+  await startLocalState();
+  const Host = defineComponent({
+    setup() {
+      providePackage({ kind: 'formula', token: 'gh' });
+      return () => h(PackageVersions);
+    }
+  });
+  const wrapper = mount(Host, { global: { plugins: [context.pinia, context.router, i18n] } });
+  await flushPromises();
+  await flushPromises();
+  const labels = () => wrapper.findAll('button').map(button => button.text());
+  expect(labels()).toEqual(expect.arrayContaining(['全部 3', '有更新说明 1']));
+  expect(wrapper.findAll('article')).toHaveLength(3);
+
+  await wrapper
+    .findAll('button')
+    .find(button => button.text().startsWith('有更新说明'))!
+    .trigger('click');
+  await flushPromises();
+  // The list with notes is still loading: nothing disappears and the counts do not swap.
+  expect(wrapper.text()).not.toContain('加载中');
+  expect(wrapper.findAll('article')).toHaveLength(3);
+  expect(labels()).toEqual(expect.arrayContaining(['全部 3', '有更新说明 1']));
+
+  unblock();
+  await flushPromises();
+  expect(wrapper.findAll('article')).toHaveLength(1);
+  expect(labels()).toEqual(expect.arrayContaining(['全部 3', '有更新说明 1']));
+  wrapper.unmount();
+});
+
+it('Release counts follow locale and original mode together with the timeline', async () => {
+  scenario.localizedCounts = true;
+  const context = await setup('/package/formula/gh/versions');
+  await startLocalState();
+  const Host = defineComponent({
+    setup() {
+      providePackage({ kind: 'formula', token: 'gh' });
+      return () => h(PackageVersions);
+    }
+  });
+  const wrapper = mount(Host, { global: { plugins: [context.pinia, context.router, i18n] } });
+  await flushPromises();
+  const notesLabel = () => wrapper.findAllComponents(OnSegmented)[0]!.findAll('button')[1]!.text();
+  expect(notesLabel()).toContain('1');
+  wrapper.findAllComponents(OnSegmented)[0]!.vm.$emit('update:modelValue', 'notes');
+  await flushPromises();
+  expect(wrapper.findAll('article')).toHaveLength(1);
+  i18n.global.locale.value = 'en-US';
+  await flushPromises();
+  expect(notesLabel()).toContain('2');
+  expect(wrapper.findAll('article')).toHaveLength(2);
+  wrapper.findAllComponents(OnSegmented)[1]!.vm.$emit('update:modelValue', 'original');
+  await flushPromises();
+  expect(notesLabel()).toContain('3');
+  expect(wrapper.findAll('article')).toHaveLength(3);
+  wrapper.unmount();
+  i18n.global.locale.value = 'zh-CN';
 });

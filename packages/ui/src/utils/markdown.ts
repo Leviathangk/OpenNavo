@@ -2,6 +2,7 @@
 // Web SSR renders releases for SEO; isomorphic-dompurify uses jsdom on Node and native DOM in browsers.
 import { sanitize } from 'isomorphic-dompurify';
 import MarkdownIt from 'markdown-it';
+import { cjkFriendlyEmphasis } from './cjkEmphasis';
 import { codeWordsHtml } from './codeText';
 
 // Allow only tags markdown-it emits with HTML/images disabled.
@@ -44,6 +45,7 @@ export interface RenderMarkdownOptions {
 type MarkdownEnv = { headingLevel: number };
 
 const md = new MarkdownIt({ html: false, linkify: true });
+cjkFriendlyEmphasis(md);
 
 // Map encountered headings in order to headingLevel, headingLevel+1, up to h6,
 // without skipping levels for accessibility/Lighthouse; visual sizes use ordered classes independently of tags.

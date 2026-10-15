@@ -105,3 +105,44 @@ func TestCommitFetchIdempotenceHistoryAndBackoff(t *testing.T) {
 	require.Equal(t, 1, stats["sources"])
 	require.Equal(t, 1, queue.Count, "only the Homebrew source is scheduled")
 }
+
+func TestCommitTitlesWithAnnotationsDateVersionsAndFullReread(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewStore(t)
+	p, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"sample","version":"1.2.0"}`))
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
+	var pid, sid int64
+	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT id FROM packages WHERE token='sample'").Scan(&pid).Error)
+	require.NoError(t, st.DB.WithContext(ctx).Raw("INSERT INTO changelog_sources(package_id,type,config,priority,resolved_by) VALUES(?,'homebrew_commits','{\"repo\":\"Homebrew/homebrew-cask\",\"path\":\"Casks/s/sample.rb\"}',90,'auto') RETURNING id", pid).Scan(&sid).Error)
+	body := `[{"sha":"c","commit":{"message":"sample 1.2.0 (#300)","committer":{"date":"2026-09-30T00:00:00Z"}}},` +
+		`{"sha":"b","commit":{"message":"sample 1.1.0 (arm only)","committer":{"date":"2026-09-20T00:00:00Z"}}},` +
+		`{"sha":"a","commit":{"message":"sample 1.0.0 (new cask)","committer":{"date":"2026-09-10T00:00:00Z"}}}]`
+	var requests []*http.Request
+	fetcher := pipeline.NewFetcher("test")
+	fetcher.HTTP.Client = &http.Client{Transport: responseTransport(func(r *http.Request) (*http.Response, error) {
+		requests = append(requests, r)
+		return &http.Response{StatusCode: 200, Header: http.Header{"Etag": {`"v1"`}}, Body: io.NopCloser(strings.NewReader(body))}, nil
+	})}
+	now := time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC)
+	svc := &changelog.Service{Store: st, Fetcher: fetcher, Now: func() time.Time { return now }}
+	stats, err := svc.Fetch(ctx, sid)
+	require.NoError(t, err)
+	require.Equal(t, 3, stats["versions"])
+	var dated []string
+	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT version FROM package_versions WHERE package_id=? AND brew_committed_at IS NOT NULL ORDER BY version", pid).Scan(&dated).Error)
+	require.Equal(t, []string{"1.0.0", "1.1.0", "1.2.0"}, dated)
+
+	// With the current version dated, later reads are incremental.
+	_, err = svc.Fetch(ctx, sid)
+	require.NoError(t, err)
+	require.NotEmpty(t, requests[len(requests)-1].URL.Query().Get("since"))
+
+	// Dropping the cursor (as migration 00027 does) reads the bounded history in full once more.
+	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE changelog_sources SET etag=NULL,last_modified=NULL,last_fetched_at=NULL WHERE id=?", sid).Error)
+	_, err = svc.Fetch(ctx, sid)
+	require.NoError(t, err)
+	last := requests[len(requests)-1]
+	require.Empty(t, last.URL.Query().Get("since"))
+	require.Empty(t, last.Header.Get("If-None-Match"))
+}

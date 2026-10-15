@@ -23,11 +23,12 @@ const period = ref<Period>('installs30d');
 
 const { data, error } = useCatalogLoader(
   async () => {
+    const sort = period.value;
     const result = await unwrap(
       commands.catalogList({
         kind: 'cask',
         category: null,
-        sort: period.value,
+        sort,
         includeFonts: true,
         includeLibraries: false,
         includeDisabled: false,
@@ -35,33 +36,35 @@ const { data, error } = useCatalogLoader(
         offset: 0
       })
     );
-    return result.items;
+    return { period: sort, items: result.items };
   },
   [period, appLocale],
-  items => items
+  result => result.items,
+  // Switching periods keeps the current ranking on screen until the next one lands.
+  []
 );
 
-function installs(item: LocalItem): number | null {
-  if (period.value === 'installs30d') return item.installs30d;
-  return (period.value === 'installs90d' ? item.installs90d : item.installs365d) ?? null;
+function installs(item: LocalItem, shown: Period): number | null {
+  if (shown === 'installs30d') return item.installs30d;
+  return (shown === 'installs90d' ? item.installs90d : item.installs365d) ?? null;
 }
 
-const entries = computed<OnRankingsEntry[] | null>(() =>
-  data.value
-    ? data.value.map((item, index) => {
-        const value = installs(item);
-        const pkg = toSummary(item);
-        return {
-          rank: index + 1,
-          pkg,
-          value: value === null ? t('rankings.noStats') : formatCountCompact(value, { locale: appLocale.value }),
-          href: `/package/cask/${pkg.token}`
-        };
-      })
-    : error.value
-      ? []
-      : null
-);
+// Counts come from the period the shown list was ranked by, which trails the tabs until the next list lands.
+// A failed read keeps a list of the selected period on screen, never one of another period.
+const entries = computed<OnRankingsEntry[] | null>(() => {
+  const shown = data.value && (!error.value || data.value.period === period.value) ? data.value : undefined;
+  if (!shown) return error.value ? [] : null;
+  return shown.items.map((item, index) => {
+    const value = installs(item, shown.period);
+    const pkg = toSummary(item);
+    return {
+      rank: index + 1,
+      pkg,
+      value: value === null ? t('rankings.noStats') : formatCountCompact(value, { locale: appLocale.value }),
+      href: `/package/cask/${pkg.token}`
+    };
+  });
+});
 
 const periods = computed(() =>
   (['installs30d', 'installs90d', 'installs365d'] as const).map(value => ({

@@ -66,7 +66,9 @@ const article = computed(() =>
 const withdrawn = computed(
   () => data.value?.state === 'withdrawn' || (original.value && source.value?.state === 'withdrawn')
 );
-const body = computed(() => renderArticle(article.value?.bodyMarkdown ?? '', { images: article.value?.images ?? [] }));
+const body = computed(() =>
+  renderArticle(article.value?.bodyMarkdown ?? '', { images: article.value?.images ?? [], title: article.value?.title })
+);
 const apps = computed(() => new Map((article.value?.packages ?? []).map(pkg => [pkg.token, pkg])));
 const sourceText = computed(() => article.value && !article.value.availableLocales.includes(appLocale.value));
 const crumbs = computed(() => [

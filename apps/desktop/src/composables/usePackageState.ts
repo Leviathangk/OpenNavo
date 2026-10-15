@@ -57,6 +57,7 @@ export function usePackageState() {
         // Explicit casks always use --greedy (06 §6.3); Rust constructs the arguments.
         await tasks.enqueue('upgrade', { kind, token }, 'manual', kind === 'cask' ? { greedy: true } : {});
       } else if (state === 'open') {
+        await library.ensureInstalledRecord(kind, token);
         await unwrap(commands.appOpen({ kind, token }));
       }
     } catch (error) {

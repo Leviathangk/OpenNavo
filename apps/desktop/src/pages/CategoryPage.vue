@@ -36,8 +36,10 @@ watch([() => props.slug, sort], () => {
   page.value = 1;
 });
 
-const { data, error } = useCatalogLoader(
+const queryKey = computed(() => JSON.stringify([props.slug, sort.value, page.value, pageSize.value, appLocale.value]));
+const { data: loaded, error } = useCatalogLoader(
   async () => {
+    const key = queryKey.value;
     const result = await unwrap(
       commands.catalogList({
         kind: 'cask',
@@ -50,13 +52,20 @@ const { data, error } = useCatalogLoader(
         offset: (page.value - 1) * pageSize.value
       })
     );
-    return result;
+    return { ...result, key };
   },
   [() => props.slug, sort, page, appLocale, pageSize],
-  result => result.items
+  result => result.items,
+  // Sorting, paging and page-size changes (window resizes) keep the cards on screen until the next page lands.
+  [() => props.slug]
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / pageSize.value)));
+// Retain cards while loading, but never present another query's cards after a failure.
+const data = computed(() =>
+  loaded.value && (!error.value || loaded.value.key === queryKey.value) ? loaded.value : undefined
+);
+// Keep pagination available after a failed page request so users can navigate back.
+const pageCount = computed(() => Math.max(1, Math.ceil((loaded.value?.total ?? 0) / pageSize.value)));
 const sorts = computed(() =>
   (['popular', 'updated', 'name'] as const).map(value => ({
     value,
@@ -76,7 +85,7 @@ const breadcrumb = computed(() => [
     v-model:sort="sort"
     :breadcrumb="breadcrumb"
     :title="category?.name ?? slug"
-    :subtitle="data ? t('categories.packages', { count: data.total }, { plural: data.total }) : undefined"
+    :subtitle="data ? t('categories.packages', { count: data.total }, { plural: data.total }) : '\u00a0'"
     :sorts="sorts"
     :sort-label="t('categories.sortLabel')"
     :items="items"

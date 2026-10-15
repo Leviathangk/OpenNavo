@@ -287,3 +287,133 @@ async fn index_check_during_install_does_not_block_completion_or_next_task() {
     assert_eq!(task.state, TaskState::Succeeded);
     core.queue.shutdown();
 }
+type Events = Arc<std::sync::Mutex<Vec<opennavo_desktop_lib::events::CoreEvent>>>;
+
+/// A core with the fixture inventory and update list, and a brew that answers detection but fails every read:
+/// the post-task library scan and outdated check both fail, so only settling changes the update list (and the
+/// Mac's own Homebrew is never consulted).
+fn settling_core(root: &Path) -> (Arc<opennavo_desktop_lib::core::DesktopCore>, Events) {
+    let db = Database::open(&root.join("data/opennavo.db")).unwrap();
+    let (library, data) = fixtures(&db, root);
+    db.set_meta("installed_cache", &serde_json::to_string(&library).unwrap())
+        .unwrap();
+    db.set_meta("outdated_source", &serde_json::to_string(&data).unwrap())
+        .unwrap();
+    drop(db);
+    let events: Events = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let saved = events.clone();
+    let core = opennavo_desktop_lib::core::DesktopCore::open(
+        root.join("data"),
+        root.join("cache"),
+        root.join("askpass"),
+        Arc::new(move |e| saved.lock().unwrap().push(e)),
+    )
+    .unwrap();
+    let brew = root.join("brew");
+    std::fs::write(
+        &brew,
+        format!(
+            "#!/usr/bin/python3 -I\nimport sys\nargs = sys.argv[1:]\nif args == ['--version']:\n    print('Homebrew 7.0.7')\nelif args in (['--prefix'], ['--cache']):\n    print({root})\nelse:\n    sys.exit(1)\n",
+            root = serde_json::to_string(root.to_str().unwrap()).unwrap()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&brew, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    core.settings.write().unwrap().brew_path = Some(brew.to_string_lossy().into());
+    (core, events)
+}
+
+fn finished(
+    core: &opennavo_desktop_lib::core::DesktopCore,
+    op: TaskOp,
+    token: &str,
+    state: TaskState,
+) -> Task {
+    let mut task = core
+        .queue
+        .enqueue(
+            op,
+            Some(TaskTarget {
+                kind: Kind::Formula.into(),
+                token: token.into(),
+            }),
+            TaskOptions::default(),
+            TaskTrigger::Manual,
+        )
+        .unwrap();
+    // The queue never runs here, so a task for the same target is still queued and enqueue hands it back.
+    task.op = op;
+    task.state = state;
+    task
+}
+
+fn update(core: &opennavo_desktop_lib::core::DesktopCore, token: &str) -> Option<OutdatedItem> {
+    core.updates_list()
+        .unwrap()
+        .into_iter()
+        .find(|item| item.token == token)
+}
+
+#[tokio::test]
+async fn a_successful_upgrade_leaves_the_update_list_before_the_post_task_check() {
+    use opennavo_desktop_lib::events::CoreEvent;
+    let tmp = tempfile::tempdir().unwrap();
+    let (core, events) = settling_core(tmp.path());
+    let total = core.rebuild_updates().await.unwrap().len();
+    assert!(update(&core, "node").is_some());
+
+    // A failed upgrade keeps offering the update.
+    core.after_task(&finished(
+        &core,
+        TaskOp::Upgrade,
+        "pcre2",
+        TaskState::Failed,
+    ))
+    .await;
+    assert_eq!(core.updates_list().unwrap().len(), total);
+
+    let upgraded = finished(&core, TaskOp::Upgrade, "node", TaskState::Succeeded);
+    events.lock().unwrap().clear();
+    core.after_task(&upgraded).await;
+    assert!(update(&core, "node").is_none());
+    assert_eq!(core.updates_list().unwrap().len(), total - 1);
+    // The settled list is the first thing windows hear after the task, before any slower post-task work.
+    assert!(matches!(
+        events.lock().unwrap().first(),
+        Some(CoreEvent::Updates(changed)) if changed.count as usize == total - 1
+    ));
+    // Rebuilding from the cached brew output, as a catalog sync does, does not bring the update back.
+    assert_eq!(core.rebuild_updates().await.unwrap().len(), total - 1);
+    let restarted = opennavo_desktop_lib::core::DesktopCore::open(
+        tmp.path().join("data"),
+        tmp.path().join("cache"),
+        tmp.path().join("askpass"),
+        Arc::new(|_| {}),
+    )
+    .unwrap();
+    assert!(update(&restarted, "node").is_none());
+}
+
+#[tokio::test]
+async fn a_pin_or_unpin_flips_the_update_at_once() {
+    let tmp = tempfile::tempdir().unwrap();
+    let (core, _) = settling_core(tmp.path());
+    core.rebuild_updates().await.unwrap();
+    assert!(!update(&core, "node").unwrap().pinned);
+
+    core.after_task(&finished(&core, TaskOp::Pin, "node", TaskState::Succeeded))
+        .await;
+    assert!(update(&core, "node").unwrap().pinned);
+    // Rebuilds from the cached brew output agree until brew is read again.
+    core.rebuild_updates().await.unwrap();
+    assert!(update(&core, "node").unwrap().pinned);
+
+    core.after_task(&finished(
+        &core,
+        TaskOp::Unpin,
+        "node",
+        TaskState::Succeeded,
+    ))
+    .await;
+    assert!(!update(&core, "node").unwrap().pinned);
+}

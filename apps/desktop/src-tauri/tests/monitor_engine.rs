@@ -1684,3 +1684,95 @@ fn queued_subscription_refresh_does_not_overwrite_a_newer_subscription() {
         .unwrap();
     assert!(sampler.plan().unwrap().is_none());
 }
+
+#[test]
+fn fan_change_replaces_the_cached_reading_drops_in_flight_ticks_and_reads_again() {
+    fn fan(mode: FanMode) -> FanState {
+        FanState {
+            id: 0,
+            name: "Fan 1".into(),
+            rpm: 2000,
+            min_rpm: 1200,
+            max_rpm: 6000,
+            target_rpm: (mode == FanMode::Manual).then_some(3000),
+            mode,
+        }
+    }
+    struct FanFake {
+        mode: Arc<Mutex<FanMode>>,
+        reads: Arc<AtomicUsize>,
+        hold: Arc<std::sync::atomic::AtomicBool>,
+        entered: Arc<std::sync::Barrier>,
+        release: Arc<std::sync::Barrier>,
+    }
+    impl Collector for FanFake {
+        fn system(&self) -> SystemInfo {
+            system()
+        }
+        fn collect(&mut self, modules: &Modules, _: bool) -> Frame {
+            let mut f = frame(1);
+            if modules.contains(&MonitorModule::Fans) {
+                self.reads.fetch_add(1, Ordering::SeqCst);
+                f.fans = Some(vec![fan(*self.mode.lock().unwrap())]);
+            }
+            if self.hold.swap(false, Ordering::SeqCst) {
+                self.entered.wait();
+                self.release.wait();
+            }
+            f
+        }
+    }
+    let mode = Arc::new(Mutex::new(FanMode::Auto));
+    let reads = Arc::new(AtomicUsize::new(0));
+    let hold = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let entered = Arc::new(std::sync::Barrier::new(2));
+    let release = Arc::new(std::sync::Barrier::new(2));
+    let sampler = Sampler::new(
+        Box::new(FanFake {
+            mode: mode.clone(),
+            reads: reads.clone(),
+            hold: hold.clone(),
+            entered: entered.clone(),
+            release: release.clone(),
+        }),
+        off(),
+        MonitorIntervalMs::TwoSeconds,
+    );
+    sampler
+        .subscribe(
+            "tray-monitor",
+            MonitorView::Popover,
+            [MonitorModule::Sensors, MonitorModule::Fans].into(),
+        )
+        .unwrap();
+    reads.store(0, Ordering::SeqCst); // The capability probe is not a periodic read.
+    let mode_of = |sample: MonitorSample| sample.fans.unwrap()[0].mode;
+    assert_eq!(
+        mode_of(sampler.tick(0, 0).unwrap().unwrap().sample),
+        FanMode::Auto
+    );
+    // The helper switches to manual while a one-second tick still carries the reading from 0 ms.
+    hold.store(true, Ordering::SeqCst);
+    let worker = sampler.clone();
+    let thread = std::thread::spawn(move || worker.tick(1000, 1000));
+    entered.wait();
+    *mode.lock().unwrap() = FanMode::Manual;
+    sampler.fan_changed(&FanChange {
+        fans: vec![fan(FanMode::Manual)],
+        reason: FanReason::User,
+    });
+    release.wait();
+    assert!(thread.join().unwrap().unwrap().is_none());
+    assert_eq!(
+        mode_of(sampler.presentation().unwrap().sample),
+        FanMode::Manual
+    );
+    // The next tick reads the fans again instead of waiting out the five seconds, then the cadence resumes.
+    assert_eq!(
+        mode_of(sampler.tick(1200, 1200).unwrap().unwrap().sample),
+        FanMode::Manual
+    );
+    assert_eq!(reads.load(Ordering::SeqCst), 2);
+    sampler.tick(2200, 2200).unwrap();
+    assert_eq!(reads.load(Ordering::SeqCst), 2);
+}

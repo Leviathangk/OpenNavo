@@ -140,17 +140,34 @@ async function readHistoryPage(request: HistoryQuery) {
   } while (items.length < request.limit && offset < total);
   return { items, total, nextOffset: offset };
 }
-const { data: history, loading: historyLoading } = useLoader(
-  () => readHistoryPage(query()),
+// Finished tasks and filter changes reread the list in the background: the rows on screen stay until the new
+// ones land, and a reread for the same filter keeps as many rows as are already shown.
+let shownRows = { filter: filter.value, count: 0 };
+const {
+  data: history,
+  loading: historyLoading,
+  error: historyError
+} = useLoader(
+  async () => {
+    const keep = shownRows.filter === filter.value ? shownRows.count : 0;
+    const request = { ...query(), limit: Math.min(MAX_HISTORY, Math.max(PAGE, keep)) };
+    return { filter: filter.value, ...(await readHistoryPage(request)) };
+  },
   [filter, () => tasks.finished],
   page => {
+    shownRows = { filter: page.filter, count: page.items.length };
     nextOffset.value = page.nextOffset;
     moreError.value = false;
-  }
+  },
+  []
 );
-const historyItems = computed<Task[]>(() => (history.value?.items ?? []).filter(isListedTask));
+// A failed reread keeps rows of the selected filter on screen, never those of another filter.
+const shownHistory = computed(() =>
+  history.value && (!historyError.value || history.value.filter === filter.value) ? history.value : undefined
+);
+const historyItems = computed<Task[]>(() => (shownHistory.value?.items ?? []).filter(isListedTask));
 const hasMore = computed(
-  () => historyItems.value.length < MAX_HISTORY && nextOffset.value < (history.value?.total ?? 0)
+  () => historyItems.value.length < MAX_HISTORY && nextOffset.value < (shownHistory.value?.total ?? 0)
 );
 
 async function loadMoreHistory() {
@@ -166,11 +183,17 @@ async function loadMoreHistory() {
     });
     if (disposed || history.value !== current || !current) return;
     nextOffset.value = page.nextOffset;
+    const items = [...new Map([...current.items, ...page.items].map(task => [task.id, task])).values()].slice(
+      0,
+      MAX_HISTORY
+    );
     history.value = {
+      filter: current.filter,
       total: page.items.length ? page.total : nextOffset.value,
       nextOffset: page.nextOffset,
-      items: [...new Map([...current.items, ...page.items].map(task => [task.id, task])).values()].slice(0, MAX_HISTORY)
+      items
     };
+    shownRows = { filter: current.filter, count: items.length };
   } catch (error) {
     if (disposed || history.value !== current) return;
     moreError.value = true;
@@ -241,9 +264,9 @@ useLoader(() => updates.load());
           ]"
         />
       </div>
-      <p v-if="historyLoading && !history" role="status">{{ t('common.loading') }}</p>
+      <p v-if="historyLoading && !shownHistory" role="status">{{ t('common.loading') }}</p>
       <HistoryList v-if="historyItems.length" :tasks="historyItems" />
-      <OnEmpty v-else-if="history" :title="t('updates.history.empty')" icon="lucide:rotate-ccw-clock" />
+      <OnEmpty v-else-if="shownHistory" :title="t('updates.history.empty')" icon="lucide:rotate-ccw-clock" />
       <div v-if="hasMore" ref="sentinel" class="mt-16px flex justify-center">
         <OnButton variant="secondary" :loading="loadingMore" :disabled="historyLoading" @click="loadMoreHistory">
           {{ t('common.loadMore') }}

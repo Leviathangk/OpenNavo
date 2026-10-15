@@ -494,10 +494,18 @@ impl Sampler {
             alerts: vec![],
         })
     }
-    pub fn fan_reason(&self, reason: FanReason) {
+    /// A fan command or a safety hand-back changed the fans. Samples reuse a fan reading for up to five seconds, so
+    /// keep the helper's fresh reading, drop a tick still in flight with the old one, and read the fans again now.
+    pub fn fan_changed(&self, change: &FanChange) {
         if let Ok(mut state) = self.lock() {
-            state.engine.fan_reason(reason);
+            state.engine.fan_reason(change.reason);
+            if state.engine.latest.fans.is_some() {
+                state.engine.latest.fans = Some(change.fans.clone());
+            }
+            state.fans_at = None;
+            state.generation = state.generation.wrapping_add(1);
         }
+        self.notify.notify_one();
     }
     pub fn quit_target(&self, pid: u32) -> Result<RawProcess, AppError> {
         self.lock()?

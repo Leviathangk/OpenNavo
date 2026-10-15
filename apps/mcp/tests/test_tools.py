@@ -57,3 +57,14 @@ async def test_resources_and_discovery(backend: Backend) -> None:
             data = json.loads(content[0].text)  # type: ignore[union-attr]
             if "/guide/" in uri:
                 assert data["guide"]
+
+
+async def test_release_notes_explain_unrecorded_versions(backend: Backend) -> None:
+    async with Client(backend.server) as client:
+        tools = {tool.name: tool.description or "" for tool in await client.list_tools()}
+        content = await client.read_resource("opennavo://guide/release-notes")
+    guide = json.loads(content[0].text)["guide"]  # type: ignore[union-attr]
+    # Agents skip versions that were never shipped instead of waiting for the backend.
+    for text in (tools["release_write_notes"], guide):
+        assert "package_versions" in text and "1002" in text
+    assert "newest 100 commits" in tools["tap_package_add"]

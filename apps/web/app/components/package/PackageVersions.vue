@@ -38,17 +38,20 @@ const { data, error, refresh } = await useAsyncData(
   () => releases({ current: page.value, size: PAGE_SIZE, onlyWithNotes: onlyWithNotes.value, original: original.value })
 );
 
-// Fetch only the alternate filter's total for segmented labels (All 36 / With notes 29).
-const { data: other } = await useAsyncData(
-  () => `releases-count:${props.kind}:${token.value}:${!onlyWithNotes.value}:${locale.value}`,
-  () => releases({ current: 1, size: 1, onlyWithNotes: !onlyWithNotes.value, original: false })
+// Segmented label totals (All 36 / With notes 29) are read per app, not taken from the shown page: while a filter
+// switch loads, Nuxt keeps the previous page on screen, and its total belongs to the other filter.
+const { data: totals } = await useAsyncData(
+  () => `releases-count:${props.kind}:${token.value}:${appLocale.value}:${original.value}`,
+  async () => {
+    const [all, withNotes] = await Promise.all([
+      releases({ current: 1, size: 1, onlyWithNotes: false, original: original.value }),
+      releases({ current: 1, size: 1, onlyWithNotes: true, original: original.value })
+    ]);
+    return { all: all.total, withNotes: withNotes.total };
+  }
 );
 
-const counts = computed(() => {
-  const current = data.value?.total ?? 0;
-  const rest = other.value?.total ?? 0;
-  return onlyWithNotes.value ? { all: rest, withNotes: current } : { all: current, withNotes: rest };
-});
+const counts = computed(() => ({ all: totals.value?.all ?? 0, withNotes: totals.value?.withNotes ?? 0 }));
 
 const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
 

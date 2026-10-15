@@ -25,8 +25,9 @@ and POST the file to its single-use uploadUrl instead of encoding images into to
 Wait for automatic download-size probing and fill only missing values.
 Casks outside homebrew/cask are added only when an editor asks: tap_package_add
 cask="<owner>/<tap>/<token>" (dry_run first; unsupported cask DSL is rejected with its
-line). The tap sync re-reads them every 30 minutes; tap_packages_list shows lastError,
-package_refresh re-reads one now and tap_package_remove takes it out of the catalog.
+line). Adding also records the versions the file's recent history declares. The tap sync
+re-reads them every 30 minutes; tap_packages_list shows lastError, package_refresh re-reads
+one now and tap_package_remove takes it out of the catalog.
 3. Prioritize the 1,000 most popular apps for version updates. package_versions /
 releases_list show recorded versions. Hermes must consult reliable upstream sources;
 old source text from release_get is reference data only. Write this version's changes
@@ -87,6 +88,10 @@ probing.
 The server no longer fetches upstream notes or generates summaries; saved old source
 text is available only as untrusted reference data. For a recorded version, write
 a one-sentence summary, at most 8 groups of 6 items, and optional title/body/date.
+Only versions package_versions lists accept notes. Code 1002 for a version means Homebrew or
+the tap never shipped it under this token (for example, the cask was added at a later
+version): skip it rather than waiting for it, and count recorded versions only when asked
+for the latest few.
 version may be a full build (0.1,49): those notes belong to that build only. A base
 version (0.1) writes the note shared by builds without notes of their own; neither
 scope changes the other, and clear=true clears only the scope given.
