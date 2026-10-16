@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import type { PublicComponents } from '@opennavo/api';
 import { LOCALES, VERSION_PAGE_MIN_NOTES } from '@opennavo/shared';
 import { packageSitemapName, packageSitemaps, type PackageSitemapGroup } from '../../shared/utils/sitemapBuckets';
+import { PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
 import { localizedEntries } from '../utils/sitemapEntries';
+import { createStaleCache } from '../utils/staleCache';
 
 type SitemapEntry = PublicComponents['schemas']['SitemapEntry'];
 
@@ -14,6 +16,16 @@ interface CategoryNode {
 
 // Split completed catalog snapshots below the 512 KiB storage limit.
 const PAGE_SIZE = 500;
+/**
+ * Sitemaps may trail the catalog by a few minutes (IndexNow announces changes as they happen): a
+ * catalog snapshot, and the index's list of populated buckets, are used as they are for this long
+ * and then served stale while one rebuild per process runs behind the response.
+ */
+export const SNAPSHOT_FRESH_MS = 5 * 60_000;
+/** After a failed background rebuild, the stale snapshot keeps answering this long before a retry. */
+export const SNAPSHOT_RETRY_MS = 30_000;
+/** Snapshots stay readable as long as the cache storage keeps anything, so stale ones answer at once. */
+const SNAPSHOT_TTL_SECONDS = PAGE_CACHE_TTL_SECONDS;
 
 // Dynamic sitemap groups (WP3) are injected through @nuxtjs/sitemap's sitemap:input hook rather than
 // HTTP sources: the module turns a failed source into a shorter 200 response, which crawlers read
@@ -22,22 +34,10 @@ export default defineNitroPlugin(nitroApp => {
   nitroApp.hooks.hook('sitemap:index-resolved', async ctx => {
     // Non-chunked groups are listed even when empty. Filter the rendered index,
     // without mutating its cached entries, so newly published content can reappear.
-    // Let API failures propagate: an outage must not look like removed content.
-    const { articles, authors } = await articleSitemap();
-    const [apps, fonts, settings] = await Promise.all([
-      cachedPackages('apps'),
-      cachedPackages('fonts'),
-      getSiteSettings()
-    ]);
-    const populated = new Set([
-      ...apps.filter(record => record.locales?.length !== 0).map(record => packageSitemapName('apps', record.token)),
-      ...fonts.filter(record => record.locales?.length !== 0).map(record => packageSitemapName('fonts', record.token)),
-      ...(settings.pages.versionsSitemap
-        ? [...apps, ...fonts]
-            .filter(record => record.locales?.length !== 0 && (record.notesCount ?? 0) >= VERSION_PAGE_MIN_NOTES)
-            .map(record => packageSitemapName('versions', record.token))
-        : [])
-    ]);
+    // Let API failures propagate when nothing is cached yet: an outage must not look like removed
+    // content. The article check is one small request and follows publishing at once; the
+    // populated buckets come from the cached catalog (populatedPackageSitemaps).
+    const [{ articles, authors }, populated] = await Promise.all([articleSitemap(), populatedPackageSitemaps()]);
     ctx.sitemaps = ctx.sitemaps.filter(({ _sitemapName: sitemapName }) => {
       if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) return populated.has(sitemapName);
       if (sitemapName === 'articles') return articles.length > 0;
@@ -77,50 +77,136 @@ function apiBase() {
 type PackageGroup = 'apps' | 'fonts';
 interface PackageSnapshot {
   keys: string[];
+  /** Until then the snapshot is fresh; afterwards it still answers while a rebuild runs. */
   expires: number;
 }
 
-// Coalesce the entire read/repair cycle, including callers that observed missing chunks.
-// Each server has its own in-flight map; shared Redis snapshots remain immutable.
-const packageLoads = new Map<PackageGroup, Promise<SitemapEntry[]>>();
+/**
+ * Package buckets that have URLs, for the index. Working this out reads the whole catalog snapshot
+ * (megabytes from Redis on every index request), so each process keeps the answer
+ * (createStaleCache): after the first request the index answers at once, even when cold.
+ */
+const populatedPackageSitemaps = createStaleCache(
+  async () => {
+    const [apps, fonts, settings] = await Promise.all([
+      cachedPackages('apps'),
+      cachedPackages('fonts'),
+      getSiteSettings()
+    ]);
+    return new Set([
+      ...apps.filter(record => record.locales?.length !== 0).map(record => packageSitemapName('apps', record.token)),
+      ...fonts.filter(record => record.locales?.length !== 0).map(record => packageSitemapName('fonts', record.token)),
+      ...(settings.pages.versionsSitemap
+        ? [...apps, ...fonts]
+            .filter(record => record.locales?.length !== 0 && (record.notesCount ?? 0) >= VERSION_PAGE_MIN_NOTES)
+            .map(record => packageSitemapName('versions', record.token))
+        : [])
+    ]);
+  },
+  {
+    freshMs: SNAPSHOT_FRESH_MS,
+    retryMs: SNAPSHOT_RETRY_MS,
+    onError: error => console.error('[opennavo] sitemap index refresh failed', error)
+  }
+);
 
-function cachedPackages(group: PackageGroup): Promise<SitemapEntry[]> {
-  const pending = packageLoads.get(group);
-  if (pending) return pending;
-  const load = readOrRebuildPackages(group).finally(() => packageLoads.delete(group));
-  packageLoads.set(group, load);
-  return load;
+// Coalesce reads and rebuilds, including callers that observed missing chunks. Each server has
+// its own in-flight maps; shared Redis snapshots remain immutable.
+const packageReads = new Map<PackageGroup, Promise<SitemapEntry[]>>();
+const packageRebuilds = new Map<PackageGroup, Promise<SitemapEntry[]>>();
+const rebuildFailedAt = new Map<PackageGroup, number>();
+
+/** Settles once no snapshot or index refresh is running (tests). */
+export async function sitemapSourcesIdle(): Promise<void> {
+  await populatedPackageSitemaps.idle();
+  while (packageRebuilds.size) await Promise.allSettled(packageRebuilds.values());
 }
 
-async function readOrRebuildPackages(group: PackageGroup): Promise<SitemapEntry[]> {
-  const storage = useStorage('cache');
-  const manifestKey = `sitemap-package-manifest-v3-${PAGE_SIZE}:${group}`;
-  const previous = await storage.getItem<PackageSnapshot>(manifestKey);
-  if (previous && previous.expires > Date.now()) {
-    const chunks = await Promise.all(previous.keys.map(key => storage.getItem<SitemapEntry[]>(key)));
-    if (chunks.every(chunk => chunk !== null)) return chunks.flat();
-  }
+function manifestKey(group: PackageGroup) {
+  return `sitemap-package-manifest-v3-${PAGE_SIZE}:${group}`;
+}
 
+function cachedPackages(group: PackageGroup): Promise<SitemapEntry[]> {
+  const pending = packageReads.get(group);
+  if (pending) return pending;
+  const read = readPackages(group).finally(() => packageReads.delete(group));
+  packageReads.set(group, read);
+  return read;
+}
+
+async function readPackages(group: PackageGroup): Promise<SitemapEntry[]> {
+  const snapshot = await readSnapshot(group);
+  // Without a complete snapshot the request waits for the catalog and fails if the API does.
+  if (!snapshot) return rebuildPackages(group);
+  if (snapshot.expires <= Date.now()) refreshPackages(group);
+  return snapshot.records;
+}
+
+async function readSnapshot(group: PackageGroup) {
+  const storage = useStorage('cache');
+  // A rebuild that publishes between reading the manifest and its chunks reclaims those chunks:
+  // read the manifest once more before treating the snapshot as lost (evicted).
+  let seen: string | undefined;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const manifest = await storage.getItem<PackageSnapshot>(manifestKey(group));
+    if (!manifest || manifest.keys.join() === seen) return undefined;
+    const chunks = await Promise.all(manifest.keys.map(key => storage.getItem<SitemapEntry[]>(key)));
+    if (chunks.every(chunk => chunk !== null)) return { records: chunks.flat(), expires: manifest.expires };
+    seen = manifest.keys.join();
+  }
+  return undefined;
+}
+
+function rebuildPackages(group: PackageGroup): Promise<SitemapEntry[]> {
+  const pending = packageRebuilds.get(group);
+  if (pending) return pending;
+  const rebuild = writeSnapshot(group).finally(() => packageRebuilds.delete(group));
+  packageRebuilds.set(group, rebuild);
+  return rebuild;
+}
+
+/** Rebuilds a stale snapshot behind the response; a failure keeps the stale one for a while. */
+function refreshPackages(group: PackageGroup) {
+  const failedAt = rebuildFailedAt.get(group);
+  if (packageRebuilds.has(group) || (failedAt !== undefined && Date.now() - failedAt < SNAPSHOT_RETRY_MS)) return;
+  rebuildPackages(group).then(
+    () => rebuildFailedAt.delete(group),
+    error => {
+      rebuildFailedAt.set(group, Date.now());
+      console.error(`[opennavo] sitemap ${group} snapshot refresh failed`, error);
+    }
+  );
+}
+
+async function writeSnapshot(group: PackageGroup): Promise<SitemapEntry[]> {
+  const storage = useStorage('cache');
   // Reload every OFFSET page and publish only after all immutable chunks are stored.
   const pages = await loadPackagePages(group);
   const version = randomUUID();
   const keys = pages.map((_, index) => `sitemap-package-snapshots-v2:${group}:${version}:${index}`);
+  let previous: PackageSnapshot | null;
   try {
     // Sequential writes ensure no writes remain in flight when failure cleanup starts.
     for (const [index, page] of pages.entries()) {
-      await storage.setItem(keys[index]!, page, { ttl: 120 });
+      await storage.setItem(keys[index]!, page, { ttl: SNAPSHOT_TTL_SECONDS });
       if (!(await storage.hasItem(keys[index]!))) {
         throw new Error('Sitemap snapshot chunk was not stored');
       }
     }
-    // Keep the manifest until replaced so even a TTL-less driver can reclaim its chunks.
-    await storage.setItem(manifestKey, { keys, expires: Date.now() + 60000 });
+    // Read the manifest being replaced right before replacing it, so a snapshot another server
+    // published in the meantime is reclaimed as well.
+    previous = await storage.getItem<PackageSnapshot>(manifestKey(group));
+    await storage.setItem(
+      manifestKey(group),
+      { keys, expires: Date.now() + SNAPSHOT_FRESH_MS },
+      { ttl: SNAPSHOT_TTL_SECONDS }
+    );
   } catch (error) {
     await Promise.all(keys.map(key => storage.removeItem(key)));
     throw error;
   }
   // Explicit reclamation is required: the default memory driver ignores TTL.
-  // Readers racing this cleanup rebuild instead of returning a partial catalog.
+  // Readers racing this cleanup move on to the new manifest (readSnapshot).
   if (previous) await Promise.all(previous.keys.map(key => storage.removeItem(key)));
   return pages.flat();
 }

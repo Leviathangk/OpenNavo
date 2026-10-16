@@ -1,12 +1,9 @@
-import { readPage } from '../utils/catalogQuery';
+import { readGridPageSize, readPage } from '../utils/catalogQuery';
 
 /** Keep page size in links so SSR, reloads, pagination and structured-data positions agree. */
 export function useGridPageSize() {
   const { query, hrefWith } = useCatalogQuery({ page: 1, size: 24 });
-  const pageSize = computed(() => {
-    const size = Number(query.value.size);
-    return Number.isInteger(size) && size >= 1 && size <= 100 ? size : 24;
-  });
+  const pageSize = computed(() => readGridPageSize(query.value.size));
   function fitPage(size: number) {
     if (size === pageSize.value) return;
     const first = (readPage(query.value.page) - 1) * pageSize.value;

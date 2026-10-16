@@ -2,7 +2,7 @@
 import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { OnEmpty, OnErrorState, OnPackageListView, OnPagination } from '@opennavo/ui';
-import { CATALOG_SORTS, readEnum, readFlag, readPage } from '~/utils/catalogQuery';
+import { CATALOG_SORTS, pageCount as countPages, readEnum, readFlag } from '~/utils/catalogQuery';
 import { findCategoryPath } from '~/utils/categories';
 import { packagePath } from '~/utils/packageView';
 
@@ -21,7 +21,7 @@ const NuxtLink = resolveComponent('NuxtLink');
 const { query, hrefWith, update } = useCatalogQuery({ page: 1, sort: 'popular', disabled: false });
 
 const slug = computed(() => String(route.params.slug ?? ''));
-const page = computed(() => readPage(query.value.page));
+const { page, assertExists } = useListPage();
 const sort = computed(() => readEnum(query.value.sort, CATALOG_SORTS, 'popular'));
 const includeDisabled = computed(() => readFlag(query.value.disabled));
 
@@ -37,7 +37,7 @@ if (tree.value && !category.value) {
   throw createError({ statusCode: 404, statusMessage: 'Category not found', fatal: true });
 }
 
-const { data, error, refresh } = await useAsyncData(
+const { data, error, refresh, status } = await useAsyncData(
   () =>
     `packages:category:${slug.value}:${sort.value}:${page.value}:${pageSize.value}:${includeDisabled.value}:${locale.value}`,
   () =>
@@ -58,7 +58,8 @@ const { data, error, refresh } = await useAsyncData(
     )
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / pageSize.value)));
+assertExists(() => data.value?.total, pageSize, status);
+const pageCount = computed(() => countPages(data.value?.total ?? 0, pageSize.value));
 const sorts = useCatalogSorts();
 // Description and count; desktop has only count.
 const subtitle = computed(() => {
@@ -105,6 +106,8 @@ useItemListSchema(
 
 // WP1: no "best" in titles; the legacy title is the rollout fallback selected in admin.
 const legacyTitles = useLegacyTitles();
+// Filtered lists retain their own canonical but stay out of the index.
+useSeoMeta({ robots: () => (includeDisabled.value ? 'noindex, follow' : undefined) });
 usePageSeo({
   title: () =>
     t(legacyTitles.value ? 'categories.itemMetaTitle' : 'categories.seo.itemTitle', {

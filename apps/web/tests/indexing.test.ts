@@ -82,11 +82,13 @@ describe('sitemap entries', () => {
           { hreflang: 'zh-Hans', href: '/zh/apps/x' },
           { hreflang: 'x-default', href: '/apps/x' }
         ],
+        _encoded: true,
         _sitemap: 'apps'
       },
       {
         loc: '/zh/apps/x',
         alternatives: entries[0]!.alternatives,
+        _encoded: true,
         _sitemap: 'apps'
       }
     ]);

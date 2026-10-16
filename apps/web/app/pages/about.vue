@@ -10,6 +10,14 @@ const { data: config } = await useAsyncData(
 );
 
 usePageSeo({ title: () => t('about.metaTitle'), description: () => t('about.description') });
+// Share image (WP13): the site's default card, as on the home page.
+defineOgImage('OgDefaultSatori', {
+  locale: toAppLocale(locale.value),
+  variant: 'home',
+  title: t('og.homeTitle'),
+  description: t('og.homeDescription'),
+  ...useOgFrame()
+});
 </script>
 
 <template>

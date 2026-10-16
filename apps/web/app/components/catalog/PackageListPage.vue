@@ -2,8 +2,9 @@
 import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { OnEmpty, OnErrorState, OnPackageListView, OnPagination } from '@opennavo/ui';
-import { CATALOG_SORTS, readEnum, readFlag, readPage } from '~/utils/catalogQuery';
+import { CATALOG_SORTS, pageCount as countPages, readEnum, readFlag } from '~/utils/catalogQuery';
 import { packagePath } from '~/utils/packageView';
+import { brandlessTitle } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -17,11 +18,11 @@ const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const { query, hrefWith, update } = useCatalogQuery({ page: 1, sort: 'popular', disabled: false });
 
-const page = computed(() => readPage(query.value.page));
+const { page, assertExists } = useListPage();
 const sort = computed(() => readEnum(query.value.sort, CATALOG_SORTS, 'popular'));
 const includeDisabled = computed(() => readFlag(query.value.disabled));
 
-const { data, error, refresh } = await useAsyncData(
+const { data, error, refresh, status } = await useAsyncData(
   () => `packages:cask:${sort.value}:${page.value}:${pageSize.value}:${includeDisabled.value}:${locale.value}`,
   () =>
     unwrap(
@@ -40,7 +41,8 @@ const { data, error, refresh } = await useAsyncData(
     )
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / pageSize.value)));
+assertExists(() => data.value?.total, pageSize, status);
+const pageCount = computed(() => countPages(data.value?.total ?? 0, pageSize.value));
 const sorts = useCatalogSorts();
 const subtitle = computed(() =>
   data.value
@@ -56,10 +58,21 @@ useItemListSchema(
   () => (page.value - 1) * pageSize.value + 1
 );
 
+// Filtered lists retain their own canonical but stay out of the index.
+useSeoMeta({ robots: () => (includeDisabled.value ? 'noindex, follow' : undefined) });
 usePageSeo({
   title: () => t('catalog.appsMetaTitle'),
   page,
   description: () => t('catalog.appsDescription')
+});
+// Share image (WP13): the list beside the first apps it shows.
+defineOgImage('OgListSatori', {
+  locale: formattingLocale.value,
+  label: t('catalog.appsTitle'),
+  title: brandlessTitle(t('catalog.appsMetaTitle')),
+  description: t('catalog.appsDescription'),
+  icons: ogAppIcons(data.value?.records),
+  ...useOgFrame()
 });
 </script>
 

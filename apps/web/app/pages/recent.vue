@@ -3,8 +3,9 @@ import { withRecentReturn } from '@opennavo/shared';
 import { unwrap } from '@opennavo/api';
 import { OnEmpty, OnErrorState, OnPackageListView, OnPagination } from '@opennavo/ui';
 import type { OnAppCardStat } from '@opennavo/ui';
-import { readPage } from '~/utils/catalogQuery';
+import { pageCount as countPages } from '~/utils/catalogQuery';
 import { packagePath } from '~/utils/packageView';
+import { brandlessTitle } from '~/utils/seoTitles';
 
 // Recently Updated: Discover's section in full, newest version first, with real page links. Shared
 // OnPackageListView (ADR-017), Cask-only (ADR-018). Pages past the end answer 404.
@@ -15,10 +16,10 @@ const { t, locale } = useI18n();
 const api = useApi();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
-const { query, hrefWith } = useCatalogQuery({ page: 1 });
-const page = computed(() => readPage(query.value.page));
+const { hrefWith } = useCatalogQuery({ page: 1 });
+const { page, assertExists } = useListPage();
 
-const { data, error, refresh } = await useAsyncData(
+const { data, error, refresh, status } = await useAsyncData(
   () => `recent:${page.value}:${pageSize.value}:${locale.value}`,
   () =>
     unwrap(
@@ -30,9 +31,8 @@ const { data, error, refresh } = await useAsyncData(
     )
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / pageSize.value)));
-if (data.value && page.value > pageCount.value)
-  throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true });
+assertExists(() => data.value?.total, pageSize, status);
+const pageCount = computed(() => countPages(data.value?.total ?? 0, pageSize.value));
 
 useItemListSchema(
   () =>
@@ -43,6 +43,15 @@ useItemListSchema(
 );
 
 usePageSeo({ title: () => t('recent.metaTitle'), page, description: () => t('recent.description') });
+// Share image (WP13): the list beside the latest updated apps.
+defineOgImage('OgListSatori', {
+  locale: toAppLocale(locale.value),
+  label: t('recent.title'),
+  title: brandlessTitle(t('recent.metaTitle')),
+  description: t('recent.description'),
+  icons: ogAppIcons(data.value?.records),
+  ...useOgFrame()
+});
 </script>
 
 <template>

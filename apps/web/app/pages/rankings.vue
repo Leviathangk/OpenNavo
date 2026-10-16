@@ -3,8 +3,9 @@ import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { OnEmpty, OnErrorState, OnPagination, OnRankingsView } from '@opennavo/ui';
 import type { OnRankingsEntry } from '@opennavo/ui';
-import { RANKING_PERIODS, readEnum, readPage } from '~/utils/catalogQuery';
+import { pageCount as countPages, RANKING_PERIODS, readEnum } from '~/utils/catalogQuery';
 import { flattenCategories } from '~/utils/categories';
+import { brandlessTitle } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -22,14 +23,14 @@ const { query, hrefWith, update } = useCatalogQuery({ page: 1, period: '30d', ca
 
 const period = computed(() => readEnum(query.value.period, RANKING_PERIODS, '30d'));
 const category = computed(() => (typeof query.value.category === 'string' ? query.value.category : ''));
-const page = computed(() => readPage(query.value.page));
+const { page, assertExists } = useListPage();
 
 const { data: tree } = await useAsyncData(
   () => `categories:${locale.value}`,
   () => unwrap(api.GET('/categories'))
 );
 
-const { data, error, refresh } = await useAsyncData(
+const { data, error, refresh, status } = await useAsyncData(
   () => `rankings:${period.value}:${category.value}:${page.value}:${locale.value}`,
   () =>
     unwrap(
@@ -56,7 +57,8 @@ const categoryOptions = computed(() =>
   )
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
+assertExists(() => data.value?.total, PAGE_SIZE, status);
+const pageCount = computed(() => countPages(data.value?.total ?? 0, PAGE_SIZE));
 
 const entries = computed<OnRankingsEntry[] | null>(() =>
   data.value
@@ -80,7 +82,16 @@ useItemListSchema(
   () => entries.value?.[0]?.rank ?? 1
 );
 
-usePageSeo({ title: () => t('rankings.metaTitle'), description: () => t('rankings.description') });
+usePageSeo({ title: () => t('rankings.metaTitle'), page, description: () => t('rankings.description') });
+// Share image (WP13): the ranking beside its first apps.
+defineOgImage('OgListSatori', {
+  locale: formattingLocale.value,
+  label: t('rankings.title'),
+  title: brandlessTitle(t('rankings.metaTitle')),
+  description: t('rankings.description'),
+  icons: ogAppIcons(data.value?.records.map(entry => entry.package)),
+  ...useOgFrame()
+});
 </script>
 
 <template>

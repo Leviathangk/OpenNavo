@@ -11,8 +11,10 @@ const ttls: Record<string, number> = {
   '/': 300,
   '/discover': 300,
   '/about': 900,
+  '/feedback': 900,
   '/apps': 600,
   '/apps/**': 600,
+  '/categories': 900,
   '/categories/**': 900,
   '/rankings': 900,
   '/recent': 300,
@@ -21,6 +23,16 @@ const ttls: Record<string, number> = {
   '/articles/**': 600,
   '/authors/**': 600
 };
+
+describe('link prefetching', () => {
+  it('prefetches linked pages on pointer or focus, never because a link is on screen', () => {
+    // Visibility prefetching made Google's renderer fetch the payload of every linked page.
+    const experimental = config.experimental as {
+      defaults?: { nuxtLink?: { prefetchOn?: unknown; prefetch?: unknown } };
+    };
+    expect(experimental.defaults?.nuxtLink).toEqual({ prefetchOn: { visibility: false, interaction: true } });
+  });
+});
 
 describe('robots module configuration', () => {
   const robots = config.robots as { robotsTxt?: boolean; disallow: string[]; groups?: unknown[] };

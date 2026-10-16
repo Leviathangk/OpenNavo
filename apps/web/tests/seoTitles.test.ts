@@ -4,6 +4,8 @@ import {
   currentReleaseDate,
   overviewDescription,
   overviewTitle,
+  brandlessTitle,
+  pagedDescription,
   pagedTitle,
   reliableVersion,
   usableSummary,
@@ -107,5 +109,32 @@ describe('WP1 titles and descriptions', () => {
     expect(pagedTitle('Mac Apps · OpenNavo', undefined, 'Page 1')).toBe('Mac Apps · OpenNavo');
     expect(pagedTitle('Mac Apps · OpenNavo', 3, 'Page 3')).toBe('Mac Apps · Page 3 · OpenNavo');
     expect(pagedTitle('Untitled', 2, 'Page 2')).toBe('Untitled · Page 2');
+  });
+
+  it('Leads later pages’ descriptions with the page number', () => {
+    const description = 'macOS apps in Homebrew.';
+    expect(pagedDescription(description, undefined, 'Page 1')).toBe(description);
+    expect(pagedDescription(description, 1, 'Page 1')).toBe(description);
+    expect(pagedDescription(description, 2, 'Page 2')).toBe('Page 2 · macOS apps in Homebrew.');
+    expect(pagedDescription(undefined, 2, 'Page 2')).toBeUndefined();
+    expect(pagedDescription(description, 4, translator('zh-CN')('catalog.pageTitle', { page: 4 }))).toBe(
+      '第 4 页 · macOS apps in Homebrew.'
+    );
+  });
+
+  it('Share images drop the brand suffix the card already shows', () => {
+    expect(brandlessTitle('Mac App Collections · OpenNavo')).toBe('Mac App Collections');
+    expect(brandlessTitle('Untitled')).toBe('Untitled');
+    for (const code of LOCALES)
+      for (const key of [
+        'catalog.appsMetaTitle',
+        'rankings.metaTitle',
+        'recent.metaTitle',
+        'categories.metaTitle',
+        'collections.metaTitle'
+      ]) {
+        const title = translator(code)(key);
+        expect(brandlessTitle(title), `${code} ${key}`).not.toContain('OpenNavo');
+      }
   });
 });

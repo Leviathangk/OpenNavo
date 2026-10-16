@@ -1,4 +1,25 @@
 //! Root daemon entry point. Never launched by tests or cargo gen.
+/// The file the helper was started from. An app update swaps the whole bundle, so the path then names the new
+/// helper while this process keeps running the deleted one, and launchd never restarts a KeepAlive daemon for
+/// that. Such a process can no longer prove its own signature, so every app connection fails.
+pub struct Executable {
+    path: std::path::PathBuf,
+    id: (u64, u64),
+}
+impl Executable {
+    pub fn at(path: std::path::PathBuf) -> std::io::Result<Self> {
+        let id = identity(&std::fs::metadata(&path)?);
+        Ok(Self { path, id })
+    }
+    /// Another file has taken the path. A missing file is no replacement (yet): launchd would have nothing to start.
+    pub fn replaced(&self) -> bool {
+        std::fs::metadata(&self.path).is_ok_and(|now| identity(&now) != self.id)
+    }
+}
+fn identity(metadata: &std::fs::Metadata) -> (u64, u64) {
+    use std::os::unix::fs::MetadataExt;
+    (metadata.dev(), metadata.ino())
+}
 #[cfg(target_os = "macos")]
 mod mac {
     use super::super::{
@@ -6,6 +27,7 @@ mod mac {
         control::{Controller, Reply, Request},
         hardware::{Family, SmcHardware, ThreadDelay},
     };
+    use super::Executable;
     use crate::{
         AppError,
         monitor::{
@@ -74,6 +96,21 @@ mod mac {
         fn flush(&self) {}
     }
     static LOG: UnifiedLog = UnifiedLog;
+    /// Our file as the kernel resolves it; launchd passes only the bundle-relative path as argv[0].
+    fn own_path() -> Option<std::path::PathBuf> {
+        use std::os::unix::ffi::OsStrExt;
+        let mut buffer = [0u8; nix::libc::PROC_PIDPATHINFO_MAXSIZE as usize];
+        // SAFETY: buffer size is PROC_PIDPATHINFO_MAXSIZE; read only the returned length.
+        let length = unsafe {
+            nix::libc::proc_pidpath(
+                nix::libc::getpid(),
+                buffer.as_mut_ptr().cast(),
+                buffer.len() as u32,
+            )
+        };
+        let length = usize::try_from(length).ok().filter(|length| *length > 0)?;
+        Some(std::ffi::OsStr::from_bytes(&buffer[..length]).into())
+    }
     pub fn run() -> Result<(), AppError> {
         if log::set_logger(&LOG).is_ok() {
             log::set_max_level(log::LevelFilter::Info);
@@ -94,6 +131,10 @@ mod mac {
         }
         if unsafe { bridge::on_helper_identity() } != 1 {
             return Err(AppError::new("E_FAN_UNAUTHORIZED", "helper_signature"));
+        }
+        let executable = own_path().and_then(|path| Executable::at(path).ok());
+        if executable.is_none() {
+            log::warn!("OpenNavo fan helper cannot watch its own file for app updates");
         }
         let chip = system::string(&NativeSystemSource, "machdep.cpu.brand_string")?;
         let family = Family::from_chip(&chip);
@@ -125,12 +166,19 @@ mod mac {
             .map_err(|_| super::super::client::unavailable())?;
             bridge::on_xpc_serve(request);
         }
-        std::thread::spawn(|| {
+        std::thread::spawn(move || {
             loop {
+                // After an app update, exiting lets KeepAlive start the new helper now at our path.
+                let replaced = executable.as_ref().is_some_and(Executable::replaced);
                 if let Some(control) = CONTROL.get()
                     && let Ok(mut control) = control.lock()
                 {
-                    if TERMINATE.load(std::sync::atomic::Ordering::Acquire) {
+                    if replaced || TERMINATE.load(std::sync::atomic::Ordering::Acquire) {
+                        if replaced {
+                            log::info!(
+                                "OpenNavo fan helper was replaced by an app update; restarting"
+                            );
+                        }
                         control.recover(crate::monitor::types::FanReason::Sleep);
                         std::process::exit(0);
                     }

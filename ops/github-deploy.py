@@ -22,6 +22,9 @@ import time
 import urllib.request
 
 MAX_ARCHIVE = 40 * 1024 * 1024
+RELEASE_NAME = re.compile(r'gh-[0-9a-f]{12}-[0-9]{1,20}-[0-9]{1,4}')
+# Each release snapshot holds that deployment's pre-migration database dump.
+RELEASE_RETENTION = 5
 
 
 def validate(payload, registry):
@@ -256,11 +259,63 @@ class Deployment:
             command(['docker', 'rm', *obsolete])
         print('Retired containers stopped; at most one previous release retained.', flush=True)
 
+    def prune(self, previous):
+        """Bound disk use after container cleanup; failures are reported, never fatal."""
+        try:
+            ids = command(['docker', 'ps', '-aq']).split()
+            containers = json.loads(command(['docker', 'inspect', *ids])) if ids else []
+            self.prune_releases(previous, containers)
+            self.prune_images(containers)
+        except Exception as error:
+            print('Retention cleanup incomplete; the next deployment retries it: ' + str(error), flush=True)
+
+    def prune_releases(self, previous, containers):
+        """Keep the newest snapshots plus the live, previous and any mounted release."""
+        keep = max(2, int(self.config.get('release_retention', RELEASE_RETENTION)))
+        protected = {self.release, self.state.get('release'), previous.get('release')}
+        mounted = [Path(mount['Source']) for container in containers
+                   for mount in container.get('Mounts') or [] if mount.get('Source')]
+        snapshots = [path for path in (self.root / 'releases').iterdir()
+                     if RELEASE_NAME.fullmatch(path.name) and not path.is_symlink() and path.is_dir()]
+        snapshots.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+        for path in snapshots[keep:]:
+            if path.name in protected or any(source == path or path in source.parents for source in mounted):
+                continue
+            shutil.rmtree(path)
+            print('Removed release snapshot ' + path.name, flush=True)
+
+    def prune_images(self, containers):
+        """Protect container and rollback images before selecting unused application images."""
+        used = {container['Image'] for container in containers}
+        # On a same-SHA retry, the payload's run ID may differ from the deployed release.
+        release = self.state.get('release') if self.state.get('sha') == self.payload['sha'] else self.release
+        snapshot = self.root / 'releases' / release
+        references = command([
+            'docker', 'compose', '--project-directory', str(self.root), '-p', self.config['project'],
+            '--env-file', str(self.root / '.env'), '--env-file', str(snapshot / 'before-release.env'),
+            '-f', str(self.root / self.config['compose_file']), '-f', str(snapshot / 'before-rolling.json'),
+            '--profile', 'ops', '--profile', 'automation', 'config', '--images']).splitlines()
+        # Resolve every reference first; if configuration or image lookup fails, delete nothing.
+        for reference in dict.fromkeys(references):
+            used.add(command(['docker', 'image', 'inspect', '--format', '{{.Id}}', reference]))
+        for kind in ['server', 'web', 'mcp']:
+            listed = command(['docker', 'image', 'ls', '--no-trunc', '--quiet', self.config['registry'] + '/opennavo-' + kind])
+            for image in dict.fromkeys(listed.split()):
+                if image in used:
+                    continue
+                short = image.split(':')[-1][:12]
+                try:
+                    command(['docker', 'image', 'rm', image])
+                    print(f'Removed unused {kind} image {short}', flush=True)
+                except RuntimeError:
+                    print(f'Kept {kind} image {short}: Docker refused removal', flush=True)
+
     def apply(self, archive):
         if self.state.get('sha') == self.payload['sha']:
             self.services = self.state['services']
             self.verify()
             self.cleanup(self.state.get('previous', {}))
+            self.prune(self.state.get('previous', {}))
             print('This source revision is already deployed.'); return
         with tempfile.TemporaryDirectory() as auth:
             token = self.payload.get('registry_token', '')
@@ -298,6 +353,7 @@ class Deployment:
         print('Production deployed and verified: ' + self.payload['sha'], flush=True)
         # Cleanup failure must not roll back a verified release; a retry resumes cleanup.
         self.cleanup(previous)
+        self.prune(previous)
 
 
 def main():

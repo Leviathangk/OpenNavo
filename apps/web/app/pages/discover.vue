@@ -144,11 +144,12 @@ const labels = computed<OnDiscoverLabels>(() => ({
 
 const total = computed(() => home.value?.stats.casks ?? 0);
 
+// The home page describes the site (site.description); Discover describes the catalog it shows.
 useSeoMeta({
   title: () => t('home.metaTitle'),
   description: () =>
     t(
-      'site.description',
+      'home.introBody',
       { count: formatCount(total.value, { locale: formattingLocale.value }) },
       { plural: total.value }
     )

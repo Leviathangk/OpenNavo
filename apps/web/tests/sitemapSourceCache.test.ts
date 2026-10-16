@@ -8,6 +8,7 @@ import { packageSitemaps } from '../shared/utils/sitemapBuckets';
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   vi.resetModules();
 });
 
@@ -53,7 +54,7 @@ async function setup(records: Record<string, unknown>[]) {
   }));
   vi.stubGlobal('getSiteSettings', async () => ({ pages: { versionsSitemap: true } }));
   vi.stubGlobal('$fetch', fetch);
-  await import('../server/plugins/sitemap-sources');
+  const plugin = await import('../server/plugins/sitemap-sources');
   const index = async () => {
     const ctx = {
       sitemaps: Object.keys(packageSitemaps).map(_sitemapName => ({ _sitemapName }))
@@ -66,8 +67,24 @@ async function setup(records: Record<string, unknown>[]) {
     await hooks['sitemap:input']!(ctx);
     return ctx.urls;
   };
-  return { index, bucket, sizes, fetch, storage };
+  const packageCalls = () => fetch.mock.calls.filter(([url]) => url.endsWith('/sitemap/packages')).length;
+  return {
+    index,
+    bucket,
+    sizes,
+    fetch,
+    storage,
+    packageCalls,
+    idle: plugin.sitemapSourcesIdle,
+    // Past these the snapshot is stale, or a failed refresh may be retried.
+    stale: () => vi.setSystemTime(Date.now() + plugin.SNAPSHOT_FRESH_MS + 1000),
+    retry: () => vi.setSystemTime(Date.now() + plugin.SNAPSHOT_RETRY_MS + 1000)
+  };
 }
+
+const appBuckets = Object.keys(packageSitemaps).filter(name => name.startsWith('apps-'));
+const catalog = (count: number) =>
+  Array.from({ length: count }, (_, i) => ({ kind: 'cask', token: `app-${i}`, locales: [{ locale: 'en-US' }] }));
 
 describe('sitemap source snapshot cache', () => {
   it('reuses a 6000-app catalog for repeated indexes and all buckets within the storage limit', async () => {
@@ -149,44 +166,121 @@ describe('sitemap source snapshot cache', () => {
     expect(await storage.getKeys()).toHaveLength(5);
   });
 
-  it('reclaims old snapshots across five refreshes when the memory driver ignores TTL', async () => {
+  it('reclaims old snapshots across five background refreshes when the memory driver ignores TTL', async () => {
     vi.useFakeTimers();
-    const records = Array.from({ length: 1000 }, (_, i) => ({
-      kind: 'cask',
-      token: `app-${i}`,
-      locales: [{ locale: 'en-US' }]
-    }));
-    const { bucket, storage, fetch } = await setup(records);
+    const { bucket, storage, fetch, idle, stale } = await setup(catalog(1000));
     for (let round = 0; round < 5; round += 1) {
       await bucket('apps-bucket-0');
+      await idle();
       expect(await storage.getKeys()).toHaveLength(3);
-      vi.setSystemTime(Date.now() + 61000);
+      stale();
     }
     expect(fetch).toHaveBeenCalledTimes(10);
   });
 
-  it('cleans partial writes and allows retry after a failed refresh', async () => {
+  it('answers from a stale snapshot at once and rebuilds it once behind the responses', async () => {
     vi.useFakeTimers();
-    const records = Array.from({ length: 1000 }, (_, i) => ({
-      kind: 'cask',
-      token: `app-${i}`,
-      locales: [{ locale: 'en-US' }]
-    }));
-    const { bucket, storage, fetch } = await setup(records);
+    const records = catalog(1000);
+    const { bucket, packageCalls, idle, stale } = await setup(records);
     await bucket('apps-bucket-0');
+    expect(packageCalls()).toBe(2);
+    stale();
+    records.shift();
+    const staleUrls = (await Promise.all(appBuckets.map(name => bucket(name)))).flat();
+    expect(staleUrls).toContainEqual(expect.objectContaining({ loc: '/apps/app-0' }));
+    await idle();
+    expect(packageCalls()).toBe(4);
+    const freshUrls = (await Promise.all(appBuckets.map(name => bucket(name)))).flat();
+    expect(freshUrls).not.toContainEqual(expect.objectContaining({ loc: '/apps/app-0' }));
+    expect(freshUrls).toHaveLength(999);
+    expect(packageCalls()).toBe(4);
+  });
+
+  it('keeps the last snapshot when a refresh fails, cleans its partial writes and retries after a pause', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { bucket, storage, fetch, idle, stale, retry } = await setup(catalog(1000));
+    const first = await bucket('apps-bucket-0');
     const originalKeys = await storage.getKeys();
-    vi.setSystemTime(Date.now() + 61000);
+    stale();
     const write = storage.setItem.bind(storage);
     const spy = vi.spyOn(storage, 'setItem');
     spy.mockImplementationOnce(write).mockRejectedValueOnce(new Error('storage unavailable'));
-    await expect(bucket('apps-bucket-0')).rejects.toThrow('storage unavailable');
+    expect(await bucket('apps-bucket-0')).toEqual(first);
+    await idle();
     expect(await storage.getKeys()).toEqual(originalKeys);
     spy.mockRestore();
+    expect(fetch).toHaveBeenCalledTimes(4);
+    // No retry during the pause; afterwards one rebuild serves concurrent readers.
+    expect(await bucket('apps-bucket-0')).toEqual(first);
+    await idle();
+    expect(fetch).toHaveBeenCalledTimes(4);
+    retry();
     await Promise.all([bucket('apps-bucket-0'), bucket('apps-bucket-1')]);
+    await idle();
     expect(await storage.getKeys()).toHaveLength(3);
     expect(fetch).toHaveBeenCalledTimes(6);
     await bucket('apps-bucket-0');
+    await idle();
     expect(fetch).toHaveBeenCalledTimes(6);
+  });
+
+  it('moves on to a snapshot published while it was reading instead of rebuilding', async () => {
+    const { bucket, storage, packageCalls } = await setup(catalog(1000));
+    const before = await bucket('apps-bucket-0');
+    const manifestKey = (await storage.getKeys()).find(key => key.includes('manifest') && key.endsWith(':apps'))!;
+    const manifest = (await storage.getItem<{ keys: string[]; expires: number }>(manifestKey))!;
+    const read = storage.getItem.bind(storage);
+    let swapped = false;
+    vi.spyOn(storage, 'getItem').mockImplementation((async (key: string) => {
+      if (!swapped && key === manifest.keys[0]) {
+        swapped = true;
+        // Another server publishes a new snapshot and reclaims this one mid-read.
+        const next = manifest.keys.map(name => `${name}-next`);
+        for (const [i, name] of manifest.keys.entries()) {
+          await storage.setItem(next[i]!, await read(name));
+          await storage.removeItem(name);
+        }
+        await storage.setItem(manifestKey, { keys: next, expires: manifest.expires });
+      }
+      return read(key);
+    }) as typeof storage.getItem);
+    expect(await bucket('apps-bucket-0')).toEqual(before);
+    expect(packageCalls()).toBe(2);
+  });
+
+  it('keeps answering the index from its last result while the catalog API is down', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { index, fetch, packageCalls, idle, stale } = await setup(catalog(1000));
+    const first = await index();
+    expect(first.length).toBeGreaterThan(0);
+    const calls = packageCalls();
+    // A warm index does not touch the catalog at all.
+    expect(await index()).toEqual(first);
+    expect(packageCalls()).toBe(calls);
+    stale();
+    const fetchPage = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (url, options) => {
+      if (url.endsWith('/sitemap/packages')) throw new Error('API unavailable');
+      return fetchPage(url, options);
+    });
+    expect(await index()).toEqual(first);
+    await idle();
+    expect(await index()).toEqual(first);
+    expect(packageCalls()).toBeGreaterThan(calls);
+  });
+
+  it('fails a cold index loudly when the catalog API is down', async () => {
+    const { index, fetch } = await setup(catalog(10));
+    const fetchPage = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (url, options) => {
+      if (url.endsWith('/sitemap/packages')) throw new Error('API unavailable');
+      return fetchPage(url, options);
+    });
+    await expect(index()).rejects.toThrow('API unavailable');
+    fetch.mockImplementation(fetchPage);
+    expect((await index()).length).toBeGreaterThan(0);
   });
 
   it('continues past filtered pages and retries failed pages without caching an empty result', async () => {

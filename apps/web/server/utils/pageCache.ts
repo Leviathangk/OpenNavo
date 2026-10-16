@@ -1,7 +1,27 @@
 import { timingSafeEqual } from 'node:crypto';
+import type { H3Event } from 'h3';
 
 /** Namespace of Nitro's route caches in the cache storage. */
 export const PAGE_CACHE_BASE = 'nitro:routes:_';
+
+/** Answers that mean the page itself is gone; outages (5xx) keep serving the cached copy. */
+export const GONE_STATUSES: ReadonlySet<number> = new Set([404, 410]);
+
+interface RouteCacheOptions {
+  group?: string;
+  getKey?: (event: H3Event) => string | Promise<string>;
+}
+
+/**
+ * Key, in the cache storage, of the route cache entry a request was answered from. Nitro's cached
+ * route handler leaves its options on event.context.cache, including the getKey it stores entries
+ * under; requests outside a route cache have none.
+ */
+export async function routeCacheKey(event: H3Event): Promise<string | undefined> {
+  const options = (event.context.cache as { options?: RouteCacheOptions } | undefined)?.options;
+  if (options?.group !== 'nitro/routes' || typeof options.getKey !== 'function') return undefined;
+  return `${PAGE_CACHE_BASE}:${await options.getKey(event)}.json`;
+}
 
 /**
  * Nitro keys route caches as <first 16 word characters of the path>.<hash of the full URL>.json.

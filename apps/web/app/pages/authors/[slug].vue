@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ApiError, unwrap } from '@opennavo/api';
 import { OnBreadcrumb, OnEmpty, OnErrorState, OnPagination } from '@opennavo/ui';
-import { readPage } from '~/utils/catalogQuery';
+import { pageCount as countPages } from '~/utils/catalogQuery';
 import { ARTICLE_PAGE_SIZE, ARTICLE_SLUG, authorEntityId } from '~/utils/article';
 
 // Author page (WP17): the profile bylines link to, with the author's published articles. Article
@@ -13,14 +13,14 @@ const route = useRoute();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
-const { query, hrefWith } = useCatalogQuery({ page: 1 });
-const page = computed(() => readPage(query.value.page));
+const { hrefWith } = useCatalogQuery({ page: 1 });
+const { page, assertExists } = useListPage();
 const slug = computed(() => String(route.params.slug ?? ''));
 
 if (!ARTICLE_SLUG.test(slug.value) || slug.value.length > 80)
   throw createError({ statusCode: 404, statusMessage: 'Author not found', fatal: true });
 
-const { data, error, refresh } = await useAsyncData(
+const { data, error, refresh, status } = await useAsyncData(
   () => `author:${slug.value}:${page.value}:${locale.value}`,
   () =>
     unwrap(
@@ -38,9 +38,8 @@ if (error.value?.statusCode === 404)
 
 const author = computed(() => data.value?.author ?? null);
 const total = computed(() => data.value?.articles.total ?? 0);
-const pageCount = computed(() => Math.max(1, Math.ceil(total.value / ARTICLE_PAGE_SIZE)));
-if (data.value && page.value > pageCount.value)
-  throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true });
+assertExists(() => data.value?.articles.total, ARTICLE_PAGE_SIZE, status);
+const pageCount = computed(() => countPages(total.value, ARTICLE_PAGE_SIZE));
 
 const crumbs = computed(() => [
   { label: t('nav.articles'), href: localePath('/articles') },

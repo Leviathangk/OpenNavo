@@ -16,7 +16,7 @@ const TYPES: readonly FeedbackType[] = [
   'other'
 ];
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const api = useApi();
 const route = useRoute();
 const localePath = useLocalePath();
@@ -88,6 +88,14 @@ async function submit() {
 }
 
 usePageSeo({ title: () => t('feedback.metaTitle'), description: () => t('feedback.description') });
+// Share image (WP13): the site's default card, as on the home page.
+defineOgImage('OgDefaultSatori', {
+  locale: toAppLocale(locale.value),
+  variant: 'home',
+  title: t('og.homeTitle'),
+  description: t('og.homeDescription'),
+  ...useOgFrame()
+});
 </script>
 
 <template>

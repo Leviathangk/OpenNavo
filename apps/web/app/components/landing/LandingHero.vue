@@ -17,6 +17,16 @@ const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const formattingLocale = computed(() => toAppLocale(locale.value));
 
+// The heading's two lines read as one sentence. Vue drops whitespace-only text between the block
+// spans, so the separating space ends the first line (on screen it vanishes at the line end);
+// Chinese and Japanese lines join without one.
+const titleLead = computed(() => {
+  const title = t('landing.hero.title');
+  return /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u3000-\u303f\uff00-\uffef]$/u.test(title)
+    ? title
+    : `${title} `;
+});
+
 const lede = computed(() =>
   props.count
     ? t(
@@ -114,7 +124,7 @@ useLandingParallax(root);
         <OnBadge star>{{ t('landing.hero.badge') }}</OnBadge>
       </span>
       <h1 class="landing-hero-title m-0 mt-24px text-display text-ink-primary md:mt-28px md:text-section lg:text-hero">
-        <span class="block">{{ t('landing.hero.title') }}</span>
+        <span class="block">{{ titleLead }}</span>
         <span class="block text-ink-tertiary">{{ t('landing.hero.titleAccent') }}</span>
       </h1>
       <OnHighlightText

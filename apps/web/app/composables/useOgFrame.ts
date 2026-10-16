@@ -16,3 +16,15 @@ export function useOgFrame() {
   }
   return { tagline: t('og.tagline'), platform: t('og.platform'), site };
 }
+
+/** Up to four listed apps for a share image's icon column; without them the brand icon stands in. */
+export function ogAppIcons(
+  packages: readonly { displayName: string; token: string; iconUrl?: string | null; accentColor?: string | null }[] = []
+) {
+  return packages.slice(0, 4).map(pkg => ({
+    name: pkg.displayName,
+    token: pkg.token,
+    src: pkg.iconUrl,
+    accent: pkg.accentColor
+  }));
+}

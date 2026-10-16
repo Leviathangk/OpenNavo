@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { unwrap } from '@opennavo/api';
 import { OnEmpty, OnErrorState, OnIcon, OnPageHeader, OnPagination, OnTabs } from '@opennavo/ui';
-import { readPage } from '~/utils/catalogQuery';
+import { pageCount as countPages } from '~/utils/catalogQuery';
 import { ARTICLE_PAGE_SIZE, ARTICLE_TYPES, isArticleType } from '~/utils/article';
 
 // Articles (WP17): newest first with real page links. Page 2 and later are their own canonical pages;
@@ -13,11 +13,11 @@ const route = useRoute();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
-const { query, hrefWith } = useCatalogQuery({ page: 1 });
-const page = computed(() => readPage(query.value.page));
+const { hrefWith } = useCatalogQuery({ page: 1 });
+const { page, assertExists } = useListPage();
 const type = computed(() => (isArticleType(route.query.type) ? route.query.type : undefined));
 
-const { data, error, refresh } = await useAsyncData(
+const { data, error, refresh, status } = await useAsyncData(
   () => `articles:${type.value ?? 'all'}:${page.value}:${locale.value}`,
   () =>
     unwrap(
@@ -25,9 +25,8 @@ const { data, error, refresh } = await useAsyncData(
     )
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / ARTICLE_PAGE_SIZE)));
-if (data.value && page.value > pageCount.value)
-  throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true });
+assertExists(() => data.value?.total, ARTICLE_PAGE_SIZE, status);
+const pageCount = computed(() => countPages(data.value?.total ?? 0, ARTICLE_PAGE_SIZE));
 
 const records = computed(() => (error.value ? [] : (data.value?.records ?? [])));
 const featured = computed(() => (page.value === 1 && !type.value ? records.value[0] : undefined));

@@ -1,0 +1,24 @@
+import { describe, expect, it } from 'vitest';
+import { localizedEntries } from '../server/utils/sitemapEntries';
+
+describe('Sitemap entries', () => {
+  it('spell tokens the way pages canonicalize them, + and @ included', () => {
+    for (const token of ['nextpad++', 'logi-options+', 'font-m+-nerd-font', 'visual-studio-code@insiders', 'a.b_c-1']) {
+      const entries = localizedEntries(`/apps/${token}`, 'apps-bucket-0', ['en-US', 'zh-CN']);
+      expect(entries.map(entry => entry.loc)).toEqual([`/apps/${token}`, `/zh/apps/${token}`]);
+      // Marked as encoded, so @nuxtjs/sitemap does not run encodePath (+ → %2B) over the loc.
+      expect(entries.every(entry => entry['_encoded'] === true)).toBe(true);
+      expect(entries[0]!.alternatives.map(alternative => alternative.href)).toEqual([
+        `/apps/${token}`,
+        `/zh/apps/${token}`,
+        `/apps/${token}`
+      ]);
+    }
+  });
+
+  it('still escapes characters a URL cannot carry', () => {
+    const [entry] = localizedEntries('/apps/odd token', 'apps-bucket-0', ['en-US']);
+    expect(entry!.loc).toBe('/apps/odd%20token');
+    expect(entry!.alternatives[0]!.href).toBe('/apps/odd%20token');
+  });
+});

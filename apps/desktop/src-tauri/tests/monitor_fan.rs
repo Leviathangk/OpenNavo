@@ -2,8 +2,9 @@ use opennavo_desktop_lib::{
     AppError,
     monitor::{
         fan::{
-            client::{Client, Transport},
+            client::{Client, Transport, register},
             control::{Controller, Reply, Request},
+            daemon::Executable,
             hardware::{Delay, Family, Hardware, SmcHardware, encoded, read_fans},
         },
         sensors::aggregate,
@@ -12,6 +13,7 @@ use opennavo_desktop_lib::{
     },
 };
 use std::{
+    cell::Cell,
     collections::BTreeMap,
     sync::{Arc, Mutex},
 };
@@ -442,6 +444,71 @@ fn silent_helper_reads_as_error_and_can_still_be_uninstalled() {
     client.transport.control.hardware.fail_reset = true;
     assert_eq!(client.uninstall().unwrap_err().code, "E_FAN_WRITE_FAILED");
     assert_eq!(client.transport.state, FanHelperState::Enabled);
+}
+#[test]
+fn reinstall_retries_registration_only_while_launchd_still_removes_the_old_job() {
+    // Codes per attempt (the last one repeats), the state after a refusal, and how many waits remain.
+    let run = |codes: &[i32], state: FanHelperState, waits: usize| {
+        let (attempts, waited) = (Cell::new(0), Cell::new(0));
+        let result = register(
+            || {
+                attempts.set(attempts.get() + 1);
+                codes[(attempts.get() - 1).min(codes.len() - 1)]
+            },
+            || state,
+            || {
+                waited.set(waited.get() + 1);
+                waited.get() <= waits
+            },
+        );
+        (result, attempts.get(), waited.get())
+    };
+    // launchd refuses the new job until the old helper is gone, then accepts it.
+    assert_eq!(
+        run(&[1, 1, 0], FanHelperState::NotInstalled, 24),
+        (Ok(()), 3, 2)
+    );
+    // A first registration waits for the user's approval instead.
+    assert_eq!(
+        run(&[1], FanHelperState::RequiresApproval, 24),
+        (Ok(()), 1, 0)
+    );
+    // Still refused once the wait is over, or any other failure: report its code.
+    assert_eq!(run(&[1], FanHelperState::NotInstalled, 3), (Err(1), 4, 4));
+    assert_eq!(run(&[8], FanHelperState::Error, 24), (Err(8), 1, 0));
+}
+#[test]
+fn helper_notices_an_update_swapping_its_bundle_but_not_a_missing_or_restored_file() {
+    use std::{ffi::CString, os::unix::ffi::OsStrExt, path::Path};
+    let helper = |app: &Path| app.join("Contents/Library/Helpers/opennavo-fan-helper");
+    let bundle = |app: &Path, version: &str| {
+        std::fs::create_dir_all(helper(app).parent().unwrap()).unwrap();
+        std::fs::write(helper(app), version).unwrap();
+    };
+    let root = tempfile::tempdir().unwrap();
+    let app = root.path().join("OpenNavo.app");
+    let aside = root.path().join("current_app");
+    let update = root.path().join("update");
+    bundle(&app, "0.1.10");
+    let running = Executable::at(helper(&app)).unwrap();
+    assert!(!running.replaced());
+    // Moved away (the updater's fallback, or by hand): there is nothing for launchd to start yet.
+    std::fs::rename(&app, &aside).unwrap();
+    assert!(!running.replaced());
+    // Put back unchanged (the updater's rollback): still the same file.
+    std::fs::rename(&aside, &app).unwrap();
+    assert!(!running.replaced());
+    // The updater swaps both bundles in one step, then deletes the old one.
+    bundle(&update, "0.1.11");
+    let from = CString::new(update.as_os_str().as_bytes()).unwrap();
+    let to = CString::new(app.as_os_str().as_bytes()).unwrap();
+    // SAFETY: both are valid NUL-terminated paths that outlive the call.
+    let swapped =
+        unsafe { nix::libc::renamex_np(from.as_ptr(), to.as_ptr(), nix::libc::RENAME_SWAP) };
+    assert_eq!(swapped, 0);
+    assert!(running.replaced());
+    std::fs::remove_dir_all(&update).unwrap();
+    assert!(running.replaced());
 }
 #[test]
 fn reconnect_replays_each_safety_reason_once_and_helper_epoch_resets_cursor() {

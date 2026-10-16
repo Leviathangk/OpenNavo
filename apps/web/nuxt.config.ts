@@ -23,6 +23,11 @@ export default defineNuxtConfig({
   modules: ['@unocss/nuxt', '@nuxtjs/i18n', '@nuxt/fonts', '@nuxtjs/seo'],
   // Register components by filename without directory prefixes; names are unique throughout components/.
   components: [{ path: '~/components', pathPrefix: false }],
+  // Links prefetch the linked page (its _payload.json and route chunks) only when a visitor points at
+  // or focuses them. Prefetching on visibility made Google's renderer, which lays out the whole page
+  // at once, fetch the payload of every linked app: about 75% of Googlebot's requests were payloads.
+  // Every link on the site is this default NuxtLink, passed to @opennavo/ui as link-as.
+  experimental: { defaults: { nuxtLink: { prefetchOn: { visibility: false, interaction: true } } } },
   css: [
     '@unocss/reset/tailwind.css',
     '@opennavo/tokens/tokens.css',
@@ -144,7 +149,11 @@ export default defineNuxtConfig({
       '/': { swr: 300 },
       '/discover': { swr: 300 },
       '/about': { swr: 900 },
+      // The form posts from the browser; the page itself has nothing per visitor (no cookies or
+      // tokens), and prefilled ?type=&q= variants are cached per URL.
+      '/feedback': { swr: 900 },
       '/apps': { swr: 600 },
+      '/categories': { swr: 900 },
       '/categories/**': { swr: 900 },
       '/rankings': { swr: 900 },
       // Follows Discover, whose Recently Updated section it lists in full.

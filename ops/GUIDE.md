@@ -210,8 +210,18 @@ also bounds the rolling Compose overlay and state history to the current and
 immediately previous releases. Keep versioned application service names out of
 `depends_on` in the host's base Compose file: retired releases are pruned from
 the overlay, and the receiver's `compose config` check then aborts the deployment
-before the backup, migrations or route switch. Infrastructure containers, data volumes, images,
-and private release snapshots are not removed. Start the previous application
+before the backup, migrations or route switch. Infrastructure containers and data volumes are
+not removed. The receiver then bounds disk use. It keeps the newest five `gh-*` release snapshots
+(optional `release_retention` in the host configuration, minimum two); each snapshot holds that
+deployment's pre-migration database dump. The live and previous snapshots are always kept, as is
+any snapshot a container still mounts. Older `gh-*` snapshots are deleted. The receiver also
+removes OpenNavo server, web and MCP images that neither a container (running or stopped) nor
+the current release’s rollback Compose configuration references. Rollback references are resolved
+to image IDs first; a failed lookup skips image cleanup. It
+removes them by image ID with `docker image rm`, without force. Manual snapshots and other
+files under `releases/` are left to the operator. These pre-migration dumps are not a
+backup schedule: keep scheduled, off-host backups as well. Retention problems are
+reported but never fail a verified deployment; the next deployment retries them. Start the previous application
 services and verify their health before restoring their routes during a manual
 rollback. Cleanup failures do not roll back a verified release; retrying the same
 revision verifies the live routes and resumes cleanup. First inspect a failed run on the server; logs
@@ -232,8 +242,10 @@ configuration snapshots, and database backup available separately.
 Remove only older, unreferenced OpenNavo application images with
 `docker image rm <explicit-tag-or-digest>`, without force. Preserve infrastructure
 images. Do not use broad `docker image prune -a` when rollback images have no
-retained containers: it can remove those images too. Container cleanup in the
-deployment receiver does not automatically perform image cleanup.
+retained containers: it can remove those images too. The deployment receiver applies
+this rule automatically after each verified deployment (see above). Manual cleanup is
+only needed for local hotfix tags, images from failed deployments before the next
+successful one, or a stuck retention step.
 
 Unused build cache can be reclaimed with `docker builder prune -af` when no build
 is in progress. This may make future builds slower, but does not remove runtime

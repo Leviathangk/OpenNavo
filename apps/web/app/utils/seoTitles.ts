@@ -16,6 +16,17 @@ export function pagedTitle(title: string, page: number | undefined, label: strin
     : `${title} · ${label}`;
 }
 
+/** Later pages of a list lead their description with the page label, so no two pages share one. */
+export function pagedDescription(description: string | undefined, page: number | undefined, label: string) {
+  if (!description || !page || page <= 1) return description;
+  return `${label} · ${description}`;
+}
+
+/** A title without the brand suffix, for share images that show the brand themselves. */
+export function brandlessTitle(title: string): string {
+  return title.endsWith(TITLE_SUFFIX) ? title.slice(0, -TITLE_SUFFIX.length) : title;
+}
+
 /** Homebrew writes "latest" for unversioned casks; only real version numbers go into titles. */
 export function reliableVersion(version: string | null | undefined): string {
   const value = formatVersion(version ?? '');

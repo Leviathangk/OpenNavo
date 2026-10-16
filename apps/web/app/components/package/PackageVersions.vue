@@ -5,7 +5,7 @@ import type { ReleaseEntry } from '@opennavo/api';
 import { formatDate } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
 import { OnEmpty, OnErrorState, OnPagination, OnSegmented, OnStatTile, OnVersionTimeline } from '@opennavo/ui';
-import { readPage } from '~/utils/catalogQuery';
+import { pageCount as countPages } from '~/utils/catalogQuery';
 import { versionsDescription, versionsTitle } from '~/utils/seoTitles';
 
 // Version history (08 §10.6, mockup 04): toolbar (all / with notes, Chinese / original), timeline, stats/sources on right.
@@ -20,7 +20,7 @@ const api = useApi();
 const NuxtLink = resolveComponent('NuxtLink');
 const appLocale = computed(() => toAppLocale(locale.value));
 const { query, hrefWith, update } = useCatalogQuery({ page: 1, notes: false, original: false });
-const page = computed(() => readPage(query.value.page));
+const { page, assertExists } = useListPage();
 const onlyWithNotes = computed(() => query.value.notes === 'true' || query.value.notes === '1');
 const original = computed(() => query.value.original === 'true' || query.value.original === '1');
 
@@ -33,7 +33,7 @@ const releases = (options: { current: number; size: number; onlyWithNotes: boole
     })
   );
 
-const { data, error, refresh } = await useAsyncData(
+const { data, error, refresh, status } = await useAsyncData(
   () => `releases:${props.kind}:${token.value}:${page.value}:${onlyWithNotes.value}:${original.value}:${locale.value}`,
   () => releases({ current: page.value, size: PAGE_SIZE, onlyWithNotes: onlyWithNotes.value, original: original.value })
 );
@@ -53,7 +53,8 @@ const { data: totals } = await useAsyncData(
 
 const counts = computed(() => ({ all: totals.value?.all ?? 0, withNotes: totals.value?.withNotes ?? 0 }));
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
+assertExists(() => data.value?.total, PAGE_SIZE, status);
+const pageCount = computed(() => countPages(data.value?.total ?? 0, PAGE_SIZE));
 
 const filterOptions = computed(() => [
   {

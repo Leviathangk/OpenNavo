@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { access } from 'node:fs/promises';
+import { access, readdir, readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { createServer as createPortReservation } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -186,6 +186,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   let collectionState = 'empty';
   let collectionRequests = 0;
   const packageQueries = [];
+  // App list total, so a cached list page can be made to run past its end.
+  let packagesTotal = 50;
+  let sitemapPackageRequests = 0;
   const api = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     const match = /^\/api\/v1\/packages\/cask\/([^/]+)(\/related)?$/.exec(path);
@@ -235,7 +238,38 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         editorChoice: false,
         versionChangedAt: '2026-01-01T00:00:00Z'
       };
-      data = { current: Number(query.get('current') ?? 1), size: 24, total: 50, records: [summary] };
+      data = {
+        current: Number(query.get('current') ?? 1),
+        size: Number(query.get('size') ?? 24),
+        total: query.get('includeDisabled') === 'true' ? 100 : packagesTotal,
+        records: [summary]
+      };
+    } else if (path === '/api/v1/rankings') {
+      const current = Number(query.get('current') ?? 1);
+      const size = Number(query.get('size') ?? 50);
+      data = {
+        current,
+        size,
+        total: 120,
+        records: [
+          {
+            rank: (current - 1) * size + 1,
+            rankChange: 0,
+            package: appSummary('ordinary-app', 'Ordinary App'),
+            installs: 1852
+          }
+        ]
+      };
+    } else if (path === '/api/v1/home') {
+      data = {
+        features: [],
+        categories: [],
+        popularApps: [appSummary('ordinary-app', 'Ordinary App')],
+        popularCli: [],
+        recentlyUpdated: [appSummary('facts-app', 'Facts App')],
+        collections: [],
+        stats: { casks: 50, formulae: 0, updatedLast24h: 3 }
+      };
     } else if (path === '/api/v1/packages/cask/plus-app++/releases') {
       const original = query.get('original') === 'true';
       const locale = query.get('locale');
@@ -322,6 +356,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             ...(token === 'facts-app' ? factsApp : {})
           };
     } else if (path === '/api/v1/sitemap/packages') {
+      sitemapPackageRequests++;
       status = sitemapState === 'error' ? 503 : 200;
       const records =
         query.get('group') === 'fonts'
@@ -336,6 +371,18 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
                 locales: [
                   { locale: 'en-US', lastmod: '2025-03-18T10:00:00Z' },
                   { locale: 'zh-CN', lastmod: null }
+                ]
+              },
+              // Tokens with + (nextpad++, logi-options+) must keep it in sitemap URLs.
+              {
+                kind: 'cask',
+                token: 'plus-app++',
+                updatedAt: '2026-10-07T00:00:00Z',
+                isFont: false,
+                notesCount: 3,
+                locales: [
+                  { locale: 'en-US', lastmod: '2026-10-01T10:00:00Z' },
+                  { locale: 'zh-CN', lastmod: '2026-10-02T10:00:00Z' }
                 ]
               }
             ];
@@ -447,7 +494,12 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   await new Promise(resolve => internalReservation.close(resolve));
   const internal = `http://127.0.0.1:${internalPort}`;
   const internalSecret = 'test-only-internal-secret-'.repeat(2);
-  const child = spawn(process.execPath, [entry], {
+  // Test-only clock: SIGUSR2 moves the server's Date.now() an hour ahead, so cached pages can expire
+  // without waiting for their TTL.
+  const clock = `data:text/javascript,${encodeURIComponent(
+    'const now = Date.now.bind(Date); let offset = 0; process.on("SIGUSR2", () => { offset += 3600000; }); Date.now = () => now() + offset;'
+  )}`;
+  const child = spawn(process.execPath, ['--import', clock, entry], {
     env: {
       ...process.env,
       NODE_ENV: 'production',
@@ -691,6 +743,23 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       )
     ).join('');
     assert.ok(versions.includes('https://example.test/apps/ordinary-app/versions'));
+    // Tokens keep their + in every loc, as page canonicals and hreflang spell them, so no loc redirects.
+    assert.ok(apps.includes('<loc>https://example.test/apps/plus-app++</loc>'), apps);
+    assert.ok(apps.includes('<loc>https://example.test/zh/apps/plus-app++</loc>'), apps);
+    assert.ok(apps.includes('hreflang="zh-Hans" href="https://example.test/zh/apps/plus-app++"'), apps);
+    assert.ok(versions.includes('<loc>https://example.test/apps/plus-app++/versions</loc>'), versions);
+    assert.ok(!/<loc>[^<]*%2B/i.test(apps + versions), 'no escaped + in any loc');
+    for (const loc of ['/apps/plus-app++', '/zh/apps/plus-app++', '/apps/plus-app++/versions']) {
+      const response = await fetch(`${origin}${loc}`, { redirect: 'manual', headers: { accept: 'text/html' } });
+      await response.text();
+      assert.equal(response.status, 200, `${loc} answers without a redirect\n${logs}`);
+    }
+    // The index keeps its list of populated buckets: a warm request reads no catalog.
+    const reads = sitemapPackageRequests;
+    const warm = await fetch(`${origin}/sitemap_index.xml`);
+    assert.equal(warm.status, 200);
+    assert.ok((await warm.text()).includes('/__sitemap__/apps-bucket-'));
+    assert.equal(sitemapPackageRequests, reads, 'a warm index answers from its cached result');
   });
   await t.test('renamed, removed and unavailable apps get 301, 410 and 503', async () => {
     const moved = await fetch(`${origin}/apps/old-token`, { redirect: 'manual' });
@@ -764,6 +833,14 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal((await edge('/collections'))[1], 'no-store');
     assert.deepEqual(await edge('/apps/gone-app'), [410, 'no-store']);
     assert.deepEqual(await edge('/apps/missing-app@0'), [404, 'no-store']);
+    // The category overview and the feedback form are cached at the origin like their neighbours.
+    for (const path of ['/categories', '/zh/categories', '/feedback', '/ja/feedback?type=broken_link']) {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      await response.text();
+      assert.equal(response.status, 200, `${path}\n${logs}`);
+      assert.match(response.headers.get('cache-control') ?? '', /s-maxage=900/, path);
+    }
+    assert.deepEqual(await edge('/categories'), [200, 'max-age=300, stale-while-revalidate=600']);
   });
   await t.test('titles distinguish fonts, languages and pages of a list', async () => {
     const title = async path =>
@@ -822,6 +899,183 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(appLink(second.html).pathname, '/zh/apps/ordinary-app');
     assert.equal(appLink(second.html).searchParams.get('returnTo'), '/recent?page=2&size=24');
     assert.equal((await page('/recent?page=4')).status, 404, 'past the last page');
+  });
+  await t.test('paginated lists answer 404 for pages that do not exist and canonicalize the first page', async () => {
+    const get = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      return { response, html: await response.text() };
+    };
+    const canonical = html => /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(html)?.[1]?.replaceAll('&amp;', '&');
+    const description = html => /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? '';
+    const ogUrl = html => /<meta[^>]*property="og:url"[^>]*content="([^"]+)"/.exec(html)?.[1]?.replaceAll('&amp;', '&');
+    const lists = [
+      '/apps',
+      '/zh/apps',
+      '/categories/utilities',
+      '/rankings',
+      '/ja/rankings',
+      '/recent',
+      '/collections',
+      '/articles',
+      '/authors/lin-wei',
+      '/apps/plus-app++/versions'
+    ];
+    for (const list of lists) {
+      for (const value of ['99999', 'abc', '0', '-1', '1.5', '01', '']) {
+        const path = `${list}?page=${value}`;
+        const { response } = await get(path);
+        assert.equal(response.status, 404, path);
+        // Nuxt's error page answers no-cache; neither browsers, Cloudflare nor the route cache keep it.
+        assert.match(response.headers.get('cache-control') ?? '', /\bno-(?:store|cache)\b/, path);
+        assert.equal(response.headers.get('cloudflare-cdn-cache-control'), 'no-store', path);
+      }
+      // The route cache never turns the 404 into a cached 200.
+      assert.equal((await get(`${list}?page=99999`)).response.status, 404, list);
+      const first = await get(`${list}?page=1`);
+      assert.equal(first.response.status, 200, `${list}?page=1\n${logs}`);
+      assert.equal(canonical(first.html), `https://example.test${list}`, `${list}?page=1 canonical`);
+      assert.equal(ogUrl(first.html), `https://example.test${list}`, `${list}?page=1 og:url`);
+      assert.ok(!/<link[^>]+hreflang="[^"]+"[^>]*page=|<link[^>]+page=[^>]+hreflang=/.test(first.html), list);
+      assert.ok(!description(first.html).startsWith('Page'), list);
+    }
+    for (const [path, title, lead] of [
+      ['/apps?page=2', 'Mac Apps · Page 2 · OpenNavo', 'Page 2 · '],
+      ['/rankings?page=2', 'Most Popular Mac Software on Homebrew · Page 2 · OpenNavo', 'Page 2 · '],
+      ['/zh/rankings?page=3', 'Homebrew 最受欢迎的 Mac 软件排行 · 第 3 页 · OpenNavo', '第 3 页 · '],
+      ['/categories/utilities?page=2', undefined, 'Page 2 · '],
+      ['/recent?page=3', 'Recently Updated Mac Apps · Page 3 · OpenNavo', 'Page 3 · ']
+    ]) {
+      const { response, html } = await get(path);
+      assert.equal(response.status, 200, `${path}\n${logs}`);
+      if (title) assert.ok(html.includes(`<title>${title}</title>`), `${path}: ${/<title>[^<]*/.exec(html)?.[0]}`);
+      else assert.match(html, /<title>[^<]* · Page 2 · OpenNavo<\/title>/, path);
+      assert.ok(description(html).startsWith(lead), `${path}: ${description(html)}`);
+      assert.equal(canonical(html), `https://example.test${path}`, `${path} is its own canonical`);
+      assert.equal(ogUrl(html), `https://example.test${path}`, path);
+    }
+    assert.equal((await get('/rankings?page=4')).response.status, 404, 'past the last ranking page');
+    assert.equal((await get('/apps?page=4')).response.status, 404, 'past the last app page');
+    for (const prefix of ['', '/zh']) {
+      const filtered = await get(`${prefix}/apps?page=4&disabled=1&sort=name`);
+      assert.equal(filtered.response.status, 200);
+      const target = canonical(filtered.html);
+      assert.equal(target, `https://example.test${prefix}/apps?page=4&disabled=1`);
+      assert.equal(ogUrl(filtered.html), target);
+      assert.match(filtered.html, /<meta name="robots" content="[^"]*noindex/);
+      assert.equal((await get(target.replace('https://example.test', ''))).response.status, 200);
+      assert.equal((await get(`${prefix}/apps?page=6&disabled=1`)).response.status, 404);
+    }
+  });
+  await t.test('grid list canonicals preserve the page size that makes a page valid', async () => {
+    const get = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      return { status: response.status, html: await response.text() };
+    };
+    const canonical = html => /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(html)?.[1]?.replaceAll('&amp;', '&');
+    for (const path of [
+      '/apps',
+      '/zh/apps',
+      '/recent',
+      '/ja/recent',
+      '/categories/utilities',
+      '/ru/categories/utilities'
+    ]) {
+      const before = packageQueries.length;
+      const sized = await get(`${path}?page=4&size=12`);
+      assert.equal(sized.status, 200, path);
+      assert.ok(
+        packageQueries.slice(before).some(query => query.current === '4' && query.size === '12'),
+        path
+      );
+      const target = canonical(sized.html);
+      assert.equal(target, `https://example.test${path}?page=4&size=12`);
+      assert.equal((await get(target.replace('https://example.test', ''))).status, 200, target);
+      assert.equal((await get(`${path}?page=4`)).status, 404, path);
+      assert.equal((await get(`${path}?page=6&size=12`)).status, 404, path);
+      const ogUrl = /<meta[^>]*property="og:url"[^>]*content="([^"]+)"/.exec(sized.html)?.[1]?.replaceAll('&amp;', '&');
+      assert.equal(ogUrl, target, path);
+      const alternates = [...sized.html.matchAll(/<link[^>]*rel="alternate"[^>]*href="([^"]+)"/g)];
+      assert.ok(alternates.length > 0, path);
+      for (const [, href] of alternates) {
+        const url = new URL(href.replaceAll('&amp;', '&'));
+        assert.equal(url.searchParams.get('size'), '12', href);
+        assert.equal(url.searchParams.get('page'), '4', href);
+      }
+    }
+    const combined = await get('/apps?page=8&disabled=1&size=12');
+    assert.equal(combined.status, 200);
+    assert.equal(canonical(combined.html), 'https://example.test/apps?page=8&disabled=1&size=12');
+    for (const size of ['24', '101', 'abc', '12&size=12']) {
+      assert.equal(canonical((await get(`/apps?page=2&size=${size}`)).html), 'https://example.test/apps?page=2');
+    }
+    assert.equal(canonical((await get('/apps?page=1&size=012')).html), 'https://example.test/apps?size=12');
+  });
+  await t.test('URL variants reach their page in one 301 that keeps the query', async () => {
+    for (const [from, to] of [
+      ['/apps/ordinary-app/', '/apps/ordinary-app'],
+      ['/Apps/ordinary-app', '/apps/ordinary-app'],
+      ['/APPS/Plus-App++/Versions/?page=1', '/apps/plus-app++/versions?page=1'],
+      ['/zh/', '/zh'],
+      ['/en', '/'],
+      ['/en/download', '/download'],
+      ['/en/apps/ordinary-app?ref=old&A=B', '/apps/ordinary-app?ref=old&A=B'],
+      ['/Zh/Apps/plus-app%2B%2B/?source=a%2Bb', '/zh/apps/plus-app++?source=a%2Bb']
+    ]) {
+      const response = await fetch(`${origin}${from}`, { redirect: 'manual' });
+      assert.equal(response.status, 301, from);
+      assert.equal(response.headers.get('location'), to, from);
+      const target = await fetch(`${origin}${to}`, { redirect: 'manual', headers: { accept: 'text/html' } });
+      await target.text();
+      assert.ok(target.status < 300 || target.status >= 400, `${to} answers itself (${target.status})`);
+    }
+    for (const path of [
+      '/',
+      '/zh',
+      '/apps/ordinary-app',
+      '/robots.txt',
+      '/sitemap_index.xml',
+      '/apps/ordinary-app/_payload.json',
+      '/api/consent-region',
+      '/articles/feed.xml',
+      '/favicon.svg'
+    ]) {
+      const response = await fetch(`${origin}${path}`, { redirect: 'manual' });
+      await response.arrayBuffer();
+      assert.ok(response.status < 300 || response.status >= 400, `${path} is not redirected (${response.status})`);
+    }
+  });
+  await t.test('the home heading reads as one sentence in every language', async () => {
+    const heading = async path => {
+      const html = await (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+      return (/<h1\b[^>]*>([\s\S]*?)<\/h1>/.exec(html)?.[1] ?? '').replace(/<[^>]*>/g, '');
+    };
+    assert.equal(await heading('/'), 'Installing Mac apps should be this simple.');
+    assert.equal(await heading('/ru'), 'Устанавливать приложения для Mac должно быть так просто.');
+    // Chinese and Japanese join their two lines without a space.
+    assert.equal(await heading('/zh'), '装 Mac 软件，本该这么简单。');
+    assert.equal(await heading('/ja'), 'Macアプリのインストールをもっとシンプルに。');
+  });
+  await t.test('the home page and Discover describe themselves differently', async () => {
+    const description = async path =>
+      /<meta name="description" content="([^"]*)"/.exec(
+        await (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text()
+      )?.[1];
+    for (const prefix of ['', '/zh', '/ja', '/es', '/pt', '/ru']) {
+      const home = await description(prefix || '/');
+      const discover = await description(`${prefix}/discover`);
+      assert.ok(home && discover, prefix);
+      assert.notEqual(home, discover, prefix);
+    }
+  });
+  await t.test('links prefetch on pointer or focus only in the built client', async () => {
+    // Prefetching on visibility had Google's renderer fetch the payload of every linked page.
+    const dir = fileURLToPath(new URL('../.output/public/_nuxt/', import.meta.url));
+    const scripts = await Promise.all(
+      (await readdir(dir)).filter(name => name.endsWith('.js')).map(name => readFile(`${dir}${name}`, 'utf8'))
+    );
+    const options = scripts.flatMap(source => source.match(/prefetchOn:\{[^}]*\}/g) ?? []);
+    assert.ok(options.includes('prefetchOn:{visibility:!1,interaction:!0}'), options.join());
+    assert.ok(!options.includes('prefetchOn:{visibility:!0}'), options.join());
   });
   await t.test('robots.txt follows the admin crawler policy', async () => {
     const response = await fetch(`${origin}/robots.txt`);
@@ -946,6 +1200,15 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.match(await image('/articles'), /c_OgListSatori,.*label_Articles/);
     assert.match(await image('/articles/choose-a-screenshot-app'), /c_OgListSatori,.*label_Roundup/);
     assert.match(await image('/authors/lin-wei'), /c_OgListSatori,.*label_Author/);
+    // Pages that used to declare a large card without an image.
+    assert.match(await image('/about'), /c_OgDefaultSatori,.*variant_home/);
+    assert.match(await image('/feedback'), /c_OgDefaultSatori,.*variant_home/);
+    assert.match(await image('/apps'), /c_OgListSatori,.*label_Apps/);
+    assert.match(await image('/rankings'), /c_OgListSatori,.*label_Rankings/);
+    assert.match(await image('/recent'), /c_OgListSatori,.*label_Recently/);
+    assert.match(await image('/categories'), /c_OgListSatori,.*label_Categories/);
+    assert.match(await image('/collections'), /c_OgListSatori,.*label_Collections/);
+    assert.match(await image('/zh/rankings'), /c_OgListSatori,/);
     // The image itself renders, here with the Russian label.
     const rendered = await fetch((await image('/ru/categories/utilities')).replace('https://example.test', origin));
     assert.equal(rendered.status, 200, logs);
@@ -1118,8 +1381,16 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(feed.status, 200);
     assert.match(feed.headers.get('content-type') ?? '', /application\/rss\+xml/);
     assert.ok(xml.includes('<link>https://example.test/zh/articles/choose-a-screenshot-app</link>'));
+    assert.ok(
+      xml.includes(
+        '<atom:link href="https://example.test/zh/articles/feed.xml" rel="self" type="application/rss+xml"/>'
+      ),
+      'the feed names its own URL'
+    );
     assert.ok(!xml.includes('manage-homebrew-without-terminal'), 'only articles written in the feed language');
-    assert.ok((await (await fetch(`${origin}/articles/feed.xml`)).text()).includes('manage-homebrew-without-terminal'));
+    const english = await (await fetch(`${origin}/articles/feed.xml`)).text();
+    assert.ok(english.includes('manage-homebrew-without-terminal'));
+    assert.ok(english.includes('<atom:link href="https://example.test/articles/feed.xml" rel="self"'));
     assert.equal((await fetch(`${origin}/xx/articles/feed.xml`)).status, 404);
     const index = await (await fetch(`${origin}/sitemap_index.xml`)).text();
     const group = async name => {
@@ -1134,6 +1405,39 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(articles.includes('<loc>https://example.test/articles</loc>'));
     assert.ok((await group('authors')).includes('<loc>https://example.test/authors/lin-wei</loc>'));
     assert.ok(!(await group('en-static')).includes('<loc>https://example.test/articles</loc>'));
+  });
+  // Moves the server clock, so it runs last.
+  await t.test('a cached page that turns into a 404 stops answering 200 once it expires', async () => {
+    const status = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      await response.text();
+      return response.status;
+    };
+    try {
+      assert.equal(await status('/ja/apps?page=3'), 200, logs);
+      // The catalog shrinks: page 3 is now past the end, but stays a cached 200 until it expires.
+      packagesTotal = 30;
+      assert.equal(await status('/ja/apps?page=3'), 200);
+      child.kill('SIGUSR2');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      // Expired: one stale answer while the page is rendered again, then the real status.
+      let last;
+      for (let attempt = 0; attempt < 40 && last !== 404; attempt++) {
+        last = await status('/ja/apps?page=3');
+        if (last !== 404) await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      assert.equal(last, 404, 'the expired 200 must not outlive the page');
+      assert.equal(await status('/ja/apps?page=3'), 404);
+      assert.equal(await status('/ja/apps?page=2'), 200);
+      // Expired sitemap data keeps answering through an API outage instead of failing or shrinking.
+      sitemapState = 'error';
+      const index = await fetch(`${origin}/sitemap_index.xml`);
+      assert.equal(index.status, 200);
+      assert.match(await index.text(), /\/__sitemap__\/apps-bucket-\d+\.xml/);
+    } finally {
+      packagesTotal = 50;
+      sitemapState = 'ok';
+    }
   });
   assert.deepEqual([...requestedTokens].sort(), [
     'facts-app',

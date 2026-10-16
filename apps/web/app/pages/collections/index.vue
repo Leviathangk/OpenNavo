@@ -3,7 +3,8 @@ import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { collectionIcons, OnCollectionsView, OnEmpty, OnErrorState, OnPagination } from '@opennavo/ui';
 import type { OnCollectionsItem } from '@opennavo/ui';
-import { readPage } from '~/utils/catalogQuery';
+import { pageCount as countPages } from '~/utils/catalogQuery';
+import { brandlessTitle } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -15,15 +16,16 @@ const { t, locale } = useI18n();
 const api = useApi();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
-const { query, hrefWith } = useCatalogQuery({ page: 1 });
-const page = computed(() => readPage(query.value.page));
+const { hrefWith } = useCatalogQuery({ page: 1 });
+const { page, assertExists } = useListPage();
 
-const { data, error, refresh } = await useAsyncData(
+const { data, error, refresh, status } = await useAsyncData(
   () => `collections:${page.value}:${locale.value}`,
   () => unwrap(api.GET('/collections', { params: { query: { current: page.value, size: PAGE_SIZE } } }))
 );
 
-const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
+assertExists(() => data.value?.total, PAGE_SIZE, status);
+const pageCount = computed(() => countPages(data.value?.total ?? 0, PAGE_SIZE));
 const items = computed<OnCollectionsItem[] | null>(() => {
   if (error.value) return [];
   return data.value
@@ -43,7 +45,15 @@ const subtitle = computed(() =>
     : t('collections.description')
 );
 
-usePageSeo({ title: () => t('collections.metaTitle'), description: () => t('collections.description') });
+usePageSeo({ title: () => t('collections.metaTitle'), page, description: () => t('collections.description') });
+// Share image (WP13): the brand icon stands beside the text; collections show their own apps.
+defineOgImage('OgListSatori', {
+  locale: formattingLocale.value,
+  label: t('collections.title'),
+  title: brandlessTitle(t('collections.metaTitle')),
+  description: t('collections.description'),
+  ...useOgFrame()
+});
 </script>
 
 <template>

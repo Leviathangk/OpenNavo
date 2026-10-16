@@ -3,6 +3,7 @@ import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { OnCategoriesView, OnErrorState } from '@opennavo/ui';
 import type { OnCategoriesItem } from '@opennavo/ui';
+import { brandlessTitle } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -39,6 +40,14 @@ const items = computed<OnCategoriesItem[] | null>(() =>
 );
 
 usePageSeo({ title: () => t('categories.metaTitle'), description: () => t('categories.description') });
+// Share image (WP13): category icons are not app icons, so the brand icon stands beside the text.
+defineOgImage('OgListSatori', {
+  locale: formattingLocale.value,
+  label: t('categories.title'),
+  title: brandlessTitle(t('categories.metaTitle')),
+  description: t('categories.description'),
+  ...useOgFrame()
+});
 </script>
 
 <template>

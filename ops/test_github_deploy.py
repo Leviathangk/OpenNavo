@@ -1,8 +1,10 @@
 import base64
+import contextlib
 import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import tarfile
 import tempfile
@@ -114,9 +116,87 @@ class DeployTests(unittest.TestCase):
         events = []
         obj.verify = lambda: events.append('verify')
         obj.cleanup = lambda state: events.append(('cleanup', state))
+        obj.prune = lambda state: events.append(('prune', state))
         obj.apply(archive())
         self.assertEqual(obj.services, obj.state['services'])
-        self.assertEqual(events, ['verify', ('cleanup', previous)])
+        self.assertEqual(events, ['verify', ('cleanup', previous), ('prune', previous)])
+
+    def test_prune_keeps_recent_live_previous_and_mounted_release_snapshots(self):
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as outside:
+            releases = Path(root) / 'releases'
+            releases.mkdir()
+            names = [f'gh-{index:012x}-100-1' for index in range(9)]
+            for index, name in enumerate(names):
+                (releases / name).mkdir()
+                (releases / name / 'before-migration.dump').write_text('dump')
+                os.utime(releases / name, (1_000_000 + index, 1_000_000 + index))
+            # Manual snapshots and other files are operator-owned and never pruned.
+            (releases / 'main-abc1234-20261007').mkdir()
+            (releases / 'privacy-build.tar.gz').write_text('manual')
+            for name in ['main-abc1234-20261007', 'privacy-build.tar.gz']:
+                os.utime(releases / name, (1, 1))
+            (releases / 'gh-00000000000f-1-1').symlink_to(outside, target_is_directory=True)
+            obj = object.__new__(deploy.Deployment)
+            obj.config, obj.root = {}, Path(root)
+            obj.release, obj.state = names[8], {'release': names[7]}
+            containers = [{'Image': 'x', 'Mounts': [{'Source': str(releases / names[2] / 'admin')}]}]
+            with contextlib.redirect_stdout(io.StringIO()):
+                obj.prune_releases({'release': names[1]}, containers)
+            remaining = sorted(path.name for path in releases.iterdir())
+            self.assertEqual(remaining, sorted([*names[4:], names[1], names[2], 'main-abc1234-20261007',
+                                                'privacy-build.tar.gz', 'gh-00000000000f-1-1']))
+            self.assertTrue(Path(outside).is_dir())
+
+    def test_prune_removes_only_unused_application_images(self):
+        obj = object.__new__(deploy.Deployment)
+        obj.config = {'registry': 'ghcr.io/example', 'project': 'fixture', 'compose_file': 'compose.yml'}
+        obj.root, obj.release, obj.state, obj.payload = Path('/fixture'), 'gh-current', {}, payload()
+        image = {name: 'sha256:' + name * 64 for name in 'abcde'}
+        listed = {'server': [image['a'], image['c']], 'web': [image['b'], image['d'], image['d']], 'mcp': [image['e']]}
+        def cmd(args):
+            if args[:3] == ['docker', 'image', 'ls']:
+                return '\n'.join(listed[args[-1].rsplit('-', 1)[1]])
+            if args[-1] == image['d']:
+                raise RuntimeError('command failed: docker (exit 1); inspect privately on host')
+            return ''
+        with patch.object(deploy, 'command', side_effect=cmd) as run, contextlib.redirect_stdout(io.StringIO()):
+            obj.prune_images([{'Image': image['a']}, {'Image': image['b']}])
+        removed = [call.args[0][-1] for call in run.call_args_list if call.args[0][:3] == ['docker', 'image', 'rm']]
+        self.assertEqual(removed, [image['c'], image['d'], image['e']])
+
+    def test_prune_protects_worker_hotfix_and_resolves_retry_snapshot(self):
+        for retry in [False, True]:
+            with self.subTest(retry=retry):
+                obj = object.__new__(deploy.Deployment)
+                obj.config = {'registry': 'ghcr.io/example', 'project': 'fixture', 'compose_file': 'compose.yml'}
+                obj.root, obj.release, obj.payload = Path('/fixture'), 'gh-candidate', payload()
+                obj.state = {'sha': obj.payload['sha'], 'release': 'gh-live'} if retry else {}
+                hotfix, unused = 'sha256:' + 'c' * 64, 'sha256:' + 'd' * 64
+                def cmd(args):
+                    if args[1] == 'compose': return 'ghcr.io/example/opennavo-server:worker-hotfix'
+                    if args[:3] == ['docker', 'image', 'inspect']: return hotfix
+                    if args[:3] == ['docker', 'image', 'ls']: return hotfix + '\n' + unused
+                    return ''
+                with patch.object(deploy, 'command', side_effect=cmd) as run, contextlib.redirect_stdout(io.StringIO()):
+                    obj.prune_images([])
+                compose = run.call_args_list[0].args[0]
+                snapshot = 'gh-live' if retry else 'gh-candidate'
+                self.assertIn('/fixture/releases/' + snapshot + '/before-rolling.json', compose)
+                self.assertIn('/fixture/releases/' + snapshot + '/before-release.env', compose)
+                removed = [call.args[0][-1] for call in run.call_args_list if call.args[0][:3] == ['docker', 'image', 'rm']]
+                self.assertNotIn(hotfix, removed)
+                self.assertIn(unused, removed)
+                with patch.object(deploy, 'command', side_effect=['missing-image', RuntimeError('lookup failed')]) as run:
+                    with self.assertRaises(RuntimeError): obj.prune_images([])
+                self.assertFalse(any(call.args[0][:3] == ['docker', 'image', 'rm'] for call in run.call_args_list))
+
+    def test_prune_failures_never_fail_a_verified_release(self):
+        obj = object.__new__(deploy.Deployment)
+        output = io.StringIO()
+        with patch.object(deploy, 'command', side_effect=RuntimeError('command failed: docker (exit 1)')), \
+                contextlib.redirect_stdout(output):
+            obj.prune({})
+        self.assertIn('Retention cleanup incomplete', output.getvalue())
 
     def test_accepts_only_complete_digest_pinned_release(self):
         body = payload()
@@ -176,6 +256,7 @@ class DeployTests(unittest.TestCase):
             obj.compose = lambda *args, **kwargs: events.append(args)
             obj.reload = lambda: events.append('reload')
             obj.cleanup = lambda _: events.append('cleanup')
+            obj.prune = lambda _: events.append('prune')
             def fail(): raise RuntimeError('route check failed')
             obj.verify = fail
             def cmd(args, output=None):
@@ -192,6 +273,7 @@ class DeployTests(unittest.TestCase):
             self.assertFalse(obj.state_path.exists())
             self.assertNotIn('down', str(events))
             self.assertNotIn('cleanup', events)
+            self.assertNotIn('prune', events)
 
             # A successful retry must persist the verified release before cleanup.
             obj.state['previous'] = {'sha': 'd' * 40}
@@ -209,7 +291,7 @@ class DeployTests(unittest.TestCase):
             with patch.object(deploy, 'command', side_effect=cmd):
                 obj.apply(archive())
             self.assertEqual(events.count('verify'), 2)
-            self.assertEqual(events[-1], 'cleanup')
+            self.assertEqual(events[-2:], ['cleanup', 'prune'])
             self.assertLess(events.index(('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker')), len(events) - 1)
 
 

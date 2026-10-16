@@ -36,19 +36,22 @@ impl Transport for NativeTransport {
             if unsafe { bridge::on_helper_bundled() } != 1 {
                 return Err(AppError::new("E_FAN_HELPER_UNSIGNED", "helper_bundle"));
             }
-            let code = unsafe { bridge::on_service_change(1) };
-            // A daemon's first registration reports an error while macOS waits for the user's approval.
-            if code == 0
-                || matches!(
-                    self.state(),
-                    FanHelperState::RequiresApproval | FanHelperState::Enabled
-                )
-            {
-                Ok(())
-            } else {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(6);
+            register(
+                || unsafe { bridge::on_service_change(1) },
+                || self.state(),
+                || {
+                    let more = std::time::Instant::now() < deadline;
+                    if more {
+                        std::thread::sleep(std::time::Duration::from_millis(250));
+                    }
+                    more
+                },
+            )
+            .map_err(|code| {
                 log::warn!("Fan helper registration failed: SMAppService error {code}");
-                Err(AppError::new("E_FAN_HELPER_NOT_ENABLED", "register"))
-            }
+                AppError::new("E_FAN_HELPER_NOT_ENABLED", "register")
+            })
         }
         #[cfg(not(target_os = "macos"))]
         {
@@ -97,6 +100,32 @@ impl Transport for NativeTransport {
 }
 pub fn unavailable() -> AppError {
     AppError::new("E_FAN_HELPER_UNAVAILABLE", "xpc")
+}
+/// Registers the helper; `attempt` returns 0 or the SMAppService error code. Right after an unregister
+/// (reinstall), launchd is still stopping the old job and refuses the new one ("not allowed to bootstrap") while
+/// the state already reads not installed. The old helper exits on its next one-second tick, or launchd kills it
+/// after its 5 s exit timeout, so `wait` pauses before each new attempt until that has surely passed.
+pub fn register(
+    mut attempt: impl FnMut() -> i32,
+    state: impl Fn() -> FanHelperState,
+    mut wait: impl FnMut() -> bool,
+) -> Result<(), i32> {
+    loop {
+        let code = attempt();
+        if code == 0 {
+            return Ok(());
+        }
+        match state() {
+            // A daemon's first registration reports an error while macOS waits for the user's approval.
+            FanHelperState::RequiresApproval | FanHelperState::Enabled => return Ok(()),
+            FanHelperState::NotInstalled => {
+                if !wait() {
+                    return Err(code);
+                }
+            }
+            _ => return Err(code),
+        }
+    }
 }
 pub type Changed = Arc<dyn Fn(FanChange) + Send + Sync>;
 pub struct Client<T: Transport> {
