@@ -140,7 +140,7 @@ fn six_language_menu_labels_and_askpass_env() {
             ("CANCEL", "askpass.cancel"),
         ] {
             assert_eq!(
-                env[&format!("OPENNAVO_ASKPASS_{suffix}")],
+                env[&format!("HOMEBREW_OPENNAVO_ASKPASS_{suffix}")],
                 native_i18n::text(locale, key).unwrap()
             );
         }

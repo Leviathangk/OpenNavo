@@ -32,8 +32,10 @@ pub fn construct(settings: &Settings, prefix: &str, askpass: &Path) -> BTreeMap<
         ("CANCEL", "askpass.cancel"),
     ] {
         // Build checks ensure embedded resources are complete; do not inherit caller dialog text.
+        // bin/brew re-execs with only HOMEBREW_* plus a fixed allowlist, and brew's sudo hands the helper
+        // what is left, so any other name leaves the helper without text and no dialog appears.
         if let Ok(text) = crate::native_i18n::text(settings.locale, key) {
-            env.insert(format!("OPENNAVO_ASKPASS_{suffix}"), text);
+            env.insert(format!("HOMEBREW_OPENNAVO_ASKPASS_{suffix}"), text);
         }
     }
     if settings.homebrew_analytics == Some(false) {
@@ -72,5 +74,30 @@ mod tests {
             Path::new("/tmp/helper"),
         );
         assert_eq!(env["HOMEBREW_NO_ANALYTICS"], "1");
+    }
+
+    #[test]
+    fn askpass_text_survives_homebrew_env_filter() {
+        // bin/brew keeps HOMEBREW_* plus an allowlist that includes SUDO_ASKPASS; brew's sudo runs the helper with that.
+        let env = construct(
+            &Settings::default(),
+            "/opt/homebrew",
+            Path::new("/tmp/helper"),
+        );
+        let script = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/askpass/opennavo-askpass"),
+        )
+        .unwrap();
+        let required: Vec<&str> = script
+            .split("${")
+            .skip(1)
+            .filter_map(|rest| rest.split_once('}')?.0.strip_suffix(":?"))
+            .collect();
+        assert_eq!(required.len(), 4);
+        for name in required {
+            assert!(name.starts_with("HOMEBREW_"), "bin/brew drops {name}");
+            assert!(!env[name].trim().is_empty());
+        }
+        assert_eq!(env["SUDO_ASKPASS"], "/tmp/helper");
     }
 }

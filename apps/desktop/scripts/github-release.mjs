@@ -114,8 +114,11 @@ export function githubClient(repository, token, fetcher = fetch) {
           body: await openAsBlob(asset.path)
         }
       ),
-    publish: (id, prerelease) =>
-      request(`${api}/releases/${id}`, json('PATCH', { draft: false, make_latest: prerelease ? 'false' : 'true' })),
+    publish: (id, prerelease, tag) =>
+      request(
+        `${api}/releases/${id}`,
+        json('PATCH', { tag_name: tag, draft: false, make_latest: prerelease ? 'false' : 'true' })
+      ),
     updateNotes: (id, body) => request(`${api}/releases/${id}`, json('PATCH', { body })),
     verify: (url, asset) => verifyDownload(url, asset, fetcher)
   };
@@ -148,7 +151,7 @@ export async function publishRelease({ repository, version, assets, client, note
     }
   }
   await client.updateNotes(release.id, body);
-  if (release.draft) await client.publish(release.id, prerelease);
+  if (release.draft) await client.publish(release.id, prerelease, tag);
   for (const asset of assets) await client.verify(githubArtifactUrl(repository, version, asset.name), asset);
 }
 
