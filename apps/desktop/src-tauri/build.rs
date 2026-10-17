@@ -52,6 +52,24 @@ fn main() {
         );
         println!("cargo:rustc-link-search=native={}", out.display());
         println!("cargo:rustc-link-lib=static=opennavo_fan_bridge");
+        // Objective-C @available emits __isPlatformVersionAtLeast. Rust links with
+        // -nodefaultlibs, so Clang does not automatically add its availability runtime.
+        let runtime = Command::new("xcrun")
+            .args(["clang", "--print-file-name=libclang_rt.osx.a"])
+            .output()
+            .expect("locate Clang macOS runtime");
+        assert!(runtime.status.success(), "locate Clang macOS runtime");
+        let runtime = PathBuf::from(
+            String::from_utf8(runtime.stdout)
+                .expect("Clang runtime path must be UTF-8")
+                .trim(),
+        );
+        assert!(runtime.is_file(), "Clang macOS runtime must exist");
+        println!(
+            "cargo:rustc-link-search=native={}",
+            runtime.parent().expect("Clang runtime directory").display()
+        );
+        println!("cargo:rustc-link-lib=static=clang_rt.osx");
         for framework in [
             "Foundation",
             "AppKit",
