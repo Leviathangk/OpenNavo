@@ -1,7 +1,7 @@
 {
   "formatVersion": 1,
   "lockDigests": {
-    "pnpm-lock.yaml": "97961a58e1bf0c68aff176cc698bceb5174d88f4b9196c9c49092f263d456fda",
+    "pnpm-lock.yaml": "314b6de9a6acd82e2f839929c89b98e872f958e77e1730cf853535e65d733d9a",
     "apps/server/go.mod": "6d64638fcd95df0f3512fd647528e7b8d179f2b3eb37c31dc68d498ac2cae756",
     "apps/server/go.sum": "8e49c990b927c1cd3e3c79e49e534ee4ead68daff3a48274c2cf134e89096b96",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
