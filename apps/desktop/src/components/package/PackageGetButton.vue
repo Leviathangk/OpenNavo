@@ -15,12 +15,12 @@ const props = defineProps<{
   appearance?: OnGetButtonProps['appearance'];
 }>();
 
-const { stateOf, act } = usePackageState();
+const { stateOf, taskOf, act } = usePackageState();
 const tasks = useTasksStore();
 const current = computed(() => stateOf(props.kind, props.token, props.disabled));
 
 function cancel() {
-  const task = tasks.forPackage(props.kind, props.token);
+  const task = taskOf(props.kind, props.token);
   if (task) void tasks.cancel(task.id);
 }
 </script>

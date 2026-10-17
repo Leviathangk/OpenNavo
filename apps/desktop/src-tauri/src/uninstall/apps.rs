@@ -157,13 +157,13 @@ impl Engine {
                 return self.scan_apps(guard, LocalAppsChangedReason::Startup);
             }
         }
-        Ok(self
-            .apps
+        let settings = self.settings.read().map_err(super::poison)?.clone();
+        self.apps
             .lock()
             .map_err(super::poison)?
             .values()
-            .map(|a| a.app.clone())
-            .collect())
+            .map(|a| crate::updater::routing::decorate(&self.database, &settings, a.app.clone()))
+            .collect()
     }
     pub fn app(&self, id: &str) -> Result<CachedApp, AppError> {
         self.apps
@@ -477,6 +477,8 @@ impl Engine {
                 bundle_id: identity.bundle_id.clone(),
                 version: identity.version.clone(),
                 source,
+                updater: None,
+                homebrew_cask: None,
                 cask: token,
                 catalog_token,
                 team_id: identity.team_id.clone(),
@@ -529,6 +531,8 @@ impl Engine {
                     bundle_id: None,
                     version: installed.as_ref().map(|i| i.installed_version.clone()),
                     source: AppSource::Homebrew,
+                    updater: None,
+                    homebrew_cask: None,
                     cask: Some(token),
                     catalog_token: None,
                     team_id: None,
@@ -557,6 +561,11 @@ impl Engine {
             }
         }
         let generation = self.generation.fetch_add(1, Ordering::AcqRel) + 1;
+        let settings = self.settings.read().map_err(super::poison)?.clone();
+        for record in records.values_mut() {
+            record.app =
+                crate::updater::routing::decorate(&self.database, &settings, record.app.clone())?;
+        }
         let result = records.values().map(|c| c.app.clone()).collect();
         *self.keys.lock().map_err(super::poison)? = keys;
         *self.apps.lock().map_err(super::poison)? = records;
@@ -616,11 +625,13 @@ impl Engine {
         Ok(result)
     }
     fn allowed_bundle(&self, path: &Path) -> bool {
-        self.roots
-            .applications
-            .iter()
-            .chain(self.roots.caskrooms.iter())
-            .any(|r| path.starts_with(r))
+        !crate::updater::backup::contains(path)
+            && self
+                .roots
+                .applications
+                .iter()
+                .chain(self.roots.caskrooms.iter())
+                .any(|r| path.starts_with(r))
             && path.extension().is_some_and(|e| e == "app")
     }
     /// Measure bundles whose size is not known yet; unchanged bundles keep the size measured before. Results are
@@ -796,7 +807,7 @@ impl Engine {
     }
 }
 fn enumerate(root: &Path, depth: u8, paths: &mut BTreeMap<PathBuf, PathBuf>) {
-    if !rules::parents_safe(&root.join("entry")) {
+    if crate::updater::backup::contains(root) || !rules::parents_safe(&root.join("entry")) {
         return;
     }
     if let Ok(entries) = fs::read_dir(root) {

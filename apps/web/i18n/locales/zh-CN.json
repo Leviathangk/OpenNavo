@@ -75,7 +75,8 @@
   },
   "get": {
     "label": "获取 {name}",
-    "menuLabel": "获取 {name} 的方式"
+    "menuLabel": "获取 {name} 的方式",
+    "downloadLabel": "下载 {name}"
   },
   "openInApp": {
     "title": "还没有安装 OpenNavo？",
@@ -160,6 +161,34 @@
     }
   },
   "package": {
+    "link": {
+      "chip": "官网下载",
+      "chipGithub": "GitHub",
+      "meta": "下载地址来自 {source} · OpenNavo 不托管安装包",
+      "notHosted": "OpenNavo 不托管安装包，下载直接来自开发者。",
+      "downloadTitle": "下载",
+      "officialDownload": "前往官网下载",
+      "goDownload": "前往下载",
+      "release": "{version} · {time}发布",
+      "download": "下载",
+      "allFiles": "在 GitHub 查看全部文件",
+      "githubReleases": "前往 GitHub 下载",
+      "teamId": "开发者签名",
+      "pricingLabel": "价格",
+      "adopted": "Homebrew 已收录这款 App，现在可以一键安装",
+      "arch": {
+        "arm64": "Apple 芯片",
+        "x86_64": "Intel",
+        "universal": "通用"
+      },
+      "pricing": {
+        "free": "免费",
+        "paid": "付费",
+        "freemium": "免费，含付费功能",
+        "subscription": "订阅",
+        "open_source": "开源免费"
+      }
+    },
     "arch": {
       "arm64": "Apple 芯片",
       "x86_64": "Intel"
@@ -334,6 +363,8 @@
       "titleUnavailable": "{name} Mac 版 · OpenNavo",
       "description": "{summary}。查看 {name} 在 Mac 上的安装方法、系统要求和版本记录。",
       "descriptionNoSummary": "查看 {name} 在 Mac 上的安装方法、系统要求和版本记录。",
+      "descriptionLink": "{summary}。查看 {name} 的官方下载地址和版本记录。",
+      "descriptionLinkNoSummary": "查看 {name} 的官方下载地址和版本记录。",
       "descriptionUnavailable": "{summary}。{name} 已被 Homebrew 停用，可以查看版本记录和同类软件。",
       "descriptionUnavailableNoSummary": "{name} 已被 Homebrew 停用，可以查看版本记录和同类软件。",
       "versionsTitle": "{name} 更新日志 · OpenNavo",

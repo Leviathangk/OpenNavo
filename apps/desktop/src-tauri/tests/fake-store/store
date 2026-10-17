@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""Non-writing JSONL replacement for opennavo-store; never talks to Apple."""
+import argparse
+import json
+import os
+import sys
+
+parser = argparse.ArgumentParser()
+parser.add_argument('action', choices=['install', 'update'])
+parser.add_argument('--adam-ids', required=True)
+parser.add_argument('--staging', required=True)
+args = parser.parse_args()
+scenario = os.environ.get('OPENNAVO_FAKE_STORE_SCENARIO', 'error')
+for adam_id in map(int, args.adam_ids.split(',')):
+    def emit(**event):
+        print(json.dumps({'adamId': adam_id, **event}), flush=True)
+    emit(event='phase', phase='purchasing', percent=0)
+    if scenario in ('partial_cancel', 'partial_signal') and adam_id == int(args.adam_ids.split(',')[0]):
+        emit(event='phase', phase='done', percent=100)
+        continue
+    if scenario == 'partial_signal':
+        import signal
+        os.kill(os.getpid(), signal.SIGTERM)
+    if scenario in ('cancel', 'partial_cancel'):
+        sys.stdin.buffer.read()
+        sys.exit(1)
+    mixed = scenario in ('201_then_error', '201_then_error_signal', '201_then_incomplete')
+    if mixed and adam_id != int(args.adam_ids.split(',')[0]):
+        if scenario == '201_then_incomplete':
+            sys.exit(1)
+        emit(event='error', code='E_MAS_NOT_OWNED', domain='FakeStore', errorCode=201)
+        if scenario == '201_then_error_signal':
+            import signal
+            os.kill(os.getpid(), signal.SIGTERM)
+        continue
+    if scenario in ('success', '201') or mixed:
+        emit(event='phase', phase='downloading', percent=50)
+        emit(event='phase', phase='downloaded', percent=100)
+        if scenario == '201' or mixed:
+            if os.environ.get('OPENNAVO_FAKE_STORE_FIXTURES') == '1':
+                from pathlib import Path
+                folder = Path(args.staging)
+                (folder / f'{adam_id}.pkg').write_bytes(b'fixture Apple pkg')
+                (folder / f'{adam_id}.receipt').write_bytes(b'fixture receipt')
+            emit(event='needsPrivilegedInstall', pkg=f'{args.staging}/{adam_id}.pkg',
+                 receipt=f'{args.staging}/{adam_id}.receipt', appPath=f'{args.staging}/Fixture.app')
+        else:
+            emit(event='phase', phase='done', percent=100)
+    elif scenario == 'oversized':
+        print('x' * 70000, flush=True)
+        sys.exit(1)
+    else:
+        code = scenario.removeprefix('error:') if scenario.startswith('error:') else 'E_MAS_ENGINE'
+        emit(event='error', code=code, domain='FakeStore', errorCode=201)
+if scenario not in ('success', '201'):
+    sys.exit(1)

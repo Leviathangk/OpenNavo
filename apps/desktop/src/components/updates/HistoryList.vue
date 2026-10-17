@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { formatDate, formatDuration, formatTime, formatVersionChange } from '@opennavo/shared';
@@ -11,7 +11,9 @@ import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useUninstallUndo } from '@/composables/useUninstallUndo';
-import { useTasksStore } from '@/stores';
+import { useLocalAppsStore, useTasksStore } from '@/stores';
+import { useSecurityStore } from '@/stores/security';
+import { useUpdatesStore } from '@/stores/updates';
 import { isDeferredUpdate } from '@/stores/runningApps';
 import { recheckRoute, retryOptions } from '@/stores/permissionPrompt';
 
@@ -23,6 +25,9 @@ const { appLocale } = useAppLocale();
 const { taskIcon, taskName } = usePackageIdentity();
 const { errorText } = usePackageState();
 const queue = useTasksStore();
+const security = useSecurityStore();
+const updates = useUpdatesStore();
+const localApps = useLocalAppsStore();
 const router = useRouter();
 const toasts = useToasts();
 const { undo, purge } = useUninstallUndo();
@@ -74,8 +79,89 @@ function meta(task: Task): string {
 
 function failure(task: Task): string | null {
   if ((task.state !== 'failed' && !isDeferredUpdate(task)) || !task.error) return null;
+  // The shared running-app texts speak of an update being put off.
+  if (task.op === 'rollback' && ['E_APP_RUNNING', 'E_APP_QUIT_FAILED'].includes(task.error.code))
+    return t('updates.rollback.notQuit', { name: title(task) });
   const key = `errors.${task.error.code}`;
   return te(key) ? t(key) : task.error.message;
+}
+
+// Homebrew installs and updates scanned before installing (S2) say what the scan covered. Downloads made later during
+// the install are outside it, as Settings explains; a missing database is the setting's concern, not each row's.
+const scannable = (task: Task) =>
+  (task.op === 'install' || task.op === 'upgrade') && (task.target?.kind === 'formula' || task.target?.kind === 'cask');
+watch(
+  () =>
+    props.tasks
+      .filter(scannable)
+      .slice(0, 30)
+      .map(task => task.id),
+  ids => void security.loadInstallScans(ids),
+  { immediate: true }
+);
+function scanLine(task: Task): { text: string; danger: boolean } | null {
+  const result = security.installScans.get(task.id);
+  if (result?.state === 'threat')
+    return { text: t('security.installScan.threat', { names: result.threats.join(' · ') }), danger: true };
+  if (result?.state === 'clean')
+    return {
+      text: t('security.installScan.clean', { count: result.filesScanned }, { plural: result.filesScanned }),
+      danger: false
+    };
+  const reason = result?.state === 'skipped' ? result.avSkipped : null;
+  if (!result || !reason || reason === 'no_database' || reason === 'no_consent') return null;
+  const named = { count: result.filesScanned, reason: t(`security.avSkipped.${reason}`) };
+  // Most of an installer can be scanned while one encrypted or oversized file inside it is not.
+  return {
+    text: result.filesScanned
+      ? t('security.installScan.skippedPartial', named, { plural: result.filesScanned })
+      : t('security.installScan.skipped', named),
+    danger: false
+  };
+}
+
+// An update from a source other than Homebrew or the App Store kept the version it replaced (plan §7, P2). Rust says
+// which entries can still go back to it: the newest update of an app that has not changed since. Rust needs the local
+// app list for that, so a new list asks again.
+const updatedApp = (task: Task) => task.op === 'upgrade' && task.target?.kind === 'app' && task.state === 'succeeded';
+watch(
+  () =>
+    [
+      props.tasks
+        .filter(updatedApp)
+        .slice(0, 50)
+        .map(task => task.id),
+      localApps.items
+    ] as const,
+  ([ids]) => void updates.loadRollbacks(ids).catch(() => undefined),
+  { immediate: true }
+);
+const rollbackTask = ref<Task | null>(null);
+const rollbackOpen = computed({
+  get: () => rollbackTask.value !== null,
+  set: open => {
+    if (!open) rollbackTask.value = null;
+  }
+});
+const rollbackText = computed(() => {
+  const task = rollbackTask.value;
+  if (!task) return { title: '', body: '', skip: '' };
+  const named = { name: title(task), version: task.fromVersion ?? '' };
+  return {
+    title: t('updates.rollback.title', named),
+    body: t('updates.rollback.body', named),
+    skip: t('updates.rollback.skip', { version: task.toVersion ?? '' })
+  };
+});
+async function rollback() {
+  const task = rollbackTask.value;
+  rollbackTask.value = null;
+  if (!task) return;
+  try {
+    await updates.rollback(task);
+  } catch (error) {
+    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+  }
 }
 
 const logOpen = ref(false);
@@ -133,6 +219,12 @@ async function retry(task: Task) {
               :class="isDeferredUpdate(task) ? 'text-ink-secondary' : 'text-status-danger'"
               >{{ failure(task) }}</span
             >
+            <span
+              v-if="scanLine(task)"
+              class="mt-2px block truncate text-12px"
+              :class="scanLine(task)!.danger ? 'text-status-danger' : 'text-ink-tertiary'"
+              >{{ scanLine(task)!.text }}</span
+            >
           </span>
           <template v-if="task.state === 'failed' || isDeferredUpdate(task)">
             <OnChip v-if="isDeferredUpdate(task)">{{ t('runningApps.deferred') }}</OnChip>
@@ -151,6 +243,14 @@ async function retry(task: Task) {
             }}</OnButton>
           </template>
           <template v-else-if="task.state !== 'failed' && !isDeferredUpdate(task)">
+            <OnButton
+              v-if="updates.rollbackable.has(task.id)"
+              variant="ghost"
+              size="sm"
+              icon="undo-2"
+              @click="rollbackTask = task"
+              >{{ t('updates.history.rollback') }}</OnButton
+            >
             <OnChip v-if="task.state === 'succeeded'" tone="success" icon="check">{{
               t('updates.history.succeeded')
             }}</OnChip>
@@ -159,6 +259,22 @@ async function retry(task: Task) {
         </li>
       </ul>
     </section>
+    <OnModal
+      v-model:open="rollbackOpen"
+      size="md"
+      role="alertdialog"
+      initial-focus="[data-rollback-cancel]"
+      :title="rollbackText.title"
+      :description="rollbackText.body"
+    >
+      <p class="m-0 text-13px leading-relaxed text-ink-secondary">{{ rollbackText.skip }}</p>
+      <template #footer>
+        <OnButton variant="ghost" data-rollback-cancel @click="rollbackTask = null">{{ t('common.cancel') }}</OnButton>
+        <OnButton variant="primary" data-rollback-confirm @click="rollback">{{
+          t('updates.rollback.confirm')
+        }}</OnButton>
+      </template>
+    </OnModal>
     <OnModal v-model:open="logOpen" size="lg" :title="logTitle">
       <OnLogViewer v-if="logLines.length" :lines="logLines" :height="360" :label="logTitle" />
       <p v-else class="m-0 text-13px text-ink-tertiary">{{ t('updates.log.empty') }}</p>

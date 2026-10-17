@@ -8,11 +8,11 @@ import (
 	"github.com/opennavo/opennavo/server/internal/seo"
 )
 
-// IndexRow is one cask with what the index rule (WP11) and the sitemap need. Text counts as
+// IndexRow is one cask or link with what the index rule (WP11) and the sitemap need. Text counts as
 // published in a language when its summary is non-empty and its status is source, machine or manual.
 type IndexRow struct {
 	ID                                        int64
-	Token, Name, DisplayName, Version         string
+	Kind, Token, Name, DisplayName, Version   string
 	SourceLocale                              string
 	Summary                                   string
 	Hidden, Disabled, HasRequirements, IsFont bool
@@ -27,7 +27,7 @@ type IndexRow struct {
 	TextUpdatedAt map[string]time.Time
 }
 
-const indexRowSelect = `SELECT p.id,p.token,p.name,p.version,p.source_locale,p.installs_30d,p.first_seen_at,p.updated_at,p.is_font,
+const indexRowSelect = `SELECT p.id,p.kind,p.token,p.name,p.version,p.source_locale,p.installs_30d,p.first_seen_at,p.updated_at,p.is_font,
  COALESCE(NULLIF(btrim(si.summary),''),p.desc_en,'') AS summary,
  COALESCE(NULLIF(si.display_name,''),p.name) AS display_name,
  COALESCE(m.hidden,false) AS hidden,` + PackageDisabledSQL + ` AS disabled,
@@ -41,7 +41,7 @@ const indexRowSelect = `SELECT p.id,p.token,p.name,p.version,p.source_locale,p.i
 
 type indexRowScan struct {
 	ID                                        int64
-	Token, Name, DisplayName, Version         string
+	Kind, Token, Name, DisplayName, Version   string
 	SourceLocale                              string
 	Summary                                   string
 	Hidden, Disabled, HasRequirements, IsFont bool
@@ -56,13 +56,13 @@ type indexRowScan struct {
 
 func (s *Store) indexRows(ctx context.Context, condition, tail string, args ...any) ([]IndexRow, error) {
 	var scanned []indexRowScan
-	if err := s.DB.WithContext(ctx).Raw(indexRowSelect+" WHERE p.kind='cask' AND p.removed_at IS NULL AND "+condition+" "+tail, args...).Scan(&scanned).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(indexRowSelect+" WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL AND "+condition+" "+tail, args...).Scan(&scanned).Error; err != nil {
 		return nil, err
 	}
 	out := make([]IndexRow, 0, len(scanned))
 	for _, row := range scanned {
 		r := IndexRow{
-			ID: row.ID, Token: row.Token, Name: row.Name, DisplayName: row.DisplayName, Version: row.Version,
+			ID: row.ID, Kind: row.Kind, Token: row.Token, Name: row.Name, DisplayName: row.DisplayName, Version: row.Version,
 			SourceLocale: row.SourceLocale, Summary: row.Summary, Hidden: row.Hidden, Disabled: row.Disabled,
 			HasRequirements: row.HasRequirements, IsFont: row.IsFont, Installs30d: row.Installs30d, NotesCount: row.NotesCount,
 			FirstSeenAt: row.FirstSeenAt, UpdatedAt: row.UpdatedAt, Override: row.Override, OverrideReason: row.OverrideReason, OverrideAt: row.OverrideAt,
@@ -142,7 +142,7 @@ func (s *Store) SitemapIndexRows(ctx context.Context, group string, current, siz
 		condition += " AND p.is_font"
 	}
 	var total int
-	if err := s.DB.WithContext(ctx).Raw("SELECT count(*)" + publicJoins + " WHERE p.kind='cask' AND p.removed_at IS NULL AND " + condition).Scan(&total).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw("SELECT count(*)" + publicJoins + " WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL AND " + condition).Scan(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	rows, err := s.indexRows(ctx, condition, "ORDER BY p.id LIMIT ? OFFSET ?", size, (current-1)*size)
@@ -153,7 +153,7 @@ func (s *Store) SitemapIndexRows(ctx context.Context, group string, current, siz
 // rows, these do not need per-package version, screenshot, release or translation aggregates.
 func (s *Store) IndexReportRows(ctx context.Context) ([]IndexRow, error) {
 	var rows []indexRowScan
-	err := s.DB.WithContext(ctx).Raw(`SELECT p.id,p.token,p.name,p.version,p.installs_30d,p.first_seen_at,
+	err := s.DB.WithContext(ctx).Raw(`SELECT p.id,p.kind,p.token,p.name,p.version,p.installs_30d,p.first_seen_at,
  COALESCE(NULLIF(btrim(si.summary),''),p.desc_en,'') AS summary,
  COALESCE(NULLIF(si.display_name,''),p.name) AS display_name,
  COALESCE(m.hidden,false) AS hidden,` + PackageDisabledSQL + ` AS disabled,
@@ -161,10 +161,10 @@ func (s *Store) IndexReportRows(ctx context.Context) ([]IndexRow, error) {
  COALESCE(m.index_override,'auto') AS override,m.index_override_reason AS override_reason
  FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id
  LEFT JOIN package_i18n si ON si.package_id=p.id AND si.locale=p.source_locale
- WHERE p.kind='cask' AND p.removed_at IS NULL ORDER BY p.first_seen_at DESC,p.id DESC`).Scan(&rows).Error
+ WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL ORDER BY p.first_seen_at DESC,p.id DESC`).Scan(&rows).Error
 	out := make([]IndexRow, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, IndexRow{ID: row.ID, Token: row.Token, Name: row.Name, DisplayName: row.DisplayName,
+		out = append(out, IndexRow{ID: row.ID, Kind: row.Kind, Token: row.Token, Name: row.Name, DisplayName: row.DisplayName,
 			Version: row.Version, Summary: row.Summary, Installs30d: row.Installs30d, FirstSeenAt: row.FirstSeenAt,
 			Hidden: row.Hidden, Disabled: row.Disabled, HasRequirements: row.HasRequirements,
 			Override: row.Override, OverrideReason: row.OverrideReason})

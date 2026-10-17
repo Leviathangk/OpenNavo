@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""M0 fake clamd for PING/INSTREAM/SHUTDOWN. No AV library or CDN access."""
+import argparse
+import os
+from pathlib import Path
+import shlex
+import socket
+import struct
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--config-file', required=True)
+args = parser.parse_args()
+config = {}
+for line in Path(args.config_file).read_text().splitlines():
+    fields = shlex.split(line)
+    if len(fields) == 2:
+        config[fields[0]] = fields[1]
+path = Path(config['LocalSocket'])
+server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+server.bind(str(path))
+os.chmod(path, 0o600)
+server.listen()
+
+
+def exact(connection, size):
+    data = b''
+    while len(data) < size:
+        part = connection.recv(size - len(data))
+        if not part:
+            raise EOFError('truncated command')
+        data += part
+    return data
+
+
+try:
+    while True:
+        connection, _ = server.accept()
+        with connection:
+            command = b''
+            while not command.endswith(b'\0') and len(command) < 32:
+                command += exact(connection, 1)
+            if command == b'zPING\0':
+                connection.sendall(b'PONG\0')
+            elif command == b'zSHUTDOWN\0':
+                break
+            elif command == b'zINSTREAM\0':
+                total = 0
+                found = False
+                tail = b''
+                while True:
+                    size, = struct.unpack('!I', exact(connection, 4))
+                    if size == 0:
+                        break
+                    total += size
+                    if size > 1024 * 1024 or total > 100 * 1024 * 1024:
+                        raise ValueError('fixture stream limit')
+                    data = tail + exact(connection, size)
+                    found = found or b'EICAR-STANDARD-ANTIVIRUS-TEST-FILE' in data
+                    tail = data[-64:]
+                connection.sendall(b'stream: Eicar-Test-Signature FOUND\0' if found else b'stream: OK\0')
+            else:
+                connection.sendall(b'UNKNOWN COMMAND\0')
+finally:
+    server.close()
+    path.unlink(missing_ok=True)

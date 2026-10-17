@@ -9,6 +9,10 @@ import type { OnKeyValueItem, OnRelatedPackage } from '@opennavo/ui';
 import { OnMarkdown } from '@opennavo/ui/markdown';
 import ArticleCard from '@/components/article/ArticleCard.vue';
 import LatestRelease from '@/components/package/LatestRelease.vue';
+import LinkDownloadPanel from '@/components/package/LinkDownloadPanel.vue';
+import MasAlsoPanel from '@/components/appstore/MasAlsoPanel.vue';
+import DownloadVerdictBanner from '@/components/package/DownloadVerdictBanner.vue';
+import type { LinkInfo, LocalizedText } from '@/ipc/bindings';
 import MonthlyInstallsCard from '@/components/package/MonthlyInstallsCard.vue';
 import { api } from '@/api';
 import { useAppLocale } from '@/composables/useAppLocale';
@@ -48,13 +52,66 @@ const description = computed(
     detail.value?.summary ??
     (local.value ? pick(local.value.summary, '', local.value.sourceLocale) : '')
 );
-const command = computed(
-  () => detail.value?.installCommand ?? installCommand(kind.value, token.value, local.value?.tap)
-);
+// Link apps have no install command; their page shows download links instead (store/security plan §4).
+const command = computed(() => {
+  const value = kind.value;
+  return value === 'link' ? '' : (detail.value?.installCommand ?? installCommand(value, token.value, local.value?.tap));
+});
 
 const messages = useUiMessages();
 
+// Bundle IDs that can match an App Store listing: link apps register theirs, and for casks the server names the
+// listing it found. The panel asks Apple itself, so price and availability follow this Mac's storefront.
+const storeBundleIds = computed(() => [
+  ...(detail.value?.appStore?.bundleId ? [detail.value.appStore.bundleId] : []),
+  ...(detail.value?.bundleIds ?? local.value?.bundleIds ?? [])
+]);
+
+// Link apps (store/security plan §4): where the download comes from and how to tell a genuine copy.
+// The API allows null translations where the local catalog drops them; normalize to the catalog's shape.
+const link = computed<LinkInfo | null>(() => {
+  const remote = detail.value?.link;
+  if (!remote) return local.value?.link ?? null;
+  const notes = remote.notes
+    ? (Object.fromEntries(Object.entries(remote.notes).filter(([, text]) => Boolean(text))) as LocalizedText)
+    : null;
+  return {
+    ...remote,
+    notes,
+    github: remote.github ? { repo: remote.github.repo, latest: remote.github.latest ?? null } : null
+  };
+});
+const linkInfo = computed<OnKeyValueItem[]>(() => {
+  const value = link.value;
+  if (!value) return [];
+  const items: OnKeyValueItem[] = [];
+  if (value.homepage)
+    items.push({
+      key: 'homepage',
+      label: t('package.info.homepage'),
+      value: displayUrl(value.homepage),
+      href: value.homepage
+    });
+  if (value.github)
+    items.push({
+      key: 'github',
+      label: 'GitHub',
+      value: value.github.repo,
+      href: `https://github.com/${value.github.repo}`
+    });
+  if (value.teamId) items.push({ key: 'team', label: t('package.link.teamId'), value: value.teamId, mono: true });
+  items.push({
+    key: 'pricing',
+    label: t('package.link.pricingLabel'),
+    value: t(`package.link.pricing.${value.pricing}`)
+  });
+  const bundleIds = detail.value?.bundleIds ?? local.value?.bundleIds ?? [];
+  if (bundleIds.length) items.push({ key: 'bundle', label: 'Bundle ID', value: bundleIds.join(' '), mono: true });
+  return items;
+});
+
 const info = computed<OnKeyValueItem[]>(() => {
+  if (kind.value === 'link') return linkInfo.value;
   const value = detail.value;
   const items: OnKeyValueItem[] = [{ key: 'token', label: 'Token', value: token.value, mono: true }];
   const homepage = value?.homepage ?? local.value?.homepage;
@@ -128,6 +185,8 @@ function onCopied(text: string) {
 </script>
 
 <template>
+  <!-- After a link app's Download: whether the file is the developer's, notarized and clean (plan §4, mockup A). -->
+  <DownloadVerdictBanner v-if="kind === 'link'" class="mb-14px" :token="token" />
   <OnPackageOverview
     :screenshots="shots"
     :screenshots-label="t('package.screenshots')"
@@ -158,8 +217,12 @@ function onCopied(text: string) {
         <ArticleCard v-for="card in detail.articles" :key="card.slug" :card="card" compact :heading-level="3" />
       </section>
     </template>
+    <template v-if="kind === 'link' && link" #download>
+      <LinkDownloadPanel :token="token" :link="link" />
+    </template>
     <template #aside>
-      <MonthlyInstallsCard v-if="detail" :installs="detail.installs" />
+      <MonthlyInstallsCard v-if="detail && kind !== 'link'" :installs="detail.installs" />
+      <MasAlsoPanel v-if="kind !== 'formula'" :bundle-ids="storeBundleIds" />
     </template>
   </OnPackageOverview>
 </template>

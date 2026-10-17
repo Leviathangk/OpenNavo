@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
@@ -291,7 +292,7 @@ func (s *Service) seoSettings(ctx context.Context, op string, in Input) (any, er
                 SELECT id,kind,token,'upsert','content' FROM packages WHERE kind='cask' AND removed_at IS NULL`).Error; err != nil {
 				return err
 			}
-			if err := store.QueueCacheInvalidation(ctx, tx, "seo-policy", "c:pkg:c3:*"); err != nil {
+			if err := store.QueueCacheInvalidation(ctx, tx, "seo-policy", cache.PackageDetailPrefix+"*"); err != nil {
 				return err
 			}
 		}

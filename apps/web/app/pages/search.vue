@@ -38,7 +38,6 @@ const { data, error, refresh } = await useAsyncData(
             params: {
               query: {
                 q: q.value,
-                kind: 'cask',
                 current: page.value,
                 size: PAGE_SIZE,
                 platform: 'web'
@@ -80,6 +79,9 @@ function aliasOf(hit: { package: PackageSummary; matchedName?: string | null }):
   );
   return same ? null : name;
 }
+
+// Link apps carry their download addresses, so the row's Download opens the developer's page directly.
+const linkOf = (token: string) => data.value?.records.find(hit => hit.package.token === token)?.package.link ?? null;
 
 const results = computed<OnSearchResult[] | null>(() => {
   if (!q.value || error.value) return null;
@@ -130,7 +132,7 @@ usePageSeo({
     </template>
     <OnErrorState v-if="q && error" @retry="refresh()" />
     <template #action="{ result }">
-      <GetMenu :kind="result.kind" :token="result.token" :name="result.name" />
+      <GetMenu :kind="result.kind" :token="result.token" :name="result.name" :link="linkOf(result.token)" />
     </template>
     <template #empty>
       <OnEmpty

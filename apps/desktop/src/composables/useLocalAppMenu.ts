@@ -48,8 +48,9 @@ export function useLocalAppMenu() {
 
   /** Adopt: install the cask over the existing app; the install flow asks for adoption consent first. Never an App Store copy. */
   const adopt = (app: LocalApp) =>
-    app.catalogToken && app.source !== 'app_store'
-      ? run(tasks.enqueue('install', { kind: 'cask', token: app.catalogToken }))
+    // Rust names the cask that matches this copy (LocalApp.homebrewCask, plan §11.4); App Store copies stay there.
+    app.homebrewCask && app.source !== 'app_store'
+      ? run(tasks.enqueue('install', { kind: 'cask', token: app.homebrewCask }))
       : Promise.resolve();
 
   async function select(app: LocalApp, _name: string, key: string) {

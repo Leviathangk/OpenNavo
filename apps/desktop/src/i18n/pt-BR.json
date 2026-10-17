@@ -49,7 +49,9 @@
     "updatesBadge": "{count} atualização disponível | {count} atualizações disponíveis",
     "cleanup": "Limpeza",
     "cleanupBadge": "{count} item em segundo plano quebrado ainda é carregado | {count} itens em segundo plano quebrados ainda são carregados",
-    "monitor": "Monitor"
+    "monitor": "Monitor",
+    "security": "Segurança",
+    "securityBadge": "{count} item precisa de atenção | {count} itens precisam de atenção"
   },
   "env": {
     "label": "Homebrew",
@@ -72,6 +74,7 @@
     "search": "Pesquisar {count} app | Pesquisar {count} apps",
     "searchShort": "Buscar apps",
     "taskRunning": "{action} {name}",
+    "taskScanning": "Verificando o download de {name}",
     "taskQueued": "Mais {count} na fila | Mais {count} na fila"
   },
   "rail": {
@@ -156,7 +159,60 @@
     "empty": "Nenhum resultado para “{q}”",
     "emptyHint": "Tente outra palavra-chave ou busque pelo nome em inglês ou pela abreviação em pinyin",
     "alias": "Aliases: {name}",
-    "prompt": "Digite um nome, finalidade ou comando para começar a busca"
+    "prompt": "Digite um nome, finalidade ou comando para começar a busca",
+    "catalogEmpty": "Nenhum resultado no catálogo para “{q}”",
+    "sources": {
+      "label": "Origem dos resultados",
+      "all": "Tudo",
+      "catalog": "Catálogo"
+    }
+  },
+  "appStore": {
+    "title": "App Store",
+    "badge": "App Store",
+    "get": "Obter",
+    "getIn": "Obter {name} na App Store",
+    "free": "Grátis",
+    "fromApple": "Da Apple · loja: {region}",
+    "fromAppleNoRegion": "Da Apple",
+    "rating": "{rating} · {count} avaliação | {rating} · {count} avaliações",
+    "rateLimited": "Muitas buscas na App Store. Tente de novo em um minuto.",
+    "offline": "Não foi possível conectar à App Store. Verifique a conexão e tente de novo.",
+    "searchFailed": "Não foi possível buscar na App Store. Tente mais tarde.",
+    "empty": "Nenhum resultado na App Store para “{q}”",
+    "emptyHint": "Tente outra palavra ou mude a região da App Store nos Ajustes",
+    "showAll": "Mostrar {count} resultado | Mostrar todos os {count} resultados",
+    "requiresOs": "macOS {version} ou posterior",
+    "installedVersion": "{version} instalada",
+    "headerMeta": "Baixado pela App Store · Requer uma Conta Apple conectada",
+    "viewInStore": "Ver na App Store",
+    "alsoTitle": "Também disponível em",
+    "whatsNew": "Novidades · {version}",
+    "whatsNewDated": "Novidades · {version} · {date}",
+    "about": "Sobre",
+    "info": {
+      "seller": "Desenvolvedor",
+      "version": "Versão",
+      "size": "Tamanho",
+      "requires": "Requisitos",
+      "category": "Categoria",
+      "region": "Região da loja",
+      "bundleId": "Bundle ID"
+    },
+    "privacyNote": "Seu Mac obtém estas informações direto da Apple, sem passar pelos servidores do OpenNavo.",
+    "notInRegion": "Este app não está disponível na loja desta região ({region})",
+    "notInRegionHint": "Ele pode ter sido removido ou ser vendido só em outras regiões.",
+    "settings": {
+      "region": "Região da loja",
+      "regionHint": "Define os resultados da busca, os preços e a disponibilidade. No automático, usa a região da conta da App Store ou, se não der para ler, a do sistema",
+      "auto": "Automático",
+      "autoDetected": "Automático ({region})",
+      "search": "Mostrar resultados da App Store na busca",
+      "searchHint": "A Apple só é consultada quando você para de digitar, no máximo 15 vezes por minuto",
+      "updates": "Verificar atualizações da App Store",
+      "updatesHint": "Mostra as novas versões dos apps da App Store em Atualizações",
+      "privacy": "Busca, detalhes e verificação de atualizações vão direto deste Mac para a Apple, nunca pelos servidores do OpenNavo."
+    }
   },
   "collections": {
     "title": "Coleções",
@@ -173,6 +229,58 @@
     "offline": "A coleção fica disponível quando houver conexão com a internet"
   },
   "package": {
+    "link": {
+      "chip": "Download pelo site",
+      "chipGithub": "GitHub",
+      "meta": "Os downloads vêm de {source} · O OpenNavo não hospeda instaladores",
+      "notHosted": "O OpenNavo não hospeda instaladores; os downloads vêm direto do desenvolvedor.",
+      "homepage": "Site",
+      "downloadTitle": "Download",
+      "officialDownload": "Baixar pelo site",
+      "release": "{version} · lançada {time}",
+      "recommended": "Recomendado",
+      "download": "Baixar",
+      "allFiles": "Todos os arquivos no GitHub",
+      "githubReleases": "Baixar pelo GitHub",
+      "teamId": "Assinatura do desenvolvedor",
+      "pricingLabel": "Preço",
+      "adopted": "O Homebrew agora inclui este app, então ele instala com um clique",
+      "arch": {
+        "arm64": "Apple Silicon",
+        "x86_64": "Intel",
+        "universal": "Universal"
+      },
+      "pricing": {
+        "free": "Grátis",
+        "paid": "Pago",
+        "freemium": "Grátis com recursos pagos",
+        "subscription": "Assinatura",
+        "open_source": "Grátis e de código aberto"
+      },
+      "verdict": {
+        "verifying": "Verificando {file}…",
+        "checked": "{file} verificado: {details}",
+        "title": "{file} verificado",
+        "view": "Ver",
+        "open": "Abrir instalador",
+        "reveal": "Mostrar no Finder",
+        "who": "{signer} ({team})",
+        "teamMatch": "Assinado por {who}, conforme o cadastro",
+        "teamMismatch": "Assinado por {who}, que não é o desenvolvedor cadastrado",
+        "signed": "Assinado por {who}",
+        "unsigned": "Sem assinatura de desenvolvedor",
+        "zip": "O ZIP não foi descompactado; o macOS verifica o app ao abri-lo pela primeira vez",
+        "invalid": "Assinatura inválida",
+        "notarized": "Notarizado pela Apple",
+        "notNotarized": "Sem notarização da Apple",
+        "clean": "Nenhuma ameaça encontrada",
+        "threat": "{name} encontrado",
+        "threatQuarantined": "{name} encontrado e movido para a quarentena",
+        "notScanned": "Sem verificação de vírus",
+        "skipped": "Sem verificação: {reason}",
+        "modified": "Arquivos foram alterados depois da assinatura; pode ter sido adulterado"
+      }
+    },
     "arch": {
       "arm64": "Apple Silicon",
       "x86_64": "Intel"
@@ -494,13 +602,93 @@
     "updateAll": "Atualizar tudo",
     "changelog": "Notas da versão",
     "update": "Atualizações",
-    "ignore": "Ignorar esta versão",
-    "ignored": "{name} {version} ignorado",
     "pinned": "Fixado; não será atualizado",
     "patch": "Correções",
     "empty": "Todos os softwares estão atualizados",
     "emptyHint": "Novas versões aparecerão aqui",
     "queued": "{count} adicionado à fila | {count} adicionados à fila",
+    "source": {
+      "homebrew": "Homebrew",
+      "mas": "App Store",
+      "sparkle": "Atualizador do app",
+      "electron": "Atualizador do app",
+      "github": "GitHub",
+      "vendor": "Site do desenvolvedor",
+      "msupdate": "Microsoft AutoUpdate"
+    },
+    "badge": {
+      "critical": "Importante",
+      "beta": "Beta",
+      "major": "Versão principal",
+      "teamMismatch": "Assinatura diferente"
+    },
+    "hint": {
+      "relaunch": "Atualizado para {version}; passa a valer depois de reabrir",
+      "informational": "Esta versão é obtida no site do desenvolvedor",
+      "running": "Em execução; você vai precisar fechá-lo antes",
+      "admin": "Exige a senha de administrador",
+      "skipped": "{version} pulada",
+      "teamMismatch": "A assinatura esperada do desenvolvedor não corresponde ao app instalado, então o OpenNavo não vai instalar esta atualização"
+    },
+    "actions": {
+      "skip": "Pular esta versão",
+      "unskip": "Parar de pular {version}",
+      "beta": "Receber versões beta",
+      "stable": "Somente versões estáveis",
+      "unignoreApp": "Retomar verificação de atualizações",
+      "ignoreApp": "Parar de verificar este app",
+      "relaunch": "Reabrir",
+      "view": "Ver"
+    },
+    "toast": {
+      "skipped": "{name} {version} foi pulada",
+      "unskipped": "As atualizações do {name} voltarão a aparecer",
+      "beta": "{name} vai receber versões beta",
+      "stable": "{name} vai receber somente versões estáveis",
+      "unignoredApp": "Verificação de atualizações de {name} retomada",
+      "ignoredApp": "{name} não será mais verificado"
+    },
+    "notes": {
+      "title": "Novidades do {name} {version}"
+    },
+    "masSignedOut": "A App Store não está conectada a uma Conta Apple, então as atualizações dela não podem ser instaladas. Inicie a sessão e tente de novo.",
+    "failedSources": "Desta vez não foi possível verificar {sources}. Os resultados das outras fontes aparecem normalmente, e a próxima verificação tenta de novo",
+    "openAppStore": "Abrir App Store",
+    "major": {
+      "titleOne": "{name} tem uma atualização principal",
+      "title": "{count} atualização principal | {count} atualizações principais",
+      "body": "Uma versão principal pode mudar a interface, pedir permissões de novo ou deixar de abrir arquivos antigos. Atualizar mesmo assim?",
+      "others": "As outras atualizações continuam normalmente.",
+      "skip": "Agora não",
+      "confirm": "Atualizar"
+    },
+    "filter": {
+      "label": "Fonte",
+      "all": "Todas {count}",
+      "homebrew": "Homebrew {count}",
+      "mas": "App Store {count}",
+      "other": "Outras fontes {count}"
+    },
+    "meta": {
+      "from": "de {host}",
+      "teamMatch": "Team ID esperado"
+    },
+    "sources": {
+      "title": "Fontes",
+      "subtitle": "Fontes desativadas não são verificadas",
+      "homebrew": "Homebrew",
+      "homebrewHint": "Executa brew outdated",
+      "mas": "App Store",
+      "masHint": "Este Mac consulta a Apple diretamente",
+      "sparkle": "Atualizadores dos apps",
+      "sparkleHint": "A assinatura do desenvolvedor e a notarização são verificadas antes de instalar",
+      "electron": "Atualizadores do Electron",
+      "electronHint": "Verifica sha512 e a assinatura antes de instalar",
+      "github": "GitHub Releases",
+      "githubHint": "Verifica o resumo do arquivo e a assinatura do desenvolvedor",
+      "vendor": "Sites de desenvolvedores",
+      "vendorHint": "Usa regras mantidas pelo OpenNavo e verifica a assinatura do desenvolvedor"
+    },
     "history": {
       "recheck": "Revisar novamente",
       "title": "Histórico de atualizações",
@@ -517,7 +705,8 @@
       "purge": "Excluir permanentemente",
       "canceled": "Cancelado",
       "batch": "{action} {count} {kind} | {action} {count} {kind}",
-      "empty": "Ainda não há histórico de atualizações"
+      "empty": "Ainda não há histórico de atualizações",
+      "rollback": "Reverter"
     },
     "month": {
       "title": "Este mês",
@@ -551,6 +740,13 @@
     "log": {
       "title": "Registro de {name}",
       "empty": "Nenhum registro"
+    },
+    "rollback": {
+      "title": "Reverter {name} para {version}?",
+      "body": "Isso restaura {version}, a versão que o OpenNavo guardou ao atualizar o app. Se {name} estiver aberto, pediremos que ele seja encerrado antes e o reabriremos depois.",
+      "skip": "{version} não será oferecida de novo até sair uma versão mais recente.",
+      "confirm": "Reverter",
+      "notQuit": "{name} não foi encerrado, então não foi revertido. Encerre o app e tente novamente."
     }
   },
   "history": {
@@ -571,10 +767,12 @@
       "general": "Geral",
       "mirrors": "Fonte de download",
       "homebrew": "Homebrew",
+      "appstore": "App Store",
       "privacy": "Privacidade",
       "about": "Sobre",
       "cleanup": "Limpeza",
-      "monitor": "Monitor do sistema"
+      "monitor": "Monitor do sistema",
+      "security": "Segurança"
     },
     "general": {
       "followSystem": "Seguir o sistema (atual: {language})",
@@ -888,7 +1086,9 @@
       "update": "Atualizar o Homebrew",
       "install_homebrew": "Instalar Homebrew",
       "remove_leftovers": "Limpar restos",
-      "clean": "Limpeza do Mac"
+      "clean": "Limpeza do Mac",
+      "av_db_update": "Atualizar o banco de dados de vírus",
+      "rollback": "Reversão"
     },
     "running": {
       "install": "Instalando {name}",
@@ -901,12 +1101,15 @@
       "update": "Atualizando o Homebrew",
       "install_homebrew": "Instalando o Homebrew",
       "remove_leftovers": "Limpando restos: {name}",
-      "clean": "Limpando o Mac"
+      "clean": "Limpando o Mac",
+      "av_db_update": "Atualizando o banco de dados de vírus",
+      "rollback": "Revertendo {name}"
     },
     "phases": {
       "preparing": "Preparando",
       "fetching": "Obtendo informações",
       "downloading": "Baixando",
+      "scanning": "Verificando o download",
       "installing": "Instalando",
       "linking": "Vinculando",
       "cleaning": "Limpando",
@@ -929,6 +1132,34 @@
     "failed": "Falha ao {action} {name}"
   },
   "errors": {
+    "E_STARTUP_PROTECTED": "Este item vem com o macOS e não pode ser alterado aqui",
+    "E_AV_CONSENT": "Primeiro, concorde em baixar o banco de dados de vírus",
+    "E_AV_NOT_READY": "O banco de dados de vírus ainda não foi baixado. Baixe-o primeiro em Verificação de vírus",
+    "E_AV_ENGINE": "O mecanismo de verificação não iniciou. Tente mais tarde",
+    "E_AV_SCAN_FAILED": "A verificação não terminou. Execute-a de novo",
+    "E_AV_DB_RATE_LIMITED": "O servidor oficial limitou temporariamente as atualizações do banco de dados. O OpenNavo vai tentar de novo mais tarde",
+    "E_AV_DB_UPDATE": "Não foi possível atualizar o banco de dados de vírus. Verifique a conexão e tente de novo",
+    "E_RESTORE_CONFLICT": "Já existe um arquivo com o mesmo nome no local original, então nada foi restaurado",
+    "E_MAS_NOT_SIGNED_IN": "Primeiro, entre na App Store com sua Conta Apple",
+    "E_MAS_NOT_OWNED": "Esta Conta Apple ainda não obteve este app. Clique em Obter na App Store",
+    "E_MAS_PAID": "Compre apps pagos na App Store",
+    "E_MAS_OTHER_ACCOUNT": "Este app foi comprado com outra Conta Apple. Atualize-o na App Store",
+    "E_MAS_REGION": "Este app não está disponível na região da loja atual",
+    "E_MAS_RATE_LIMITED": "Muitas solicitações à App Store. Tente de novo em um minuto",
+    "E_MAS_ENGINE": "O componente de download da App Store falhou. Conclua a operação na App Store",
+    "E_UPDATE_INTEGRITY": "O download falhou na verificação de integridade, então a atualização não foi instalada",
+    "E_UPDATE_TEAM_MISMATCH": "A nova versão é assinada por outro desenvolvedor, então não foi instalada",
+    "E_UPDATE_NOT_NOTARIZED": "A nova versão não foi notarizada pela Apple, então não foi instalada",
+    "E_UPDATE_ARCH": "A nova versão não é compatível com o chip deste Mac",
+    "E_UPDATE_MIN_OS": "A nova versão exige um macOS mais recente",
+    "E_UPDATE_FEED": "Não foi possível ler a fonte de atualizações. Tente mais tarde",
+    "E_UPDATE_DMG_LICENSE": "Este instalador pede para aceitar uma licença, então instale esta versão manualmente",
+    "E_UPDATE_SWAP": "Não foi possível substituir o app, então a versão anterior foi restaurada",
+    "E_ADMIN_CANCELED": "A autorização de administrador foi cancelada",
+    "E_NOT_IMPLEMENTED": "Isso ainda não está disponível",
+    "E_DOWNLOAD_UNSAFE": "Este instalador não passou na verificação, então não foi aberto",
+    "E_NOT_INSTALLABLE": "Este app é baixado do site dele e não pode ser instalado com o Homebrew",
+    "E_LINK_URL": "Este endereço de download não está registrado para o app, então não foi aberto",
     "E_APP_RUNNING": "O app está em execução. A atualização foi adiada; encerre o app e tente novamente.",
     "E_APP_QUIT_FAILED": "O app não foi encerrado. A atualização foi adiada; salve seu trabalho, encerre o app e tente novamente.",
     "E_APP_CHECK_FAILED": "Não foi possível verificar se o app está em execução. A atualização foi adiada; atualize a lista de apps instalados e tente novamente.",
@@ -966,7 +1197,22 @@
     "E_FAN_WRITE_FAILED": "Não foi possível alterar o ajuste da ventoinha",
     "E_FAN_NO_MANUAL_SPEED": "Ainda não há uma velocidade manual anterior",
     "E_FAN_UNAUTHORIZED": "O assistente das ventoinhas não passou na verificação de assinatura. Reinstale o OpenNavo",
-    "E_FAN_SENSOR_UNAVAILABLE": "Não é possível ler a temperatura, então o controle manual fica bloqueado por segurança"
+    "E_FAN_SENSOR_UNAVAILABLE": "Não é possível ler a temperatura, então o controle manual fica bloqueado por segurança",
+    "E_INSTALL_THREAT": "Uma ameaça foi encontrada no download, então a instalação foi interrompida",
+    "E_INSTALL_SCAN": "A verificação antes da instalação não terminou, então nada foi instalado. Tente mais tarde ou desative Verificar antes de instalar em Ajustes → Segurança",
+    "E_PASTE_EXPIRED": "Essa colagem expirou e foi descartada",
+    "E_ACCESSIBILITY_DENIED": "Permita que o OpenNavo use a Acessibilidade nos Ajustes do Sistema",
+    "E_VT_DISABLED": "A consulta no VirusTotal está desativada",
+    "E_VT_KEY_REQUIRED": "Primeiro adicione sua chave de API do VirusTotal nos Ajustes",
+    "E_VT_KEY_INVALID": "A chave de API do VirusTotal não é válida. Confira e digite de novo",
+    "E_VT_RATE_LIMITED": "Consultas demais ao VirusTotal. A API pública permite 4 por minuto; tente daqui a pouco",
+    "E_VT_UNAVAILABLE": "Não é possível conectar ao VirusTotal agora. Tente mais tarde",
+    "E_KEYCHAIN": "Não foi possível ler ou atualizar o chaveiro",
+    "E_AUTOMATION_DENIED": "Permita que o OpenNavo controle o System Events em Ajustes do Sistema → Privacidade e Segurança → Automação",
+    "E_STARTUP_CHANGED": "Outro programa acabou de alterar este item de inicialização. Atualize e tente de novo",
+    "E_LOGIN_ITEM_EXISTS": "Este app já abre no início da sessão",
+    "E_ROLLBACK_UNAVAILABLE": "A versão guardada não está mais disponível ou o app mudou desde então, então não é possível reverter",
+    "E_ROLLBACK_INTEGRITY": "A versão guardada não passou na verificação de assinatura, então nada foi revertido"
   },
   "installConfirm": {
     "title": "Adotar o {name} existente?",
@@ -1026,6 +1272,7 @@
     "open": "Abrir",
     "reveal": "Mostrar no Finder",
     "detail": "Ver no OpenNavo",
+    "appStore": "Página na App Store",
     "adoptTitle": "Deixe o Homebrew gerenciar",
     "adoptBody": "O Homebrew tem {name}. Adote-o para atualizá-lo com um clique no OpenNavo e desinstalá-lo com regras de limpeza mais completas.",
     "adopt": "Adotar com o Homebrew",
@@ -1044,9 +1291,11 @@
       "vendor": "Desenvolvedor",
       "arch": "Arquitetura",
       "source": "Origem",
+      "updater": "Forma de atualização",
       "installedAt": "Instalado",
       "lastUsed": "Último uso"
     },
+    "updaterNone": "O OpenNavo ainda não consegue atualizá-lo",
     "arch": {
       "arm64": "Apple Silicon",
       "x86_64": "Intel",
@@ -1764,6 +2013,510 @@
       "privacy": "Todas as métricas são calculadas e exibidas só neste Mac: nada vai para a internet, é enviado ou guardado como histórico. O IP público e o nome da rede Wi-Fi não são exibidos.",
       "alerts": "Alertas",
       "alertsHint": "Receba uma notificação quando algo precisar de atenção, no máximo uma vez por hora para o mesmo problema. Enquanto estiver ativado, a verificação continua em segundo plano com pouca frequência mesmo sem itens na barra de menus"
+    }
+  },
+  "security": {
+    "title": "Segurança",
+    "subtitle": "Verificação do sistema, verificação de vírus, itens de inicialização e proteção. Os resultados ficam neste Mac",
+    "tabs": {
+      "label": "Segurança",
+      "overview": "Visão geral",
+      "scan": "Verificação de vírus",
+      "startup": "Itens de inicialização",
+      "protection": "Proteção",
+      "quarantine": "Quarentena"
+    },
+    "overview": {
+      "attention": "{count} item precisa da sua atenção | {count} itens precisam da sua atenção",
+      "newStartup": "{count} item de inicialização novo | {count} itens de inicialização novos",
+      "openThreats": "{count} ameaça ainda não resolvida | {count} ameaças ainda não resolvidas",
+      "allGood": "Tudo certo",
+      "allGoodHint": "As proteções do sistema estão ativadas e não há ameaças pendentes nem itens de inicialização novos",
+      "viewStartup": "Ver itens de inicialização",
+      "postureTitle": "Verificação do sistema",
+      "postureHint": "Verificações somente leitura. Para mudar algo, o OpenNavo abre o painel certo nos Ajustes do Sistema",
+      "openSettings": "Abrir Ajustes",
+      "scheduleOff": "Verificação programada: desativada",
+      "scheduleDaily": "Verificação programada: todo dia às {time}",
+      "scheduleWeekly": "Verificação programada: {day} às {time}, toda semana"
+    },
+    "postureState": {
+      "ok": "OK",
+      "warn": "Verificar",
+      "bad": "Risco",
+      "info": "Aviso",
+      "unknown": "Desconhecido"
+    },
+    "posture": {
+      "sip": {
+        "title": "Proteção da Integridade do Sistema",
+        "ok": "Ativada",
+        "bad": "A Proteção da Integridade do Sistema está desativada",
+        "unknown": "Não foi possível ler"
+      },
+      "ssv": {
+        "title": "Volume do sistema assinado",
+        "ok": "O volume do sistema está assinado e selado",
+        "bad": "O volume do sistema não está selado",
+        "unknown": "Não foi possível ler"
+      },
+      "gatekeeper": {
+        "title": "Gatekeeper",
+        "ok": "Só apps verificados podem ser abertos",
+        "bad": "O Gatekeeper está desativado, então qualquer app pode ser aberto",
+        "unknown": "Não foi possível ler"
+      },
+      "filevault": {
+        "title": "Criptografia de disco FileVault",
+        "ok": "Ativada",
+        "bad": "O FileVault está desativado: se o Mac for perdido, os dados podem ser lidos",
+        "unknown": "Não foi possível ler"
+      },
+      "firewall": {
+        "title": "Firewall",
+        "ok": "Ativado",
+        "bad": "O firewall está desativado (ele só bloqueia conexões de entrada; ative-o em redes públicas)",
+        "unknown": "Não foi possível ler"
+      },
+      "xprotect": {
+        "title": "XProtect (proteção integrada da Apple)",
+        "ok": "Atualizado",
+        "bad": "O XProtect não é atualizado há mais de 30 dias",
+        "unknown": "Não foi possível ler a versão",
+        "detail": "Versão {version} · atualizado {time}"
+      },
+      "updates": {
+        "title": "Atualizações de segurança automáticas",
+        "ok": "Ativadas",
+        "bad": "Respostas de segurança e arquivos de dados não são instalados automaticamente",
+        "unknown": "Não foi possível ler"
+      },
+      "screenlock": {
+        "title": "Bloqueio de tela",
+        "ok": "Pede a senha logo ao despertar",
+        "bad": "Não pede a senha logo ao despertar",
+        "unknown": "Não foi possível ler"
+      },
+      "autologin": {
+        "title": "Início de sessão automático",
+        "ok": "Desativado",
+        "bad": "O início de sessão automático está ativado: ao ligar, nenhuma senha é pedida",
+        "unknown": "Não foi possível ler"
+      },
+      "guest": {
+        "title": "Usuário convidado",
+        "ok": "Desativado",
+        "bad": "O usuário convidado está ativado",
+        "unknown": "Não foi possível ler"
+      },
+      "sharing": {
+        "title": "Serviços de compartilhamento",
+        "ok": "Nenhum serviço de compartilhamento remoto ativado",
+        "bad": "Há serviços de compartilhamento remoto ativados",
+        "unknown": "Não foi possível ler",
+        "detail": "Ativados: {services}",
+        "services": {
+          "ssh": "Início de Sessão Remoto",
+          "files": "Compartilhamento de Arquivos",
+          "screen": "Compartilhamento de Tela",
+          "remote": "Gerenciamento Remoto"
+        }
+      }
+    },
+    "engine": {
+      "title": "Banco de dados de vírus",
+      "setUp": "Baixar banco de dados de vírus",
+      "db": "Banco de dados {version} · atualizado {time}",
+      "downloading": "Baixando o banco de dados de vírus…",
+      "noDb": "O banco de dados de vírus ainda não foi baixado",
+      "lastScan": "Última {kind}: {date}, {count} ameaça encontrada | Última {kind}: {date}, {count} ameaças encontradas",
+      "neverScanned": "Nenhuma verificação ainda",
+      "consentTitle": "Primeiro, baixe o banco de dados oficial de vírus",
+      "consentBody": "A verificação de vírus usa o mecanismo ClamAV e o banco de dados oficial dele. O banco de dados vem direto dos servidores oficiais do ClamAV, sem passar pelo OpenNavo.",
+      "consentSize": "O primeiro download tem cerca de 113 MB; depois, só as mudanças são baixadas. Ocupa cerca de 170 MB no disco.",
+      "consentMemory": "Durante a verificação, o mecanismo usa cerca de 1,1 GB de memória e fecha após 5 minutos sem uso.",
+      "consentSource": "Por padrão, as atualizações são verificadas a cada 4 horas, dentro dos limites dos servidores oficiais.",
+      "consentCoverage": "O ClamAV detecta só parte do malware específico para Mac, então o OpenNavo também verifica assinaturas, notarização e itens de inicialização, e mostra o estado do XProtect da Apple.",
+      "download": "Concordar e baixar",
+      "downloadFailed": "Não foi possível baixar o banco de dados de vírus",
+      "rateLimited": "O servidor oficial limitou temporariamente as atualizações do banco de dados. O OpenNavo vai tentar de novo mais tarde"
+    },
+    "scan": {
+      "denied": "Sem permissão para ler {folders}, então não foram verificados. Você pode permitir o OpenNavo em Ajustes do Sistema → Privacidade e Segurança → Arquivos e Pastas",
+      "folders": {
+        "downloads": "Downloads",
+        "desktop": "Mesa",
+        "documents": "Documentos"
+      },
+      "quick": {
+        "title": "Verificação rápida",
+        "duration": "Normalmente alguns minutos; mais se houver instaladores grandes em Downloads ou na Mesa",
+        "body": "Programas executados pelos itens de inicialização, Downloads, Mesa, pastas temporárias e apps instalados nos últimos 7 dias",
+        "action": "Verificação rápida"
+      },
+      "full": {
+        "title": "Verificação completa",
+        "duration": "Pode levar mais de uma hora",
+        "body": "O Mac inteiro, exceto o volume do sistema, arquivos do iCloud não baixados, Time Machine e volumes de rede",
+        "action": "Iniciar verificação completa"
+      },
+      "custom": {
+        "title": "Verificação personalizada",
+        "duration": "Depende do que você escolher",
+        "body": "Escolha pastas ou um disco externo",
+        "action": "Escolher e verificar"
+      },
+      "failed": "A verificação não começou",
+      "running": "Fazendo {kind} · {count} arquivos verificados ({size})",
+      "state": {
+        "done": "Verificação concluída · {count} arquivos verificados · {time}",
+        "canceled": "Verificação cancelada · {count} arquivos verificados",
+        "failed": "A verificação parou · {count} arquivos verificados"
+      },
+      "progressLabel": "Progresso da verificação",
+      "skipped": {
+        "dataless": "{count} arquivo do iCloud não baixado foi ignorado | {count} arquivos do iCloud não baixados foram ignorados",
+        "tooLarge": "{count} arquivo passa do limite de verificação e não foi verificado por completo | {count} arquivos passam do limite de verificação e não foram verificados por completo",
+        "unreadable": "Não foi possível ler {count} arquivo (sem permissão, criptografado ou em um formato sem suporte) | Não foi possível ler {count} arquivos (sem permissão, criptografados ou em um formato sem suporte)",
+        "excluded": "{count} arquivo está excluído | {count} arquivos estão excluídos"
+      }
+    },
+    "findings": {
+      "title": "Ameaças encontradas ({count}) | Ameaças encontradas ({count})",
+      "quarantine": "Pôr em quarentena",
+      "quarantined": "{name} foi posto em quarentena",
+      "reveal": "Mostrar no Finder",
+      "trust": "Confiar neste arquivo",
+      "delete": "Apagar",
+      "more": "Mais ações para {name}",
+      "status": {
+        "open": "Pendente",
+        "quarantined": "Em quarentena",
+        "deleted": "Apagada",
+        "trusted": "Confiável"
+      },
+      "none": "Nenhuma ameaça encontrada",
+      "noneHint": "Nada que o banco de dados de vírus reconheça estava nos locais verificados"
+    },
+    "startup": {
+      "summary": "{count} item de inicialização de terceiros | {count} itens de inicialização de terceiros",
+      "notRead": "Os itens de inicialização ainda não foram lidos",
+      "untrusted": "{count} deles sem assinatura ou sem notarização | {count} deles sem assinatura ou sem notarização",
+      "missing": "Sem Acesso Total ao Disco, não é possível ler: {categories}",
+      "grant": "Permitir acesso",
+      "btmUnknown": "O banco de dados de itens em segundo plano deste Mac usa um formato que o OpenNavo não reconhece, então alguns itens de início podem estar faltando",
+      "new": "Novo",
+      "toggle": "Ativar {name}",
+      "openSettings": "Gerenciar nos Ajustes do Sistema",
+      "none": "Nenhum item de inicialização",
+      "noneHint": "Os itens que vêm com o macOS não aparecem aqui",
+      "noApps": "Nenhum app abre sozinho",
+      "others": "{count} outro item | {count} outros itens",
+      "othersHint": "Ferramentas de linha de comando, scripts, extensões e plug-ins",
+      "items": "{count} item | {count} itens",
+      "stateMixed": "{count} ativado | {count} ativados",
+      "add": "Adicionar item de início",
+      "addHint": "O app escolhido abre quando você inicia sessão neste Mac",
+      "addSearch": "Buscar apps",
+      "addEmpty": "Nenhum app para adicionar",
+      "adding": "Adicionando…",
+      "added": "{name} vai abrir no início da sessão",
+      "refreshing": "Verificando os itens de inicialização…",
+      "removed": "{name} foi removido. Você pode restaurá-lo na quarentena",
+      "removeTitle": "Remover “{name}”?",
+      "removeBody": "Primeiro ele é desativado; depois o arquivo de configuração vai para a quarentena, de onde você pode restaurá-lo.",
+      "removeBodyAdmin": "Primeiro ele é desativado; depois o arquivo de configuração vai para a quarentena, de onde você pode restaurá-lo. Como é um item do Mac inteiro, você vai digitar uma senha de administrador uma vez.",
+      "remove": "Remover",
+      "enable": "Ativar",
+      "disable": "Desativar",
+      "keep": "Manter",
+      "scan": "Verificar com o banco de dados de vírus",
+      "adminHint": "É um item do Mac inteiro. Para desativá-lo ou removê-lo, a senha de administrador é pedida uma vez.",
+      "riskHigh": "Risco alto",
+      "avClean": "Nenhuma ameaça encontrada",
+      "avThreat": "Detectado como {name}",
+      "avNotScanned": "Ainda não verificado",
+      "category": {
+        "launch_items": "Serviço em segundo plano",
+        "btm": "Item em segundo plano",
+        "login_items": "Item de início",
+        "cron": "Tarefa agendada",
+        "browser_extensions": "Extensão do navegador",
+        "kexts": "Extensão do kernel",
+        "system_extensions": "Extensão do sistema",
+        "app_extensions": "Extensão de app",
+        "auth_plugins": "Plug-in de autorização",
+        "dir_services_plugins": "Plug-in de serviços de diretório",
+        "spotlight": "Importador do Spotlight",
+        "quicklook": "Plug-in de Visualização Rápida",
+        "dock_tiles": "Plug-in do Dock",
+        "library_inserts": "Injeção de bibliotecas",
+        "library_proxies": "Proxy de bibliotecas",
+        "login_hooks": "Gancho de início de sessão",
+        "periodic": "Script periódico",
+        "startup_scripts": "Script de inicialização",
+        "shell_config": "Configuração do shell",
+        "event_rules": "Regra de eventos"
+      },
+      "scope": {
+        "user": "Este usuário",
+        "system": "Mac inteiro"
+      },
+      "state": {
+        "running": "Em execução",
+        "loaded": "Carregado",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "unknown": "Desconhecido",
+        "removed": "Removido"
+      },
+      "trust": {
+        "apple": "Apple",
+        "known": "Desenvolvedor conhecido",
+        "unknown": "Não é possível confirmar",
+        "untrusted": "Sem assinatura ou sem notarização"
+      },
+      "trigger": {
+        "at_load": "Abre ao ligar",
+        "keep_alive": "Sempre em execução",
+        "interval": "Roda periodicamente",
+        "calendar": "Roda em horários definidos",
+        "watch_paths": "Roda quando arquivos mudam",
+        "events": "Roda em eventos"
+      },
+      "fields": {
+        "category": "Tipo",
+        "scope": "Alcance",
+        "path": "Local",
+        "program": "Programa",
+        "owner": "App",
+        "signature": "Assinatura",
+        "team": "Team ID",
+        "state": "Estado",
+        "triggers": "Quando roda",
+        "firstSeen": "Visto pela primeira vez",
+        "av": "Banco de dados de vírus"
+      },
+      "restore": "Restaurar",
+      "restored": "{name} foi restaurado",
+      "removedBackup": "{name} foi removido. Você pode restaurá-lo aqui",
+      "removeBodyBackup": "Um backup é guardado antes da remoção, então você pode restaurá-lo pela lista de itens de inicialização."
+    },
+    "signature": {
+      "apple": "Assinado pela Apple",
+      "appStore": "Assinado pela App Store",
+      "notarized": "Notarizado",
+      "notNotarized": "Assinatura válida, sem notarização",
+      "adhoc": "Assinatura ad hoc; não é possível confirmar o desenvolvedor",
+      "unsigned": "Sem assinatura",
+      "invalid": "Assinatura inválida",
+      "notCode": "Não é um programa; a assinatura não se aplica",
+      "unknown": "Não foi possível checar a assinatura",
+      "modified": "Assinatura válida, mas arquivos foram alterados depois da assinatura"
+    },
+    "quarantine": {
+      "summary": "{count} arquivo, {size} | {count} arquivos, {size}",
+      "empty": "A quarentena está vazia",
+      "emptyHint": "Ameaças postas em quarentena e itens de inicialização removidos ficam aqui, e você pode restaurá-los a qualquer momento",
+      "reason": {
+        "startup": "Item de inicialização removido",
+        "user": "Posto em quarentena por você"
+      },
+      "restore": "Restaurar",
+      "restored": "{name} foi restaurado",
+      "delete": "Apagar permanentemente",
+      "deleteTitle": "Apagar “{name}” permanentemente?",
+      "deleteBody": "Não é possível desfazer."
+    },
+    "protection": {
+      "title": "Proteção",
+      "startupAlerts": {
+        "title": "Alertas de itens de inicialização",
+        "body": "Avisa assim que aparece um novo item de inicialização, item de início ou serviço em segundo plano, com a assinatura e o app. O aviso vem depois do fato e não impede a primeira execução."
+      },
+      "watchDownloads": {
+        "title": "Verificar novos downloads",
+        "body": "Observa a pasta Downloads e verifica os arquivos novos quando o download termina. Instaladores também têm a assinatura e a notarização verificadas."
+      },
+      "needsDb": "Primeiro, baixe o banco de dados de vírus",
+      "waiting": "{stage} · aguardando a aprovação da Apple",
+      "later": {
+        "realtime": {
+          "title": "Bloquear novos itens de inicialização",
+          "body": "Sabe qual programa adicionou um item de inicialização e o desativa na hora. Requer que a Apple aprove a permissão de Endpoint Security."
+        },
+        "exec": {
+          "title": "Confirmar programas sem notarização",
+          "body": "Pergunta antes de um programa baixado e sem notarização rodar pela primeira vez. Requer a permissão de Endpoint Security."
+        },
+        "ransomware": {
+          "title": "Proteção contra ransomware",
+          "body": "Pausa um programa que grava muitos arquivos com cara de criptografados em pouco tempo e pergunta o que fazer. Requer a permissão de Endpoint Security."
+        },
+        "firewall": {
+          "title": "Firewall de apps",
+          "body": "Pergunta se deve permitir um app na primeira vez que ele se conecta à rede, com regras e listas de bloqueio. Requer uma extensão de rede do sistema; chega numa versão futura."
+        }
+      },
+      "eventsTitle": "Atividade recente",
+      "noEvents": "Nada ainda",
+      "events": {
+        "startup_added": "Novo item de inicialização: {name}",
+        "startup_removed": "Item de inicialização removido: {name}",
+        "download_threat": "Ameaça em um download: {name}",
+        "download_unsigned": "Instalador sem assinatura baixado: {name}",
+        "scan_threat": "A verificação encontrou uma ameaça: {name}",
+        "scheduled_scan_skipped": "Verificação programada pulada: {name}",
+        "signature_changed": "Assinado por outro desenvolvedor: {name}",
+        "install_threat": "Instalação interrompida por uma ameaça: {name}",
+        "paste_blocked": "Colagem suspeita pausada: {name}"
+      },
+      "installThreatUnnamed": "Instalação interrompida por uma ameaça"
+    },
+    "toasts": {
+      "startupAdded": "{count} item de inicialização novo | {count} itens de inicialização novos",
+      "startupAddedBody": "{name} · {signer}",
+      "review": "Revisar",
+      "threats": "A verificação encontrou {count} ameaça | A verificação encontrou {count} ameaças",
+      "clean": "Verificação concluída, nenhuma ameaça",
+      "view": "Ver",
+      "signatureChanged": "{count} app agora tem a assinatura de outro desenvolvedor | {count} apps agora têm a assinatura de outro desenvolvedor",
+      "signatureChangedBody": "A assinatura de {names} é de um desenvolvedor diferente do anterior; o app pode ter sido substituído",
+      "installThreat": "Ameaça encontrada no download; a instalação foi interrompida"
+    },
+    "rail": {
+      "engine": "Mecanismo de verificação",
+      "version": "Versão",
+      "engineVersion": "ClamAV {version}",
+      "database": "Banco de dados",
+      "noDatabase": "Não baixado",
+      "size": "Tamanho",
+      "engineState": "Mecanismo",
+      "running": "Em execução · {size}",
+      "idle": "Parado",
+      "protection": "Proteção",
+      "on": "Ativada",
+      "off": "Desativada",
+      "limitsTitle": "O que cobre",
+      "limits": "O banco de dados de vírus detecta só parte do malware específico para Mac e, até a Apple conceder a permissão, os alertas de itens de inicialização chegam depois do fato e não bloqueiam nada. Complementa a proteção integrada do macOS; não a substitui. Arquivos comuns com mais de 100 MB e instaladores com mais de 1 GB, ou mais de 2 GB depois de descompactados, não são verificados por completo."
+    },
+    "avSkipped": {
+      "no_database": "o banco de dados de vírus ainda não foi baixado",
+      "no_consent": "o download do banco de dados de vírus ainda não foi aprovado",
+      "excluded": "a pasta está nas exclusões da verificação",
+      "too_large": "passa do limite de verificação",
+      "unreadable": "não foi possível ler (sem permissão, criptografado ou em um formato sem suporte)"
+    },
+    "installScan": {
+      "clean": "{count} arquivo verificado antes da instalação, sem ameaças | {count} arquivos verificados antes da instalação, sem ameaças",
+      "skipped": "A verificação antes da instalação não terminou: {reason}",
+      "skippedPartial": "{count} arquivo verificado antes da instalação, mas não tudo: {reason} | {count} arquivos verificados antes da instalação, mas não tudo: {reason}",
+      "threat": "Encontrado antes da instalação: {names}"
+    },
+    "settings": {
+      "interval": "Frequência de verificação do banco de dados",
+      "intervalHint": "Primeiro o registro de versões é consultado e só as mudanças são baixadas. O mínimo oficial é uma hora",
+      "everyHours": "A cada {count} hora | A cada {count} horas",
+      "resident": "Manter o mecanismo de verificação carregado",
+      "residentHint": "Os downloads são verificados mais rápido, mas cerca de 1,1 GB de memória ficam em uso. Desativado, o mecanismo fecha após 5 minutos sem uso",
+      "watchDownloadsHint": "Observa a pasta Downloads; precisa do banco de dados de vírus",
+      "startupAlertsHint": "Avisa quando aparece um novo item de inicialização",
+      "exclusions": "Exclusões da verificação",
+      "exclusionsHint": "Estas pastas são ignoradas em todas as verificações",
+      "addExclusion": "Adicionar uma pasta",
+      "removeExclusion": "Remover",
+      "choose": "Escolher…",
+      "beforeInstall": "Verificar antes de instalar",
+      "beforeInstallHint": "Os arquivos que o Homebrew baixa são verificados antes da instalação e, se houver uma ameaça, a instalação para. Precisa do banco de dados de vírus. O que for baixado depois, durante a instalação (por exemplo, ao compilar a partir do código-fonte ou por um script de instalação que acessa a internet), não é verificado",
+      "schedule": {
+        "title": "Verificações programadas",
+        "frequency": "Verificação rápida automática",
+        "hint": "Faz uma verificação rápida no horário escolhido. Só roda com o OpenNavo aberto, nunca acorda o Mac e é pulada quando ele está na bateria",
+        "off": "Desativado",
+        "daily": "Todo dia",
+        "weekly": "Toda semana",
+        "weekday": "Dia",
+        "time": "Horário",
+        "next": "Próxima verificação: {time}",
+        "skipped": "A última foi pulada: {reason}",
+        "reason": {
+          "no_database": "o banco de dados de vírus ainda não foi baixado",
+          "no_consent": "o download do banco de dados de vírus ainda não foi aprovado",
+          "on_battery": "o Mac estava na bateria",
+          "busy": "outra verificação estava em andamento",
+          "error": "a verificação não conseguiu começar"
+        }
+      },
+      "optional": {
+        "title": "Recursos opcionais",
+        "hint": "Ficam desativados até você ativá-los"
+      },
+      "paste": {
+        "title": "Proteção ao colar",
+        "hint": "Pausa um comando suspeito do tipo “baixar e executar” colado com ⌘V em um terminal e pergunta antes. Funciona no Terminal, iTerm2, Warp, kitty, Alacritty, Ghostty, WezTerm, Hyper e Tabby; o que é colado por um menu ou pelo botão direito não é checado. A checagem é feita só neste Mac e o texto colado nunca é salvo",
+        "needsAccess": "Precisa de acesso de Acessibilidade",
+        "needsAccessHint": "Com a permissão, o OpenNavo pode checar os comandos antes de serem colados no Terminal",
+        "grant": "Permitir acesso"
+      },
+      "virusTotal": {
+        "title": "Consulta no VirusTotal",
+        "hint": "Consulta o SHA-256 de um arquivo no VirusTotal com a sua própria chave de API. Só o hash é enviado, e só quando você pede; arquivos nunca são enviados",
+        "key": "Chave de API",
+        "keySaved": "Salva no chaveiro",
+        "keyHint": "Crie uma conta em virustotal.com e encontre a chave de API no seu perfil",
+        "removeKey": "Remover chave",
+        "placeholder": "Cole sua chave de API",
+        "saveKey": "Salvar",
+        "terms": "A API pública do VirusTotal permite 4 consultas por minuto e é só para uso pessoal não comercial; para uso comercial você precisa ter sua própria licença comercial do VirusTotal. O OpenNavo nunca consulta nada sozinho nem envia arquivos."
+      }
+    },
+    "signatures": {
+      "title": "Checagem de assinaturas dos apps",
+      "never": "As assinaturas dos apps instalados ainda não foram checadas",
+      "summaryIssues": "{issues} app com problema de {count} checados | {issues} apps com problemas de {count} checados",
+      "summaryClean": "{count} app checado; assinatura e notarização em ordem | {count} apps checados; assinaturas e notarização em ordem",
+      "issue": {
+        "invalid": "Assinatura inválida",
+        "unsigned": "Sem assinatura",
+        "adhoc": "Assinatura ad hoc",
+        "not_notarized": "Sem notarização",
+        "team_changed": "Desenvolvedor mudou",
+        "unreadable": "Assinatura ilegível",
+        "modified": "Alterado após a assinatura"
+      },
+      "check": "Checar assinaturas",
+      "recheck": "Checar de novo"
+    },
+    "paste": {
+      "title": "Colagem no {app} pausada",
+      "body": "Este comando parece baixar e executar um programa. Descarte-o se você não pretendia executá-lo.",
+      "bodyUnchecked": "Este texto é longo demais para checar por completo. Permita uma vez só se você pretendia colá-lo.",
+      "pattern": {
+        "pipe_to_interpreter": "Passa um download direto para um shell",
+        "download_execute": "Executa um arquivo logo depois de baixá-lo",
+        "encoded_command": "Contém um comando codificado",
+        "remove_quarantine": "Remove a marca de quarentena do macOS para pular as checagens de segurança",
+        "too_long": "Longo demais para checar por completo"
+      },
+      "expires": "Descartado automaticamente em {seconds} s",
+      "allow": "Permitir uma vez",
+      "discard": "Descartar"
+    },
+    "virusTotal": {
+      "lookup": "Consultar no VirusTotal",
+      "malicious": "VirusTotal: {count} antivírus detectou ameaça neste arquivo | VirusTotal: {count} antivírus detectaram ameaça neste arquivo",
+      "suspicious": "VirusTotal: {count} antivírus achou este arquivo suspeito | VirusTotal: {count} antivírus acharam este arquivo suspeito",
+      "clean": "VirusTotal: nenhum antivírus detectou ameaça neste arquivo",
+      "notFound": "O VirusTotal não tem registro deste arquivo",
+      "engines": "Verificado por {total} antivírus",
+      "analyzed": "analisado {time}",
+      "hashOnly": "Só o SHA-256 do arquivo foi enviado; o arquivo em si não foi enviado",
+      "report": "Ver relatório"
+    },
+    "downloadThreat": {
+      "title": "Ameaça em um download: {file}",
+      "body": "{signature} · Verifique o arquivo para movê-lo para a quarentena",
+      "action": "Verificar e resolver"
     }
   }
 }

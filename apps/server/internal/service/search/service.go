@@ -91,7 +91,7 @@ func (s *Service) Search(ctx context.Context, input domain.SearchInput) (domain.
 	}
 	rawQuery := input.Query
 	input.Query = searchtext.Normalize(input.Query)
-	if input.Query == "" || (input.Kind != "" && input.Kind != "cask" && input.Kind != "formula") || input.Current < 1 || input.Size < 1 || input.Size > 100 || !i18n.Valid(input.Locale) || (input.Platform != "web" && input.Platform != "desktop") {
+	if input.Query == "" || (input.Kind != "" && input.Kind != "cask" && input.Kind != "formula" && input.Kind != "link") || input.Current < 1 || input.Size < 1 || input.Size > 100 || !i18n.Valid(input.Locale) || (input.Platform != "web" && input.Platform != "desktop") {
 		return result, domain.Validation()
 	}
 	synonyms, err := s.Repo.SearchSynonyms(ctx, input.Query)
@@ -130,7 +130,7 @@ func (s *Service) Suggest(ctx context.Context, query, locale string, limit int) 
 	if query == "" || limit < 1 || limit > 10 || !i18n.Valid(locale) {
 		return nil, domain.Validation()
 	}
-	key := fmt.Sprintf("c:sug:c2:%s:%s", locale, query)
+	key := fmt.Sprintf("c:sug:c2:%s:%s", locale, query) + domain.LinksCacheKey(ctx)
 	if s.Cache != nil {
 		data, err := s.Cache.Load(ctx, key)
 		if err == nil {
@@ -158,7 +158,7 @@ func (s *Service) Click(ctx context.Context, queryID, kind, token string, positi
 		return &domain.AppError{Code: domain.CodeNotFound, HTTPStatus: 404}
 	}
 	id, err := strconv.ParseInt(queryID, 10, 64)
-	if err != nil || id < 1 || (kind != "cask" && kind != "formula") || token == "" || position < 1 {
+	if err != nil || id < 1 || (kind != "cask" && kind != "formula" && kind != "link") || token == "" || position < 1 {
 		return domain.Validation()
 	}
 	if err := ctx.Err(); err != nil {

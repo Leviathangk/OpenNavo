@@ -25,23 +25,25 @@ const onlyWithNotes = computed(() => query.value.notes === 'true' || query.value
 const original = computed(() => query.value.original === 'true' || query.value.original === '1');
 
 const { data: pkg, token } = await usePackage(props.kind);
+// A cask route can resolve to a link app (usePackage); its releases live under that kind.
+const kind = computed(() => pkg.value?.kind ?? props.kind);
 
 const releases = (options: { current: number; size: number; onlyWithNotes: boolean; original: boolean }) =>
   unwrap(
     api.GET('/packages/{kind}/{token}/releases', {
-      params: { path: { kind: props.kind, token: token.value }, query: { ...options, locale: appLocale.value } }
+      params: { path: { kind: kind.value, token: token.value }, query: { ...options, locale: appLocale.value } }
     })
   );
 
 const { data, error, refresh, status } = await useAsyncData(
-  () => `releases:${props.kind}:${token.value}:${page.value}:${onlyWithNotes.value}:${original.value}:${locale.value}`,
+  () => `releases:${kind.value}:${token.value}:${page.value}:${onlyWithNotes.value}:${original.value}:${locale.value}`,
   () => releases({ current: page.value, size: PAGE_SIZE, onlyWithNotes: onlyWithNotes.value, original: original.value })
 );
 
 // Segmented label totals (All 36 / With notes 29) are read per app, not taken from the shown page: while a filter
 // switch loads, Nuxt keeps the previous page on screen, and its total belongs to the other filter.
 const { data: totals } = await useAsyncData(
-  () => `releases-count:${props.kind}:${token.value}:${appLocale.value}:${original.value}`,
+  () => `releases-count:${kind.value}:${token.value}:${appLocale.value}:${original.value}`,
   async () => {
     const [all, withNotes] = await Promise.all([
       releases({ current: 1, size: 1, onlyWithNotes: false, original: original.value }),
@@ -81,7 +83,8 @@ function lag(minutes: number) {
 
 const brew = computed(() => {
   const stats = data.value?.stats;
-  if (!stats) return null;
+  // Link apps never pass through Homebrew, so there is no adoption lag to compare.
+  if (!stats || kind.value === 'link') return null;
   const median = stats.brewLag.medianMinutes;
   const value =
     median === null || median === undefined

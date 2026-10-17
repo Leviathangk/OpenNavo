@@ -2,15 +2,19 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { OnEmpty, OnSearchField, OnSearchResultsView } from '@opennavo/ui';
-import type { OnSearchResult } from '@opennavo/ui';
+import { OnEmpty, OnSearchField, OnSearchResultsView, OnSegmented } from '@opennavo/ui';
+import type { OnSearchResult, OnSegmentedOption } from '@opennavo/ui';
 import PackageGetButton from '@/components/package/PackageGetButton.vue';
-import { commands, unwrap } from '@/ipc/client';
+import MasResults from '@/components/appstore/MasResults.vue';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { useCatalogLoader } from '@/composables/useCatalogLoader';
+import { searchApps } from '@/composables/searchApps';
+import { useMasSearch } from '@/composables/useMasSearch';
+import { useSettingsStore } from '@/stores';
+import { useMasStore } from '@/stores/mas';
 
 // Search (local FTS, 06 §7.1): Enter on View all results in the Command-K palette; truncate q to 64 characters, matching deep links. Cask-only (ADR-018).
-// Shared with the web view (ADR-017).
+// Shared with the web view (ADR-017). App Store results (store/security plan §5) follow in their own group, straight from Apple.
 const { t } = useI18n();
 const { pick, appLocale } = useAppLocale();
 const route = useRoute();
@@ -24,22 +28,33 @@ watch(
     query.value = String(value ?? '').slice(0, 64);
   }
 );
-watch(query, value => void router.replace({ query: value ? { q: value } : {} }));
+type Source = 'all' | 'catalog' | 'appstore';
+const SOURCES: readonly Source[] = ['all', 'catalog', 'appstore'];
+const source = ref<Source>(SOURCES.find(value => value === route.query.source) ?? 'all');
+watch([query, source], ([value, from]) => {
+  const next: Record<string, string> = {};
+  if (value) next.q = value;
+  if (value && from !== 'all') next.source = from;
+  void router.replace({ query: next });
+});
+
+const mas = useMasStore();
+void mas.loadStatus().catch(() => undefined);
+// Installed App Store apps offer Open instead of Get; a failure only leaves Get on those rows.
+void mas.loadInstalled().catch(() => undefined);
+// Settings → App Store can turn the App Store group off; the catalog search is unaffected.
+const settings = useSettingsStore();
+const masOn = computed(() => settings.value?.appStoreSearch ?? true);
+const masSearch = useMasSearch(
+  query,
+  computed(() => masOn.value && source.value !== 'catalog')
+);
 
 const { data, error } = useCatalogLoader(
   async () => {
     const q = query.value.trim();
     if (!q) return null;
-    const result = await unwrap(
-      commands.catalogSearch({
-        q,
-        kind: 'cask',
-        category: null,
-        includeDisabled: false,
-        limit: 100,
-        offset: 0
-      })
-    );
+    const result = await searchApps(q, 100);
     return { q, result };
   },
   [query, appLocale],
@@ -67,8 +82,12 @@ const results = computed<OnSearchResult[] | null>(() =>
           accent: hit.item.accentColor,
           meta: hit.item.token,
           description: pick(hit.item.summary, '', hit.item.sourceLocale) || null,
-          matched: hit.matchedName ? t('search.alias', { name: hit.matchedName }) : null,
-          href: `/package/cask/${hit.item.token}`
+          // The token is already the meta line, so a match on it adds nothing (as on the web).
+          matched:
+            hit.matchedName && hit.matchedName.toLowerCase() !== hit.item.token.toLowerCase()
+              ? t('search.alias', { name: hit.matchedName })
+              : null,
+          href: `/package/${hit.item.kind}/${hit.item.token}`
         }))
       : error.value
         ? []
@@ -81,24 +100,62 @@ const subtitle = computed(() =>
     : '\u00a0'
 );
 const disabledOf = (token: string) => shown.value?.result.items.find(hit => hit.item.token === token)?.item.disabled;
+
+const sourceOptions = computed<OnSegmentedOption<Source>[]>(() => [
+  { value: 'all', label: t('search.sources.all') },
+  { value: 'catalog', label: t('search.sources.catalog'), count: shown.value?.result.total },
+  { value: 'appstore', label: t('appStore.title'), count: masSearch.results.value?.length }
+]);
+const showMas = computed(() => masOn.value && source.value !== 'catalog' && query.value.trim().length >= 2);
+// With App Store results below, an empty catalog is one line instead of the full empty state.
+const masHasResults = computed(() => showMas.value && Boolean(masSearch.results.value?.length));
 </script>
 
 <template>
-  <OnSearchResultsView :title="t('search.title')" :subtitle="subtitle" :results="results" :link-as="RouterLink">
+  <OnSearchResultsView
+    :title="t('search.title')"
+    :subtitle="subtitle"
+    :results="source === 'appstore' && masOn ? [] : results"
+    :link-as="RouterLink"
+  >
     <template #search>
       <OnSearchField v-model="query" :placeholder="t('search.prompt')" clearable />
     </template>
+    <OnSegmented
+      v-if="masOn && query.trim()"
+      v-model="source"
+      class="mb-16px self-start"
+      size="sm"
+      :options="sourceOptions"
+      :aria-label="t('search.sources.label')"
+    />
     <template #action="{ result }">
       <PackageGetButton :kind="result.kind" :token="result.token" :disabled="disabledOf(result.token)" />
     </template>
     <template #empty>
-      <!-- The prompt also covers the first search in flight, so the area never blanks before results arrive. -->
-      <OnEmpty v-if="!shown" :title="t('search.prompt')" icon="lucide:search" />
-      <OnEmpty
-        v-else
-        :title="t('search.empty', { q: shown.q })"
-        :description="t('search.emptyHint')"
-        icon="lucide:search"
+      <template v-if="source !== 'appstore' || !masOn || !query.trim()">
+        <!-- The prompt also covers the first search in flight, so the area never blanks before results arrive. -->
+        <OnEmpty v-if="!shown" :title="t('search.prompt')" icon="lucide:search" />
+        <p v-else-if="masHasResults" class="m-0 text-13px text-ink-tertiary">
+          {{ t('search.catalogEmpty', { q: shown.q }) }}
+        </p>
+        <OnEmpty
+          v-else
+          :title="t('search.empty', { q: shown.q })"
+          :description="t('search.emptyHint')"
+          icon="lucide:search"
+        />
+      </template>
+    </template>
+    <template #footer>
+      <MasResults
+        v-if="showMas"
+        :results="masSearch.results.value"
+        :query="masSearch.shownQuery.value || query.trim()"
+        :loading="masSearch.loading.value"
+        :error="masSearch.error.value"
+        :country="mas.status?.country ?? null"
+        :expanded="source === 'appstore'"
       />
     </template>
   </OnSearchResultsView>

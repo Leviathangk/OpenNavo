@@ -3,6 +3,10 @@ import { useStateSubscriptions } from './stateSubscriptions';
 import { events } from '@/ipc/client';
 import { useCatalogStore } from './catalog';
 import { useCleanupStore } from './cleanup';
+import { useSecurityStore } from './security';
+import { useMasStore } from './mas';
+import { useLinksStore } from './links';
+import { useDownloadsStore } from './downloads';
 import { useMonitorStore } from './monitor';
 import { useEnvStore } from './env';
 import { useLibraryStore } from './library';
@@ -37,7 +41,11 @@ export function startLocalState() {
     const uninstall = useUninstallStore();
     const cleanup = useCleanupStore();
     const monitor = useMonitorStore();
+    const security = useSecurityStore();
     const updates = useUpdatesStore();
+    const mas = useMasStore();
+    const links = useLinksStore();
+    const downloads = useDownloadsStore();
     const tasks = useTasksStore();
     const settings = useSettingsStore();
     const names = useNamesStore();
@@ -69,11 +77,32 @@ export function startLocalState() {
       register(events.cleanupChanged.listen(event => cleanup.applySummary(event.payload))),
       register(events.monitorSample.listen(event => monitor.applySample(event.payload))),
       register(events.fanChanged.listen(event => monitor.applyFanChange(event.payload))),
+      register(events.securityChanged.listen(event => security.changed(event.payload))),
+      register(events.avProgress.listen(event => security.applyProgress(event.payload))),
+      register(events.avFinished.listen(event => security.applyFinished(event.payload))),
+      register(events.startupAdded.listen(event => security.applyAdded(event.payload.items))),
+      register(events.avSchedule.listen(() => void security.loadSchedule().catch(() => undefined))),
+      register(events.appSignaturesChanged.listen(event => security.applySignatureChanges(event.payload.apps))),
+      register(events.installScanned.listen(event => security.applyInstallScan(event.payload))),
+      register(
+        events.pasteBlocked.listen(event => {
+          security.paste = event.payload;
+        })
+      ),
+      register(events.downloadDetected.listen(event => downloads.detected(event.payload))),
+      register(events.downloadVerified.listen(event => downloads.verified(event.payload))),
       register(events.updatesChanged.listen(() => void updates.load().catch(() => undefined))),
+      register(
+        events.appstoreChanged.listen(event => {
+          mas.changed(event.payload.reason);
+          if (event.payload.reason !== 'region') void updates.load().catch(() => undefined);
+        })
+      ),
       register(
         events.catalogSynced.listen(event => {
           catalog.status = event.payload;
           catalog.revision += 1;
+          void links.refresh();
           void names.refresh().catch(() => undefined);
           void catalog.loadCategories().catch(() => undefined);
         })
@@ -121,7 +150,8 @@ export function startLocalState() {
       tasks.load(),
       permissions.refresh(),
       cleanup.loadSummary(),
-      cleanup.loadRules()
+      cleanup.loadRules(),
+      security.loadOverview()
     ]);
   });
 }

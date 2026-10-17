@@ -82,6 +82,7 @@ func (s *PublicService) Collection(ctx context.Context, slug, locale string) (pu
 var brewToken = regexp.MustCompile(`^[a-z0-9][a-z0-9+._@-]*$`)
 
 func (s *PublicService) Brewfile(ctx context.Context, slug string) (string, error) {
+	ctx = domain.WithLinks(ctx, false)
 	if _, err := s.Store.PublicCollection(ctx, slug, "en-US", s.now()); err != nil {
 		return "", notFound(err)
 	}

@@ -43,7 +43,9 @@ describe('WP1 titles and descriptions', () => {
       app,
       { ...app, displayName: longName, summary: null },
       { ...app, displayName: 'Fira Code', isFont: true },
-      { ...app, disabled: true }
+      { ...app, disabled: true },
+      { ...app, kind: 'link' },
+      { ...app, kind: 'link', summary: null }
     ]) {
       const title = overviewTitle(pkg, t);
       const description = overviewDescription(pkg, t);
@@ -67,6 +69,10 @@ describe('WP1 titles and descriptions', () => {
     // A name that already says "Font" does not get a second one.
     expect(overviewTitle({ ...app, displayName: 'FiraCode Nerd Font', isFont: true }, t)).toBe(
       'FiraCode Nerd Font for Mac – Download & Install · OpenNavo'
+    );
+    // Link apps promise the developer's own download, not an install method (store/security plan §4).
+    expect(overviewDescription({ ...app, kind: 'link' }, t)).toBe(
+      'Open-source code editor. Find the official download for Visual Studio Code and its release history.'
     );
     expect(overviewDescription({ ...app, disabled: true }, t)).toBe(
       'Open-source code editor. Homebrew has disabled Visual Studio Code; see its release history and similar apps.'

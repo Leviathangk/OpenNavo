@@ -101,3 +101,59 @@ export function renderMarkdown(source: string, options: RenderMarkdownOptions = 
   const env: MarkdownEnv = { headingLevel: Math.min(6, Math.max(2, options.headingLevel ?? 3)) };
   return sanitize(md.render(source, env), { ALLOWED_TAGS, ALLOWED_ATTR, ALLOW_DATA_ATTR: false });
 }
+
+// Vendor HTML release notes (Sparkle appcasts, store/security plan §11.4) carry whole documents with styles, scripts,
+// tracking images and their own h1s. Keep the Markdown tag set plus a few inline tags; everything else goes.
+const RELEASE_HTML_TAGS = [...ALLOWED_TAGS, 'h1', 'b', 'i', 'u', 'div', 'dl', 'dt', 'dd', 'img'];
+
+/**
+ * Vendor release-note HTML → sanitized HTML for OnMarkdownView: links open outside without opener access, images
+ * never load (they become links labeled with their alt text, https only), and headings start at headingLevel.
+ */
+export function sanitizeReleaseHtml(source: string, options: RenderMarkdownOptions = {}): string {
+  const base = Math.min(6, Math.max(2, options.headingLevel ?? 4));
+  const fragment = sanitize(source, {
+    ALLOWED_TAGS: RELEASE_HTML_TAGS,
+    ALLOWED_ATTR: ['href', 'title', 'src', 'alt', 'start'],
+    ALLOW_DATA_ATTR: false,
+    RETURN_DOM_FRAGMENT: true
+  });
+  const doc = fragment.ownerDocument;
+  const https = (value: string | null) => {
+    try {
+      return value && new URL(value).protocol === 'https:' ? value : null;
+    } catch {
+      return null;
+    }
+  };
+  // querySelectorAll lists are static, so replacing nodes while iterating is safe.
+  for (const image of fragment.querySelectorAll('img')) {
+    const src = https(image.getAttribute('src'));
+    if (!src) {
+      image.remove();
+      continue;
+    }
+    const link = doc.createElement('a');
+    link.setAttribute('href', src);
+    link.textContent = image.getAttribute('alt')?.trim() || src;
+    image.replaceWith(link);
+  }
+  for (const link of fragment.querySelectorAll('a')) {
+    if (!/^https?:/i.test(link.getAttribute('href') ?? '')) link.removeAttribute('href');
+    link.setAttribute('target', '_blank');
+    link.setAttribute('rel', 'noopener noreferrer');
+  }
+  // Same ordered mapping as Markdown: the n-th distinct heading level found becomes headingLevel + n.
+  const headings = [...fragment.querySelectorAll('h1, h2, h3, h4, h5, h6')];
+  const levels = [...new Set(headings.map(heading => heading.tagName.toLowerCase()))].sort();
+  for (const heading of headings) {
+    const rank = levels.indexOf(heading.tagName.toLowerCase());
+    const next = doc.createElement(`h${Math.min(6, base + rank)}`);
+    next.className = `on-md-heading-${Math.min(rank, 2) + 1}`;
+    next.append(...heading.childNodes);
+    heading.replaceWith(next);
+  }
+  const host = doc.createElement('div');
+  host.append(fragment);
+  return host.innerHTML;
+}

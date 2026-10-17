@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { PackageDetail } from '@opennavo/api';
 import { formatDate, isThirdPartyTap } from '@opennavo/shared';
-import { architectures, OnButton, OnMenu, OnPackageHeader } from '@opennavo/ui';
+import { architectures, displayUrl, OnButton, OnIcon, OnMenu, OnPackageHeader } from '@opennavo/ui';
 import type { OnPackageHeaderChip } from '@opennavo/ui';
 import PackageGetButton from './PackageGetButton.vue';
 import type { Kind } from '@/ipc/bindings';
@@ -13,6 +13,8 @@ import { usePackageMenu } from '@/composables/usePackageMenu';
 import { usePackageState } from '@/composables/usePackageState';
 import { useBrewfileStore } from '@/stores/brewfile';
 import { useLibraryStore, useUpdatesStore } from '@/stores';
+import { useLinksStore } from '@/stores/links';
+import { useToasts } from '@/composables/useToasts';
 
 // Detail header (mockup 03): shared OnPackageHeader (ADR-017) plus local badges (installed version, pinned).
 // Right side: update/get/open by local state, extra Open for updatable apps, More menu; sources and install date below.
@@ -28,7 +30,7 @@ const { pick, appLocale } = useAppLocale();
 const brewfile = useBrewfileStore();
 const library = useLibraryStore();
 const updates = useUpdatesStore();
-const { stateOf, act } = usePackageState();
+const { stateOf, act, errorText } = usePackageState();
 
 const name = computed(
   () =>
@@ -63,7 +65,17 @@ const installedChip = computed(() => {
 });
 
 const chips = computed<OnPackageHeaderChip[]>(() => {
-  const list: OnPackageHeaderChip[] = [{ key: 'kind', label: props.kind === 'cask' ? 'Cask' : 'Formula' }];
+  const link = props.detail?.link ?? props.local?.link;
+  const list: OnPackageHeaderChip[] = [
+    props.kind === 'link'
+      ? {
+          key: 'kind',
+          label: t(link?.downloadUrl || !link?.github ? 'package.link.chip' : 'package.link.chipGithub'),
+          tone: 'success'
+        }
+      : { key: 'kind', label: props.kind === 'cask' ? 'Cask' : 'Formula' }
+  ];
+  if (link) list.push({ key: 'pricing', label: t(`package.link.pricing.${link.pricing}`) });
   const category = props.detail?.primaryCategory;
   if (category) list.push({ key: 'category', label: category.name });
   if (isThirdPartyTap(props.detail?.tap ?? props.local?.tap))
@@ -85,8 +97,22 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
   return list;
 });
 
+// Link apps say where the download comes from: the official domain or the GitHub project, never OpenNavo.
+const source = computed(() => {
+  const link = props.detail?.link ?? props.local?.link;
+  if (!link) return null;
+  if (link.downloadUrl) return displayUrl(link.downloadUrl).split('/')[0];
+  return link.github
+    ? `github.com/${link.github.repo}`
+    : link.homepage
+      ? displayUrl(link.homepage).split('/')[0]
+      : null;
+});
+
 const meta = computed(() => {
   const parts: string[] = [];
+  if (props.kind === 'link')
+    return source.value ? t('package.link.meta', { source: source.value }) : t('package.link.notHosted');
   if (props.detail?.tap) parts.push(`${t('package.fromTap')} ${props.detail.tap}`);
   if (installed.value?.installedAt)
     parts.push(
@@ -96,6 +122,16 @@ const meta = computed(() => {
     );
   return parts.join(' · ');
 });
+
+const links = useLinksStore();
+const toasts = useToasts();
+async function openHomepage() {
+  try {
+    await links.open(props.token, 'homepage');
+  } catch (error) {
+    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+  }
+}
 
 const menu = usePackageMenu();
 const menuItems = computed(() => menu.itemsFor(props.kind, props.token));
@@ -136,7 +172,22 @@ const onSelect = (key: string) => menu.select(props.kind, props.token, name.valu
       >
         {{ t('package.open') }}
       </OnButton>
-      <OnMenu :items="menuItems" :label="t('package.actions.label')" variant="secondary" @select="onSelect" />
+      <!-- The arrow follows the label, as on Download beside it: both leave OpenNavo for the developer's site. -->
+      <OnButton
+        v-if="kind === 'link' && (detail?.link ?? local?.link)?.homepage"
+        variant="secondary"
+        @click="openHomepage"
+      >
+        {{ t('package.link.homepage') }}
+        <OnIcon name="arrow-up-right" :size="15" />
+      </OnButton>
+      <OnMenu
+        v-if="kind !== 'link'"
+        :items="menuItems"
+        :label="t('package.actions.label')"
+        variant="secondary"
+        @select="onSelect"
+      />
     </template>
   </OnPackageHeader>
 </template>

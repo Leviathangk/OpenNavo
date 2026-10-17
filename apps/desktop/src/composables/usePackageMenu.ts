@@ -100,14 +100,15 @@ export function usePackageMenu() {
         await run(unwrap(commands.appReveal(target)));
         break;
       case 'copy': {
-        const text = command ?? installCommand(kind, token);
+        if (!command && kind === 'link') break;
+        const text = command ?? installCommand(kind as Exclude<Kind, 'link'>, token);
         await navigator.clipboard.writeText(text);
         toasts.push({ tone: 'success', title: t('package.commandCopied'), description: text });
         break;
       }
       case 'web': {
         const config = await fetchClientConfig().catch(() => null);
-        if (config) await run(openExternal(`${config.links.web}/${kind === 'cask' ? 'apps' : 'cli'}/${token}`));
+        if (config) await run(openExternal(`${config.links.web}/${kind === 'formula' ? 'cli' : 'apps'}/${token}`));
         break;
       }
       case 'uninstall':

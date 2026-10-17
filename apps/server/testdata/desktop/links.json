@@ -1,0 +1,45 @@
+{
+  "code": "0000",
+  "data": {
+    "etag": "\"4cac55d08c814d20620502af61c00fb9b448277a26b2500b8ae32dffc2c60939\"",
+    "items": [
+      {
+        "apps": [],
+        "autoUpdates": false,
+        "binaries": [],
+        "bundleIds": [],
+        "categories": [],
+        "deprecated": false,
+        "disabled": false,
+        "displayName": {},
+        "hidden": false,
+        "homepage": "https://example.com/link-fixture",
+        "installs30d": 0,
+        "installs365d": 0,
+        "installs90d": 0,
+        "isFont": false,
+        "isLibrary": false,
+        "kind": "link",
+        "link": {
+          "adoptedByCask": null,
+          "downloadUrl": null,
+          "github": null,
+          "homepage": "https://example.com/link-fixture",
+          "notes": null,
+          "pricing": "free",
+          "teamId": null
+        },
+        "name": "Link Fixture",
+        "names": ["Link Fixture"],
+        "popularity": 0,
+        "sourceLocale": "en-US",
+        "summary": {},
+        "tags": [],
+        "token": "link-fixture",
+        "version": "",
+        "versionChangedAt": "2026-10-16T00:00:00Z"
+      }
+    ]
+  },
+  "msg": "ok"
+}

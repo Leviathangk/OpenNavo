@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { PackageKind } from '@opennavo/shared';
 import OnAppIcon from './OnAppIcon.vue';
+import type { OnAppIconKind } from './OnAppIcon.vue';
 import OnButton from './OnButton.vue';
 import OnLogViewer from './OnLogViewer.vue';
 import OnProgressMeter from './OnProgressMeter.vue';
 import { useUiMessages } from '../composables/locale';
 
 export interface OnTaskPackage {
-  kind: PackageKind;
+  kind: OnAppIconKind;
   token: string;
   name: string;
   src?: string | null;

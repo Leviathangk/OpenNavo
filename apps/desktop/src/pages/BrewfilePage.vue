@@ -55,7 +55,10 @@ const pending = computed(() =>
   })
 );
 const text = computed(() => toBrewfile(brewfile.items, { title: t('brewfile.fileTitle') }));
-const pendingCommands = computed(() => pending.value.map(item => installCommand(item.kind, item.token)).join('\n'));
+// Link apps never enter a Brewfile (they have no Homebrew line); the guard keeps the command list honest anyway.
+const pendingCommands = computed(() =>
+  pending.value.flatMap(item => (item.kind === 'link' ? [] : [installCommand(item.kind, item.token)])).join('\n')
+);
 const confirmOpen = ref(false);
 const queueing = ref(false);
 const saving = ref(false);

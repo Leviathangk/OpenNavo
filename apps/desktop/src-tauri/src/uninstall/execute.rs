@@ -745,7 +745,9 @@ fn execute_items(
         let path = Path::new(&item.path);
         let app_path = entry
             .app_records
-            .get(&app.app_id)
+            .values()
+            .find(|r| crate::updater::backup::is_directory(Path::new(&r.app.path), path))
+            .or_else(|| entry.app_records.get(&app.app_id))
             .map(|r| Path::new(&r.app.path));
         let reason = if !engine.roots.allowed(path, item.reason, app_path) {
             Some(SkippedItemReason::Protected)
@@ -1139,7 +1141,7 @@ fn act_user(
     }
     Err(AppError::new("E_PROTECTED", "admin_action_required"))
 }
-fn bootout(label: &str, system: bool, path: &str) -> Result<(), AppError> {
+pub(crate) fn bootout(label: &str, system: bool, path: &str) -> Result<(), AppError> {
     if !identity::valid_identifier(label) {
         return Err(AppError::new("E_PROTECTED", "launchd_label"));
     }
@@ -1188,7 +1190,14 @@ pub struct AdminResult {
 struct AdminBatch {
     home: PathBuf,
     requests: Vec<AdminRequest>,
+    #[serde(default)]
+    native: Vec<crate::updater::admin::Request>,
+    #[serde(default)]
+    security: Vec<crate::security::admin::Request>,
 }
+#[cfg(test)]
+#[path = "admin_protocol_tests.rs"]
+mod admin_protocol_tests;
 /// What the helper did with one request.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 enum AdminDone {
@@ -1206,6 +1215,70 @@ pub fn admin_batch(
     if let Some(admin) = engine.admin_actions.lock().map_err(poison)?.as_ref() {
         return admin.run(requests);
     }
+    run_admin_batch(
+        engine,
+        AdminBatch {
+            home: engine.roots.home.clone(),
+            requests: requests.to_vec(),
+            native: Vec::new(),
+            security: Vec::new(),
+        },
+    )
+}
+/// New fixed install/swap actions share the same batch envelope, sudo -A and
+/// administrator entry as uninstall; one invocation means one password prompt.
+pub fn admin_batch_native(
+    engine: &Engine,
+    requests: &[crate::updater::admin::Request],
+) -> Result<Vec<crate::updater::admin::ResultItem>, AppError> {
+    if requests.is_empty() {
+        return Ok(Vec::new());
+    }
+    run_admin_batch(
+        engine,
+        AdminBatch {
+            home: engine.roots.home.clone(),
+            requests: Vec::new(),
+            native: requests.to_vec(),
+            security: Vec::new(),
+        },
+    )
+    .map_err(|error| {
+        if error.code == "E_SUDO" {
+            AppError::new("E_ADMIN_CANCELED", "admin_canceled")
+        } else {
+            error
+        }
+    })
+}
+pub fn admin_batch_security(
+    engine: &Engine,
+    requests: &[crate::security::admin::Request],
+) -> Result<Vec<crate::security::admin::ResultItem>, AppError> {
+    if requests.is_empty() {
+        return Ok(vec![]);
+    }
+    run_admin_batch(
+        engine,
+        AdminBatch {
+            home: engine.roots.home.clone(),
+            requests: vec![],
+            native: vec![],
+            security: requests.to_vec(),
+        },
+    )
+    .map_err(|e| {
+        if e.code == "E_SUDO" {
+            AppError::new("E_ADMIN_CANCELED", "admin_canceled")
+        } else {
+            e
+        }
+    })
+}
+fn run_admin_batch<T: serde::de::DeserializeOwned>(
+    engine: &Engine,
+    batch: AdminBatch,
+) -> Result<Vec<T>, AppError> {
     #[cfg(target_os = "macos")]
     {
         // The request lives in OpenNavo's own data folder, not in the Trash: without Full Disk Access the Trash
@@ -1219,10 +1292,6 @@ pub fn admin_batch(
         fs::set_permissions(&directory, fs::Permissions::from_mode(0o700))?;
         let input = directory.join("request.json");
         let output = directory.join("results.json");
-        let batch = AdminBatch {
-            home: engine.roots.home.clone(),
-            requests: requests.to_vec(),
-        };
         let mut file = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -1251,7 +1320,7 @@ pub fn admin_batch(
             .status();
         let results = fs::read(&output)
             .ok()
-            .and_then(|v| serde_json::from_slice::<Vec<AdminResult>>(&v).ok())
+            .and_then(|v| serde_json::from_slice::<Vec<T>>(&v).ok())
             .unwrap_or_default();
         let _ = fs::remove_file(&input);
         let _ = fs::remove_file(&output);
@@ -1264,7 +1333,7 @@ pub fn admin_batch(
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = requests;
+        let _ = (engine, batch);
         Err(AppError::new("E_SUDO", "unsupported_platform"))
     }
 }
@@ -1332,8 +1401,10 @@ pub fn admin_entry() -> Option<i32> {
             }
             let trash = batch.home.join(".Trash");
             if !input.starts_with(&batch.home)
-                || !fs::symlink_metadata(&trash)?.is_dir()
-                || fs::symlink_metadata(&trash)?.is_symlink()
+                || (batch.native.is_empty()
+                    && batch.security.is_empty()
+                    && (!fs::symlink_metadata(&trash)?.is_dir()
+                        || fs::symlink_metadata(&trash)?.is_symlink()))
             {
                 return Err(AppError::new("E_PROTECTED", "admin_trash"));
             }
@@ -1355,6 +1426,36 @@ pub fn admin_entry() -> Option<i32> {
             let opened = out.metadata()?;
             if opened.dev() != out_meta.dev() || opened.ino() != out_meta.ino() {
                 return Err(AppError::new("E_PROTECTED", "admin_output_changed"));
+            }
+            if !batch.native.is_empty() {
+                if !batch.requests.is_empty() || !batch.security.is_empty() {
+                    return Err(AppError::new("E_PROTECTED", "mixed_admin_batch"));
+                }
+                let data = directory
+                    .parent()
+                    .and_then(|p| p.parent())
+                    .ok_or_else(|| AppError::new("E_PROTECTED", "native_data_root"))?;
+                let results =
+                    crate::updater::admin::execute(&batch.native, &batch.home, data, uid)?;
+                out.set_len(0)?;
+                out.write_all(&serde_json::to_vec(&results)?)?;
+                out.sync_all()?;
+                return Ok(());
+            }
+            if !batch.security.is_empty() {
+                if !batch.requests.is_empty() {
+                    return Err(AppError::new("E_PROTECTED", "mixed_admin_batch"));
+                }
+                let data = directory
+                    .parent()
+                    .and_then(|p| p.parent())
+                    .ok_or_else(|| AppError::new("E_PROTECTED", "security_data_root"))?;
+                let results =
+                    crate::security::admin::execute(&batch.security, &batch.home, data, uid)?;
+                out.set_len(0)?;
+                out.write_all(&serde_json::to_vec(&results)?)?;
+                out.sync_all()?;
+                return Ok(());
             }
             let mut results = vec![];
             let mut removed_receipts = std::collections::BTreeSet::new();

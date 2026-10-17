@@ -2,6 +2,12 @@ package admin
 
 // Routes must be explicitly registered; reject unregistered new routes even for super administrators.
 var Permissions = map[string]string{
+	"PUT /admin-api/update-feeds":                    "catalog:package:edit",
+	"POST /admin-api/update-feeds/disable":           "catalog:package:edit",
+	"GET /admin-api/links/packages":                  "catalog:package:edit",
+	"POST /admin-api/links/packages":                 "catalog:package:edit",
+	"PATCH /admin-api/links/packages/:id":            "catalog:package:edit",
+	"DELETE /admin-api/links/packages/:id":           "catalog:package:edit",
 	"GET /admin-api/packages/:id/changelog-settings": "catalog:package:view",
 	"PUT /admin-api/packages/:id/changelog-settings": "catalog:package:edit",
 	// Content and Agent management endpoints; always reject introspection on the admin path.

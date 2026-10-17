@@ -17,7 +17,7 @@
   "bugs": {
     "url": "https://github.com/soybeanjs/soybean-admin/issues"
   },
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "author": {
     "name": "Soybean",
     "email": "soybeanjs@outlook.com",

@@ -64,12 +64,15 @@ pub fn eligible(items: &[OutdatedItem], settings: &Settings) -> Vec<TaskTarget> 
     items
         .iter()
         .filter(|item| {
-            !item.pinned
+            item.source == UpdateSource::Homebrew
+                && settings.update_sources.enabled(UpdateSource::Homebrew)
+                && !item.pinned
                 && !item.ignored
+                && item.skipped_version.as_deref() != Some(item.current_version.as_str())
                 && match item.kind {
                     Kind::Cask => settings.auto_upgrade_casks,
                     // Legacy settings may still be true, but the product no longer manages Formula packages.
-                    Kind::Formula => false,
+                    Kind::Formula | Kind::Link => false,
                 }
         })
         .map(|item| TaskTarget {
@@ -93,19 +96,19 @@ pub async fn tick(core: Arc<DesktopCore>, now: i64) -> Result<bool, AppError> {
     let before: HashSet<_> = core
         .updates_list()?
         .into_iter()
-        .map(|i| (i.kind, i.token, i.current_version))
+        .map(|i| (i.source, i.app_key().unwrap_or_default(), i.current_version))
         .collect();
     let items = core
-        .check_updates_for(
-            settings.run_brew_update_on_check,
-            TaskTrigger::Schedule,
-            Some(now),
-        )
+        .check_update_sources(None, TaskTrigger::Schedule, Some(now))
         .await?;
     if settings.notify_updates
-        && items
-            .iter()
-            .any(|i| !before.contains(&(i.kind, i.token.clone(), i.current_version.clone())))
+        && items.iter().any(|i| {
+            !before.contains(&(
+                i.source,
+                i.app_key().unwrap_or_default(),
+                i.current_version.clone(),
+            ))
+        })
     {
         core.notice(Notice::Available {
             names: items.iter().map(|i| i.name.clone()).collect(),

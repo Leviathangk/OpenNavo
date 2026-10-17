@@ -76,7 +76,7 @@ const heroView = computed<OnDiscoverHero | null>(() =>
 
 function featureHref(feature: Feature): { href: string; external: boolean } | null {
   const { target } = feature;
-  if (target.type === 'package' && target.kind === 'cask' && target.token)
+  if (target.type === 'package' && (target.kind === 'cask' || target.kind === 'link') && target.token)
     return { href: detailPath(target.token), external: false };
   if (target.type === 'collection' && target.slug)
     return { href: localePath(`/collections/${target.slug}`), external: false };
@@ -194,6 +194,7 @@ defineOgImage('OgDefaultSatori', {
         :kind="hero.package.kind"
         :token="hero.package.token"
         :name="hero.package.displayName"
+        :link="hero.package.link"
       />
       <OnButton
         v-if="heroLink"
@@ -217,7 +218,7 @@ defineOgImage('OgDefaultSatori', {
         :link-as="NuxtLink"
       >
         <template #action>
-          <GetMenu :kind="pkg.kind" :token="pkg.token" :name="pkg.displayName" />
+          <GetMenu :kind="pkg.kind" :token="pkg.token" :name="pkg.displayName" :link="pkg.link" />
         </template>
       </OnAppCard>
     </template>

@@ -1,0 +1,54 @@
+--- a/libclamav/unzip.c
++++ b/libclamav/unzip.c
+@@ -36,6 +36,7 @@
+ #endif
+ #include <stdlib.h>
+ #include <stdio.h>
++#include <errno.h>
+ 
+ #include <zlib.h>
+ #include "inflate64.h"
+@@ -145,7 +146,17 @@
+             if (!(tempfile = cli_gentemp(ctx->this_layer_tmpdir))) return CL_EMEM;
+         }
+     }
+-    if ((out_file = open(tempfile, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, S_IRUSR | S_IWUSR)) == -1) {
++    if ((out_file = open(tempfile, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, S_IRUSR | S_IWUSR)) == -1 &&
++        ((EILSEQ == errno) || (EINVAL == errno) || (ENAMETOOLONG == errno))) {
++        /* OpenNavo: with LeaveTemporaryFiles the name comes from the archive member, which the file
++         * system may refuse (APFS takes only UTF-8 names). Use a random name instead, as
++         * cli_gentempfd_with_prefix() already does. */
++        cli_dbgmsg("cli_unzip: can't create temp file using the member name, using a random name instead\n");
++        free(tempfile);
++        if (!(tempfile = cli_gentemp(tmpd ? tmpd : ctx->this_layer_tmpdir))) return CL_EMEM;
++        out_file = open(tempfile, O_RDWR | O_CREAT | O_TRUNC | O_BINARY, S_IRUSR | S_IWUSR);
++    }
++    if (out_file == -1) {
+         cli_warnmsg("cli_unzip: failed to create temporary file %s\n", tempfile);
+         free(tempfile);
+         return CL_ETMPFILE;
+--- a/libclamav/others.c
++++ b/libclamav/others.c
+@@ -1882,7 +1882,21 @@
+             goto done;
+         }
+ #else
+-        if (mkdir(new_temp_path, 0700)) {
++        int mkdir_failed = mkdir(new_temp_path, 0700);
++        if (mkdir_failed && ((EILSEQ == errno) || (EINVAL == errno) || (ENAMETOOLONG == errno))) {
++            /* OpenNavo: the name comes from the scanned file, which the file system may refuse
++             * (APFS takes only UTF-8 names). Use a random name instead. */
++            cli_dbgmsg("cli_magic_scan: can't create tmp sub-directory using the file name, using a random name instead\n");
++            free(new_temp_path);
++            new_temp_path = cli_gentemp(parent_tmpdir);
++            if (NULL == new_temp_path) {
++                cli_errmsg("cli_magic_scan: Failed to generate temp directory name.\n");
++                status = CL_EMEM;
++                goto done;
++            }
++            mkdir_failed = mkdir(new_temp_path, 0700);
++        }
++        if (mkdir_failed) {
+             cli_errmsg("cli_magic_scan: Can't create tmp sub-directory (%s) for scan. Error: %s\n", new_temp_path, strerror(errno));
+             status = CL_EACCES;
+             goto done;

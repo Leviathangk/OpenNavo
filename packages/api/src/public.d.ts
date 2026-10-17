@@ -362,6 +362,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalog/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Full external software links catalog
+         * @description Independent of the legacy snapshot and changes protocol. Send If-None-Match to reuse the cached full catalog.
+         */
+        get: operations["getCatalogLinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/catalog/snapshot": {
         parameters: {
             query?: never;
@@ -510,10 +530,455 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalog/update-feeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Full verified update feed rules
+         * @description Independent full Sparkle rule list, with stable ETag and If-None-Match support. Contains only enabled rules verified at least once. Does not alter catalog snapshots or changes.
+         */
+        get: operations["getCatalogUpdateFeeds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @example {
+         *       "version": "2.0",
+         *       "versionKey": "CFBundleShortVersionString",
+         *       "notes": null,
+         *       "minimumOs": null,
+         *       "files": [
+         *         {
+         *           "url": "https://github.com/example/app/releases/download/v2.0/App-arm64.zip",
+         *           "name": "App-arm64.zip",
+         *           "size": 123,
+         *           "architecture": "arm64",
+         *           "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *           "sha512": null
+         *         }
+         *       ]
+         *     }
+         */
+        UpdateRelease: {
+            version: string;
+            /** @enum {string} */
+            versionKey: "CFBundleShortVersionString" | "CFBundleVersion" | "Wave Build Version Number";
+            notes: {
+                /** @enum {string} */
+                format?: "text" | "markdown" | "html";
+                body?: string;
+                /** Format: uri */
+                url?: string;
+            } | null;
+            minimumOs: string | null;
+            files: components["schemas"]["UpdateFile"][];
+        };
+        /**
+         * @example {
+         *       "url": "https://example.com/App.dmg",
+         *       "name": "App.dmg",
+         *       "size": null,
+         *       "architecture": "universal",
+         *       "sha256": null,
+         *       "sha512": null
+         *     }
+         */
+        UpdateFile: {
+            /** Format: uri */
+            url: string;
+            name: string;
+            /** Format: int64 */
+            size: number | null;
+            /** @enum {string|null} */
+            architecture: "arm64" | "x86_64" | "universal" | null;
+            sha256: string | null;
+            sha512: string | null;
+        };
+        /**
+         * @example {
+         *       "bundleId": "com.example.App",
+         *       "source": "sparkle",
+         *       "feedUrl": "https://example.com/appcast.xml",
+         *       "teamId": null,
+         *       "channel": "stable",
+         *       "token": "example-app",
+         *       "kind": "cask"
+         *     }
+         */
+        UpdateFeedRule: {
+            githubRepo?: string | null;
+            assetPattern?: string | null;
+            release?: components["schemas"]["UpdateRelease"];
+            bundleId: string;
+            /** @enum {string} */
+            source: "sparkle" | "electron" | "github" | "vendor";
+            /** Format: uri */
+            feedUrl: string;
+            teamId: string | null;
+            /**
+             * @default stable
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            token: string;
+            /** @enum {string} */
+            kind: "cask" | "link";
+        };
+        /**
+         * @example {
+         *       "etag": "\"fixture-feeds-v1\"",
+         *       "items": [
+         *         {
+         *           "bundleId": "com.example.App",
+         *           "source": "sparkle",
+         *           "feedUrl": "https://example.com/appcast.xml",
+         *           "teamId": null,
+         *           "channel": "stable",
+         *           "token": "example-app",
+         *           "kind": "cask"
+         *         }
+         *       ]
+         *     }
+         */
+        CatalogUpdateFeeds: {
+            etag: string;
+            items: components["schemas"]["UpdateFeedRule"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "etag": "\"fixture-feeds-v1\"",
+         *         "items": [
+         *           {
+         *             "bundleId": "com.example.App",
+         *             "source": "sparkle",
+         *             "feedUrl": "https://example.com/appcast.xml",
+         *             "teamId": null,
+         *             "channel": "stable",
+         *             "token": "example-app",
+         *             "kind": "cask"
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        CatalogUpdateFeedsResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["CatalogUpdateFeeds"];
+        };
+        /**
+         * @example {
+         *       "name": "Example-arm64.dmg",
+         *       "url": "https://example.com/Example-arm64.dmg",
+         *       "size": 123,
+         *       "arch": "arm64",
+         *       "format": "dmg",
+         *       "sha256": null
+         *     }
+         */
+        ReleaseAsset: {
+            name: string;
+            /** Format: uri */
+            url: string;
+            /** Format: int64 */
+            size: number;
+            /** @enum {string|null} */
+            arch: "arm64" | "x86_64" | "universal" | null;
+            /** @enum {string} */
+            format: "dmg" | "zip" | "pkg" | "other";
+            sha256: string | null;
+        };
+        /**
+         * @example {
+         *       "tag": "v2.0",
+         *       "version": "2.0",
+         *       "publishedAt": "2026-10-16T00:00:00Z",
+         *       "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *       "assets": [
+         *         {
+         *           "name": "Example-arm64.dmg",
+         *           "url": "https://example.com/Example-arm64.dmg",
+         *           "size": 123,
+         *           "arch": "arm64",
+         *           "format": "dmg",
+         *           "sha256": null
+         *         }
+         *       ]
+         *     }
+         */
+        GithubRelease: {
+            tag: string;
+            version: string;
+            /** Format: date-time */
+            publishedAt: string;
+            /** Format: uri */
+            url: string;
+            assets: components["schemas"]["ReleaseAsset"][];
+        } | null;
+        /**
+         * @example {
+         *       "homepage": "https://example.com",
+         *       "downloadUrl": "https://example.com/download",
+         *       "github": {
+         *         "repo": "owner/example",
+         *         "latest": {
+         *           "tag": "v2.0",
+         *           "version": "2.0",
+         *           "publishedAt": "2026-10-16T00:00:00Z",
+         *           "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *           "assets": [
+         *             {
+         *               "name": "Example-arm64.dmg",
+         *               "url": "https://example.com/Example-arm64.dmg",
+         *               "size": 123,
+         *               "arch": "arm64",
+         *               "format": "dmg",
+         *               "sha256": null
+         *             }
+         *           ]
+         *         }
+         *       },
+         *       "teamId": null,
+         *       "pricing": "free",
+         *       "notes": null,
+         *       "adoptedByCask": null
+         *     }
+         */
+        LinkInfo: {
+            homepage: string | null;
+            downloadUrl: string | null;
+            github: {
+                repo: string;
+                latest: components["schemas"]["GithubRelease"];
+            } | null;
+            teamId: string | null;
+            /** @enum {string} */
+            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            notes: {
+                "en-US"?: string | null;
+                "zh-CN"?: string | null;
+                "ja-JP"?: string | null;
+                "es-ES"?: string | null;
+                "pt-BR"?: string | null;
+                "ru-RU"?: string | null;
+            } | null;
+            adoptedByCask: string | null;
+        };
+        /**
+         * @description Client-composed catalog entry and upsert delta; displayName/summary are sparse maps of actual text in six languages. See CatalogBaseItem for base snapshots and CatalogTextPack for text packs.
+         * @example {
+         *       "kind": "link",
+         *       "token": "example-app",
+         *       "name": "Example App",
+         *       "displayName": {
+         *         "zh-CN": "Microsoft Visual Studio Code",
+         *         "en-US": "Microsoft Visual Studio Code",
+         *         "ja-JP": "Microsoft Visual Studio Code",
+         *         "es-ES": "Microsoft Visual Studio Code",
+         *         "pt-BR": "Microsoft Visual Studio Code",
+         *         "ru-RU": "Microsoft Visual Studio Code"
+         *       },
+         *       "summary": {
+         *         "zh-CN": "开源代码编辑器，支持调试、扩展与智能代码辅助",
+         *         "en-US": "Open-source code editor with debugging and extensions",
+         *         "ja-JP": "デバッグと拡張機能に対応したコードエディター",
+         *         "es-ES": "Editor de código con depuración y extensiones",
+         *         "pt-BR": "Editor de código com depuração e extensões",
+         *         "ru-RU": "Редактор кода с отладкой и расширениями"
+         *       },
+         *       "iconUrl": null,
+         *       "accentColor": null,
+         *       "version": "1.140.0",
+         *       "installs30d": 17392,
+         *       "rank30d": 9,
+         *       "autoUpdates": true,
+         *       "deprecated": false,
+         *       "disabled": false,
+         *       "isFont": false,
+         *       "isLibrary": false,
+         *       "versionChangedAt": "2026-09-30T08:00:00Z",
+         *       "names": [
+         *         "Microsoft Visual Studio Code",
+         *         "VS Code"
+         *       ],
+         *       "homepage": "https://code.visualstudio.com/",
+         *       "hidden": false,
+         *       "categories": [
+         *         "developer-tools"
+         *       ],
+         *       "tags": [
+         *         "编辑器",
+         *         "开发工具"
+         *       ],
+         *       "popularity": 9.5,
+         *       "apps": [
+         *         "Visual Studio Code.app"
+         *       ],
+         *       "binaries": [
+         *         "code"
+         *       ],
+         *       "pinyin": "bianjiqi bjq",
+         *       "downloadSize": 317901801,
+         *       "installs90d": 69568,
+         *       "installs365d": 243488,
+         *       "onRequest": null,
+         *       "sourceLocale": "en-US",
+         *       "bundleIds": [
+         *         "com.example.App"
+         *       ],
+         *       "link": {
+         *         "homepage": "https://example.com",
+         *         "downloadUrl": "https://example.com/download",
+         *         "github": {
+         *           "repo": "owner/example",
+         *           "latest": {
+         *             "tag": "v2.0",
+         *             "version": "2.0",
+         *             "publishedAt": "2026-10-16T00:00:00Z",
+         *             "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *             "assets": [
+         *               {
+         *                 "name": "Example-arm64.dmg",
+         *                 "url": "https://example.com/Example-arm64.dmg",
+         *                 "size": 123,
+         *                 "arch": "arm64",
+         *                 "format": "dmg",
+         *                 "sha256": null
+         *               }
+         *             ]
+         *           }
+         *         },
+         *         "teamId": null,
+         *         "pricing": "free",
+         *         "notes": null,
+         *         "adoptedByCask": null
+         *       }
+         *     }
+         */
+        LinkCatalogItem: {
+            /** @enum {string} */
+            kind: "link";
+            /** @example visual-studio-code */
+            token: string;
+            /**
+             * @description Third-party Homebrew tap the cask comes from; absent for official Homebrew casks. Install with brew install --cask <tap>/<token>.
+             * @example swiftvm-app/tap
+             */
+            tap?: string;
+            /** @example Microsoft Visual Studio Code */
+            name: string;
+            names: string[];
+            displayName: components["schemas"]["LocalizedNullableString"];
+            summary: components["schemas"]["LocalizedNullableString"];
+            /** @example 1.140.0 */
+            version: string;
+            /** @example https://code.visualstudio.com/ */
+            homepage?: string | null;
+            /** @example true */
+            autoUpdates: boolean;
+            /** @example false */
+            deprecated: boolean;
+            /** @example false */
+            disabled: boolean;
+            /** @example false */
+            hidden: boolean;
+            /** @example false */
+            isFont: boolean;
+            /** @example false */
+            isLibrary: boolean;
+            categories: string[];
+            tags: string[];
+            /** @example 17392 */
+            installs30d: number;
+            /** @example 9 */
+            rank30d?: number | null;
+            /** @example 9.5 */
+            popularity: number;
+            /** @example null */
+            iconUrl?: string | null;
+            /** @example null */
+            accentColor?: string | null;
+            apps: string[];
+            /** @description Complete app installation destinations for third-party casks. Relative paths use the default app directory. Omitted when unavailable. */
+            appTargets?: string[];
+            binaries: string[];
+            /** @example bianjiqi bjq */
+            pinyin?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-30T08:00:00Z
+             */
+            versionChangedAt: string;
+            /**
+             * Format: int64
+             * @description Used by the offline catalog to estimate update download sizes; null when unprobed.
+             * @example 317901801
+             */
+            downloadSize?: number | null;
+            /**
+             * @description Installations in the last 90 days for offline client rankings; this period is unknown when omitted in old snapshots.
+             * @example 90000
+             */
+            installs90d?: number;
+            /**
+             * @description Installations in the last 365 days for offline client rankings; this period is unknown when omitted in old snapshots.
+             * @example 365000
+             */
+            installs365d?: number;
+            /**
+             * @description Formula installations on request (30/90/365 days) for command-line rankings; empty for Casks or uncollected data.
+             * @example null
+             */
+            onRequest?: {
+                /** @example 17392 */
+                d30: number;
+                /** @example 101147 */
+                d90: number;
+                /** @example 478472 */
+                d365: number;
+            } | null;
+            /**
+             * @description Object source language; omitted legacy v1 input defaults to en-US. New server and IPC output provide the actual value.
+             * @default en-US
+             */
+            sourceLocale: components["schemas"]["Locale"];
+            bundleIds: string[];
+            link: components["schemas"]["LinkInfo"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "etag": "\"example\"",
+         *         "items": []
+         *       }
+         *     }
+         */
+        CatalogLinksResponse: {
+            code: string;
+            msg: string;
+            data: {
+                etag: string;
+                items: components["schemas"]["LinkCatalogItem"][];
+            };
+        };
         /**
          * @description Business code; "0000" means success
          * @example 0000
@@ -530,7 +995,7 @@ export interface components {
          * @example cask
          * @enum {string}
          */
-        PackageKind: "cask" | "formula";
+        PackageKind: "cask" | "formula" | "link";
         /**
          * @example {
          *       "code": "1002",
@@ -632,6 +1097,8 @@ export interface components {
          *     }
          */
         PackageSummary: {
+            bundleIds?: string[];
+            link?: components["schemas"]["LinkInfo"] | null;
             kind: components["schemas"]["PackageKind"];
             /** @example visual-studio-code */
             token: string;
@@ -7357,6 +7824,40 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    getCatalogLinks: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-None-Match"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Full catalog */
+            200: {
+                headers: {
+                    ETag?: string;
+                    /** @example Origin, Accept-Language */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogLinksResponse"];
+                };
+            };
+            /** @description The catalog has not changed */
+            304: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     getCatalogSnapshot: {
         parameters: {
             query?: never;
@@ -7601,6 +8102,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IndexNowKeyResponse"];
                 };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getCatalogUpdateFeeds: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-None-Match"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Full catalog */
+            200: {
+                headers: {
+                    ETag?: string;
+                    /** @example Origin, Accept-Language */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogUpdateFeedsResponse"];
+                };
+            };
+            /** @description The catalog has not changed */
+            304: {
+                headers: {
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Error"];
         };

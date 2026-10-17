@@ -148,7 +148,7 @@ func (s *Store) SaveFetchedChangelogWithLifecycle(ctx context.Context, source Ch
 				return err
 			}
 			identity := cache.PatternLiteral(p.Kind) + ":" + cache.PatternLiteral(p.Token) + ":*"
-			return addCacheInvalidation(ctx, tx, fmt.Sprintf("changelog:%d", source.PackageID), "c:rel:*:"+identity, "c:pkg:c3:"+identity)
+			return addCacheInvalidation(ctx, tx, fmt.Sprintf("changelog:%d", source.PackageID), "c:rel:*:"+identity, cache.PackageDetailPrefix+identity)
 		}
 		return nil
 	})

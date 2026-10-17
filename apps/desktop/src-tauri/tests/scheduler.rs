@@ -15,6 +15,21 @@ use std::{
 
 fn item(kind: Kind, token: &str, pinned: bool, ignored: bool) -> OutdatedItem {
     OutdatedItem {
+        source: UpdateSource::Homebrew,
+        app_id: None,
+        bundle_id: None,
+        channel: None,
+        major: false,
+        notes: None,
+        integrity: None,
+        requires_admin: false,
+        running: false,
+        relaunch_pending: false,
+        skipped_version: None,
+        critical_update: false,
+        informational_url: None,
+        download_host: None,
+        expected_team_match: None,
         kind,
         token: token.into(),
         name: token.into(),
@@ -109,6 +124,16 @@ fn core(root: &Path) -> Arc<DesktopCore> {
     )
     .unwrap();
     core.settings.write().unwrap().brew_path = Some(path.to_string_lossy().into());
+    // Scheduler tests exercise Homebrew fixtures only; newly enabled native
+    // engines must never inspect real apps or request public feeds here.
+    for source in UpdateSource::ALL {
+        core.settings
+            .write()
+            .unwrap()
+            .update_sources
+            .0
+            .insert(source, source == UpdateSource::Homebrew);
+    }
     core
 }
 
@@ -116,6 +141,14 @@ fn core(root: &Path) -> Arc<DesktopCore> {
 async fn check_schedule_serial_update_auto_upgrade_and_single_summary() {
     let tmp = tempfile::tempdir().unwrap();
     let core = core(tmp.path());
+    {
+        let mut settings = core.settings.write().unwrap();
+        settings.update_sources.0.insert(UpdateSource::Mas, false);
+        settings
+            .update_sources
+            .0
+            .insert(UpdateSource::Sparkle, false);
+    }
     let notices = Arc::new(Mutex::new(Vec::new()));
     let received = notices.clone();
     core.install_notice_sink(Arc::new(move |n| received.lock().unwrap().push(n)))
@@ -235,6 +268,14 @@ async fn check_schedule_serial_update_auto_upgrade_and_single_summary() {
 async fn changed_time_replans_and_read_only_checks_do_not_repeat_notices() {
     let tmp = tempfile::tempdir().unwrap();
     let core = core(tmp.path());
+    {
+        let mut settings = core.settings.write().unwrap();
+        settings.update_sources.0.insert(UpdateSource::Mas, false);
+        settings
+            .update_sources
+            .0
+            .insert(UpdateSource::Sparkle, false);
+    }
     core.check_updates(false).await.unwrap();
     let notices = Arc::new(Mutex::new(Vec::new()));
     let received = notices.clone();
@@ -431,4 +472,60 @@ fn compiled_capabilities_isolate_native_commands_between_windows() {
             .resolve_access("task_enqueue", "foreign", "foreign", &Origin::Local)
             .is_none()
     );
+}
+
+#[tokio::test]
+async fn completed_checks_replace_failed_sources_and_empty_selection_preserves_status() {
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core(tmp.path());
+    assert!(core.updates_status().unwrap().failed_sources.is_empty());
+    let original = core.settings.read().unwrap().brew_path.clone();
+    {
+        let mut settings = core.settings.write().unwrap();
+        settings.run_brew_update_on_check = false;
+    }
+    // Bypass discovery so a missing fixture cannot fall back to the real brew.
+    *core.brew.write().unwrap() = Some(BrewInfo {
+        path: tmp.path().join("missing-brew").to_string_lossy().into(),
+        prefix: tmp.path().to_string_lossy().into(),
+        version: "7.0.7".into(),
+    });
+    let failed = core
+        .check_update_sources(
+            Some(vec![UpdateSource::Homebrew]),
+            TaskTrigger::Manual,
+            Some(100),
+        )
+        .await;
+    assert!(failed.is_err());
+    let status = core.updates_status_at(1000).unwrap();
+    assert_eq!(status.failed_sources, [UpdateSource::Homebrew]);
+    assert_eq!(status.checked_at, Some(100));
+    assert!(!status.checking);
+    core.check_update_sources(Some(vec![]), TaskTrigger::Manual, Some(200))
+        .await
+        .unwrap();
+    assert_eq!(core.updates_status_at(1000).unwrap(), status);
+    core.settings.write().unwrap().brew_path = original;
+    *core.brew.write().unwrap() = None;
+    assert!(
+        !core
+            .check_update_sources(
+                Some(vec![UpdateSource::Homebrew]),
+                TaskTrigger::Manual,
+                Some(300)
+            )
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let status = core.updates_status().unwrap();
+    assert!(status.failed_sources.is_empty());
+    assert!(!status.checking);
+    assert_eq!(status.checked_at, Some(300));
+    assert_eq!(
+        serde_json::to_value(status).unwrap()["failedSources"],
+        serde_json::json!([])
+    );
+    assert!(core.database.tasks().unwrap().is_empty());
 }

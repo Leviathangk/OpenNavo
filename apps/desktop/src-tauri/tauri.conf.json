@@ -8,7 +8,7 @@
     "frontendDist": "../dist",
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build",
-    "beforeBundleCommand": "python3 scripts/prepare-fan-helper.py --allow-unsigned"
+    "beforeBundleCommand": "python3 scripts/prepare-bundle-helpers.py"
   },
   "app": {
     "macOSPrivateApi": true,
@@ -28,8 +28,8 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost https://cdn.opennavo.com; connect-src 'self' ipc: http://ipc.localhost https://api.opennavo.com https://cdn.opennavo.com; style-src 'self' 'unsafe-inline'; font-src 'self'",
-      "devCsp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost http://localhost:9000 https://cdn.opennavo.com; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:4010 http://localhost:8080 https://api.opennavo.com https://cdn.opennavo.com; style-src 'self' 'unsafe-inline'; font-src 'self'",
+      "csp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost https://cdn.opennavo.com https://*.mzstatic.com; connect-src 'self' ipc: http://ipc.localhost https://api.opennavo.com https://cdn.opennavo.com; style-src 'self' 'unsafe-inline'; font-src 'self'",
+      "devCsp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost http://localhost:9000 https://cdn.opennavo.com https://*.mzstatic.com; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:4010 http://localhost:8080 https://api.opennavo.com https://cdn.opennavo.com; style-src 'self' 'unsafe-inline'; font-src 'self'",
       "assetProtocol": {
         "enable": true,
         "scope": ["$CACHE/com.opennavo.desktop/icons/**", "$APPDATA/logs/local-app-icons/**"]
@@ -47,8 +47,13 @@
       "hardenedRuntime": true,
       "entitlements": "entitlements.plist",
       "files": {
+        "Helpers/opennavo-store": "../native/staged/opennavo-store",
         "Library/LaunchDaemons/org.opennavo.desktop.FanHelper.plist": "fan-helper/org.opennavo.desktop.FanHelper.plist",
-        "Library/Helpers/opennavo-fan-helper": "fan-helper/staged/opennavo-fan-helper"
+        "Library/Helpers/opennavo-fan-helper": "fan-helper/staged/opennavo-fan-helper",
+        "Library/Helpers/clamav/clamd": "../native/staged/clamav/clamd",
+        "Library/Helpers/clamav/freshclam": "../native/staged/clamav/freshclam",
+        "Library/Helpers/clamav/clamscan": "../native/staged/clamav/clamscan",
+        "Library/Helpers/clamav/clamav.crt": "../native/staged/clamav/clamav.crt"
       }
     }
   },

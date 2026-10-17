@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"gorm.io/gorm"
 )
 
@@ -53,7 +54,7 @@ func (s *Store) LatestSnapshot(ctx context.Context) (SnapshotRecord, error) {
 }
 func (s *Store) CatalogBounds(ctx context.Context) (low, high int64, err error) {
 	var r struct{ Low, High int64 }
-	err = s.DB.WithContext(ctx).Raw(`SELECT GREATEST(COALESCE(max(seq) FILTER(WHERE created_at<now()-interval '14 days'),0),COALESCE((SELECT value::text::bigint FROM app_config WHERE key='catalog.retentionCursor'),0))+1 AS low,GREATEST(COALESCE(max(seq),0),(SELECT COALESCE(max(seq),0) FROM catalog_snapshots),COALESCE((SELECT value::text::bigint FROM app_config WHERE key='catalog.retentionCursor'),0)) AS high FROM catalog_changes`).Scan(&r).Error
+	err = s.DB.WithContext(ctx).Raw(`SELECT GREATEST(COALESCE(max(seq) FILTER(WHERE created_at<now()-interval '14 days'),0),COALESCE((SELECT value::text::bigint FROM app_config WHERE key='catalog.retentionCursor'),0))+1 AS low,GREATEST(COALESCE(max(seq),0),(SELECT COALESCE(max(seq),0) FROM catalog_snapshots),COALESCE((SELECT value::text::bigint FROM app_config WHERE key='catalog.retentionCursor'),0)) AS high FROM catalog_changes WHERE kind<>'link'`).Scan(&r).Error
 	return r.Low, r.High, err
 }
 func (s *Store) LastAnalytics(ctx context.Context) (time.Time, error) {
@@ -62,7 +63,7 @@ func (s *Store) LastAnalytics(ctx context.Context) (time.Time, error) {
 	return r.At, err
 }
 func (s *Store) SnapshotPackages(ctx context.Context, locale string) ([]PublicPackage, error) {
-	return s.publicRows(ctx, locale, "p.removed_at IS NULL", "ORDER BY p.kind,p.token")
+	return s.publicRows(domain.WithLinks(ctx, false), locale, "p.removed_at IS NULL", "ORDER BY p.kind,p.token")
 }
 func (s *Store) SnapshotCategories(ctx context.Context) ([]SnapshotCategory, error) {
 	var rows []struct{ Data json.RawMessage }
@@ -113,7 +114,7 @@ func (s *Store) PruneCatalogChanges(ctx context.Context, before time.Time) (int6
 		if err := LockCatalogWrites(ctx, tx); err != nil {
 			return err
 		}
-		if err := tx.WithContext(ctx).Exec(`INSERT INTO app_config(key,value,description) SELECT 'catalog.retentionCursor',to_jsonb(COALESCE(max(seq),0)),'Internal catalog retention watermark' FROM catalog_changes WHERE created_at<? ON CONFLICT(key) DO UPDATE SET value=to_jsonb(GREATEST(app_config.value::text::bigint,EXCLUDED.value::text::bigint)),updated_at=now()`, before).Error; err != nil {
+		if err := tx.WithContext(ctx).Exec(`INSERT INTO app_config(key,value,description) SELECT 'catalog.retentionCursor',to_jsonb(COALESCE(max(seq),0)),'Internal catalog retention watermark' FROM catalog_changes WHERE kind<>'link' AND created_at<? ON CONFLICT(key) DO UPDATE SET value=to_jsonb(GREATEST(app_config.value::text::bigint,EXCLUDED.value::text::bigint)),updated_at=now()`, before).Error; err != nil {
 			return err
 		}
 		r := tx.WithContext(ctx).Exec("DELETE FROM catalog_changes WHERE created_at<?", before)

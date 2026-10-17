@@ -16,6 +16,9 @@ const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 
 const { data: pkg, error, refresh, token, removed } = await usePackage(props.kind);
+// A cask route can resolve to a link app (usePackage); requests and tabs follow what was found.
+const kind = computed(() => pkg.value?.kind ?? props.kind);
+const isLink = computed(() => kind.value === 'link');
 
 // Share image (08 §14, WP13): every tab reuses the app's card; removed apps keep their name.
 const formattingLocale = toAppLocale(locale.value);
@@ -43,13 +46,13 @@ else if (removed.value)
 
 // Release cadence uses detail releaseStats; older backends fall back to timeline stats, showing a dash on failure.
 const { data: fallbackStats } = await useAsyncData(
-  () => `releases:stats:${props.kind}:${token.value}:${locale.value}`,
+  () => `releases:stats:${kind.value}:${token.value}:${locale.value}`,
   () =>
     pkg.value?.releaseStats
       ? Promise.resolve(null)
       : unwrap(
           api.GET('/packages/{kind}/{token}/releases', {
-            params: { path: { kind: props.kind, token: token.value }, query: { size: 1 } }
+            params: { path: { kind: kind.value, token: token.value }, query: { size: 1 } }
           })
         )
           .then(page => page.stats)
@@ -65,7 +68,7 @@ const tab = computed<Tab>(() => {
 });
 
 const returnTo = computed(() => recentReturnPath(route.query.returnTo));
-const tabs = computed(() => [
+const allTabs = computed(() => [
   {
     value: 'overview' as const,
     label: t('package.tabs.overview'),
@@ -88,6 +91,10 @@ const tabs = computed(() => [
     href: withRecentReturn(localePath(packagePath(token.value, 'details')), returnTo.value)
   }
 ]);
+// Link apps have no Homebrew definition, so there are no dependencies or install details to show.
+const tabs = computed(() =>
+  isLink.value ? allTabs.value.filter(item => item.value === 'overview' || item.value === 'versions') : allTabs.value
+);
 
 // Breadcrumbs match desktop: Discover › primary category › app. Structured data uses the same list.
 const breadcrumb = computed(() => {
@@ -119,6 +126,13 @@ onUnmounted(() => {
 const notice = computed(() => {
   const value = pkg.value;
   if (!value) return null;
+  // A link app Homebrew later added: point to the one-click install page.
+  if (value.link?.adoptedByCask)
+    return {
+      tone: 'warning' as const,
+      text: t('package.link.adopted'),
+      replacement: { kind: 'cask' as const, token: value.link.adoptedByCask }
+    };
   if (value.disable)
     return {
       tone: 'danger' as const,
@@ -156,7 +170,7 @@ const notice = computed(() => {
         :link-as="NuxtLink"
       />
       <PackageHeader :pkg="pkg" />
-      <PackageStats :pkg="pkg" :release-stats="releaseStats" />
+      <PackageStats v-if="!isLink" :pkg="pkg" :release-stats="releaseStats" />
       <OnTabs
         class="mt-2px"
         :model-value="tab"

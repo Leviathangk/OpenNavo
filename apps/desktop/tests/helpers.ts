@@ -51,6 +51,12 @@ export const stubRoutes: RouteRecordRaw[] = [
     meta: { nav: 'discover' }
   },
   {
+    path: '/appstore/:id',
+    name: 'appstore',
+    component: stub('App Store 详情页'),
+    meta: { nav: 'discover' }
+  },
+  {
     path: '/collections/:slug',
     name: 'collection',
     component: stub('合集页'),
@@ -82,6 +88,12 @@ export const stubRoutes: RouteRecordRaw[] = [
     name: 'monitor',
     components: { default: stub('电脑监控页'), rail: stub('菜单栏') },
     meta: { nav: 'monitor' }
+  },
+  {
+    path: '/security/:tab?',
+    name: 'security',
+    components: { default: stub('安全防护页'), rail: stub('病毒库') },
+    meta: { nav: 'security' }
   },
   {
     path: '/history',

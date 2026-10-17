@@ -9,6 +9,10 @@
 
 Do not import main: it is a v3 draft based on ubean + Hono, incompatible with this Go backend. For soybean upgrades, import a new tag and replay the changes below.
 
+## License
+
+The upstream template stays under its MIT license: [LICENSE](LICENSE) (Copyright (c) 2021 Soybean) is kept verbatim and must ship with any copy of this app, including `packages/*`, which declare no license of their own. OpenNavo's changes and additions, listed below, are licensed under GPL-3.0-only like the rest of the repository (see the root [LICENSE](../../LICENSE)), so the app as a whole is distributed under GPL-3.0-only. MIT permits this; replaying a new upstream tag keeps both notices.
+
 ## Local changes
 
 ### Import (07 §1)
@@ -79,3 +83,7 @@ Long-copy adaptations: GlobalLogo wraps at words while retaining its mark; expan
 ## 2026-10-08 · English defaults and security patches
 
 Repository comments/documentation and default developer descriptions are English. UI fallback and newly authored content default to English; explicit record source locales and multilingual fixtures remain intact. Updated axios, nanoid, echarts, colord, and qs within their existing major versions for security fixes; root workspace owns lockfile/transitive remediation. Upstream license/copyright text remains unchanged.
+
+## 2026-10-16 · GPLv3
+
+The repository moved from Apache-2.0 to GPLv3: `package.json` `license` is now `GPL-3.0-only`, and the upstream MIT `LICENSE` stays unchanged (see License above).

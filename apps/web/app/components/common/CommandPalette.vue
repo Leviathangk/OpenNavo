@@ -61,7 +61,8 @@ const groups = computed<OnCommandGroup[]>(() => {
   const q = query.value.trim();
   const lower = q.toLowerCase();
   const packages: OnCommandItem[] = suggestions.value.flatMap(item =>
-    item.type === 'package' && item.kind === 'cask' && item.token
+    // Casks and link apps share /apps (store/security plan §4); command-line tools have no web page.
+    item.type === 'package' && (item.kind === 'cask' || item.kind === 'link') && item.token
       ? [
           {
             key: `package:${item.kind}:${item.token}`,
@@ -108,7 +109,8 @@ function onSelect(item: OnCommandItem) {
 }
 
 function onCopy(item: OnCommandItem) {
-  if (!item.app) return;
+  // App Store rows exist only in the desktop palette and have no brew command.
+  if (!item.app || item.app.kind === 'mas') return;
   void copy(item.app.kind, item.app.token);
 }
 

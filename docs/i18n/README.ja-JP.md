@@ -11,7 +11,7 @@
 7,700 以上の Homebrew Cask の紹介とバージョン履歴を閲覧し、<br>
 macOS クライアントでワンクリックでインストール・更新。すべての処理を Homebrew が担い、その進み具合を確認できます。
 
-[![ライセンス](https://img.shields.io/badge/license-Apache--2.0-FF7356)](../../LICENSE)
+[![ライセンス](https://img.shields.io/badge/license-GPL--3.0--only-FF7356)](../../LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-111111?logo=apple)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)
 ![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)
@@ -124,14 +124,14 @@ opennavo/
 
 バックエンドは Homebrew の公開 API からカタログとインストール数を同期し、Homebrew のコミット履歴から各バージョンの登録日時を取得します。ダウンロードサイズの検出と、クライアント用のオフラインカタログのスナップショット生成も行います。API は契約を先に定義します。`apps/server/api/*.openapi.yaml` を変更し、`make gen` で Go と TypeScript のコードを生成します。
 
-| 部分 | 技術 |
-|---|---|
-| Web 版 | Nuxt 4 · Vue 3 · UnoCSS（SSR） |
-| macOS クライアント | Tauri 2 · Vue 3 · Rust · SQLite（FTS5） |
-| 管理画面 | soybean-admin v2.2.0 · Vue 3 · Naive UI |
-| バックエンド | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · S3 互換ストレージ（MinIO） |
-| MCP | Python 3.13 · FastMCP · uv |
-| 契約とコード生成 | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta |
+| 部分               | 技術                                                                           |
+| ------------------ | ------------------------------------------------------------------------------ |
+| Web 版             | Nuxt 4 · Vue 3 · UnoCSS（SSR）                                                 |
+| macOS クライアント | Tauri 2 · Vue 3 · Rust · SQLite（FTS5）                                        |
+| 管理画面           | soybean-admin v2.2.0 · Vue 3 · Naive UI                                        |
+| バックエンド       | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · S3 互換ストレージ（MinIO） |
+| MCP                | Python 3.13 · FastMCP · uv                                                     |
+| 契約とコード生成   | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta               |
 
 ## クイックスタート
 
@@ -210,8 +210,8 @@ Issue と Pull Request を歓迎します。作業前に以下をご確認くだ
 
 ## ライセンス
 
-本プロジェクトは [Apache License 2.0](../../LICENSE) で公開されています。サードパーティの表記は [NOTICE](../../NOTICE) をご覧ください。
+本プロジェクトは [GNU General Public License 第3版のみ（GPL-3.0-only）](../../LICENSE) で公開されています。コミット `5fa4056` 以前（同コミットを含む）に公開されたバージョンは引き続き Apache-2.0 で利用できます。第三者の表記と以下の追加条項は [NOTICE](../../NOTICE) をご覧ください。
 
-「OpenNavo」の名称とロゴはこのライセンスの対象ではありません。変更版を配布する場合は別の名称とアイコンを使い、クライアントの Bundle ID、更新用公開鍵、更新 URL を置き換えてください。Homebrew は Homebrew プロジェクトの商標であり、OpenNavo は Homebrew の公式プロジェクトとは関係ありません。各 App の名称とアイコンは、それぞれの権利者に帰属します。
+NOTICE に記載した GPLv3 第7(e)条に基づく追加条項により、OpenNavo の名称やロゴに関する商標権は許諾されません。第7(c)条に基づき、変更版を配布する際は原版と明確に区別し、別の名称とアイコンを使用し、Bundle ID、更新用公開鍵、更新 URL を変更してください。正確な出典表記は保持してください。Homebrew は Homebrew プロジェクトの商標であり、OpenNavo は公式の関連製品ではありません。各アプリの名称とアイコンは各権利者に帰属します。
 
 [デプロイガイド](../../ops/GUIDE.md) · [貢献ガイド](../../.github/CONTRIBUTING.md) · [セキュリティポリシー](../../.github/SECURITY.md) · [サードパーティライセンス](../legal/THIRD_PARTY.md)

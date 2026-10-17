@@ -137,6 +137,7 @@ export function fitSummary(summary: string, room: number): string {
 }
 
 export interface OverviewFacts {
+  kind?: string;
   displayName: string;
   summary?: string | null;
   isFont: boolean;
@@ -158,7 +159,12 @@ export function overviewTitle(pkg: OverviewFacts, t: Translate): string {
 export function overviewDescription(pkg: OverviewFacts, t: Translate): string {
   const name = pkg.displayName;
   const summary = usableSummary(pkg.summary, name);
-  const key = pkg.disabled ? 'package.seo.descriptionUnavailable' : 'package.seo.description';
+  // Link apps have no install method on the page, only the developer's download (store/security plan §4).
+  const key = pkg.disabled
+    ? 'package.seo.descriptionUnavailable'
+    : pkg.kind === 'link'
+      ? 'package.seo.descriptionLink'
+      : 'package.seo.description';
   const fitted = summary && fitSummary(summary, DESCRIPTION_WIDTH - textWidth(withName(t, key, name, { summary: '' })));
   if (!fitted) return withName(t, `${key}NoSummary`, name);
   const text = withName(t, key, name, { summary: `${fitted}${SUMMARY_END}` });

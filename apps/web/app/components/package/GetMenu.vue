@@ -3,8 +3,12 @@ import { OnButton, OnGetButton, OnMenu, useUiMessages } from '@opennavo/ui';
 import type { OnMenuItem } from '@opennavo/ui';
 import type { PackageKind } from '@opennavo/shared';
 import { trackEvent } from '~/utils/analytics';
+import { linkDownloadUrl } from '~/utils/linkApp';
+import type { LinkInfo } from '~/utils/linkApp';
+import { packagePath } from '~/utils/packageView';
 
-// Web Get menu (05 §7): open in OpenNavo / copy install command / add to Brewfile.
+// Web Get menu (05 §7): open in OpenNavo / copy install command / add to Brewfile. Link apps (store/security
+// plan §4) have none of these: Download opens the developer's address, or the app's page when the list lacks it.
 const props = withDefaults(
   defineProps<{
     kind: PackageKind;
@@ -12,14 +16,17 @@ const props = withDefaults(
     name: string;
     /** API install command; derive from kind/token when omitted. */
     command?: string;
+    /** Download addresses of a link app, when the list item carries them. */
+    link?: LinkInfo | null;
     /** chip is the small card pill; primary is the hero/detail main button. */
     variant?: 'chip' | 'primary';
   }>(),
-  { variant: 'chip' }
+  { variant: 'chip', link: null }
 );
 
 const { t } = useI18n();
 const messages = useUiMessages();
+const localePath = useLocalePath();
 const toasts = useToasts();
 const { open } = useOpenInApp();
 const { copy } = useCopyCommand();
@@ -38,6 +45,13 @@ const items = computed<OnMenuItem[]>(() => [
   }
 ]);
 
+function download() {
+  trackEvent('get_app');
+  const url = props.link ? linkDownloadUrl(props.link) : undefined;
+  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  else void navigateTo(localePath(packagePath(props.token)));
+}
+
 function onSelect(key: string) {
   if (key === 'open') open({ kind: props.kind, token: props.token, name: props.name });
   else if (key === 'copy') void copy(props.kind, props.token, props.command);
@@ -50,7 +64,14 @@ function onSelect(key: string) {
 </script>
 
 <template>
-  <OnMenu :items="items" :label="t('get.menuLabel', { name })" @select="onSelect">
+  <OnGetButton
+    v-if="kind === 'link'"
+    state="download"
+    :appearance="variant === 'primary' ? 'button' : 'compact'"
+    :aria-label="t('get.downloadLabel', { name })"
+    @click="download"
+  />
+  <OnMenu v-else :items="items" :label="t('get.menuLabel', { name })" @select="onSelect">
     <template #trigger="{ attrs }">
       <OnGetButton
         v-if="variant === 'chip'"

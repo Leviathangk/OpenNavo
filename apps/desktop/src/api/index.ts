@@ -62,5 +62,7 @@ export const api = createPublicClient({
   },
   locale: () => i18n.global.locale.value,
   platform: 'desktop',
-  version: import.meta.env.VITE_APP_VERSION ?? '0.0.0'
+  version: import.meta.env.VITE_APP_VERSION ?? '0.0.0',
+  // Link apps mix into Discover, categories, collections and search (store/security plan §4).
+  capabilities: ['link']
 });

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/articles"
+	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"gorm.io/gorm"
 )
@@ -314,7 +315,7 @@ func ArticleCachePatterns(paths []string) []string {
 	out := []string{"c:art:*"}
 	for _, path := range paths {
 		if token, ok := strings.CutPrefix(path, "/apps/"); ok {
-			out = append(out, "c:pkg:c3:cask:"+token+":*")
+			out = append(out, cache.PackageDetailPrefix+"cask:"+token+":*")
 		}
 	}
 	return out

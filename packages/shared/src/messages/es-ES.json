@@ -3,11 +3,12 @@
     "get": "Obtener",
     "open": "Abrir",
     "installed": "Instaladas",
-    "update": "Actualizaciones",
+    "update": "Actualizar",
     "queued": "En cola",
     "running": "Procesando",
     "cancel": "Cancelar",
-    "unavailable": "No disponible"
+    "unavailable": "No disponible",
+    "download": "Descargar"
   },
   "action": {
     "checkUpdates": "Buscar actualizaciones",
@@ -28,7 +29,8 @@
   },
   "kind": {
     "cask": "Apps",
-    "formula": "Herramientas de línea de comandos"
+    "formula": "Herramientas de línea de comandos",
+    "link": "Apps"
   },
   "card": {
     "installs30d": "Instalaciones en 30 días",

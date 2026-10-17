@@ -339,9 +339,22 @@ pub fn command(program: &str, args: &[&str], timeout: Duration) -> Result<String
     ))
 }
 
+/// App Store metadata only; never opens an app or asks Spotlight to reindex it.
+pub fn spotlight_store_metadata(path: &Path) -> (Option<u64>, Option<i64>) {
+    #[cfg(target_os = "macos")]
+    {
+        native::spotlight_store_metadata(path)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = path;
+        (None, None)
+    }
+}
+
 /// Code signing and Spotlight metadata read in process (Security / CoreServices); no tool is spawned.
 #[cfg(target_os = "macos")]
-mod native {
+pub(crate) mod native {
     use objc2_foundation::NSString;
     use std::{collections::BTreeSet, ffi::c_void, path::Path};
 
@@ -354,6 +367,8 @@ mod native {
         fn CFArrayGetTypeID() -> usize;
         fn CFDictionaryGetTypeID() -> usize;
         fn CFDateGetTypeID() -> usize;
+        fn CFNumberGetTypeID() -> usize;
+        fn CFNumberGetValue(number: CFTypeRef, kind: i32, value: *mut c_void) -> bool;
         fn CFArrayGetCount(array: CFTypeRef) -> isize;
         fn CFArrayGetValueAtIndex(array: CFTypeRef, index: isize) -> CFTypeRef;
         fn CFDictionaryGetValue(dictionary: CFTypeRef, key: CFTypeRef) -> CFTypeRef;
@@ -485,6 +500,23 @@ mod native {
                 groups,
             })
         })
+    }
+
+    pub fn spotlight_store_metadata(path: &Path) -> (Option<u64>, Option<i64>) {
+        let id = objc2::rc::autoreleasepool(|_| {
+            let path = NSString::from_str(&path.to_string_lossy());
+            let item = Owned::new(unsafe { MDItemCreate(std::ptr::null(), cf(&path)) })?;
+            let name = NSString::from_str("kMDItemAppStoreAdamID");
+            let value = Owned::new(unsafe { MDItemCopyAttribute(item.0, cf(&name)) })?;
+            if is(value.0, unsafe { CFNumberGetTypeID() }) {
+                let mut number = 0_i64;
+                if unsafe { CFNumberGetValue(value.0, 4, (&mut number as *mut i64).cast()) } {
+                    return u64::try_from(number).ok();
+                }
+            }
+            string(value.0)?.parse().ok()
+        });
+        (id, spotlight_dates(path).1)
     }
 
     /// Spotlight's last-used and date-added times in Unix milliseconds; None when the item is not indexed.

@@ -1,0 +1,28 @@
+{
+  "repository": "https://github.com/objective-see/KnockKnock",
+  "commit": "914f2c0c2d3f058f40b6d98ed303e8a1a6715eb3",
+  "license": "GPL-3.0-only",
+  "files": {
+    "Plugins/AuthorizationPlugins.m": "c2bff84e9ad5548a6fc35bdf3a7667a8ac47ee2663057dc97f23206cb5e8a98b",
+    "Plugins/BTM.m": "9b520efcd12ae042a06db160fe3377d396226ceb62d9d320a0c3c60514c0a879",
+    "Plugins/BrowserExtensions.m": "8e731a176f03608d4c55604ad003a6f4ae12eabf32dfa2e034c0c22140fdd116",
+    "Plugins/Cronjobs.m": "b789e484d61de7b56c37eb6dc9de93a885ba097d1c39b7f9bb6ab6b77874750c",
+    "Plugins/DirectoryServicesPlugins.m": "6e9bcb33d40cc1c26de69595a9593803406d52aae91c3fb1e95c8b307f79fd03",
+    "Plugins/DockTiles.m": "e236f5dc5f081b8584b2181a56971763c656e59ec4ad6d5f75d0c694f136dd90",
+    "Plugins/DylibInserts.m": "db34eb1a2603cf16b604ace092b16a94d4e18099dd240c6736309e45f6291813",
+    "Plugins/DylibProxies.m": "ffcd49bb8c8c17469c0d3a30aa5e6c49e59eaa58c2a23a168b6e058d3eac0045",
+    "Plugins/EventRules.m": "117257f4d8b0e9bc9cd64fa2814ecd0ace3f037f96d98c3e8a2da91bb1634516",
+    "Plugins/Extensions.m": "ec18fc785266268c8c05a6f708910ecf26f3ad4f06fba1904f96b4ec0a9c70f2",
+    "Plugins/Kexts.m": "b459321b3311a6695e5b00d2b2bb0434c1e498d5d1d6c6560cea650d181434a5",
+    "Plugins/LaunchItems.m": "1750325782df8dd559bbb2c0cc308593a2ba2428ec164a671a89faba7b483030",
+    "Plugins/LogInOutHooks.m": "021482da1aa6c8c2db402db8ba8f2c72227f8c6d4342f5f1cd8e03586482350e",
+    "Plugins/LoginItems.m": "01e7142b8bb1005492bef3696027cc66df0bed78e5693def155dc75c9ce71c1e",
+    "Plugins/PeriodicScripts.m": "ada2ba72fc9c5431ec1eb218f8a9d676d2b15b94f4edc16133c91182d9c58204",
+    "Plugins/PluginBase.m": "4338ab19b4c914e22dc06b9112a617a4884feb20d3ef6392dbeb9fa4fe739b14",
+    "Plugins/QuicklookPlugins.m": "162227b63daa45311fbb33a60e6573e805065b900e7c81a265e6fcf4467f0a01",
+    "Plugins/ShellConfigs.m": "30cc91e67674850fd94e1f2af892af33c083a9fe7b297dbf3acc0059cfdd8a3e",
+    "Plugins/SpotlightImporters.m": "efb4a932daa366fb71940e8409d5b10bfb26e1c238f504bb76d3d8054152f275",
+    "Plugins/StartupScripts.m": "80709cc66bb7d3947d0bca816fcee08066a54d2abbe195890270e90d5fd354bf",
+    "Plugins/SystemExtensions.m": "e7fdb57a986437adfce8c2f848a7b585cd942e57ec44a41d92332b7d069b9ba5"
+  }
+}

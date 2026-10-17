@@ -147,7 +147,10 @@ it('Preflights artifacts for all three targets, signatures, hashes, and fixed-ve
         })
       );
     }
-    expect(prepareAssets(dir, repository, version)).toHaveLength(6);
+    expect(() => prepareAssets(dir, repository, version)).toThrow();
+    writeFileSync(join(dir, 'clamav-1.5.4-corresponding-source.tar.gz'), 'source-fixture');
+    expect(prepareAssets(dir, repository, version)).toHaveLength(7);
+    expect(readFileSync(join(dir, 'SHA256SUMS'), 'utf8')).toContain('clamav-1.5.4-corresponding-source.tar.gz');
     expect(readFileSync(join(dir, 'SHA256SUMS'), 'utf8')).toContain('OpenNavo_x64.app.tar.gz.sig');
     writeFileSync(join(dir, 'OpenNavo_x64.app.tar.gz.sig'), 'changed');
     expect(() => prepareAssets(dir, repository, version)).toThrow('signature');

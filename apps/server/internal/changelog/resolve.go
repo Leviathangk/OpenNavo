@@ -43,6 +43,9 @@ func NewResolver(agent string) *Resolver {
 var rubySafe = regexp.MustCompile(`^[A-Za-z0-9_./+@-]+[.]rb$`)
 
 func HomebrewSource(p Candidate) (Source, bool) {
+	if p.Kind == "link" {
+		return Source{}, false
+	}
 	// Third-party taps keep their own history; the tap sync dates their versions instead.
 	if p.Tap != "" && !strings.HasPrefix(p.Tap, "homebrew/") {
 		return Source{}, false

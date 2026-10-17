@@ -244,14 +244,10 @@
   ],
   "items": [
     {
-      "apps": [
-        "1Password.app"
-      ],
+      "apps": ["1Password.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "security"
-      ],
+      "categories": ["security"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -268,10 +264,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "1Password",
-      "names": [
-        "1Password",
-        "1Password 密码管理"
-      ],
+      "names": ["1Password", "1Password 密码管理"],
       "pinyin": "mimaguanlimimaguanli mmglmmgl",
       "popularity": 7.5,
       "rank30d": 26,
@@ -279,22 +272,16 @@
         "en-US": "Deterministic E2E fixture for 1Password",
         "zh-CN": "管理密码与安全共享"
       },
-      "tags": [
-        "security"
-      ],
+      "tags": ["security"],
       "token": "1password",
       "version": "8.12.0",
       "versionChangedAt": "2026-09-29T23:00:00Z"
     },
     {
-      "apps": [
-        "AltTab.app"
-      ],
+      "apps": ["AltTab.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "utilities"
-      ],
+      "categories": ["utilities"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -311,10 +298,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "AltTab",
-      "names": [
-        "AltTab",
-        "AltTab 窗口切换"
-      ],
+      "names": ["AltTab", "AltTab 窗口切换"],
       "pinyin": "chuangkouqiehuanchuangkouqiehuan ckqhckqh",
       "popularity": 8,
       "rank30d": 21,
@@ -322,22 +306,16 @@
         "en-US": "Deterministic E2E fixture for AltTab",
         "zh-CN": "用缩略图快速切换窗口"
       },
-      "tags": [
-        "utilities"
-      ],
+      "tags": ["utilities"],
       "token": "alt-tab",
       "version": "7.25.0",
       "versionChangedAt": "2026-09-30T04:00:00Z"
     },
     {
-      "apps": [
-        "AppCleaner.app"
-      ],
+      "apps": ["AppCleaner.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "utilities"
-      ],
+      "categories": ["utilities"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -354,10 +332,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "AppCleaner",
-      "names": [
-        "AppCleaner",
-        "AppCleaner 卸载助手"
-      ],
+      "names": ["AppCleaner", "AppCleaner 卸载助手"],
       "pinyin": "xiezaizhushouxiezaizhushou xzzsxzzs",
       "popularity": 7.7,
       "rank30d": 24,
@@ -365,22 +340,16 @@
         "en-US": "Deterministic E2E fixture for AppCleaner",
         "zh-CN": "查找应用关联文件"
       },
-      "tags": [
-        "utilities"
-      ],
+      "tags": ["utilities"],
       "token": "appcleaner",
       "version": "3.7.0",
       "versionChangedAt": "2026-09-30T01:00:00Z"
     },
     {
-      "apps": [
-        "Bitwarden.app"
-      ],
+      "apps": ["Bitwarden.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "security"
-      ],
+      "categories": ["security"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -397,10 +366,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Bitwarden",
-      "names": [
-        "Bitwarden",
-        "Bitwarden 密码管理"
-      ],
+      "names": ["Bitwarden", "Bitwarden 密码管理"],
       "pinyin": "mimaguanlimimaguanli mmglmmgl",
       "popularity": 7.6,
       "rank30d": 25,
@@ -408,22 +374,16 @@
         "en-US": "Deterministic E2E fixture for Bitwarden",
         "zh-CN": "保存并同步密码与凭据"
       },
-      "tags": [
-        "security"
-      ],
+      "tags": ["security"],
       "token": "bitwarden",
       "version": "2026.9.0",
       "versionChangedAt": "2026-09-30T00:00:00Z"
     },
     {
-      "apps": [
-        "calibre.app"
-      ],
+      "apps": ["calibre.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "education"
-      ],
+      "categories": ["education"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -440,10 +400,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Calibre",
-      "names": [
-        "Calibre",
-        "Calibre 电子书管理"
-      ],
+      "names": ["Calibre", "Calibre 电子书管理"],
       "pinyin": "dianzishuguanlidianzishuguanli dzsgldzsgl",
       "popularity": 6.7,
       "rank30d": 34,
@@ -451,22 +408,16 @@
         "en-US": "Deterministic E2E fixture for Calibre",
         "zh-CN": "整理、转换与阅读电子书"
       },
-      "tags": [
-        "education"
-      ],
+      "tags": ["education"],
       "token": "calibre",
       "version": "8.10.0",
       "versionChangedAt": "2026-09-29T15:00:00Z"
     },
     {
-      "apps": [
-        "Claude.app"
-      ],
+      "apps": ["Claude.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "ai"
-      ],
+      "categories": ["ai"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -483,10 +434,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Claude",
-      "names": [
-        "Claude",
-        "Claude AI 助手"
-      ],
+      "names": ["Claude", "Claude AI 助手"],
       "pinyin": "zhushouzhushou zszs",
       "popularity": 6.8,
       "rank30d": 33,
@@ -494,22 +442,16 @@
         "en-US": "Deterministic E2E fixture for Claude",
         "zh-CN": "对话、写作与代码辅助"
       },
-      "tags": [
-        "ai"
-      ],
+      "tags": ["ai"],
       "token": "claude",
       "version": "1.0.0",
       "versionChangedAt": "2026-09-29T16:00:00Z"
     },
     {
-      "apps": [
-        "Discord.app"
-      ],
+      "apps": ["Discord.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "communication"
-      ],
+      "categories": ["communication"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -526,10 +468,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Discord",
-      "names": [
-        "Discord",
-        "Discord 社区聊天"
-      ],
+      "names": ["Discord", "Discord 社区聊天"],
       "pinyin": "shequliaotianshequliaotian sqltsqlt",
       "popularity": 8.6,
       "rank30d": 15,
@@ -537,22 +476,16 @@
         "en-US": "Deterministic E2E fixture for Discord",
         "zh-CN": "语音、视频与社区交流"
       },
-      "tags": [
-        "communication"
-      ],
+      "tags": ["communication"],
       "token": "discord",
       "version": "0.0.360",
       "versionChangedAt": "2026-09-30T10:00:00Z"
     },
     {
-      "apps": [
-        "Docker.app"
-      ],
+      "apps": ["Docker.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "virtualization"
-      ],
+      "categories": ["virtualization"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -569,10 +502,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Docker Desktop",
-      "names": [
-        "Docker Desktop",
-        "Docker 容器桌面"
-      ],
+      "names": ["Docker Desktop", "Docker 容器桌面"],
       "pinyin": "rongqizhuomianrongqizhuomian rqzmrqzm",
       "popularity": 8.9,
       "rank30d": 12,
@@ -580,22 +510,16 @@
         "en-US": "Deterministic E2E fixture for Docker Desktop",
         "zh-CN": "管理本地容器与开发环境"
       },
-      "tags": [
-        "virtualization"
-      ],
+      "tags": ["virtualization"],
       "token": "docker-desktop",
       "version": "4.50.0",
       "versionChangedAt": "2026-09-30T13:00:00Z"
     },
     {
-      "apps": [
-        "Figma.app"
-      ],
+      "apps": ["Figma.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "design"
-      ],
+      "categories": ["design"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -612,10 +536,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Figma",
-      "names": [
-        "Figma",
-        "Figma 设计工具"
-      ],
+      "names": ["Figma", "Figma 设计工具"],
       "pinyin": "shejigongjushejigongju sjgjsjgj",
       "popularity": 8.8,
       "rank30d": 13,
@@ -623,22 +544,16 @@
         "en-US": "Deterministic E2E fixture for Figma",
         "zh-CN": "协作设计界面与交互原型"
       },
-      "tags": [
-        "design"
-      ],
+      "tags": ["design"],
       "token": "figma",
       "version": "126.0.0",
       "versionChangedAt": "2026-09-30T12:00:00Z"
     },
     {
-      "apps": [
-        "Firefox.app"
-      ],
+      "apps": ["Firefox.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "browsers"
-      ],
+      "categories": ["browsers"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -655,10 +570,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Firefox",
-      "names": [
-        "Firefox",
-        "Firefox 浏览器"
-      ],
+      "names": ["Firefox", "Firefox 浏览器"],
       "pinyin": "liulanqiliulanqi llqllq",
       "popularity": 9.5,
       "rank30d": 6,
@@ -666,9 +578,7 @@
         "en-US": "Deterministic E2E fixture for Firefox",
         "zh-CN": "注重隐私的网页浏览器"
       },
-      "tags": [
-        "browsers"
-      ],
+      "tags": ["browsers"],
       "token": "firefox",
       "version": "143.0",
       "versionChangedAt": "2026-09-30T19:00:00Z"
@@ -677,9 +587,7 @@
       "apps": [],
       "autoUpdates": false,
       "binaries": [],
-      "categories": [
-        "fonts"
-      ],
+      "categories": ["fonts"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -696,19 +604,14 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Fira Code",
-      "names": [
-        "Fira Code",
-        "Fira Code 字体"
-      ],
+      "names": ["Fira Code", "Fira Code 字体"],
       "pinyin": "zitiziti ztzt",
       "popularity": 6.2,
       "summary": {
         "en-US": "Deterministic E2E fixture for Fira Code",
         "zh-CN": "带编程连字的等宽字体"
       },
-      "tags": [
-        "fonts"
-      ],
+      "tags": ["fonts"],
       "token": "font-fira-code",
       "version": "6.2",
       "versionChangedAt": "2026-09-29T10:00:00Z"
@@ -717,9 +620,7 @@
       "apps": [],
       "autoUpdates": false,
       "binaries": [],
-      "categories": [
-        "fonts"
-      ],
+      "categories": ["fonts"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -736,19 +637,14 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Hack",
-      "names": [
-        "Hack",
-        "Hack 等宽字体"
-      ],
+      "names": ["Hack", "Hack 等宽字体"],
       "pinyin": "dengkuanzitidengkuanziti dkztdkzt",
       "popularity": 6.1,
       "summary": {
         "en-US": "Deterministic E2E fixture for Hack",
         "zh-CN": "清晰易读的编程字体"
       },
-      "tags": [
-        "fonts"
-      ],
+      "tags": ["fonts"],
       "token": "font-hack",
       "version": "3.003",
       "versionChangedAt": "2026-09-29T09:00:00Z"
@@ -757,9 +653,7 @@
       "apps": [],
       "autoUpdates": false,
       "binaries": [],
-      "categories": [
-        "fonts"
-      ],
+      "categories": ["fonts"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -776,32 +670,23 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "JetBrains Mono",
-      "names": [
-        "JetBrains Mono",
-        "JetBrains Mono 字体"
-      ],
+      "names": ["JetBrains Mono", "JetBrains Mono 字体"],
       "pinyin": "zitiziti ztzt",
       "popularity": 6.3,
       "summary": {
         "en-US": "Deterministic E2E fixture for JetBrains Mono",
         "zh-CN": "适合阅读代码的等宽字体"
       },
-      "tags": [
-        "fonts"
-      ],
+      "tags": ["fonts"],
       "token": "font-jetbrains-mono",
       "version": "2.304",
       "versionChangedAt": "2026-09-29T11:00:00Z"
     },
     {
-      "apps": [
-        "Ghostty.app"
-      ],
+      "apps": ["Ghostty.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "terminal"
-      ],
+      "categories": ["terminal"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -819,10 +704,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Ghostty",
-      "names": [
-        "Ghostty",
-        "Ghostty 终端"
-      ],
+      "names": ["Ghostty", "Ghostty 终端"],
       "pinyin": "zhongduanzhongduan zdzd",
       "popularity": 9.9,
       "rank30d": 2,
@@ -830,22 +712,16 @@
         "en-US": "Deterministic E2E fixture for Ghostty",
         "zh-CN": "快速、原生的终端模拟器"
       },
-      "tags": [
-        "terminal"
-      ],
+      "tags": ["terminal"],
       "token": "ghostty",
       "version": "1.3.0",
       "versionChangedAt": "2026-09-30T23:00:00Z"
     },
     {
-      "apps": [
-        "Google Chrome.app"
-      ],
+      "apps": ["Google Chrome.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "browsers"
-      ],
+      "categories": ["browsers"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -862,10 +738,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Google Chrome",
-      "names": [
-        "Google Chrome",
-        "Chrome 浏览器"
-      ],
+      "names": ["Google Chrome", "Chrome 浏览器"],
       "pinyin": "liulanqiliulanqi llqllq",
       "popularity": 9.6,
       "rank30d": 5,
@@ -873,22 +746,16 @@
         "en-US": "Deterministic E2E fixture for Google Chrome",
         "zh-CN": "浏览网页并同步书签"
       },
-      "tags": [
-        "browsers"
-      ],
+      "tags": ["browsers"],
       "token": "google-chrome",
       "version": "141.0.7390.0",
       "versionChangedAt": "2026-09-30T20:00:00Z"
     },
     {
-      "apps": [
-        "IINA.app"
-      ],
+      "apps": ["IINA.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "media"
-      ],
+      "categories": ["media"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -905,10 +772,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "IINA",
-      "names": [
-        "IINA",
-        "IINA 播放器"
-      ],
+      "names": ["IINA", "IINA 播放器"],
       "pinyin": "bofangqibofangqi bfqbfq",
       "popularity": 9.2,
       "rank30d": 9,
@@ -916,22 +780,16 @@
         "en-US": "Deterministic E2E fixture for IINA",
         "zh-CN": "播放视频、音乐与流媒体"
       },
-      "tags": [
-        "media"
-      ],
+      "tags": ["media"],
       "token": "iina",
       "version": "1.4.0",
       "versionChangedAt": "2026-09-30T16:00:00Z"
     },
     {
-      "apps": [
-        "iTerm.app"
-      ],
+      "apps": ["iTerm.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "terminal"
-      ],
+      "categories": ["terminal"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -948,10 +806,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "iTerm2",
-      "names": [
-        "iTerm2",
-        "iTerm2 终端"
-      ],
+      "names": ["iTerm2", "iTerm2 终端"],
       "pinyin": "zhongduanzhongduan zdzd",
       "popularity": 9.7,
       "rank30d": 4,
@@ -959,22 +814,16 @@
         "en-US": "Deterministic E2E fixture for iTerm2",
         "zh-CN": "分屏、搜索与自动化终端"
       },
-      "tags": [
-        "terminal"
-      ],
+      "tags": ["terminal"],
       "token": "iterm2",
       "version": "3.6.0",
       "versionChangedAt": "2026-09-30T21:00:00Z"
     },
     {
-      "apps": [
-        "KeepingYouAwake.app"
-      ],
+      "apps": ["KeepingYouAwake.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "menu-bar"
-      ],
+      "categories": ["menu-bar"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -991,10 +840,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "KeepingYouAwake",
-      "names": [
-        "KeepingYouAwake",
-        "KeepingYouAwake 防休眠"
-      ],
+      "names": ["KeepingYouAwake", "KeepingYouAwake 防休眠"],
       "pinyin": "fangxiumianfangxiumian fxmfxm",
       "popularity": 7.8,
       "rank30d": 23,
@@ -1002,22 +848,16 @@
         "en-US": "Deterministic E2E fixture for KeepingYouAwake",
         "zh-CN": "在菜单栏控制电脑休眠"
       },
-      "tags": [
-        "menu-bar"
-      ],
+      "tags": ["menu-bar"],
       "token": "keepingyouawake",
       "version": "1.6.0",
       "versionChangedAt": "2026-09-30T02:00:00Z"
     },
     {
-      "apps": [
-        "Keka.app"
-      ],
+      "apps": ["Keka.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "utilities"
-      ],
+      "categories": ["utilities"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1034,10 +874,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Keka",
-      "names": [
-        "Keka",
-        "Keka 压缩工具"
-      ],
+      "names": ["Keka", "Keka 压缩工具"],
       "pinyin": "yasuogongjuyasuogongju ysgjysgj",
       "popularity": 7.9,
       "rank30d": 22,
@@ -1045,22 +882,16 @@
         "en-US": "Deterministic E2E fixture for Keka",
         "zh-CN": "压缩、加密与解压文件"
       },
-      "tags": [
-        "utilities"
-      ],
+      "tags": ["utilities"],
       "token": "keka",
       "version": "1.5.0",
       "versionChangedAt": "2026-09-30T03:00:00Z"
     },
     {
-      "apps": [
-        "LibreOffice.app"
-      ],
+      "apps": ["LibreOffice.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "office"
-      ],
+      "categories": ["office"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1077,10 +908,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "LibreOffice",
-      "names": [
-        "LibreOffice",
-        "LibreOffice 办公套件"
-      ],
+      "names": ["LibreOffice", "LibreOffice 办公套件"],
       "pinyin": "bangongtaojianbangongtaojian bgtjbgtj",
       "popularity": 6.4,
       "rank30d": 37,
@@ -1088,22 +916,16 @@
         "en-US": "Deterministic E2E fixture for LibreOffice",
         "zh-CN": "编辑文档、表格与演示文稿"
       },
-      "tags": [
-        "office"
-      ],
+      "tags": ["office"],
       "token": "libreoffice",
       "version": "25.8.0",
       "versionChangedAt": "2026-09-29T12:00:00Z"
     },
     {
-      "apps": [
-        "logioptionsplus.app"
-      ],
+      "apps": ["logioptionsplus.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "drivers"
-      ],
+      "categories": ["drivers"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1120,10 +942,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Logi Options+",
-      "names": [
-        "Logi Options+",
-        "罗技设备设置"
-      ],
+      "names": ["Logi Options+", "罗技设备设置"],
       "pinyin": "luojishebeishezhiluojishebeishezhi ljsbszljsbsz",
       "popularity": 6.5,
       "rank30d": 36,
@@ -1131,22 +950,16 @@
         "en-US": "Deterministic E2E fixture for Logi Options+",
         "zh-CN": "配置鼠标与键盘快捷操作"
       },
-      "tags": [
-        "drivers"
-      ],
+      "tags": ["drivers"],
       "token": "logi-options-plus",
       "version": "1.95.0",
       "versionChangedAt": "2026-09-29T13:00:00Z"
     },
     {
-      "apps": [
-        "Notion.app"
-      ],
+      "apps": ["Notion.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "office"
-      ],
+      "categories": ["office"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1163,10 +976,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Notion",
-      "names": [
-        "Notion",
-        "Notion 工作空间"
-      ],
+      "names": ["Notion", "Notion 工作空间"],
       "pinyin": "gongzuokongjiangongzuokongjian gzkjgzkj",
       "popularity": 9,
       "rank30d": 11,
@@ -1174,22 +984,16 @@
         "en-US": "Deterministic E2E fixture for Notion",
         "zh-CN": "协作笔记、文档与项目管理"
       },
-      "tags": [
-        "office"
-      ],
+      "tags": ["office"],
       "token": "notion",
       "version": "4.20.0",
       "versionChangedAt": "2026-09-30T14:00:00Z"
     },
     {
-      "apps": [
-        "Obsidian.app"
-      ],
+      "apps": ["Obsidian.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "writing"
-      ],
+      "categories": ["writing"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1206,10 +1010,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Obsidian",
-      "names": [
-        "Obsidian",
-        "Obsidian 笔记"
-      ],
+      "names": ["Obsidian", "Obsidian 笔记"],
       "pinyin": "bijibiji bjbj",
       "popularity": 9.1,
       "rank30d": 10,
@@ -1217,22 +1018,16 @@
         "en-US": "Deterministic E2E fixture for Obsidian",
         "zh-CN": "用双向链接组织本地笔记"
       },
-      "tags": [
-        "writing"
-      ],
+      "tags": ["writing"],
       "token": "obsidian",
       "version": "1.9.0",
       "versionChangedAt": "2026-09-30T15:00:00Z"
     },
     {
-      "apps": [
-        "OrbStack.app"
-      ],
+      "apps": ["OrbStack.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "virtualization"
-      ],
+      "categories": ["virtualization"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1249,10 +1044,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "OrbStack",
-      "names": [
-        "OrbStack",
-        "OrbStack 虚拟化"
-      ],
+      "names": ["OrbStack", "OrbStack 虚拟化"],
       "pinyin": "xunihuaxunihua xnhxnh",
       "popularity": 7.2,
       "rank30d": 29,
@@ -1260,22 +1052,16 @@
         "en-US": "Deterministic E2E fixture for OrbStack",
         "zh-CN": "轻量容器与虚拟机管理"
       },
-      "tags": [
-        "virtualization"
-      ],
+      "tags": ["virtualization"],
       "token": "orbstack",
       "version": "2.0.0",
       "versionChangedAt": "2026-09-29T20:00:00Z"
     },
     {
-      "apps": [
-        "Postman.app"
-      ],
+      "apps": ["Postman.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "developer-tools"
-      ],
+      "categories": ["developer-tools"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1292,10 +1078,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Postman",
-      "names": [
-        "Postman",
-        "Postman 接口调试"
-      ],
+      "names": ["Postman", "Postman 接口调试"],
       "pinyin": "jiekoudiaoshijiekoudiaoshi jkdsjkds",
       "popularity": 7.1,
       "rank30d": 30,
@@ -1303,22 +1086,16 @@
         "en-US": "Deterministic E2E fixture for Postman",
         "zh-CN": "设计、调试与测试接口"
       },
-      "tags": [
-        "developer-tools"
-      ],
+      "tags": ["developer-tools"],
       "token": "postman",
       "version": "11.65.0",
       "versionChangedAt": "2026-09-29T19:00:00Z"
     },
     {
-      "apps": [
-        "Proxyman.app"
-      ],
+      "apps": ["Proxyman.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "network"
-      ],
+      "categories": ["network"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1335,10 +1112,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Proxyman",
-      "names": [
-        "Proxyman",
-        "Proxyman 网络调试"
-      ],
+      "names": ["Proxyman", "Proxyman 网络调试"],
       "pinyin": "wangluodiaoshiwangluodiaoshi wldswlds",
       "popularity": 7.3,
       "rank30d": 28,
@@ -1346,22 +1120,16 @@
         "en-US": "Deterministic E2E fixture for Proxyman",
         "zh-CN": "捕获与调试网络请求"
       },
-      "tags": [
-        "network"
-      ],
+      "tags": ["network"],
       "token": "proxyman",
       "version": "5.25.0",
       "versionChangedAt": "2026-09-29T21:00:00Z"
     },
     {
-      "apps": [
-        "Raycast.app"
-      ],
+      "apps": ["Raycast.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "productivity"
-      ],
+      "categories": ["productivity"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1378,10 +1146,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Raycast",
-      "names": [
-        "Raycast",
-        "Raycast 启动器"
-      ],
+      "names": ["Raycast", "Raycast 启动器"],
       "pinyin": "qidongqiqidongqi qdqqdq",
       "popularity": 9.4,
       "rank30d": 7,
@@ -1389,22 +1154,16 @@
         "en-US": "Deterministic E2E fixture for Raycast",
         "zh-CN": "快速启动、搜索与自动化"
       },
-      "tags": [
-        "productivity"
-      ],
+      "tags": ["productivity"],
       "token": "raycast",
       "version": "1.100.0",
       "versionChangedAt": "2026-09-30T18:00:00Z"
     },
     {
-      "apps": [
-        "Rectangle.app"
-      ],
+      "apps": ["Rectangle.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "utilities"
-      ],
+      "categories": ["utilities"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1421,10 +1180,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Rectangle",
-      "names": [
-        "Rectangle",
-        "Rectangle 窗口管理"
-      ],
+      "names": ["Rectangle", "Rectangle 窗口管理"],
       "pinyin": "chuangkouguanlichuangkouguanli ckglckgl",
       "popularity": 9.3,
       "rank30d": 8,
@@ -1432,22 +1188,16 @@
         "en-US": "Deterministic E2E fixture for Rectangle",
         "zh-CN": "用快捷键排列桌面窗口"
       },
-      "tags": [
-        "utilities"
-      ],
+      "tags": ["utilities"],
       "token": "rectangle",
       "version": "0.90",
       "versionChangedAt": "2026-09-30T17:00:00Z"
     },
     {
-      "apps": [
-        "Slack.app"
-      ],
+      "apps": ["Slack.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "communication"
-      ],
+      "categories": ["communication"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1464,10 +1214,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Slack",
-      "names": [
-        "Slack",
-        "Slack 团队通讯"
-      ],
+      "names": ["Slack", "Slack 团队通讯"],
       "pinyin": "tuanduitongxuntuanduitongxun tdtxtdtx",
       "popularity": 8.7,
       "rank30d": 14,
@@ -1475,22 +1222,16 @@
         "en-US": "Deterministic E2E fixture for Slack",
         "zh-CN": "团队频道与工作消息协作"
       },
-      "tags": [
-        "communication"
-      ],
+      "tags": ["communication"],
       "token": "slack",
       "version": "4.45.0",
       "versionChangedAt": "2026-09-30T11:00:00Z"
     },
     {
-      "apps": [
-        "Spotify.app"
-      ],
+      "apps": ["Spotify.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "media"
-      ],
+      "categories": ["media"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1507,10 +1248,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Spotify",
-      "names": [
-        "Spotify",
-        "Spotify 音乐"
-      ],
+      "names": ["Spotify", "Spotify 音乐"],
       "pinyin": "yinleyinle ylyl",
       "popularity": 8.3,
       "rank30d": 18,
@@ -1518,22 +1256,16 @@
         "en-US": "Deterministic E2E fixture for Spotify",
         "zh-CN": "发现音乐、播客与播放列表"
       },
-      "tags": [
-        "media"
-      ],
+      "tags": ["media"],
       "token": "spotify",
       "version": "1.2.70",
       "versionChangedAt": "2026-09-30T07:00:00Z"
     },
     {
-      "apps": [
-        "Stats.app"
-      ],
+      "apps": ["Stats.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "menu-bar"
-      ],
+      "categories": ["menu-bar"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1550,10 +1282,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Stats",
-      "names": [
-        "Stats",
-        "Stats 系统监控"
-      ],
+      "names": ["Stats", "Stats 系统监控"],
       "pinyin": "xitongjiankongxitongjiankong xtjkxtjk",
       "popularity": 8.1,
       "rank30d": 20,
@@ -1561,22 +1290,16 @@
         "en-US": "Deterministic E2E fixture for Stats",
         "zh-CN": "在菜单栏查看系统资源"
       },
-      "tags": [
-        "menu-bar"
-      ],
+      "tags": ["menu-bar"],
       "token": "stats",
       "version": "2.12.0",
       "versionChangedAt": "2026-09-30T05:00:00Z"
     },
     {
-      "apps": [
-        "Steam.app"
-      ],
+      "apps": ["Steam.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "games"
-      ],
+      "categories": ["games"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1593,10 +1316,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Steam",
-      "names": [
-        "Steam",
-        "Steam 游戏平台"
-      ],
+      "names": ["Steam", "Steam 游戏平台"],
       "pinyin": "youxipingtaiyouxipingtai yxptyxpt",
       "popularity": 6.6,
       "rank30d": 35,
@@ -1604,22 +1324,16 @@
         "en-US": "Deterministic E2E fixture for Steam",
         "zh-CN": "管理游戏库与社区"
       },
-      "tags": [
-        "games"
-      ],
+      "tags": ["games"],
       "token": "steam",
       "version": "1.0.0",
       "versionChangedAt": "2026-09-29T14:00:00Z"
     },
     {
-      "apps": [
-        "TablePlus.app"
-      ],
+      "apps": ["TablePlus.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "databases"
-      ],
+      "categories": ["databases"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1636,10 +1350,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "TablePlus",
-      "names": [
-        "TablePlus",
-        "TablePlus 数据库工具"
-      ],
+      "names": ["TablePlus", "TablePlus 数据库工具"],
       "pinyin": "shujukugongjushujukugongju sjkgjsjkgj",
       "popularity": 7,
       "rank30d": 31,
@@ -1647,22 +1358,16 @@
         "en-US": "Deterministic E2E fixture for TablePlus",
         "zh-CN": "连接与管理多种数据库"
       },
-      "tags": [
-        "databases"
-      ],
+      "tags": ["databases"],
       "token": "tableplus",
       "version": "6.8.0",
       "versionChangedAt": "2026-09-29T18:00:00Z"
     },
     {
-      "apps": [
-        "Tailscale.app"
-      ],
+      "apps": ["Tailscale.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "network"
-      ],
+      "categories": ["network"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1679,10 +1384,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Tailscale",
-      "names": [
-        "Tailscale",
-        "Tailscale 私有网络"
-      ],
+      "names": ["Tailscale", "Tailscale 私有网络"],
       "pinyin": "siyouwangluosiyouwangluo sywlsywl",
       "popularity": 7.4,
       "rank30d": 27,
@@ -1690,22 +1392,16 @@
         "en-US": "Deterministic E2E fixture for Tailscale",
         "zh-CN": "连接设备与私有网络"
       },
-      "tags": [
-        "network"
-      ],
+      "tags": ["network"],
       "token": "tailscale",
       "version": "1.90.0",
       "versionChangedAt": "2026-09-29T22:00:00Z"
     },
     {
-      "apps": [
-        "Telegram.app"
-      ],
+      "apps": ["Telegram.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "communication"
-      ],
+      "categories": ["communication"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1722,10 +1418,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Telegram",
-      "names": [
-        "Telegram",
-        "Telegram 即时通讯"
-      ],
+      "names": ["Telegram", "Telegram 即时通讯"],
       "pinyin": "jishitongxunjishitongxun jstxjstx",
       "popularity": 8.5,
       "rank30d": 16,
@@ -1733,24 +1426,16 @@
         "en-US": "Deterministic E2E fixture for Telegram",
         "zh-CN": "跨设备发送消息与文件"
       },
-      "tags": [
-        "communication"
-      ],
+      "tags": ["communication"],
       "token": "telegram",
       "version": "6.3.0",
       "versionChangedAt": "2026-09-30T09:00:00Z"
     },
     {
-      "apps": [
-        "Visual Studio Code.app"
-      ],
+      "apps": ["Visual Studio Code.app"],
       "autoUpdates": true,
-      "binaries": [
-        "code"
-      ],
-      "categories": [
-        "developer-tools"
-      ],
+      "binaries": ["code"],
+      "categories": ["developer-tools"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1768,12 +1453,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Visual Studio Code",
-      "names": [
-        "Visual Studio Code",
-        "VS Code 编辑器",
-        "vscode",
-        "VS Code"
-      ],
+      "names": ["Visual Studio Code", "VS Code 编辑器", "vscode", "VS Code"],
       "pinyin": "bianjiqibianjiqi bjqbjq",
       "popularity": 10,
       "rank30d": 1,
@@ -1781,22 +1461,16 @@
         "en-US": "Deterministic E2E fixture for Visual Studio Code",
         "zh-CN": "代码编辑、调试与扩展开发"
       },
-      "tags": [
-        "developer-tools"
-      ],
+      "tags": ["developer-tools"],
       "token": "visual-studio-code",
       "version": "1.140.0",
       "versionChangedAt": "2026-10-01T00:00:00Z"
     },
     {
-      "apps": [
-        "VLC.app"
-      ],
+      "apps": ["VLC.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "media"
-      ],
+      "categories": ["media"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1813,10 +1487,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "VLC",
-      "names": [
-        "VLC",
-        "VLC 媒体播放器"
-      ],
+      "names": ["VLC", "VLC 媒体播放器"],
       "pinyin": "meitibofangqimeitibofangqi mtbfqmtbfq",
       "popularity": 8.2,
       "rank30d": 19,
@@ -1824,22 +1495,16 @@
         "en-US": "Deterministic E2E fixture for VLC",
         "zh-CN": "播放常见音视频格式"
       },
-      "tags": [
-        "media"
-      ],
+      "tags": ["media"],
       "token": "vlc",
       "version": "3.0.22",
       "versionChangedAt": "2026-09-30T06:00:00Z"
     },
     {
-      "apps": [
-        "WeChat.app"
-      ],
+      "apps": ["WeChat.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "communication"
-      ],
+      "categories": ["communication"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1857,10 +1522,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "WeChat",
-      "names": [
-        "WeChat",
-        "微信"
-      ],
+      "names": ["WeChat", "微信"],
       "pinyin": "weixinweixin wxwx",
       "popularity": 9.8,
       "rank30d": 3,
@@ -1868,22 +1530,16 @@
         "en-US": "Deterministic E2E fixture for WeChat",
         "zh-CN": "消息、通话与文件分享"
       },
-      "tags": [
-        "communication"
-      ],
+      "tags": ["communication"],
       "token": "wechat",
       "version": "4.1.0",
       "versionChangedAt": "2026-09-30T22:00:00Z"
     },
     {
-      "apps": [
-        "Zed.app"
-      ],
+      "apps": ["Zed.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "developer-tools"
-      ],
+      "categories": ["developer-tools"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1900,10 +1556,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Zed",
-      "names": [
-        "Zed",
-        "Zed 代码编辑器"
-      ],
+      "names": ["Zed", "Zed 代码编辑器"],
       "pinyin": "daimabianjiqidaimabianjiqi dmbjqdmbjq",
       "popularity": 6.9,
       "rank30d": 32,
@@ -1911,22 +1564,16 @@
         "en-US": "Deterministic E2E fixture for Zed",
         "zh-CN": "快速协作代码编辑"
       },
-      "tags": [
-        "developer-tools"
-      ],
+      "tags": ["developer-tools"],
       "token": "zed",
       "version": "0.210.0",
       "versionChangedAt": "2026-09-29T17:00:00Z"
     },
     {
-      "apps": [
-        "zoom.us.app"
-      ],
+      "apps": ["zoom.us.app"],
       "autoUpdates": true,
       "binaries": [],
-      "categories": [
-        "communication"
-      ],
+      "categories": ["communication"],
       "deprecated": false,
       "disabled": false,
       "displayName": {
@@ -1943,10 +1590,7 @@
       "isLibrary": false,
       "kind": "cask",
       "name": "Zoom",
-      "names": [
-        "Zoom",
-        "Zoom 视频会议"
-      ],
+      "names": ["Zoom", "Zoom 视频会议"],
       "pinyin": "shipinhuiyishipinhuiyi sphysphy",
       "popularity": 8.4,
       "rank30d": 17,
@@ -1954,9 +1598,7 @@
         "en-US": "Deterministic E2E fixture for Zoom",
         "zh-CN": "线上会议与屏幕共享"
       },
-      "tags": [
-        "communication"
-      ],
+      "tags": ["communication"],
       "token": "zoom",
       "version": "6.5.0",
       "versionChangedAt": "2026-09-30T08:00:00Z"

@@ -1,0 +1,92 @@
+name: Native store and ClamAV M0
+
+# Opt-in evidence build only. Does not publish a Release, install an app,
+# download signatures, or touch production. Desktop CI and release packaging
+# build helpers independently; this workflow collects additional native evidence.
+on:
+  workflow_dispatch:
+    inputs:
+      notarize:
+        description: Submit native helpers using existing Apple credentials
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - name: Install build tools in temporary directory
+        run: |
+          python3 -m venv "$RUNNER_TEMP/native-tools"
+          "$RUNNER_TEMP/native-tools/bin/pip" install cmake==4.1.2 ninja==1.13.0
+          echo "$RUNNER_TEMP/native-tools/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/clamav
+          key: clamav-1.5.4-macos15-${{ hashFiles('apps/desktop/native/clamav/**') }}
+      - name: Build standalone universal ClamAV and corresponding source
+        run: python3 apps/desktop/native/clamav/build.py --work "$RUNNER_TEMP/clamav" --source-bundle
+      - name: Test store protocol without Apple calls
+        run: swift test --package-path apps/desktop/native/store --scratch-path "$RUNNER_TEMP/store-tests"
+      - name: Configure signing for requested notarization
+        if: inputs.notarize
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$APPLE_CERTIFICATE"
+          test -n "$APPLE_API_KEY_P8"
+          keychain="$RUNNER_TEMP/native-signing.keychain-db"
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::$password"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/native-certificate.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/native-certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain"
+          security list-keychains -d user -s "$keychain" "$HOME/Library/Keychains/login.keychain-db"
+          printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/native-AuthKey.p8"
+      - name: Stage and sign native helpers
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ inputs.notarize && secrets.APPLE_SIGNING_IDENTITY || '' }}
+        run: |
+          args=()
+          if [ '${{ inputs.notarize }}' != true ]; then args+=(--allow-unsigned); fi
+          python3 apps/desktop/scripts/prepare-native-helpers.py --work "$RUNNER_TEMP/native" --out "$RUNNER_TEMP/helpers" --clamav-dir "$RUNNER_TEMP/clamav/artifacts/universal" "${args[@]}"
+          "$RUNNER_TEMP/helpers/opennavo-store" probe --real-read-only
+      - name: Notarize native helpers
+        if: inputs.notarize
+        env:
+          APPLE_API_KEY_PATH: ${{ runner.temp }}/native-AuthKey.p8
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: python3 apps/desktop/scripts/notarize-native-helpers.py --helpers "$RUNNER_TEMP/helpers" --out "$RUNNER_TEMP/notary"
+      - name: Upload evidence and corresponding source together
+        uses: actions/upload-artifact@v6
+        with:
+          name: native-m0
+          path: |
+            ${{ runner.temp }}/helpers
+            ${{ runner.temp }}/notary
+            ${{ runner.temp }}/clamav/*-corresponding-source.tar.gz
+          if-no-files-found: error
+      - name: Remove temporary signing materials
+        if: always() && inputs.notarize
+        run: |
+          security delete-keychain "$RUNNER_TEMP/native-signing.keychain-db" || true
+          rm -f "$RUNNER_TEMP/native-certificate.p12" "$RUNNER_TEMP/native-AuthKey.p8"

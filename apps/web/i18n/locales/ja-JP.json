@@ -75,7 +75,8 @@
   },
   "get": {
     "label": "{name}を入手",
-    "menuLabel": "{name}の入手方法"
+    "menuLabel": "{name}の入手方法",
+    "downloadLabel": "{name}をダウンロード"
   },
   "openInApp": {
     "title": "OpenNavoをまだインストールしていませんか？",
@@ -160,6 +161,34 @@
     }
   },
   "package": {
+    "link": {
+      "chip": "公式サイトからダウンロード",
+      "chipGithub": "GitHub",
+      "meta": "ダウンロード元：{source} · OpenNavo はインストーラを配布していません",
+      "notHosted": "OpenNavo はインストーラを配布していません。ダウンロードは開発元から直接行われます。",
+      "downloadTitle": "ダウンロード",
+      "officialDownload": "公式サイトでダウンロード",
+      "goDownload": "ダウンロード",
+      "release": "{version} · {time}に公開",
+      "download": "ダウンロード",
+      "allFiles": "GitHub ですべてのファイルを表示",
+      "githubReleases": "GitHub からダウンロード",
+      "teamId": "開発元の署名",
+      "pricingLabel": "価格",
+      "adopted": "この App は Homebrew に収録されたので、ワンクリックでインストールできます",
+      "arch": {
+        "arm64": "Apple シリコン",
+        "x86_64": "Intel",
+        "universal": "ユニバーサル"
+      },
+      "pricing": {
+        "free": "無料",
+        "paid": "有料",
+        "freemium": "無料（有料機能あり）",
+        "subscription": "サブスクリプション",
+        "open_source": "無料のオープンソース"
+      }
+    },
     "arch": {
       "arm64": "Apple シリコン",
       "x86_64": "Intel"
@@ -334,6 +363,8 @@
       "titleUnavailable": "{name}の Mac 版 · OpenNavo",
       "description": "{summary}。{name}を Mac にインストールする方法、システム要件、バージョン履歴を確認できます。",
       "descriptionNoSummary": "{name}を Mac にインストールする方法、システム要件、バージョン履歴を確認できます。",
+      "descriptionLink": "{summary}。{name}の公式ダウンロード先とバージョン履歴を確認できます。",
+      "descriptionLinkNoSummary": "{name}の公式ダウンロード先とバージョン履歴を確認できます。",
       "descriptionUnavailable": "{summary}。{name}は Homebrew で無効化されています。バージョン履歴や類似アプリを確認できます。",
       "descriptionUnavailableNoSummary": "{name}は Homebrew で無効化されています。バージョン履歴や類似アプリを確認できます。",
       "versionsTitle": "{name}の更新履歴 · OpenNavo",

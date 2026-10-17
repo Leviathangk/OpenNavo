@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { commands, unwrap } from '@/ipc/client';
 import type { AppSettings } from '@/ipc/client';
-import type { MirrorInput } from '@/ipc/bindings';
+import type { MirrorInput, UpdateSource } from '@/ipc/bindings';
 
 /** Settings (06 §11): settings_set replaces the whole object and returns normalized values. */
 export const useSettingsStore = defineStore('settings', () => {
@@ -32,6 +32,18 @@ export const useSettingsStore = defineStore('settings', () => {
     await serialize(async () => {
       if (!value.value) return;
       value.value = (await unwrap(commands.settingsSet({ ...value.value, [key]: entry }))) as AppSettings;
+    });
+  }
+
+  async function setUpdateSource(source: UpdateSource, enabled: boolean) {
+    await serialize(async () => {
+      if (!value.value) return;
+      value.value = (await unwrap(
+        commands.settingsSet({
+          ...value.value,
+          updateSources: { ...value.value.updateSources, [source]: enabled }
+        })
+      )) as AppSettings;
     });
   }
 
@@ -87,5 +99,5 @@ export const useSettingsStore = defineStore('settings', () => {
     });
   }
 
-  return { value, load, save, update, setLanguage, saveCustomMirror, removeCustomMirror };
+  return { value, load, save, update, setUpdateSource, setLanguage, saveCustomMirror, removeCustomMirror };
 });

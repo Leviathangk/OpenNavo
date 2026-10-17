@@ -75,7 +75,8 @@
   },
   "get": {
     "label": "Get {name}",
-    "menuLabel": "Ways to get {name}"
+    "menuLabel": "Ways to get {name}",
+    "downloadLabel": "Download {name}"
   },
   "openInApp": {
     "title": "Don’t have OpenNavo yet?",
@@ -160,6 +161,34 @@
     }
   },
   "package": {
+    "link": {
+      "chip": "Website download",
+      "chipGithub": "GitHub",
+      "meta": "Downloads come from {source} · OpenNavo hosts no installers",
+      "notHosted": "OpenNavo hosts no installers; downloads come straight from the developer.",
+      "downloadTitle": "Download",
+      "officialDownload": "Download from Website",
+      "goDownload": "Download",
+      "release": "{version} · released {time}",
+      "download": "Download",
+      "allFiles": "All Files on GitHub",
+      "githubReleases": "Download from GitHub",
+      "teamId": "Developer signature",
+      "pricingLabel": "Price",
+      "adopted": "Homebrew now includes this app, so it installs in one click",
+      "arch": {
+        "arm64": "Apple silicon",
+        "x86_64": "Intel",
+        "universal": "Universal"
+      },
+      "pricing": {
+        "free": "Free",
+        "paid": "Paid",
+        "freemium": "Free with paid features",
+        "subscription": "Subscription",
+        "open_source": "Free and open source"
+      }
+    },
     "arch": {
       "arm64": "Apple silicon",
       "x86_64": "Intel"
@@ -334,6 +363,8 @@
       "titleUnavailable": "{name} for Mac · OpenNavo",
       "description": "{summary}. See how to install {name} on your Mac, along with its system requirements and release history.",
       "descriptionNoSummary": "See how to install {name} on your Mac, along with its system requirements and release history.",
+      "descriptionLink": "{summary}. Find the official download for {name} and its release history.",
+      "descriptionLinkNoSummary": "Find the official download for {name} and its release history.",
       "descriptionUnavailable": "{summary}. Homebrew has disabled {name}; see its release history and similar apps.",
       "descriptionUnavailableNoSummary": "Homebrew has disabled {name}; see its release history and similar apps.",
       "versionsTitle": "{name} Release Notes · OpenNavo",

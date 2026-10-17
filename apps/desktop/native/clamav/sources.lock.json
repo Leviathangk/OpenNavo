@@ -1,0 +1,58 @@
+{
+  "clamav": {
+    "version": "1.5.4",
+    "url": "https://www.clamav.net/downloads/production/clamav-1.5.4.tar.gz",
+    "archive": "clamav-1.5.4.tar.gz",
+    "sha256": "1af1117a228f1b5bc7fa91a0dabc37848a99e7d25188e9be8043332ce721dfd3",
+    "license": "GPL-2.0-only WITH openSSL-exception"
+  },
+  "zlib": {
+    "version": "1.3.1",
+    "url": "https://zlib.net/fossils/zlib-1.3.1.tar.gz",
+    "archive": "zlib-1.3.1.tar.gz",
+    "sha256": "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+    "license": "Zlib"
+  },
+  "bzip2": {
+    "version": "1.0.8",
+    "url": "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz",
+    "archive": "bzip2-1.0.8.tar.gz",
+    "sha256": "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
+    "license": "bzip2-1.0.6"
+  },
+  "libxml2": {
+    "version": "2.14.6",
+    "url": "https://download.gnome.org/sources/libxml2/2.14/libxml2-2.14.6.tar.xz",
+    "archive": "libxml2-2.14.6.tar.xz",
+    "sha256": "7ce458a0affeb83f0b55f1f4f9e0e55735dbfc1a9de124ee86fb4a66b597203a",
+    "license": "MIT"
+  },
+  "pcre2": {
+    "version": "10.46",
+    "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.46/pcre2-10.46.tar.gz",
+    "archive": "pcre2-10.46.tar.gz",
+    "sha256": "8d28d7f2c3b970c3a4bf3776bcbb5adfc923183ce74bc8df1ebaad8c1985bd07",
+    "license": "BSD-3-Clause"
+  },
+  "openssl": {
+    "version": "3.5.4",
+    "url": "https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz",
+    "archive": "openssl-3.5.4.tar.gz",
+    "sha256": "967311f84955316969bdb1d8d4b983718ef42338639c621ec4c34fddef355e99",
+    "license": "Apache-2.0"
+  },
+  "json-c": {
+    "version": "0.18",
+    "url": "https://s3.amazonaws.com/json-c_releases/releases/json-c-0.18.tar.gz",
+    "archive": "json-c-0.18.tar.gz",
+    "sha256": "876ab046479166b869afc6896d288183bbc0e5843f141200c677b3e8dfb11724",
+    "license": "MIT"
+  },
+  "curl": {
+    "version": "8.16.0",
+    "url": "https://curl.se/download/curl-8.16.0.tar.xz",
+    "archive": "curl-8.16.0.tar.xz",
+    "sha256": "40c8cddbcb6cc6251c03dea423a472a6cea4037be654ba5cf5dec6eb2d22ff1d",
+    "license": "curl"
+  }
+}

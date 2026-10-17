@@ -51,30 +51,15 @@ func (s *Store) ReadContentSource(ctx context.Context, ref content.Ref) (Content
 	if !ref.Valid() {
 		return out, errors.New("invalid content reference")
 	}
-	var managed bool
-	query, id := "", ref.ID
-	switch ref.Entity {
-	case "package":
-		query = "SELECT EXISTS(SELECT 1 FROM packages WHERE id=? AND kind='cask')"
-	case "release":
-		query = "SELECT EXISTS(SELECT 1 FROM releases r JOIN packages p ON p.id=r.package_id WHERE r.id=? AND p.kind='cask')"
-	case "screenshot":
-		query = "SELECT EXISTS(SELECT 1 FROM package_screenshots r JOIN packages p ON p.id=r.package_id WHERE r.id=? AND p.kind='cask')"
-	case "collection_item":
-		query = "SELECT EXISTS(SELECT 1 FROM packages WHERE id=? AND kind='cask')"
-		id = ref.SecondaryID
-	case "category":
-		query = "SELECT EXISTS(SELECT 1 FROM categories WHERE id=? AND applies_to<>'formula')"
-	case "feature":
-		query = "SELECT EXISTS(SELECT 1 FROM features f WHERE f.id=? AND (f.target_type<>'package' OR EXISTS(SELECT 1 FROM packages p WHERE p.id=f.package_id AND p.kind='cask')))"
-	case "article":
-		query = "SELECT EXISTS(SELECT 1 FROM articles a WHERE a.published_revision_id=? AND a.status='published')"
+	if err := s.CheckContentApp(ctx, ref); err != nil {
+		return out, err
 	}
-	if query != "" {
-		if err := s.DB.WithContext(ctx).Raw(query, id).Scan(&managed).Error; err != nil {
+	if ref.Entity == "article" {
+		var published bool
+		if err := s.DB.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM articles WHERE published_revision_id=? AND status='published')", ref.ID).Scan(&published).Error; err != nil {
 			return out, err
 		}
-		if !managed {
+		if !published {
 			return out, gorm.ErrRecordNotFound
 		}
 	}
@@ -214,15 +199,6 @@ func (s *Store) scheduleContentTranslation(ctx context.Context, ref content.Ref,
 	}
 	if err != nil {
 		return err
-	}
-	if ref.Entity == "package" {
-		var kind string
-		if err := s.DB.WithContext(ctx).Raw("SELECT kind FROM packages WHERE id=?", ref.ID).Scan(&kind).Error; err != nil {
-			return err
-		}
-		if kind != "cask" {
-			return nil
-		}
 	}
 	spec := content.Registry[ref.Entity]
 	where, args := textWhere(ref)

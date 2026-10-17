@@ -80,6 +80,20 @@ TOOLS = (
     tool(
         "package_refresh", "catalog:package:resync", "resyncPackage listAdminPackages", write=True
     ),
+    tool("update_feed_upsert", "catalog:package:edit", "upsertUpdateFeed", write=True),
+    tool("update_feed_disable", "catalog:package:edit", "disableUpdateFeed", write=True),
+    tool("link_apps_list", "catalog:package:edit", "listLinkPackages"),
+    tool("link_app_add", "catalog:package:edit", "addLinkPackage", write=True),
+    tool(
+        "link_app_update", "catalog:package:edit", "updateLinkPackage listAdminPackages", write=True
+    ),
+    tool(
+        "link_app_remove",
+        "catalog:package:edit",
+        "removeLinkPackage listAdminPackages",
+        write=True,
+        delete=True,
+    ),
     tool("tap_packages_list", "catalog:package:view", "listTapPackages"),
     tool("tap_package_add", "catalog:package:edit", "addTapPackage", write=True),
     tool(

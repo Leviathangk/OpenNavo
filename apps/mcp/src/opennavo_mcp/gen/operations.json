@@ -1,4 +1,25 @@
 {
+  "addLinkPackage": {
+    "body": {
+      "$ref": "#/components/schemas/LinkPackageAdd"
+    },
+    "method": "POST",
+    "model": "AddLinkPackageInput",
+    "parameters": {
+      "path": [],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/links/packages",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Add a link-only app"
+  },
   "addPackageScreenshot": {
     "body": {
       "$ref": "#/components/schemas/ScreenshotCreate"
@@ -337,6 +358,27 @@
       ]
     },
     "summary": "Delete synonym"
+  },
+  "disableUpdateFeed": {
+    "body": {
+      "$ref": "#/components/schemas/UpdateFeedKey"
+    },
+    "method": "POST",
+    "model": "DisableUpdateFeedInput",
+    "parameters": {
+      "path": [],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/update-feeds/disable",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Disable an update feed rule"
   },
   "fixTranslation": {
     "body": {
@@ -1081,6 +1123,27 @@
     },
     "summary": "Job runs"
   },
+  "listLinkPackages": {
+    "body": null,
+    "method": "GET",
+    "model": "ListLinkPackagesInput",
+    "parameters": {
+      "path": [],
+      "query": [
+        "q",
+        "current",
+        "size"
+      ]
+    },
+    "path": "/links/packages",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "List link-only apps"
+  },
   "listPackageScreenshots": {
     "body": null,
     "method": "GET",
@@ -1342,6 +1405,27 @@
       ]
     },
     "summary": "Publish collection"
+  },
+  "removeLinkPackage": {
+    "body": null,
+    "method": "DELETE",
+    "model": "RemoveLinkPackageInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/links/packages/{id}",
+    "policy": {
+      "deleteAction": "always",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Remove a link-only app"
   },
   "removeTapPackage": {
     "body": null,
@@ -2016,6 +2100,29 @@
     },
     "summary": "Handle feedback"
   },
+  "updateLinkPackage": {
+    "body": {
+      "$ref": "#/components/schemas/LinkPackageUpdate"
+    },
+    "method": "PATCH",
+    "model": "UpdateLinkPackageInput",
+    "parameters": {
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/links/packages/{id}",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Update a link-only app"
+  },
   "updatePackageMeta": {
     "body": {
       "$ref": "#/components/schemas/PackageMetaUpdate"
@@ -2231,6 +2338,27 @@
       ]
     },
     "summary": "Write or clear editorial release notes"
+  },
+  "upsertUpdateFeed": {
+    "body": {
+      "$ref": "#/components/schemas/UpdateFeedInput"
+    },
+    "method": "PUT",
+    "model": "UpsertUpdateFeedInput",
+    "parameters": {
+      "path": [],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/update-feeds",
+    "policy": {
+      "deleteAction": "never",
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "Create or replace an update feed rule"
   },
   "withdrawArticle": {
     "body": {

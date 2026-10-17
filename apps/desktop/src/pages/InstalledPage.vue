@@ -298,6 +298,11 @@ async function openDetail(token: string) {
   await router.push(`/package/cask/${token}`);
 }
 
+async function openAppStore(adamId: number) {
+  sheetId.value = null;
+  await router.push({ name: 'appstore', params: { id: String(adamId) } });
+}
+
 function uninstallFromSheet(app: LocalApp) {
   sheetId.value = null;
   void uninstall([app.id]);
@@ -523,6 +528,12 @@ async function refreshInstalled() {
       </div>
     </template>
 
-    <AppInfoSheet v-model:open="sheetOpen" :app="sheetApp" @uninstall="uninstallFromSheet" @detail="openDetail" />
+    <AppInfoSheet
+      v-model:open="sheetOpen"
+      :app="sheetApp"
+      @uninstall="uninstallFromSheet"
+      @detail="openDetail"
+      @app-store="openAppStore"
+    />
   </div>
 </template>

@@ -3,7 +3,11 @@ fn main() {
         use std::{path::PathBuf, process::Command};
         let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
         let mut objects = Vec::new();
-        for source in ["native/fan_bridge.m", "native/monitor_bridge.m"] {
+        for source in [
+            "native/fan_bridge.m",
+            "native/monitor_bridge.m",
+            "native/security_bridge.m",
+        ] {
             let object = out
                 .join(std::path::Path::new(source).file_stem().unwrap())
                 .with_extension("o");
@@ -48,7 +52,14 @@ fn main() {
         );
         println!("cargo:rustc-link-search=native={}", out.display());
         println!("cargo:rustc-link-lib=static=opennavo_fan_bridge");
-        for framework in ["Foundation", "AppKit", "Security", "ServiceManagement"] {
+        for framework in [
+            "Foundation",
+            "AppKit",
+            "Security",
+            "ServiceManagement",
+            "ApplicationServices",
+            "LocalAuthentication",
+        ] {
             println!("cargo:rustc-link-lib=framework={framework}");
         }
         println!("cargo:rerun-if-changed=native/fan_bridge.m");

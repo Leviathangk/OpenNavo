@@ -1,6 +1,6 @@
 # Third-party dependencies and distribution
 
-OpenNavo's own source is Apache-2.0. Third-party code, fonts, templates, tools, and external services retain their upstream licenses. The project [NOTICE](../../NOTICE) does not replace those licenses. The name and logo are separate from the software license.
+OpenNavo's own source is GNU GPL version 3 only (`GPL-3.0-only`); versions published at commit `5fa4056` and earlier remain available under Apache-2.0. [LICENSE](../../LICENSE) contains the unmodified GPLv3 text. [NOTICE](../../NOTICE) carries additional terms under GPLv3 sections 7(e) (no trademark grant) and 7(c) (distinguishing modified versions, including the name, icon, Bundle ID, updater public key and update URL). Third-party code, fonts, templates, tools, and external services retain their upstream licenses. The project NOTICE does not replace those licenses. In particular, the original soybean-admin template remains MIT; OpenNavo's modifications and the combined application are distributed under GPL-3.0-only.
 
 ## Inventory and evidence
 
@@ -43,14 +43,28 @@ Do not reformat upstream text files. When dependencies change, review the invent
 
 ## Artifact locations
 
-| Distribution | Notice source | Installed location |
-|---|---|---|
-| Server and ops images | `apps/server/third-party/` | `/usr/share/licenses/opennavo/` |
-| MCP image | `apps/mcp/third-party/` | `/usr/share/licenses/opennavo/` |
-| MCP wheel | `apps/mcp/third-party/` | `opennavo_mcp/third_party/` |
-| MCP source distribution | `apps/mcp/third-party/` | `third-party/` |
-| Desktop app | `apps/desktop/src-tauri/resources/third-party/` | Tauri bundled resources |
-| Web runtime image | `docs/legal/third-party/` | `/usr/share/licenses/opennavo/` |
+Source ports and standalone native helpers are registered in `native/manifest.json`
+under the `Native` ecosystem. The collector includes their original license texts,
+source-lock digests and integration boundaries in About and the desktop notice
+bundle. Native manifest entries with `products: ["server"]` (DuoUpdater and
+Installomator vendor metadata) instead ship in the server notice bundle.
+ClamAV's full release archive includes its Cargo vendor tree; the source
+bundle also includes all seven pinned static C dependencies and our build recipe.
+Keep this source archive in the same Release as the helper binaries. ClamAV is
+never linked into the desktop application. UnRAR is disabled; conservatively
+retaining its notice in the source inventory does not mean it is shipped as code.
+The M0 evidence workflow remains opt-in. Desktop CI and release packaging build
+and bundle the standalone helpers; release packaging also publishes the matching
+ClamAV source archive.
+
+| Distribution            | Notice source                                   | Installed location              |
+| ----------------------- | ----------------------------------------------- | ------------------------------- |
+| Server and ops images   | `apps/server/third-party/`                      | `/usr/share/licenses/opennavo/` |
+| MCP image               | `apps/mcp/third-party/`                         | `/usr/share/licenses/opennavo/` |
+| MCP wheel               | `apps/mcp/third-party/`                         | `opennavo_mcp/third_party/`     |
+| MCP source distribution | `apps/mcp/third-party/`                         | `third-party/`                  |
+| Desktop app             | `apps/desktop/src-tauri/resources/third-party/` | Tauri bundled resources         |
+| Web runtime image       | `docs/legal/third-party/`                       | `/usr/share/licenses/opennavo/` |
 
 Each bundle contains project `LICENSE`, project `NOTICE`, an inventory, and referenced upstream texts. Server/MCP bundles select their runtime graphs. Desktop notices conservatively include npm/Rust runtime candidates and the admin template; the web image retains the full inventory as a safe superset of bundled dependencies. Include the canonical notice directory alongside separately redistributed static admin files. A generated notice bundle is part of the build input, not an optional post-release attachment.
 

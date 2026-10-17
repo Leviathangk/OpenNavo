@@ -184,7 +184,7 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.Equal(t, true, forced["indexable"])
 	require.Equal(t, "Placeholder text is being written", forced["overrideReason"])
 	var queued int
-	require.NoError(t, st.DB.Raw("SELECT count(*) FROM job_outbox WHERE unique_key='cache:invalidate:seo-index:no-summary' AND payload::text LIKE '%c:pkg:c3:cask:no-summary:*%'").Scan(&queued).Error)
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM job_outbox WHERE unique_key='cache:invalidate:seo-index:no-summary' AND payload::text LIKE '%c:pkg:c4:cask:no-summary:*%'").Scan(&queued).Error)
 	require.Equal(t, 1, queued)
 	var changes []store.URLChange
 	require.NoError(t, st.DB.Raw("SELECT * FROM catalog_changes WHERE seq>?", changeCursor).Scan(&changes).Error)

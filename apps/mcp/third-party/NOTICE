@@ -1,7 +1,24 @@
 OpenNavo
 Copyright 2026 The OpenNavo Authors
 
-This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+OpenNavo's own source code is licensed under the GNU General Public License,
+version 3 only (SPDX-License-Identifier: GPL-3.0-only). See LICENSE for the
+unmodified license text and the additional terms below. Versions published at
+commit 5fa4056 and earlier remain available under Apache-2.0.
+
+Additional terms under GNU GPL version 3, section 7
+These terms supplement the GPL for material copyrighted by the OpenNavo Authors:
+
+- Section 7(e): No rights are granted under trademark law to use the OpenNavo
+  trade name, trademarks, service marks, name or logo.
+- Section 7(c): Modified versions conveyed to others must be clearly marked as
+  different from the original. For this purpose, use a different product name
+  and icon, and replace the application's Bundle ID, updater public key and
+  update URL with identifiers, keys and endpoints for the modified version.
+  Preserve accurate copyright and source attribution; attribution does not
+  imply that the modified version is an official OpenNavo release.
+
+These terms do not alter the licenses of third-party materials.
 It includes the following third-party materials, which keep their own licenses:
 
 - apps/admin is based on soybean-admin v2.2.0
@@ -25,5 +42,34 @@ It includes the following third-party materials, which keep their own licenses:
   Stats code is included. The license text is kept in
   docs/legal/third-party/licenses/79a58cb749dcc8b569c432f92ed37cf05527e505e4de4999199aed22b6a6cbf8.txt.
 
+- apps/desktop/native/store adapts the download/purchase core and private-framework
+  declarations from mas v7.0.0 (https://github.com/mas-cli/mas), Copyright (c) 2015
+  Andrew Naylor, Ross Goldberg, MIT License. The original license and source hash
+  are retained in LICENSE.mas and upstream.json in that directory.
+
+- apps/desktop/native/clamav builds ClamAV 1.5.4 and its static dependencies as
+  separate executables. ClamAV remains GPL-2.0-only with its OpenSSL exception;
+  no libclamav code is linked into OpenNavo. This does not change OpenNavo's
+  license. A release containing these executables must also carry the complete
+  corresponding source archive and build recipe in the same Release. Source
+  versions/hashes and all bundled upstream notices are recorded in
+  apps/desktop/native/clamav/sources.lock.json and docs/legal/native/manifest.json.
+
 The full list of third-party dependencies and their licenses is generated into
 apps/server/seeds/about.json (tooling/scripts/about-inventory.py) and shown on the About page.
+
+Startup detection includes Rust adaptations of KnockKnock by Objective-See, LLC,
+licensed under GPL-3.0-only, pinned to commit
+914f2c0c2d3f058f40b6d98ed303e8a1a6715eb3. Original copyright statements,
+license, source hashes, and modification notes are in
+apps/desktop/src-tauri/src/security/startup/UPSTREAM.md and adjacent files.
+
+Vendor update metadata and identity observations are adapted from DuoUpdater,
+Copyright (c) 2026 jizhi0v0, MIT License, revision
+e5bef206e8f93fd8037924c8d6bda3f529e4c8a4. Selected endpoint/identity data is
+also adapted from Installomator, Apache-2.0, revision
+805cd1b96d73c6efa581bbf9802b0496ecf3807f. Original notices and exact source
+records are retained in docs/legal/native/LICENSE.DuoUpdater,
+LICENSE.Installomator, duoupdater-upstream.json and installomator-upstream.json.
+The implementation is rewritten in Go and Rust; upstream shell/Swift recipes
+are never executed. These notices are included in the server distribution.

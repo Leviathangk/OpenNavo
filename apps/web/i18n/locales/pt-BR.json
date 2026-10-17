@@ -75,7 +75,8 @@
   },
   "get": {
     "label": "Obter {name}",
-    "menuLabel": "Como obter {name}"
+    "menuLabel": "Como obter {name}",
+    "downloadLabel": "Baixar {name}"
   },
   "openInApp": {
     "title": "Ainda não instalou o OpenNavo?",
@@ -160,6 +161,34 @@
     }
   },
   "package": {
+    "link": {
+      "chip": "Download pelo site",
+      "chipGithub": "GitHub",
+      "meta": "Os downloads vêm de {source} · O OpenNavo não hospeda instaladores",
+      "notHosted": "O OpenNavo não hospeda instaladores; os downloads vêm direto do desenvolvedor.",
+      "downloadTitle": "Download",
+      "officialDownload": "Baixar pelo site",
+      "goDownload": "Baixar",
+      "release": "{version} · lançada {time}",
+      "download": "Baixar",
+      "allFiles": "Todos os arquivos no GitHub",
+      "githubReleases": "Baixar pelo GitHub",
+      "teamId": "Assinatura do desenvolvedor",
+      "pricingLabel": "Preço",
+      "adopted": "O Homebrew agora inclui este app, então ele instala com um clique",
+      "arch": {
+        "arm64": "Apple Silicon",
+        "x86_64": "Intel",
+        "universal": "Universal"
+      },
+      "pricing": {
+        "free": "Grátis",
+        "paid": "Pago",
+        "freemium": "Grátis com recursos pagos",
+        "subscription": "Assinatura",
+        "open_source": "Grátis e de código aberto"
+      }
+    },
     "arch": {
       "arm64": "Apple Silicon",
       "x86_64": "Intel"
@@ -334,6 +363,8 @@
       "titleUnavailable": "{name} para Mac · OpenNavo",
       "description": "{summary}. Veja como instalar o {name} no seu Mac, os requisitos de sistema e o histórico de versões.",
       "descriptionNoSummary": "Veja como instalar o {name} no seu Mac, os requisitos de sistema e o histórico de versões.",
+      "descriptionLink": "{summary}. Veja onde baixar o {name} no site oficial e o histórico de versões.",
+      "descriptionLinkNoSummary": "Veja onde baixar o {name} no site oficial e o histórico de versões.",
       "descriptionUnavailable": "{summary}. O Homebrew desativou o {name}; veja o histórico de versões e apps semelhantes.",
       "descriptionUnavailableNoSummary": "O Homebrew desativou o {name}; veja o histórico de versões e apps semelhantes.",
       "versionsTitle": "Novidades de {name} · OpenNavo",

@@ -1,0 +1,9 @@
+{
+  "project": "Sparkle",
+  "repository": "https://github.com/sparkle-project/Sparkle",
+  "revision": "b41aa91142bb752324838a3c4e0cac2e5f942ff4",
+  "license": "MIT",
+  "paths": ["Sparkle/SUStandardVersionComparator.m"],
+  "changes": "Rust port of the standard version comparison algorithm; no Objective-See code",
+  "licensePath": "apps/desktop/src-tauri/src/updater/LICENSE.sparkle"
+}

@@ -12,7 +12,12 @@ pub const WIDTH: f64 = 330.;
 pub const HEIGHT: f64 = 200.;
 // Match frontend updates.actionable; legacy cached Formula entries must not be counted or batch-updated.
 fn actionable(item: &OutdatedItem) -> bool {
-    item.kind == Kind::Cask && !item.pinned && !item.ignored
+    item.kind != Kind::Formula
+        && !item.pinned
+        && !item.ignored
+        && !item.relaunch_pending
+        && item.task_target().is_ok()
+        && item.skipped_version.as_deref() != Some(item.current_version.as_str())
 }
 fn error(error: impl std::fmt::Display) -> AppError {
     AppError::new("E_UNKNOWN", "tray").with_detail(error.to_string())
@@ -156,10 +161,7 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), AppError> {
                             .unwrap_or_default()
                             .into_iter()
                             .filter(actionable)
-                            .map(|i| TaskTarget {
-                                kind: i.kind.into(),
-                                token: i.token,
-                            })
+                            .filter_map(|i| i.task_target().ok())
                             .collect();
                         crate::deeplink::show_main(&app);
                         use tauri_specta::Event;
@@ -170,11 +172,7 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), AppError> {
                             log::warn!("Failed to send tray update request");
                         }
                     } else if let Err(error) = core
-                        .check_updates(
-                            core.current_settings()
-                                .map(|s| s.run_brew_update_on_check)
-                                .unwrap_or(false),
-                        )
+                        .check_update_sources(None, TaskTrigger::Manual, None)
                         .await
                     {
                         log::info!("Tray check temporarily unavailable: {}", error.code);

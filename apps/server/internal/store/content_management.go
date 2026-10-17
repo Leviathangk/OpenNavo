@@ -83,7 +83,7 @@ func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale st
 	if err := ValidateContentFields(ref.Entity, fields); err != nil {
 		return err
 	}
-	if err := s.CheckContentCask(ctx, ref); err != nil {
+	if err := s.CheckContentApp(ctx, ref); err != nil {
 		return err
 	}
 	spec := content.Registry[ref.Entity]
@@ -241,7 +241,7 @@ func (s *Store) ContentView(ctx context.Context, ref content.Ref) (map[string]an
 	if !ref.Valid() {
 		return nil, domain.Validation()
 	}
-	if err := s.CheckContentCask(ctx, ref); err != nil {
+	if err := s.CheckContentApp(ctx, ref); err != nil {
 		return nil, err
 	}
 	state, err := s.HistorySnapshot(ctx, ref)
@@ -320,24 +320,24 @@ func (s *Store) ContentView(ctx context.Context, ref content.Ref) (map[string]an
 	return map[string]any{"ref": ref, "label": label, "sourceLocale": source, "sourceHash": sourceHash, "i18n": locales, "webUrl": nil, "updatedAt": updated}, nil
 }
 
-// Generic translation endpoints also enforce the Cask boundary; entity types cannot bypass package restrictions.
-func (s *Store) CheckContentCask(ctx context.Context, ref content.Ref) error {
+// Generic translation endpoints also enforce the application boundary (cask/link); entity types cannot bypass package restrictions.
+func (s *Store) CheckContentApp(ctx context.Context, ref content.Ref) error {
 	query := ""
 	id := ref.ID
 	switch ref.Entity {
 	case "package":
-		query = "SELECT count(*) FROM packages WHERE id=? AND kind='cask'"
+		query = "SELECT count(*) FROM packages WHERE id=? AND kind IN ('cask','link')"
 	case "release":
-		query = "SELECT count(*) FROM releases r JOIN packages p ON p.id=r.package_id WHERE r.id=? AND p.kind='cask'"
+		query = "SELECT count(*) FROM releases r JOIN packages p ON p.id=r.package_id WHERE r.id=? AND p.kind IN ('cask','link')"
 	case "screenshot":
-		query = "SELECT count(*) FROM package_screenshots r JOIN packages p ON p.id=r.package_id WHERE r.id=? AND p.kind='cask'"
+		query = "SELECT count(*) FROM package_screenshots r JOIN packages p ON p.id=r.package_id WHERE r.id=? AND p.kind IN ('cask','link')"
 	case "category":
 		query = "SELECT count(*) FROM categories WHERE id=? AND applies_to<>'formula'"
 	case "feature":
-		query = "SELECT count(*) FROM features f WHERE id=? AND (target_type<>'package' OR EXISTS(SELECT 1 FROM packages p WHERE p.id=f.package_id AND p.kind='cask'))"
+		query = "SELECT count(*) FROM features f WHERE id=? AND (target_type<>'package' OR EXISTS(SELECT 1 FROM packages p WHERE p.id=f.package_id AND p.kind IN ('cask','link')))"
 	case "collection_item":
 		id = ref.SecondaryID
-		query = "SELECT count(*) FROM packages WHERE id=? AND kind='cask'"
+		query = "SELECT count(*) FROM packages WHERE id=? AND kind IN ('cask','link')"
 	default:
 		return nil
 	}

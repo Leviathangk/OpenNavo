@@ -1,0 +1,19 @@
+{
+  "project": "DuoUpdater vendor recipes and identity observations",
+  "repository": "https://github.com/jizhi0v0/duo-updater",
+  "revision": "e5bef206e8f93fd8037924c8d6bda3f529e4c8a4",
+  "license": "MIT",
+  "paths": [
+    "verify/identities.json",
+    "DuoUpdaterCore/Sources/DuoUpdaterCore/Recipes",
+    "DuoUpdaterCore/Sources/DuoUpdaterCore/Sources/VendorProbeRecipe.swift"
+  ],
+  "sourceIdentitySHA256": "a0d2798a26fda65536fe4eafd4fa84d1f1fb9c5fbba7b4da01d64d6d57d549a9",
+  "sourceEntries": 280,
+  "importedIdentities": 254,
+  "changes": "Declarative Go/Rust rewrite; retain only known bundle/team/architecture identities. Exclude missing identities and signed/ephemeral URLs. Selected 20 vendor rules; do not execute upstream Swift or shell.",
+  "generatedFiles": {
+    "apps/server/internal/service/updatefeeds/data/identities.json": "813f5db861ef603dad9b475130a13625177d93608d1769b4a978a199e5938c4c",
+    "apps/server/internal/service/updatefeeds/data/vendor-rules.json": "bf8750792d076ae48cadf1b5234305e8b2e06ba6214e4e0a452281b0fe798b12"
+  }
+}

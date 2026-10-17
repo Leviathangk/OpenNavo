@@ -3,12 +3,14 @@ package store
 import (
 	"context"
 
+	"github.com/opennavo/opennavo/server/internal/domain"
+
 	"gorm.io/gorm"
 )
 
 // Download probing reads catalog information only and does not depend on retired content enrichment.
 func (s *Store) DownloadSizePackage(ctx context.Context, id int64) (PublicPackage, error) {
-	rows, err := s.publicRows(ctx, "en-US", "p.id=? AND p.removed_at IS NULL", "", id)
+	rows, err := s.publicRows(domain.WithLinks(ctx, false), "en-US", "p.kind='cask' AND p.id=? AND p.removed_at IS NULL", "", id)
 	if err != nil {
 		return PublicPackage{}, err
 	}

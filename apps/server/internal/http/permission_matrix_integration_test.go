@@ -62,6 +62,7 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	// B3 extends the independent expectation list; retain all original route and five-role assertions.
 	groups["catalog:package:view"] += " listAdminVersions listAdminCatalogChanges getPackageChangelogSettings getPackageFacts listTapPackages"
 	groups["catalog:package:edit"] += " updatePackageText updatePackageChangelogSettings setPackagePrice setPackageMacosSupport setPackageAlternatives addTapPackage removeTapPackage"
+	groups["catalog:package:edit"] += " listLinkPackages addLinkPackage updateLinkPackage removeLinkPackage upsertUpdateFeed disableUpdateFeed"
 	groups["changelog:release:edit"] += " upsertReleaseNotes"
 	groups["translation:review"] += " listTranslations getTranslationStatus retranslateContent fixTranslation"
 	groups["content:glossary:edit"] = "listGlossary upsertGlossaryTerm deleteGlossaryTerm"

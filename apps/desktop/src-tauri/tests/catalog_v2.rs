@@ -90,6 +90,7 @@ fn v2_japanese_offline_search_text_only_delta_and_atomic_failure() {
     let query = SearchQuery {
         q: "日本語".into(),
         kind: None,
+        include_links: false,
         category: None,
         include_disabled: false,
         limit: 20,
@@ -103,6 +104,7 @@ fn v2_japanese_offline_search_text_only_delta_and_atomic_failure() {
     );
     let query_name = ListQuery {
         kind: None,
+        include_links: false,
         category: None,
         sort: ListSort::Name,
         include_fonts: false,
@@ -236,7 +238,7 @@ fn v1_sqlite_migration_preserves_history_queue_and_cached_texts() {
         .unwrap();
     drop(connection);
     let db = Database::open(&path).unwrap();
-    assert_eq!(db.meta("schema_version").unwrap().as_deref(), Some("4"));
+    assert_eq!(db.meta("schema_version").unwrap().as_deref(), Some("7"));
     assert_eq!(db.tasks().unwrap().len(), 2);
     assert_eq!(db.tasks().unwrap()[0].id, "task");
     assert_eq!(db.tasks().unwrap()[1].state, TaskState::Queued);
@@ -254,6 +256,7 @@ fn v1_sqlite_migration_preserves_history_queue_and_cached_texts() {
     let query = SearchQuery {
         q: "日本語".into(),
         kind: None,
+        include_links: false,
         category: None,
         include_disabled: false,
         limit: 20,

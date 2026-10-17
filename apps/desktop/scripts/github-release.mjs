@@ -30,6 +30,8 @@ export function prepareAssets(dir, repository, version) {
     return row;
   });
   const names = artifacts.flatMap(row => (row.target === 'dmg-universal' ? [row.file] : [row.file, `${row.file}.sig`]));
+  // GPL standalone engine corresponding source must be published with every binary release.
+  names.push('clamav-1.5.4-corresponding-source.tar.gz');
   const assets = names.map(name => ({
     name,
     path: join(dir, name),

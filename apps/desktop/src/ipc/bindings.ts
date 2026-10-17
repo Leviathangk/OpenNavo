@@ -6,6 +6,53 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	securityOverview: () => typedError<SecurityOverview, AppError>(__TAURI_INVOKE("security_overview")),
+	postureCheck: () => typedError<PostureCheck[], AppError>(__TAURI_INVOKE("posture_check")),
+	avEngineStatus: () => typedError<AvEngineStatus, AppError>(__TAURI_INVOKE("av_engine_status")),
+	avDbUpdate: () => typedError<string, AppError>(__TAURI_INVOKE("av_db_update")),
+	avScanStart: (kind: AvScanKind, paths: string[] | null) => typedError<AvScanStarted, AppError>(__TAURI_INVOKE("av_scan_start", { kind, paths })),
+	avScanCancel: (scanId: string) => typedError<null, AppError>(__TAURI_INVOKE("av_scan_cancel", { scanId })),
+	avScanGet: (scanId: string) => typedError<AvScanResult, AppError>(__TAURI_INVOKE("av_scan_get", { scanId })),
+	avFindingsAct: (scanId: string, findingIds: string[], action: FindingAction) => typedError<ActOutcome, AppError>(__TAURI_INVOKE("av_findings_act", { scanId, findingIds, action })),
+	quarantineList: () => typedError<QuarantineEntry[], AppError>(__TAURI_INVOKE("quarantine_list")),
+	quarantineRestore: (ids: string[]) => typedError<ActOutcome, AppError>(__TAURI_INVOKE("quarantine_restore", { ids })),
+	quarantineDelete: (ids: string[]) => typedError<ActOutcome, AppError>(__TAURI_INVOKE("quarantine_delete", { ids })),
+	startupScan: () => typedError<StartupSnapshot_Serialize, AppError>(__TAURI_INVOKE("startup_scan")),
+	/**  The last startup scan as saved: shown at once while `startup_scan` runs. */
+	startupCached: () => typedError<{
+	/**  Category-local Cron recovery/read error. Older snapshots omit it. */
+	cronError?: string | null,
+	scannedAt: number,
+	items: StartupItem[],
+	missing: StartupCategory[],
+	btmFormat: BtmFormat | null,
+} | null, AppError>(__TAURI_INVOKE("startup_cached")),
+	/**  Opens an app at login (the user's login items list). */
+	startupLoginAdd: (path: string) => typedError<StartupItem, AppError>(__TAURI_INVOKE("startup_login_add", { path })),
+	startupItemAct: (ids: string[], action: StartupItemAction) => typedError<ActOutcome, AppError>(__TAURI_INVOKE("startup_item_act", { ids, action })),
+	protectionEvents: (limit: number) => typedError<ProtectionEvent[], AppError>(__TAURI_INVOKE("protection_events", { limit })),
+	downloadVerify: (path: string, token: string | null) => typedError<DownloadVerdict, AppError>(__TAURI_INVOKE("download_verify", { path, token })),
+	downloadAct: (path: string, action: DownloadAction) => typedError<null, AppError>(__TAURI_INVOKE("download_act", { path, action })),
+	avScheduleStatus: () => typedError<AvScheduleStatus, AppError>(__TAURI_INVOKE("av_schedule_status")),
+	installScanGet: (taskId: string) => typedError<{
+	taskId: string,
+	state: InstallScanState,
+	filesScanned: number,
+	avSkipped: AvSkipReason | null,
+	threats: string[],
+	checkedAt: number,
+} | null, AppError>(__TAURI_INVOKE("install_scan_get", { taskId })),
+	appSignatureCheck: () => typedError<AppSignatureReport, AppError>(__TAURI_INVOKE("app_signature_check")),
+	appSignatureGet: () => typedError<{
+	checkedAt: number,
+	apps: AppSignatureEntry[],
+} | null, AppError>(__TAURI_INVOKE("app_signature_get")),
+	pasteProtectionStatus: () => typedError<PasteProtectionStatus, AppError>(__TAURI_INVOKE("paste_protection_status")),
+	pasteProtectionRequestAccess: () => typedError<PasteProtectionStatus, AppError>(__TAURI_INVOKE("paste_protection_request_access")),
+	pasteProtectionAct: (id: string, action: PasteAction) => typedError<null, AppError>(__TAURI_INVOKE("paste_protection_act", { id, action })),
+	virusTotalStatus: () => typedError<VirusTotalStatus, AppError>(__TAURI_INVOKE("virus_total_status")),
+	virusTotalKeySet: (key: string | null) => typedError<VirusTotalStatus, AppError>(__TAURI_INVOKE("virus_total_key_set", { key })),
+	virusTotalLookup: (sha256: string) => typedError<VirusTotalVerdict, AppError>(__TAURI_INVOKE("virus_total_lookup", { sha256 })),
 	monitorSubscribe: (view: MonitorView, modules: MonitorModule[]) => typedError<MonitorSnapshot, AppError>(__TAURI_INVOKE("monitor_subscribe", { view, modules })),
 	monitorUnsubscribe: (view: MonitorView) => typedError<null, AppError>(__TAURI_INVOKE("monitor_unsubscribe", { view })),
 	/**  Shared in-memory one-hour trend, oldest first. */
@@ -45,12 +92,22 @@ export const commands = {
 	uninstallRestore: (taskId: string) => typedError<RestoreResult, AppError>(__TAURI_INVOKE("uninstall_restore", { taskId })),
 	uninstallPurge: (taskId: string) => typedError<number, AppError>(__TAURI_INVOKE("uninstall_purge", { taskId })),
 	appInfo: () => typedError<AppInfo, AppError>(__TAURI_INVOKE("app_info")),
+	masStatus: () => typedError<MasStatus, AppError>(__TAURI_INVOKE("mas_status")),
+	masSearch: (term: string, limit: number) => typedError<MasApp[], AppError>(__TAURI_INVOKE("mas_search", { term, limit })),
+	masLookup: (adamIds: number[]) => typedError<MasApp[], AppError>(__TAURI_INVOKE("mas_lookup", { adamIds })),
+	masLookupBundles: (bundleIds: string[]) => typedError<Partial<Record<string, MasApp>>, AppError>(__TAURI_INVOKE("mas_lookup_bundles", { bundleIds })),
+	masInstalled: () => typedError<MasInstalled[], AppError>(__TAURI_INVOKE("mas_installed")),
+	masUpdates: () => typedError<MasUpdate[], AppError>(__TAURI_INVOKE("mas_updates")),
+	masOpenStore: (adamId: number) => typedError<null, AppError>(__TAURI_INVOKE("mas_open_store", { adamId })),
 	envDetect: () => typedError<EnvInfo, AppError>(__TAURI_INVOKE("env_detect")),
+	linkOpen: (token: string, target: LinkOpenTarget) => typedError<null, AppError>(__TAURI_INVOKE("link_open", { token, target })),
 	catalogStatus: () => typedError<CatalogStatus, AppError>(__TAURI_INVOKE("catalog_status")),
 	catalogSync: (force: boolean) => typedError<SyncResult, AppError>(__TAURI_INVOKE("catalog_sync", { force })),
 	catalogSearch: (query: SearchQuery) => typedError<Page<SearchHit_Serialize>, AppError>(__TAURI_INVOKE("catalog_search", { query })),
 	catalogList: (query: ListQuery) => typedError<Page<CatalogItem_Serialize>, AppError>(__TAURI_INVOKE("catalog_list", { query })),
 	catalogGet: (kind: Kind, token: string) => typedError<{
+	bundleIds?: string[] | null,
+	link?: LinkInfo | null,
 	sourceLocale: Locale,
 	kind: Kind,
 	token: string,
@@ -92,7 +149,15 @@ export const commands = {
 	libraryStorage: () => typedError<StorageSummary, AppError>(__TAURI_INVOKE("library_storage")),
 	updatesList: () => typedError<OutdatedItem[], AppError>(__TAURI_INVOKE("updates_list")),
 	updatesStatus: () => typedError<UpdatesStatus, AppError>(__TAURI_INVOKE("updates_status")),
-	updatesCheck: (runBrewUpdate: boolean) => typedError<OutdatedItem[], AppError>(__TAURI_INVOKE("updates_check", { runBrewUpdate })),
+	updatesCheck: (sources: UpdateSource[] | null) => typedError<OutdatedItem[], AppError>(__TAURI_INVOKE("updates_check", { sources })),
+	updateSkip: (appKey: string, version: string | null) => typedError<null, AppError>(__TAURI_INVOKE("update_skip", { appKey, version })),
+	updateIgnore: (appKey: string, ignored: boolean) => typedError<null, AppError>(__TAURI_INVOKE("update_ignore", { appKey, ignored })),
+	updateSetChannel: (appKey: string, channel: UpdateChannel) => typedError<null, AppError>(__TAURI_INVOKE("update_set_channel", { appKey, channel })),
+	/**  Queues a rollback of a recorded update and returns the task id. */
+	updateRollback: (historyId: string) => typedError<string, AppError>(__TAURI_INVOKE("update_rollback", { historyId })),
+	/**  The history ids among `history_ids` whose update can be rolled back now. */
+	updateRollbackTargets: (historyIds: string[]) => typedError<string[], AppError>(__TAURI_INVOKE("update_rollback_targets", { historyIds })),
+	appRelaunch: (appId: string) => typedError<null, AppError>(__TAURI_INVOKE("app_relaunch", { appId })),
 	updatesIgnore: (target: TaskTarget, version: string | null, until: number | null) => typedError<null, AppError>(__TAURI_INVOKE("updates_ignore", { target, version, until })),
 	updatesUnignore: (target: TaskTarget) => typedError<null, AppError>(__TAURI_INVOKE("updates_unignore", { target })),
 	settingsGet: () => typedError<Settings, AppError>(__TAURI_INVOKE("settings_get")),
@@ -136,19 +201,30 @@ export const commands = {
 
 /** Events */
 export const events = {
+	appSignaturesChanged: makeEvent<AppSignaturesChangedEvent>("app-signatures:changed"),
 	appQuitRequested: makeEvent<QuitEvent>("app:quit-requested"),
+	appstoreChanged: makeEvent<AppStoreEvent>("appstore:changed"),
+	avFinished: makeEvent<AvFinishedEvent>("av:finished"),
+	avProgress: makeEvent<AvProgressEvent>("av:progress"),
+	avSchedule: makeEvent<AvScheduleRunEvent>("av:schedule"),
 	catalogSynced: makeEvent<CatalogSynced>("catalog:synced"),
 	cleanupChanged: makeEvent<CleanupChangedEvent>("cleanup:changed"),
 	cleanupScanProgress: makeEvent<CleanupScanEvent>("cleanup:scan-progress"),
 	deeplinkReceived: makeEvent<DeeplinkReceived>("deeplink:received"),
+	downloadDetected: makeEvent<DownloadDetectedEvent>("download:detected"),
+	downloadVerified: makeEvent<DownloadVerifiedEvent>("download:verified"),
 	envChanged: makeEvent<EnvChanged>("env:changed"),
 	fanChanged: makeEvent<FanChanged>("fan:changed"),
+	installScanned: makeEvent<InstallScannedEvent>("install:scanned"),
 	libraryChanged: makeEvent<LibraryEvent>("library:changed"),
 	localAppsChanged: makeEvent<LocalAppsEvent>("local-apps:changed"),
 	localeChanged: makeEvent<LocaleEvent>("locale:changed"),
 	monitorPopover: makeEvent<MonitorPopover>("monitor:popover"),
 	monitorSample: makeEvent<MonitorSampleEvent>("monitor:sample"),
+	pasteBlocked: makeEvent<PasteBlockedEvent>("paste:blocked"),
 	permissionsChanged: makeEvent<PermissionsChanged>("permissions:changed"),
+	securityChanged: makeEvent<SecurityChangedEvent>("security:changed"),
+	startupAdded: makeEvent<StartupAddedEvent>("startup:added"),
 	taskLog: makeEvent<TaskLog>("task:log"),
 	taskUpdated: makeEvent<TaskUpdated>("task:updated"),
 	uninstallScanProgress: makeEvent<UninstallScanEvent>("uninstall:scan-progress"),
@@ -157,6 +233,17 @@ export const events = {
 };
 
 /* Types */
+export type ActFailure = {
+	id: string,
+	code: string,
+};
+
+export type ActOutcome = {
+	done: string[],
+	failed: ActFailure[],
+	restorable: boolean,
+};
+
 /**  Error type for all commands (06 §5.1): `code` is a 06 §5.4 client error code used to select UI copy. */
 export type AppError = {
 	code: string,
@@ -190,7 +277,140 @@ export type AppPlanBlockedReason = "system" | "self" | "managed" | "app_manageme
 
 export type AppPlanRemoval = "brew" | "trash" | "blocked";
 
+export type AppSignatureEntry = {
+	path: string,
+	name: string,
+	bundleId: string | null,
+	signature: SignatureInfo | null,
+	previousTeamId: string | null,
+	issues: AppSignatureIssue[],
+	changed: boolean,
+	errorCode: string | null,
+};
+
+export type AppSignatureIssue = "modified" | "invalid" | "unsigned" | "adhoc" | "not_notarized" | "team_changed" | "unreadable";
+
+export type AppSignatureReport = {
+	checkedAt: number,
+	apps: AppSignatureEntry[],
+};
+
+export type AppSignaturesChanged = {
+	checkedAt: number,
+	apps: AppSignatureEntry[],
+};
+
+export type AppSignaturesChangedEvent = AppSignaturesChanged;
+
 export type AppSource = "homebrew" | "app_store" | "direct" | "pkg";
+
+export type AppStoreChange = {
+	reason: AppStoreChangeReason,
+};
+
+export type AppStoreChangeReason = "installed" | "updates" | "region";
+
+export type AppStoreEvent = AppStoreChange;
+
+export type AvDatabaseStatus = {
+	daily: number | null,
+	main: number | null,
+	bytecode: number | null,
+	updatedAt: number | null,
+	bytes: number,
+};
+
+export type AvEngineError = {
+	code: string,
+	at: number,
+};
+
+export type AvEngineStatus = {
+	version: string,
+	running: boolean,
+	residentBytes: number | null,
+	updating: boolean,
+	db: AvDatabaseStatus | null,
+	lastError: AvEngineError | null,
+};
+
+export type AvFinding = {
+	id: string,
+	path: string,
+	signature: string,
+	sizeBytes: number,
+	sha256: string,
+	ownerApp: FindingOwner | null,
+	requiresAdmin: boolean,
+	status: FindingStatus,
+};
+
+export type AvFinishedEvent = AvScanResult;
+
+export type AvProgress = {
+	scanId: string,
+	filesScanned: number,
+	bytesScanned: number,
+	currentPath: string,
+	findings: number,
+};
+
+export type AvProgressEvent = AvProgress;
+
+export type AvScanKind = "quick" | "full" | "custom";
+
+export type AvScanResult = {
+	scanId: string,
+	kind: AvScanKind,
+	state: AvScanState,
+	errorCode: string | null,
+	startedAt: number,
+	finishedAt: number | null,
+	filesScanned: number,
+	bytesScanned: number,
+	skipped: AvSkipped,
+	deniedRoots: string[],
+	findings: AvFinding[],
+};
+
+export type AvScanStarted = {
+	scanId: string,
+};
+
+export type AvScanState = "running" | "done" | "canceled" | "failed";
+
+export type AvScanSummary = {
+	scanId: string,
+	kind: AvScanKind,
+	state: AvScanState,
+	finishedAt: number | null,
+	filesScanned: number,
+	threats: number,
+};
+
+export type AvSchedule = "off" | "daily" | "weekly";
+
+export type AvScheduleRunEvent = ScheduledScanRun;
+
+export type AvScheduleStatus = {
+	nextRunAt: number | null,
+	lastRun: ScheduledScanRun | null,
+};
+
+export type AvSkipReason = "no_database" | "no_consent" | "excluded" | "too_large" | "unreadable";
+
+export type AvSkipped = {
+	dataless: number,
+	tooLarge: number,
+	unreadable: number,
+	excluded: number,
+};
+
+export type AvVerdict = {
+	clean: boolean,
+	signature: string | null,
+	scannedAt: number,
+};
 
 export type BatterySample = {
 	percent: number,
@@ -231,11 +451,15 @@ export type BrewfilePreview = {
 	unsupported: number,
 };
 
+export type BtmFormat = "v16" | "v18" | "unknown";
+
 /**  Date strings retain the HTTP catalog format; local IPC times use Unix milliseconds. */
 export type CatalogItem = CatalogItem_Serialize | CatalogItem_Deserialize;
 
 /**  Date strings retain the HTTP catalog format; local IPC times use Unix milliseconds. */
 export type CatalogItem_Deserialize = {
+	bundleIds?: string[] | null,
+	link?: LinkInfo | null,
 	sourceLocale?: Locale,
 	kind: Kind,
 	token: string,
@@ -274,6 +498,8 @@ export type CatalogItem_Deserialize = {
 
 /**  Date strings retain the HTTP catalog format; local IPC times use Unix milliseconds. */
 export type CatalogItem_Serialize = {
+	bundleIds?: string[] | null,
+	link?: LinkInfo | null,
 	sourceLocale: Locale,
 	kind: Kind,
 	token: string,
@@ -341,7 +567,7 @@ export type CategoryReport = {
 	skipped: SkippedGroup[],
 };
 
-export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_caches" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" | "trash" | "device_backups" | 
+export type CleanupCategory = "app_caches" | "logs" | "browser_caches" | "dev_caches" | "homebrew" | "temp" | "leftovers" | "installers" | "project_artifacts" | "trash" | "device_backups" |
 /**  Docker's own reclaimable space, removed only by Docker's prune commands. */
 "docker" | "large_files";
 
@@ -387,13 +613,13 @@ export type CleanupProgress = {
 	foundBytes: number,
 };
 
-export type CleanupReason = "cache_dir" | "log_file" | "browser_cache" | "tool_cache" | 
+export type CleanupReason = "cache_dir" | "log_file" | "browser_cache" | "tool_cache" |
 /**  Rebuildable, but the next build downloads it again (Gradle, Maven, Go modules, browsers for tests). */
-"tool_download_cache" | "device_support" | "device_support_latest" | "tool_command" | "brew_cleanup" | "temp_file" | "orphan" | "orphan_service" | "installer" | "installer_installed" | "build_artifact" | "trash" | "device_backup" | 
+"tool_download_cache" | "device_support" | "device_support_latest" | "tool_command" | "brew_cleanup" | "temp_file" | "orphan" | "orphan_service" | "installer" | "installer_installed" | "build_artifact" | "trash" | "device_backup" |
 /**  An Xcode archive: the shipped build and the dSYMs needed to symbolicate its crash logs. */
-"xcode_archive" | 
+"xcode_archive" |
 /**  Images no container uses; pulled or built again when needed. */
-"docker_images" | "docker_build_cache" | 
+"docker_images" | "docker_build_cache" |
 /**  Stopped containers; their own changes are lost, volumes stay. */
 "docker_containers" | "large_file";
 
@@ -487,6 +713,31 @@ export type DoctorWarning = {
 	body: string,
 };
 
+export type DownloadAction = "open" | "reveal";
+
+export type DownloadDetected = {
+	token: string,
+	path: string,
+};
+
+export type DownloadDetectedEvent = DownloadDetected;
+
+export type DownloadFormat = "dmg" | "zip" | "pkg" | "app" | "other";
+
+export type DownloadVerdict = {
+	path: string,
+	sha256: string,
+	size: number,
+	format: DownloadFormat,
+	signature: SignatureInfo,
+	teamMatches: boolean | null,
+	av: AvVerdict | null,
+	quarantined: boolean,
+	avSkipped?: AvSkipReason | null,
+};
+
+export type DownloadVerifiedEvent = DownloadVerdict;
+
 export type EnvChanged = EnvInfo;
 
 export type EnvInfo = {
@@ -531,6 +782,15 @@ export type FanState = {
 	mode: FanMode,
 };
 
+export type FindingAction = "quarantine" | "delete" | "trust" | "reveal";
+
+export type FindingOwner = {
+	name: string,
+	path: string,
+};
+
+export type FindingStatus = "open" | "quarantined" | "deleted" | "trusted";
+
 export type Footprint = {
 	appBytes: number,
 	dataBytes: number,
@@ -550,6 +810,14 @@ export type FootprintReport = {
 	progress: FootprintProgress | null,
 	values: { [key in string]: Footprint },
 	errors: { [key in string]: AppError },
+};
+
+export type GithubRelease = {
+	tag: string,
+	version: string,
+	publishedAt: string,
+	url: string,
+	assets: ReleaseAsset[],
 };
 
 export type GpuSample = {
@@ -600,6 +868,19 @@ export type InstallPreflight = {
 
 export type InstallPreflightStatus = "ready" | "managed" | "conflict" | "blocked";
 
+export type InstallScanResult = {
+	taskId: string,
+	state: InstallScanState,
+	filesScanned: number,
+	avSkipped: AvSkipReason | null,
+	threats: string[],
+	checkedAt: number,
+};
+
+export type InstallScanState = "disabled" | "skipped" | "clean" | "threat";
+
+export type InstallScannedEvent = InstallScanResult;
+
 export type InstalledItem = {
 	kind: Kind,
 	token: string,
@@ -622,7 +903,7 @@ export type InstalledStatus = "up_to_date" | "outdated" | "pinned" | "self_updat
 
 export type ItemCategory = "app" | "app_data" | "caches" | "preferences" | "logs" | "background" | "cli" | "plugins" | "receipts";
 
-export type Kind = "cask" | "formula";
+export type Kind = "cask" | "formula" | "link";
 
 export type LibraryChangeReason = "task" | "refresh" | "startup";
 
@@ -632,8 +913,30 @@ export type LibraryChanged = {
 
 export type LibraryEvent = LibraryChanged;
 
+export type LinkDestination = "download" | "homepage" | "github";
+
+export type LinkGithub = {
+	repo: string,
+	latest: GithubRelease | null,
+};
+
+export type LinkInfo = {
+	homepage: string | null,
+	downloadUrl: string | null,
+	github: LinkGithub | null,
+	teamId: string | null,
+	pricing: LinkPricing,
+	notes: LocalizedText | null,
+	adoptedByCask: string | null,
+};
+
+export type LinkOpenTarget = LinkDestination | { asset: string };
+
+export type LinkPricing = "free" | "paid" | "freemium" | "subscription" | "open_source";
+
 export type ListQuery = {
 	kind: Kind | null,
+	includeLinks?: boolean,
 	category: string | null,
 	sort: ListSort,
 	includeFonts: boolean,
@@ -652,6 +955,8 @@ export type LocalApp = {
 	bundleId: string | null,
 	version: string | null,
 	source: AppSource,
+	updater: UpdateSource | null,
+	homebrewCask: string | null,
 	cask: string | null,
 	catalogToken: string | null,
 	teamId: string | null,
@@ -673,9 +978,9 @@ export type LocalAppsChanged = {
 	reason: LocalAppsChangedReason,
 };
 
-export type LocalAppsChangedReason = "startup" | "refresh" | 
+export type LocalAppsChangedReason = "startup" | "refresh" |
 /**  Bundle sizes (`LocalApp.sizeBytes`) were measured. */
-"measured" | "running" | "task" | "fs" | 
+"measured" | "running" | "task" | "fs" |
 /**  Only the footprint report changed (values, errors or progress); the app list did not. */
 "footprints";
 
@@ -693,6 +998,69 @@ export type LocaleMode = "system" | "manual";
 
 /**  Sparse maps accept legacy nulls; IPC emits only text actually present. */
 export type LocalizedText = Partial<{ [key in Locale]: string }>;
+
+export type MasApp = {
+	adamId: number,
+	bundleId: string,
+	name: string,
+	seller: string,
+	version: string,
+	releaseNotes: string | null,
+	releasedAt: string | null,
+	minimumOs: string | null,
+	sizeBytes: number | null,
+	price: number,
+	formattedPrice: string,
+	currency: string,
+	rating: number | null,
+	ratingCount: number | null,
+	iconUrl: string | null,
+	screenshots: string[],
+	description: string,
+	genres: string[],
+	storeUrl: string,
+	country: string,
+};
+
+export type MasConfidence = "high" | "low";
+
+export type MasCountrySource = "account" | "system" | "setting";
+
+export type MasEngineStatus = "ok" | "missing" | "unsupported";
+
+/**
+ *  Exported vocabulary for AppError.code; detail carries serialized structured
+ *  context (retryAfterSecs, or domain/code) where available.
+ */
+export type MasErrorCode = "E_MAS_NOT_SIGNED_IN" | "E_MAS_NOT_OWNED" | "E_MAS_PAID" | "E_MAS_OTHER_ACCOUNT" | "E_MAS_REGION" | "E_MAS_RATE_LIMITED" | "E_MAS_ENGINE" | "E_ADMIN_CANCELED";
+
+export type MasInstalled = {
+	adamId: number,
+	bundleId: string,
+	name: string,
+	version: string,
+	path: string,
+	installedAt: number | null,
+};
+
+export type MasStatus = {
+	country: string,
+	countrySource: MasCountrySource,
+	engine: MasEngineStatus,
+	adminInstall: boolean,
+};
+
+export type MasUpdate = {
+	adamId: number,
+	bundleId: string,
+	name: string,
+	installedVersion: string,
+	storeVersion: string,
+	releasedAt: string | null,
+	releaseNotes: string | null,
+	sizeBytes: number | null,
+	confidence: MasConfidence,
+};
 
 export type MatchReason = "app_bundle" | "brew_uninstall" | "zap_rule" | "bundle_id" | "app_group" | "launchd" | "symlink" | "pkg_receipt" | "team_id" | "name_exact" | "name_similar";
 
@@ -835,6 +1203,21 @@ export type OnRequest = {
 };
 
 export type OutdatedItem = {
+	source: UpdateSource,
+	appId: string | null,
+	bundleId: string | null,
+	channel: UpdateChannel | null,
+	major: boolean,
+	notes: UpdateNotes | null,
+	integrity: UpdateIntegrity | null,
+	requiresAdmin: boolean,
+	running: boolean,
+	relaunchPending: boolean,
+	skippedVersion: string | null,
+	criticalUpdate: boolean,
+	informationalUrl: string | null,
+	downloadHost: string | null,
+	expectedTeamMatch: boolean | null,
 	kind: Kind,
 	token: string,
 	name: string,
@@ -850,6 +1233,28 @@ export type OutdatedItem = {
 export type Page<T> = {
 	total: number,
 	items: T[],
+};
+
+export type PasteAction = "allow_once" | "discard";
+
+export type PasteBlocked = {
+	id: string,
+	appName: string,
+	bundleId: string,
+	patterns: PastePattern[],
+	/**  Bounded in-memory preview, never persisted. Only sent to the main window. */
+	preview: string,
+	expiresAt: number,
+};
+
+export type PasteBlockedEvent = PasteBlocked;
+
+export type PastePattern = "pipe_to_interpreter" | "download_execute" | "encoded_command" | "remove_quarantine" | "too_long";
+
+export type PasteProtectionStatus = {
+	enabled: boolean,
+	accessibilityGranted: boolean,
+	listening: boolean,
 };
 
 /**  Permission overlay capability (§12.7): development builds are not .app bundles and cannot drag an icon. */
@@ -896,6 +1301,19 @@ export type PlanItemConfidence = "high" | "medium" | "low";
 
 export type PlanItemKind = "file" | "dir" | "symlink" | "launchd" | "glob";
 
+export type PostureCheck = {
+	id: PostureId,
+	state: PostureState,
+	facts: { [key in string]: PostureFact },
+	settingsUrl: string | null,
+};
+
+export type PostureFact = string | number | boolean;
+
+export type PostureId = "sip" | "ssv" | "gatekeeper" | "filevault" | "firewall" | "xprotect" | "updates" | "screenlock" | "autologin" | "guest" | "sharing";
+
+export type PostureState = "ok" | "warn" | "bad" | "info" | "unknown";
+
 export type PrivacyPane = "app_management" | "notifications" | "full_disk_access";
 
 export type ProcessInfo = {
@@ -931,12 +1349,63 @@ export type ProtectRule = {
 
 export type ProtectedReason = "system" | "self" | "managed";
 
+export type ProtectionEvent = {
+	id: string,
+	at: number,
+	kind: ProtectionEventKind,
+	name: string,
+	path: string | null,
+	itemId: string | null,
+	handled: boolean,
+};
+
+export type ProtectionEventKind = "scheduled_scan_skipped" | "signature_changed" | "install_threat" | "paste_blocked" | "startup_added" | "startup_removed" | "download_threat" | "download_unsigned" | "scan_threat";
+
+export type ProtectionOverview = {
+	startupAlerts: boolean,
+	watchDownloads: boolean,
+	endpointSecurity: ProtectionState,
+	firewall: ProtectionState,
+};
+
+export type ProtectionState = "unavailable" | "off" | "on";
+
+export type QuarantineEntry = {
+	id: string,
+	name: string,
+	originalPath: string,
+	sizeBytes: number,
+	sha256: string,
+	reason: QuarantineReason,
+	quarantinedAt: number,
+};
+
+export type QuarantineOverview = {
+	count: number,
+	bytes: number,
+};
+
+export type QuarantineReason = { kind: "threat"; signature: string } | { kind: "startup" } | { kind: "user" };
+
 export type QuitEvent = QuitRequested;
 
 export type QuitRequested = {
 	running: number,
 	queued: number,
 };
+
+export type ReleaseArch = "arm64" | "x86_64" | "universal";
+
+export type ReleaseAsset = {
+	name: string,
+	url: string,
+	size: number,
+	arch: ReleaseArch | null,
+	format: ReleaseFormat,
+	sha256: string | null,
+};
+
+export type ReleaseFormat = "dmg" | "zip" | "pkg" | "other";
 
 export type RestoreResult = {
 	restored: number,
@@ -953,6 +1422,15 @@ export type ScanProgress = {
 	checked: number,
 	total: number,
 	location: string,
+};
+
+export type ScheduleSkipReason = "no_database" | "no_consent" | "on_battery" | "busy" | "error";
+
+export type ScheduledScanRun = {
+	scheduledAt: number,
+	scanId: string | null,
+	skipped: ScheduleSkipReason | null,
+	errorCode: string | null,
 };
 
 export type SearchHit = SearchHit_Serialize | SearchHit_Deserialize;
@@ -972,10 +1450,46 @@ export type SearchHit_Serialize = {
 export type SearchQuery = {
 	q: string,
 	kind: Kind | null,
+	includeLinks?: boolean,
 	category: string | null,
 	includeDisabled: boolean,
 	limit: number,
 	offset: number,
+};
+
+export type SecurityChangeReason = "schedule" | "signatures" | "posture" | "engine" | "startup" | "quarantine" | "events";
+
+export type SecurityChanged = {
+	reason: SecurityChangeReason,
+};
+
+export type SecurityChangedEvent = SecurityChanged;
+
+export type SecurityErrorCode = "E_INSTALL_THREAT" | "E_INSTALL_SCAN" | "E_AUTOMATION_DENIED" | "E_ACCESSIBILITY_DENIED" | "E_PASTE_EXPIRED" | "E_STARTUP_CHANGED" | "E_VT_DISABLED" | "E_VT_KEY_REQUIRED" | "E_VT_KEY_INVALID" | "E_VT_RATE_LIMITED" | "E_VT_UNAVAILABLE" | "E_KEYCHAIN" | "E_DOWNLOAD_UNSAFE" | "E_AV_CONSENT" | "E_AV_NOT_READY" | "E_AV_ENGINE" | "E_AV_DB_RATE_LIMITED" | "E_AV_DB_UPDATE" | "E_STARTUP_PROTECTED" | "E_RESTORE_CONFLICT" | "E_SCAN_CANCELED" | "E_FULL_DISK_ACCESS" | "E_ADMIN_CANCELED" | "E_NOT_IMPLEMENTED";
+
+export type SecurityOverview = {
+	posture: PostureCheck[],
+	engine: AvEngineStatus,
+	lastScan: AvScanSummary | null,
+	startup: StartupOverview,
+	protection: ProtectionOverview,
+	quarantine: QuarantineOverview,
+	attention: number,
+};
+
+export type SecuritySettings = {
+	avConsent: boolean,
+	avDbCheckHours: number,
+	avKeepResident: boolean,
+	watchDownloads: boolean,
+	startupAlerts: boolean,
+	avExclusions: string[],
+	avSchedule: AvSchedule,
+	avScheduleTime: string,
+	avScheduleWeekday: number,
+	avScanBeforeInstall: boolean,
+	pasteProtection: boolean,
+	virusTotalEnabled: boolean,
 };
 
 export type SensorGroup = "cpu" | "gpu" | "soc" | "battery" | "ssd" | "other";
@@ -997,6 +1511,23 @@ export type Settings = {
 	trayShowCount: boolean,
 	autoCheck: boolean,
 	autoCheckAppUpdates: boolean,
+	avConsent: boolean,
+	avDbCheckHours: number,
+	avKeepResident: boolean,
+	watchDownloads: boolean,
+	startupAlerts: boolean,
+	avExclusions: string[],
+	avSchedule: AvSchedule,
+	avScheduleTime: string,
+	avScheduleWeekday: number,
+	avScanBeforeInstall: boolean,
+	pasteProtection: boolean,
+	virusTotalEnabled: boolean,
+	appStoreRegion: string,
+	appStoreSearch: boolean,
+	/**  Deprecated compatibility mirror; updateSources.mas is authoritative. */
+	appStoreUpdates: boolean,
+	updateSources: Partial<Record<UpdateSource, boolean>>,
 	checkTime: string,
 	runBrewUpdateOnCheck: boolean,
 	includeGreedy: boolean,
@@ -1021,6 +1552,15 @@ export type Settings = {
 	fanLastManual: { [key in number]: number } | null,
 };
 
+export type SignatureInfo = {
+	status: SignatureStatus,
+	teamId: string | null,
+	signer: string | null,
+	notarized: boolean | null,
+};
+
+export type SignatureStatus = "not_code" | "unknown" | "modified" | "apple" | "app_store" | "developer_id" | "adhoc" | "unsigned" | "invalid";
+
 export type SkippedGroup = {
 	title: string,
 	appId: string | null,
@@ -1029,9 +1569,9 @@ export type SkippedGroup = {
 	processes: string[],
 };
 
-export type SkippedGroupReason = "running" | "in_use" | "busy" | "recent" | "git_tracked" | "protected" | "permission" | 
+export type SkippedGroupReason = "running" | "in_use" | "busy" | "recent" | "git_tracked" | "protected" | "permission" |
 /**  The tool that owns the space is not running (Docker); open it and scan again. */
-"tool_stopped" | 
+"tool_stopped" |
 /**  Docker volumes: measured and shown, never offered; they can hold databases. */
 "volumes";
 
@@ -1041,7 +1581,7 @@ export type SkippedItem = {
 	reason: SkippedItemReason,
 };
 
-export type SkippedItemReason = "running" | "in_use" | "permission" | "admin_canceled" | "missing" | "changed" | "protected" | 
+export type SkippedItemReason = "running" | "in_use" | "permission" | "admin_canceled" | "missing" | "changed" | "protected" |
 /**  The tool that runs the command is no longer available (Docker was quit after the scan). */
 "tool_unavailable";
 
@@ -1051,6 +1591,89 @@ export type SkippedLocation = {
 };
 
 export type SkippedLocationReason = "full_disk_access" | "permission" | "timeout";
+
+export type StartupAction = "restore" | "disable" | "enable" | "remove" | "reveal" | "scan" | "open_settings";
+
+export type StartupAdded = {
+	items: StartupItem[],
+};
+
+export type StartupAddedEvent = StartupAdded;
+
+export type StartupCategory = "launch_items" | "btm" | "login_items" | "cron" | "browser_extensions" | "kexts" | "system_extensions" | "app_extensions" | "auth_plugins" | "dir_services_plugins" | "spotlight" | "quicklook" | "dock_tiles" | "library_inserts" | "library_proxies" | "login_hooks" | "periodic" | "startup_scripts" | "shell_config" | "event_rules";
+
+export type StartupItem = {
+	id: string,
+	category: StartupCategory,
+	name: string,
+	label: string | null,
+	path: string,
+	program: string | null,
+	args: string[],
+	scope: StartupScope,
+	owner: StartupOwner | null,
+	signature: SignatureInfo,
+	trust: StartupTrust,
+	state: StartupState,
+	triggers: StartupTrigger[],
+	firstSeenAt: number,
+	isNew: boolean,
+	risk: StartupRisk,
+	actions: StartupAction[],
+	requiresAdmin: boolean,
+	av: AvVerdict | null,
+};
+
+export type StartupItemAction = "restore" | "disable" | "enable" | "remove" | "reveal" | "scan" | "mark_reviewed" | "open_settings";
+
+export type StartupOverview = {
+	total: number,
+	thirdParty: number,
+	untrusted: number,
+	pendingReview: number,
+	changedAt: number | null,
+};
+
+export type StartupOwner = {
+	name: string,
+	bundleId: string | null,
+	path: string,
+	/**
+	 *  Locally extracted PNG shown through the asset protocol; absent from rows saved
+	 *  before startup items had icons.
+	 */
+	iconPath: string | null,
+};
+
+export type StartupRisk = "none" | "notice" | "high";
+
+export type StartupScope = "user" | "system";
+
+export type StartupSnapshot = StartupSnapshot_Serialize | StartupSnapshot_Deserialize;
+
+export type StartupSnapshot_Deserialize = {
+	/**  Category-local Cron recovery/read error. Older snapshots omit it. */
+	cronError?: string | null,
+	scannedAt: number,
+	items: StartupItem[],
+	missing: StartupCategory[],
+	btmFormat: BtmFormat | null,
+};
+
+export type StartupSnapshot_Serialize = {
+	/**  Category-local Cron recovery/read error. Older snapshots omit it. */
+	cronError?: string | null,
+	scannedAt: number,
+	items: StartupItem[],
+	missing: StartupCategory[],
+	btmFormat: BtmFormat | null,
+};
+
+export type StartupState = "removed" | "running" | "loaded" | "enabled" | "disabled" | "unknown";
+
+export type StartupTrigger = "at_load" | "keep_alive" | "interval" | "calendar" | "watch_paths" | "events";
+
+export type StartupTrust = "apple" | "known" | "unknown" | "untrusted";
 
 export type StorageSummary = {
 	appsBytes: number,
@@ -1109,7 +1732,7 @@ export type Task = {
 	finishedAt: number | null,
 };
 
-export type TaskKind = "cask" | "formula" | "app";
+export type TaskKind = "cask" | "formula" | "app" | "mas" | "link";
 
 export type TaskLog = TaskLogEvent;
 
@@ -1118,9 +1741,12 @@ export type TaskLogEvent = {
 	lines: string[],
 };
 
-export type TaskOp = "install" | "upgrade" | "uninstall" | "remove_leftovers" | "reinstall" | "pin" | "unpin" | "cleanup" | "clean" | "update" | "install_homebrew";
+export type TaskOp = "install" | "upgrade" | "uninstall" | "remove_leftovers" | "reinstall" | "pin" | "unpin" | "cleanup" | "clean" | "update" | "install_homebrew" | "av_db_update" |
+/**  Restores the version an OpenNavo update replaced (`TaskOptions.rollback_of`). */
+"rollback";
 
 export type TaskOptions = {
+	source?: UpdateSource | null,
 	planId?: string | null,
 	itemIds?: string[] | null,
 	deleteMode?: DeleteMode | null,
@@ -1131,9 +1757,11 @@ export type TaskOptions = {
 	force?: boolean,
 	quitRunning?: boolean,
 	reopen?: boolean,
+	/**  Rollback only: the history id of the update being undone. */
+	rollbackOf?: string | null,
 };
 
-export type TaskPhase = "preparing" | "fetching" | "downloading" | "installing" | "linking" | "cleaning" | "uninstalling" | "updating" | "finishing";
+export type TaskPhase = "scanning" | "preparing" | "fetching" | "downloading" | "installing" | "linking" | "cleaning" | "uninstalling" | "updating" | "finishing";
 
 export type TaskState = "queued" | "running" | "succeeded" | "failed" | "canceled";
 
@@ -1171,6 +1799,19 @@ export type UninstallPlan = {
 
 export type UninstallScanEvent = ScanProgress;
 
+export type UpdateChannel = "stable" | "beta";
+
+/**  Exported error vocabulary; AppError.code stays a string for existing errors. */
+export type UpdateErrorCode = "E_UPDATE_INTEGRITY" | "E_UPDATE_TEAM_MISMATCH" | "E_UPDATE_NOT_NOTARIZED" | "E_UPDATE_ARCH" | "E_UPDATE_MIN_OS" | "E_UPDATE_FEED" | "E_UPDATE_DMG_LICENSE" | "E_UPDATE_SWAP" | "E_APP_RUNNING" | "E_ADMIN_CANCELED" | "E_NOT_IMPLEMENTED";
+
+export type UpdateIntegrity = "eddsa" | "sha512" | "digest" | "sha256" | "team_id";
+
+export type UpdateNotes = ({ format: UpdateNotesFormat; body: string }) & { url?: never } | ({ url: string }) & { body?: never; format?: never };
+
+export type UpdateNotesFormat = "html" | "markdown" | "text";
+
+export type UpdateSource = "homebrew" | "mas" | "sparkle" | "electron" | "github" | "vendor" | "msupdate";
+
 export type UpdatesChanged = {
 	count: number,
 };
@@ -1184,6 +1825,24 @@ export type UpdatesStatus = {
 	checkedAt: number | null,
 	nextCheckAt: number | null,
 	checking: boolean,
+	failedSources: UpdateSource[],
+};
+
+export type VirusTotalStatus = {
+	enabled: boolean,
+	hasKey: boolean,
+	retryAfterSecs: number,
+};
+
+export type VirusTotalVerdict = {
+	sha256: string,
+	found: boolean,
+	malicious: number,
+	suspicious: number,
+	harmless: number,
+	undetected: number,
+	lastAnalysisAt: number | null,
+	permalink: string,
 };
 
 export type VolumeInfo = {

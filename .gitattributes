@@ -2,7 +2,11 @@
 * text=auto
 
 # Preserve upstream evidence bytes: inventory SHA-256 hashes cover original files.
-/docs/legal/third-party/licenses/** -text
-/apps/server/third-party/licenses/** -text
-/apps/mcp/third-party/licenses/** -text
-/apps/desktop/src-tauri/resources/third-party/licenses/** -text
+/docs/legal/third-party/licenses/** -text -whitespace
+/apps/server/third-party/licenses/** -text -whitespace
+/apps/mcp/third-party/licenses/** -text -whitespace
+/apps/desktop/src-tauri/resources/third-party/licenses/** -text -whitespace
+/docs/legal/native/licenses/** -text -whitespace
+
+# Unified diff context lines include a required leading space on blank lines.
+/apps/desktop/native/clamav/patches/*.patch whitespace=-blank-at-eol

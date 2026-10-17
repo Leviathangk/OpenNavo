@@ -218,7 +218,8 @@ async function loadPackagePages(group: 'apps' | 'fonts'): Promise<SitemapEntry[]
     const page = await $fetch<{ data: { total: number; records: SitemapEntry[] } }>(`${apiBase()}/sitemap/packages`, {
       query: { current, size: PAGE_SIZE, group }
     });
-    pages.push(page.data.records.filter(record => record.kind === 'cask'));
+    // Link apps share /apps with casks (store/security plan §4); command-line tools have no web page.
+    pages.push(page.data.records.filter(record => record.kind === 'cask' || record.kind === 'link'));
     if (current * PAGE_SIZE >= page.data.total) return pages;
   }
 }

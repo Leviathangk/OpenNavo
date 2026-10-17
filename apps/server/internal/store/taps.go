@@ -140,7 +140,7 @@ func (s *Store) RecordTapVersions(ctx context.Context, packageID int64, versions
 		return changed, err
 	}
 	identity := cache.PatternLiteral(p.Kind) + ":" + cache.PatternLiteral(p.Token) + ":*"
-	return changed, addCacheInvalidation(ctx, s.DB, fmt.Sprintf("changelog:%d", packageID), "c:rel:*:"+identity, "c:pkg:c3:"+identity)
+	return changed, addCacheInvalidation(ctx, s.DB, fmt.Sprintf("changelog:%d", packageID), "c:rel:*:"+identity, cache.PackageDetailPrefix+identity)
 }
 
 // RecordTapHistory marks the history of a tap cask file as read up to sha.

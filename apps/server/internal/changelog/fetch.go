@@ -37,10 +37,16 @@ func NewFetcher(agent string) *Fetcher               { return &Fetcher{HTTP: New
 func configText(m map[string]any, key string) string { v, _ := m[key].(string); return v }
 func (f *Fetcher) get(ctx context.Context, target string, limit int64, source FetchSource) ([]byte, int, http.Header, error) {
 	headers := http.Header{}
-	if source.ETag != "" {
-		headers.Set("If-None-Match", source.ETag)
+	parsed, err := url.Parse(target)
+	if err != nil {
+		return nil, 0, nil, err
 	}
-	if source.LastModified != "" {
+	// GitHub representation ETags can change with counters even when the
+	// release/commit content has not changed. If-None-Match takes precedence
+	// over If-Modified-Since, so omit it for GitHub (including old cached tags).
+	if parsed.Hostname() != "api.github.com" && source.ETag != "" {
+		headers.Set("If-None-Match", source.ETag)
+	} else if source.LastModified != "" {
 		headers.Set("If-Modified-Since", source.LastModified)
 	}
 	return f.HTTP.readRequest(ctx, target, limit, headers)

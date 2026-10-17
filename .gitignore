@@ -68,3 +68,6 @@ __pycache__/
 /CLAUDE.md
 /docs/design/opennavo-mockups.html
 /docs/design/screens/
+
+# Staged native executables are rebuilt from locked sources.
+/apps/desktop/native/staged/

@@ -11,7 +11,7 @@
 Explore descriptions and release notes for over 7,700 Homebrew Casks,<br>
 then install and update in one click with the macOS app. Homebrew handles every step, and every step stays visible.
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-FF7356)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-FF7356)](LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-111111?logo=apple)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)
 ![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)
@@ -126,14 +126,14 @@ The backend syncs the catalog and installation counts from Homebrew's public API
 
 Non-font Casks are automatically marked disabled when the Homebrew commit for their current full version is more than 90 days old. A version change clears this local status until its commit date is checked. Apps with unknown commit dates remain active under this policy, and explicit history-fetch exclusions are respected. Homebrew's own disabled status and manually hidden apps stay independent. The policy runs during catalog sync, including unchanged responses, and disabled entries remain available through **Show disabled** and installed-app records.
 
-| Part | Technology |
-|---|---|
-| Web | Nuxt 4 · Vue 3 · UnoCSS (SSR) |
-| macOS app | Tauri 2 · Vue 3 · Rust · SQLite (FTS5) |
-| Admin | soybean-admin v2.2.0 · Vue 3 · Naive UI |
-| Backend | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · S3-compatible storage (MinIO) |
-| MCP | Python 3.13 · FastMCP · uv |
-| Contracts and generation | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta |
+| Part                     | Technology                                                                        |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| Web                      | Nuxt 4 · Vue 3 · UnoCSS (SSR)                                                     |
+| macOS app                | Tauri 2 · Vue 3 · Rust · SQLite (FTS5)                                            |
+| Admin                    | soybean-admin v2.2.0 · Vue 3 · Naive UI                                           |
+| Backend                  | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · S3-compatible storage (MinIO) |
+| MCP                      | Python 3.13 · FastMCP · uv                                                        |
+| Contracts and generation | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta                  |
 
 ## Quick start
 
@@ -209,6 +209,6 @@ Report vulnerabilities privately to **admin@opennavo.com**. See [SECURITY.md](.g
 
 ## License
 
-This project is open source under the [Apache License 2.0](LICENSE). Third-party notices are in [NOTICE](NOTICE); dependency evidence and distribution instructions are in [THIRD_PARTY.md](docs/legal/THIRD_PARTY.md).
+This project is open source under the [GNU General Public License version 3 only (GPL-3.0-only)](LICENSE). Versions published at commit `5fa4056` and earlier remain available under Apache-2.0. Third-party notices and the additional terms below are in [NOTICE](NOTICE); dependency evidence and distribution instructions are in [THIRD_PARTY.md](docs/legal/THIRD_PARTY.md).
 
-The OpenNavo name and logo are not covered by this license. When distributing a modified version, use a different name and icon, and replace the app's Bundle ID, updater public key, and update URL. Homebrew is a trademark of the Homebrew project; OpenNavo is not affiliated with Homebrew. App names and icons belong to their respective owners.
+Under the additional terms in NOTICE pursuant to GPLv3 section 7(e), no trademark rights to the OpenNavo name or logo are granted. Under section 7(c), distributed modified versions must be clearly distinguished from the original: use a different name and icon, and replace the app’s Bundle ID, updater public key and update URL. Preserve accurate attribution. Homebrew is a trademark of the Homebrew project; OpenNavo is not affiliated with Homebrew. App names and icons belong to their respective owners.

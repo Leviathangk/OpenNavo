@@ -5,6 +5,7 @@ import { OnAppIcon, OnButton, OnModal } from '@opennavo/ui';
 import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import { events } from '@/ipc/client';
 import { useTasksStore } from '@/stores/tasks';
+import { useUpdatesStore } from '@/stores/updates';
 import { useToasts } from '@/composables/useToasts';
 import { usePackageState } from '@/composables/usePackageState';
 import { isDeferredUpdate, useRunningAppsStore } from '@/stores/runningApps';
@@ -14,6 +15,7 @@ const store = useRunningAppsStore();
 const { icon } = usePackageIdentity();
 const reopen = ref(true);
 const tasks = useTasksStore();
+const updates = useUpdatesStore();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 watch(
@@ -32,7 +34,15 @@ let unlisten: (() => void) | undefined;
 let disposed = false;
 onMounted(async () => {
   const stop = await events.updatesRequested.listen(event => {
-    void tasks.enqueueMany('upgrade', event.payload, 'manual', { greedy: true }).catch(error => {
+    // The tray sends each row's routed target; rows keep their source's options. A target the list no longer has
+    // is a Homebrew package (explicit casks always use --greedy).
+    const rows = event.payload.flatMap(target => updates.rowFor(target) ?? []);
+    const rest = event.payload.filter(target => !updates.rowFor(target));
+    const queued = Promise.all([
+      updates.upgrade(rows),
+      rest.length ? tasks.enqueueMany('upgrade', rest, 'manual', { greedy: true }) : []
+    ]);
+    void queued.catch(error => {
       toasts.push({
         tone: 'danger',
         title: t('errors.actionFailed'),

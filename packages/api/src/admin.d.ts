@@ -598,6 +598,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/links/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List link-only apps
+         * @description Requires catalog:package:edit. Curated external software links; never invokes Homebrew or installs software. Cask and link tokens are unique. Supports the Agent gateway and dry-run previews for writes.
+         */
+        get: operations["listLinkPackages"];
+        put?: never;
+        /**
+         * Add a link-only app
+         * @description Requires catalog:package:edit. Curated external software links; never invokes Homebrew or installs software. Cask and link tokens are unique. Supports the Agent gateway and dry-run previews for writes.
+         */
+        post: operations["addLinkPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/links/packages/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a link-only app
+         * @description Requires catalog:package:edit. Curated external software links; never invokes Homebrew or installs software. Cask and link tokens are unique. Supports the Agent gateway and dry-run previews for writes.
+         */
+        delete: operations["removeLinkPackage"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a link-only app
+         * @description Requires catalog:package:edit. Curated external software links; never invokes Homebrew or installs software. Cask and link tokens are unique. Supports the Agent gateway and dry-run previews for writes.
+         */
+        patch: operations["updateLinkPackage"];
+        trace?: never;
+    };
     "/taps/packages": {
         parameters: {
             query?: never;
@@ -2526,10 +2574,757 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/update-feeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Create or replace an update feed rule
+         * @description Requires catalog:package:edit. Maintains an independent Sparkle update rule. Supports dryRun; no installation, catalog change, or network request is performed by this operation. Newly changed feeds are published after nightly verification.
+         */
+        put: operations["upsertUpdateFeed"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/update-feeds/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Disable an update feed rule
+         * @description Requires catalog:package:edit. Maintains an independent Sparkle update rule. Supports dryRun; no installation, catalog change, or network request is performed by this operation. Newly changed feeds are published after nightly verification.
+         */
+        post: operations["disableUpdateFeed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Writes no business data, revisions, audit, trash, queues or caches; stores only the dryRun call log.
+         * @example {
+         *       "dryRun": true,
+         *       "requestId": "demo-preview-001",
+         *       "changes": [
+         *         {
+         *           "object": {
+         *             "entity": "update_feed",
+         *             "objectKey": "sparkle:com.example.App"
+         *           },
+         *           "action": "create",
+         *           "before": null,
+         *           "after": {
+         *             "bundleId": "com.example.App",
+         *             "source": "sparkle",
+         *             "feedUrl": "https://example.com/appcast.xml",
+         *             "teamId": null,
+         *             "channel": "stable",
+         *             "packageId": null
+         *           }
+         *         }
+         *       ],
+         *       "affectedUrls": []
+         *     }
+         */
+        UpdateFeedPreview: {
+            /**
+             * @example true
+             * @enum {boolean}
+             */
+            dryRun: true;
+            /** @example demo-preview-001 */
+            requestId: string;
+            /**
+             * @example [
+             *       {
+             *         "object": {
+             *           "entity": "update_feed",
+             *           "objectKey": "sparkle:com.example.App"
+             *         },
+             *         "action": "create",
+             *         "before": null,
+             *         "after": {
+             *           "bundleId": "com.example.App",
+             *           "source": "sparkle",
+             *           "feedUrl": "https://example.com/appcast.xml",
+             *           "teamId": null,
+             *           "channel": "stable",
+             *           "packageId": null
+             *         }
+             *       }
+             *     ]
+             */
+            changes: {
+                object: {
+                    /** @enum {string} */
+                    entity: "update_feed";
+                    objectKey: string;
+                };
+                /**
+                 * @example create
+                 * @enum {string}
+                 */
+                action: "create" | "update" | "delete" | "restore" | "retranslate" | "trigger";
+                /** @example null */
+                before: {
+                    [key: string]: unknown;
+                } | null;
+                /** @example null */
+                after: {
+                    [key: string]: unknown;
+                } | null;
+            }[];
+            /**
+             * @example [
+             *       "https://opennavo.example/zh/apps/visual-studio-code"
+             *     ]
+             */
+            affectedUrls: string[];
+            /** @description App fact writes only: the evidence still missing or outdated after this write */
+            sourceGaps?: components["schemas"]["FactGap"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "dryRun": true,
+         *         "requestId": "demo-preview-001",
+         *         "changes": [
+         *           {
+         *             "object": {
+         *               "entity": "update_feed",
+         *               "objectKey": "sparkle:com.example.App"
+         *             },
+         *             "action": "create",
+         *             "before": null,
+         *             "after": {
+         *               "bundleId": "com.example.App",
+         *               "source": "sparkle",
+         *               "feedUrl": "https://example.com/appcast.xml",
+         *               "teamId": null,
+         *               "channel": "stable",
+         *               "packageId": null
+         *             }
+         *           }
+         *         ],
+         *         "affectedUrls": []
+         *       }
+         *     }
+         */
+        UpdateFeedPreviewResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["UpdateFeedPreview"];
+        };
+        /**
+         * @example {
+         *       "version": "2.0",
+         *       "versionKey": "CFBundleShortVersionString",
+         *       "notes": null,
+         *       "minimumOs": null,
+         *       "files": [
+         *         {
+         *           "url": "https://github.com/example/app/releases/download/v2.0/App-arm64.zip",
+         *           "name": "App-arm64.zip",
+         *           "size": 123,
+         *           "architecture": "arm64",
+         *           "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *           "sha512": null
+         *         }
+         *       ]
+         *     }
+         */
+        UpdateRelease: {
+            version: string;
+            /** @enum {string} */
+            versionKey: "CFBundleShortVersionString" | "CFBundleVersion" | "Wave Build Version Number";
+            notes: {
+                /** @enum {string} */
+                format?: "text" | "markdown" | "html";
+                body?: string;
+                /** Format: uri */
+                url?: string;
+            } | null;
+            minimumOs: string | null;
+            files: components["schemas"]["UpdateFile"][];
+        };
+        /**
+         * @example {
+         *       "url": "https://example.com/App.dmg",
+         *       "name": "App.dmg",
+         *       "size": null,
+         *       "architecture": "universal",
+         *       "sha256": null,
+         *       "sha512": null
+         *     }
+         */
+        UpdateFile: {
+            /** Format: uri */
+            url: string;
+            name: string;
+            /** Format: int64 */
+            size: number | null;
+            /** @enum {string|null} */
+            architecture: "arm64" | "x86_64" | "universal" | null;
+            sha256: string | null;
+            sha512: string | null;
+        };
+        /**
+         * @example {
+         *       "mode": "json",
+         *       "versionPath": "version",
+         *       "downloadPath": "url",
+         *       "sha256Path": "sha256"
+         *     }
+         */
+        VendorResolver: {
+            scopePath?: string;
+            match?: {
+                [key: string]: string;
+            };
+            httpsUpgrade?: boolean;
+            /** @enum {string} */
+            mode: "json" | "text" | "redirect" | "sparkle" | "electron";
+            /** @enum {string} */
+            versionKey?: "CFBundleShortVersionString" | "CFBundleVersion" | "Wave Build Version Number";
+            versionPath?: string;
+            versionPattern?: string;
+            downloadPath?: string;
+            downloadPattern?: string;
+            downloadUrl?: string;
+            sha256Path?: string;
+            sha256Pattern?: string;
+            checksumForUrl?: boolean;
+            fileName?: string;
+            /** @enum {string} */
+            architecture?: "arm64" | "x86_64" | "universal";
+            variants?: {
+                match?: {
+                    [key: string]: string;
+                };
+                /** Format: uri */
+                url: string;
+                /** @enum {string} */
+                architecture: "arm64" | "x86_64" | "universal";
+            }[];
+        };
+        /**
+         * @example {
+         *       "bundleId": "com.example.App",
+         *       "source": "sparkle"
+         *     }
+         */
+        UpdateFeedKey: {
+            bundleId: string;
+            /** @enum {string} */
+            source: "sparkle" | "electron" | "github" | "vendor";
+        };
+        /**
+         * @description GitHub requires githubRepo, assetPattern and teamId; vendor requires feedUrl, resolver and teamId. Sparkle/electron require feedUrl. Rules never execute code.
+         * @example {
+         *       "bundleId": "com.example.App",
+         *       "source": "sparkle",
+         *       "feedUrl": "https://example.com/appcast.xml",
+         *       "teamId": null,
+         *       "channel": "stable",
+         *       "packageId": null
+         *     }
+         */
+        UpdateFeedInput: {
+            githubRepo?: string | null;
+            assetPattern?: string | null;
+            resolver?: components["schemas"]["VendorResolver"];
+            bundleId: string;
+            /** @enum {string} */
+            source: "sparkle" | "electron" | "github" | "vendor";
+            /** Format: uri */
+            feedUrl?: string;
+            teamId?: string | null;
+            /**
+             * @default stable
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /** Format: int64 */
+            packageId?: number | null;
+        };
+        /**
+         * @example {
+         *       "bundleId": "com.example.App",
+         *       "source": "sparkle",
+         *       "feedUrl": "https://example.com/appcast.xml",
+         *       "teamId": null,
+         *       "channel": "stable",
+         *       "packageId": null,
+         *       "origin": "manual",
+         *       "enabled": true,
+         *       "etag": null,
+         *       "verifiedAt": null,
+         *       "checkedAt": null,
+         *       "lastError": null,
+         *       "token": "",
+         *       "kind": "cask"
+         *     }
+         */
+        UpdateFeed: {
+            githubRepo?: string | null;
+            assetPattern?: string | null;
+            resolver?: components["schemas"]["VendorResolver"];
+            release?: components["schemas"]["UpdateRelease"];
+            /** Format: int64 */
+            revision?: number;
+            lastModified?: string | null;
+            bundleId: string;
+            /** @enum {string} */
+            source: "sparkle" | "electron" | "github" | "vendor";
+            /** Format: uri */
+            feedUrl: string;
+            teamId: string | null;
+            /**
+             * @default stable
+             * @enum {string}
+             */
+            channel: "stable" | "beta";
+            /** Format: int64 */
+            packageId: number | null;
+            /** @enum {string} */
+            origin: "seed" | "manual" | "homebrew" | "link";
+            enabled: boolean;
+            etag: string | null;
+            /** Format: date-time */
+            verifiedAt: string | null;
+            /** Format: date-time */
+            checkedAt: string | null;
+            lastError: string | null;
+            token: string;
+            /** @enum {string} */
+            kind: "cask" | "link";
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "bundleId": "com.example.App",
+         *         "source": "sparkle",
+         *         "feedUrl": "https://example.com/appcast.xml",
+         *         "teamId": null,
+         *         "channel": "stable",
+         *         "packageId": null,
+         *         "origin": "manual",
+         *         "enabled": true,
+         *         "etag": null,
+         *         "verifiedAt": null,
+         *         "checkedAt": null,
+         *         "lastError": null,
+         *         "token": "",
+         *         "kind": "cask"
+         *       }
+         *     }
+         */
+        UpdateFeedResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["UpdateFeed"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "bundleId": "com.example.App",
+         *         "source": "sparkle",
+         *         "feedUrl": "https://example.com/appcast.xml",
+         *         "teamId": null,
+         *         "channel": "stable",
+         *         "packageId": null,
+         *         "origin": "manual",
+         *         "enabled": true,
+         *         "etag": null,
+         *         "verifiedAt": null,
+         *         "checkedAt": null,
+         *         "lastError": null,
+         *         "token": "",
+         *         "kind": "cask"
+         *       }
+         *     }
+         */
+        UpdateFeedResponseResult: components["schemas"]["UpdateFeedResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "name": "Example-arm64.dmg",
+         *       "url": "https://example.com/Example-arm64.dmg",
+         *       "size": 123,
+         *       "arch": "arm64",
+         *       "format": "dmg",
+         *       "sha256": null
+         *     }
+         */
+        ReleaseAsset: {
+            name: string;
+            /** Format: uri */
+            url: string;
+            /** Format: int64 */
+            size: number;
+            /** @enum {string|null} */
+            arch: "arm64" | "x86_64" | "universal" | null;
+            /** @enum {string} */
+            format: "dmg" | "zip" | "pkg" | "other";
+            sha256: string | null;
+        };
+        /**
+         * @example {
+         *       "tag": "v2.0",
+         *       "version": "2.0",
+         *       "publishedAt": "2026-10-16T00:00:00Z",
+         *       "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *       "assets": [
+         *         {
+         *           "name": "Example-arm64.dmg",
+         *           "url": "https://example.com/Example-arm64.dmg",
+         *           "size": 123,
+         *           "arch": "arm64",
+         *           "format": "dmg",
+         *           "sha256": null
+         *         }
+         *       ]
+         *     }
+         */
+        GithubRelease: {
+            tag: string;
+            version: string;
+            /** Format: date-time */
+            publishedAt: string;
+            /** Format: uri */
+            url: string;
+            assets: components["schemas"]["ReleaseAsset"][];
+        } | null;
+        /**
+         * @example {
+         *       "homepage": "https://example.com",
+         *       "downloadUrl": "https://example.com/download",
+         *       "github": {
+         *         "repo": "owner/example",
+         *         "latest": {
+         *           "tag": "v2.0",
+         *           "version": "2.0",
+         *           "publishedAt": "2026-10-16T00:00:00Z",
+         *           "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *           "assets": [
+         *             {
+         *               "name": "Example-arm64.dmg",
+         *               "url": "https://example.com/Example-arm64.dmg",
+         *               "size": 123,
+         *               "arch": "arm64",
+         *               "format": "dmg",
+         *               "sha256": null
+         *             }
+         *           ]
+         *         }
+         *       },
+         *       "teamId": null,
+         *       "pricing": "free",
+         *       "notes": null,
+         *       "adoptedByCask": null
+         *     }
+         */
+        LinkInfo: {
+            homepage: string | null;
+            downloadUrl: string | null;
+            github: {
+                repo: string;
+                latest: components["schemas"]["GithubRelease"];
+            } | null;
+            teamId: string | null;
+            /** @enum {string} */
+            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            notes: {
+                "en-US"?: string | null;
+                "zh-CN"?: string | null;
+                "ja-JP"?: string | null;
+                "es-ES"?: string | null;
+                "pt-BR"?: string | null;
+                "ru-RU"?: string | null;
+            } | null;
+            adoptedByCask: string | null;
+        };
+        /**
+         * @example {
+         *       "token": "example-app",
+         *       "name": "Example App",
+         *       "sourceLocale": "en-US",
+         *       "homepage": "https://example.com",
+         *       "downloadUrl": null,
+         *       "githubRepo": "owner/example",
+         *       "bundleIds": [
+         *         "com.example.App"
+         *       ],
+         *       "teamId": null,
+         *       "pricing": "free",
+         *       "sparkleFeed": null,
+         *       "assetRules": null,
+         *       "notes": null
+         *     }
+         */
+        LinkPackageAdd: {
+            token: string;
+            name: string;
+            sourceLocale?: components["schemas"]["Locale"];
+            homepage?: string | null;
+            downloadUrl?: string | null;
+            /** @description GitHub owner/name, without a URL or .git suffix. */
+            githubRepo?: string | null;
+            bundleIds?: string[];
+            teamId?: string | null;
+            /** @enum {string} */
+            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            sparkleFeed?: string | null;
+            assetRules?: {
+                arm64?: string;
+                x86_64?: string;
+                universal?: string;
+            } | null;
+            notes?: {
+                "en-US"?: string | null;
+                "zh-CN"?: string | null;
+                "ja-JP"?: string | null;
+                "es-ES"?: string | null;
+                "pt-BR"?: string | null;
+                "ru-RU"?: string | null;
+            } | null;
+        };
+        /**
+         * @description Omitted fields are preserved; token is immutable. Null clears nullable fields.
+         * @example {
+         *       "downloadUrl": "https://example.com/download"
+         *     }
+         */
+        LinkPackageUpdate: {
+            token?: string;
+            name?: string;
+            sourceLocale?: components["schemas"]["Locale"];
+            homepage?: string | null;
+            downloadUrl?: string | null;
+            /** @description GitHub owner/name, without a URL or .git suffix. */
+            githubRepo?: string | null;
+            bundleIds?: string[];
+            teamId?: string | null;
+            /** @enum {string} */
+            pricing?: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            sparkleFeed?: string | null;
+            assetRules?: {
+                arm64?: string;
+                x86_64?: string;
+                universal?: string;
+            } | null;
+            notes?: {
+                "en-US"?: string | null;
+                "zh-CN"?: string | null;
+                "ja-JP"?: string | null;
+                "es-ES"?: string | null;
+                "pt-BR"?: string | null;
+                "ru-RU"?: string | null;
+            } | null;
+        };
+        /**
+         * @example {
+         *       "token": "example-app",
+         *       "name": "Example App",
+         *       "sourceLocale": "en-US",
+         *       "homepage": "https://example.com",
+         *       "downloadUrl": null,
+         *       "githubRepo": "owner/example",
+         *       "bundleIds": [
+         *         "com.example.App"
+         *       ],
+         *       "teamId": null,
+         *       "pricing": "free",
+         *       "sparkleFeed": null,
+         *       "assetRules": null,
+         *       "notes": null,
+         *       "id": 1,
+         *       "kind": "link",
+         *       "latest": {
+         *         "tag": "v2.0",
+         *         "version": "2.0",
+         *         "publishedAt": "2026-10-16T00:00:00Z",
+         *         "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *         "assets": [
+         *           {
+         *             "name": "Example-arm64.dmg",
+         *             "url": "https://example.com/Example-arm64.dmg",
+         *             "size": 123,
+         *             "arch": "arm64",
+         *             "format": "dmg",
+         *             "sha256": null
+         *           }
+         *         ]
+         *       },
+         *       "etag": null,
+         *       "syncedAt": null,
+         *       "lastError": null,
+         *       "adoptedByCaskAt": null,
+         *       "removed": false
+         *     }
+         */
+        LinkPackage: {
+            token: string;
+            name: string;
+            sourceLocale: components["schemas"]["Locale"];
+            homepage: string | null;
+            downloadUrl: string | null;
+            /** @description GitHub owner/name, without a URL or .git suffix. */
+            githubRepo: string | null;
+            bundleIds: string[];
+            teamId: string | null;
+            /** @enum {string} */
+            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            sparkleFeed: string | null;
+            assetRules: {
+                arm64?: string;
+                x86_64?: string;
+                universal?: string;
+            } | null;
+            notes: {
+                "en-US"?: string | null;
+                "zh-CN"?: string | null;
+                "ja-JP"?: string | null;
+                "es-ES"?: string | null;
+                "pt-BR"?: string | null;
+                "ru-RU"?: string | null;
+            } | null;
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            kind: "link" | "cask";
+            latest: components["schemas"]["GithubRelease"];
+            etag: string | null;
+            /** Format: date-time */
+            syncedAt: string | null;
+            lastError: string | null;
+            /** Format: date-time */
+            adoptedByCaskAt: string | null;
+            removed: boolean;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "token": "example-app",
+         *         "name": "Example App",
+         *         "sourceLocale": "en-US",
+         *         "homepage": "https://example.com",
+         *         "downloadUrl": null,
+         *         "githubRepo": "owner/example",
+         *         "bundleIds": [
+         *           "com.example.App"
+         *         ],
+         *         "teamId": null,
+         *         "pricing": "free",
+         *         "sparkleFeed": null,
+         *         "assetRules": null,
+         *         "notes": null,
+         *         "id": 1,
+         *         "kind": "link",
+         *         "latest": {
+         *           "tag": "v2.0",
+         *           "version": "2.0",
+         *           "publishedAt": "2026-10-16T00:00:00Z",
+         *           "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *           "assets": [
+         *             {
+         *               "name": "Example-arm64.dmg",
+         *               "url": "https://example.com/Example-arm64.dmg",
+         *               "size": 123,
+         *               "arch": "arm64",
+         *               "format": "dmg",
+         *               "sha256": null
+         *             }
+         *           ]
+         *         },
+         *         "etag": null,
+         *         "syncedAt": null,
+         *         "lastError": null,
+         *         "adoptedByCaskAt": null,
+         *         "removed": false
+         *       }
+         *     }
+         */
+        LinkPackageResponseResult: components["schemas"]["LinkPackageResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "token": "example-app",
+         *             "name": "Example App",
+         *             "sourceLocale": "en-US",
+         *             "homepage": "https://example.com",
+         *             "downloadUrl": null,
+         *             "githubRepo": "owner/example",
+         *             "bundleIds": [
+         *               "com.example.App"
+         *             ],
+         *             "teamId": null,
+         *             "pricing": "free",
+         *             "sparkleFeed": null,
+         *             "assetRules": null,
+         *             "notes": null,
+         *             "id": 1,
+         *             "kind": "link",
+         *             "latest": {
+         *               "tag": "v2.0",
+         *               "version": "2.0",
+         *               "publishedAt": "2026-10-16T00:00:00Z",
+         *               "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *               "assets": [
+         *                 {
+         *                   "name": "Example-arm64.dmg",
+         *                   "url": "https://example.com/Example-arm64.dmg",
+         *                   "size": 123,
+         *                   "arch": "arm64",
+         *                   "format": "dmg",
+         *                   "sha256": null
+         *                 }
+         *               ]
+         *             },
+         *             "etag": null,
+         *             "syncedAt": null,
+         *             "lastError": null,
+         *             "adoptedByCaskAt": null,
+         *             "removed": false
+         *           }
+         *         ],
+         *         "total": 1,
+         *         "current": 1,
+         *         "size": 20
+         *       }
+         *     }
+         */
+        LinkPackageListResponseResult: components["schemas"]["LinkPackageListResponse"] | components["schemas"]["BusinessErrorResponse"];
         /**
          * @example {
          *       "clearToken": true
@@ -5789,7 +6584,7 @@ export interface components {
          * @example cask
          * @enum {string}
          */
-        PackageKind: "cask" | "formula";
+        PackageKind: "cask" | "formula" | "link";
         /**
          * @description 1 enabled, 2 disabled (soybean convention)
          * @example 1
@@ -19790,6 +20585,118 @@ export interface components {
             msg: string;
             data: components["schemas"]["AgentDryRun"];
         };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "token": "example-app",
+         *         "name": "Example App",
+         *         "sourceLocale": "en-US",
+         *         "homepage": "https://example.com",
+         *         "downloadUrl": null,
+         *         "githubRepo": "owner/example",
+         *         "bundleIds": [
+         *           "com.example.App"
+         *         ],
+         *         "teamId": null,
+         *         "pricing": "free",
+         *         "sparkleFeed": null,
+         *         "assetRules": null,
+         *         "notes": null,
+         *         "id": 1,
+         *         "kind": "link",
+         *         "latest": {
+         *           "tag": "v2.0",
+         *           "version": "2.0",
+         *           "publishedAt": "2026-10-16T00:00:00Z",
+         *           "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *           "assets": [
+         *             {
+         *               "name": "Example-arm64.dmg",
+         *               "url": "https://example.com/Example-arm64.dmg",
+         *               "size": 123,
+         *               "arch": "arm64",
+         *               "format": "dmg",
+         *               "sha256": null
+         *             }
+         *           ]
+         *         },
+         *         "etag": null,
+         *         "syncedAt": null,
+         *         "lastError": null,
+         *         "adoptedByCaskAt": null,
+         *         "removed": false
+         *       }
+         *     }
+         */
+        LinkPackageResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["LinkPackage"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "token": "example-app",
+         *             "name": "Example App",
+         *             "sourceLocale": "en-US",
+         *             "homepage": "https://example.com",
+         *             "downloadUrl": null,
+         *             "githubRepo": "owner/example",
+         *             "bundleIds": [
+         *               "com.example.App"
+         *             ],
+         *             "teamId": null,
+         *             "pricing": "free",
+         *             "sparkleFeed": null,
+         *             "assetRules": null,
+         *             "notes": null,
+         *             "id": 1,
+         *             "kind": "link",
+         *             "latest": {
+         *               "tag": "v2.0",
+         *               "version": "2.0",
+         *               "publishedAt": "2026-10-16T00:00:00Z",
+         *               "url": "https://github.com/owner/example/releases/tag/v2.0",
+         *               "assets": [
+         *                 {
+         *                   "name": "Example-arm64.dmg",
+         *                   "url": "https://example.com/Example-arm64.dmg",
+         *                   "size": 123,
+         *                   "arch": "arm64",
+         *                   "format": "dmg",
+         *                   "sha256": null
+         *                 }
+         *               ]
+         *             },
+         *             "etag": null,
+         *             "syncedAt": null,
+         *             "lastError": null,
+         *             "adoptedByCaskAt": null,
+         *             "removed": false
+         *           }
+         *         ],
+         *         "total": 1,
+         *         "current": 1,
+         *         "size": 20
+         *       }
+         *     }
+         */
+        LinkPackageListResponse: {
+            code: string;
+            msg: string;
+            data: {
+                records: components["schemas"]["LinkPackage"][];
+                total: number;
+                current: number;
+                size: number;
+            };
+        };
     };
     responses: {
         /** @description On success data is null; see code for failures */
@@ -21125,6 +22032,180 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmptyResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    listLinkPackages: {
+        parameters: {
+            query?: {
+                q?: string;
+                current?: number;
+                size?: number;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkPackageListResponseResult"];
+                };
+            };
+        };
+    };
+    addLinkPackage: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "token": "example-app",
+                 *       "name": "Example App",
+                 *       "sourceLocale": "en-US",
+                 *       "homepage": "https://example.com",
+                 *       "downloadUrl": null,
+                 *       "githubRepo": null,
+                 *       "bundleIds": [],
+                 *       "teamId": null,
+                 *       "pricing": "free",
+                 *       "sparkleFeed": null,
+                 *       "assetRules": null,
+                 *       "notes": null
+                 *     }
+                 */
+                "application/json": components["schemas"]["LinkPackageAdd"];
+            };
+        };
+        responses: {
+            /** @description Returns the link app, a dry-run preview, or a business error */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkPackageResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    removeLinkPackage: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description On success data is null; see code for failures */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmptyResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    updateLinkPackage: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "downloadUrl": "https://example.com/download"
+                 *     }
+                 */
+                "application/json": components["schemas"]["LinkPackageUpdate"];
+            };
+        };
+        responses: {
+            /** @description Returns the link app, a dry-run preview, or a business error */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkPackageResponseResult"] | components["schemas"]["AgentDryRunResponse"];
                 };
             };
         };
@@ -25602,6 +26683,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminCatalogVersionsResponseResult"];
+                };
+            };
+        };
+    };
+    upsertUpdateFeed: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "bundleId": "com.example.App",
+                 *       "source": "sparkle",
+                 *       "feedUrl": "https://example.com/appcast.xml",
+                 *       "teamId": null,
+                 *       "channel": "stable",
+                 *       "packageId": null
+                 *     }
+                 */
+                "application/json": components["schemas"]["UpdateFeedInput"];
+            };
+        };
+        responses: {
+            /** @description Update rule or dry-run preview */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateFeedResponseResult"] | components["schemas"]["UpdateFeedPreviewResponse"];
+                };
+            };
+        };
+    };
+    disableUpdateFeed: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "bundleId": "com.example.App",
+                 *       "source": "sparkle"
+                 *     }
+                 */
+                "application/json": components["schemas"]["UpdateFeedKey"];
+            };
+        };
+        responses: {
+            /** @description Update rule or dry-run preview */
+            200: {
+                headers: {
+                    /**
+                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateFeedResponseResult"] | components["schemas"]["UpdateFeedPreviewResponse"];
                 };
             };
         };

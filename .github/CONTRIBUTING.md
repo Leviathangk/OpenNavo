@@ -2,6 +2,14 @@
 
 Read the [README](../README.md) for toolchain versions and local setup. Report security issues privately using [SECURITY.md](SECURITY.md), not a public issue.
 
+## Contribution license
+
+By submitting a contribution for inclusion in OpenNavo, you license your own
+contribution under GNU GPL version 3 only (`GPL-3.0-only`), the same license as
+the project (inbound = outbound). See [LICENSE](../LICENSE) and the additional
+terms under GPLv3 section 7 in [NOTICE](../NOTICE). Retain the original notices
+and licenses of any third-party material you contribute.
+
 ## Development workflow
 
 1. Describe the problem and intended behavior in an issue or pull request. Keep unrelated changes separate.

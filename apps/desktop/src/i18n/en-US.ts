@@ -78,7 +78,9 @@ const messages: MessageSchema = {
     updatesBadge: '{count} update available | {count} updates available',
     cleanup: 'Clean Up',
     cleanupBadge: '{count} broken background item still loads | {count} broken background items still load',
-    monitor: 'Monitor'
+    monitor: 'Monitor',
+    security: 'Security',
+    securityBadge: '{count} item needs attention | {count} items need attention'
   },
   env: {
     label: 'Homebrew',
@@ -101,6 +103,7 @@ const messages: MessageSchema = {
     search: 'Search {count} app | Search {count} apps',
     searchShort: 'Search apps',
     taskRunning: '{action} {name}',
+    taskScanning: 'Scanning the {name} download',
     taskQueued: '{count} more queued | {count} more queued'
   },
   rail: {
@@ -185,7 +188,61 @@ const messages: MessageSchema = {
     empty: 'No results for “{q}”',
     emptyHint: 'Try another keyword, the English name or a pinyin abbreviation',
     alias: 'Also known as {name}',
-    prompt: 'Type a name, a purpose or a command to search'
+    prompt: 'Type a name, a purpose or a command to search',
+    catalogEmpty: 'No catalog results for “{q}”',
+    sources: {
+      label: 'Result source',
+      all: 'All',
+      catalog: 'Catalog'
+    }
+  },
+  appStore: {
+    title: 'App Store',
+    badge: 'App Store',
+    get: 'Get',
+    getIn: 'Get {name} in the App Store',
+    free: 'Free',
+    fromApple: 'From Apple · {region} store',
+    fromAppleNoRegion: 'From Apple',
+    rating: '{rating} · {count} rating | {rating} · {count} ratings',
+    rateLimited: 'Too many App Store searches. Try again in a minute.',
+    offline: 'Can’t reach the App Store. Check your connection and try again.',
+    searchFailed: 'App Store search failed. Try again later.',
+    empty: 'No App Store results for “{q}”',
+    emptyHint: 'Try another keyword, or change the App Store region in Settings',
+    showAll: 'Show {count} result | Show all {count} results',
+    requiresOs: 'macOS {version} or later',
+    installedVersion: '{version} installed',
+    headerMeta: 'Downloaded by the App Store · Requires a signed-in Apple Account',
+    viewInStore: 'View in App Store',
+    alsoTitle: 'Also available on',
+    whatsNew: 'What’s New · {version}',
+    whatsNewDated: 'What’s New · {version} · {date}',
+    about: 'About',
+    info: {
+      seller: 'Developer',
+      version: 'Version',
+      size: 'Size',
+      requires: 'Requires',
+      category: 'Category',
+      region: 'Store region',
+      bundleId: 'Bundle ID'
+    },
+    privacyNote: 'Your Mac gets this information straight from Apple. It never passes through OpenNavo’s servers.',
+    notInRegion: 'This app isn’t available in the {region} store',
+    notInRegionHint: 'It may have been removed, or it is only sold in other regions.',
+    settings: {
+      region: 'Store region',
+      regionHint:
+        'Decides search results, prices and availability. Auto uses the App Store account’s region, or the system region if that can’t be read',
+      auto: 'Auto',
+      autoDetected: 'Auto ({region})',
+      search: 'Show App Store results in search',
+      searchHint: 'Apple is searched only after you stop typing, at most 15 times a minute',
+      updates: 'Check for App Store updates',
+      updatesHint: 'List new versions of App Store apps in Updates',
+      privacy: 'Search, details and update checks go straight from this Mac to Apple, never through OpenNavo’s servers.'
+    }
   },
   collections: {
     title: 'Collections',
@@ -203,6 +260,58 @@ const messages: MessageSchema = {
     offline: 'Collections need a connection'
   },
   package: {
+    link: {
+      chip: 'Website download',
+      chipGithub: 'GitHub',
+      meta: 'Downloads come from {source} · OpenNavo hosts no installers',
+      notHosted: 'OpenNavo hosts no installers; downloads come straight from the developer.',
+      homepage: 'Website',
+      downloadTitle: 'Download',
+      officialDownload: 'Download from Website',
+      release: '{version} · released {time}',
+      recommended: 'Recommended',
+      download: 'Download',
+      allFiles: 'All Files on GitHub',
+      githubReleases: 'Download from GitHub',
+      teamId: 'Developer signature',
+      pricingLabel: 'Price',
+      adopted: 'Homebrew now includes this app, so it installs in one click',
+      arch: {
+        arm64: 'Apple silicon',
+        x86_64: 'Intel',
+        universal: 'Universal'
+      },
+      pricing: {
+        free: 'Free',
+        paid: 'Paid',
+        freemium: 'Free with paid features',
+        subscription: 'Subscription',
+        open_source: 'Free and open source'
+      },
+      verdict: {
+        verifying: 'Checking {file}…',
+        checked: 'Checked {file}: {details}',
+        title: 'Checked {file}',
+        view: 'View',
+        open: 'Open Installer',
+        reveal: 'Show in Finder',
+        who: '{signer} ({team})',
+        teamMatch: 'Signed by {who}, as registered',
+        teamMismatch: 'Signed by {who}, not the registered developer',
+        signed: 'Signed by {who}',
+        unsigned: 'No developer signature',
+        zip: 'ZIP not unpacked; macOS checks the app inside when it first opens',
+        invalid: 'Invalid signature',
+        notarized: 'Notarized by Apple',
+        notNotarized: 'Not notarized by Apple',
+        clean: 'No threats found',
+        threat: 'Found {name}',
+        threatQuarantined: 'Found {name} and moved it to quarantine',
+        notScanned: 'Not scanned for viruses',
+        skipped: 'Not scanned: {reason}',
+        modified: 'Files changed after signing; it may have been tampered with'
+      }
+    },
     arch: {
       arm64: 'Apple silicon',
       x86_64: 'Intel'
@@ -526,12 +635,95 @@ const messages: MessageSchema = {
     updateAll: 'Update All',
     changelog: 'What’s New',
     update: 'Update',
-    ignore: 'Ignore This Version',
-    ignored: 'Ignoring {name} {version}',
     pinned: 'Pinned, won’t update',
     patch: 'Patch',
     empty: 'Everything is up to date',
     emptyHint: 'New versions will show up here',
+    source: {
+      homebrew: 'Homebrew',
+      mas: 'App Store',
+      sparkle: 'App’s updater',
+      electron: 'App’s updater',
+      github: 'GitHub',
+      vendor: 'Developer website',
+      msupdate: 'Microsoft AutoUpdate'
+    },
+    badge: {
+      critical: 'Important',
+      beta: 'Beta',
+      major: 'Major update',
+      teamMismatch: 'Signature mismatch'
+    },
+    hint: {
+      relaunch: 'Updated to {version}; reopen the app to use it',
+      informational: 'Get this version from the developer’s website',
+      running: 'Running; you’ll be asked to quit it first',
+      admin: 'Needs an administrator password',
+      skipped: 'Skipped {version}',
+      teamMismatch:
+        'The expected developer signature doesn’t match the installed app, so OpenNavo won’t install this update'
+    },
+    actions: {
+      skip: 'Skip This Version',
+      unskip: 'Stop Skipping {version}',
+      beta: 'Get Beta Versions',
+      stable: 'Get Stable Versions Only',
+      unignoreApp: 'Resume Checking This App',
+      ignoreApp: 'Stop Checking This App',
+      relaunch: 'Reopen',
+      view: 'View'
+    },
+    toast: {
+      skipped: 'Skipped {name} {version}',
+      unskipped: '{name} updates will show again',
+      beta: '{name} now gets beta versions',
+      stable: '{name} now gets stable versions only',
+      unignoredApp: 'Checking {name} for updates again',
+      ignoredApp: 'No longer checking {name}'
+    },
+    notes: {
+      title: 'What’s New in {name} {version}'
+    },
+    masSignedOut:
+      'The App Store isn’t signed in to an Apple Account, so App Store updates can’t install. Sign in and try again.',
+    failedSources:
+      'Couldn’t check {sources} this time. Results from the other sources are shown as usual, and the next check tries again',
+    openAppStore: 'Open App Store',
+    major: {
+      titleOne: '{name} has a major update',
+      title: '{count} major update | {count} major updates',
+      body: 'A major version can change the interface, ask for permissions again or stop opening older files. Update anyway?',
+      others: 'Other updates go ahead either way.',
+      skip: 'Not Now',
+      confirm: 'Update'
+    },
+    filter: {
+      label: 'Source',
+      all: 'All {count}',
+      homebrew: 'Homebrew {count}',
+      mas: 'App Store {count}',
+      other: 'Other Sources {count}'
+    },
+    meta: {
+      from: 'from {host}',
+      teamMatch: 'Team ID as expected'
+    },
+    sources: {
+      title: 'Sources',
+      subtitle: 'Sources you turn off aren’t checked',
+      homebrew: 'Homebrew',
+      homebrewHint: 'Runs brew outdated',
+      mas: 'App Store',
+      masHint: 'This Mac asks Apple directly',
+      sparkle: 'Apps’ own updaters',
+      sparkleHint: 'The developer’s signature and notarization are checked before installing',
+      electron: 'Electron updaters',
+      electronHint: 'Checks sha512 and the signature before installing',
+      github: 'GitHub Releases',
+      githubHint: 'Checks the file digest and developer signature',
+      vendor: 'Developer websites',
+      vendorHint: 'Uses rules OpenNavo maintains and checks the developer signature'
+    },
     queued: '{count} added to the queue | {count} added to the queue',
     history: {
       recheck: 'Review Again',
@@ -549,7 +741,8 @@ const messages: MessageSchema = {
       purge: 'Delete Permanently',
       canceled: 'Canceled',
       batch: '{action} {count} {kind} | {action} {count} {kind}',
-      empty: 'No history yet'
+      empty: 'No history yet',
+      rollback: 'Roll Back'
     },
     month: {
       title: 'This Month',
@@ -583,6 +776,13 @@ const messages: MessageSchema = {
     log: {
       title: 'Log for {name}',
       empty: 'No log'
+    },
+    rollback: {
+      title: 'Roll {name} back to {version}?',
+      body: 'This puts back {version}, which OpenNavo kept when it updated the app. If {name} is running, it’s asked to quit first and reopens afterwards.',
+      skip: '{version} won’t be offered again until a newer version comes out.',
+      confirm: 'Roll Back',
+      notQuit: '{name} didn’t quit, so it wasn’t rolled back. Quit it and try again.'
     }
   },
   history: {
@@ -603,10 +803,12 @@ const messages: MessageSchema = {
       general: 'General',
       mirrors: 'Download Source',
       homebrew: 'Homebrew',
+      appstore: 'App Store',
       privacy: 'Privacy',
       about: 'About',
       cleanup: 'Clean Up',
-      monitor: 'System Monitor'
+      monitor: 'System Monitor',
+      security: 'Security'
     },
     general: {
       followSystem: 'Follow system (current: {language})',
@@ -923,7 +1125,9 @@ const messages: MessageSchema = {
       update: 'Update Homebrew',
       install_homebrew: 'Install Homebrew',
       remove_leftovers: 'Clean up leftovers',
-      clean: 'Clean Up Mac'
+      clean: 'Clean Up Mac',
+      av_db_update: 'Update Virus Database',
+      rollback: 'Roll Back'
     },
     running: {
       install: 'Installing {name}',
@@ -936,12 +1140,15 @@ const messages: MessageSchema = {
       update: 'Updating Homebrew',
       install_homebrew: 'Installing Homebrew',
       remove_leftovers: 'Cleaning up leftovers: {name}',
-      clean: 'Cleaning up Mac'
+      clean: 'Cleaning up Mac',
+      av_db_update: 'Updating the virus database',
+      rollback: 'Rolling back {name}'
     },
     phases: {
       preparing: 'Preparing',
       fetching: 'Fetching',
       downloading: 'Downloading',
+      scanning: 'Scanning the download',
       installing: 'Installing',
       linking: 'Linking',
       cleaning: 'Cleaning up',
@@ -964,6 +1171,34 @@ const messages: MessageSchema = {
     failed: '{action} {name} failed'
   },
   errors: {
+    E_STARTUP_PROTECTED: 'This item comes with macOS and can’t be changed here',
+    E_AV_CONSENT: 'Agree to download the virus database first',
+    E_AV_NOT_READY: 'The virus database isn’t downloaded yet. Download it in Virus Scan first',
+    E_AV_ENGINE: 'The scan engine didn’t start. Try again later',
+    E_AV_SCAN_FAILED: 'The scan didn’t finish. Run it again',
+    E_AV_DB_RATE_LIMITED: 'Database updates are temporarily limited by the official server. OpenNavo will retry later',
+    E_AV_DB_UPDATE: 'The virus database couldn’t be updated. Check your connection and try again',
+    E_RESTORE_CONFLICT: 'A file with the same name is already in the original location, so nothing was restored',
+    E_MAS_NOT_SIGNED_IN: 'Sign in to the App Store with your Apple Account first',
+    E_MAS_NOT_OWNED: 'This Apple Account hasn’t gotten this app yet. Click Get in the App Store',
+    E_MAS_PAID: 'Buy paid apps in the App Store',
+    E_MAS_OTHER_ACCOUNT: 'This app was bought with another Apple Account. Update it in the App Store',
+    E_MAS_REGION: 'This app isn’t available in the current store region',
+    E_MAS_RATE_LIMITED: 'Too many App Store requests. Try again in a minute',
+    E_UPDATE_INTEGRITY: 'The download failed its integrity check, so the update wasn’t installed',
+    E_UPDATE_TEAM_MISMATCH: 'The new version is signed by a different developer, so it wasn’t installed',
+    E_UPDATE_NOT_NOTARIZED: 'The new version isn’t notarized by Apple, so it wasn’t installed',
+    E_UPDATE_ARCH: 'The new version doesn’t support this Mac’s chip',
+    E_UPDATE_MIN_OS: 'The new version needs a newer version of macOS',
+    E_UPDATE_FEED: 'Couldn’t read the update feed. Try again later',
+    E_UPDATE_DMG_LICENSE: 'This installer asks you to accept a license, so install this version yourself',
+    E_UPDATE_SWAP: 'Replacing the app failed, so the previous version was restored',
+    E_ADMIN_CANCELED: 'Administrator authorization was canceled',
+    E_NOT_IMPLEMENTED: 'This isn’t available yet',
+    E_DOWNLOAD_UNSAFE: 'This installer didn’t pass the check, so it wasn’t opened',
+    E_MAS_ENGINE: 'The App Store download component failed. Finish this in the App Store instead',
+    E_NOT_INSTALLABLE: 'This app is downloaded from its website and can’t be installed with Homebrew',
+    E_LINK_URL: 'This download address isn’t registered for the app, so it wasn’t opened',
     E_APP_RUNNING: 'The app is running. Update deferred; quit the app and try again.',
     E_APP_QUIT_FAILED: 'The app did not quit. Update deferred; save your work, quit the app, and try again.',
     E_APP_CHECK_FAILED:
@@ -1005,7 +1240,23 @@ const messages: MessageSchema = {
     E_FAN_WRITE_FAILED: 'Couldn’t change the fan setting',
     E_FAN_NO_MANUAL_SPEED: 'There’s no previous manual speed yet',
     E_FAN_UNAUTHORIZED: 'The fan helper failed its signature check. Reinstall OpenNavo',
-    E_FAN_SENSOR_UNAVAILABLE: 'Temperature can’t be read, so manual control is blocked for safety'
+    E_FAN_SENSOR_UNAVAILABLE: 'Temperature can’t be read, so manual control is blocked for safety',
+    E_INSTALL_THREAT: 'A threat was found in the download, so the install stopped',
+    E_INSTALL_SCAN:
+      'The scan before installing didn’t finish, so nothing was installed. Try again later, or turn off Scan before installing in Settings → Security',
+    E_PASTE_EXPIRED: 'That paste expired and was discarded',
+    E_ACCESSIBILITY_DENIED: 'Allow OpenNavo to use Accessibility in System Settings',
+    E_VT_DISABLED: 'VirusTotal lookup is turned off',
+    E_VT_KEY_REQUIRED: 'Add your VirusTotal API key in Settings first',
+    E_VT_KEY_INVALID: 'The VirusTotal API key isn’t valid. Check it and enter it again',
+    E_VT_RATE_LIMITED: 'Too many VirusTotal lookups. The public API allows 4 a minute; try again shortly',
+    E_VT_UNAVAILABLE: 'VirusTotal can’t be reached right now. Try again later',
+    E_KEYCHAIN: 'The keychain couldn’t be read or updated',
+    E_AUTOMATION_DENIED: 'Allow OpenNavo to control System Events in System Settings → Privacy & Security → Automation',
+    E_STARTUP_CHANGED: 'Another program just changed this startup item. Refresh and try again',
+    E_LOGIN_ITEM_EXISTS: 'This app already opens at login',
+    E_ROLLBACK_UNAVAILABLE: 'The kept version is gone or the app has changed since, so it can’t be rolled back',
+    E_ROLLBACK_INTEGRITY: 'The kept version didn’t pass the signature check, so nothing was rolled back'
   },
   installConfirm: {
     title: 'Adopt the existing {name}?',
@@ -1045,6 +1296,7 @@ const messages: MessageSchema = {
     open: 'Open',
     reveal: 'Show in Finder',
     detail: 'View in OpenNavo',
+    appStore: 'App Store Page',
     adoptTitle: 'Let Homebrew Manage It',
     adoptBody:
       'Homebrew has {name}. Adopt it to update it in OpenNavo with one click and uninstall it with fuller cleanup rules.',
@@ -1064,9 +1316,11 @@ const messages: MessageSchema = {
       vendor: 'Developer',
       arch: 'Architecture',
       source: 'Source',
+      updater: 'Update method',
       installedAt: 'Installed',
       lastUsed: 'Last opened'
     },
+    updaterNone: 'OpenNavo can’t update it yet',
     arch: {
       arm64: 'Apple silicon',
       x86_64: 'Intel',
@@ -1817,6 +2071,528 @@ const messages: MessageSchema = {
       alerts: 'Alerts',
       alertsHint:
         'Get a notification when something needs attention, at most once an hour for the same issue. While on, checks keep running in the background at a low rate even with no menu bar items'
+    }
+  },
+  security: {
+    title: 'Security',
+    subtitle: 'Check-up, virus scans, startup items and protection. Results stay on this Mac',
+    tabs: {
+      label: 'Security',
+      overview: 'Overview',
+      scan: 'Virus Scan',
+      startup: 'Startup Items',
+      protection: 'Protection',
+      quarantine: 'Quarantine'
+    },
+    overview: {
+      attention: '{count} thing needs a look | {count} things need a look',
+      newStartup: '{count} new startup item | {count} new startup items',
+      openThreats: '{count} threat not handled yet | {count} threats not handled yet',
+      allGood: 'Everything looks good',
+      allGoodHint: 'System protections are on, and there are no open threats or new startup items',
+      viewStartup: 'View Startup Items',
+      postureTitle: 'System check-up',
+      postureHint: 'Read-only checks. To change something, OpenNavo opens the right pane in System Settings',
+      openSettings: 'Open Settings',
+      scheduleOff: 'Scheduled scan: off',
+      scheduleDaily: 'Scheduled scan: daily at {time}',
+      scheduleWeekly: 'Scheduled scan: every {day} at {time}'
+    },
+    postureState: {
+      ok: 'OK',
+      warn: 'Check',
+      bad: 'Risk',
+      info: 'Note',
+      unknown: 'Unknown'
+    },
+    posture: {
+      sip: {
+        title: 'System Integrity Protection',
+        ok: 'On',
+        bad: 'System Integrity Protection is off',
+        unknown: 'Couldn’t read'
+      },
+      ssv: {
+        title: 'Signed system volume',
+        ok: 'The system volume is signed and sealed',
+        bad: 'The system volume isn’t sealed',
+        unknown: 'Couldn’t read'
+      },
+      gatekeeper: {
+        title: 'Gatekeeper',
+        ok: 'Only verified apps can run',
+        bad: 'Gatekeeper is off, so apps from anywhere can run',
+        unknown: 'Couldn’t read'
+      },
+      filevault: {
+        title: 'FileVault disk encryption',
+        ok: 'On',
+        bad: 'FileVault is off, so data could be read if the Mac is lost',
+        unknown: 'Couldn’t read'
+      },
+      firewall: {
+        title: 'Firewall',
+        ok: 'On',
+        bad: 'The firewall is off (it blocks only incoming connections; turn it on for public networks)',
+        unknown: 'Couldn’t read'
+      },
+      xprotect: {
+        title: 'XProtect (built-in Apple protection)',
+        ok: 'Up to date',
+        bad: 'XProtect hasn’t been updated for over 30 days',
+        unknown: 'Couldn’t read the version',
+        detail: 'Version {version} · updated {time}'
+      },
+      updates: {
+        title: 'Automatic security updates',
+        ok: 'On',
+        bad: 'Security responses and data files aren’t installed automatically',
+        unknown: 'Couldn’t read'
+      },
+      screenlock: {
+        title: 'Screen lock',
+        ok: 'Password required right after wake',
+        bad: 'A password isn’t required right after wake',
+        unknown: 'Couldn’t read'
+      },
+      autologin: {
+        title: 'Automatic login',
+        ok: 'Off',
+        bad: 'Automatic login is on, so starting up needs no password',
+        unknown: 'Couldn’t read'
+      },
+      guest: {
+        title: 'Guest user',
+        ok: 'Off',
+        bad: 'The guest user is on',
+        unknown: 'Couldn’t read'
+      },
+      sharing: {
+        title: 'Sharing services',
+        ok: 'No remote sharing services are on',
+        bad: 'Remote sharing services are on',
+        unknown: 'Couldn’t read',
+        detail: 'On: {services}',
+        services: {
+          ssh: 'Remote Login',
+          files: 'File Sharing',
+          screen: 'Screen Sharing',
+          remote: 'Remote Management'
+        }
+      }
+    },
+    engine: {
+      title: 'Virus database',
+      setUp: 'Download Virus Database',
+      db: 'Database {version} · updated {time}',
+      downloading: 'Downloading the virus database…',
+      noDb: 'The virus database isn’t downloaded yet',
+      lastScan: 'Last {kind}: {date}, {count} threat found | Last {kind}: {date}, {count} threats found',
+      neverScanned: 'No scans yet',
+      consentTitle: 'Download the official virus database first',
+      consentBody:
+        'Virus scans use the ClamAV engine and its official virus database. The database comes straight from ClamAV’s official servers, not through OpenNavo.',
+      consentSize:
+        'The first download is about 113 MB; after that only changes are downloaded. It takes about 170 MB on disk.',
+      consentMemory: 'While scanning, the engine uses about 1.1 GB of memory. It quits after 5 idle minutes.',
+      consentSource: 'Updates are checked every 4 hours by default, within the official servers’ rate limits.',
+      consentCoverage:
+        'ClamAV covers Mac-specific malware only partly, so OpenNavo also checks signatures, notarization and startup items, and shows the state of Apple’s XProtect.',
+      download: 'Agree and Download',
+      downloadFailed: 'The virus database couldn’t be downloaded',
+      rateLimited: 'Database updates are temporarily limited by the official server. OpenNavo will retry later'
+    },
+    scan: {
+      denied:
+        'No permission to read {folders}, so they weren’t scanned. You can allow OpenNavo in System Settings → Privacy & Security → Files & Folders',
+      folders: {
+        downloads: 'Downloads',
+        desktop: 'Desktop',
+        documents: 'Documents'
+      },
+      quick: {
+        title: 'Quick Scan',
+        duration: 'Usually a few minutes; longer with large installers in Downloads or on the Desktop',
+        body: 'Programs that startup items run, Downloads, Desktop, temporary folders and apps installed in the last 7 days',
+        action: 'Quick Scan'
+      },
+      full: {
+        title: 'Full Scan',
+        duration: 'Can take over an hour',
+        body: 'The whole Mac, except the system volume, iCloud files not downloaded, Time Machine and network volumes',
+        action: 'Start Full Scan'
+      },
+      custom: {
+        title: 'Custom Scan',
+        duration: 'Depends on what you choose',
+        body: 'Choose folders or an external drive',
+        action: 'Choose and Scan'
+      },
+      failed: 'The scan didn’t start',
+      running: 'Running {kind} · {count} files checked ({size})',
+      state: {
+        done: 'Scan complete · {count} files checked · {time}',
+        canceled: 'Scan canceled · {count} files checked',
+        failed: 'Scan stopped · {count} files checked'
+      },
+      progressLabel: 'Scan progress',
+      skipped: {
+        dataless:
+          'Skipped {count} iCloud file that isn’t downloaded | Skipped {count} iCloud files that aren’t downloaded',
+        tooLarge:
+          '{count} file exceeds the scan limit and wasn’t fully scanned | {count} files exceed the scan limit and weren’t fully scanned',
+        unreadable:
+          '{count} file couldn’t be read (no permission, encrypted, or an unsupported format) | {count} files couldn’t be read (no permission, encrypted, or an unsupported format)',
+        excluded: '{count} file is excluded | {count} files are excluded'
+      }
+    },
+    findings: {
+      title: 'Threats found ({count}) | Threats found ({count})',
+      quarantine: 'Quarantine',
+      quarantined: 'Quarantined {name}',
+      reveal: 'Show in Finder',
+      trust: 'Trust This File',
+      delete: 'Delete',
+      more: 'More actions for {name}',
+      status: {
+        open: 'Open',
+        quarantined: 'Quarantined',
+        deleted: 'Deleted',
+        trusted: 'Trusted'
+      },
+      none: 'No threats found',
+      noneHint: 'Nothing the virus database recognizes was in the scanned locations'
+    },
+    startup: {
+      summary: '{count} third-party startup item | {count} third-party startup items',
+      notRead: 'Startup items haven’t been read yet',
+      untrusted: '{count} of them unsigned or not notarized | {count} of them unsigned or not notarized',
+      missing: 'Without Full Disk Access, these can’t be read: {categories}',
+      grant: 'Allow Access',
+      btmUnknown:
+        'The background items database on this Mac uses a format OpenNavo doesn’t recognize, so some login items may be missing',
+      new: 'New',
+      toggle: 'Enable {name}',
+      openSettings: 'Manage in System Settings',
+      none: 'No startup items',
+      noneHint: 'Items that come with macOS aren’t shown here',
+      noApps: 'No apps start on their own',
+      others: '{count} other item | {count} other items',
+      othersHint: 'Command-line tools, scripts, extensions and plugins',
+      items: '{count} item | {count} items',
+      stateMixed: '{count} enabled | {count} enabled',
+      add: 'Add Login Item',
+      addHint: 'The app you pick opens when you log in to this Mac',
+      addSearch: 'Search apps',
+      addEmpty: 'No apps to add',
+      adding: 'Adding…',
+      added: '{name} will open at login',
+      refreshing: 'Checking startup items…',
+      removed: 'Removed {name}. You can restore it from Quarantine',
+      removeTitle: 'Remove “{name}”?',
+      removeBody: 'It is disabled first, then its configuration file moves to Quarantine, where you can restore it.',
+      removeBodyAdmin:
+        'It is disabled first, then its configuration file moves to Quarantine, where you can restore it. This is a system-wide item, so you’ll enter an administrator password once.',
+      remove: 'Remove',
+      enable: 'Enable',
+      disable: 'Disable',
+      keep: 'Keep',
+      scan: 'Scan with Virus Database',
+      adminHint: 'This is a system-wide item. Disabling or removing it asks for an administrator password once.',
+      riskHigh: 'High risk',
+      avClean: 'No threats found',
+      avThreat: 'Detected as {name}',
+      avNotScanned: 'Not scanned yet',
+      category: {
+        launch_items: 'Background service',
+        btm: 'Background item',
+        login_items: 'Login item',
+        cron: 'Scheduled task',
+        browser_extensions: 'Browser extension',
+        kexts: 'Kernel extension',
+        system_extensions: 'System extension',
+        app_extensions: 'App extension',
+        auth_plugins: 'Authorization plug-in',
+        dir_services_plugins: 'Directory services plug-in',
+        spotlight: 'Spotlight importer',
+        quicklook: 'Quick Look plug-in',
+        dock_tiles: 'Dock tile plug-in',
+        library_inserts: 'Library injection',
+        library_proxies: 'Library proxy',
+        login_hooks: 'Login hook',
+        periodic: 'Periodic script',
+        startup_scripts: 'Startup script',
+        shell_config: 'Shell configuration',
+        event_rules: 'Event rule'
+      },
+      scope: {
+        user: 'This user',
+        system: 'Whole Mac'
+      },
+      state: {
+        running: 'Running',
+        loaded: 'Loaded',
+        enabled: 'Enabled',
+        disabled: 'Disabled',
+        unknown: 'Unknown',
+        removed: 'Removed'
+      },
+      trust: {
+        apple: 'Apple',
+        known: 'Known developer',
+        unknown: 'Can’t confirm',
+        untrusted: 'Unsigned or not notarized'
+      },
+      trigger: {
+        at_load: 'Runs at startup',
+        keep_alive: 'Always running',
+        interval: 'Runs periodically',
+        calendar: 'Runs on a schedule',
+        watch_paths: 'Runs when files change',
+        events: 'Runs on events'
+      },
+      fields: {
+        category: 'Type',
+        scope: 'Scope',
+        path: 'Location',
+        program: 'Program',
+        owner: 'App',
+        signature: 'Signature',
+        team: 'Team ID',
+        state: 'State',
+        triggers: 'Runs',
+        firstSeen: 'First seen',
+        av: 'Virus database'
+      },
+      restore: 'Restore',
+      restored: 'Restored {name}',
+      removedBackup: 'Removed {name}. You can restore it here',
+      removeBodyBackup: 'A backup is kept before it’s removed, so you can restore it from the startup items list.'
+    },
+    signature: {
+      apple: 'Signed by Apple',
+      appStore: 'Signed by the App Store',
+      notarized: 'Notarized',
+      notNotarized: 'Valid signature, not notarized',
+      adhoc: 'Ad-hoc signature; the developer can’t be confirmed',
+      unsigned: 'Not signed',
+      invalid: 'Invalid signature',
+      notCode: 'Not a program, so signing doesn’t apply',
+      unknown: 'Signature couldn’t be checked',
+      modified: 'Valid signature, but files changed after signing'
+    },
+    quarantine: {
+      summary: '{count} file, {size} | {count} files, {size}',
+      empty: 'Quarantine is empty',
+      emptyHint: 'Quarantined threats and removed startup items stay here, and you can restore them at any time',
+      reason: {
+        startup: 'Removed startup item',
+        user: 'Quarantined by you'
+      },
+      restore: 'Restore',
+      restored: 'Restored {name}',
+      delete: 'Delete Permanently',
+      deleteTitle: 'Delete “{name}” permanently?',
+      deleteBody: 'This can’t be undone.'
+    },
+    protection: {
+      title: 'Protection',
+      startupAlerts: {
+        title: 'Startup item alerts',
+        body: 'Tells you right away when a new startup item, login item or background service appears, with its signature and app. It alerts after the fact and can’t stop the first run.'
+      },
+      watchDownloads: {
+        title: 'Scan new downloads',
+        body: 'Watches the Downloads folder and scans new files once they finish downloading. Installers are also checked for a signature and notarization.'
+      },
+      needsDb: 'Download the virus database first',
+      waiting: '{stage} · waiting for Apple approval',
+      later: {
+        realtime: {
+          title: 'Block new startup items',
+          body: 'Knows which program added a startup item and disables it at once. Needs Apple to approve the Endpoint Security entitlement.'
+        },
+        exec: {
+          title: 'Confirm unnotarized programs',
+          body: 'Asks before a downloaded program that isn’t notarized runs for the first time. Needs the Endpoint Security entitlement.'
+        },
+        ransomware: {
+          title: 'Ransomware protection',
+          body: 'Pauses a program that writes many encrypted-looking files in a short time, and asks you what to do. Needs the Endpoint Security entitlement.'
+        },
+        firewall: {
+          title: 'App firewall',
+          body: 'Asks whether to allow an app the first time it connects to the network, with rules and block lists. Needs a network system extension; coming in a later version.'
+        }
+      },
+      eventsTitle: 'Recent activity',
+      noEvents: 'Nothing yet',
+      events: {
+        startup_added: 'New startup item: {name}',
+        startup_removed: 'Startup item removed: {name}',
+        download_threat: 'Threat in a download: {name}',
+        download_unsigned: 'Unsigned installer downloaded: {name}',
+        scan_threat: 'Scan found a threat: {name}',
+        scheduled_scan_skipped: 'Scheduled scan skipped: {name}',
+        signature_changed: 'Signed by a different developer: {name}',
+        install_threat: 'Install stopped, threat found: {name}',
+        paste_blocked: 'Suspicious paste paused: {name}'
+      },
+      installThreatUnnamed: 'Install stopped, threat found'
+    },
+    toasts: {
+      startupAdded: '{count} new startup item | {count} new startup items',
+      startupAddedBody: '{name} · {signer}',
+      review: 'Review',
+      threats: 'The scan found {count} threat | The scan found {count} threats',
+      clean: 'Scan complete, no threats found',
+      view: 'View',
+      signatureChanged:
+        '{count} app is now signed by a different developer | {count} apps are now signed by different developers',
+      signatureChangedBody: '{names}: signed by a different developer than before, which can mean an app was replaced',
+      installThreat: 'Threat found in the download; install stopped'
+    },
+    rail: {
+      engine: 'Scan engine',
+      version: 'Version',
+      engineVersion: 'ClamAV {version}',
+      database: 'Database',
+      noDatabase: 'Not downloaded',
+      size: 'Size',
+      engineState: 'Engine',
+      running: 'Running · {size}',
+      idle: 'Not running',
+      protection: 'Protection',
+      on: 'On',
+      off: 'Off',
+      limitsTitle: 'What it covers',
+      limits:
+        'The virus database covers Mac-specific malware only partly, and until Apple grants the entitlement, startup alerts come after the fact and can’t block anything. This adds to the protection built into macOS; it doesn’t replace it. Ordinary files over 100 MB, and installers over 1 GB or over 2 GB once unpacked, aren’t fully scanned.'
+    },
+    avSkipped: {
+      no_database: 'the virus database isn’t downloaded yet',
+      no_consent: 'the virus database download wasn’t approved yet',
+      excluded: 'the folder is in the scan exclusions',
+      too_large: 'over the scan limit',
+      unreadable: 'couldn’t be read (no permission, encrypted, or an unsupported format)'
+    },
+    installScan: {
+      clean: '{count} file scanned before installing, no threats | {count} files scanned before installing, no threats',
+      skipped: 'The scan before installing didn’t finish: {reason}',
+      skippedPartial:
+        '{count} file scanned before installing, but not everything: {reason} | {count} files scanned before installing, but not everything: {reason}',
+      threat: 'Found before installing: {names}'
+    },
+    settings: {
+      interval: 'Database check interval',
+      intervalHint:
+        'The version record is checked first and only changes are downloaded. The official minimum is one hour',
+      everyHours: 'Every {count} hour | Every {count} hours',
+      resident: 'Keep the scan engine loaded',
+      residentHint:
+        'Download scans start faster, but about 1.1 GB of memory stays in use. When off, the engine quits after 5 idle minutes',
+      watchDownloadsHint: 'Watches the Downloads folder; needs the virus database',
+      startupAlertsHint: 'Notifies you when a new startup item appears',
+      exclusions: 'Scan exclusions',
+      exclusionsHint: 'These folders are skipped in every scan',
+      addExclusion: 'Add a folder',
+      removeExclusion: 'Remove',
+      choose: 'Choose…',
+      beforeInstall: 'Scan before installing',
+      beforeInstallHint:
+        'Files Homebrew downloads are scanned before they install, and the install stops if a threat is found. Needs the virus database. Anything downloaded later during the install, such as by a source build or an install script that goes online, isn’t scanned',
+      schedule: {
+        title: 'Scheduled scans',
+        frequency: 'Automatic quick scan',
+        hint: 'Runs a quick scan at the set time. It runs only while OpenNavo is open, never wakes your Mac and is skipped on battery power',
+        off: 'Off',
+        daily: 'Daily',
+        weekly: 'Weekly',
+        weekday: 'Day',
+        time: 'Time',
+        next: 'Next scan: {time}',
+        skipped: 'Last one skipped: {reason}',
+        reason: {
+          no_database: 'the virus database isn’t downloaded yet',
+          no_consent: 'the virus database download wasn’t approved yet',
+          on_battery: 'the Mac was on battery power',
+          busy: 'another scan was running',
+          error: 'the scan couldn’t start'
+        }
+      },
+      optional: {
+        title: 'Optional features',
+        hint: 'Off until you turn them on'
+      },
+      paste: {
+        title: 'Paste protection',
+        hint: 'Pauses a suspicious “download and run” command pasted into a terminal with ⌘V and asks you first. Works in Terminal, iTerm2, Warp, kitty, Alacritty, Ghostty, WezTerm, Hyper and Tabby; pasting from a menu or by right-clicking isn’t checked. Checked on this Mac only; pasted text is never saved',
+        needsAccess: 'Needs Accessibility access',
+        needsAccessHint: 'Once allowed, OpenNavo can check commands before they’re pasted into Terminal',
+        grant: 'Allow Access'
+      },
+      virusTotal: {
+        title: 'VirusTotal lookup',
+        hint: 'Looks up a file’s SHA-256 on VirusTotal with your own API key. Only the hash is sent, and only when you ask; files are never uploaded',
+        key: 'API key',
+        keySaved: 'Saved in your keychain',
+        keyHint: 'Sign up at virustotal.com, then find the API key in your profile',
+        removeKey: 'Remove Key',
+        placeholder: 'Paste your API key',
+        saveKey: 'Save',
+        terms:
+          'The VirusTotal public API allows 4 lookups a minute and is for non-commercial personal use only; commercial use requires your own VirusTotal commercial license. OpenNavo never looks anything up on its own and never uploads files.'
+      }
+    },
+    signatures: {
+      title: 'App signature check-up',
+      never: 'Installed apps’ signatures haven’t been checked yet',
+      summaryIssues:
+        '{issues} app with a problem, out of {count} checked | {issues} apps with problems, out of {count} checked',
+      summaryClean:
+        '{count} app checked; signature and notarization look fine | {count} apps checked; signatures and notarization look fine',
+      issue: {
+        invalid: 'Invalid signature',
+        unsigned: 'Not signed',
+        adhoc: 'Ad-hoc signature',
+        not_notarized: 'Not notarized',
+        team_changed: 'Developer changed',
+        unreadable: 'Signature unreadable',
+        modified: 'Changed after signing'
+      },
+      check: 'Check Signatures',
+      recheck: 'Check Again'
+    },
+    paste: {
+      title: 'Paste into {app} paused',
+      body: 'This command looks like it downloads and runs a program. Discard it unless you meant to run it.',
+      bodyUnchecked: 'This text is too long to check fully. Allow it once only if you meant to paste it.',
+      pattern: {
+        pipe_to_interpreter: 'Pipes a download straight into a shell',
+        download_execute: 'Runs a file right after downloading it',
+        encoded_command: 'Contains an encoded command',
+        remove_quarantine: 'Removes the macOS quarantine flag to skip security checks',
+        too_long: 'Too long to check fully'
+      },
+      expires: 'Discarded automatically in {seconds} s',
+      allow: 'Allow Once',
+      discard: 'Discard'
+    },
+    virusTotal: {
+      lookup: 'Look Up on VirusTotal',
+      malicious: 'VirusTotal: {count} engine flags it as malicious | VirusTotal: {count} engines flag it as malicious',
+      suspicious: 'VirusTotal: {count} engine finds it suspicious | VirusTotal: {count} engines find it suspicious',
+      clean: 'VirusTotal: no engine flags it',
+      notFound: 'VirusTotal has no record of this file',
+      engines: 'Checked by {total} engines',
+      analyzed: 'analyzed {time}',
+      hashOnly: 'Only the file’s SHA-256 was sent; the file wasn’t uploaded',
+      report: 'View Report'
+    },
+    downloadThreat: {
+      title: 'Threat in a download: {file}',
+      body: '{signature} · Scan the file to move it to the quarantine',
+      action: 'Scan and Handle'
     }
   }
 };

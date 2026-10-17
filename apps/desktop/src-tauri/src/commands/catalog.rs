@@ -55,3 +55,16 @@ pub async fn catalog_categories(
     let locale = state.current_settings()?.locale;
     crate::blocking(move || catalog::categories(&database, locale)).await
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn link_open(
+    state: State<'_, Arc<DesktopCore>>,
+    token: String,
+    target: catalog::links::LinkOpenTarget,
+) -> Result<(), AppError> {
+    catalog::links::open(&state.database, token, target, |url| async move {
+        crate::system::open(&[url]).await
+    })
+    .await
+}

@@ -14,7 +14,7 @@ const href = computed(() => props.href ?? localePath(`/apps/${props.pkg.token}`)
 <template>
   <OnAppCard :pkg="pkg" state="get" :stats="stats" :href="href" :link-as="NuxtLink">
     <template #action>
-      <GetMenu :kind="pkg.kind" :token="pkg.token" :name="pkg.displayName" />
+      <GetMenu :kind="pkg.kind" :token="pkg.token" :name="pkg.displayName" :link="pkg.link" />
     </template>
   </OnAppCard>
 </template>

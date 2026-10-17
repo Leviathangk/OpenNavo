@@ -1,0 +1,54 @@
+[
+  {
+    "installed": {
+      "architectures": ["arm64"],
+      "identifier": "com.duoupdater.app",
+      "marketing_version": "0.5.7",
+      "minimum_os": "15.0",
+      "notarized": true,
+      "requirement": "identifier \"com.duoupdater.app\" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = RS59HDH7Y3",
+      "team_id": "RS59HDH7Y3",
+      "valid": true,
+      "version": "125"
+    },
+    "candidate": {
+      "architectures": ["arm64"],
+      "identifier": "com.duoupdater.app",
+      "marketing_version": "0.5.8",
+      "minimum_os": "15.0",
+      "notarized": true,
+      "requirement": "identifier \"com.duoupdater.app\" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = RS59HDH7Y3",
+      "team_id": "RS59HDH7Y3",
+      "valid": true,
+      "version": "126"
+    },
+    "os": "27.0.1",
+    "arch": "arm64"
+  },
+  {
+    "installed": {
+      "architectures": ["arm64"],
+      "identifier": "org.zulip.zulip-electron",
+      "marketing_version": "5.12.3",
+      "minimum_os": "12.0",
+      "notarized": true,
+      "requirement": "identifier \"org.zulip.zulip-electron\" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = \"66KHCWMEYB\"",
+      "team_id": "66KHCWMEYB",
+      "valid": true,
+      "version": "5.12.3"
+    },
+    "candidate": {
+      "architectures": ["arm64"],
+      "identifier": "org.zulip.zulip-electron",
+      "marketing_version": "5.13.2",
+      "minimum_os": "13.0",
+      "notarized": true,
+      "requirement": "identifier \"org.zulip.zulip-electron\" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = \"66KHCWMEYB\"",
+      "team_id": "66KHCWMEYB",
+      "valid": true,
+      "version": "5.13.2"
+    },
+    "os": "27.0.1",
+    "arch": "arm64"
+  }
+]

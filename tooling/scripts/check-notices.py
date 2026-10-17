@@ -32,10 +32,13 @@ def selected(module, folder):
     if module['scope'] in ('external', 'development'):
         return False
     if folder == 'apps/server/third-party':
-        return module['ecosystem'] == 'Go' or module['name'] == 'Go standard library'
+        return (module['ecosystem'] == 'Go' or module['name'] == 'Go standard library' or
+                (module['ecosystem'] == 'Native' and 'server' in module['evidence'].get('products', [])))
     if folder == 'apps/mcp/third-party':
         return module['ecosystem'] == 'Python'
-    return module['ecosystem'] in ('npm', 'Rust', 'Platform') and module['name'] != 'Go standard library'
+    if module['ecosystem'] == 'Native' and module['evidence'].get('products'):
+        return 'desktop' in module['evidence']['products']
+    return module['ecosystem'] in ('npm', 'Rust', 'Platform', 'Native') and module['name'] != 'Go standard library'
 
 
 def check_toolchain(canonical, check_compiler):

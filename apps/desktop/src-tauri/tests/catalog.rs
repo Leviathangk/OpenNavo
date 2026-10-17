@@ -24,6 +24,7 @@ fn search(q: &str) -> SearchQuery {
     SearchQuery {
         q: q.into(),
         kind: None,
+        include_links: false,
         category: None,
         include_disabled: false,
         limit: 20,
@@ -33,6 +34,7 @@ fn search(q: &str) -> SearchQuery {
 fn list() -> ListQuery {
     ListQuery {
         kind: None,
+        include_links: false,
         category: None,
         sort: ListSort::Popular,
         include_fonts: false,

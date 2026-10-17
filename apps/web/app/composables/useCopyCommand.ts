@@ -7,7 +7,10 @@ export function useCopyCommand() {
   const { t } = useI18n();
   const toasts = useToasts();
 
-  async function copy(kind: PackageKind, token: string, command = installCommand(kind, token)) {
+  // Link apps have no brew command (store/security plan §4); there is nothing to copy for them.
+  async function copy(kind: PackageKind, token: string, command?: string) {
+    if (!command && kind === 'link') return;
+    command ??= installCommand(kind as Exclude<PackageKind, 'link'>, token);
     try {
       await navigator.clipboard.writeText(command);
       toasts.push({ tone: 'success', title: t('toast.copied'), description: command });

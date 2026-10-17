@@ -17,6 +17,27 @@ func TestTagVersions(t *testing.T) {
 	}
 
 }
+
+func TestGitHubConditionalRequestIgnoresChangingETag(t *testing.T) {
+	f := NewFetcher("test")
+	modified := "Fri, 16 Oct 2026 00:00:00 GMT"
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		require.Empty(t, r.Header.Get("If-None-Match"))
+		require.Equal(t, modified, r.Header.Get("If-Modified-Since"))
+		return reply(http.StatusNotModified, ""), nil
+	})
+	result, err := f.Fetch(context.Background(), Candidate{Token: "sample"}, FetchSource{
+		Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/s/sample.rb"},
+		ETag: "download-count-changed", LastModified: modified,
+	})
+	require.NoError(t, err)
+	require.True(t, result.NotModified)
+	modified = "" // Old ETag-only records must refresh unconditionally once.
+	_, _, _, err = f.get(context.Background(), "https://api.github.com/repos/example/app/releases/latest", 1024,
+		FetchSource{ETag: "legacy-tag"})
+	require.NoError(t, err)
+}
+
 func TestHomebrewCommitHistoryAndBottleExclusion(t *testing.T) {
 	f := NewFetcher("test")
 	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {

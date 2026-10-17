@@ -116,6 +116,21 @@ pub fn build(
                 .map(|i| i.name.as_str())
                 .unwrap_or(&entry.name);
             items.push(OutdatedItem {
+                source: UpdateSource::Homebrew,
+                app_id: None,
+                bundle_id: None,
+                channel: None,
+                major: false,
+                notes: None,
+                integrity: None,
+                requires_admin: false,
+                running: false,
+                relaunch_pending: false,
+                skipped_version: None,
+                critical_update: false,
+                informational_url: None,
+                download_host: None,
+                expected_team_match: None,
                 kind,
                 token: entry.name.clone(),
                 name: display_name(catalog.as_ref(), fallback, locale),

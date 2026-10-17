@@ -153,9 +153,10 @@ func TestLatestVersionPreservesNormalHistoryFetching(t *testing.T) {
 	fetcher.HTTP.Client.Transport = responseTransport(func(r *http.Request) (*http.Response, error) {
 		requests++
 		if requests == 1 {
-			// Without a successful incremental window, reuse the saved validators.
+			// Without an incremental window, GitHub uses the saved modification date;
+			// its changing representation ETag must not override that validator.
 			require.Empty(t, r.URL.Query().Get("since"))
-			require.Equal(t, "latest-validator", r.Header.Get("If-None-Match"))
+			require.Empty(t, r.Header.Get("If-None-Match"))
 			require.Equal(t, modified, r.Header.Get("If-Modified-Since"))
 		} else {
 			require.Equal(t, previousFetch.Add(-24*time.Hour).Format(time.RFC3339), r.URL.Query().Get("since"))

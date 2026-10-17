@@ -33,7 +33,8 @@ export interface OnPackageOverviewProps {
   aboutOriginalHref?: string;
   caveats?: string | null;
   caveatsTitle?: string;
-  command: string;
+  /** Install command; link apps have none and fill the `download` slot instead. */
+  command?: string;
   info: readonly OnKeyValueItem[];
   related?: readonly OnRelatedPackage[];
   relatedTitle?: string;
@@ -57,6 +58,8 @@ defineSlots<{
   about?: () => unknown;
   /** After introduction/before caveats, e.g. offline/latest-release cards. */
   main?: () => unknown;
+  /** Top of the side column in place of the install command, e.g. link apps' download panel. */
+  download?: () => unknown;
   /** After information, e.g. monthly installs. */
   aside?: () => unknown;
 }>();
@@ -86,7 +89,11 @@ defineSlots<{
       </section>
     </div>
     <aside class="flex min-w-0 flex-col gap-14px">
-      <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-14px">
+      <slot name="download" />
+      <section
+        v-if="command"
+        class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-14px"
+      >
         <OnInstallCommand :command="command" @copied="emit('copied', $event)" />
       </section>
       <section

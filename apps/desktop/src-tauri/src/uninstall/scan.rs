@@ -504,6 +504,31 @@ pub(super) fn scan_plan(
             });
         }
         if removal != AppPlanRemoval::Blocked {
+            // Recovery data belongs to the app, including other bundles removed
+            // by the same cask. It must follow removal even when zap is disabled.
+            for owner in std::iter::once(&app).chain(companions.iter()) {
+                for backup in crate::updater::backup::existing(Path::new(&owner.app.path))? {
+                    b.add(
+                        owner,
+                        &mut items,
+                        Candidate {
+                            path: backup.clone(),
+                            category: ItemCategory::AppData,
+                            reason: MatchReason::NameExact,
+                            confidence: PlanItemConfidence::High,
+                            action: ItemAction::Path {
+                                empty_only: false,
+                                bootout: None,
+                            },
+                            note: None,
+                        },
+                    )?;
+                    if let Some(item) = items.iter_mut().find(|i| Path::new(&i.path) == backup) {
+                        item.required = true;
+                        item.selected = true;
+                    }
+                }
+            }
             // Embedded SMAppService login items disappear with the bundle; display only, no extra command.
             let login_root = path.join("Contents/Library/LoginItems");
             if rules::parents_safe(&login_root.join("entry"))

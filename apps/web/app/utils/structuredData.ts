@@ -6,6 +6,7 @@
 import type { PackageDetail } from '@opennavo/api';
 import { applicationCategory } from './packageView';
 import { downloadChoice } from './appAnswer';
+import { httpsUrl, officialDownloadUrl } from './linkApp';
 import { reliableVersion } from './seoTitles';
 import type { Translate } from './seoTitles';
 
@@ -68,7 +69,8 @@ export function softwareAppNode(pkg: PackageDetail, url: string, t: Translate): 
   if (alternateNames.length) node.alternateName = alternateNames;
   const version = reliableVersion(pkg.version);
   if (version) node.softwareVersion = version;
-  if (pkg.homepage) node.sameAs = pkg.homepage;
+  const homepage = pkg.homepage ?? httpsUrl(pkg.link?.homepage);
+  if (homepage) node.sameAs = homepage;
   if (pkg.summary) node.description = pkg.summary;
   if (pkg.iconUrl) node.image = pkg.iconUrl;
   if (pkg.screenshots.length) node.screenshot = pkg.screenshots.map(shot => shot.url);
@@ -78,8 +80,14 @@ export function softwareAppNode(pkg: PackageDetail, url: string, t: Translate): 
     const archs = (['arm64', 'x86_64'] as const).filter(arch => pkg.supports[arch]);
     if (archs.length) node.processorRequirements = archs.join(', ');
   }
-  const download = downloadChoice(pkg);
-  if (download?.kind === 'direct') node.downloadUrl = download.url;
+  // Link apps (store/security plan §4): only the developer's own site or the app's GitHub repository.
+  if (pkg.kind === 'link') {
+    const official = pkg.link ? officialDownloadUrl(pkg.link) : undefined;
+    if (official) node.downloadUrl = official;
+  } else {
+    const download = downloadChoice(pkg);
+    if (download?.kind === 'direct') node.downloadUrl = download.url;
+  }
   const offer = appOffer(pkg.price, t);
   if (offer) node.offers = offer;
   return node;
