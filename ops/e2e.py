@@ -32,9 +32,9 @@ def command(args, *, env=None, capture=True, cwd=ROOT):
     return result.stdout.strip() if capture else ''
 
 
-def compose(ci, *args):
+def compose(ci, *args, capture=True):
     name = 'e2e' if ci else 'dev'
-    return command(['docker', 'compose', '-f', f'ops/docker-compose.{name}.yml', *args])
+    return command(['docker', 'compose', '-f', f'ops/docker-compose.{name}.yml', *args], capture=capture)
 
 
 def environment(ci):
@@ -239,7 +239,9 @@ def main():
         ports_free()
         try:
             if ci:
-                compose(True, 'up', '-d', '--wait', '--wait-timeout', '240')
+                # CI infrastructure uses only public, fixed development defaults. Stream its
+                # build/start diagnostics; keep database commands and application output captured.
+                compose(True, 'up', '-d', '--wait', '--wait-timeout', '240', capture=False)
             prepare(ci, reset=args.task == 'reset')
             if args.task == 'up' or record:
                 start(ci)
