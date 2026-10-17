@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE_CACHE_VALUE, edgeCacheHeader, type EdgeCacheInput } from '../server/utils/edgeCache';
+import {
+  edgeCacheHeader,
+  LONG_EDGE_CACHE_VALUE,
+  SHORT_EDGE_CACHE_VALUE,
+  type EdgeCacheInput
+} from '../server/utils/edgeCache';
 
 const page = (overrides: Partial<EdgeCacheInput> = {}): EdgeCacheInput => ({
   enabled: true,
@@ -14,19 +19,17 @@ const page = (overrides: Partial<EdgeCacheInput> = {}): EdgeCacheInput => ({
 });
 
 describe('HTML edge cache switch', () => {
-  it('Caches public app, list and home pages while the switch is on', () => {
+  it('Caches purged app and article pages for hours, home and lists for minutes', () => {
     for (const path of [
       '/zh/apps/visual-studio-code',
       '/apps/x/versions',
-      '/',
-      '/ja/categories/browsers',
-      '/apps',
-      '/articles',
       '/zh/articles/choose-a-screenshot-app',
       '/authors/lin-wei'
     ])
-      expect(edgeCacheHeader(page({ path })), path).toBe(EDGE_CACHE_VALUE);
-    expect(edgeCacheHeader(page({ method: 'HEAD' }))).toBe(EDGE_CACHE_VALUE);
+      expect(edgeCacheHeader(page({ path })), path).toBe(LONG_EDGE_CACHE_VALUE);
+    for (const path of ['/', '/zh', '/ja/categories/browsers', '/apps', '/articles'])
+      expect(edgeCacheHeader(page({ path })), path).toBe(SHORT_EDGE_CACHE_VALUE);
+    expect(edgeCacheHeader(page({ method: 'HEAD' }))).toBe(LONG_EDGE_CACHE_VALUE);
   });
 
   it('Bypasses private, failed, uncached and not-yet-enabled responses', () => {

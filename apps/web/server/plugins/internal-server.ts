@@ -27,8 +27,9 @@ function readJSON(request: IncomingMessage): Promise<unknown> {
 
 // Internal port (NUXT_METRICS_PORT), reachable only inside the Docker network; Caddy never proxies
 // it. GET /metrics serves crawler counters (WP8); POST /cache/invalidate and /cache/probe let the Go
-// worker's URL change feed (WP4) drop cached pages and check them, authenticated with
-// NUXT_INTERNAL_SECRET.
+// worker's URL change feed (WP4) drop cached pages and check them, and GET /cache/build tells it when
+// a new release is live so it purges the long edge-cached pages once. All but /metrics are
+// authenticated with NUXT_INTERNAL_SECRET.
 export default defineNitroPlugin(nitroApp => {
   const config = useRuntimeConfig();
   const port = Number(config.metricsPort);
@@ -50,6 +51,10 @@ export default defineNitroPlugin(nitroApp => {
       response.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });
       response.end(counter.render());
       return;
+    }
+    if (request.method === 'GET' && request.url === '/cache/build') {
+      if (!authorized(request.headers.authorization, String(config.internalSecret ?? ''))) return reply(401);
+      return reply(200, { build: config.app.buildId });
     }
     if (request.method === 'POST' && request.url === '/cache/invalidate') {
       if (!authorized(request.headers.authorization, String(config.internalSecret ?? ''))) return reply(401);

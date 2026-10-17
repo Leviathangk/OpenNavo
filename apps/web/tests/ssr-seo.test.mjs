@@ -817,6 +817,13 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     });
     const unauthorizedProbe = await fetch(`${internal}/cache/probe`, { method: 'POST', body: '{"paths":["/"]}' });
     assert.equal(unauthorizedProbe.status, 401);
+    // The release check: the build id the worker compares is the one pages are built with.
+    assert.equal((await fetch(`${internal}/cache/build`)).status, 401);
+    const build = await fetch(`${internal}/cache/build`, { headers: { authorization: `Bearer ${internalSecret}` } });
+    assert.equal(build.status, 200);
+    const { build: buildId } = await build.json();
+    assert.match(buildId, /^[\w-]{8,}$/);
+    assert.ok((await page()).includes(buildId), 'pages reference the reported build');
     const metrics = await (await fetch(`${internal}/metrics`)).text();
     assert.match(metrics, /opennavo_web_requests_total\{agent="browser",route="app",status="200"\} \d+/);
   });
@@ -826,7 +833,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       await response.text();
       return [response.status, response.headers.get('cloudflare-cdn-cache-control')];
     };
-    assert.deepEqual(await edge('/apps/ordinary-app'), [200, 'max-age=300, stale-while-revalidate=600']);
+    // App and article pages are purged on change and after each release, so they stay for hours.
+    assert.deepEqual(await edge('/apps/ordinary-app'), [200, 'max-age=21600, stale-while-revalidate=86400']);
     assert.deepEqual(await edge('/apps/ordinary-app/details'), [200, 'no-store']);
     // Search and collections send no-store themselves (search also fails here: no search fixture).
     assert.equal((await edge('/search?q=editor'))[1], 'no-store');
@@ -840,7 +848,19 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.equal(response.status, 200, `${path}\n${logs}`);
       assert.match(response.headers.get('cache-control') ?? '', /s-maxage=900/, path);
     }
-    assert.deepEqual(await edge('/categories'), [200, 'max-age=300, stale-while-revalidate=600']);
+    assert.deepEqual(await edge('/categories'), [200, 'max-age=600, stale-while-revalidate=3600']);
+  });
+  await t.test('guessed sitemap and icon addresses move permanently', async () => {
+    for (const [path, target] of [
+      ['/sitemap.xml', '/sitemap_index.xml'],
+      ['/apple-touch-icon-precomposed.png', '/apple-touch-icon.png'],
+      ['/img/logo_512.png', '/icon-512.png']
+    ]) {
+      const response = await fetch(`${origin}${path}`, { redirect: 'manual' });
+      assert.equal(response.status, 301, path);
+      assert.equal(new URL(response.headers.get('location') ?? '', origin).pathname, target, path);
+      assert.equal((await fetch(`${origin}${target}`)).status, 200, target);
+    }
   });
   await t.test('titles distinguish fonts, languages and pages of a list', async () => {
     const title = async path =>

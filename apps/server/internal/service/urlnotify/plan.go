@@ -4,6 +4,7 @@
 package urlnotify
 
 import (
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -17,20 +18,47 @@ import (
 // app in it) refresh pages but are not announced to IndexNow, since the pages barely changed.
 const bulkContentRows = 50
 
-var packageTabs = []string{"", "/versions", "/dependencies", "/details"}
+// longCachedSections hold the pages the web caches at the edge for hours (app, app_versions, article
+// and author pages); they must match the long-TTL page types in apps/web/server/utils/edgeCache.ts.
+// Home and list pages expire within minutes and need no purge. The whole host is never purged: that
+// would also evict the 30-day share images (/_og/) and the hashed build assets (/_nuxt/).
+var longCachedSections = []string{"/apps", "/articles", "/authors"}
 
 // Plan lists what one run refreshes and announces.
 type Plan struct {
 	// Paths are page-cache prefixes, one per language and token; each covers that app's tabs and payloads.
 	Paths []string
-	// PurgeURLs are absolute page URLs (all tabs) for Cloudflare.
-	PurgeURLs []string
+	// PurgePrefixes are the same pages as Cloudflare purge prefixes (host and path, no scheme), each
+	// covering the page, its query variants, tabs and payloads.
+	PurgePrefixes []string
 	// IndexNowURLs are absolute overview URLs whose state changed.
 	IndexNowURLs []string
 }
 
 func localePrefix(locale string) string {
 	return i18n.Metadata[i18n.LocaleCode(locale)].Prefix
+}
+
+// purgeHost is the site host that Cloudflare purge prefixes start with, in place of a scheme.
+func purgeHost(siteURL string) string {
+	site, err := url.Parse(siteURL)
+	if err != nil {
+		return ""
+	}
+	return site.Host
+}
+
+// sectionPrefixes lists the long-cached sections in every language as purge prefixes, for purges
+// wider than single pages: a web release, or more changed pages than one run purges one by one.
+func sectionPrefixes(siteURL string) []string {
+	host := purgeHost(siteURL)
+	prefixes := make([]string, 0, len(seo.Locales)*len(longCachedSections))
+	for _, locale := range seo.Locales {
+		for _, section := range longCachedSections {
+			prefixes = append(prefixes, host+localePrefix(locale)+section)
+		}
+	}
+	return prefixes
 }
 
 func appendUnique(list []string, seen map[string]bool, value string) []string {
@@ -44,7 +72,7 @@ func appendUnique(list []string, seen map[string]bool, value string) []string {
 // BuildPlan turns pending changes into paths and URLs. current holds each package's current token
 // and removal state; index holds index facts for live packages.
 func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, index map[int64]store.IndexRow, policy seo.Policy, siteURL string) Plan {
-	siteURL = strings.TrimRight(siteURL, "/")
+	siteURL, host := strings.TrimRight(siteURL, "/"), purgeHost(siteURL)
 	contentGroups := map[time.Time]int{}
 	for _, change := range changes {
 		if change.Reason == "content" {
@@ -79,9 +107,7 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 			for _, locale := range seo.Locales {
 				path := localePrefix(locale) + "/apps/" + token
 				plan.Paths = appendUnique(plan.Paths, seenPath, path)
-				for _, tab := range packageTabs {
-					plan.PurgeURLs = appendUnique(plan.PurgeURLs, seenPurge, siteURL+path+tab)
-				}
+				plan.PurgePrefixes = appendUnique(plan.PurgePrefixes, seenPurge, host+path)
 			}
 		}
 		if !announce[id] {
@@ -116,7 +142,7 @@ func ptr(value *string) string {
 
 // ContentPlan covers changed pages outside the catalog (articles, authors) in all six languages.
 func ContentPlan(changes []store.ContentURLChange, siteURL string) Plan {
-	siteURL = strings.TrimRight(siteURL, "/")
+	siteURL, host := strings.TrimRight(siteURL, "/"), purgeHost(siteURL)
 	var plan Plan
 	seenPath, seenPurge, seenAnnounce := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, change := range changes {
@@ -124,7 +150,12 @@ func ContentPlan(changes []store.ContentURLChange, siteURL string) Plan {
 			for _, locale := range seo.Locales {
 				full := localePrefix(locale) + path
 				plan.Paths = appendUnique(plan.Paths, seenPath, full)
-				plan.PurgeURLs = appendUnique(plan.PurgeURLs, seenPurge, siteURL+full)
+				// A home path would purge a whole language, or the whole host with its share images and
+				// build assets; section roots would evict every detail page. These short-TTL
+				// pages expire within minutes instead.
+				if strings.Trim(path, "/") != "" && !slices.Contains(longCachedSections, "/"+strings.Trim(path, "/")) {
+					plan.PurgePrefixes = appendUnique(plan.PurgePrefixes, seenPurge, host+full)
+				}
 				if change.Announce {
 					plan.IndexNowURLs = appendUnique(plan.IndexNowURLs, seenAnnounce, siteURL+full)
 				}
@@ -146,5 +177,5 @@ func (p Plan) Merge(other Plan) Plan {
 		}
 		return list
 	}
-	return Plan{Paths: merge(p.Paths, other.Paths), PurgeURLs: merge(p.PurgeURLs, other.PurgeURLs), IndexNowURLs: merge(p.IndexNowURLs, other.IndexNowURLs)}
+	return Plan{Paths: merge(p.Paths, other.Paths), PurgePrefixes: merge(p.PurgePrefixes, other.PurgePrefixes), IndexNowURLs: merge(p.IndexNowURLs, other.IndexNowURLs)}
 }

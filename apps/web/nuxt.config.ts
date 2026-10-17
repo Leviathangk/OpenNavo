@@ -136,13 +136,19 @@ export default defineNuxtConfig({
     disallow: privatePagePaths
   },
   // Generate the About page canonical URL at runtime too, so a generic image cannot embed the build host URL in HTML.
-  routeRules: localizedRules({
-    '/search': { cache: false, headers: { 'cache-control': 'no-store' } },
-    // Keep collection HTML and data fresh together, including empty results and API failure states.
-    '/collections': { cache: false, headers: { 'cache-control': 'no-store' } },
-    '/collections/**': { cache: false, headers: { 'cache-control': 'no-store' } },
-    '/brewfile': { ssr: false }
-  }),
+  routeRules: {
+    ...localizedRules({
+      '/search': { cache: false, headers: { 'cache-control': 'no-store' } },
+      // Keep collection HTML and data fresh together, including empty results and API failure states.
+      '/collections': { cache: false, headers: { 'cache-control': 'no-store' } },
+      '/collections/**': { cache: false, headers: { 'cache-control': 'no-store' } },
+      '/brewfile': { ssr: false }
+    }),
+    // Permanent moves for addresses devices and directories guess: older iOS asks for the
+    // precomposed touch icon, and some directories expect a 512px logo. /sitemap.xml is in hooks.
+    '/apple-touch-icon-precomposed.png': { redirect: { to: '/apple-touch-icon.png', statusCode: 301 } },
+    '/img/logo_512.png': { redirect: { to: '/icon-512.png', statusCode: 301 } }
+  },
   // Route caching applies only to production builds; development renders every request (05 §4).
   $production: {
     routeRules: localizedRules({
@@ -174,6 +180,17 @@ export default defineNuxtConfig({
   })),
   // Generate gzip and brotli assets at build time and serve by Accept-Encoding (the production Caddy proxy also compresses dynamic pages).
   nitro: { compressPublicAssets: { gzip: true, brotli: true } },
+  hooks: {
+    // @nuxtjs/sitemap writes /sitemap.xml → /sitemap_index.xml straight into Nitro's route rules as a
+    // 307 during module setup, over anything in routeRules; crawlers that guess the address should
+    // see a permanent move.
+    'nitro:config'(nitroConfig) {
+      nitroConfig.routeRules = {
+        ...nitroConfig.routeRules,
+        '/sitemap.xml': { redirect: { to: '/sitemap_index.xml', statusCode: 301 } }
+      };
+    }
+  },
   typescript: {
     tsConfig: {
       compilerOptions: { noUncheckedIndexedAccess: true }

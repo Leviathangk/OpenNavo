@@ -15,7 +15,15 @@ export const EDGE_CACHE_ROUTES = new Set([
   'article',
   'author'
 ]);
-export const EDGE_CACHE_VALUE = 'max-age=300, stale-while-revalidate=600';
+/**
+ * Pages the Go URL change feed purges by prefix when their app or article changes, and again after
+ * every web release (the /apps, /articles and /authors prefixes in urlnotify), so crawlers' long
+ * tail can be answered at the edge for hours. Keep both lists in step.
+ */
+export const LONG_EDGE_CACHE_ROUTES = new Set(['app', 'app_versions', 'article', 'author']);
+export const LONG_EDGE_CACHE_VALUE = 'max-age=21600, stale-while-revalidate=86400';
+/** Home and lists change with every catalog sync and are never purged, so they expire quickly. */
+export const SHORT_EDGE_CACHE_VALUE = 'max-age=600, stale-while-revalidate=3600';
 
 export interface EdgeCacheInput {
   enabled: boolean;
@@ -42,5 +50,6 @@ export function edgeCacheHeader(input: EdgeCacheInput): string | undefined {
     /\bs-maxage=\d+/.test(input.cacheControl) &&
     !/\b(no-store|private|no-cache)\b/.test(input.cacheControl) &&
     EDGE_CACHE_ROUTES.has(webRouteType(input.path));
-  return shareable ? EDGE_CACHE_VALUE : 'no-store';
+  if (!shareable) return 'no-store';
+  return LONG_EDGE_CACHE_ROUTES.has(webRouteType(input.path)) ? LONG_EDGE_CACHE_VALUE : SHORT_EDGE_CACHE_VALUE;
 }

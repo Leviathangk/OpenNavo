@@ -84,6 +84,9 @@ func CORS(publicOrigins []string, adminOrigins ...string) gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept-Language, X-Request-Id, X-Client-Platform, X-Client-Version, If-None-Match")
 		c.Header("Access-Control-Expose-Headers", "X-Request-Id, ETag, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining")
 		if c.Request.Method == http.MethodOptions {
+			// Browsers reuse an allowed preflight up to their own cap: a day in Firefox, 2 hours in Chromium,
+			// 10 minutes in WebKit.
+			c.Header("Access-Control-Max-Age", "86400")
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}

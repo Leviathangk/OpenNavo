@@ -58,10 +58,13 @@ func TestCORSOriginsPreflightVaryAndAdminIsolation(t *testing.T) {
 				if !allowed {
 					require.Equal(t, http.StatusForbidden, preflight.Code)
 					require.Empty(t, preflight.Header().Get("Access-Control-Allow-Origin"))
+					require.Empty(t, preflight.Header().Get("Access-Control-Max-Age"))
 					continue
 				}
 				require.Equal(t, http.StatusNoContent, preflight.Code)
 				require.Equal(t, origin, preflight.Header().Get("Access-Control-Allow-Origin"))
+				// Allowed preflights are cached by the browser, sparing most API calls a round trip.
+				require.Equal(t, "86400", preflight.Header().Get("Access-Control-Max-Age"))
 				for _, name := range []string{"Accept-Language", "X-Client-Platform", "X-Client-Version", "X-Request-Id", "If-None-Match"} {
 					require.True(t, headerHas(preflight.Header(), "Access-Control-Allow-Headers", name), name)
 				}
@@ -71,6 +74,7 @@ func TestCORSOriginsPreflightVaryAndAdminIsolation(t *testing.T) {
 				first := call("GET", "/api/v1/home", origin, "")
 				require.Equal(t, http.StatusOK, first.Code)
 				require.True(t, headerHas(first.Header(), "Vary", "Accept-Language"))
+				require.Empty(t, first.Header().Get("Access-Control-Max-Age"), "only preflights are cached")
 				cached := call("GET", "/api/v1/home", origin, first.Header().Get("ETag"))
 				require.Equal(t, http.StatusNotModified, cached.Code)
 				require.Empty(t, cached.Body.String())
@@ -86,6 +90,7 @@ func TestCORSOriginsPreflightVaryAndAdminIsolation(t *testing.T) {
 			admin := call("OPTIONS", "/admin-api/auth/getUserInfo", cfg.AdminOrigin, "")
 			require.Equal(t, http.StatusNoContent, admin.Code)
 			require.Equal(t, cfg.AdminOrigin, admin.Header().Get("Access-Control-Allow-Origin"))
+			require.Equal(t, "86400", admin.Header().Get("Access-Control-Max-Age"))
 			withoutOrigin := call("GET", "/api/v1/home", "", "")
 			require.Equal(t, http.StatusOK, withoutOrigin.Code)
 			require.Empty(t, withoutOrigin.Header().Get("Access-Control-Allow-Origin"))

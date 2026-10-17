@@ -18,19 +18,26 @@ type URLChange struct {
 }
 
 type URLNotifyState struct {
-	Cursor             int64
-	ContentCursor      int64
-	LastRunAt          *time.Time
-	LastURLs           int
-	LastIndexnowStatus string
-	LastPurgeStatus    string
-	LastError          string
+	Cursor               int64
+	ContentCursor        int64
+	LastRunAt            *time.Time
+	LastURLs             int
+	LastIndexnowStatus   string
+	LastPurgeStatus      string
+	LastError            string
+	PendingPurgePrefixes []string `gorm:"-"`
 }
 
 func (s *Store) URLNotifyState(ctx context.Context) (URLNotifyState, error) {
-	var row URLNotifyState
-	err := s.DB.WithContext(ctx).Raw("SELECT cursor,content_cursor,last_run_at,last_urls,last_indexnow_status,last_purge_status,last_error FROM url_notify_state WHERE id=true").Scan(&row).Error
-	return row, err
+	var row struct {
+		URLNotifyState
+		PendingPurges string
+	}
+	err := s.DB.WithContext(ctx).Raw("SELECT cursor,content_cursor,last_run_at,last_urls,last_indexnow_status,last_purge_status,last_error,pending_purges::text FROM url_notify_state WHERE id=true").Scan(&row).Error
+	if err == nil {
+		err = json.Unmarshal([]byte(row.PendingPurges), &row.PendingPurgePrefixes)
+	}
+	return row.URLNotifyState, err
 }
 
 // PendingURLChanges reads casks changed after cursor and at least settle ago: renders that started
@@ -82,8 +89,12 @@ func (s *Store) IndexRowsByID(ctx context.Context, ids []int64) ([]IndexRow, err
 }
 
 func (s *Store) SaveURLNotifyState(ctx context.Context, state URLNotifyState) error {
-	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET cursor=?,content_cursor=?,last_run_at=?,last_urls=?,last_indexnow_status=?,last_purge_status=?,last_error=? WHERE id=true",
-		state.Cursor, state.ContentCursor, state.LastRunAt, state.LastURLs, state.LastIndexnowStatus, state.LastPurgeStatus, state.LastError).Error
+	pending, err := json.Marshal(state.PendingPurgePrefixes)
+	if err != nil {
+		return err
+	}
+	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET pending_purges=?::jsonb,cursor=?,content_cursor=?,last_run_at=?,last_urls=?,last_indexnow_status=?,last_purge_status=?,last_error=? WHERE id=true",
+		string(pending), state.Cursor, state.ContentCursor, state.LastRunAt, state.LastURLs, state.LastIndexnowStatus, state.LastPurgeStatus, state.LastError).Error
 }
 
 // ContentURLChange is a batch of changed pages outside the catalog (articles, authors).
@@ -112,4 +123,11 @@ func (s *Store) PendingContentURLChanges(ctx context.Context, cursor int64, befo
 		out = append(out, change)
 	}
 	return out, nil
+}
+
+// ReserveURLPurge shares a durable request interval between release and content purges.
+// Reserve before sending, so failed requests and process restarts also consume allowance.
+func (s *Store) ReserveURLPurge(ctx context.Context, now time.Time, interval time.Duration) (bool, error) {
+	result := s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET next_purge_at=? WHERE id=true AND (next_purge_at IS NULL OR next_purge_at<=?)", now.Add(interval), now)
+	return result.RowsAffected == 1, result.Error
 }
