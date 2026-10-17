@@ -5,6 +5,7 @@ pub mod library;
 pub mod maintenance;
 pub mod mirror;
 pub mod permissions;
+pub mod security;
 pub mod settings;
 pub mod system;
 pub mod tasks;
@@ -15,3 +16,5 @@ pub mod uninstall;
 pub mod cleanup;
 
 pub mod monitor;
+
+pub mod appstore;

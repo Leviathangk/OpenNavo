@@ -1,3 +1,4 @@
+pub mod links;
 pub mod sync;
 pub mod v2;
 use crate::{AppError, db::Database, model::*};
@@ -107,14 +108,14 @@ pub fn import_snapshot(
         .map_err(|_| protocol("snapshot_date"))?;
     let mut identities = HashSet::new();
     for item in &snapshot.items {
-        if !identities.insert((item.kind, item.token.as_str())) {
+        if item.kind == Kind::Link || !identities.insert((item.kind, item.token.as_str())) {
             return Err(protocol("duplicate_catalog_identity"));
         }
     }
     database.with(|connection| {
         let transaction = connection.transaction()?;
         transaction.execute_batch(
-            "DELETE FROM catalog_items; DELETE FROM catalog_fts; DELETE FROM categories;",
+            "DELETE FROM catalog_fts WHERE kind<>'link'; DELETE FROM catalog_items WHERE kind<>'link'; DELETE FROM categories;",
         )?;
         for item in &snapshot.items {
             upsert_new(&transaction, item)?;
@@ -156,6 +157,19 @@ fn upsert_impl(
     replace: bool,
 ) -> Result<(), AppError> {
     crate::brew::args::validate_token(&item.token)?;
+    if item.kind == Kind::Cask {
+        connection.execute(
+            "DELETE FROM catalog_fts WHERE kind='link' AND token=?1",
+            [&item.token],
+        )?;
+        let removed = connection.execute(
+            "DELETE FROM catalog_items WHERE kind='link' AND token=?1",
+            [&item.token],
+        )?;
+        if removed > 0 {
+            connection.execute("DELETE FROM meta WHERE key='links_etag'", [])?;
+        }
+    }
     if let Some(tap) = &item.tap {
         crate::brew::args::validate_tap(tap)?;
     }
@@ -242,6 +256,7 @@ fn upsert_impl(
 /// Build text tables in bulk during base import to avoid one Rust/SQLite crossing per locale.
 pub(super) fn rebuild_texts(connection: &rusqlite::Connection) -> Result<(), AppError> {
     connection.execute_batch(r#"
+        DELETE FROM catalog_texts; DELETE FROM catalog_fts;
         INSERT INTO catalog_texts(kind,token,locale,display_name,summary)
         SELECT p.kind,p.token,j.key,j.value,json_extract(p.data,'$.summary.' || '"' || j.key || '"') FROM catalog_items p,json_each(p.data,'$.displayName') j WHERE j.value IS NOT NULL;
         INSERT INTO catalog_texts(kind,token,locale,display_name,summary)
@@ -252,6 +267,13 @@ pub(super) fn rebuild_texts(connection: &rusqlite::Connection) -> Result<(), App
     Ok(())
 }
 pub fn apply_changes(database: &Database, changes: &Changes, now: i64) -> Result<u32, AppError> {
+    if changes
+        .changes
+        .iter()
+        .any(|c| c.kind == Kind::Link || c.item.as_ref().is_some_and(|i| i.kind == Kind::Link))
+    {
+        return Err(protocol("link_requires_separate_catalog"));
+    }
     database.with(|connection|{
     let transaction=connection.transaction()?;
     let cursor=transaction.query_row("SELECT value FROM meta WHERE key='catalog_cursor'",[],|r|r.get::<_,String>(0)).optional()?.and_then(|v|v.parse::<i64>().ok()).unwrap_or(0);
@@ -398,9 +420,9 @@ pub fn list_locale(
     database.with(|connection|{
         let children=descendants(connection,query.category.as_deref())?;
         let order=match query.sort{ListSort::Popular=>"popularity DESC",ListSort::Updated=>"version_changed_at DESC",ListSort::Name=>"lower(name)",ListSort::Installs30d=>"coalesce(on_request_30d,installs_30d) DESC NULLS LAST",ListSort::Installs90d=>"coalesce(on_request_90d,installs_90d) DESC NULLS LAST",ListSort::Installs365d=>"coalesce(on_request_365d,installs_365d) DESC NULLS LAST"};
-        let sql=format!("SELECT data FROM catalog_items WHERE hidden=0 AND (?1 IS NULL OR kind=?1) AND (?2 OR disabled=0) AND (?3 OR is_font=0) AND (?4 OR is_library=0) ORDER BY {order},kind,token");
+        let sql=format!("SELECT data FROM catalog_items WHERE hidden=0 AND (?1 IS NULL OR kind=?1 OR (?5 AND ?1='cask' AND kind='link')) AND (?2 OR disabled=0) AND (?3 OR is_font=0) AND (?4 OR is_library=0) ORDER BY {order},kind,token");
         let mut statement=connection.prepare(&sql)?;let mut items=Vec::new();
-        for row in statement.query_map(params![query.kind.map(Kind::as_str),query.include_disabled,query.include_fonts,query.include_libraries],|r|r.get::<_,String>(0))?{
+        for row in statement.query_map(params![query.kind.map(Kind::as_str),query.include_disabled,query.include_fonts,query.include_libraries,query.include_links],|r|r.get::<_,String>(0))?{
             let item:CatalogItem=serde_json::from_str(&row?)?;
             if children.as_ref().is_none_or(|children|item.categories.iter().any(|c|children.contains(c))){items.push(item);}
         }
@@ -430,9 +452,9 @@ pub fn search(
         let children=descendants(connection,query.category.as_deref())?;let long=q.chars().count()>=3;
         let predicate=if long{"catalog_fts MATCH ?1"}else{"(catalog_fts.token LIKE ?1 ESCAPE '\\' OR names LIKE ?1 ESCAPE '\\' OR display_name LIKE ?1 ESCAPE '\\' OR summary LIKE ?1 ESCAPE '\\' OR pinyin LIKE ?1 ESCAPE '\\')"};
         let text=if long{format!("\"{}\"",q.replace('"',"\"\""))}else{format!("%{}%",q.replace('\\',"\\\\").replace('%',"\\%").replace('_',"\\_"))};
-        let sql=format!("SELECT p.data,{} FROM catalog_fts JOIN catalog_items p ON p.kind=catalog_fts.kind AND p.token=catalog_fts.token WHERE {predicate} AND p.hidden=0 AND (?2 IS NULL OR p.kind=?2) AND (?3 OR p.disabled=0)",if long{"bm25(catalog_fts)"}else{"0.0"});
+        let sql=format!("SELECT p.data,{} FROM catalog_fts JOIN catalog_items p ON p.kind=catalog_fts.kind AND p.token=catalog_fts.token WHERE {predicate} AND p.hidden=0 AND (?2 IS NULL OR p.kind=?2 OR (?4 AND ?2='cask' AND p.kind='link')) AND (?3 OR p.disabled=0)",if long{"bm25(catalog_fts)"}else{"0.0"});
         let mut statement=connection.prepare(&sql)?;let mut hits=Vec::new();
-        for row in statement.query_map(params![text,query.kind.map(Kind::as_str),query.include_disabled],|r|Ok((r.get::<_,String>(0)?,r.get::<_,f64>(1)?)))?{
+        for row in statement.query_map(params![text,query.kind.map(Kind::as_str),query.include_disabled,query.include_links],|r|Ok((r.get::<_,String>(0)?,r.get::<_,f64>(1)?)))?{
             let (data,bm25)=row?;let item:CatalogItem=serde_json::from_str(&data)?;
             if children.as_ref().is_some_and(|children|!item.categories.iter().any(|c|children.contains(c))){continue;}
             let names=item.names.iter().chain(item.binaries.iter()).chain(std::iter::once(&item.name)).chain(item.display_name.0.values());

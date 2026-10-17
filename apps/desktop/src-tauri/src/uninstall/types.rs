@@ -9,6 +9,8 @@ pub struct LocalApp {
     pub bundle_id: Option<String>,
     pub version: Option<String>,
     pub source: AppSource,
+    pub updater: Option<crate::updater::UpdateSource>,
+    pub homebrew_cask: Option<String>,
     pub cask: Option<String>,
     pub catalog_token: Option<String>,
     pub team_id: Option<String>,

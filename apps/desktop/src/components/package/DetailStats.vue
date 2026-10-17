@@ -37,12 +37,13 @@ const cells = computed<OnPackageStatsCell[]>(() => {
       key: 'd30',
       label: t('package.stats.installs30d'),
       value: formatCount(props.pkg.installs.d30, { locale: formattingLocale.value }),
-      hint: props.pkg.rank30d
-        ? t('package.stats.rank', {
-            kind: messages.value.kind[props.pkg.kind],
-            rank: props.pkg.rank30d
-          })
-        : undefined
+      hint:
+        props.pkg.rank30d && props.pkg.kind !== 'link'
+          ? t('package.stats.rank', {
+              kind: messages.value.kind[props.pkg.kind],
+              rank: props.pkg.rank30d
+            })
+          : undefined
     },
     {
       key: 'd365',

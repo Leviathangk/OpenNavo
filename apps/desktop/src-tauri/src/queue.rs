@@ -1,3 +1,4 @@
+mod native;
 use crate::{
     AppError,
     brew::{
@@ -10,6 +11,7 @@ use crate::{
     events::{CoreEvent, EventSink},
     model::*,
 };
+pub(crate) use native::NATIVE_STAGING;
 use std::{
     collections::{BTreeMap, HashMap},
     future::Future,
@@ -29,6 +31,11 @@ struct Control {
     notify: Arc<Notify>,
 }
 pub struct TaskQueue {
+    enqueue_gate: Mutex<()>,
+    native_runtime: Mutex<native::Runtime>,
+    pub appstore: Arc<crate::appstore::Service>,
+    pub updater: Arc<crate::updater::Service>,
+    pub security: Arc<crate::security::Service>,
     pub database: Database,
     pub cleanup_engine: Arc<crate::cleanup::Engine>,
     pub uninstall_engine: Arc<crate::uninstall::Engine>,
@@ -69,7 +76,34 @@ impl TaskQueue {
             icon_cache: logs.parent().unwrap_or(&logs).join("local-app-icons"),
             askpass: askpass.clone(),
         });
+        let security_data = uninstall_engine.admin_root().with_file_name("security");
+        let security = crate::security::Service::new(
+            database.clone(),
+            settings.clone(),
+            sink.clone(),
+            uninstall_engine.roots.home.clone(),
+            security_data.clone(),
+            crate::security::av::Config::native(&security_data),
+            Arc::new(crate::security::NativeCommands),
+        );
+        *security.admin.write().map_err(poison)? = Some(Arc::new(
+            crate::security::admin::NativeActions(uninstall_engine.clone()),
+        ));
         Ok(Arc::new(Self {
+            security,
+            enqueue_gate: Mutex::new(()),
+            native_runtime: Mutex::new(native::Runtime::default()),
+            appstore: Arc::new(crate::appstore::Service::new(
+                database.clone(),
+                settings.clone(),
+                sink.clone(),
+            )?),
+            updater: Arc::new(crate::updater::Service::new(
+                database.clone(),
+                uninstall_engine.clone(),
+                settings.clone(),
+                sink.clone(),
+            )?),
             cleanup_engine: crate::cleanup::Engine::new(uninstall_engine.clone()),
             uninstall_engine,
             database,
@@ -120,10 +154,43 @@ impl TaskQueue {
         options: TaskOptions,
         trigger: TaskTrigger,
     ) -> Result<Task, AppError> {
+        let _gate = self.enqueue_gate.lock().map_err(poison)?;
+        self.enqueue_unlocked(op, target, options, trigger)
+    }
+    fn enqueue_unlocked(
+        &self,
+        op: TaskOp,
+        target: Option<TaskTarget>,
+        options: TaskOptions,
+        trigger: TaskTrigger,
+    ) -> Result<Task, AppError> {
+        // Reject before stopping-state checks, validation, deduplication or any DB
+        // write. A link is never a queued task, including with uninstall plans.
+        if let Some(target) = target.as_ref() {
+            crate::catalog::links::reject_write(&self.database, target)?;
+        }
         if self.is_stopping() {
             return Err(AppError::new("E_INTERRUPTED", "queue_stopped"));
         }
-        let planned = if op == TaskOp::Clean {
+        if options.rollback_of.is_some() != (op == TaskOp::Rollback)
+            || (op == TaskOp::Rollback && target.as_ref().is_none_or(|t| t.kind != TaskKind::App))
+        {
+            return Err(AppError::new("E_INVALID_ARG", "rollback_options"));
+        }
+        let native = target
+            .as_ref()
+            .map(|t| self.validate_native(op, t, &options))
+            .transpose()?
+            .unwrap_or(false);
+        let planned = if op == TaskOp::AvDbUpdate {
+            if target.is_some() || options != TaskOptions::default() {
+                return Err(AppError::new("E_INVALID_ARG", "av_update_options"));
+            }
+            self.security.av.check_update()?;
+            None
+        } else if native {
+            None
+        } else if op == TaskOp::Clean {
             self.cleanup_engine
                 .validate_task(target.as_ref(), &options)?;
             None
@@ -195,6 +262,7 @@ impl TaskQueue {
             step_count: match op {
                 TaskOp::Uninstall | TaskOp::RemoveLeftovers | TaskOp::Clean => Some(4),
                 TaskOp::Install | TaskOp::Upgrade | TaskOp::Reinstall => Some(4),
+                TaskOp::Rollback => Some(2),
                 _ => None,
             },
             from_version: None,
@@ -241,17 +309,38 @@ impl TaskQueue {
         options: TaskOptions,
         trigger: TaskTrigger,
     ) -> Result<Vec<Task>, AppError> {
-        if targets.len() > 200 {
+        if targets.len() > 200 || targets.iter().filter(|t| t.kind == TaskKind::Mas).count() > 100 {
             return Err(AppError::new("E_INVALID_ARG", "too_many_targets"));
         }
-        for target in &targets {
-            write_args(op, Some(target), &options)?;
+        // A rollback names one recorded update; it is never a batch.
+        if op == TaskOp::Rollback {
+            return Err(AppError::new("E_INVALID_ARG", "rollback_options"));
         }
-        targets
+        let _gate = self.enqueue_gate.lock().map_err(poison)?;
+        for target in &targets {
+            crate::catalog::links::reject_write(&self.database, target)?;
+            if !self.validate_native(op, target, &options)? {
+                write_args(op, Some(target), &options)?;
+            }
+        }
+        let group = uuid::Uuid::now_v7().to_string();
+        let tasks = targets
             .into_iter()
-            .map(|target| self.enqueue(op, Some(target), options.clone(), trigger))
-            .collect()
+            .map(|target| self.enqueue_unlocked(op, Some(target), options.clone(), trigger))
+            .collect::<Result<Vec<_>, _>>()?;
+        for task in &tasks {
+            if task
+                .target
+                .as_ref()
+                .is_some_and(|t| t.kind == TaskKind::Mas)
+            {
+                self.database
+                    .set_meta(&format!("mas_batch:{}", task.id), &group)?;
+            }
+        }
+        Ok(tasks)
     }
+
     pub fn active(&self) -> Result<Vec<Task>, AppError> {
         Ok(self
             .tasks
@@ -322,6 +411,7 @@ impl TaskQueue {
             }
         }
         self.wake.notify_one();
+        self.security.shutdown();
     }
     pub fn prepare_exit(&self) -> Result<QuitRequested, AppError> {
         let tasks = self.tasks.lock().map_err(poison)?;
@@ -360,6 +450,7 @@ impl TaskQueue {
         })
     }
     fn next(&self) -> Result<Option<Task>, AppError> {
+        let _gate = self.enqueue_gate.lock().map_err(poison)?;
         if self.paused.load(Ordering::Acquire) {
             return Ok(None);
         }
@@ -409,8 +500,15 @@ impl TaskQueue {
             ) {
                 None
             } else {
-                crate::catalog::get(&self.database, target.kind.brew_kind()?, &target.token)?
-                    .map(|i| i.version)
+                match target.kind {
+                    TaskKind::Cask | TaskKind::Formula => crate::catalog::get(
+                        &self.database,
+                        target.kind.brew_kind()?,
+                        &target.token,
+                    )?
+                    .map(|i| i.version),
+                    _ => None,
+                }
             };
         }
         task.state = TaskState::Running;
@@ -466,6 +564,10 @@ impl TaskQueue {
         self: &Arc<Self>,
         task: &Task,
     ) -> Result<crate::brew::pty::Outcome, AppError> {
+        // The catalog may have changed while an otherwise valid task was waiting.
+        if let Some(target) = &task.target {
+            crate::catalog::links::reject_write(&self.database, target)?;
+        }
         let settings = self.settings()?;
         let (cancel, notify) = {
             let controls = self.controls.lock().map_err(poison)?;
@@ -474,6 +576,31 @@ impl TaskQueue {
                 .ok_or_else(|| AppError::new("E_UNKNOWN", "missing_task_control"))?;
             (control.cancel.clone(), control.notify.clone())
         };
+        if task
+            .target
+            .as_ref()
+            .is_some_and(|t| t.kind == TaskKind::App)
+            && task.op == TaskOp::Upgrade
+        {
+            return self.execute_app_update(task, cancel, notify).await;
+        }
+        if task.op == TaskOp::Rollback {
+            return self.execute_app_rollback(task, cancel, notify).await;
+        }
+        if task.op == TaskOp::AvDbUpdate {
+            let engine = self.security.av.clone();
+            return crate::blocking(move || {
+                engine.update(&cancel)?;
+                Ok(crate::brew::pty::Outcome {
+                    code: 0,
+                    canceled: false,
+                    #[cfg(test)]
+                    signal: None,
+                    parser: Default::default(),
+                })
+            })
+            .await;
+        }
         if task.op == TaskOp::Clean {
             return crate::cleanup::execute::run(self.clone(), task, cancel, notify).await;
         }
@@ -617,6 +744,20 @@ impl TaskQueue {
                 .await?
             },
         };
+        let (request, install_scan) = {
+            let security = self.security.clone();
+            let queue = self.clone();
+            let id = task.id.clone();
+            crate::blocking(move || {
+                let mut request = request;
+                let prepared = security.prepare_install(&id, &mut request, |lines, progress| {
+                    let _ = queue.progress(&id, lines, progress, true);
+                })?;
+                Ok((request, prepared))
+            })
+            .await?
+        };
+        let install_scan = install_scan.map(Arc::new);
         let identity = if task.op == TaskOp::Upgrade {
             let target = task
                 .target
@@ -655,18 +796,53 @@ impl TaskQueue {
                 )
                 .await?;
             }
+            if let Some(prepared) = &install_scan {
+                let prepared = prepared.clone();
+                let scan_cancel = cancel.clone();
+                crate::blocking(move || prepared.revalidate(&scan_cancel)).await?;
+            }
             let queue = self.clone();
             let id = task.id.clone();
             let mut last_emit = Instant::now();
             let request = request.clone();
+            let scan_observer = install_scan.clone();
             let result = tokio::task::spawn_blocking(move || {
-                execute(request, move |lines, progress| {
+                let outcome = execute(request, |lines, progress| {
                     let emit = last_emit.elapsed() >= Duration::from_millis(200);
                     if emit {
                         last_emit = Instant::now();
                     }
                     let _ = queue.progress(&id, lines, progress, emit);
-                })
+                    if scan_observer.is_some() {
+                        let extra = crate::security::preinstall::Prepared::download_logs(lines);
+                        if !extra.is_empty() {
+                            let _ = queue.append_log(&id, &extra);
+                            let _ = queue.progress(&id, &extra, progress, true);
+                        }
+                    }
+                });
+                // Also record files from hooks which do not print Homebrew's
+                // usual download headings. Observation never changes outcome.
+                if let Some(prepared) = &scan_observer {
+                    let extra = prepared.additional_file_logs();
+                    let _ = queue.append_log(&id, &extra);
+                    let _ = queue.progress(
+                        &id,
+                        &extra,
+                        &crate::brew::pty::Progress {
+                            phase: None,
+                            percent: None,
+                            step_index: None,
+                            from: None,
+                            to: None,
+                            bytes: None,
+                            total: None,
+                            speed: None,
+                        },
+                        true,
+                    );
+                }
+                outcome
             })
             .await
             .map_err(|e| {
@@ -882,6 +1058,29 @@ impl TaskQueue {
                     break;
                 }
             };
+            if task
+                .target
+                .as_ref()
+                .is_some_and(|t| t.kind == TaskKind::Mas)
+            {
+                let batch = match self.mas_batch(&task) {
+                    Ok(batch) => batch,
+                    Err(error) => {
+                        let _ = self.finish(&task.id, Err(error));
+                        continue;
+                    }
+                };
+                let outcomes = self.execute_mas_batch(&batch).await;
+                for (task, outcome) in batch.into_iter().zip(outcomes) {
+                    if let Ok(task) = self.finish(&task.id, outcome) {
+                        let completion = self.completion.lock().ok().and_then(|hook| hook.clone());
+                        if let Some(completion) = completion {
+                            completion(task).await;
+                        }
+                    }
+                }
+                continue;
+            }
             let gate = if task.op == TaskOp::Update {
                 Some(self.read_gate.clone().write_owned().await)
             } else {
@@ -968,6 +1167,70 @@ else:
             token: token.into(),
         }
     }
+    #[test]
+    fn links_are_rejected_before_queue_persistence_deduplication_or_plan_validation() {
+        let (_directory, queue, events) = fixture("install_ok");
+        let item = crate::catalog::links::tests::item();
+        crate::catalog::links::apply(
+            &queue.database,
+            &crate::catalog::links::LinkCatalog {
+                etag: "\"queue\"".into(),
+                items: vec![item.clone()],
+            },
+            1,
+        )
+        .unwrap();
+        for kind in [TaskKind::Link, TaskKind::Cask] {
+            for op in [
+                TaskOp::Install,
+                TaskOp::Upgrade,
+                TaskOp::Reinstall,
+                TaskOp::Uninstall,
+            ] {
+                for options in [
+                    TaskOptions::default(),
+                    TaskOptions {
+                        plan_id: Some("invalid-plan".into()),
+                        ..Default::default()
+                    },
+                ] {
+                    let error = queue
+                        .enqueue(
+                            op,
+                            Some(TaskTarget {
+                                kind,
+                                token: item.token.clone(),
+                            }),
+                            options,
+                            TaskTrigger::Manual,
+                        )
+                        .unwrap_err();
+                    assert_eq!(error.code, "E_NOT_INSTALLABLE");
+                    assert!(queue.database.tasks().unwrap().is_empty());
+                    assert!(queue.tasks.lock().unwrap().is_empty());
+                }
+            }
+        }
+        assert!(events.lock().unwrap().is_empty());
+        // Even malformed tokens and a stopping queue must hit the link guard first.
+        queue.stopping.store(true, Ordering::Release);
+        assert_eq!(
+            queue
+                .enqueue(
+                    TaskOp::Install,
+                    Some(TaskTarget {
+                        kind: TaskKind::Link,
+                        token: "../invalid".into()
+                    }),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual
+                )
+                .unwrap_err()
+                .code,
+            "E_NOT_INSTALLABLE"
+        );
+        assert!(queue.database.tasks().unwrap().is_empty());
+    }
     async fn terminal(queue: &TaskQueue, id: &str) -> Task {
         tokio::time::timeout(Duration::from_secs(5), async {
             loop {
@@ -986,6 +1249,315 @@ else:
         })
         .await
         .expect("terminal state timeout")
+    }
+    #[tokio::test]
+    async fn mas_batch_uses_one_admin_prompt_and_preserves_typed_errors() {
+        use crate::updater::admin;
+        struct FakeAdmin {
+            calls: Mutex<Vec<Vec<String>>>,
+            cancel: bool,
+        }
+        impl admin::Actions for FakeAdmin {
+            fn run(&self, requests: &[admin::Request]) -> Result<Vec<admin::ResultItem>, AppError> {
+                self.calls
+                    .lock()
+                    .unwrap()
+                    .push(requests.iter().map(|r| r.id.clone()).collect());
+                if self.cancel {
+                    return Err(AppError::new("E_ADMIN_CANCELED", "fixture_cancel"));
+                }
+                Ok(requests
+                    .iter()
+                    .map(|r| {
+                        let admin::Action::MasInstallPkg { request } = &r.action else {
+                            panic!("wrong action")
+                        };
+                        request.validate(unsafe { nix::libc::getuid() }).unwrap();
+                        assert!(
+                            request
+                                .pkg
+                                .starts_with(std::env::temp_dir().canonicalize().unwrap())
+                        );
+                        admin::ResultItem {
+                            id: r.id.clone(),
+                            error: None,
+                            backup: None,
+                        }
+                    })
+                    .collect())
+            }
+        }
+        for (scenario, admin_cancel, expected) in [
+            ("success", false, None),
+            ("201", false, None),
+            ("201_then_error", false, None),
+            ("201", true, Some("E_ADMIN_CANCELED")),
+            ("error:E_MAS_NOT_OWNED", false, Some("E_MAS_NOT_OWNED")),
+        ] {
+            let (_directory, mut queue, events) = fixture("install_ok");
+            let (_server, service) = crate::appstore::tests::queue_service(
+                queue.database.clone(),
+                queue.settings.clone(),
+            )
+            .await;
+            Arc::get_mut(&mut queue).unwrap().appstore = service;
+            let admin = Arc::new(FakeAdmin {
+                calls: Mutex::new(vec![]),
+                cancel: admin_cancel,
+            });
+            *queue.native_runtime.lock().unwrap() = native::Runtime {
+                store: Some(crate::appstore::install::Runner {
+                    executable: Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("tests/fake-store/store"),
+                    environment: [
+                        ("OPENNAVO_FAKE_STORE_SCENARIO".into(), scenario.into()),
+                        ("OPENNAVO_FAKE_STORE_FIXTURES".into(), "1".into()),
+                    ]
+                    .into(),
+                }),
+                admin: Some(admin.clone()),
+            };
+            let tasks = queue
+                .enqueue_many(
+                    TaskOp::Install,
+                    [42, 43]
+                        .map(|id| TaskTarget {
+                            kind: TaskKind::Mas,
+                            token: id.to_string(),
+                        })
+                        .into(),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual,
+                )
+                .unwrap();
+            queue.start();
+            for (index, task) in tasks.iter().enumerate() {
+                let expected = if scenario == "201_then_error" && index == 1 {
+                    Some("E_MAS_NOT_OWNED")
+                } else {
+                    expected
+                };
+                let result = terminal(&queue, &task.id).await;
+                assert_eq!(
+                    result.error.as_ref().map(|e| e.code.as_str()),
+                    expected,
+                    "{scenario}: {result:?}"
+                );
+                assert_eq!(
+                    result.state,
+                    if expected.is_some() {
+                        TaskState::Failed
+                    } else {
+                        TaskState::Succeeded
+                    }
+                );
+            }
+            let calls = admin.calls.lock().unwrap();
+            assert_eq!(
+                calls.len(),
+                usize::from(matches!(scenario, "201" | "201_then_error"))
+            );
+            if let Some(batch) = calls.first() {
+                assert_eq!(
+                    batch.len(),
+                    if scenario == "201_then_error" { 1 } else { 2 }
+                );
+                if scenario == "201_then_error" {
+                    assert_eq!(batch, &vec![tasks[0].id.clone()]);
+                }
+            }
+            assert!(
+                events.lock().unwrap().iter().any(
+                    |e| matches!(e, CoreEvent::Task(t) if t.phase == Some(TaskPhase::Preparing))
+                )
+            );
+            queue.shutdown();
+        }
+    }
+    #[tokio::test]
+    async fn mas_batch_cancel_preserves_completed_item() {
+        let (_directory, mut queue, _) = fixture("install_ok");
+        let (_server, service) =
+            crate::appstore::tests::queue_service(queue.database.clone(), queue.settings.clone())
+                .await;
+        Arc::get_mut(&mut queue).unwrap().appstore = service;
+        let apps = Arc::new(crate::running_apps::tests::FakeApps::default());
+        apps.processes
+            .lock()
+            .unwrap()
+            .push(crate::running_apps::Process {
+                pid: 42,
+                path: "/Applications/Fixture.app".into(),
+                bundle_id: "test.app".into(),
+            });
+        Arc::get_mut(&mut queue).unwrap().app_control = apps.clone();
+        queue.native_runtime.lock().unwrap().store = Some(crate::appstore::install::Runner {
+            executable: Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fake-store/store"),
+            environment: [(
+                "OPENNAVO_FAKE_STORE_SCENARIO".into(),
+                "partial_cancel".into(),
+            )]
+            .into(),
+        });
+        let tasks = queue
+            .enqueue_many(
+                TaskOp::Install,
+                [42, 43]
+                    .into_iter()
+                    .map(|id| TaskTarget {
+                        kind: TaskKind::Mas,
+                        token: id.to_string(),
+                    })
+                    .collect(),
+                TaskOptions {
+                    quit_running: true,
+                    reopen: true,
+                    ..Default::default()
+                },
+                TaskTrigger::Manual,
+            )
+            .unwrap();
+        queue.start();
+        tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let rows = queue.active().unwrap();
+                if rows
+                    .iter()
+                    .any(|t| t.id == tasks[0].id && t.percent == Some(100.0))
+                {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .unwrap();
+        queue.cancel(&tasks[1].id).unwrap();
+        assert_eq!(
+            terminal(&queue, &tasks[0].id).await.state,
+            TaskState::Succeeded
+        );
+        assert_eq!(
+            terminal(&queue, &tasks[1].id).await.state,
+            TaskState::Canceled
+        );
+        assert_eq!(
+            *apps.reopened.lock().unwrap(),
+            vec![std::path::PathBuf::from("/Applications/Fixture.app")]
+        );
+        queue.shutdown();
+    }
+
+    #[tokio::test]
+    async fn mas_batch_signal_exit_preserves_completed_item() {
+        let (_directory, mut queue, _) = fixture("install_ok");
+        let (_server, service) =
+            crate::appstore::tests::queue_service(queue.database.clone(), queue.settings.clone())
+                .await;
+        Arc::get_mut(&mut queue).unwrap().appstore = service;
+        let apps = Arc::new(crate::running_apps::tests::FakeApps::default());
+        apps.processes
+            .lock()
+            .unwrap()
+            .push(crate::running_apps::Process {
+                pid: 42,
+                path: "/Applications/Fixture.app".into(),
+                bundle_id: "test.app".into(),
+            });
+        Arc::get_mut(&mut queue).unwrap().app_control = apps.clone();
+        queue.native_runtime.lock().unwrap().store = Some(crate::appstore::install::Runner {
+            executable: Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fake-store/store"),
+            environment: [(
+                "OPENNAVO_FAKE_STORE_SCENARIO".into(),
+                "partial_signal".into(),
+            )]
+            .into(),
+        });
+        let tasks = queue
+            .enqueue_many(
+                TaskOp::Install,
+                [42, 43]
+                    .into_iter()
+                    .map(|id| TaskTarget {
+                        kind: TaskKind::Mas,
+                        token: id.to_string(),
+                    })
+                    .collect(),
+                TaskOptions {
+                    quit_running: true,
+                    reopen: true,
+                    ..Default::default()
+                },
+                TaskTrigger::Manual,
+            )
+            .unwrap();
+        queue.start();
+        assert_eq!(
+            terminal(&queue, &tasks[0].id).await.state,
+            TaskState::Succeeded
+        );
+        assert_eq!(
+            terminal(&queue, &tasks[1].id).await.state,
+            TaskState::Failed
+        );
+        assert_eq!(
+            *apps.reopened.lock().unwrap(),
+            vec![std::path::PathBuf::from("/Applications/Fixture.app")]
+        );
+        queue.shutdown();
+    }
+
+    #[tokio::test]
+    async fn mas_cancel_stops_sidecar_and_oversized_batch_never_persists() {
+        let (_directory, mut queue, _) = fixture("install_ok");
+        let (_server, service) =
+            crate::appstore::tests::queue_service(queue.database.clone(), queue.settings.clone())
+                .await;
+        Arc::get_mut(&mut queue).unwrap().appstore = service;
+        queue.native_runtime.lock().unwrap().store = Some(crate::appstore::install::Runner {
+            executable: Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fake-store/store"),
+            environment: [("OPENNAVO_FAKE_STORE_SCENARIO".into(), "cancel".into())].into(),
+        });
+        assert_eq!(
+            queue
+                .enqueue_many(
+                    TaskOp::Install,
+                    (1..=101)
+                        .map(|id| TaskTarget {
+                            kind: TaskKind::Mas,
+                            token: id.to_string()
+                        })
+                        .collect(),
+                    TaskOptions::default(),
+                    TaskTrigger::Manual
+                )
+                .unwrap_err()
+                .code,
+            "E_INVALID_ARG"
+        );
+        assert!(queue.database.tasks().unwrap().is_empty());
+        let task = queue
+            .enqueue(
+                TaskOp::Install,
+                Some(TaskTarget {
+                    kind: TaskKind::Mas,
+                    token: "42".into(),
+                }),
+                TaskOptions::default(),
+                TaskTrigger::Manual,
+            )
+            .unwrap();
+        queue.start();
+        tokio::time::timeout(Duration::from_secs(3), async {
+            while queue.database.tasks().unwrap()[0].state != TaskState::Running {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .unwrap();
+        queue.cancel(&task.id).unwrap();
+        assert_eq!(terminal(&queue, &task.id).await.state, TaskState::Canceled);
+        queue.shutdown();
     }
     #[tokio::test]
     async fn five_scenarios_cancel_retry_and_logs() {

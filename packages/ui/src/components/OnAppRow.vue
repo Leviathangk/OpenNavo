@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { Component } from 'vue';
-import type { PackageKind } from '@opennavo/shared';
 import OnAppIcon from './OnAppIcon.vue';
+import type { OnAppIconKind } from './OnAppIcon.vue';
 
 export interface OnAppRowProps {
-  kind: PackageKind;
+  kind: OnAppIconKind;
   token: string;
   name: string;
   src?: string | null;
@@ -42,17 +42,18 @@ defineSlots<{
   >
     <OnAppIcon :kind="kind" :token="token" :name="name" :src="src" :accent="accent" :size="40" />
     <div class="flex min-w-0 flex-1 flex-col gap-2px">
-      <div class="flex min-w-0 items-center gap-6px">
+      <!-- Badges wrap to their own line rather than squeezing the name away (several long ones in es/pt/ru). -->
+      <div class="flex min-w-0 flex-wrap items-center gap-x-6px gap-y-2px">
         <component
           :is="linkAs"
           v-if="href"
           v-bind="linkAttrs"
-          class="on-stretched truncate text-14px font-600 text-ink-primary no-underline outline-none focus-visible:underline"
+          class="on-stretched max-w-full shrink-0 truncate text-14px font-600 text-ink-primary no-underline outline-none focus-visible:underline"
           @click="emit('navigate')"
         >
           {{ name }}
         </component>
-        <span v-else class="truncate text-14px font-600 text-ink-primary">{{ name }}</span>
+        <span v-else class="max-w-full shrink-0 truncate text-14px font-600 text-ink-primary">{{ name }}</span>
         <slot name="badges" />
       </div>
       <span v-if="meta" class="truncate text-12px text-ink-secondary tabular-nums">{{ meta }}</span>

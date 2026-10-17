@@ -15,6 +15,7 @@ use std::{
     },
 };
 pub struct DesktopCore {
+    pub appstore: Arc<crate::appstore::Service>,
     pub database: Database,
     pub catalog: Arc<crate::catalog::sync::CatalogService>,
     pub settings: Arc<RwLock<Settings>>,
@@ -40,6 +41,8 @@ pub struct DesktopCore {
     library_generation: AtomicU64,
     outdated_source: RwLock<crate::updates::Outdated>,
     updates_lock: tokio::sync::Mutex<()>,
+    source_checks_lock: tokio::sync::Mutex<()>,
+    source_checks_active: AtomicBool,
     updates_checking: AtomicBool,
     checked_at: RwLock<Option<i64>>,
     schedule_plan_at: AtomicI64,
@@ -85,7 +88,9 @@ impl DesktopCore {
             settings.clone(),
             sink.clone(),
         ));
+        let appstore = queue.appstore.clone();
         let core = Arc::new(Self {
+            appstore,
             database: database.clone(),
             catalog,
             settings,
@@ -110,6 +115,8 @@ impl DesktopCore {
                     .unwrap_or_default(),
             ),
             updates_lock: tokio::sync::Mutex::new(()),
+            source_checks_lock: tokio::sync::Mutex::new(()),
+            source_checks_active: AtomicBool::new(false),
             updates_checking: AtomicBool::new(false),
             checked_at: RwLock::new(
                 database
@@ -233,8 +240,12 @@ impl DesktopCore {
         let saved = settings.clone();
         let core = self.clone();
         let persisted = crate::blocking(move || {
+            let _schedule = core.queue.security.scheduled.lock().map_err(poisoned)?;
             let writer = core.settings_save.read().map_err(poisoned)?.clone();
             writer(&saved)?;
+            core.queue
+                .security
+                .record_schedule_settings(&saved, chrono::Utc::now().timestamp_millis())?;
             *core.settings.write().map_err(poisoned)? = saved;
             Ok(())
         })
@@ -245,6 +256,11 @@ impl DesktopCore {
                 let _ = crate::blocking(move || change(previous)).await;
             }
             return Err(error);
+        }
+        if old.app_store_region != settings.app_store_region
+            || old.app_store_updates != settings.app_store_updates
+        {
+            self.appstore.settings_changed()?;
         }
         if old.check_time != settings.check_time || old.auto_check != settings.auto_check {
             let now = chrono::Utc::now().timestamp_millis();
@@ -415,7 +431,9 @@ impl DesktopCore {
         Ok(())
     }
     pub fn updates_list(&self) -> Result<Vec<OutdatedItem>, AppError> {
-        Ok(self.updates.read().map_err(poisoned)?.clone())
+        self.queue
+            .updater
+            .merge(self.updates.read().map_err(poisoned)?.clone())
     }
     pub async fn rebuild_updates(self: &Arc<Self>) -> Result<Vec<OutdatedItem>, AppError> {
         let core = self.clone();
@@ -442,12 +460,76 @@ impl DesktopCore {
             core.database
                 .set_meta("updates_cache", &serde_json::to_string(&result)?)?;
             *core.updates.write().map_err(poisoned)? = result.clone();
-            (core.sink)(CoreEvent::Updates(UpdatesChanged {
-                count: result.len() as u32,
-            }));
+            core.queue.updater.changed()?;
             Ok(result)
         })
         .await
+    }
+    /// Shared manual/tray/scheduled check. Reserved engines are skipped only for
+    /// the default selection; an explicit unsupported source fails before work.
+    pub async fn check_update_sources(
+        self: &Arc<Self>,
+        requested: Option<Vec<UpdateSource>>,
+        trigger: TaskTrigger,
+        finished_at: Option<i64>,
+    ) -> Result<Vec<OutdatedItem>, AppError> {
+        let settings = self.current_settings()?;
+        let sources = crate::updater::check_sources(requested, &settings.update_sources)?;
+        if sources.is_empty() {
+            return self.updates_list(); // No completed check: retain the previous status.
+        }
+        let _check = self.source_checks_lock.lock().await;
+        self.source_checks_active.store(true, Ordering::Release);
+        struct Reset<'a>(&'a AtomicBool);
+        impl Drop for Reset<'_> {
+            fn drop(&mut self) {
+                self.0.store(false, Ordering::Release);
+            }
+        }
+        let reset = Reset(&self.source_checks_active);
+        let mut outcome = crate::updater::outcome::CheckOutcome::default();
+        if sources.contains(&UpdateSource::Homebrew) {
+            match self
+                .check_updates_for(settings.run_brew_update_on_check, trigger, finished_at)
+                .await
+            {
+                Ok(_) => outcome.succeeded(),
+                Err(error) => outcome.failed(UpdateSource::Homebrew, "brew outdated", error),
+            }
+        }
+        let native: Vec<_> = sources
+            .iter()
+            .copied()
+            .filter(|s| *s != UpdateSource::Homebrew)
+            .collect();
+        if !native.is_empty() {
+            let _check = self.updates_lock.lock().await;
+            match self
+                .queue
+                .updater
+                .check(&native, &self.appstore, trigger == TaskTrigger::Manual)
+                .await
+            {
+                Ok(result) => outcome.extend(result),
+                Err(error) => {
+                    for source in native {
+                        outcome.failed(source, "native check could not complete", error.clone());
+                    }
+                }
+            }
+        }
+        let now = finished_at.unwrap_or_else(|| chrono::Utc::now().timestamp_millis());
+        self.database
+            .set_meta("updates_checked_at", &now.to_string())?;
+        self.database.set_meta(
+            "updates_failed_sources",
+            &serde_json::to_string(&outcome.failed_sources())?,
+        )?;
+        *self.checked_at.write().map_err(poisoned)? = Some(now);
+        drop(reset); // The final event must let the frontend observe completed status.
+        self.queue.updater.changed()?;
+        outcome.result()?;
+        self.updates_list()
     }
     pub async fn check_updates(
         self: &Arc<Self>,
@@ -519,9 +601,7 @@ impl DesktopCore {
         crate::blocking(move || database.set_meta("updates_checked_at", &now.to_string())).await?;
         *self.checked_at.write().map_err(poisoned)? = Some(now);
         self.updates_checking.store(false, Ordering::Release);
-        (self.sink)(CoreEvent::Updates(UpdatesChanged {
-            count: result.len() as u32,
-        }));
+        self.queue.updater.changed()?;
         Ok(result)
     }
     pub fn updates_status(&self) -> Result<UpdatesStatus, AppError> {
@@ -540,7 +620,13 @@ impl DesktopCore {
         Ok(UpdatesStatus {
             checked_at,
             next_check_at: next,
-            checking: self.updates_checking.load(Ordering::Acquire),
+            checking: self.updates_checking.load(Ordering::Acquire)
+                || self.source_checks_active.load(Ordering::Acquire),
+            failed_sources: self
+                .database
+                .meta("updates_failed_sources")?
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
         })
     }
     pub async fn ignore_update(
@@ -612,6 +698,7 @@ impl DesktopCore {
                     .as_ref()
                     .ok_or_else(|| AppError::new("E_UNKNOWN", "scan_target"))?;
                 match target.kind.brew_kind()? {
+                    Kind::Link => return Err(AppError::new("E_NOT_INSTALLABLE", "link_target")),
                     Kind::Cask => {
                         info.casks.retain(|i| i.token != target.token);
                         info.casks.extend(
@@ -829,6 +916,7 @@ impl DesktopCore {
             let entries = match kind {
                 Kind::Cask => &mut source.casks,
                 Kind::Formula => &mut source.formulae,
+                Kind::Link => return Ok(()),
             };
             let Some(index) = entries.iter().position(|entry| entry.name == target.token) else {
                 return Ok(());
@@ -852,9 +940,8 @@ impl DesktopCore {
             }
             core.database
                 .set_meta("updates_cache", &serde_json::to_string(&*updates)?)?;
-            let count = updates.len() as u32;
             drop(updates);
-            (core.sink)(CoreEvent::Updates(UpdatesChanged { count }));
+            core.queue.updater.changed()?;
             Ok(())
         })
         .await
@@ -876,10 +963,29 @@ impl DesktopCore {
         if task
             .target
             .as_ref()
-            .is_some_and(|t| t.kind == TaskKind::App)
+            .is_some_and(|t| matches!(t.kind, TaskKind::App | TaskKind::Mas))
         {
+            if task
+                .target
+                .as_ref()
+                .is_some_and(|t| t.kind == TaskKind::Mas)
+            {
+                let _ = self.appstore.installed().await;
+            }
             let engine = self.queue.uninstall_engine.clone();
             let _ = crate::blocking(move || engine.refresh(LocalAppsChangedReason::Task)).await;
+            if task
+                .target
+                .as_ref()
+                .is_some_and(|t| t.kind == TaskKind::Mas)
+                && let Err(error) = self
+                    .queue
+                    .updater
+                    .check(&[UpdateSource::Mas], &self.appstore, false)
+                    .await
+            {
+                log::info!("Store updates refresh deferred: {}", error.code);
+            }
             if let Ok(permissions) = self.permissions().await {
                 let _ = self
                     .queue

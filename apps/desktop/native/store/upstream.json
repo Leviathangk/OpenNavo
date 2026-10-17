@@ -1,0 +1,14 @@
+{
+  "project": "mas",
+  "version": "7.0.0",
+  "url": "https://github.com/mas-cli/mas/tree/v7.0.0",
+  "archive": "https://codeload.github.com/mas-cli/mas/tar.gz/refs/tags/v7.0.0",
+  "sha256": "c40e5d614a2aac0d804b1538782e448af297b314a1fc9785092d3fd2573dd3f2",
+  "license": "MIT",
+  "files": [
+    "Sources/PrivateFrameworks/**",
+    "Sources/Store/Download.swift",
+    "../../src-tauri/src/appstore/countries.rs (region aliases from Sources/mas/Models/Region.swift)"
+  ],
+  "changes": "Installation/download core adapted to JSON lines and unprivileged execution. No CLI dependencies, account management, root execution or shell commands."
+}

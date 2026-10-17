@@ -3,6 +3,7 @@ package public
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -26,7 +27,22 @@ type Handler struct {
 
 func requestContext(ctx context.Context) context.Context {
 	if c, ok := ctx.(*gin.Context); ok {
-		return c.Request.Context()
+		if !strings.Contains(c.Request.URL.Path, "/catalog/") {
+			vary := c.Writer.Header().Get("Vary")
+			if !strings.Contains(strings.ToLower(vary), "x-opennavo-caps") {
+				if vary != "" {
+					vary += ", "
+				}
+				c.Header("Vary", vary+"X-OpenNavo-Caps")
+			}
+		}
+		enabled := false
+		for _, capability := range strings.Split(c.GetHeader("X-OpenNavo-Caps"), ",") {
+			if strings.TrimSpace(capability) == "link" {
+				enabled = true
+			}
+		}
+		return domain.WithLinks(c.Request.Context(), enabled)
 	}
 	return ctx
 }
@@ -64,7 +80,7 @@ func (h *Handler) ListCatalogChanges(ctx context.Context, request publicapi.List
 	if h.Snapshot == nil {
 		return nil, domain.Internal(nil)
 	}
-	data, err := h.Snapshot.Changes(requestContext(ctx), request.Params.Since, fallback(request.Params.Limit, 500))
+	data, err := h.Snapshot.Changes(domain.WithLinks(requestContext(ctx), false), request.Params.Since, fallback(request.Params.Limit, 500))
 	return response[publicapi.ListCatalogChanges200JSONResponse](data, err)
 }
 
@@ -72,7 +88,7 @@ func (h *Handler) GetCatalogSnapshot(ctx context.Context, request publicapi.GetC
 	if h.Snapshot == nil {
 		return nil, domain.Internal(nil)
 	}
-	data, err := h.Snapshot.Latest(requestContext(ctx))
+	data, err := h.Snapshot.Latest(domain.WithLinks(requestContext(ctx), false))
 	return response[publicapi.GetCatalogSnapshot200JSONResponse](data, err)
 }
 

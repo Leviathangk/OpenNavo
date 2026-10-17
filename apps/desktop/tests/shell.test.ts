@@ -45,6 +45,7 @@ describe('AppShell', () => {
       '/updates',
       '/cleanup',
       '/monitor',
+      '/security',
       '/settings'
     ]);
     expect(links[0]?.attributes('aria-current')).toBe('page');

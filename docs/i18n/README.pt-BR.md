@@ -11,7 +11,7 @@
 Explore descrições e notas de versão de mais de 7.700 Homebrew Casks,<br>
 e instale e atualize com um clique pelo app para macOS. O Homebrew cuida de cada etapa, e você acompanha todo o processo.
 
-[![Licença](https://img.shields.io/badge/license-Apache--2.0-FF7356)](../../LICENSE)
+[![Licença](https://img.shields.io/badge/license-GPL--3.0--only-FF7356)](../../LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-111111?logo=apple)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)
 ![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)
@@ -124,14 +124,14 @@ opennavo/
 
 O backend sincroniza o catálogo e os números de instalações pelas APIs públicas do Homebrew, lê seus commits para identificar quando cada versão foi incluída, verifica os tamanhos de download e gera snapshots do catálogo para uso offline. As APIs seguem um fluxo que começa pelos contratos: altere `apps/server/api/*.openapi.yaml` e execute `make gen` para gerar código Go e TypeScript.
 
-| Parte | Tecnologia |
-|---|---|
-| Web | Nuxt 4 · Vue 3 · UnoCSS (SSR) |
-| App para macOS | Tauri 2 · Vue 3 · Rust · SQLite (FTS5) |
-| Administração | soybean-admin v2.2.0 · Vue 3 · Naive UI |
-| Backend | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · armazenamento compatível com S3 (MinIO) |
-| MCP | Python 3.13 · FastMCP · uv |
-| Contratos e geração | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta |
+| Parte               | Tecnologia                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------- |
+| Web                 | Nuxt 4 · Vue 3 · UnoCSS (SSR)                                                               |
+| App para macOS      | Tauri 2 · Vue 3 · Rust · SQLite (FTS5)                                                      |
+| Administração       | soybean-admin v2.2.0 · Vue 3 · Naive UI                                                     |
+| Backend             | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · armazenamento compatível com S3 (MinIO) |
+| MCP                 | Python 3.13 · FastMCP · uv                                                                  |
+| Contratos e geração | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta                            |
 
 ## Início rápido
 
@@ -210,8 +210,8 @@ Se encontrar uma vulnerabilidade, relate em particular pela opção **Security �
 
 ## Licença
 
-Este projeto é de código aberto sob a [Apache License 2.0](../../LICENSE). Os avisos de componentes de terceiros estão em [NOTICE](../../NOTICE).
+Este projeto é distribuído sob a [Licença Pública Geral GNU, somente versão 3 (GPL-3.0-only)](../../LICENSE). As versões publicadas até o commit `5fa4056`, inclusive, continuam disponíveis sob Apache-2.0. Os avisos de terceiros e os termos adicionais abaixo estão em [NOTICE](../../NOTICE).
 
-O nome e o logotipo OpenNavo não são cobertos por essa licença. Ao distribuir uma versão modificada, use outro nome e ícone e substitua o Bundle ID, a chave pública de atualização e a URL de atualização do cliente. Homebrew é uma marca do projeto Homebrew; o OpenNavo não é afiliado ao Homebrew. Os nomes e ícones dos apps pertencem aos respectivos titulares.
+Os termos adicionais em NOTICE, conforme a seção 7(e) da GPLv3, não concedem direitos de marca sobre o nome ou logotipo OpenNavo. Conforme a seção 7(c), versões modificadas distribuídas devem se distinguir claramente do original: use outro nome e ícone e substitua o Bundle ID, a chave pública e a URL de atualização. Preserve a atribuição correta. Homebrew é uma marca do projeto Homebrew; o OpenNavo não é afiliado a ele. Os nomes e ícones dos apps pertencem aos respectivos titulares.
 
 [Guia de implantação](../../ops/GUIDE.md) · [Contribuir](../../.github/CONTRIBUTING.md) · [Política de segurança](../../.github/SECURITY.md) · [Licenças de terceiros](../legal/THIRD_PARTY.md)

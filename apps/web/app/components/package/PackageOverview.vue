@@ -8,13 +8,15 @@ import { packagePath } from '~/utils/packageView';
 import { appEntityId, softwareAppNode } from '~/utils/structuredData';
 import { trackEvent } from '~/utils/analytics';
 import { overviewDescription, overviewTitle } from '~/utils/seoTitles';
+import { httpsUrl } from '~/utils/linkApp';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 
 // Overview (08 §10.5): shared OnPackageOverview (ADR-017); left screenshots → introduction → latest release →
 // install and uninstall → sourced facts → confirmed alternatives → questions (WP9, web only) → caveats.
-// Right: install command → information → monthly installs → similar apps.
+// Right: install command → information → monthly installs → similar apps. Link apps (store/security plan §4)
+// show their download panel instead of the command and have no install counts.
 const props = defineProps<{ kind: PackageKind }>();
 
 const route = useRoute();
@@ -26,13 +28,15 @@ const toasts = useToasts();
 const NuxtLink = resolveComponent('NuxtLink');
 
 const { data: pkg, token } = await usePackage(props.kind);
+// A cask route can resolve to a link app (usePackage); related apps follow what was found.
+const kind = computed(() => pkg.value?.kind ?? props.kind);
 
 const { data: related } = await useAsyncData(
-  () => `related:${props.kind}:${token.value}:${locale.value}`,
+  () => `related:${kind.value}:${token.value}:${locale.value}`,
   () =>
     unwrap(
       api.GET('/packages/{kind}/{token}/related', {
-        params: { path: { kind: props.kind, token: token.value }, query: { limit: 5 } }
+        params: { path: { kind: kind.value, token: token.value }, query: { limit: 5 } }
       })
     ).catch(() => [])
 );
@@ -71,9 +75,36 @@ const relatedItems = computed<OnRelatedPackage[]>(() =>
 
 const messages = useUiMessages();
 
+// Download information as on the desktop: official site, GitHub, developer signature, price and bundle IDs.
+const linkInfo = computed<OnKeyValueItem[]>(() => {
+  const link = pkg.value?.link;
+  if (!link) return [];
+  const items: OnKeyValueItem[] = [];
+  const homepage = httpsUrl(link.homepage);
+  if (homepage)
+    items.push({ key: 'homepage', label: t('package.info.homepage'), value: displayUrl(homepage), href: homepage });
+  if (link.github)
+    items.push({
+      key: 'github',
+      label: 'GitHub',
+      value: link.github.repo,
+      href: `https://github.com/${link.github.repo}`
+    });
+  if (link.teamId) items.push({ key: 'team', label: t('package.link.teamId'), value: link.teamId, mono: true });
+  items.push({
+    key: 'pricing',
+    label: t('package.link.pricingLabel'),
+    value: t(`package.link.pricing.${link.pricing}`)
+  });
+  const bundleIds = pkg.value?.bundleIds ?? [];
+  if (bundleIds.length) items.push({ key: 'bundle', label: 'Bundle ID', value: bundleIds.join(' '), mono: true });
+  return items;
+});
+
 const info = computed<OnKeyValueItem[]>(() => {
   const value = pkg.value;
   if (!value) return [];
+  if (value.kind === 'link') return linkInfo.value;
   const items: OnKeyValueItem[] = [{ key: 'token', label: 'Token', value: value.token, mono: true }];
   if (value.homepage)
     items.push({
@@ -178,7 +209,7 @@ usePageSeo({
       :about-original-href="originalHref"
       :caveats="pkg.caveats"
       :caveats-title="t('package.caveats')"
-      :command="pkg.installCommand"
+      :command="pkg.kind === 'link' ? undefined : pkg.installCommand"
       :info="info"
       :related="relatedItems"
       :related-title="t('package.related')"
@@ -203,8 +234,11 @@ usePageSeo({
           <PackageArticles :pkg="pkg" />
         </template>
       </template>
+      <template v-if="pkg.kind === 'link' && pkg.link" #download>
+        <LinkDownloadPanel :link="pkg.link" />
+      </template>
       <template #aside>
-        <MonthlyInstalls :installs="pkg.installs" />
+        <MonthlyInstalls v-if="pkg.kind !== 'link'" :installs="pkg.installs" />
       </template>
     </OnPackageOverview>
   </div>

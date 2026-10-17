@@ -41,13 +41,17 @@ const { data, error } = useRemoteLoader(
   [() => props.slug, appLocale]
 );
 
+// Install the whole collection: link apps are downloaded from their sites, so they stay out of the batch.
 const pending = computed(() =>
   (data.value?.items ?? []).filter(
-    item => !item.package.disabled && !library.find(item.package.kind, item.package.token)
+    item =>
+      item.package.kind !== 'link' && !item.package.disabled && !library.find(item.package.kind, item.package.token)
   )
 );
 const pendingCommands = computed(() =>
-  pending.value.map(item => installCommand(item.package.kind, item.package.token)).join('\n')
+  pending.value
+    .flatMap(item => (item.package.kind === 'link' ? [] : [installCommand(item.package.kind, item.package.token)]))
+    .join('\n')
 );
 const entries = computed<OnCollectionEntry[]>(() =>
   (data.value?.items ?? []).map(item => ({

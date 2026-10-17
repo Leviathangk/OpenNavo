@@ -6,11 +6,14 @@ import { formatDate, formatPercent, formatTime } from '@opennavo/shared';
 import { OnButton, OnCard, OnRailPanel, OnRailSection, OnStatTile, OnToggle } from '@opennavo/ui';
 import { commands, unwrap } from '@/ipc/client';
 import type { AppSettings } from '@/ipc/client';
+import type { UpdateSource } from '@/ipc/bindings';
 import { loadHistory } from '@/utils/history';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { fetchClientConfig } from '@/composables/useClientConfig';
 import { useClock } from '@/composables/useClock';
 import { useLoader } from '@/composables/useLoader';
+import { usePackageState } from '@/composables/usePackageState';
+import { useToasts } from '@/composables/useToasts';
 import { useSettingsStore, useTasksStore, useUpdatesStore } from '@/stores';
 
 // Updates rail (mockup 05): monthly stats, automatic-update setting, current source/latency, next check.
@@ -19,6 +22,8 @@ const { appLocale } = useAppLocale();
 const settings = useSettingsStore();
 const tasks = useTasksStore();
 const updates = useUpdatesStore();
+const toasts = useToasts();
+const { errorText } = usePackageState();
 
 const clock = useClock();
 const monthStart = computed(() => {
@@ -82,6 +87,35 @@ const toggles = computed(() => {
 
 function toggle(key: keyof Pick<AppSettings, 'autoCheck' | 'autoUpgradeCasks' | 'includeGreedy'>, value: boolean) {
   void settings.update(key, value);
+}
+
+// Sources the checks cover (store/security plan §7, §11.4): a source missing from settings is on. Microsoft
+// AutoUpdate joins when its check ships (P3).
+const SOURCES = [
+  'homebrew',
+  'mas',
+  'sparkle',
+  'electron',
+  'github',
+  'vendor'
+] as const satisfies readonly UpdateSource[];
+const sources = computed(() => {
+  const value = settings.value;
+  if (!value) return [];
+  return SOURCES.map(source => ({
+    source,
+    label: t(`updates.sources.${source}`),
+    hint: t(`updates.sources.${source}Hint`),
+    value: value.updateSources[source] ?? true
+  }));
+});
+
+async function toggleSource(source: UpdateSource, on: boolean) {
+  try {
+    await settings.setUpdateSource(source, on);
+  } catch (error) {
+    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+  }
 }
 
 // Current source: name from remote configuration; probe only this source.
@@ -161,6 +195,28 @@ const nextLabel = computed(() => {
               :model-value="item.value"
               :aria-labelledby="`auto-${item.key}`"
               @update:model-value="value => toggle(item.key, value)"
+            />
+          </li>
+        </ul>
+      </OnCard>
+    </OnRailSection>
+
+    <OnRailSection v-if="sources.length" :title="t('updates.sources.title')" :subtitle="t('updates.sources.subtitle')">
+      <OnCard padding="none">
+        <ul class="m-0 list-none p-0">
+          <li
+            v-for="item in sources"
+            :key="item.source"
+            class="flex items-center gap-12px border-t border-t-solid border-line-subtle px-16px py-12px first:border-t-0"
+          >
+            <span class="min-w-0 flex-1">
+              <span :id="`source-${item.source}`" class="block text-13.5px text-ink-primary">{{ item.label }}</span>
+              <span class="block text-12px text-ink-tertiary">{{ item.hint }}</span>
+            </span>
+            <OnToggle
+              :model-value="item.value"
+              :aria-labelledby="`source-${item.source}`"
+              @update:model-value="value => toggleSource(item.source, value)"
             />
           </li>
         </ul>

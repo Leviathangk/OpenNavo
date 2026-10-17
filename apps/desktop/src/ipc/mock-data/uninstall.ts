@@ -436,6 +436,8 @@ export function localAppsFixture(state: MockState, now = Date.now()): LocalApp[]
         bundleId: CASK_BUNDLES[item.token] ?? null,
         version: item.actualVersion ?? item.installedVersion,
         source: 'homebrew',
+        updater: 'homebrew',
+        homebrewCask: null,
         cask: item.token,
         catalogToken: item.token,
         teamId: null,
@@ -451,16 +453,20 @@ export function localAppsFixture(state: MockState, now = Date.now()): LocalApp[]
         uninstaller: null
       };
     });
-  const extra = EXTRA_APPS.map(
-    (app): LocalApp => ({
+  const extra = EXTRA_APPS.map((app): LocalApp => {
+    const catalogToken = app.catalogToken && findItem('cask', app.catalogToken) ? app.catalogToken : null;
+    return {
       id: app.id,
       path: `/Applications/${app.file}`,
       name: app.name,
       bundleId: app.bundleId,
       version: app.version,
       source: app.source,
+      // Same rule as Rust: App Store copies update there; a cask match outside Homebrew can be handed to it.
+      updater: app.self ? null : app.source === 'app_store' ? 'mas' : null,
+      homebrewCask: app.self ? null : catalogToken,
       cask: null,
-      catalogToken: app.catalogToken && findItem('cask', app.catalogToken) ? app.catalogToken : null,
+      catalogToken,
       teamId: app.teamId,
       vendor: app.vendor,
       arch: 'universal',
@@ -472,8 +478,8 @@ export function localAppsFixture(state: MockState, now = Date.now()): LocalApp[]
       removable: !app.self,
       protectedReason: app.self ? 'self' : null,
       uninstaller: app.uninstaller ?? null
-    })
-  );
+    };
+  });
   return [...casks, ...extra];
 }
 

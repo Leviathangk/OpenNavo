@@ -316,7 +316,7 @@ useSeoMeta({
             :link-as="NuxtLink"
           >
             <template #actions>
-              <GetMenu :kind="pkg.kind" :token="pkg.token" :name="pkg.displayName" />
+              <GetMenu :kind="pkg.kind" :token="pkg.token" :name="pkg.displayName" :link="pkg.link" />
             </template>
           </OnAppRow>
         </section>

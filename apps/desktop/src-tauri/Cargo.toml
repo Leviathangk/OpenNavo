@@ -2,6 +2,7 @@
 name = "opennavo-desktop"
 version = "0.0.0"
 description = "OpenNavo macOS desktop app"
+license = "GPL-3.0-only"
 edition = "2024"
 rust-version = "1.96"
 publish = false
@@ -36,7 +37,9 @@ specta = { version = "=2.0.0-rc.25", features = ["derive"] }
 tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 specta-typescript = "=0.0.12"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# Keep Snapshot nanoseconds exact when tagged admin actions buffer JSON numbers.
+serde_json = { version = "1", features = ["arbitrary_precision"] }
+semver = "1"
 thiserror = "2"
 tracing = "0.1"
 log = "0.4"
@@ -49,8 +52,13 @@ nix = { version = "0.31", features = ["signal", "process", "fs"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v7", "serde"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
-reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "stream"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "stream", "system-proxy"] }
 sha2 = "0.10"
+base64 = "0.23"
+quick-xml = "0.42"
+yaml-rust2 = { version = "0.13", default-features = false }
+ring = "0.17"
+zip = { version = "4.6", default-features = false, features = ["deflate"] }
 sha1 = "0.10"
 flate2 = "1"
 plist = "1.10"

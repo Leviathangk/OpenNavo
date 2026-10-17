@@ -101,6 +101,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arraydeque"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
+
+[[package]]
 name = "async-broadcast"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2939,6 +2945,7 @@ dependencies = [
 name = "opennavo-desktop"
 version = "0.0.0"
 dependencies = [
+ "base64 0.23.1",
  "block2",
  "chrono",
  "flate2",
@@ -2953,9 +2960,12 @@ dependencies = [
  "objc2-foundation",
  "plist",
  "portable-pty",
+ "quick-xml 0.42.0",
  "regex",
  "reqwest",
+ "ring",
  "rusqlite",
+ "semver",
  "serde",
  "serde_json",
  "sha1",
@@ -2984,6 +2994,8 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "yaml-rust2",
+ "zip",
 ]
 
 [[package]]
@@ -6607,6 +6619,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "yaml-rust2"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57e5b818a27a4cd30884ea380857a5e56f7ec3ba24a3990a3cc0b95af3238e18"
+dependencies = [
+ "arraydeque",
+ "hashlink",
+]
+
+[[package]]
 name = "yoke"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6778,8 +6800,10 @@ checksum = "caa8cd6af31c3b31c6631b8f483848b91589021b28fffe50adada48d4f4d2ed1"
 dependencies = [
  "arbitrary",
  "crc32fast",
+ "flate2",
  "indexmap 2.14.2",
  "memchr",
+ "zopfli",
 ]
 
 [[package]]
@@ -6793,6 +6817,18 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+
+[[package]]
+name = "zopfli"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f05cd8797d63865425ff89b5c4a48804f35ba0ce8d125800027ad6017d2b5249"
+dependencies = [
+ "bumpalo",
+ "crc32fast",
+ "log",
+ "simd-adler32",
+]
 
 [[package]]
 name = "zune-core"

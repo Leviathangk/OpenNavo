@@ -34,7 +34,7 @@ const tab = computed<Tab>(() => {
 
 const base = computed(() => `/package/${props.kind}/${props.token}`);
 const returnTo = computed(() => recentReturnPath(route.query.returnTo));
-const tabs = computed(() => [
+const allTabs = computed(() => [
   { value: 'overview' as const, label: t('package.tabs.overview'), href: withRecentReturn(base.value, returnTo.value) },
   {
     value: 'versions' as const,
@@ -53,6 +53,12 @@ const tabs = computed(() => [
     href: withRecentReturn(`${base.value}/details`, returnTo.value)
   }
 ]);
+// Link apps have no dependencies or Homebrew install details (store/security plan §4).
+const tabs = computed(() =>
+  props.kind === 'link'
+    ? allTabs.value.filter(item => item.value === 'overview' || item.value === 'versions')
+    : allTabs.value
+);
 
 const name = computed(
   () =>
@@ -72,6 +78,14 @@ const breadcrumb = computed(() =>
 
 const notice = computed(() => {
   const value = detail.value;
+  // A link app Homebrew later added: point to the one-click install page.
+  const adopted = (value?.link ?? local.value?.link)?.adoptedByCask;
+  if (props.kind === 'link' && adopted)
+    return {
+      tone: 'warning' as const,
+      text: t('package.link.adopted'),
+      replacement: { kind: 'cask' as const, token: adopted }
+    };
   if (!value) return null;
   if (value.disable)
     return {
@@ -112,7 +126,7 @@ const offline = computed(() => Boolean(error.value) && !detail.value);
         :link-as="RouterLink"
       />
       <DetailHeader :kind="kind" :token="token" :detail="detail" :local="local" />
-      <DetailStats v-if="detail" :pkg="detail" :release-stats="releaseStats" />
+      <DetailStats v-if="detail && kind !== 'link'" :pkg="detail" :release-stats="releaseStats" />
       <OnTabs
         class="mt-2px"
         :model-value="tab"

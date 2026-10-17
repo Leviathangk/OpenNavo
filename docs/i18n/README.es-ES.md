@@ -11,7 +11,7 @@
 Explora las descripciones y notas de versión de más de 7.700 Homebrew Casks,<br>
 e instala y actualiza con un clic desde la app para macOS. Homebrew se encarga de cada paso y puedes seguir todo el proceso.
 
-[![Licencia](https://img.shields.io/badge/license-Apache--2.0-FF7356)](../../LICENSE)
+[![Licencia](https://img.shields.io/badge/license-GPL--3.0--only-FF7356)](../../LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-111111?logo=apple)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)
 ![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)
@@ -124,14 +124,14 @@ opennavo/
 
 El backend sincroniza el catálogo y las cifras de instalaciones desde las API públicas de Homebrew, consulta sus commits para conocer la fecha de incorporación de cada versión, comprueba los tamaños de descarga y genera instantáneas del catálogo para el uso sin conexión. Las API siguen un flujo basado en contratos: primero se modifica `apps/server/api/*.openapi.yaml` y después `make gen` genera el código Go y TypeScript.
 
-| Parte | Tecnología |
-|---|---|
-| Web | Nuxt 4 · Vue 3 · UnoCSS (SSR) |
-| App para macOS | Tauri 2 · Vue 3 · Rust · SQLite (FTS5) |
-| Administración | soybean-admin v2.2.0 · Vue 3 · Naive UI |
-| Backend | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · almacenamiento compatible con S3 (MinIO) |
-| MCP | Python 3.13 · FastMCP · uv |
-| Contratos y generación | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta |
+| Parte                  | Tecnología                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| Web                    | Nuxt 4 · Vue 3 · UnoCSS (SSR)                                                                |
+| App para macOS         | Tauri 2 · Vue 3 · Rust · SQLite (FTS5)                                                       |
+| Administración         | soybean-admin v2.2.0 · Vue 3 · Naive UI                                                      |
+| Backend                | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · almacenamiento compatible con S3 (MinIO) |
+| MCP                    | Python 3.13 · FastMCP · uv                                                                   |
+| Contratos y generación | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta                             |
 
 ## Inicio rápido
 
@@ -210,8 +210,8 @@ Si encuentras una vulnerabilidad, comunícala de forma privada desde **Security 
 
 ## Licencia
 
-Este proyecto es de código abierto bajo la [Apache License 2.0](../../LICENSE). Los avisos de componentes de terceros están en [NOTICE](../../NOTICE).
+Este proyecto se distribuye bajo la [Licencia Pública General de GNU, solo versión 3 (GPL-3.0-only)](../../LICENSE). Las versiones publicadas hasta el commit `5fa4056`, inclusive, siguen disponibles bajo Apache-2.0. Los avisos de terceros y los términos adicionales siguientes están en [NOTICE](../../NOTICE).
 
-El nombre y el logotipo de OpenNavo no están cubiertos por esta licencia. Al distribuir una versión modificada, usa otro nombre e icono y sustituye el Bundle ID, la clave pública de actualización y la URL de actualización del cliente. Homebrew es una marca del proyecto Homebrew; OpenNavo no está afiliado a Homebrew. Los nombres e iconos de las apps pertenecen a sus respectivos titulares.
+Los términos adicionales de NOTICE, conforme a la sección 7(e) de GPLv3, no conceden derechos de marca sobre el nombre o el logotipo OpenNavo. Conforme a la sección 7(c), las versiones modificadas que se distribuyan deben distinguirse claramente del original: usa otro nombre e icono y sustituye el Bundle ID, la clave pública y la URL de actualización. Conserva la atribución correcta. Homebrew es una marca del proyecto Homebrew; OpenNavo no está afiliado a él. Los nombres e iconos de las apps pertenecen a sus respectivos titulares.
 
 [Guía de despliegue](../../ops/GUIDE.md) · [Contribuir](../../.github/CONTRIBUTING.md) · [Política de seguridad](../../.github/SECURITY.md) · [Licencias de terceros](../legal/THIRD_PARTY.md)

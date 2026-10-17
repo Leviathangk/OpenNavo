@@ -1,3 +1,4 @@
+pub mod appstore;
 pub mod brew;
 pub mod brewfile;
 pub mod catalog;
@@ -25,10 +26,12 @@ pub mod permissions;
 pub mod queue;
 pub mod running_apps;
 pub mod scheduler;
+pub mod security;
 pub mod settings;
 pub mod system;
 pub mod tray;
 pub mod uninstall;
+pub mod updater;
 pub mod updates;
 
 pub use error::AppError;
@@ -43,7 +46,39 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         // Transmit time and bytes as numbers (06 §5.1); the pinned version's switch lives on Builder.
         .dangerously_cast_bigints_to_number()
+        .typ::<updater::UpdateErrorCode>()
+        .typ::<appstore::MasErrorCode>()
+        .typ::<security::SecurityErrorCode>()
+        .typ::<security::SecuritySettings>()
         .commands(collect_commands![
+            commands::security::security_overview,
+            commands::security::posture_check,
+            commands::security::av_engine_status,
+            commands::security::av_db_update,
+            commands::security::av_scan_start,
+            commands::security::av_scan_cancel,
+            commands::security::av_scan_get,
+            commands::security::av_findings_act,
+            commands::security::quarantine_list,
+            commands::security::quarantine_restore,
+            commands::security::quarantine_delete,
+            commands::security::startup_scan,
+            commands::security::startup_cached,
+            commands::security::startup_login_add,
+            commands::security::startup_item_act,
+            commands::security::protection_events,
+            commands::security::download_verify,
+            commands::security::download_act,
+            commands::security::av_schedule_status,
+            commands::security::install_scan_get,
+            commands::security::app_signature_check,
+            commands::security::app_signature_get,
+            commands::security::paste_protection_status,
+            commands::security::paste_protection_request_access,
+            commands::security::paste_protection_act,
+            commands::security::virus_total_status,
+            commands::security::virus_total_key_set,
+            commands::security::virus_total_lookup,
             commands::monitor::monitor_subscribe,
             commands::monitor::monitor_unsubscribe,
             commands::monitor::monitor_trend,
@@ -82,7 +117,15 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::uninstall::uninstall_restore,
             commands::uninstall::uninstall_purge,
             commands::app::app_info,
+            commands::appstore::mas_status,
+            commands::appstore::mas_search,
+            commands::appstore::mas_lookup,
+            commands::appstore::mas_lookup_bundles,
+            commands::appstore::mas_installed,
+            commands::appstore::mas_updates,
+            commands::appstore::mas_open_store,
             commands::env::env_detect,
+            commands::catalog::link_open,
             commands::catalog::catalog_status,
             commands::catalog::catalog_sync,
             commands::catalog::catalog_search,
@@ -95,6 +138,12 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::updates::updates_list,
             commands::updates::updates_status,
             commands::updates::updates_check,
+            commands::updates::update_skip,
+            commands::updates::update_ignore,
+            commands::updates::update_set_channel,
+            commands::updates::update_rollback,
+            commands::updates::update_rollback_targets,
+            commands::updates::app_relaunch,
             commands::updates::updates_ignore,
             commands::updates::updates_unignore,
             commands::settings::settings_get,
@@ -129,6 +178,16 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::permissions::permission_guide_drag
         ])
         .events(collect_events![
+            events::SecurityChangedEvent,
+            events::AvProgressEvent,
+            events::AvFinishedEvent,
+            events::StartupAddedEvent,
+            events::DownloadDetectedEvent,
+            events::DownloadVerifiedEvent,
+            events::AvScheduleRunEvent,
+            events::InstallScannedEvent,
+            events::AppSignaturesChangedEvent,
+            events::PasteBlockedEvent,
             events::MonitorSampleEvent,
             events::MonitorPopover,
             events::FanChanged,
@@ -136,6 +195,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             events::CleanupChangedEvent,
             events::LocalAppsEvent,
             events::UninstallScanEvent,
+            events::AppStoreEvent,
             events::EnvChanged,
             events::CatalogSynced,
             events::TaskUpdated,
@@ -165,7 +225,17 @@ pub fn write_bindings(builder: &Builder<tauri::Wry>) -> Result<(), String> {
             specta_typescript::Typescript::default().header(BINDINGS_HEADER),
             "../src/ipc/bindings.ts",
         )
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    // Specta can leave trailing spaces when wrapping long union types.
+    let path = "../src/ipc/bindings.ts";
+    let generated = std::fs::read_to_string(path).map_err(|error| error.to_string())?;
+    let normalized = generated
+        .lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    std::fs::write(path, normalized).map_err(|error| error.to_string())
 }
 
 /// A Finder-launched app gets a soft limit of 256 open files. Cleanup walks and removes folders on several threads,
@@ -341,6 +411,7 @@ pub fn run() {
             core.start_catalog_sync();
             core.start_library_scan();
             uninstall::install_watch(app.handle());
+            security::watch::install(app.handle());
             scheduler::start(&core);
             Ok(())
         })

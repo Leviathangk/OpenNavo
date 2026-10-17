@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"gorm.io/gorm"
 )
@@ -70,7 +71,9 @@ type PublicCategory struct {
 	Confidence        *float64 `json:"confidence"`
 }
 type PublicPackage struct {
-	SourceLocale                           string `json:"source_locale"`
+	Link                                   *publicapi.LinkInfo `json:"link"`
+	BundleIDs                              *[]string           `json:"bundle_ids"`
+	SourceLocale                           string              `json:"source_locale"`
 	ID                                     int64
 	Kind, Token, Name, Tap, Version        string
 	VersionBase                            string `json:"version_base"`
@@ -135,13 +138,21 @@ type PublicFilter struct {
 	IncludeFonts, IncludeLibraries, IncludeDisabled bool
 }
 
+func linkSQL(ctx context.Context, query string) string {
+	if !domain.LinksAllowed(ctx) {
+		return query
+	}
+	query = strings.ReplaceAll(query, "p.kind='cask'", "p.kind IN ('cask','link')")
+	return query
+}
+
 const publicJoins = ` FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id`
 const publicVisible = `p.kind='cask' AND p.removed_at IS NULL AND NOT COALESCE(m.hidden,false)`
 
 // Empty categories may be curated in advance; subtrees containing only Formula entries do not enter the catalog.
-const publicCategoryVisible = `c.visible AND (NOT EXISTS (WITH RECURSIVE subtree AS (SELECT c.id UNION ALL SELECT child.id FROM categories child JOIN subtree parent ON child.parent_id=parent.id) SELECT 1 FROM package_categories pc JOIN subtree ON subtree.id=pc.category_id) OR EXISTS (WITH RECURSIVE subtree AS (SELECT c.id UNION ALL SELECT child.id FROM categories child JOIN subtree parent ON child.parent_id=parent.id) SELECT 1 FROM package_categories pc JOIN subtree ON subtree.id=pc.category_id JOIN packages cp ON cp.id=pc.package_id WHERE cp.kind='cask')) AND c.applies_to<>'formula'`
+const publicCategoryVisible = `c.visible AND (NOT EXISTS (WITH RECURSIVE subtree AS (SELECT c.id UNION ALL SELECT child.id FROM categories child JOIN subtree parent ON child.parent_id=parent.id) SELECT 1 FROM package_categories pc JOIN subtree ON subtree.id=pc.category_id JOIN packages legacy_package ON legacy_package.id=pc.package_id WHERE legacy_package.kind<>'link') OR EXISTS (WITH RECURSIVE subtree AS (SELECT c.id UNION ALL SELECT child.id FROM categories child JOIN subtree parent ON child.parent_id=parent.id) SELECT 1 FROM package_categories pc JOIN subtree ON subtree.id=pc.category_id JOIN packages cp ON cp.id=pc.package_id WHERE cp.kind='cask')) AND c.applies_to<>'formula'`
 const packageView = `SELECT (to_jsonb(p)-ARRAY['raw','raw_hash','search_text','search_vector']) ||
- jsonb_build_object('upstream_disabled',p.disabled,'disabled',` + PackageDisabledSQL + `,'meta',COALESCE(to_jsonb(m),'{}'::jsonb),'i18n',COALESCE(to_jsonb(i),jsonb_build_object('source_locale',p.source_locale,'locale',p.source_locale)),'icon_url',a.url,'source_path',COALESCE(p.raw->>'ruby_source_path',''),
+ jsonb_build_object('link',(SELECT jsonb_build_object('homepage',l.homepage,'downloadUrl',l.download_url,'github',CASE WHEN l.github_repo IS NULL THEN NULL ELSE jsonb_build_object('repo',l.github_repo,'latest',l.latest) END,'teamId',l.team_id,'pricing',l.pricing,'notes',l.notes,'adoptedByCask',NULL) FROM link_apps l WHERE l.package_id=p.id AND p.kind='link'),'bundle_ids',(SELECT l.bundle_ids FROM link_apps l WHERE l.package_id=p.id AND p.kind='link'),'upstream_disabled',p.disabled,'disabled',` + PackageDisabledSQL + `,'meta',COALESCE(to_jsonb(m),'{}'::jsonb),'i18n',COALESCE(to_jsonb(i),jsonb_build_object('source_locale',p.source_locale,'locale',p.source_locale)),'icon_url',a.url,'source_path',COALESCE(p.raw->>'ruby_source_path',''),
  'download_sha256',CASE WHEN COALESCE(p.raw->>'sha256',p.raw#>>'{urls,stable,checksum}') ~ '^[a-fA-F0-9]{64}$' THEN lower(COALESCE(p.raw->>'sha256',p.raw#>>'{urls,stable,checksum}')) ELSE NULL END,
  'categories',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',c.id,'source_locale',c.source_locale,'machine_translated',COALESCE(ci.machine_translated,false),'slug',c.slug,'name',COALESCE(ci.name,c.slug),'icon',c.icon,'is_primary',pc.is_primary,'confidence',pc.confidence) ORDER BY pc.is_primary DESC,c.sort,c.id)
  FROM package_categories pc JOIN categories c ON c.id=pc.category_id LEFT JOIN LATERAL (SELECT t.* FROM category_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE NULLIF(t.name,'') IS NOT NULL AND t.category_id=c.id AND t.locale IN (lang.requested,c.source_locale,'en-US') ORDER BY ` + publicLocaleOrder + ` LIMIT 1) ci ON TRUE
@@ -151,7 +162,7 @@ const packageView = `SELECT (to_jsonb(p)-ARRAY['raw','raw_hash','search_text','s
 func (s *Store) publicRows(ctx context.Context, locale, condition, order string, args ...any) ([]PublicPackage, error) {
 	var rows []struct{ Data json.RawMessage }
 	params := append([]any{locale, locale}, args...)
-	if err := s.DB.WithContext(ctx).Raw(packageView+" WHERE p.kind='cask' AND "+condition+" "+order, params...).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(linkSQL(ctx, packageView+" WHERE p.kind='cask' AND "+condition+" "+order), params...).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("query public packages: %w", err)
 	}
 	out := make([]PublicPackage, 0, len(rows))
@@ -169,7 +180,7 @@ func (s *Store) publicRows(ctx context.Context, locale, condition, order string,
 // references the whole row, which would otherwise de-TOAST every candidate row.
 func (s *Store) publicPage(ctx context.Context, locale, condition, order string, args ...any) ([]PublicPackage, error) {
 	var ids []int64
-	if err := s.DB.WithContext(ctx).Raw("SELECT p.id"+publicJoins+" WHERE p.kind='cask' AND "+condition+" "+order, args...).Scan(&ids).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(linkSQL(ctx, "SELECT p.id"+publicJoins+" WHERE p.kind='cask' AND "+condition+" "+order), args...).Scan(&ids).Error; err != nil {
 		return nil, fmt.Errorf("query public package page: %w", err)
 	}
 	return s.PublicPackagesByID(ctx, ids, locale)
@@ -198,6 +209,7 @@ func publicCondition(f PublicFilter) (string, []any) {
 }
 func (s *Store) PublicPackages(ctx context.Context, f PublicFilter) ([]PublicPackage, int, error) {
 	condition, args := publicCondition(f)
+	condition = linkSQL(ctx, condition)
 	var total int
 	if err := s.DB.WithContext(ctx).Raw("SELECT count(*)"+publicJoins+" WHERE "+condition, args...).Scan(&total).Error; err != nil {
 		return nil, 0, err
@@ -225,6 +237,9 @@ func (s *Store) PublicPackages(ctx context.Context, f PublicFilter) ([]PublicPac
 	return rows, total, err
 }
 func (s *Store) PublicPackage(ctx context.Context, kind, token, locale string) (PublicPackage, error) {
+	if kind == "link" {
+		ctx = domain.WithLinks(ctx, true)
+	}
 	rows, err := s.publicRows(ctx, locale, "p.kind=? AND p.token=? AND p.removed_at IS NULL", "", kind, token)
 	if err != nil {
 		return PublicPackage{}, err
@@ -255,10 +270,10 @@ func (s *Store) PublicPackagesByID(ctx context.Context, ids []int64, locale stri
 func (s *Store) PublicCategories(ctx context.Context, locale string) ([]PublicCategory, error) {
 	var rows []PublicCategory
 	// Aggregate by ancestor once, avoiding costly JIT compilation triggered by overestimated per-category correlated queries.
-	err := s.DB.WithContext(ctx).Raw(`WITH RECURSIVE descendants AS(SELECT id ancestor,id FROM categories UNION ALL SELECT d.ancestor,c.id FROM descendants d JOIN categories c ON c.parent_id=d.id),
+	err := s.DB.WithContext(ctx).Raw(linkSQL(ctx, `WITH RECURSIVE descendants AS(SELECT id ancestor,id FROM categories UNION ALL SELECT d.ancestor,c.id FROM descendants d JOIN categories c ON c.parent_id=d.id),
 	 counts AS(SELECT d.ancestor,count(DISTINCT pc.package_id) package_count FROM descendants d JOIN package_categories pc ON pc.category_id=d.id JOIN packages p ON p.id=pc.package_id LEFT JOIN package_meta m ON m.package_id=p.id WHERE `+publicVisible+` AND NOT (p.disabled OR p.stale_disabled) GROUP BY d.ancestor)
 	 SELECT c.id,c.source_locale,COALESCE(i.machine_translated,false) machine_translated,c.parent_id,c.slug,c.icon,c.applies_to,c.hidden_by_default,COALESCE(i.name,c.slug) name,i.description,COALESCE(counts.package_count,0) package_count
-	 FROM categories c LEFT JOIN LATERAL (SELECT t.* FROM category_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE NULLIF(t.name,'') IS NOT NULL AND t.category_id=c.id AND t.locale IN (lang.requested,c.source_locale,'en-US') ORDER BY `+publicLocaleOrder+` LIMIT 1) i ON TRUE LEFT JOIN counts ON counts.ancestor=c.id WHERE `+publicCategoryVisible+` ORDER BY c.sort,c.id`, locale).Scan(&rows).Error
+	 FROM categories c LEFT JOIN LATERAL (SELECT t.* FROM category_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE NULLIF(t.name,'') IS NOT NULL AND t.category_id=c.id AND t.locale IN (lang.requested,c.source_locale,'en-US') ORDER BY `+publicLocaleOrder+` LIMIT 1) i ON TRUE LEFT JOIN counts ON counts.ancestor=c.id WHERE `+publicCategoryVisible+` ORDER BY c.sort,c.id`), locale).Scan(&rows).Error
 	return rows, err
 }
 func (s *Store) PublicStats(ctx context.Context) (map[string]int, error) {

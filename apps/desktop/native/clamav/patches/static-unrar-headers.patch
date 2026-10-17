@@ -1,0 +1,14 @@
+--- a/libclamav/CMakeLists.txt
++++ b/libclamav/CMakeLists.txt
+@@ -562,8 +562,11 @@
+             LibXml2::LibXml2
+             JSONC::jsonc )
++        # OpenNavo: consumers include others.h even with ENABLE_UNRAR=OFF.
++        # This interface exports declarations only, never UnRAR executable code.
++        target_link_libraries( clamav_static PUBLIC ClamAV::libunrar_iface_iface )
+         if (ENABLE_UNRAR)
+-            target_link_libraries( clamav_static PUBLIC ClamAV::libunrar_iface_static ClamAV::libunrar_iface_iface)
++            target_link_libraries( clamav_static PUBLIC ClamAV::libunrar_iface_static )
+         endif()
+ 
+     if (WIN32)

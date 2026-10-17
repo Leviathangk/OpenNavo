@@ -3,6 +3,38 @@ use std::{io::Write, path::Path, sync::Arc};
 pub type Autostart = Arc<dyn Fn(bool) -> Result<(), AppError> + Send + Sync>;
 pub type Save = Arc<dyn Fn(&Settings) -> Result<(), AppError> + Send + Sync>;
 pub fn validate(mut settings: Settings) -> Result<Settings, AppError> {
+    settings.app_store_updates = settings
+        .update_sources
+        .enabled(crate::model::UpdateSource::Mas);
+    if settings.app_store_region != "auto" {
+        settings.app_store_region = crate::appstore::region::normalize(&settings.app_store_region)?;
+    }
+    if !(1..=168).contains(&settings.av_db_check_hours)
+        || settings.av_exclusions.len() > 128
+        || settings.av_exclusions.iter().any(|p| {
+            p.is_empty()
+                || p.len() > 4096
+                || p.chars().any(char::is_control)
+                || (!p.starts_with("~/") && !Path::new(p).is_absolute())
+                || Path::new(p)
+                    .components()
+                    .any(|c| matches!(c, std::path::Component::ParentDir))
+        })
+    {
+        return Err(AppError::new("E_INVALID_ARG", "security_settings"));
+    }
+    let schedule = settings.av_schedule_time.as_bytes();
+    if schedule.len() != 5
+        || schedule[2] != b':'
+        || ![0, 1, 3, 4]
+            .into_iter()
+            .all(|i| schedule[i].is_ascii_digit())
+        || settings.av_schedule_time[..2].parse::<u8>().unwrap_or(24) > 23
+        || settings.av_schedule_time[3..].parse::<u8>().unwrap_or(60) > 59
+        || !(1..=7).contains(&settings.av_schedule_weekday)
+    {
+        return Err(AppError::new("E_INVALID_ARG", "av_schedule_time"));
+    }
     let bytes = settings.check_time.as_bytes();
     if bytes.len() != 5
         || bytes[2] != b':'

@@ -15,7 +15,8 @@ const zhCN = {
     queued: '排队中',
     running: '正在处理',
     cancel: '取消',
-    unavailable: '不可用'
+    unavailable: '不可用',
+    download: '下载'
   },
   action: {
     checkUpdates: '检查更新',
@@ -36,7 +37,8 @@ const zhCN = {
   },
   kind: {
     cask: 'App',
-    formula: '命令行工具'
+    formula: '命令行工具',
+    link: 'App'
   },
   card: {
     installs30d: '30 天安装',
@@ -192,7 +194,8 @@ const enUS: SharedMessages = {
     queued: 'Queued',
     running: 'Working',
     cancel: 'Cancel',
-    unavailable: 'Unavailable'
+    unavailable: 'Unavailable',
+    download: 'Download'
   },
   action: {
     checkUpdates: 'Check for Updates',
@@ -213,7 +216,8 @@ const enUS: SharedMessages = {
   },
   kind: {
     cask: 'App',
-    formula: 'Command-line tool'
+    formula: 'Command-line tool',
+    link: 'App'
   },
   card: {
     installs30d: '30-day installs',

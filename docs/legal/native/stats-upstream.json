@@ -1,0 +1,6 @@
+{
+  "project": "exelban/stats",
+  "revision": "5df24006b2993228fdf23f72fec467bffb4d2106",
+  "file": "Modules/Sensors/values.swift",
+  "integration": "Ten read-only M1 CPU temperature sensor keys in monitor/sensors.rs; pre-existing source port, no other Stats code"
+}

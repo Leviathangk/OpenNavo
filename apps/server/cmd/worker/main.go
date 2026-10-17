@@ -27,10 +27,12 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/changelog"
 	"github.com/opennavo/opennavo/server/internal/service/contenttranslate"
+	"github.com/opennavo/opennavo/server/internal/service/links"
 	"github.com/opennavo/opennavo/server/internal/service/maintenance"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
 	"github.com/opennavo/opennavo/server/internal/service/sourcefacts"
 	"github.com/opennavo/opennavo/server/internal/service/taps"
+	"github.com/opennavo/opennavo/server/internal/service/updatefeeds"
 	"github.com/opennavo/opennavo/server/internal/service/urlnotify"
 	sources "github.com/opennavo/opennavo/server/internal/sourcefacts"
 	"github.com/opennavo/opennavo/server/internal/storage"
@@ -115,6 +117,12 @@ func run(ctx context.Context) error {
 		AppStore:    &sources.AppStore{Client: fetch.NewClient(15 * time.Second), UserAgent: cfg.FetchUserAgent},
 		GitHubPause: 200 * time.Millisecond, AppStorePause: 3500 * time.Millisecond}
 	handlers["facts:sources"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return factSources.Run(ctx) }
+	updateFeeds := &updatefeeds.Service{Store: st, UserAgent: cfg.FetchUserAgent, GitHub: githubFacts, SeedRules: true}
+	handlers["update-feeds:verify"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return updateFeeds.Run(ctx) }
+	linkApps := &links.Service{Store: st, GitHub: githubFacts, UserAgent: cfg.FetchUserAgent}
+	handlers["links:sync"] = func(ctx context.Context, p jobs.Payload) (map[string]any, error) {
+		return linkApps.Sync(ctx, p.PackageID)
+	}
 	tapCasks := &taps.Service{Store: st, GitHub: githubFacts}
 	handlers["taps:sync"] = func(ctx context.Context, p jobs.Payload) (map[string]any, error) {
 		return tapCasks.Run(ctx, p.PackageID)

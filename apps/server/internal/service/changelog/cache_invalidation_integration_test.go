@@ -36,11 +36,11 @@ func TestFetchRetriesInvalidationAndClearsDetailsInEveryLocale(t *testing.T) {
 	stop, err := cache.Subscribe(ctx, redis, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
 	defer stop()
-	keys := []string{"c:pkg:c3:cask:sample:en-US", "c:pkg:c3:cask:sample:zh-CN", "c:pkg:c3:cask:sample:ja-JP", "c:rel:c2:cask:sample:en-US:1"}
+	keys := []string{"c:pkg:c4:cask:sample:en-US", "c:pkg:c4:cask:sample:zh-CN", "c:pkg:c4:cask:sample:ja-JP", "c:rel:c2:cask:sample:en-US:1"}
 	for _, key := range keys {
 		require.NoError(t, redis.Set(ctx, key, "old", time.Hour).Err())
 	}
-	preserved := []string{"c:pkg:c3:cask:sample-other:en-US", "c:rel:c2:cask:sample-other:en-US:1", "c:rank:sentinel", "session:sentinel"}
+	preserved := []string{"c:pkg:c4:cask:sample-other:en-US", "c:rel:c2:cask:sample-other:en-US:1", "c:rank:sentinel", "session:sentinel"}
 	for _, key := range preserved {
 		require.NoError(t, redis.Set(ctx, key, "keep", time.Hour).Err())
 	}

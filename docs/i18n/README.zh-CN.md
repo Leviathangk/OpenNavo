@@ -11,7 +11,7 @@
 浏览 7,700 多个 Homebrew Cask 的介绍与版本记录，<br>
 用 macOS 客户端一键安装、一键更新——每一步都交给 Homebrew，每一步都看得见。
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-FF7356)](../../LICENSE)
+[![License](https://img.shields.io/badge/license-GPL--3.0--only-FF7356)](../../LICENSE)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-111111?logo=apple)
 ![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)
 ![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)
@@ -124,14 +124,14 @@ opennavo/
 
 后端从 Homebrew 公开 API 同步目录与安装量，读取 Homebrew 的提交记录得到每个版本的收录时间，并探测下载大小；为客户端生成离线目录快照。接口采用契约优先：先改 `apps/server/api/*.openapi.yaml`，再由 `make gen` 生成 Go 与 TypeScript 代码。
 
-| 部分 | 技术 |
-|---|---|
-| 网页端 | Nuxt 4 · Vue 3 · UnoCSS（SSR） |
-| macOS 客户端 | Tauri 2 · Vue 3 · Rust · SQLite（FTS5） |
-| 管理后台 | soybean-admin v2.2.0 · Vue 3 · Naive UI |
-| 后端 | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · S3 兼容存储（MinIO） |
-| MCP | Python 3.13 · FastMCP · uv |
-| 契约与生成 | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta |
+| 部分         | 技术                                                                     |
+| ------------ | ------------------------------------------------------------------------ |
+| 网页端       | Nuxt 4 · Vue 3 · UnoCSS（SSR）                                           |
+| macOS 客户端 | Tauri 2 · Vue 3 · Rust · SQLite（FTS5）                                  |
+| 管理后台     | soybean-admin v2.2.0 · Vue 3 · Naive UI                                  |
+| 后端         | Go · Gin · GORM · PostgreSQL 18 · Redis 8 · asynq · S3 兼容存储（MinIO） |
+| MCP          | Python 3.13 · FastMCP · uv                                               |
+| 契约与生成   | OpenAPI 3.0.3 · oapi-codegen · openapi-typescript · tauri-specta         |
 
 ## 快速开始
 
@@ -210,8 +210,8 @@ make lint test
 
 ## 许可证
 
-本项目以 [Apache License 2.0](../../LICENSE) 开源，第三方组件的声明见 [NOTICE](../../NOTICE)。
+本项目以 [GNU 通用公共许可证第 3 版（仅限第 3 版，GPL-3.0-only）](../../LICENSE) 开源。提交 `5fa4056` 及以前发布的版本仍按 Apache-2.0 授权。第三方声明及以下附加条款见 [NOTICE](../../NOTICE)。
 
-「OpenNavo」名称与标志不在上述许可范围内。分发修改版本时，请使用不同的名称与图标，并替换客户端的 Bundle ID、更新公钥与更新地址。Homebrew 是 Homebrew 项目的商标，OpenNavo 与 Homebrew 官方没有关联；各 App 的名称与图标归各自的权利人所有。
+根据 NOTICE 中依据 GPLv3 第 7(e) 条制定的附加条款，本许可不授予「OpenNavo」名称和标志的商标权。依据第 7(c) 条，分发修改版时必须明确区别于原版：使用不同的名称、图标，并更换客户端的 Bundle ID、更新公钥和更新地址，同时保留准确的来源署名。Homebrew 是 Homebrew 项目的商标，OpenNavo 与 Homebrew 官方没有关联；各 App 的名称与图标归各自的权利人所有。
 
 [部署指南](../../ops/GUIDE.md) · [贡献指南](../../.github/CONTRIBUTING.md) · [安全政策](../../.github/SECURITY.md) · [第三方许可证](../legal/THIRD_PARTY.md)

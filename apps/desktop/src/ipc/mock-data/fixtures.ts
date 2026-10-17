@@ -196,7 +196,7 @@ export function nextTaskId(now = Date.now()): string {
   return `${now.toString(16).padStart(12, '0')}-7000-8000-${String(taskSeq).padStart(12, '0')}`;
 }
 
-function finishedTask(partial: Partial<Task> & Pick<Task, 'op' | 'state' | 'createdAt'>): Task {
+export function finishedTask(partial: Partial<Task> & Pick<Task, 'op' | 'state' | 'createdAt'>): Task {
   const startedAt = partial.startedAt ?? partial.createdAt;
   return {
     id: nextTaskId(partial.createdAt),

@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { useUiMessages } from '../composables/locale';
 import OnIcon from './OnIcon.vue';
 
-export type GetState = 'get' | 'open' | 'installed' | 'update' | 'queued' | 'running' | 'unavailable';
+/** `download`: link apps (store/security plan §4) open their official download page instead of installing. */
+export type GetState = 'get' | 'open' | 'installed' | 'update' | 'queued' | 'running' | 'unavailable' | 'download';
 
 export interface OnGetButtonProps {
   state: GetState;
@@ -27,7 +28,7 @@ const emit = defineEmits<{
 const messages = useUiMessages();
 
 // Only these three states are clickable; other states render noninteractive elements with readable text.
-const INTERACTIVE: ReadonlySet<GetState> = new Set(['get', 'open', 'update']);
+const INTERACTIVE: ReadonlySet<GetState> = new Set(['get', 'open', 'update', 'download']);
 
 const STYLE: Record<GetState, string> = {
   get: 'border-transparent bg-surface-chip text-ink-primary hover:bg-button-secondary-hover',
@@ -36,7 +37,8 @@ const STYLE: Record<GetState, string> = {
   update: 'on-get-update border-transparent bg-accent-salmon-subtle text-brand-salmon',
   queued: 'border-transparent bg-surface-chip text-ink-primary opacity-60',
   running: 'group border-transparent bg-transparent',
-  unavailable: 'border-transparent bg-button-disabled-bg text-button-disabled-text'
+  unavailable: 'border-transparent bg-button-disabled-bg text-button-disabled-text',
+  download: 'gap-4px border-transparent bg-surface-chip text-ink-primary hover:bg-button-secondary-hover'
 };
 
 const text = computed(
@@ -58,7 +60,7 @@ const classes = computed(() => [
     ? 'h-34px min-w-76px gap-7px rounded-default px-16px text-13px'
     : 'h-26px min-w-56px rounded-full px-12px text-12px',
   'transition-colors duration-fast ease-standard focus-visible:shadow-focus-ring',
-  props.appearance === 'button' && (props.state === 'get' || props.state === 'running')
+  props.appearance === 'button' && (props.state === 'get' || props.state === 'running' || props.state === 'download')
     ? 'group border-transparent bg-button-secondary-bg text-button-secondary-text hover:bg-button-secondary-hover active:bg-button-secondary-pressed'
     : STYLE[props.state]
 ]);
@@ -100,6 +102,7 @@ const classes = computed(() => [
   <button v-else-if="INTERACTIVE.has(state)" type="button" :class="classes" @click="emit('click', $event)">
     <OnIcon v-if="appearance === 'button' && state === 'get'" name="download" :size="15" />
     {{ text }}
+    <OnIcon v-if="state === 'download'" name="arrow-up-right" :size="appearance === 'button' ? 15 : 13" />
   </button>
   <span v-else :class="classes">{{ text }}</span>
 </template>

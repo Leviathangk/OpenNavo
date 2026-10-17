@@ -5,8 +5,11 @@ import type { PackageKind } from '@opennavo/shared';
 
 export type OnAppIconSize = 20 | 24 | 26 | 28 | 30 | 32 | 40 | 44 | 46 | 54 | 64 | 96 | 118;
 
+/** Catalog package kinds plus Mac App Store apps, which only ever fall back to a letter tile. */
+export type OnAppIconKind = PackageKind | 'mas';
+
 export interface OnAppIconProps {
-  kind: PackageKind;
+  kind: OnAppIconKind;
   token: string;
   name: string;
   /** Remote/local extracted icon, falling back to a tile on load failure. */
@@ -41,7 +44,7 @@ watch(
 const showImage = computed(() => Boolean(props.src) && !failed.value);
 const box = computed(() => ({ width: `${props.size}px`, height: `${props.size}px` }));
 
-// Cask letter tile: accent or token hash, 160° gradient darkened 18%, text 42% of side (08 §8.10).
+// App letter tile (casks and App Store apps): accent or token hash, 160° gradient darkened 18%, text 42% of side (08 §8.10).
 const letterColor = computed(() => iconColor(props.token, props.accent));
 const letterStyle = computed(() => ({
   '--on-tile-from': letterColor.value,
@@ -75,7 +78,7 @@ const barColor = computed(() => iconColor(props.token));
       @error="failed = true"
     />
     <span
-      v-else-if="kind === 'cask'"
+      v-else-if="kind !== 'formula'"
       class="on-letter-tile grid h-full w-full place-items-center font-600 leading-none text-component-letter-icon-text"
       :style="letterStyle"
     >

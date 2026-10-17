@@ -107,6 +107,15 @@ impl Roots {
                     })
                 });
         }
+        // Only this application's exact recovery roots, never the shared root
+        // or arbitrary descendants of Applications. Rechecked by admin_batch.
+        if reason == MatchReason::NameExact
+            && let Some(app) = app
+            && self.allowed(app, MatchReason::AppBundle, Some(app))
+            && crate::updater::backup::is_directory(app, path)
+        {
+            return true;
+        }
         // Never remove scan roots (including nested scan locations), other applications or protected user data.
         let locations = self.locations();
         if locations.iter().any(|(root, _)| root == path) {
@@ -189,11 +198,24 @@ pub fn parents_safe(path: &Path) -> bool {
 pub struct Snapshot {
     pub kind: u8,
     pub length: u64,
+    #[serde(deserialize_with = "snapshot_nanoseconds")]
     pub modified: u128,
     pub device: u64,
     pub inode: u64,
     pub link: Option<PathBuf>,
     pub parents: Vec<(PathBuf, u64, u64)>,
+}
+// Internally tagged admin actions buffer their contents, whose deserializer does not support
+// deserialize_u128. Number uses deserialize_any instead; arbitrary_precision preserves all digits
+// even above u64::MAX. Keep the existing numeric wire format and reject fractions/negatives/overflow.
+fn snapshot_nanoseconds<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<u128, D::Error> {
+    serde_json::Number::deserialize(deserializer)?
+        .as_u128()
+        .ok_or_else(|| {
+            serde::de::Error::custom("snapshot modified must be an unsigned 128-bit integer")
+        })
 }
 impl Snapshot {
     pub fn capture(path: &Path) -> Result<Self, AppError> {

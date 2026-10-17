@@ -124,6 +124,9 @@ func candidates(source string, p store.SourceFactPackage) []string {
 	if source == GitHub {
 		return sources.GitHubRepos(text(p.Homepage), text(p.DownloadURL), text(p.RepoURL))
 	}
+	if len(p.BundleIDs) > 0 {
+		return p.BundleIDs[:min(4, len(p.BundleIDs))]
+	}
 	return sources.BundleIDs(p.Artifacts)
 }
 

@@ -36,8 +36,10 @@
         "draft": false,
         "title": "Using OpenNavo",
         "paragraphs": [
-          "OpenNavo’s own source code is distributed under Apache-2.0; the LICENSE file is the authoritative license text. Third-party apps, libraries, fonts, templates and services retain their own licenses. OpenNavo does not grant additional rights to those materials or waive any applicable purchase requirements.",
-          "The software is provided “as is”, without warranties as described in its license. Review the operation and download source before installing, updating or removing an app, and back up important data. Availability, compatibility and upstream package content can change."
+          "OpenNavo’s own source code is distributed under GPL-3.0-only; the LICENSE file is the authoritative license text. Third-party apps, libraries, fonts, templates and services retain their own licenses. OpenNavo does not grant additional rights to those materials or waive any applicable purchase requirements.",
+          "The software is provided “as is”, without warranties as described in its license. Review the operation and download source before installing, updating or removing an app, and back up important data. Availability, compatibility and upstream package content can change.",
+          "Versions published at commit 5fa4056 and earlier remain available under Apache-2.0. Third-party notices and the additional terms below are in NOTICE; dependency evidence and distribution instructions are in THIRD_PARTY.md.",
+          "Under the additional terms in NOTICE pursuant to GPLv3 section 7(e), no trademark rights to the OpenNavo name or logo are granted. Under section 7(c), distributed modified versions must be clearly distinguished from the original: use a different name and icon, and replace the app’s Bundle ID, updater public key and update URL. Preserve accurate attribution. Homebrew is a trademark of the Homebrew project; OpenNavo is not affiliated with Homebrew. App names and icons belong to their respective owners."
         ]
       },
       {
@@ -55,7 +57,7 @@
         "title": "Open source",
         "paragraphs": [
           "OpenNavo is built with open-source software. The inventory below is generated from the dependency locks and verified upstream license evidence for this release. It includes direct and transitive dependencies, development tools, fonts, templates and external infrastructure across the web, desktop, server and MCP. An entry does not mean that component is bundled in every download.",
-          "Each entry identifies its ecosystem, package or project, version, declared license and upstream link. Third-party materials retain their own copyright and license terms; Apache-2.0 applies to OpenNavo’s own code, not to every item below. “external” means the version is supplied by the environment rather than pinned by this application.",
+          "Each entry identifies its ecosystem, package or project, version, declared license and upstream link. Third-party materials retain their own copyright and license terms; GPL-3.0-only applies to OpenNavo’s own code, not to every item below. “external” means the version is supplied by the environment rather than pinned by this application.",
           "Original license texts, provenance and distribution scope are available at https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party . Project attribution is in NOTICE, and redistribution guidance is in docs/legal/THIRD_PARTY.md. Consult the notices bundled with a specific release when redistributing its artifacts."
         ]
       }
@@ -95,8 +97,10 @@
         "draft": false,
         "title": "使用说明与许可",
         "paragraphs": [
-          "OpenNavo 自身源码采用 Apache-2.0 许可证，具体条款以仓库 LICENSE 文件为准。第三方应用、依赖库、字体、模板和服务保留各自的许可；使用 OpenNavo 不会额外授予这些内容的权利，也不会免除其适用的付费要求。",
-          "软件按许可证约定以「现状」提供，不作其中排除的保证。安装、更新或卸载前，请核对操作及下载来源，并备份重要数据。服务可用性、兼容性和上游软件包内容都可能变化。"
+          "OpenNavo 自身源码采用 GPL-3.0-only 许可证，具体条款以仓库 LICENSE 文件为准。第三方应用、依赖库、字体、模板和服务保留各自的许可；使用 OpenNavo 不会额外授予这些内容的权利，也不会免除其适用的付费要求。",
+          "软件按许可证约定以「现状」提供，不作其中排除的保证。安装、更新或卸载前，请核对操作及下载来源，并备份重要数据。服务可用性、兼容性和上游软件包内容都可能变化。",
+          "提交 5fa4056 及以前发布的版本仍按 Apache-2.0 授权。第三方声明及以下附加条款见 NOTICE。",
+          "根据 NOTICE 中依据 GPLv3 第 7(e) 条制定的附加条款，本许可不授予「OpenNavo」名称和标志的商标权。依据第 7(c) 条，分发修改版时必须明确区别于原版：使用不同的名称、图标，并更换客户端的 Bundle ID、更新公钥和更新地址，同时保留准确的来源署名。Homebrew 是 Homebrew 项目的商标，OpenNavo 与 Homebrew 官方没有关联；各 App 的名称与图标归各自的权利人所有。"
         ]
       },
       {
@@ -113,9 +117,9 @@
         "draft": false,
         "title": "Open source",
         "paragraphs": [
-          "OpenNavo is built with open-source software. The inventory below is generated from the dependency locks and verified upstream license evidence for this release. It includes direct and transitive dependencies, development tools, fonts, templates and external infrastructure across the web, desktop, server and MCP. An entry does not mean that component is bundled in every download.",
-          "Each entry identifies its ecosystem, package or project, version, declared license and upstream link. Third-party materials retain their own copyright and license terms; Apache-2.0 applies to OpenNavo’s own code, not to every item below. “external” means the version is supplied by the environment rather than pinned by this application.",
-          "Original license texts, provenance and distribution scope are available at https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party . Project attribution is in NOTICE, and redistribution guidance is in docs/legal/THIRD_PARTY.md. Consult the notices bundled with a specific release when redistributing its artifacts."
+          "OpenNavo 使用开源软件构建。以下清单根据本版本的依赖锁文件和经过核对的上游许可证材料生成，包含网页、桌面端、服务端和 MCP 的直接及间接依赖、开发工具、字体、模板和外部基础设施。列入清单不代表每个下载包都包含该组件。",
+          "每条记录列明生态、软件包或项目、版本、声明的许可证和上游链接。第三方材料保留各自的版权和许可条款；GPL-3.0-only 适用于 OpenNavo 自有代码，并非以下所有项目。“external”表示版本由运行环境提供，而非由本应用固定。",
+          "原始许可证、来源及分发范围见 https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party 。项目署名和 GPLv3 第 7 条附加条款见 NOTICE，分发说明见 docs/legal/THIRD_PARTY.md。再次分发某个版本时，请核对该版本随附的声明。"
         ]
       }
     ],
@@ -154,8 +158,10 @@
         "draft": false,
         "title": "利用とライセンス",
         "paragraphs": [
-          "OpenNavo自身のソースコードはApache-2.0で公開しています。正式な条項はリポジトリのLICENSEをご確認ください。第三者のアプリ、ライブラリ、フォント、テンプレート、サービスにはそれぞれのライセンスが適用され、追加の権利や購入義務の免除を提供するものではありません。",
-          "ソフトウェアはライセンスに記載された保証の範囲で「現状有姿」で提供されます。インストール・更新・削除の前に操作と取得元を確認し、重要なデータをバックアップしてください。提供状況、互換性、パッケージ内容は変更される場合があります。"
+          "OpenNavo自身のソースコードはGPL-3.0-onlyで公開しています。正式な条項はリポジトリのLICENSEをご確認ください。第三者のアプリ、ライブラリ、フォント、テンプレート、サービスにはそれぞれのライセンスが適用され、追加の権利や購入義務の免除を提供するものではありません。",
+          "ソフトウェアはライセンスに記載された保証の範囲で「現状有姿」で提供されます。インストール・更新・削除の前に操作と取得元を確認し、重要なデータをバックアップしてください。提供状況、互換性、パッケージ内容は変更される場合があります。",
+          "コミット 5fa4056 以前（同コミットを含む）に公開されたバージョンは引き続き Apache-2.0 で利用できます。第三者の表記と以下の追加条項は NOTICE をご覧ください。",
+          "NOTICE に記載した GPLv3 第7(e)条に基づく追加条項により、OpenNavo の名称やロゴに関する商標権は許諾されません。第7(c)条に基づき、変更版を配布する際は原版と明確に区別し、別の名称とアイコンを使用し、Bundle ID、更新用公開鍵、更新 URL を変更してください。正確な出典表記は保持してください。Homebrew は Homebrew プロジェクトの商標であり、OpenNavo は公式の関連製品ではありません。各アプリの名称とアイコンは各権利者に帰属します。"
         ]
       },
       {
@@ -172,9 +178,9 @@
         "draft": false,
         "title": "Open source",
         "paragraphs": [
-          "OpenNavo is built with open-source software. The inventory below is generated from the dependency locks and verified upstream license evidence for this release. It includes direct and transitive dependencies, development tools, fonts, templates and external infrastructure across the web, desktop, server and MCP. An entry does not mean that component is bundled in every download.",
-          "Each entry identifies its ecosystem, package or project, version, declared license and upstream link. Third-party materials retain their own copyright and license terms; Apache-2.0 applies to OpenNavo’s own code, not to every item below. “external” means the version is supplied by the environment rather than pinned by this application.",
-          "Original license texts, provenance and distribution scope are available at https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party . Project attribution is in NOTICE, and redistribution guidance is in docs/legal/THIRD_PARTY.md. Consult the notices bundled with a specific release when redistributing its artifacts."
+          "OpenNavo はオープンソースソフトウェアを使用して構築されています。以下の一覧は、このリリースの依存関係ロックファイルと確認済みの上流ライセンス資料から生成され、Web、デスクトップ、サーバー、MCP の直接・間接依存関係、開発ツール、フォント、テンプレート、外部基盤を含みます。掲載されていても、すべての配布物に含まれるとは限りません。",
+          "各項目にはエコシステム、パッケージまたはプロジェクト名、バージョン、宣言されたライセンス、上流リンクを記載しています。第三者の素材にはそれぞれの著作権とライセンスが適用されます。GPL-3.0-only は OpenNavo 自身のコードに適用され、一覧の全項目に適用されるものではありません。「external」は本アプリで固定せず、実行環境がバージョンを提供することを示します。",
+          "ライセンス原文、出典、配布範囲は https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party をご覧ください。帰属表示と GPLv3 第7条の追加条項は NOTICE、再配布の説明は docs/legal/THIRD_PARTY.md にあります。再配布時には対象リリースに同梱された表記をご確認ください。"
         ]
       }
     ],
@@ -213,8 +219,10 @@
         "draft": false,
         "title": "Uso y licencias",
         "paragraphs": [
-          "El código propio de OpenNavo se distribuye con Apache-2.0; el texto de referencia está en LICENSE. Las aplicaciones, bibliotecas, fuentes, plantillas y servicios de terceros conservan sus licencias. OpenNavo no concede derechos adicionales sobre ellos ni elimina requisitos de compra aplicables.",
-          "El software se proporciona «tal cual», con las exclusiones de garantía de su licencia. Revisa la operación y el origen de descarga y respalda tus datos antes de instalar, actualizar o eliminar aplicaciones. La disponibilidad, compatibilidad y los paquetes pueden cambiar."
+          "El código propio de OpenNavo se distribuye con GPL-3.0-only; el texto de referencia está en LICENSE. Las aplicaciones, bibliotecas, fuentes, plantillas y servicios de terceros conservan sus licencias. OpenNavo no concede derechos adicionales sobre ellos ni elimina requisitos de compra aplicables.",
+          "El software se proporciona «tal cual», con las exclusiones de garantía de su licencia. Revisa la operación y el origen de descarga y respalda tus datos antes de instalar, actualizar o eliminar aplicaciones. La disponibilidad, compatibilidad y los paquetes pueden cambiar.",
+          "Las versiones publicadas hasta el commit 5fa4056, inclusive, siguen disponibles bajo Apache-2.0. Los avisos de terceros y los términos adicionales siguientes están en NOTICE.",
+          "Los términos adicionales de NOTICE, conforme a la sección 7(e) de GPLv3, no conceden derechos de marca sobre el nombre o el logotipo OpenNavo. Conforme a la sección 7(c), las versiones modificadas que se distribuyan deben distinguirse claramente del original: usa otro nombre e icono y sustituye el Bundle ID, la clave pública y la URL de actualización. Conserva la atribución correcta. Homebrew es una marca del proyecto Homebrew; OpenNavo no está afiliado a él. Los nombres e iconos de las apps pertenecen a sus respectivos titulares."
         ]
       },
       {
@@ -231,9 +239,9 @@
         "draft": false,
         "title": "Open source",
         "paragraphs": [
-          "OpenNavo is built with open-source software. The inventory below is generated from the dependency locks and verified upstream license evidence for this release. It includes direct and transitive dependencies, development tools, fonts, templates and external infrastructure across the web, desktop, server and MCP. An entry does not mean that component is bundled in every download.",
-          "Each entry identifies its ecosystem, package or project, version, declared license and upstream link. Third-party materials retain their own copyright and license terms; Apache-2.0 applies to OpenNavo’s own code, not to every item below. “external” means the version is supplied by the environment rather than pinned by this application.",
-          "Original license texts, provenance and distribution scope are available at https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party . Project attribution is in NOTICE, and redistribution guidance is in docs/legal/THIRD_PARTY.md. Consult the notices bundled with a specific release when redistributing its artifacts."
+          "OpenNavo está construido con software de código abierto. El inventario siguiente se genera a partir de los archivos de dependencias fijadas y las licencias originales verificadas de esta versión. Incluye dependencias directas e indirectas, herramientas de desarrollo, fuentes, plantillas e infraestructura externa de la web, el escritorio, el servidor y MCP. Una entrada no implica que el componente se incluya en todas las descargas.",
+          "Cada entrada indica el ecosistema, el paquete o proyecto, la versión, la licencia declarada y el enlace al proyecto original. Los materiales de terceros conservan sus derechos de autor y licencias; GPL-3.0-only se aplica al código propio de OpenNavo, no a todos los elementos de la lista. «external» indica que la versión depende del entorno y no está fijada por esta aplicación.",
+          "Los textos originales, la procedencia y el alcance de distribución están en https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party . NOTICE contiene la atribución y los términos adicionales de la sección 7 de GPLv3; docs/legal/THIRD_PARTY.md explica la redistribución. Consulta los avisos incluidos con la versión concreta que redistribuyas."
         ]
       }
     ],
@@ -272,8 +280,10 @@
         "draft": false,
         "title": "Uso e licenças",
         "paragraphs": [
-          "O código próprio do OpenNavo usa Apache-2.0; o texto de referência está em LICENSE. Apps, bibliotecas, fontes, modelos e serviços de terceiros mantêm suas licenças. O OpenNavo não concede direitos adicionais sobre eles nem dispensa compras exigidas por seus fornecedores.",
-          "O software é fornecido «no estado em que se encontra», com as exclusões de garantia da licença. Confira a operação e a origem do download e faça backup antes de instalar, atualizar ou remover apps. Disponibilidade, compatibilidade e conteúdo dos pacotes podem mudar."
+          "O código próprio do OpenNavo usa GPL-3.0-only; o texto de referência está em LICENSE. Apps, bibliotecas, fontes, modelos e serviços de terceiros mantêm suas licenças. O OpenNavo não concede direitos adicionais sobre eles nem dispensa compras exigidas por seus fornecedores.",
+          "O software é fornecido «no estado em que se encontra», com as exclusões de garantia da licença. Confira a operação e a origem do download e faça backup antes de instalar, atualizar ou remover apps. Disponibilidade, compatibilidade e conteúdo dos pacotes podem mudar.",
+          "As versões publicadas até o commit 5fa4056, inclusive, continuam disponíveis sob Apache-2.0. Os avisos de terceiros e os termos adicionais abaixo estão em NOTICE.",
+          "Os termos adicionais em NOTICE, conforme a seção 7(e) da GPLv3, não concedem direitos de marca sobre o nome ou logotipo OpenNavo. Conforme a seção 7(c), versões modificadas distribuídas devem se distinguir claramente do original: use outro nome e ícone e substitua o Bundle ID, a chave pública e a URL de atualização. Preserve a atribuição correta. Homebrew é uma marca do projeto Homebrew; o OpenNavo não é afiliado a ele. Os nomes e ícones dos apps pertencem aos respectivos titulares."
         ]
       },
       {
@@ -290,9 +300,9 @@
         "draft": false,
         "title": "Open source",
         "paragraphs": [
-          "OpenNavo is built with open-source software. The inventory below is generated from the dependency locks and verified upstream license evidence for this release. It includes direct and transitive dependencies, development tools, fonts, templates and external infrastructure across the web, desktop, server and MCP. An entry does not mean that component is bundled in every download.",
-          "Each entry identifies its ecosystem, package or project, version, declared license and upstream link. Third-party materials retain their own copyright and license terms; Apache-2.0 applies to OpenNavo’s own code, not to every item below. “external” means the version is supplied by the environment rather than pinned by this application.",
-          "Original license texts, provenance and distribution scope are available at https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party . Project attribution is in NOTICE, and redistribution guidance is in docs/legal/THIRD_PARTY.md. Consult the notices bundled with a specific release when redistributing its artifacts."
+          "O OpenNavo é construído com software de código aberto. O inventário abaixo é gerado a partir dos arquivos de dependências fixadas e das licenças originais verificadas desta versão. Inclui dependências diretas e indiretas, ferramentas de desenvolvimento, fontes, modelos e infraestrutura externa da web, desktop, servidor e MCP. Uma entrada não significa que o componente esteja incluído em todos os downloads.",
+          "Cada entrada identifica o ecossistema, o pacote ou projeto, a versão, a licença declarada e o link de origem. Os materiais de terceiros mantêm seus direitos autorais e licenças; GPL-3.0-only se aplica ao código próprio do OpenNavo, e não a todos os itens abaixo. “external” indica que a versão é fornecida pelo ambiente, em vez de fixada por este aplicativo.",
+          "Os textos originais, a procedência e o escopo de distribuição estão em https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party . NOTICE contém a atribuição e os termos adicionais da seção 7 da GPLv3; docs/legal/THIRD_PARTY.md explica a redistribuição. Consulte os avisos incluídos na versão específica que será redistribuída."
         ]
       }
     ],
@@ -331,8 +341,10 @@
         "draft": false,
         "title": "Использование и лицензии",
         "paragraphs": [
-          "Собственный код OpenNavo распространяется по Apache-2.0; действующий текст находится в LICENSE. Сторонние приложения, библиотеки, шрифты, шаблоны и сервисы сохраняют свои лицензии. OpenNavo не предоставляет дополнительных прав на них и не отменяет применимые требования об оплате.",
-          "Программа предоставляется «как есть» с оговорками о гарантиях, указанными в лицензии. Перед установкой, обновлением или удалением проверьте действие и источник загрузки и сохраните важные данные. Доступность, совместимость и содержимое пакетов могут меняться."
+          "Собственный код OpenNavo распространяется по GPL-3.0-only; действующий текст находится в LICENSE. Сторонние приложения, библиотеки, шрифты, шаблоны и сервисы сохраняют свои лицензии. OpenNavo не предоставляет дополнительных прав на них и не отменяет применимые требования об оплате.",
+          "Программа предоставляется «как есть» с оговорками о гарантиях, указанными в лицензии. Перед установкой, обновлением или удалением проверьте действие и источник загрузки и сохраните важные данные. Доступность, совместимость и содержимое пакетов могут меняться.",
+          "Версии, опубликованные на коммите 5fa4056 и ранее, остаются доступны по Apache-2.0. Уведомления о сторонних компонентах и следующие дополнительные условия находятся в NOTICE.",
+          "Дополнительные условия в NOTICE согласно пункту 7(e) GPLv3 не предоставляют прав на товарные знаки, название и логотип OpenNavo. Согласно пункту 7(c), распространяемые изменённые версии должны явно отличаться от оригинала: используйте другое название и значок, замените Bundle ID, публичный ключ и адрес обновлений. Сохраняйте корректные сведения об авторстве и происхождении. Homebrew — товарный знак проекта Homebrew; OpenNavo с ним не связан. Названия и значки приложений принадлежат их правообладателям."
         ]
       },
       {
@@ -349,9 +361,9 @@
         "draft": false,
         "title": "Open source",
         "paragraphs": [
-          "OpenNavo is built with open-source software. The inventory below is generated from the dependency locks and verified upstream license evidence for this release. It includes direct and transitive dependencies, development tools, fonts, templates and external infrastructure across the web, desktop, server and MCP. An entry does not mean that component is bundled in every download.",
-          "Each entry identifies its ecosystem, package or project, version, declared license and upstream link. Third-party materials retain their own copyright and license terms; Apache-2.0 applies to OpenNavo’s own code, not to every item below. “external” means the version is supplied by the environment rather than pinned by this application.",
-          "Original license texts, provenance and distribution scope are available at https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party . Project attribution is in NOTICE, and redistribution guidance is in docs/legal/THIRD_PARTY.md. Consult the notices bundled with a specific release when redistributing its artifacts."
+          "OpenNavo создан с использованием открытого программного обеспечения. Список ниже сформирован из файлов фиксации зависимостей и проверенных исходных лицензий этого выпуска. Он включает прямые и косвенные зависимости, инструменты разработки, шрифты, шаблоны и внешнюю инфраструктуру веб-сайта, настольного приложения, сервера и MCP. Наличие записи не означает, что компонент входит в каждый дистрибутив.",
+          "Каждая запись содержит экосистему, название пакета или проекта, версию, заявленную лицензию и ссылку на исходный проект. Сторонние материалы сохраняют свои авторские права и условия лицензирования; GPL-3.0-only относится к собственному коду OpenNavo, а не ко всем перечисленным компонентам. «external» означает, что версия определяется окружением, а не фиксируется приложением.",
+          "Оригинальные лицензии, сведения о происхождении и составе дистрибутивов доступны по адресу https://github.com/opennavo/OpenNavo/tree/main/docs/legal/third-party . Авторство и дополнительные условия по статье 7 GPLv3 указаны в NOTICE, инструкции по распространению — в docs/legal/THIRD_PARTY.md. При распространении сверяйтесь с уведомлениями, включёнными в конкретный выпуск."
         ]
       }
     ]
@@ -4439,6 +4451,104 @@
       "url": "https://pkg.go.dev/rsc.io/pdf@v0.1.1"
     },
     {
+      "ecosystem": "Native",
+      "name": "bzip2",
+      "version": "1.0.8",
+      "license": "bzip2-1.0.6",
+      "url": "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "clamav",
+      "version": "1.5.4",
+      "license": "GPL-2.0-only WITH openSSL-exception",
+      "url": "https://www.clamav.net/downloads/production/clamav-1.5.4.tar.gz"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "curl",
+      "version": "8.16.0",
+      "license": "curl",
+      "url": "https://curl.se/download/curl-8.16.0.tar.xz"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "DuoUpdater vendor recipes",
+      "version": "e5bef206e8f93fd8037924c8d6bda3f529e4c8a4",
+      "license": "MIT",
+      "url": "https://github.com/jizhi0v0/duo-updater/tree/e5bef206e8f93fd8037924c8d6bda3f529e4c8a4"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "Installomator vendor metadata",
+      "version": "805cd1b96d73c6efa581bbf9802b0496ecf3807f",
+      "license": "Apache-2.0",
+      "url": "https://github.com/Installomator/Installomator/tree/805cd1b96d73c6efa581bbf9802b0496ecf3807f"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "json-c",
+      "version": "0.18",
+      "license": "MIT",
+      "url": "https://s3.amazonaws.com/json-c_releases/releases/json-c-0.18.tar.gz"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "KnockKnock",
+      "version": "914f2c0c2d3f058f40b6d98ed303e8a1a6715eb3",
+      "license": "GPL-3.0-only",
+      "url": "https://github.com/objective-see/KnockKnock/tree/914f2c0c2d3f058f40b6d98ed303e8a1a6715eb3"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "libxml2",
+      "version": "2.14.6",
+      "license": "MIT",
+      "url": "https://download.gnome.org/sources/libxml2/2.14/libxml2-2.14.6.tar.xz"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "mas",
+      "version": "7.0.0",
+      "license": "MIT",
+      "url": "https://github.com/mas-cli/mas/tree/v7.0.0"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "openssl",
+      "version": "3.5.4",
+      "license": "Apache-2.0",
+      "url": "https://github.com/openssl/openssl/releases/download/openssl-3.5.4/openssl-3.5.4.tar.gz"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "pcre2",
+      "version": "10.46",
+      "license": "BSD-3-Clause",
+      "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.46/pcre2-10.46.tar.gz"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "Sparkle",
+      "version": "b41aa91142bb752324838a3c4e0cac2e5f942ff4",
+      "license": "MIT",
+      "url": "https://github.com/sparkle-project/Sparkle/tree/b41aa91142bb752324838a3c4e0cac2e5f942ff4"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "Stats sensor keys",
+      "version": "5df24006b2993228fdf23f72fec467bffb4d2106",
+      "license": "MIT",
+      "url": "https://github.com/exelban/stats/tree/5df24006b2993228fdf23f72fec467bffb4d2106"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "zlib",
+      "version": "1.3.1",
+      "license": "Zlib",
+      "url": "https://zlib.net/fossils/zlib-1.3.1.tar.gz"
+    },
+    {
       "ecosystem": "Platform",
       "name": "Caddy",
       "version": "2.11.6",
@@ -5221,6 +5331,13 @@
       "version": "3.6.1",
       "license": "MIT OR Apache-2.0",
       "url": "https://crates.io/crates/arboard/3.6.1"
+    },
+    {
+      "ecosystem": "Rust",
+      "name": "arraydeque",
+      "version": "0.5.1",
+      "license": "MIT/Apache-2.0",
+      "url": "https://crates.io/crates/arraydeque/0.5.1"
     },
     {
       "ecosystem": "Rust",
@@ -9431,6 +9548,13 @@
     },
     {
       "ecosystem": "Rust",
+      "name": "yaml-rust2",
+      "version": "0.13.0",
+      "license": "MIT OR Apache-2.0",
+      "url": "https://crates.io/crates/yaml-rust2/0.13.0"
+    },
+    {
+      "ecosystem": "Rust",
       "name": "yoke",
       "version": "0.8.3",
       "license": "Unicode-3.0",
@@ -9540,6 +9664,13 @@
       "version": "1.0.23",
       "license": "MIT",
       "url": "https://crates.io/crates/zmij/1.0.23"
+    },
+    {
+      "ecosystem": "Rust",
+      "name": "zopfli",
+      "version": "0.8.3",
+      "license": "Apache-2.0",
+      "url": "https://crates.io/crates/zopfli/0.8.3"
     },
     {
       "ecosystem": "Rust",

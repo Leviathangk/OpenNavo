@@ -140,3 +140,32 @@ describe('WP10 lists', () => {
     expect(listItems([{ name: 'A', url: 'https://x/a' }])[0]!.position).toBe(1);
   });
 });
+
+describe('Link apps', () => {
+  const link = {
+    homepage: 'https://lumen.app/',
+    downloadUrl: 'https://download.lumen.app/Lumen.dmg',
+    github: { repo: 'lumen-labs/lumen', latest: null },
+    teamId: null,
+    pricing: 'free' as const,
+    notes: null,
+    adoptedByCask: null
+  };
+  const linkApp = (overrides: Partial<PackageDetail['link'] & object> = {}) =>
+    app({ kind: 'link', homepage: null, downloadUrl: null, link: { ...link, ...overrides } });
+
+  it('States a download only on the developer site or in the GitHub repository', () => {
+    const url = 'https://opennavo.example/apps/lumen';
+    expect(softwareAppNode(linkApp(), url, t)).toMatchObject({
+      downloadUrl: 'https://download.lumen.app/Lumen.dmg',
+      sameAs: 'https://lumen.app/'
+    });
+    // A mirror is never the official file; the GitHub release stands in for it.
+    expect(softwareAppNode(linkApp({ downloadUrl: 'https://mirror.example/Lumen.dmg' }), url, t)!.downloadUrl).toBe(
+      'https://github.com/lumen-labs/lumen/releases/latest'
+    );
+    expect(
+      softwareAppNode(linkApp({ downloadUrl: 'https://mirror.example/Lumen.dmg', github: null }), url, t)
+    ).not.toHaveProperty('downloadUrl');
+  });
+});

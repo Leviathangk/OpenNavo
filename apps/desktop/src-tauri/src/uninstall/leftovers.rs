@@ -106,6 +106,8 @@ fn scan(
             bundle_id: None,
             version: None,
             source: AppSource::Direct,
+            updater: None,
+            homebrew_cask: None,
             cask: None,
             catalog_token: None,
             team_id: None,

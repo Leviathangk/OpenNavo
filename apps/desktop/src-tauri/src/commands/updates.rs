@@ -15,9 +15,75 @@ pub fn updates_list(state: State<'_, Arc<DesktopCore>>) -> Result<Vec<OutdatedIt
 #[specta::specta]
 pub async fn updates_check(
     state: State<'_, Arc<DesktopCore>>,
-    run_brew_update: bool,
+    sources: Option<Vec<UpdateSource>>,
 ) -> Result<Vec<OutdatedItem>, AppError> {
-    state.inner().check_updates(run_brew_update).await
+    state
+        .inner()
+        .check_update_sources(sources, TaskTrigger::Manual, None)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_ignore(
+    state: State<'_, Arc<DesktopCore>>,
+    app_key: String,
+    ignored: bool,
+) -> Result<(), AppError> {
+    state.queue.updater.ignore(&app_key, ignored)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_skip(
+    state: State<'_, Arc<DesktopCore>>,
+    app_key: String,
+    version: Option<String>,
+) -> Result<(), AppError> {
+    state.queue.updater.skip(&app_key, version.as_deref())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn update_set_channel(
+    state: State<'_, Arc<DesktopCore>>,
+    app_key: String,
+    channel: UpdateChannel,
+) -> Result<(), AppError> {
+    state.queue.updater.channel(&app_key, channel)
+}
+
+/// Queues a rollback of a recorded update and returns the task id.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_rollback(
+    state: State<'_, Arc<DesktopCore>>,
+    history_id: String,
+) -> Result<String, AppError> {
+    let queue = state.queue.clone();
+    crate::blocking(move || queue.enqueue_rollback(&history_id)).await
+}
+
+/// The history ids among `history_ids` whose update can be rolled back now.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_rollback_targets(
+    state: State<'_, Arc<DesktopCore>>,
+    history_ids: Vec<String>,
+) -> Result<Vec<String>, AppError> {
+    let queue = state.queue.clone();
+    crate::blocking(move || queue.rollback_targets(&history_ids)).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn app_relaunch(
+    state: State<'_, Arc<DesktopCore>>,
+    app_id: String,
+) -> Result<(), AppError> {
+    let _operation = state.queue.read_gate.write().await;
+    let updater = state.queue.updater.clone();
+    crate::blocking(move || updater.relaunch(&app_id)).await
 }
 #[tauri::command]
 #[specta::specta]

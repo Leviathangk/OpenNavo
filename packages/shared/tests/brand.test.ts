@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { BRAND, LOGO, logoInlineShift, logoSvg } from '../src/brand';
 import { interpolate, sharedMessages } from '../src/messages';
-import { LOCALES, PACKAGE_KINDS, isPackageKind } from '../src/types';
+import { LOCALES, PACKAGE_KINDS, isInstallableKind, isPackageKind } from '../src/types';
 
 describe('Brand', () => {
   it('Logo generator uses tokens and matches both shared geometries', () => {
@@ -145,8 +145,11 @@ describe('Base messages', () => {
   });
 
   it('Package kinds', () => {
-    expect(PACKAGE_KINDS).toEqual(['cask', 'formula']);
+    expect(PACKAGE_KINDS).toEqual(['cask', 'formula', 'link']);
     expect(isPackageKind('cask')).toBe(true);
+    expect(isPackageKind('link')).toBe(true);
     expect(isPackageKind('tap')).toBe(false);
+    expect(isInstallableKind('link')).toBe(false);
+    expect(isInstallableKind('cask')).toBe(true);
   });
 });

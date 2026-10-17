@@ -1,0 +1,10 @@
+{
+  "project": "Installomator",
+  "repository": "https://github.com/Installomator/Installomator",
+  "revision": "805cd1b96d73c6efa581bbf9802b0496ecf3807f",
+  "license": "Apache-2.0",
+  "paths": [
+    "fragments/labels/wechat.sh"
+  ],
+  "changes": "WeChat feed URL and expected Team ID cross-check; declaration parsed in Go, never execute shell."
+}

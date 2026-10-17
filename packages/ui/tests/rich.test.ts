@@ -10,7 +10,7 @@ import OnMarkdownView from '../src/components/OnMarkdownView.vue';
 import OnScreenshotGallery from '../src/components/OnScreenshotGallery.vue';
 import OnTopNav from '../src/components/OnTopNav.vue';
 import { heroGlowGradient } from '../src/utils/glow';
-import { renderMarkdown } from '../src/utils/markdown';
+import { renderMarkdown, sanitizeReleaseHtml } from '../src/utils/markdown';
 import { RouterLinkStub, withLocale } from './helpers';
 
 /** Parse HTML into DOM so assertions do not depend on attribute order. */
@@ -19,6 +19,39 @@ function parse(html: string): HTMLElement {
   root.innerHTML = html;
   return root;
 }
+
+describe('sanitizeReleaseHtml', () => {
+  // A typical Sparkle appcast description: a full document with styles, a script, a tracking pixel and its own h1.
+  const appcast = `<html><head><style>body{color:red}</style><script>alert(1)</script></head><body>
+    <h1>Version 2.4</h1><h2>Fixes</h2><ul><li onclick="x()">Faster <b>sync</b></li></ul>
+    <img src="https://vendor.example/shot.png" alt="Screenshot"><img src="http://tracker.example/p.gif">
+    <a href="javascript:alert(1)">bad</a> <a href="https://vendor.example/notes">notes</a></body></html>`;
+
+  it('Keeps text and lists but drops scripts, styles, handlers and unsafe links', () => {
+    const root = parse(sanitizeReleaseHtml(appcast));
+    expect(root.querySelector('script, style, [onclick]')).toBeNull();
+    expect(root.querySelector('li b')?.textContent).toBe('sync');
+    const links = Array.from(root.querySelectorAll('a'));
+    expect(links.find(link => link.textContent === 'bad')?.hasAttribute('href')).toBe(false);
+    const notes = links.find(link => link.textContent === 'notes');
+    expect(notes?.getAttribute('target')).toBe('_blank');
+    expect(notes?.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
+  it('Never loads images: https ones become links named by their alt text, others disappear', () => {
+    const root = parse(sanitizeReleaseHtml(appcast));
+    expect(root.querySelector('img')).toBeNull();
+    const shot = Array.from(root.querySelectorAll('a')).find(link => link.textContent === 'Screenshot');
+    expect(shot?.getAttribute('href')).toBe('https://vendor.example/shot.png');
+    expect(root.innerHTML).not.toContain('tracker.example');
+  });
+
+  it('Starts headings below the page: the first level found becomes h4 by default', () => {
+    const root = parse(sanitizeReleaseHtml(appcast));
+    expect(Array.from(root.querySelectorAll('h4, h5'), heading => heading.tagName)).toEqual(['H4', 'H5']);
+    expect(root.querySelector('h1, h2')).toBeNull();
+  });
+});
 
 describe('renderMarkdown', () => {
   it('Closes bold next to CJK punctuation in release notes too', () => {

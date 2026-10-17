@@ -65,6 +65,9 @@ pub fn write_args_in_tap(
     options: &TaskOptions,
     tap: Option<&str>,
 ) -> Result<Vec<String>, AppError> {
+    if target.is_some_and(|target| target.kind == Kind::Link) {
+        return Err(AppError::new("E_NOT_INSTALLABLE", "link_target"));
+    }
     if options.plan_id.is_some() || options.item_ids.is_some() || options.delete_mode.is_some() {
         return Err(AppError::new(
             "E_INVALID_ARG",

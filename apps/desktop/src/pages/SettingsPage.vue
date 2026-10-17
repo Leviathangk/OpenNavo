@@ -14,7 +14,9 @@ import {
   OnSegmented,
   OnToggle
 } from '@opennavo/ui';
+import AppStoreSettings from '@/components/settings/AppStoreSettings.vue';
 import CleanupSettings from '@/components/settings/CleanupSettings.vue';
+import SecuritySettings from '@/components/settings/SecuritySettings.vue';
 import MonitorSettings from '@/components/settings/MonitorSettings.vue';
 import MirrorSettings from '@/components/settings/MirrorSettings.vue';
 import AppUpdater from '@/components/settings/AppUpdater.vue';
@@ -32,7 +34,16 @@ import type { GuidePane } from '@/stores/permissions';
 import { openExternal } from '@/utils/external';
 
 // Settings (06 §11): General, Sources, Homebrew, Clean Up, Privacy, About; save the full object on every change (settings_set).
-type Section = 'general' | 'mirrors' | 'homebrew' | 'cleanup' | 'monitor' | 'privacy' | 'about';
+type Section =
+  | 'general'
+  | 'mirrors'
+  | 'homebrew'
+  | 'appstore'
+  | 'cleanup'
+  | 'monitor'
+  | 'security'
+  | 'privacy'
+  | 'about';
 
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
@@ -51,7 +62,17 @@ const languageItems = computed(() => [
 ]);
 
 const section = computed<Section>(() => (route.params.section as Section | undefined) || 'general');
-const sections: Section[] = ['general', 'mirrors', 'homebrew', 'cleanup', 'monitor', 'privacy', 'about'];
+const sections: Section[] = [
+  'general',
+  'mirrors',
+  'homebrew',
+  'appstore',
+  'cleanup',
+  'monitor',
+  'security',
+  'privacy',
+  'about'
+];
 
 async function save<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
   await settings.update(key, value);
@@ -324,9 +345,13 @@ onMounted(async () => {
           </SettingRow>
         </OnCard>
 
+        <AppStoreSettings v-else-if="section === 'appstore'" />
+
         <CleanupSettings v-else-if="section === 'cleanup'" />
 
         <MonitorSettings v-else-if="section === 'monitor'" />
+
+        <SecuritySettings v-else-if="section === 'security'" />
 
         <OnCard v-else-if="section === 'privacy'" padding="none">
           <SettingRow

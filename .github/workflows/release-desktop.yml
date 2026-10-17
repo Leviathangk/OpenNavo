@@ -98,7 +98,7 @@ jobs:
             target: universal-apple-darwin
             bundles: app
     runs-on: macos-15
-    timeout-minutes: 75
+    timeout-minutes: 120
     env:
       VERSION: ${{ needs.meta.outputs.version }}
       CHANNEL: ${{ needs.meta.outputs.channel }}
@@ -167,6 +167,24 @@ jobs:
             echo "- ${{ matrix.artifact }}: updater artifact is unsigned (missing H-07)" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install standalone engine build tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/clamav-tools"
+          "$RUNNER_TEMP/clamav-tools/bin/pip" install cmake==4.1.2 ninja==1.13.0
+          echo "$RUNNER_TEMP/clamav-tools/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/clamav
+          key: clamav-1.5.4-macos15-${{ matrix.target }}-${{ hashFiles('apps/desktop/native/clamav/**') }}
+      - name: Build standalone ClamAV and corresponding source
+        run: |
+          case '${{ matrix.target }}' in aarch64-*) arch=arm64 ;; x86_64-*) arch=x86_64 ;; *) arch=universal ;; esac
+          python3 apps/desktop/native/clamav/build.py --work "$RUNNER_TEMP/clamav" --arch "$arch" --source-bundle
+          echo "OPENNAVO_CLAMAV_DIR=$RUNNER_TEMP/clamav/artifacts/$arch" >> "$GITHUB_ENV"
+
       - name: Package
         env:
           APPLE_SIGNED: ${{ steps.signing.outputs.apple }}
@@ -219,6 +237,10 @@ jobs:
         run: >-
           node apps/desktop/scripts/release-artifacts.mjs --target ${{ matrix.artifact }} --version "$VERSION"
           --repository "$GITHUB_REPOSITORY" --out release-artifacts
+
+      - name: Collect matching standalone-engine source
+        if: matrix.artifact == 'dmg-universal'
+        run: cp "$RUNNER_TEMP/clamav/clamav-1.5.4-corresponding-source.tar.gz" release-artifacts/
 
       - name: Verify updater artifacts with the production desktop public key
         if: github.event_name == 'push' && matrix.artifact != 'dmg-universal'

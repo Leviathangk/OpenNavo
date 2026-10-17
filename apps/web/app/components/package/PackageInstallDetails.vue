@@ -18,6 +18,8 @@ const props = defineProps<{ kind: PackageKind }>();
 const { t } = useI18n();
 const toasts = useToasts();
 const { data: pkg, token } = await usePackage(props.kind);
+// Link apps have no Homebrew definition; the layout hides this tab for them (usePackage resolves the kind).
+if (pkg.value?.kind === 'link') throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true });
 
 const messages = useUiMessages();
 const downloadSha = computed(() => pkg.value?.downloadSha256);

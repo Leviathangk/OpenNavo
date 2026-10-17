@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ApiError, unwrap } from '@opennavo/api';
-import { formatDate } from '@opennavo/shared';
+import { formatDate, isInstallableKind } from '@opennavo/shared';
 import { OnButton, OnCollectionView, OnErrorState, OnIcon } from '@opennavo/ui';
 import type { OnCollectionEntry } from '@opennavo/ui';
 import { packagePath } from '~/utils/packageView';
@@ -44,6 +44,7 @@ const entries = computed<OnCollectionEntry[]>(() =>
     href: localePath(packagePath(item.package.token))
   }))
 );
+const linkOf = (token: string) => data.value?.items.find(item => item.package.token === token)?.package.link ?? null;
 const meta = computed(() =>
   data.value
     ? `${t('collections.count', { count: data.value.itemCount }, { plural: data.value.itemCount })} · ${t('collections.updated', { date: formatDate(data.value.updatedAt, { locale: appLocale.value }) })}`
@@ -56,7 +57,10 @@ const exportHref = computed(() => `${config.public.apiBase}/collections/${slug.v
 function addAll() {
   const items = data.value?.items ?? [];
   let added = 0;
-  for (const item of items) if (brewfile.add(item.package.kind, item.package.token) === 'added') added += 1;
+  // Link apps have no brew install, so they never enter the Brewfile list.
+  for (const item of items)
+    if (isInstallableKind(item.package.kind) && brewfile.add(item.package.kind, item.package.token) === 'added')
+      added += 1;
   toasts.push({ tone: 'success', title: t('collections.addedAll', { count: added }, { plural: added }) });
 }
 
@@ -109,7 +113,7 @@ usePageSeo({
       <MarkdownContent size="md" :heading-level="2" :source="data.body" />
     </template>
     <template #action="{ entry }">
-      <GetMenu :kind="entry.kind" :token="entry.token" :name="entry.name" />
+      <GetMenu :kind="entry.kind" :token="entry.token" :name="entry.name" :link="linkOf(entry.token)" />
     </template>
   </OnCollectionView>
 </template>

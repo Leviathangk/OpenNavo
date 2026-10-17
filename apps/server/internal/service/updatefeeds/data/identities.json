@@ -1,0 +1,2161 @@
+[
+  {
+    "sourceKey": "github:AprilNEA/OpenLogi:stable",
+    "bundleId": "org.openlogi.openlogi",
+    "teamId": "8U3ZJ258K9",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:BlueBubblesApp/bluebubbles-server:stable",
+    "bundleId": "com.BlueBubbles.BlueBubbles-Server",
+    "teamId": "WPV275H8W7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:Calcium-Ion/AstrLink:stable",
+    "bundleId": "com.astrlink.desktop",
+    "teamId": "7XWQYGN832",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:CherryHQ/cherry-studio:stable",
+    "bundleId": "com.kangfenmao.CherryStudio",
+    "teamId": "87242QY66T",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:Eugeny/tabby:stable",
+    "bundleId": "org.tabby",
+    "teamId": "V4JSMC46SY",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:IntelliScape/caffeine:stable",
+    "bundleId": "com.intelliscapesolutions.caffeine",
+    "teamId": "YD6LEYT6WZ",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:Ji4n1ng/OpenInTerminal:stable",
+    "bundleId": "wang.jianing.app.OpenInTerminal",
+    "teamId": "C8VX3ZLX5U",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:Kong/insomnia:stable",
+    "bundleId": "com.insomnia.app",
+    "teamId": "FX44YY62GV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:KunAgent/Kun:stable",
+    "bundleId": "com.xingyuzhong.deepseekgui",
+    "teamId": "YBR76S5LNP",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:MarkEdit-app/MarkEdit:stable",
+    "bundleId": "app.cyan.markedit",
+    "teamId": "TCKG8FBVG6",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:MuhammedKalkan/OpenLens:stable",
+    "bundleId": "com.electron.open-lens",
+    "teamId": "HGC72W36QJ",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:Sequel-Ace/Sequel-Ace:stable",
+    "bundleId": "com.sequel-ace.sequel-ace",
+    "teamId": "NKQ4HJ66PX",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:TuringSoftware/CrystalFetch:stable",
+    "bundleId": "llc.turing.CrystalFetch",
+    "teamId": "WDNLXAD4W8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:VSCodium/vscodium-insiders:preview",
+    "bundleId": "com.vscodium.VSCodiumInsiders",
+    "teamId": "VC39D2VNQ7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:VSCodium/vscodium:stable",
+    "bundleId": "com.vscodium",
+    "teamId": "VC39D2VNQ7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:Zackriya-Solutions/meetily:stable",
+    "bundleId": "com.meetily.ai",
+    "teamId": "554AZZ38TB",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:aaif-goose/goose:stable",
+    "bundleId": "com.electron.goose",
+    "teamId": "5N2JF58U87",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:actuallymentor/battery:stable",
+    "bundleId": "co.palokaj.battery",
+    "teamId": "CAWM399GFD",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:alienator88/Pearcleaner:stable",
+    "bundleId": "com.alienator88.Pearcleaner",
+    "teamId": "BK8443AXLU",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:altic-dev/FluidVoice:stable",
+    "bundleId": "com.FluidApp.app",
+    "teamId": "V4J43B279J",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:ankitects/anki:stable",
+    "bundleId": "net.ankiweb.anki",
+    "teamId": "ZL66D3NMZM",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:anmolkapil/plexo:stable",
+    "bundleId": "com.plexo.app",
+    "teamId": "8YNW6SHRQ8",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:anomalyco/opencode:stable",
+    "bundleId": "ai.opencode.desktop",
+    "teamId": "5NZ4Q7NXJ4",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:anywhere-labs/dsh-desktop:stable",
+    "bundleId": "ai.deepseek.dsh.desktop",
+    "teamId": "UM3Z9G5DNH",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:artginzburg/MiddleClick:stable",
+    "bundleId": "art.ginzburg.MiddleClick",
+    "teamId": "R2294BC6J8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:audacity/audacity:stable:audacity3",
+    "bundleId": "org.audacityteam.audacity",
+    "teamId": "6EPAF2X3PR",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:audacity/audacity:stable:audacity4",
+    "bundleId": "org.audacityteam.audacity4",
+    "teamId": "6EPAF2X3PR",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:balena-io/etcher:stable",
+    "bundleId": "io.balena.etcher",
+    "teamId": "66H43P8FRG",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:beekeeper-studio/beekeeper-studio:stable",
+    "bundleId": "io.beekeeperstudio.desktop",
+    "teamId": "7KK583U8H2",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:bitwarden/clients:stable",
+    "bundleId": "com.bitwarden.desktop",
+    "teamId": "LTZ2PFU5D6",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:chekusu/yomado:stable",
+    "bundleId": "dev.chekusu.yomado",
+    "teamId": "FKSR2JD63B",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:cjpais/Handy:stable",
+    "bundleId": "com.pais.handy",
+    "teamId": "UWFLB4GC25",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:clash-verge-rev/clash-verge-rev:stable",
+    "bundleId": "io.github.clash-verge-rev.clash-verge-rev",
+    "teamId": "JPH3Z7PPBB",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:coteditor/CotEditor:beta",
+    "bundleId": "com.coteditor.CotEditor",
+    "teamId": "HT3Z3A72WZ",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:coteditor/CotEditor:stable",
+    "bundleId": "com.coteditor.CotEditor",
+    "teamId": "HT3Z3A72WZ",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:cristicretu/diri:stable",
+    "bundleId": "com.dirijor.diri",
+    "teamId": "A56RVNJ69X",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:crmne/spotifast:stable",
+    "bundleId": "rocks.spotifast.Spotifast",
+    "teamId": "JPL7999US3",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:cryptomator/cryptomator:stable",
+    "bundleId": "org.cryptomator",
+    "teamId": "YZQJQUHA3L",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:crystalidea/macs-fan-control:stable",
+    "bundleId": "com.crystalidea.macsfancontrol",
+    "teamId": "ACC5R6RH47",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:darrylmorley/whatcable:beta",
+    "bundleId": "uk.whatcable.whatcable",
+    "teamId": "M4RUJ7W6MP",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:darrylmorley/whatcable:stable",
+    "bundleId": "uk.whatcable.whatcable",
+    "teamId": "M4RUJ7W6MP",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:dbeaver/dbeaver:stable",
+    "bundleId": "org.jkiss.dbeaver.core.product",
+    "teamId": "42B6MDKMW8",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:desktop/desktop:beta",
+    "bundleId": "com.github.GitHubClient",
+    "teamId": "VEKTX9H2N7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:desktop/desktop:stable",
+    "bundleId": "com.github.GitHubClient",
+    "teamId": "VEKTX9H2N7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:driceroland/Search:stable",
+    "bundleId": "com.officecommun.search",
+    "teamId": "7BYKA895MC",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:dwarvesf/hidden:stable",
+    "bundleId": "com.dwarvesv.minimalbar",
+    "teamId": "W777S7V8TN",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:espanso/espanso:stable",
+    "bundleId": "com.federicoterzi.espanso",
+    "teamId": "6424323YUH",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:exelban/stats:stable",
+    "bundleId": "eu.exelban.Stats",
+    "teamId": "RP2S87B72W",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:farion1231/cc-switch:stable",
+    "bundleId": "com.ccswitch.desktop",
+    "teamId": "R8UR22V2F9",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:freelensapp/freelens:stable",
+    "bundleId": "app.freelens.Freelens",
+    "teamId": "TFR6NT55MB",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:ganeshrvel/openmtp:stable",
+    "bundleId": "io.ganeshrvel.openmtp",
+    "teamId": "6UR4H85SA2",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:getpaseo/paseo:stable",
+    "bundleId": "sh.paseo.desktop",
+    "teamId": "99ZMJMKU9Y",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:github/app:stable",
+    "bundleId": "com.github.githubapp",
+    "teamId": "VEKTX9H2N7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:godotengine/godot:stable",
+    "bundleId": "org.godotengine.godot",
+    "teamId": "6K46PWY5DM",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:imputnet/helium-macos:stable",
+    "bundleId": "net.imput.helium",
+    "teamId": "S4Q33XPHB4",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:janhq/jan:stable",
+    "bundleId": "jan.ai.app",
+    "teamId": "F8AH6NHVY5",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:jgraph/drawio-desktop:stable",
+    "bundleId": "com.jgraph.drawio.desktop",
+    "teamId": "UZEUFB4N53",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:johnste/finicky:stable",
+    "bundleId": "se.johnste.finicky",
+    "teamId": "C3XWNKDP3M",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:keepassxreboot/keepassxc:stable",
+    "bundleId": "org.keepassxc.keepassxc",
+    "teamId": "G2S7P7J672",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:kenn-io/agentsview:stable",
+    "bundleId": "io.agentsview.desktop",
+    "teamId": "2YMZH84KR8",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:kovidgoyal/kitty:stable",
+    "bundleId": "net.kovidgoyal.kitty",
+    "teamId": "NTY7FVCEKP",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:kubernetes-sigs/headlamp:stable",
+    "bundleId": "com.microsoft.Headlamp",
+    "teamId": "5N2JF58U87",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:leits/MeetingBar:stable",
+    "bundleId": "leits.MeetingBar",
+    "teamId": "KGH289N6T8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:localsend/localsend:stable",
+    "bundleId": "org.localsend.localsendApp",
+    "teamId": "3W7H4PYMCV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:m1ckc3s/claude-status-bar:stable",
+    "bundleId": "com.local.claudestatusbar",
+    "teamId": "W9JZ4932LA",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:makecindy/cindy:beta:cn",
+    "bundleId": "com.xd.cindycn",
+    "teamId": "NTC4BJ542G",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:makecindy/cindy:beta:global",
+    "bundleId": "com.xd.cindy",
+    "teamId": "SX9RG894L5",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:makecindy/cindy:stable:cn",
+    "bundleId": "com.xd.cindycn",
+    "teamId": "NTC4BJ542G",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:makecindy/cindy:stable:global",
+    "bundleId": "com.xd.cindy",
+    "teamId": "SX9RG894L5",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:matt1398/claude-devtools:stable",
+    "bundleId": "com.claudecode.context",
+    "teamId": "55PSHY2MW6",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:momenbasel/PureMac:stable",
+    "bundleId": "com.puremac.app",
+    "teamId": "H3WXHVTP97",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:moonlight-stream/moonlight-qt:stable",
+    "bundleId": "com.moonlight-stream.Moonlight",
+    "teamId": "45U78722YL",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:mountain-loop/yaak:beta",
+    "bundleId": "app.yaak.desktop",
+    "teamId": "7PU3P6ELJ8",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:mountain-loop/yaak:stable",
+    "bundleId": "app.yaak.desktop",
+    "teamId": "7PU3P6ELJ8",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:mstcvk/mc-download-manager:stable",
+    "bundleId": "com.mesutcevik.mcdownloadmanager",
+    "teamId": "D547CSD5CA",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:neovide/neovide:stable",
+    "bundleId": "com.neovide.neovide",
+    "teamId": "X8CNW77992",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:newmarcel/KeepingYouAwake:stable",
+    "bundleId": "info.marcel-dierkes.KeepingYouAwake",
+    "teamId": "5KESHV9W85",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:objective-see/LuLu:stable",
+    "bundleId": "com.objective-see.lulu.app",
+    "teamId": "VBG97UB4TA",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:ollama/ollama:stable",
+    "bundleId": "com.electron.ollama",
+    "teamId": "3MU9H2V9Y9",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:openchamber/openchamber:preview",
+    "bundleId": "dev.openchamber.desktop",
+    "teamId": "5J7WJGPA2Q",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:openchamber/openchamber:stable",
+    "bundleId": "dev.openchamber.desktop",
+    "teamId": "5J7WJGPA2Q",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:opengeos/RustGIS:stable",
+    "bundleId": "org.rustgis.RustGIS",
+    "teamId": "Z6ABKZWLA7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:penso/herdr-gpui:stable",
+    "bundleId": "so.pen.herdr-gpui",
+    "teamId": "VJAHQVZ96V",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:pingdotgg/t3code:alpha",
+    "bundleId": "com.t3tools.t3code",
+    "teamId": "ARK85ZXQ4Z",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:pingdotgg/t3code:nightly",
+    "bundleId": "com.t3tools.t3code",
+    "teamId": "ARK85ZXQ4Z",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:podman-desktop/podman-desktop:stable",
+    "bundleId": "io.podmandesktop.PodmanDesktop",
+    "teamId": "HYSCB8KRL2",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:qishibo/AnotherRedisDesktopManager:stable",
+    "bundleId": "me.qii404.another-redis-desktop-manager",
+    "teamId": "68JN8DV835",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:rancher-sandbox/rancher-desktop:stable",
+    "bundleId": "io.rancherdesktop.app",
+    "teamId": "2Q6FHJR3H3",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:raspberrypi/rpi-imager:stable",
+    "bundleId": "com.raspberrypi.rpi-imager",
+    "teamId": "8RDZTRXE62",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:redis/RedisInsight:stable",
+    "bundleId": "org.RedisLabs.RedisInsight-V2",
+    "teamId": "UUK47G4BAZ",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:reviu-dev/reviu:stable",
+    "bundleId": "com.jorisgallot.reviu",
+    "teamId": "V3N3ZQ3643",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:rustdesk/rustdesk:stable",
+    "bundleId": "com.carriez.rustdesk",
+    "teamId": "HZF9JMC8YN",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:schuyler/macdown3000:stable",
+    "bundleId": "app.macdown.macdown3000",
+    "teamId": "EDUS6QCV5X",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:sqlitebrowser/sqlitebrowser:stable",
+    "bundleId": "net.sourceforge.sqlitebrowser",
+    "teamId": "C34AV33YLK",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:starmel/OpenSuperWhisper:stable",
+    "bundleId": "ru.starmel.OpenSuperWhisper",
+    "teamId": "8LLDD7HWZK",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:storytold/designcraft:stable",
+    "bundleId": "ai.storyteller.designcraft",
+    "teamId": "DJ6XS33FX8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:storytold/effectcraft:stable",
+    "bundleId": "ai.storyteller.effectcraft",
+    "teamId": "DJ6XS33FX8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:storytold/filmcraft:stable",
+    "bundleId": "ai.storyteller.filmcraft",
+    "teamId": "DJ6XS33FX8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:storytold/lightcraft:stable",
+    "bundleId": "ai.storyteller.lightcraft",
+    "teamId": "DJ6XS33FX8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:storytold/pdfcraft:stable",
+    "bundleId": "ai.storyteller.pdfcraft",
+    "teamId": "DJ6XS33FX8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:storytold/photocraft:stable",
+    "bundleId": "ai.storyteller.photocraft",
+    "teamId": "DJ6XS33FX8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:storytold/vectorcraft:stable",
+    "bundleId": "ai.storyteller.vectorcraft",
+    "teamId": "DJ6XS33FX8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:swiftbar/SwiftBar:stable",
+    "bundleId": "com.ameba.SwiftBar",
+    "teamId": "X93LWC49WV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:ther0n/UnnaturalScrollWheels:stable",
+    "bundleId": "com.theron.UnnaturalScrollWheels",
+    "teamId": "VH8UL6UKQL",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:tombonez/noTunes:stable",
+    "bundleId": "digital.twisted.noTunes",
+    "teamId": "JP6WW46Y42",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:trycua/cua:nightly",
+    "bundleId": "com.trycua.driver",
+    "teamId": "YCK386LBJ7",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:trycua/cua:stable",
+    "bundleId": "com.trycua.driver",
+    "teamId": "YCK386LBJ7",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:upscayl/upscayl:stable",
+    "bundleId": "org.upscayl.Upscayl",
+    "teamId": "W2T4W74X87",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:usebruno/bruno:stable",
+    "bundleId": "com.usebruno.app",
+    "teamId": "W7LPPWA48L",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:utmapp/UTM:beta",
+    "bundleId": "com.utmapp.UTM",
+    "teamId": "WDNLXAD4W8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:utmapp/UTM:stable",
+    "bundleId": "com.utmapp.UTM",
+    "teamId": "WDNLXAD4W8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:vorssaint/vorssaint-utils:beta",
+    "bundleId": "com.vorssaint.utils",
+    "teamId": "3D485NHW29",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:vorssaint/vorssaint-utils:stable",
+    "bundleId": "com.vorssaint.utils",
+    "teamId": "3D485NHW29",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:wickenico/WailBrew:stable",
+    "bundleId": "io.github.wickenico.wailbrew",
+    "teamId": "2MC8SWF35Z",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "github:yetone/magpie-releases:stable",
+    "bundleId": "com.yetone.magpie",
+    "teamId": "LY7MVTUDZG",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:zed-industries/zed:preview",
+    "bundleId": "dev.zed.Zed-Preview",
+    "teamId": "MQ55VZLNZQ",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:zed-industries/zed:stable",
+    "bundleId": "dev.zed.Zed",
+    "teamId": "MQ55VZLNZQ",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "github:zen-browser/desktop:stable",
+    "bundleId": "app.zen-browser.zen",
+    "teamId": "9V5K9TP787",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:MstyStudio:stable",
+    "bundleId": "MstyStudio",
+    "teamId": "S6CF5A8MX9",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:ai.elementlabs.lmstudio:stable",
+    "bundleId": "ai.elementlabs.lmstudio",
+    "teamId": "D65G88RHWN",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:ai.memoh.desktop:stable",
+    "bundleId": "ai.memoh.desktop",
+    "teamId": "P9R669C27U",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:ai.perplexity.comet:stable",
+    "bundleId": "ai.perplexity.comet",
+    "teamId": "7S8W4W365S",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:app.chatwise:stable",
+    "bundleId": "app.chatwise",
+    "teamId": "GJE9R5VE87",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:app.getmoshi.desktop:stable",
+    "bundleId": "app.getmoshi.desktop",
+    "teamId": "FL442366Y7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:bot.cline.app.beta:beta",
+    "bundleId": "bot.cline.app.beta",
+    "teamId": "6F2AYU54ZH",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:bot.cline.app:stable",
+    "bundleId": "bot.cline.app",
+    "teamId": "6F2AYU54ZH",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.1password.1password:stable",
+    "bundleId": "com.1password.1password",
+    "teamId": "2BUA8C4S2C",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.aionui.app:stable",
+    "bundleId": "com.aionui.app",
+    "teamId": "52JQX2HUSC",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.aliyun.lingma.ide:stable",
+    "bundleId": "com.aliyun.lingma.ide",
+    "teamId": "9DFNGU9AK5",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.anthropic.claudefordesktop:stable:ga",
+    "bundleId": "com.anthropic.claudefordesktop",
+    "teamId": "Q6L2SF6YDW",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.anysphere.sand:stable",
+    "bundleId": "com.anysphere.sand",
+    "teamId": "DCNK4UB866",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.anythingllm:stable",
+    "bundleId": "com.anythingllm",
+    "teamId": "35S2NMU3G4",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.baidu.BaiduNetdisk-mac:stable",
+    "bundleId": "com.baidu.BaiduNetdisk-mac",
+    "teamId": "738UU3Y57V",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.bjango.istatmenus:stable",
+    "bundleId": "com.bjango.istatmenus",
+    "teamId": "Y93TK974AT",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.brave.Browser.beta:beta",
+    "bundleId": "com.brave.Browser.beta",
+    "teamId": "KL8N8XSYF4",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.brave.Browser.nightly:nightly",
+    "bundleId": "com.brave.Browser.nightly",
+    "teamId": "KL8N8XSYF4",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.bytedance.inputmethod.doubaoime:stable",
+    "bundleId": "com.bytedance.inputmethod.doubaoime",
+    "teamId": "96L78H6LMH",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.canva.CanvaDesktop:stable",
+    "bundleId": "com.canva.CanvaDesktop",
+    "teamId": "5HD2ARTBFS",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.conductor.app:stable",
+    "bundleId": "com.conductor.app",
+    "teamId": "27XN666UJ7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.corecode.MacUpdater:stable",
+    "bundleId": "com.corecode.MacUpdater",
+    "teamId": "9D78DG5ACV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.docker.docker:stable",
+    "bundleId": "com.docker.docker",
+    "teamId": "9BNSXJN65R",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.electron.kontena-lens:stable",
+    "bundleId": "com.electron.kontena-lens",
+    "teamId": "JJ22T2W355",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.electron.wispr-flow:stable",
+    "bundleId": "com.electron.wispr-flow",
+    "teamId": "C9VQZ78H85",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.exafunction.windsurf:stable",
+    "bundleId": "com.exafunction.windsurf",
+    "teamId": "83Z2LHX6XW",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.figma.Desktop:stable",
+    "bundleId": "com.figma.Desktop",
+    "teamId": "T8RA8NE3B7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.figma.DesktopBeta:beta",
+    "bundleId": "com.figma.DesktopBeta",
+    "teamId": "T8RA8NE3B7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.getdropbox.dropbox:stable",
+    "bundleId": "com.getdropbox.dropbox",
+    "teamId": "G7HH3F8CAK",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.google.Chrome.beta:beta",
+    "bundleId": "com.google.Chrome.beta",
+    "teamId": "EQHXZ8M8AV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.google.Chrome.canary:canary",
+    "bundleId": "com.google.Chrome.canary",
+    "teamId": "EQHXZ8M8AV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.google.Chrome.dev:dev",
+    "bundleId": "com.google.Chrome.dev",
+    "teamId": "EQHXZ8M8AV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.google.Chrome:stable",
+    "bundleId": "com.google.Chrome",
+    "teamId": "EQHXZ8M8AV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.google.GeminiMacOS:stable",
+    "bundleId": "com.google.GeminiMacOS",
+    "teamId": "EQHXZ8M8AV",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.google.android.studio:beta",
+    "bundleId": "com.google.android.studio",
+    "teamId": "EQHXZ8M8AV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.google.android.studio:canary",
+    "bundleId": "com.google.android.studio",
+    "teamId": "EQHXZ8M8AV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.google.android.studio:stable",
+    "bundleId": "com.google.android.studio",
+    "teamId": "EQHXZ8M8AV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.google.antigravity:stable",
+    "bundleId": "com.google.antigravity",
+    "teamId": "EQHXZ8M8AV",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.granola.app:stable",
+    "bundleId": "com.granola.app",
+    "teamId": "QZ7DHHLN25",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.hnc.Discord:stable",
+    "bundleId": "com.hnc.Discord",
+    "teamId": "53Q6R32WPB",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.hnc.DiscordCanary:canary",
+    "bundleId": "com.hnc.DiscordCanary",
+    "teamId": "53Q6R32WPB",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.hnc.DiscordPTB:ptb",
+    "bundleId": "com.hnc.DiscordPTB",
+    "teamId": "53Q6R32WPB",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.jetbrains.intellij-EAP:preview",
+    "bundleId": "com.jetbrains.intellij-EAP",
+    "teamId": "2ZEFAR8TH3",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.jetbrains.intellij:stable",
+    "bundleId": "com.jetbrains.intellij",
+    "teamId": "2ZEFAR8TH3",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.jetbrains.toolbox:stable",
+    "bundleId": "com.jetbrains.toolbox",
+    "teamId": "2ZEFAR8TH3",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.kagi.kagimacOS:stable",
+    "bundleId": "com.kagi.kagimacOS",
+    "teamId": "TFVG979488",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.lemon.lvoverseas:beta",
+    "bundleId": "com.lemon.lvoverseas",
+    "teamId": "22MMUN2RN5",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.lemon.lvoverseas:stable",
+    "bundleId": "com.lemon.lvoverseas",
+    "teamId": "22MMUN2RN5",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.longbridge.app.desktop.preview:preview",
+    "bundleId": "com.longbridge.app.desktop.preview",
+    "teamId": "45NG8MW7WK",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.longbridge.app.desktop:stable",
+    "bundleId": "com.longbridge.app.desktop",
+    "teamId": "45NG8MW7WK",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.macpaw.site.theunarchiver:stable",
+    "bundleId": "com.macpaw.site.theunarchiver",
+    "teamId": "S8EX82NJP6",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.microsoft.VSCode:stable",
+    "bundleId": "com.microsoft.VSCode",
+    "teamId": "UBF8T346G9",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.microsoft.VSCodeInsiders:preview",
+    "bundleId": "com.microsoft.VSCodeInsiders",
+    "teamId": "UBF8T346G9",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.mongodb.compass:stable",
+    "bundleId": "com.mongodb.compass",
+    "teamId": "4XWMY46275",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.operasoftware.Opera:stable",
+    "bundleId": "com.operasoftware.Opera",
+    "teamId": "A2P9LX4JPN",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.philandro.anydesk:stable",
+    "bundleId": "com.philandro.anydesk",
+    "teamId": "KHRWM533LU",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.postmanlabs.mac:stable",
+    "bundleId": "com.postmanlabs.mac",
+    "teamId": "H7H8Q7M5CK",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.qianwen.inputmethod.desktopime:stable",
+    "bundleId": "com.qianwen.inputmethod.desktopime",
+    "teamId": "8T9NQJXDU3",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.qoder.app:stable",
+    "bundleId": "com.qoder.app",
+    "teamId": "B6U242QL73",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.qoder.ide:stable",
+    "bundleId": "com.qoder.ide",
+    "teamId": "T27K5A5ZWD",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.raycast.macos:stable:v1",
+    "bundleId": "com.raycast.macos",
+    "teamId": "SY64MV22J9",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.raycast.macos:stable:v2",
+    "bundleId": "com.raycast.macos",
+    "teamId": "SY64MV22J9",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.runningwithcrayons.Alfred:beta",
+    "bundleId": "com.runningwithcrayons.Alfred",
+    "teamId": "XZZXE9SED4",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.runningwithcrayons.Alfred:stable",
+    "bundleId": "com.runningwithcrayons.Alfred",
+    "teamId": "XZZXE9SED4",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.sogou.inputmethod.sogou:stable",
+    "bundleId": "com.sogou.inputmethod.sogou",
+    "teamId": "DFD88F82SU",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.spotify.client:stable",
+    "bundleId": "com.spotify.client",
+    "teamId": "2FNC3A47ZF",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.sublimemerge:stable",
+    "bundleId": "com.sublimemerge",
+    "teamId": "Z6D26JE4Y4",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.sublimetext.4:stable",
+    "bundleId": "com.sublimetext.4",
+    "teamId": "Z6D26JE4Y4",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.surteesstudios.Bartender:stable",
+    "bundleId": "com.surteesstudios.Bartender",
+    "teamId": "24J875RH8J",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.tdesktop.Telegram:stable",
+    "bundleId": "com.tdesktop.Telegram",
+    "teamId": "C67CF9S4VU",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.tencent.QQMusicMac:stable",
+    "bundleId": "com.tencent.QQMusicMac",
+    "teamId": "FN2V63AD2J",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.tencent.inputmethod.wetype:stable",
+    "bundleId": "com.tencent.inputmethod.wetype",
+    "teamId": "88L2Q4487U",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.tencent.workbuddy.mac:stable:arm64",
+    "bundleId": "com.tencent.workbuddy.mac",
+    "teamId": "FN2V63AD2J",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.tencent.workbuddy.mac:stable:x64",
+    "bundleId": "com.tencent.workbuddy.mac",
+    "teamId": "FN2V63AD2J",
+    "architectures": [
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.tencent.xinWeChat:stable",
+    "bundleId": "com.tencent.xinWeChat",
+    "teamId": "5A4RE8SF68",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.termius-beta.mac:beta",
+    "bundleId": "com.termius-beta.mac",
+    "teamId": "6KN952WR85",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.termius-dmg.mac:stable",
+    "bundleId": "com.termius-dmg.mac",
+    "teamId": "6KN952WR85",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.tigervnc.tigervnc:stable",
+    "bundleId": "com.tigervnc.tigervnc",
+    "teamId": "S5LX88A9BW",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.tinyspeck.slackmacgap:stable",
+    "bundleId": "com.tinyspeck.slackmacgap",
+    "teamId": "BQR82RBBHL",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.todesktop.230313mzl4w4u92:stable",
+    "bundleId": "com.todesktop.230313mzl4w4u92",
+    "teamId": "VDXQ22DGB9",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.trae.app:stable:arm64",
+    "bundleId": "com.trae.app",
+    "teamId": "79M8227NKH",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.trae.app:stable:x64",
+    "bundleId": "com.trae.app",
+    "teamId": "79M8227NKH",
+    "architectures": [
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.unity3d.unityhub:stable",
+    "bundleId": "com.unity3d.unityhub",
+    "teamId": "9QW8UQUTAA",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.vivaldi.Vivaldi.snapshot:preview",
+    "bundleId": "com.vivaldi.Vivaldi.snapshot",
+    "teamId": "4XF3XNRN6Y",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.workbuddy.workbuddy-ai:stable:arm64",
+    "bundleId": "com.workbuddy.workbuddy-ai",
+    "teamId": "FN2V63AD2J",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.workbuddy.workbuddy-ai:stable:x64",
+    "bundleId": "com.workbuddy.workbuddy-ai",
+    "teamId": "FN2V63AD2J",
+    "architectures": [
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:com.zarifpour.superconductor:nightly",
+    "bundleId": "com.zarifpour.superconductor",
+    "teamId": "MR38E36N26",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:dev.commandline.waveterm:stable",
+    "bundleId": "dev.commandline.waveterm",
+    "teamId": "M4LA8V687Y",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:dev.hyperframes.desktop.canary:canary",
+    "bundleId": "dev.hyperframes.desktop.canary",
+    "teamId": "2VW993BDT8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:dev.hyperframes.desktop:stable",
+    "bundleId": "dev.hyperframes.desktop",
+    "teamId": "2VW993BDT8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:dev.kdrag0n.MacVirt:beta",
+    "bundleId": "dev.kdrag0n.MacVirt",
+    "teamId": "HUAQ24HBR6",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:dev.kdrag0n.MacVirt:canary",
+    "bundleId": "dev.kdrag0n.MacVirt",
+    "teamId": "HUAQ24HBR6",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:dev.kdrag0n.MacVirt:stable",
+    "bundleId": "dev.kdrag0n.MacVirt",
+    "teamId": "HUAQ24HBR6",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:dev.kiro.desktop:stable",
+    "bundleId": "dev.kiro.desktop",
+    "teamId": "94KV3E626L",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:dev.warp.Warp-Preview:preview",
+    "bundleId": "dev.warp.Warp-Preview",
+    "teamId": "2BBY89MBSN",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:dev.warp.Warp-Stable:stable",
+    "bundleId": "dev.warp.Warp-Stable",
+    "teamId": "2BBY89MBSN",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:im.riot.app:stable",
+    "bundleId": "im.riot.app",
+    "teamId": "7J4U792NQT",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:im.riot.nightly:nightly",
+    "bundleId": "im.riot.nightly",
+    "teamId": "7J4U792NQT",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:io.dcloud.HBuilderX:stable",
+    "bundleId": "io.dcloud.HBuilderX",
+    "teamId": "YQM5H857L5",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:io.dcloud.HBuilderXAlpha:alpha",
+    "bundleId": "io.dcloud.HBuilderXAlpha",
+    "teamId": "YQM5H857L5",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:jan-nightly.ai.app:nightly:arm64",
+    "bundleId": "jan-nightly.ai.app",
+    "teamId": "F8AH6NHVY5",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:jan-nightly.ai.app:nightly:x86_64",
+    "bundleId": "jan-nightly.ai.app",
+    "teamId": "F8AH6NHVY5",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:md.obsidian:stable",
+    "bundleId": "md.obsidian",
+    "teamId": "6JSW4SJWN9",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:net.kovidgoyal.calibre:stable",
+    "bundleId": "net.kovidgoyal.calibre",
+    "teamId": "NTY7FVCEKP",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:net.pornel.ImageOptim:stable",
+    "bundleId": "net.pornel.ImageOptim",
+    "teamId": "59KZTZA4XR",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:net.sourceforge.grandperspectiv:stable",
+    "bundleId": "net.sourceforge.grandperspectiv",
+    "teamId": "3Z75QZGN66",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:net.whatsapp.WhatsApp:stable",
+    "bundleId": "net.whatsapp.WhatsApp",
+    "teamId": "57T9237FN3",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:notion.id:stable",
+    "bundleId": "notion.id",
+    "teamId": "LBQJ96FQ8D",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:now.typeless.desktop:stable",
+    "bundleId": "now.typeless.desktop",
+    "teamId": "947QKAND4W",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.blenderfoundation.blender:alpha",
+    "bundleId": "org.blenderfoundation.blender",
+    "teamId": "68UA947AUU",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.blenderfoundation.blender:beta",
+    "bundleId": "org.blenderfoundation.blender",
+    "teamId": "68UA947AUU",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.blenderfoundation.blender:stable",
+    "bundleId": "org.blenderfoundation.blender",
+    "teamId": "68UA947AUU",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.cindori.TrimEnabler4:stable",
+    "bundleId": "org.cindori.TrimEnabler4",
+    "teamId": "ZQK6SX26CE",
+    "architectures": [
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.gimp.gimp:stable",
+    "bundleId": "org.gimp.gimp",
+    "teamId": "T25BQ8HSJF",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.gnome.Meld:stable",
+    "bundleId": "org.gnome.Meld",
+    "teamId": "SW3D6BB6A6",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.gnu.Emacs:stable",
+    "bundleId": "org.gnu.Emacs",
+    "teamId": "5BRAQAFB8B",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.grunenberg.EasyFind:stable",
+    "bundleId": "org.grunenberg.EasyFind",
+    "teamId": "679S2QUWR8",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.inkscape.Inkscape:stable",
+    "bundleId": "org.inkscape.Inkscape",
+    "teamId": "SW3D6BB6A6",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.libreoffice.script:stable",
+    "bundleId": "org.libreoffice.script",
+    "teamId": "7P5S3ZLCN7",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.mozilla.firefox:beta",
+    "bundleId": "org.mozilla.firefox",
+    "teamId": "43AQ936H96",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.mozilla.firefox:esr",
+    "bundleId": "org.mozilla.firefox",
+    "teamId": "43AQ936H96",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.mozilla.firefox:stable",
+    "bundleId": "org.mozilla.firefox",
+    "teamId": "43AQ936H96",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.mozilla.firefoxdeveloperedition:dev",
+    "bundleId": "org.mozilla.firefoxdeveloperedition",
+    "teamId": "43AQ936H96",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.mozilla.nightly:nightly",
+    "bundleId": "org.mozilla.nightly",
+    "teamId": "43AQ936H96",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.mozilla.thunderbird-daily:nightly",
+    "bundleId": "org.mozilla.thunderbird-daily",
+    "teamId": "43AQ936H96",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.mozilla.thunderbird:esr",
+    "bundleId": "org.mozilla.thunderbird",
+    "teamId": "43AQ936H96",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.mozilla.thunderbird:stable",
+    "bundleId": "org.mozilla.thunderbird",
+    "teamId": "43AQ936H96",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.mozilla.thunderbirdbeta:beta",
+    "bundleId": "org.mozilla.thunderbirdbeta",
+    "teamId": "43AQ936H96",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.pgadmin.pgadmin4:stable",
+    "bundleId": "org.pgadmin.pgadmin4",
+    "teamId": "TCHGL2R7C5",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.torproject.torbrowser:stable",
+    "bundleId": "org.torproject.torbrowser",
+    "teamId": "MADPSAYN6T",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.videolan.vlc:stable",
+    "bundleId": "org.videolan.vlc",
+    "teamId": "75GAHG3SZQ",
+    "architectures": [
+      "arm64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.whispersystems.signal-desktop-beta:beta",
+    "bundleId": "org.whispersystems.signal-desktop-beta",
+    "teamId": "U68MSDN6DR",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.whispersystems.signal-desktop:stable",
+    "bundleId": "org.whispersystems.signal-desktop",
+    "teamId": "U68MSDN6DR",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:org.zotero.zotero:stable",
+    "bundleId": "org.zotero.zotero",
+    "teamId": "8LAYR367YV",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:tv.plex.desktop:stable",
+    "bundleId": "tv.plex.desktop",
+    "teamId": "K4QJ56KR4A",
+    "architectures": [
+      "arm64",
+      "x86_64"
+    ]
+  },
+  {
+    "sourceKey": "vendor:xyz.chatboxapp.app:stable",
+    "bundleId": "xyz.chatboxapp.app",
+    "teamId": "YJ5GSB3AMW",
+    "architectures": [
+      "arm64"
+    ]
+  }
+]

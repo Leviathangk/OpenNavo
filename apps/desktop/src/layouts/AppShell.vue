@@ -13,8 +13,12 @@ import DeepLinkConfirm from '@/components/shell/DeepLinkConfirm.vue';
 import QuitConfirm from '@/components/shell/QuitConfirm.vue';
 import InstallConfirm from '@/components/shell/InstallConfirm.vue';
 import TapConfirm from '@/components/shell/TapConfirm.vue';
+import MajorConfirm from '@/components/updates/MajorConfirm.vue';
+import PasteGuard from '@/components/security/PasteGuard.vue';
 import CleanupNotifier from '@/components/cleanup/CleanupNotifier.vue';
 import MonitorNotifier from '@/components/monitor/MonitorNotifier.vue';
+import SecurityNotifier from '@/components/security/SecurityNotifier.vue';
+import DownloadNotifier from '@/components/package/DownloadNotifier.vue';
 import UninstallDialog from '@/components/uninstall/UninstallDialog.vue';
 import RunningAppsConfirm from '@/components/shell/RunningAppsConfirm.vue';
 import RestorePrompt from '@/components/shell/RestorePrompt.vue';
@@ -107,9 +111,13 @@ watch(
       <RunningAppsConfirm />
       <InstallConfirm />
       <TapConfirm />
+      <MajorConfirm />
+      <PasteGuard />
       <UninstallDialog />
       <CleanupNotifier />
       <MonitorNotifier />
+      <SecurityNotifier />
+      <DownloadNotifier />
       <AppUpdateDialog />
       <OnToastRegion :items="toasts.items.value" @dismiss="toasts.dismiss" @action="toasts.runAction" />
     </template>

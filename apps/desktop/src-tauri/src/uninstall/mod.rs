@@ -4,7 +4,7 @@ pub mod apps;
 pub mod execute;
 mod footprint;
 #[cfg(target_os = "macos")]
-mod fsevents;
+pub(crate) mod fsevents;
 pub mod identity;
 pub(crate) mod leftovers;
 pub mod manifest;

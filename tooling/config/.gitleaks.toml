@@ -20,3 +20,17 @@ condition = "AND"
 paths = ['''^(apps/)?server/gen/(publicapi/publicapi|adminapi/adminapi)\.gen\.go$''']
 regexTarget = "line"
 regexes = ['''^(\s*"[A-Za-z0-9+/=]{80}",?\s*)+$''']
+
+[[rules]]
+id = "sourcegraph-access-token"
+
+# Native dependency versions are public Git SHA-1 revisions, not access tokens.
+[[rules.allowlists]]
+description = "Third-party source revisions in generated About seed data"
+condition = "AND"
+paths = ['''^apps/server/seeds/about\.json$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*"version": "[a-f0-9]{40}",?\s*$''',
+  '''^\s*"url": "https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/tree/[a-f0-9]{40}",?\s*$''',
+]

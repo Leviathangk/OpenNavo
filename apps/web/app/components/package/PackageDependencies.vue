@@ -18,6 +18,8 @@ const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 
 const { data: pkg, token } = await usePackage(props.kind);
+// Link apps have no Homebrew definition; the layout hides this tab for them (usePackage resolves the kind).
+if (pkg.value?.kind === 'link') throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true });
 
 const messages = useUiMessages();
 const platforms = computed(() => pkg.value?.platforms ?? []);

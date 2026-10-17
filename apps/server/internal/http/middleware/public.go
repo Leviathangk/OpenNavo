@@ -172,7 +172,10 @@ func PublicCacheHeaders() gin.HandlerFunc {
 		status := writer.Status()
 		if status == 200 {
 			hash := sha256.Sum256(writer.body.Bytes())
-			etag := `W/"` + hex.EncodeToString(hash[:16]) + `"`
+			etag := c.Writer.Header().Get("ETag")
+			if etag == "" {
+				etag = `W/"` + hex.EncodeToString(hash[:16]) + `"`
+			}
 			c.Header("ETag", etag)
 			policy := c.GetString("publicCachePolicy")
 			if policy == "" {

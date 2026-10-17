@@ -36,7 +36,8 @@ export interface BrewfileParseResult {
   unsupported: BrewfileUnsupported[];
 }
 
-const KIND_KEYWORD: Record<PackageKind, string> = { cask: 'cask', formula: 'brew' };
+// Link apps have no Homebrew line; toBrewfile skips them.
+const KIND_KEYWORD: Record<Exclude<PackageKind, 'link'>, string> = { cask: 'cask', formula: 'brew' };
 
 // Official Homebrew taps need no action.
 const OFFICIAL_TAPS = new Set(['homebrew/core', 'homebrew/cask', 'homebrew/bundle', 'homebrew/services']);
@@ -66,7 +67,7 @@ export function toBrewfile(items: readonly BrewfileItem[], { title }: { title?: 
   if (title) lines.push(`# ${title.replace(/\s+/g, ' ').trim()}`);
   for (const { kind, token } of items) {
     const key = `${kind}:${token}`;
-    if (!isValidToken(token) || seen.has(key)) continue;
+    if (kind === 'link' || !isValidToken(token) || seen.has(key)) continue;
     seen.add(key);
     lines.push(`${KIND_KEYWORD[kind]} "${token}"`);
   }

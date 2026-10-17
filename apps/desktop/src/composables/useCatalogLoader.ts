@@ -1,5 +1,6 @@
 import type { WatchSource } from 'vue';
 import { useCatalogStore } from '@/stores/catalog';
+import { useLinksStore } from '@/stores/links';
 import { useNamesStore } from '@/stores/names';
 import type { LocalItem } from '@/ipc/client';
 import { useLoader } from './useLoader';
@@ -15,11 +16,17 @@ export function useCatalogLoader<T>(
   identitySources: WatchSource[] = sources
 ) {
   const catalog = useCatalogStore();
+  const links = useLinksStore();
   const names = useNamesStore();
   return useLoader(
     fetcher,
     [...sources, () => catalog.revision],
-    value => names.remember(itemsOf(value)),
+    value => {
+      // Shared caches must obey the same query, catalog revision and scope lifetime as the shown results.
+      const items = itemsOf(value);
+      names.remember(items);
+      links.remember(items);
+    },
     identitySources
   );
 }

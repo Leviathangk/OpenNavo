@@ -4,7 +4,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
 import { formatBytes, formatRelativeTime } from '@opennavo/shared';
-import { OnButton, OnEmpty, OnPageHeader, OnSegmented } from '@opennavo/ui';
+import { OnButton, OnEmpty, OnIcon, OnPageHeader, OnSegmented } from '@opennavo/ui';
 import HistoryList from '@/components/updates/HistoryList.vue';
 import OutdatedList from '@/components/updates/OutdatedList.vue';
 import RunningTask from '@/components/updates/RunningTask.vue';
@@ -16,17 +16,18 @@ import { useClock } from '@/composables/useClock';
 import { useLoader } from '@/composables/useLoader';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
-import { useSettingsStore, useTasksStore, useUpdatesStore } from '@/stores';
+import { useTasksStore, useUpdatesStore } from '@/stores';
+import { useMasStore } from '@/stores/mas';
 import { isListedTask } from '@/utils/history';
 
 const { appLocale: formattingLocale } = useFormattingLocale();
 
 // Updates (mockup 05): Check / Update All, running tasks, available updates (frontend summary lookup, 06 §6.8), and local history.
-const { t } = useI18n();
+const { t, te } = useI18n();
 const { appLocale } = useAppLocale();
 const updates = useUpdatesStore();
+const mas = useMasStore();
 const tasks = useTasksStore();
-const settings = useSettingsStore();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 
@@ -49,9 +50,55 @@ const subtitle = computed(() => {
     : head;
 });
 
+// A check that read most sources but not all says which ones, instead of failing as a whole.
+const failedText = computed(() => {
+  const sources = updates.failedSources;
+  if (!sources.length) return '';
+  const label = (source: string) =>
+    te(`updates.sources.${source}`) ? t(`updates.sources.${source}`) : t(`updates.source.${source}`);
+  const names = new Intl.ListFormat(appLocale.value, { type: 'conjunction' }).format(sources.map(label));
+  return t('updates.failedSources', { sources: names });
+});
+
 async function check() {
   try {
-    await updates.check(settings.value?.runBrewUpdateOnCheck ?? true);
+    await updates.check();
+  } catch (error) {
+    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+  }
+}
+
+// Source filter (store/security plan §7, mockup D): shown once more than one kind of source has updates. Update All
+// still covers every source.
+type SourceFilter = 'all' | 'homebrew' | 'mas' | 'other';
+const sourceFilter = ref<SourceFilter>('all');
+const groupOf = (source: string): Exclude<SourceFilter, 'all'> =>
+  source === 'homebrew' ? 'homebrew' : source === 'mas' ? 'mas' : 'other';
+const filterCounts = computed(() => {
+  const counts = { all: updates.items.length, homebrew: 0, mas: 0, other: 0 };
+  for (const item of updates.items) counts[groupOf(item.source)] += 1;
+  return counts;
+});
+const filterOptions = computed(() =>
+  (['all', 'homebrew', 'mas', 'other'] as const)
+    .filter(key => key === 'all' || filterCounts.value[key] > 0)
+    .map(key => ({ value: key, label: t(`updates.filter.${key}`, { count: filterCounts.value[key] }) }))
+);
+const shownItems = computed(() =>
+  sourceFilter.value === 'all'
+    ? updates.items
+    : updates.items.filter(item => groupOf(item.source) === sourceFilter.value)
+);
+// A filter whose rows are all gone (updated, skipped) falls back to everything.
+watch(filterOptions, options => {
+  if (!options.some(option => option.value === sourceFilter.value)) sourceFilter.value = 'all';
+});
+
+// App Store updates need an Apple Account signed in to the App Store; its product page is where to sign in.
+const masRow = computed(() => updates.items.find(item => item.source === 'mas'));
+async function openAppStore() {
+  try {
+    if (masRow.value) await mas.openStore(Number(masRow.value.token));
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
   }
@@ -59,8 +106,7 @@ async function check() {
 
 async function updateAll() {
   try {
-    const targets = updates.actionable.map(item => ({ kind: item.kind, token: item.token }));
-    const queued = await tasks.enqueueMany('upgrade', targets, 'manual', { greedy: true });
+    const queued = await updates.upgrade(updates.actionable);
     if (queued.length)
       toasts.push({
         tone: 'success',
@@ -111,7 +157,7 @@ const STATES: Record<Filter, TaskState[]> = {
 };
 const query = (): HistoryQuery => ({
   q: null,
-  ops: ['install', 'upgrade', 'uninstall', 'reinstall', 'clean', 'remove_leftovers'],
+  ops: ['install', 'upgrade', 'uninstall', 'reinstall', 'clean', 'remove_leftovers', 'rollback'],
   states: STATES[filter.value],
   target: null,
   includeScheduledUpdates: false,
@@ -240,7 +286,28 @@ useLoader(() => updates.load());
 
     <RunningTask v-if="tasks.running && tasks.running.op !== 'cleanup'" :task="tasks.running" />
 
-    <OutdatedList v-if="updates.items.length" :items="updates.items" :summaries="summaries" />
+    <div
+      v-if="updates.masSignedOut && masRow"
+      role="alert"
+      class="flex items-center gap-12px rounded-default bg-surface-raised p-12px"
+    >
+      <span class="flex-1 text-13px text-ink-secondary">{{ t('updates.masSignedOut') }}</span>
+      <OnButton variant="secondary" size="sm" @click="openAppStore">{{ t('updates.openAppStore') }}</OnButton>
+    </div>
+
+    <p v-if="failedText" role="status" class="m-0 flex items-center gap-6px text-12.5px text-ink-tertiary">
+      <OnIcon name="info" :size="14" class="shrink-0" />{{ failedText }}
+    </p>
+
+    <OnSegmented
+      v-if="filterOptions.length > 2"
+      v-model="sourceFilter"
+      size="sm"
+      class="self-start"
+      :aria-label="t('updates.filter.label')"
+      :options="filterOptions"
+    />
+    <OutdatedList v-if="shownItems.length" :items="shownItems" :summaries="summaries" />
     <OnEmpty
       v-else-if="updates.loaded"
       :title="t('updates.empty')"

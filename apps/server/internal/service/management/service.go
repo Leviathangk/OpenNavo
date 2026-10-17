@@ -148,6 +148,12 @@ func mapped(body map[string]any, names map[string]string) map[string]any {
 }
 func snapshotEntity(ctx context.Context, st *store.Store, entity string, in Input) (any, error) {
 	id := in.ID
+	if entity == "update_feed" {
+		return st.UpdateFeed(ctx, domain.UpdateFeedKey{BundleID: text(in.Body, "bundleId"), Source: text(in.Body, "source")})
+	}
+	if entity == "link_app" && id > 0 {
+		return st.LinkApp(ctx, id)
+	}
 	if entity == "release" {
 		return releaseSnapshot(ctx, st, in)
 	}
@@ -221,7 +227,7 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 	ctx = operationContext(ctx, op, in)
 	var result any
 	err := s.Store.WithTx(ctx, func(tx *gorm.DB) error {
-		if historyEntities(entity) != "" || entity == "changelog_source" {
+		if historyEntities(entity) != "" || entity == "changelog_source" || entity == "link_app" {
 			if err := store.LockCatalogWrites(ctx, tx); err != nil {
 				return err
 			}
@@ -292,8 +298,14 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 			return errPreviewRollback
 		}
 		var after any = mapped(in.Body, map[string]string{"name": "name", "permissions": "permissions", "allowDelete": "allowDelete", "ipAllowlist": "ipAllowlist", "expiresAt": "expiresAt", "limits": "limits", "sourceLocale": "sourceLocale", "title": "title", "body": "body", "sections": "sections", "term": "term", "translations": "translations", "doNotTranslate": "doNotTranslate", "developer": "developer", "repoUrl": "repoUrl", "hidden": "hidden", "editorChoice": "editorChoice", "tags": "tags", "notes": "notes", "downloadSize": "downloadSize", "accentColor": "accentColor", "displayName": "displayName", "summary": "summary", "description": "description", "assetId": "assetId", "captionZh": "captionZh", "captionEn": "captionEn", "theme": "theme", "items": "items", "ids": "ids", "slug": "slug", "icon": "icon", "appliesTo": "appliesTo", "visible": "visible", "hiddenByDefault": "hiddenByDefault", "parentId": "parentId", "i18n": "i18n", "roles": "roles", "status": "status", "nickName": "nickName", "email": "email", "userName": "userName", "roleCode": "roleCode", "roleName": "roleName", "roleDesc": "roleDesc", "permissionCodes": "permissionCodes", "terms": "terms", "enabled": "enabled", "handlerNote": "handlerNote", "manual": "manual", "autoEnabled": "autoEnabled", "value": "value", "key": "key", "nameZh": "nameZh", "nameEn": "nameEn", "probeUrl": "probeUrl", "recommended": "recommended", "sort": "sort", "apiDomain": "apiDomain", "bottleDomain": "bottleDomain", "brewGitRemote": "brewGitRemote", "coreGitRemote": "coreGitRemote", "publishAt": "publishAt", "unpublishAt": "unpublishAt", "coverAssetId": "coverAssetId", "placement": "placement", "targetType": "targetType", "packageId": "packageId", "collectionId": "collectionId", "url": "url", "glowColor": "glowColor", "startsAt": "startsAt", "endsAt": "endsAt", "type": "type", "amount": "amount", "currency": "currency", "region": "region", "plan": "plan", "period": "period", "appVersion": "appVersion", "sourceUrl": "sourceUrl", "method": "method", "verifiedAt": "verifiedAt", "ranges": "ranges", "note": "note"})
-		if op != "UpsertReleaseNotes" && (entity == "release" || entity == "translation" || entity == "changelog_source") {
-			after, err = snapshotEntity(ctx, st, entity, in)
+		if op != "UpsertReleaseNotes" && (entity == "release" || entity == "translation" || entity == "changelog_source" || entity == "link_app" || entity == "update_feed") {
+			auditInput := in
+			if entity == "link_app" && auditInput.ID == 0 {
+				if created, ok := result.(map[string]any); ok {
+					auditInput.ID = valueID(created["id"])
+				}
+			}
+			after, err = snapshotEntity(ctx, st, entity, auditInput)
 			if err != nil {
 				return err
 			}
@@ -329,6 +341,10 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 	ctx = operationContext(ctx, op, in)
 	domain.CurrentOperation(ctx).WebBaseURL = s.Config.WebBaseURL
 	switch op {
+	case "UpsertUpdateFeed", "DisableUpdateFeed":
+		return s.updateFeedOperation(ctx, op, in)
+	case "ListLinkPackages", "AddLinkPackage", "UpdateLinkPackage", "RemoveLinkPackage":
+		return s.linkOperation(ctx, op, in)
 	case "ListAdminVersions":
 		return s.adminVersions(ctx, in)
 	case "ListAdminCatalogChanges":

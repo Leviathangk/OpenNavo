@@ -69,6 +69,22 @@ test('generated-data exemptions require both exact path and exact line shape', t
   result(f.scan('--worktree'), 1); // Never exempt similarly named nested files.
 });
 
+test('About source revision exemptions reject tokens and unrelated paths or fields', t => {
+  const f = fixture(t);
+  const hash = 'abcdef0123456789'.repeat(2) + 'abcdef01';
+  const path = 'apps/server/seeds/about.json';
+  const seed = `{"name": "sourcegraph",\n  "version": "${hash}",\n  "url": "https://github.com/example/project/tree/${hash}"\n}\n`;
+  f.put(path, seed);
+  result(f.scan('--worktree'), 0);
+  f.put('other.json', seed);
+  result(f.scan('--worktree'), 1);
+  f.put('other.json', '{}');
+  f.put(path, seed.replace('"version"', '"token"'));
+  result(f.scan('--worktree'), 1);
+  f.put(path, seed.replace(hash, ['sgp', hash].join('_')));
+  result(f.scan('--worktree'), 1);
+});
+
 test('representative tokens and private-key headers are rejected even with inline allow comments', t => {
   const f = fixture(t);
   const values = [

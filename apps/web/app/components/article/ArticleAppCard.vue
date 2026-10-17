@@ -42,7 +42,7 @@ const meta = computed(() =>
       :link-as="NuxtLink"
     >
       <template #actions>
-        <GetMenu :kind="pkg.kind" :token="pkg.token" :name="pkg.displayName" />
+        <GetMenu :kind="pkg.kind" :token="pkg.token" :name="pkg.displayName" :link="pkg.link" />
       </template>
     </OnAppRow>
     <p class="m-0 border-t border-t-solid border-line-subtle py-8px text-11.5px text-ink-tertiary">

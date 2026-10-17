@@ -13,6 +13,7 @@ import (
 // SourceFactPackage is what the source-facts job needs to find an app's repository and bundle
 // identifiers in its Homebrew definition.
 type SourceFactPackage struct {
+	BundleIDs   []string
 	ID          int64
 	Token       string
 	Names       []string
@@ -47,12 +48,12 @@ func (s *Store) SourceFactPackages(ctx context.Context) ([]SourceFactPackage, er
 	var rows []struct {
 		ID                             int64
 		Token                          string
-		Names, Artifacts               []byte
+		Names, Artifacts, BundleIDs    []byte
 		Homepage, DownloadURL, RepoURL *string
 	}
-	err := s.DB.WithContext(ctx).Raw(`SELECT p.id,p.token,to_jsonb(p.names) AS names,p.homepage,p.download_url,m.repo_url,p.artifacts
- FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id
- WHERE p.kind='cask' AND p.removed_at IS NULL AND NOT p.is_font AND NOT COALESCE(m.hidden,false)
+	err := s.DB.WithContext(ctx).Raw(`SELECT p.id,p.token,to_jsonb(p.names) AS names,p.homepage,p.download_url,COALESCE(m.repo_url,'https://github.com/'||l.github_repo) AS repo_url,p.artifacts,to_jsonb(l.bundle_ids) AS bundle_ids
+ FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id LEFT JOIN link_apps l ON l.package_id=p.id
+ WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL AND NOT p.is_font AND NOT COALESCE(m.hidden,false)
  ORDER BY p.popularity DESC,p.id`).Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("query source fact packages: %w", err)
@@ -60,6 +61,11 @@ func (s *Store) SourceFactPackages(ctx context.Context) ([]SourceFactPackage, er
 	out := make([]SourceFactPackage, 0, len(rows))
 	for _, row := range rows {
 		p := SourceFactPackage{ID: row.ID, Token: row.Token, Homepage: row.Homepage, DownloadURL: row.DownloadURL, RepoURL: row.RepoURL, Artifacts: row.Artifacts}
+		if len(row.BundleIDs) > 0 {
+			if err := json.Unmarshal(row.BundleIDs, &p.BundleIDs); err != nil {
+				return nil, err
+			}
+		}
 		if err := json.Unmarshal(row.Names, &p.Names); err != nil {
 			return nil, fmt.Errorf("decode package names: %w", err)
 		}
@@ -130,5 +136,5 @@ func (s *Store) DeleteSourceFact(ctx context.Context, key SourceFactKey, token s
 }
 
 func sourceFactInvalidation(ctx context.Context, tx *gorm.DB, packageID int64, token string) error {
-	return addCacheInvalidation(ctx, tx, fmt.Sprintf("source-facts:%d", packageID), "c:pkg:c3:cask:"+cache.PatternLiteral(token)+":*")
+	return addCacheInvalidation(ctx, tx, fmt.Sprintf("source-facts:%d", packageID), cache.PackageDetailPrefix+"*:"+cache.PatternLiteral(token)+":*")
 }

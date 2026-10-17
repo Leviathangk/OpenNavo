@@ -49,6 +49,18 @@ pub struct PermissionsChanged(pub Permissions);
 
 #[derive(Debug, Clone)]
 pub enum CoreEvent {
+    AvScheduleRun(crate::security::ScheduledScanRun),
+    InstallScanned(crate::security::InstallScanResult),
+    AppSignaturesChanged(crate::security::AppSignaturesChanged),
+    PasteBlocked(crate::security::PasteBlocked),
+    SecurityChanged(crate::security::SecurityChanged),
+    AvProgress(crate::security::AvProgress),
+    AvFinished(crate::security::AvScanResult),
+    StartupAdded(crate::security::StartupAdded),
+    DownloadDetected(crate::security::DownloadDetected),
+    DownloadVerified(crate::security::DownloadVerdict),
+
+    AppStore(crate::appstore::AppStoreChange),
     CleanupScan(CleanupProgress),
     CleanupChanged(CleanupSummary),
     LocalApps(LocalAppsChanged),
@@ -69,6 +81,24 @@ pub fn sink(app: tauri::AppHandle) -> EventSink {
     use tauri_specta::Event;
     Arc::new(move |event| {
         let result = match event {
+            CoreEvent::AvScheduleRun(data) => AvScheduleRunEvent(data).emit(&app),
+            CoreEvent::InstallScanned(data) => InstallScannedEvent(data).emit(&app),
+            CoreEvent::AppSignaturesChanged(data) => {
+                crate::security::notify::signatures(&app, &data);
+                AppSignaturesChangedEvent(data).emit(&app)
+            }
+            CoreEvent::PasteBlocked(data) => crate::security::notify::paste_blocked(&app, data),
+            CoreEvent::SecurityChanged(data) => SecurityChangedEvent(data).emit(&app),
+            CoreEvent::AvProgress(data) => AvProgressEvent(data).emit(&app),
+            CoreEvent::AvFinished(data) => {
+                crate::security::notify::scan_finished(&app, &data);
+                AvFinishedEvent(data).emit(&app)
+            }
+            CoreEvent::StartupAdded(data) => StartupAddedEvent(data).emit(&app),
+            CoreEvent::DownloadDetected(data) => DownloadDetectedEvent(data).emit(&app),
+            CoreEvent::DownloadVerified(data) => DownloadVerifiedEvent(data).emit(&app),
+
+            CoreEvent::AppStore(data) => AppStoreEvent(data).emit(&app),
             CoreEvent::CleanupScan(data) => CleanupScanEvent(data).emit(&app),
             CoreEvent::CleanupChanged(data) => CleanupChangedEvent(data).emit(&app),
             CoreEvent::LocalApps(data) => LocalAppsEvent(data).emit(&app),
@@ -163,3 +193,58 @@ pub struct MonitorPopover(pub MonitorModule);
 #[serde(transparent)]
 #[tauri_specta(event_name = "fan:changed")]
 pub struct FanChanged(pub FanChange);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "appstore:changed")]
+pub struct AppStoreEvent(pub crate::appstore::AppStoreChange);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "security:changed")]
+pub struct SecurityChangedEvent(pub crate::security::SecurityChanged);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "av:progress")]
+pub struct AvProgressEvent(pub crate::security::AvProgress);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "av:finished")]
+pub struct AvFinishedEvent(pub crate::security::AvScanResult);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "startup:added")]
+pub struct StartupAddedEvent(pub crate::security::StartupAdded);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "download:detected")]
+pub struct DownloadDetectedEvent(pub crate::security::DownloadDetected);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "download:verified")]
+pub struct DownloadVerifiedEvent(pub crate::security::DownloadVerdict);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "av:schedule")]
+pub struct AvScheduleRunEvent(pub crate::security::ScheduledScanRun);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "install:scanned")]
+pub struct InstallScannedEvent(pub crate::security::InstallScanResult);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "app-signatures:changed")]
+pub struct AppSignaturesChangedEvent(pub crate::security::AppSignaturesChanged);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
+#[tauri_specta(event_name = "paste:blocked")]
+pub struct PasteBlockedEvent(pub crate::security::PasteBlocked);

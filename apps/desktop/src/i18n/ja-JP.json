@@ -49,7 +49,9 @@
     "updatesBadge": "利用可能な更新が{count}件あります",
     "cleanup": "クリーンアップ",
     "cleanupBadge": "不要なバックグラウンド項目{count}件がまだ読み込まれています",
-    "monitor": "システムモニタ"
+    "monitor": "システムモニタ",
+    "security": "セキュリティ",
+    "securityBadge": "確認が必要な項目が{count}件あります"
   },
   "env": {
     "label": "Homebrew",
@@ -72,6 +74,7 @@
     "search": "{count}個のアプリを検索",
     "searchShort": "App を検索",
     "taskRunning": "{action} {name}",
+    "taskScanning": "{name} のインストーラをスキャン中",
     "taskQueued": "ほか {count} 個がキューに入っています"
   },
   "rail": {
@@ -156,7 +159,60 @@
     "empty": "「{q}」は見つかりませんでした",
     "emptyHint": "別のキーワードを入力するか、英語名やピンイン略称をお試しください",
     "alias": "別名：{name}",
-    "prompt": "名前、用途、コマンドを入力して検索"
+    "prompt": "名前、用途、コマンドを入力して検索",
+    "catalogEmpty": "カタログに「{q}」は見つかりませんでした",
+    "sources": {
+      "label": "結果の種類",
+      "all": "すべて",
+      "catalog": "カタログ"
+    }
+  },
+  "appStore": {
+    "title": "App Store",
+    "badge": "App Store",
+    "get": "入手",
+    "getIn": "App Store で {name} を入手",
+    "free": "無料",
+    "fromApple": "Apple 提供 · {region}のストア",
+    "fromAppleNoRegion": "Apple 提供",
+    "rating": "{rating} · {count}件の評価",
+    "rateLimited": "App Store の検索回数が多すぎます。1 分ほど待ってからもう一度お試しください。",
+    "offline": "App Store に接続できません。ネットワークを確認してから、もう一度お試しください。",
+    "searchFailed": "App Store の検索に失敗しました。しばらくしてからもう一度お試しください。",
+    "empty": "App Store に「{q}」は見つかりませんでした",
+    "emptyHint": "別のキーワードを試すか、設定で App Store の地域を変更してください",
+    "showAll": "{count}件をすべて表示",
+    "requiresOs": "macOS {version} 以降",
+    "installedVersion": "{version} をインストール済み",
+    "headerMeta": "App Store からダウンロード · Apple アカウントへのサインインが必要です",
+    "viewInStore": "App Store で表示",
+    "alsoTitle": "ほかの入手方法",
+    "whatsNew": "新機能 · {version}",
+    "whatsNewDated": "新機能 · {version} · {date}",
+    "about": "概要",
+    "info": {
+      "seller": "開発元",
+      "version": "バージョン",
+      "size": "サイズ",
+      "requires": "動作環境",
+      "category": "カテゴリ",
+      "region": "ストアの地域",
+      "bundleId": "Bundle ID"
+    },
+    "privacyNote": "この情報は Mac が Apple から直接取得しています。OpenNavo のサーバーは経由しません。",
+    "notInRegion": "この App は{region}のストアでは入手できません",
+    "notInRegionHint": "配信が終了したか、ほかの地域のストアでのみ配信されている可能性があります。",
+    "settings": {
+      "region": "ストアの地域",
+      "regionHint": "検索結果、価格、入手できるかどうかが決まります。自動の場合は App Store アカウントの地域を使い、読み取れないときはシステムの地域を使います",
+      "auto": "自動",
+      "autoDetected": "自動（{region}）",
+      "search": "検索結果に App Store を表示",
+      "searchHint": "入力が止まってから Apple に検索します。1 分あたり最大 15 回です",
+      "updates": "App Store のアップデートを確認",
+      "updatesHint": "App Store の App の新しいバージョンを「アップデート」に表示します",
+      "privacy": "検索、詳細、アップデートの確認は、この Mac から Apple に直接接続して行い、OpenNavo のサーバーは経由しません。"
+    }
   },
   "collections": {
     "title": "コレクション",
@@ -173,6 +229,58 @@
     "offline": "コレクションはオンラインで確認できます"
   },
   "package": {
+    "link": {
+      "chip": "公式サイトからダウンロード",
+      "chipGithub": "GitHub",
+      "meta": "ダウンロード元：{source} · OpenNavo はインストーラを配布していません",
+      "notHosted": "OpenNavo はインストーラを配布していません。ダウンロードは開発元から直接行われます。",
+      "homepage": "ウェブサイト",
+      "downloadTitle": "ダウンロード",
+      "officialDownload": "公式サイトでダウンロード",
+      "release": "{version} · {time}に公開",
+      "recommended": "おすすめ",
+      "download": "ダウンロード",
+      "allFiles": "GitHub ですべてのファイルを表示",
+      "githubReleases": "GitHub からダウンロード",
+      "teamId": "開発元の署名",
+      "pricingLabel": "価格",
+      "adopted": "この App は Homebrew に収録されたので、ワンクリックでインストールできます",
+      "arch": {
+        "arm64": "Apple シリコン",
+        "x86_64": "Intel",
+        "universal": "ユニバーサル"
+      },
+      "pricing": {
+        "free": "無料",
+        "paid": "有料",
+        "freemium": "無料（有料機能あり）",
+        "subscription": "サブスクリプション",
+        "open_source": "無料のオープンソース"
+      },
+      "verdict": {
+        "verifying": "{file} を確認しています…",
+        "checked": "{file} を確認しました：{details}",
+        "title": "{file} を確認しました",
+        "view": "表示",
+        "open": "インストーラを開く",
+        "reveal": "Finderで表示",
+        "who": "{signer}（{team}）",
+        "teamMatch": "署名 {who} は登録情報と一致",
+        "teamMismatch": "署名 {who} は登録された開発元と一致しません",
+        "signed": "開発元の署名 {who}",
+        "unsigned": "開発元の署名がありません",
+        "zip": "ZIP は展開していません。中のアプリは初回起動時に macOS が確認します",
+        "invalid": "署名が無効です",
+        "notarized": "Apple の公証済み",
+        "notNotarized": "Apple の公証を受けていません",
+        "clean": "ウイルス定義で脅威は見つかりませんでした",
+        "threat": "{name} を検出",
+        "threatQuarantined": "{name} を検出し、隔離しました",
+        "notScanned": "ウイルススキャンは行っていません",
+        "skipped": "ウイルススキャンなし：{reason}",
+        "modified": "署名後にファイルが変更されています。改ざんされた可能性があります"
+      }
+    },
     "arch": {
       "arm64": "Apple シリコン",
       "x86_64": "Intel"
@@ -494,13 +602,93 @@
     "updateAll": "すべて更新",
     "changelog": "更新内容",
     "update": "更新",
-    "ignore": "このバージョンを無視",
-    "ignored": "{name} {version}を無視しました",
     "pinned": "固定済みのため、更新されません",
     "patch": "パッチ",
     "empty": "すべて最新です",
     "emptyHint": "新しいバージョンがあればここに表示されます",
     "queued": "キューに追加しました：{count}個",
+    "source": {
+      "homebrew": "Homebrew",
+      "mas": "App Store",
+      "sparkle": "アプリ内アップデート",
+      "electron": "アプリ内アップデート",
+      "github": "GitHub",
+      "vendor": "開発元のサイト",
+      "msupdate": "Microsoft AutoUpdate"
+    },
+    "badge": {
+      "critical": "重要",
+      "beta": "ベータ版",
+      "major": "メジャーアップデート",
+      "teamMismatch": "署名が一致しません"
+    },
+    "hint": {
+      "relaunch": "{version} にアップデート済み。開き直すと反映されます",
+      "informational": "このバージョンは開発元のサイトで確認・入手してください",
+      "running": "実行中です。アップデート前に終了するか確認します",
+      "admin": "アップデートには管理者パスワードが必要です",
+      "skipped": "{version} をスキップ済み",
+      "teamMismatch": "想定される開発元の署名がインストール済みのアプリと一致しないため、OpenNavo はこのアップデートをインストールしません"
+    },
+    "actions": {
+      "skip": "このバージョンをスキップ",
+      "unskip": "{version} のスキップを解除",
+      "beta": "ベータ版を受け取る",
+      "stable": "正式版のみ受け取る",
+      "unignoreApp": "この App の更新確認を再開",
+      "ignoreApp": "このアプリを確認しない",
+      "relaunch": "開き直す",
+      "view": "表示"
+    },
+    "toast": {
+      "skipped": "{name} {version} をスキップしました",
+      "unskipped": "{name} の新しいバージョンを再び通知します",
+      "beta": "{name} はベータ版を受け取ります",
+      "stable": "{name} は正式版のみ受け取ります",
+      "unignoredApp": "{name} の更新確認を再開しました",
+      "ignoredApp": "{name} のアップデートを確認しません"
+    },
+    "notes": {
+      "title": "{name} {version} の新機能"
+    },
+    "masSignedOut": "App Store に Apple アカウントでサインインしていないため、App Store のアップデートをインストールできません。サインインしてからもう一度お試しください。",
+    "failedSources": "今回は {sources} を確認できませんでした。ほかのソースの結果は通常どおり表示し、次回の確認で再試行します",
+    "openAppStore": "App Store を開く",
+    "major": {
+      "titleOne": "{name} はメジャーアップデートです",
+      "title": "{count} 件のメジャーアップデート",
+      "body": "メジャーアップデートでは、画面が変わったり、許可を求め直されたり、古いファイルを開けなくなったりすることがあります。アップデートしますか？",
+      "others": "ほかのアップデートはそのまま実行されます。",
+      "skip": "今はしない",
+      "confirm": "アップデート"
+    },
+    "filter": {
+      "label": "ソース",
+      "all": "すべて {count}",
+      "homebrew": "Homebrew {count}",
+      "mas": "App Store {count}",
+      "other": "その他 {count}"
+    },
+    "meta": {
+      "from": "{host} から",
+      "teamMatch": "Team ID は想定どおり"
+    },
+    "sources": {
+      "title": "確認するソース",
+      "subtitle": "オフにしたソースは確認しません",
+      "homebrew": "Homebrew",
+      "homebrewHint": "brew outdated を実行します",
+      "mas": "App Store",
+      "masHint": "この Mac から Apple に直接問い合わせます",
+      "sparkle": "アプリ内アップデート",
+      "sparkleHint": "インストール前に開発元の署名と公証を確認します",
+      "electron": "Electron アプリのアップデート",
+      "electronHint": "sha512 と署名を確認してからインストールします",
+      "github": "GitHub Releases",
+      "githubHint": "ファイルのダイジェストと開発元の署名を確認します",
+      "vendor": "開発元のサイト",
+      "vendorHint": "OpenNavo が管理するルールに従い、開発元の署名を確認します"
+    },
     "history": {
       "recheck": "再確認",
       "title": "更新履歴",
@@ -517,7 +705,8 @@
       "purge": "完全に削除",
       "canceled": "キャンセルしました",
       "batch": "{action}：{count}個の{kind}",
-      "empty": "更新履歴はまだありません"
+      "empty": "更新履歴はまだありません",
+      "rollback": "ロールバック"
     },
     "month": {
       "title": "今月",
@@ -551,6 +740,13 @@
     "log": {
       "title": "{name}のログ",
       "empty": "ログはありません"
+    },
+    "rollback": {
+      "title": "{name} を {version} に戻しますか？",
+      "body": "更新時に OpenNavo が保存した {version} に戻します。{name} が実行中の場合は、先に通常どおり終了を求め、戻したあとで再び開きます。",
+      "skip": "今後 {version} は通知しません。より新しいバージョンが出たら通知します。",
+      "confirm": "ロールバック",
+      "notQuit": "{name} が終了しなかったため、ロールバックしていません。アプリを終了して、もう一度お試しください。"
     }
   },
   "history": {
@@ -571,10 +767,12 @@
       "general": "一般",
       "mirrors": "ダウンロードソース",
       "homebrew": "Homebrew",
+      "appstore": "App Store",
       "privacy": "プライバシー",
       "about": "概要",
       "cleanup": "クリーンアップ",
-      "monitor": "システムモニタ"
+      "monitor": "システムモニタ",
+      "security": "セキュリティ"
     },
     "general": {
       "followSystem": "システムに従う（現在: {language}）",
@@ -888,7 +1086,9 @@
       "update": "Homebrew を更新",
       "install_homebrew": "Homebrewをインストール",
       "remove_leftovers": "残りファイルの整理",
-      "clean": "Macのクリーンアップ"
+      "clean": "Macのクリーンアップ",
+      "av_db_update": "ウイルス定義の更新",
+      "rollback": "ロールバック"
     },
     "running": {
       "install": "{name} をインストール中",
@@ -901,12 +1101,15 @@
       "update": "Homebrew を更新中",
       "install_homebrew": "Homebrew をインストール中",
       "remove_leftovers": "残りファイルを整理中：{name}",
-      "clean": "Macをクリーンアップ中"
+      "clean": "Macをクリーンアップ中",
+      "av_db_update": "ウイルス定義を更新しています",
+      "rollback": "{name} をロールバック中"
     },
     "phases": {
       "preparing": "準備",
       "fetching": "情報を取得",
       "downloading": "ダウンロード",
+      "scanning": "インストーラをスキャン",
       "installing": "インストール",
       "linking": "リンク",
       "cleaning": "クリーンアップ",
@@ -929,6 +1132,34 @@
     "failed": "{name} の{action}に失敗しました"
   },
   "errors": {
+    "E_STARTUP_PROTECTED": "macOS に付属する項目のため、ここでは変更できません",
+    "E_AV_CONSENT": "先にウイルス定義のダウンロードに同意してください",
+    "E_AV_NOT_READY": "ウイルス定義がまだダウンロードされていません。「ウイルススキャン」でダウンロードしてください",
+    "E_AV_ENGINE": "スキャンエンジンを起動できませんでした。しばらくしてからもう一度お試しください",
+    "E_AV_SCAN_FAILED": "スキャンが完了しませんでした。もう一度スキャンしてください",
+    "E_AV_DB_RATE_LIMITED": "ウイルス定義の更新が公式サーバーによって一時的に制限されています。あとで自動的に再試行します",
+    "E_AV_DB_UPDATE": "ウイルス定義を更新できませんでした。ネットワークを確認してから、もう一度お試しください",
+    "E_RESTORE_CONFLICT": "元の場所に同じ名前のファイルがあるため、復元しませんでした",
+    "E_MAS_NOT_SIGNED_IN": "先に App Store で Apple アカウントにサインインしてください",
+    "E_MAS_NOT_OWNED": "この Apple アカウントではまだこの App を入手していません。App Store で「入手」をクリックしてください",
+    "E_MAS_PAID": "有料の App は App Store で購入してください",
+    "E_MAS_OTHER_ACCOUNT": "この App は別の Apple アカウントで購入されています。App Store でアップデートしてください",
+    "E_MAS_REGION": "この App は現在のストアの地域では入手できません",
+    "E_MAS_RATE_LIMITED": "App Store へのリクエストが多すぎます。1 分ほど待ってからもう一度お試しください",
+    "E_MAS_ENGINE": "App Store のダウンロード機能でエラーが発生しました。App Store で操作を完了してください",
+    "E_UPDATE_INTEGRITY": "ダウンロードしたアップデートが整合性チェックに失敗したため、インストールしませんでした",
+    "E_UPDATE_TEAM_MISMATCH": "新しいバージョンの開発元署名がインストール済みのものと異なるため、インストールしませんでした",
+    "E_UPDATE_NOT_NOTARIZED": "新しいバージョンが Apple の公証を受けていないため、インストールしませんでした",
+    "E_UPDATE_ARCH": "新しいバージョンはこの Mac のチップに対応していません",
+    "E_UPDATE_MIN_OS": "新しいバージョンにはより新しい macOS が必要です",
+    "E_UPDATE_FEED": "アップデート情報を読み込めませんでした。しばらくしてからもう一度お試しください",
+    "E_UPDATE_DMG_LICENSE": "このインストーラは使用許諾への同意が必要なため、このバージョンは手動でインストールしてください",
+    "E_UPDATE_SWAP": "アプリの置き換えに失敗したため、元のバージョンに戻しました",
+    "E_ADMIN_CANCELED": "管理者の認証がキャンセルされました",
+    "E_NOT_IMPLEMENTED": "この機能はまだ利用できません",
+    "E_DOWNLOAD_UNSAFE": "このインストーラは確認を通過しなかったため、開けませんでした",
+    "E_NOT_INSTALLABLE": "この App は公式サイトからダウンロードするもので、Homebrew ではインストールできません",
+    "E_LINK_URL": "このダウンロード先は登録されていないため、開きませんでした",
     "E_APP_RUNNING": "アプリが実行中です。更新を延期しました。アプリを終了して、もう一度お試しください。",
     "E_APP_QUIT_FAILED": "アプリを終了できませんでした。更新を延期しました。作業を保存してアプリを終了し、もう一度お試しください。",
     "E_APP_CHECK_FAILED": "アプリの実行状態を確認できませんでした。更新を延期しました。インストール済みアプリの一覧を更新して、もう一度お試しください。",
@@ -966,7 +1197,22 @@
     "E_FAN_WRITE_FAILED": "ファンの設定を変更できませんでした",
     "E_FAN_NO_MANUAL_SPEED": "前回の手動回転数の記録がありません",
     "E_FAN_UNAUTHORIZED": "ファン用ヘルパーの署名を確認できませんでした。OpenNavoを再インストールしてください",
-    "E_FAN_SENSOR_UNAVAILABLE": "温度を読み取れないため、安全のため手動に切り替えられません"
+    "E_FAN_SENSOR_UNAVAILABLE": "温度を読み取れないため、安全のため手動に切り替えられません",
+    "E_INSTALL_THREAT": "ダウンロードに脅威が見つかったため、インストールを中止しました",
+    "E_INSTALL_SCAN": "インストール前のスキャンが完了しなかったため、インストールしませんでした。あとでもう一度試すか、「設定 → セキュリティ」でインストール前のスキャンをオフにしてください",
+    "E_PASTE_EXPIRED": "この貼り付けは期限切れのため破棄されました",
+    "E_ACCESSIBILITY_DENIED": "システム設定で OpenNavo にアクセシビリティを許可してください",
+    "E_VT_DISABLED": "VirusTotal での照会はオフになっています",
+    "E_VT_KEY_REQUIRED": "先に設定で VirusTotal の API キーを入力してください",
+    "E_VT_KEY_INVALID": "VirusTotal の API キーが無効です。確認して入力し直してください",
+    "E_VT_RATE_LIMITED": "VirusTotal への照会が多すぎます。公開 API は 1 分あたり 4 回までです。少し待ってからもう一度お試しください",
+    "E_VT_UNAVAILABLE": "現在 VirusTotal に接続できません。あとでもう一度お試しください",
+    "E_KEYCHAIN": "キーチェーンの読み書きに失敗しました",
+    "E_AUTOMATION_DENIED": "「システム設定 → プライバシーとセキュリティ → オートメーション」で、OpenNavo が System Events を制御できるように許可してください",
+    "E_STARTUP_CHANGED": "この起動項目はほかのプログラムによって変更されました。更新してからもう一度お試しください",
+    "E_LOGIN_ITEM_EXISTS": "この App はすでにログイン時に開きます",
+    "E_ROLLBACK_UNAVAILABLE": "保存した以前のバージョンが使えないか、その後アプリが変更されたため、ロールバックできません",
+    "E_ROLLBACK_INTEGRITY": "保存した以前のバージョンが署名の確認に通らなかったため、ロールバックしていません"
   },
   "installConfirm": {
     "title": "既存の{name}を引き継ぎますか？",
@@ -1026,6 +1272,7 @@
     "open": "開く",
     "reveal": "Finderで表示",
     "detail": "OpenNavoで見る",
+    "appStore": "App Store のページ",
     "adoptTitle": "Homebrewで管理できます",
     "adoptBody": "Homebrewには{name}があります。引き継ぐとOpenNavoでワンクリック更新でき、アンインストール時もより充実した規則で整理できます。",
     "adopt": "Homebrewで引き継ぐ",
@@ -1044,9 +1291,11 @@
       "vendor": "開発元",
       "arch": "アーキテクチャ",
       "source": "入手元",
+      "updater": "更新方法",
       "installedAt": "インストール日",
       "lastUsed": "最終使用"
     },
+    "updaterNone": "OpenNavo ではまだ更新できません",
     "arch": {
       "arm64": "Appleシリコン",
       "x86_64": "Intel",
@@ -1764,6 +2013,510 @@
       "privacy": "すべての指標はこのMac上でのみ計算・表示されます。ネットに接続せず、アップロードも履歴の保存もしません。パブリックIPとWi-Fi名は表示しません。",
       "alerts": "通知",
       "alertsHint": "注意が必要な問題が起きたら通知します。同じ問題は1時間に1回までです。オンの間は、メニューバー項目がなくてもバックグラウンドで低頻度に確認します"
+    }
+  },
+  "security": {
+    "title": "セキュリティ",
+    "subtitle": "チェック、ウイルススキャン、起動項目、リアルタイム保護。結果はこの Mac にのみ保存されます",
+    "tabs": {
+      "label": "セキュリティ",
+      "overview": "概要",
+      "scan": "ウイルススキャン",
+      "startup": "起動項目",
+      "protection": "リアルタイム保護",
+      "quarantine": "隔離"
+    },
+    "overview": {
+      "attention": "確認が必要な項目が{count}件あります",
+      "newStartup": "新しい起動項目が{count}件",
+      "openThreats": "未対応の脅威が{count}件",
+      "allGood": "問題はありません",
+      "allGoodHint": "システムの保護機能はすべて有効で、未対応の脅威や新しい起動項目もありません",
+      "viewStartup": "起動項目を表示",
+      "postureTitle": "システムのセキュリティチェック",
+      "postureHint": "読み取りのみのチェックです。変更が必要な場合は、システム設定の該当パネルを開きます",
+      "openSettings": "設定を開く",
+      "scheduleOff": "定期スキャン：オフ",
+      "scheduleDaily": "定期スキャン：毎日 {time}",
+      "scheduleWeekly": "定期スキャン：毎週{day} {time}"
+    },
+    "postureState": {
+      "ok": "正常",
+      "warn": "注意",
+      "bad": "リスク",
+      "info": "情報",
+      "unknown": "不明"
+    },
+    "posture": {
+      "sip": {
+        "title": "システム整合性保護（SIP）",
+        "ok": "オン",
+        "bad": "システム整合性保護がオフです",
+        "unknown": "読み取れません"
+      },
+      "ssv": {
+        "title": "署名済みシステムボリューム",
+        "ok": "システムボリュームは署名され封印されています",
+        "bad": "システムボリュームが封印されていません",
+        "unknown": "読み取れません"
+      },
+      "gatekeeper": {
+        "title": "Gatekeeper",
+        "ok": "確認済みの App だけが実行できます",
+        "bad": "Gatekeeper がオフのため、どこから入手した App でも実行できます",
+        "unknown": "読み取れません"
+      },
+      "filevault": {
+        "title": "FileVault ディスク暗号化",
+        "ok": "オン",
+        "bad": "FileVault がオフのため、Mac を紛失するとデータを読まれるおそれがあります",
+        "unknown": "読み取れません"
+      },
+      "firewall": {
+        "title": "ファイアウォール",
+        "ok": "オン",
+        "bad": "ファイアウォールがオフです（受信接続だけを遮断します。公共のネットワークではオンにしてください）",
+        "unknown": "読み取れません"
+      },
+      "xprotect": {
+        "title": "XProtect（Apple 内蔵の保護機能）",
+        "ok": "最新です",
+        "bad": "XProtect が 30 日以上更新されていません",
+        "unknown": "バージョンを読み取れません",
+        "detail": "バージョン {version} · {time}に更新"
+      },
+      "updates": {
+        "title": "セキュリティアップデートの自動インストール",
+        "ok": "オン",
+        "bad": "セキュリティ対応とデータファイルが自動でインストールされません",
+        "unknown": "読み取れません"
+      },
+      "screenlock": {
+        "title": "画面のロック",
+        "ok": "スリープ解除後すぐにパスワードを要求します",
+        "bad": "スリープ解除後すぐにはパスワードを要求しません",
+        "unknown": "読み取れません"
+      },
+      "autologin": {
+        "title": "自動ログイン",
+        "ok": "オフ",
+        "bad": "自動ログインがオンのため、起動時にパスワードが不要です",
+        "unknown": "読み取れません"
+      },
+      "guest": {
+        "title": "ゲストユーザー",
+        "ok": "オフ",
+        "bad": "ゲストユーザーがオンです",
+        "unknown": "読み取れません"
+      },
+      "sharing": {
+        "title": "共有サービス",
+        "ok": "リモート共有サービスはオフです",
+        "bad": "リモート共有サービスがオンです",
+        "unknown": "読み取れません",
+        "detail": "オン：{services}",
+        "services": {
+          "ssh": "リモートログイン",
+          "files": "ファイル共有",
+          "screen": "画面共有",
+          "remote": "リモートマネージメント"
+        }
+      }
+    },
+    "engine": {
+      "title": "ウイルス定義",
+      "setUp": "ウイルス定義をダウンロード",
+      "db": "ウイルス定義 {version} · {time}に更新",
+      "downloading": "ウイルス定義をダウンロードしています…",
+      "noDb": "ウイルス定義はまだダウンロードされていません",
+      "lastScan": "前回の{kind}：{date}、脅威 {count} 件",
+      "neverScanned": "まだスキャンしていません",
+      "consentTitle": "まず公式のウイルス定義をダウンロードします",
+      "consentBody": "ウイルススキャンには ClamAV エンジンと公式のウイルス定義を使います。定義は ClamAV の公式サーバーから直接ダウンロードされ、OpenNavo を経由しません。",
+      "consentSize": "最初のダウンロードは約 113 MB で、以降は差分だけをダウンロードします。ディスク上では約 170 MB を使います。",
+      "consentMemory": "スキャン中、エンジンは約 1.1 GB のメモリを使い、5 分間何もしないと自動で終了します。",
+      "consentSource": "初期設定では 4 時間ごとに更新を確認し、公式サーバーの回数制限を守ります。",
+      "consentCoverage": "ClamAV は Mac 専用のマルウェアを一部しか検出できないため、OpenNavo は署名・公証・起動項目も確認し、Apple の XProtect の状態も表示します。",
+      "download": "同意してダウンロード",
+      "downloadFailed": "ウイルス定義をダウンロードできませんでした",
+      "rateLimited": "ウイルス定義の更新が公式サーバーによって一時的に制限されています。あとで自動的に再試行します"
+    },
+    "scan": {
+      "denied": "{folders} を読み取る権限がないため、スキャンしていません。「システム設定 → プライバシーとセキュリティ → ファイルとフォルダ」で OpenNavo を許可できます",
+      "folders": {
+        "downloads": "ダウンロード",
+        "desktop": "デスクトップ",
+        "documents": "書類"
+      },
+      "quick": {
+        "title": "クイックスキャン",
+        "duration": "通常は数分。「ダウンロード」やデスクトップに大きなインストーラがあると長くなります",
+        "body": "起動項目が実行するプログラム、ダウンロード、デスクトップ、一時フォルダ、最近 7 日間にインストールした App",
+        "action": "クイックスキャン"
+      },
+      "full": {
+        "title": "フルスキャン",
+        "duration": "1 時間以上かかることがあります",
+        "body": "Mac 全体。システムボリューム、未ダウンロードの iCloud ファイル、Time Machine、ネットワークボリュームは除きます",
+        "action": "フルスキャンを開始"
+      },
+      "custom": {
+        "title": "カスタムスキャン",
+        "duration": "選んだ内容によります",
+        "body": "フォルダまたは外付けドライブを選びます",
+        "action": "選んでスキャン"
+      },
+      "failed": "スキャンを開始できませんでした",
+      "running": "{kind}を実行中 · {count}個のファイルを確認済み（{size}）",
+      "state": {
+        "done": "スキャン完了 · {count}個のファイルを確認 · {time}",
+        "canceled": "スキャンをキャンセルしました · {count}個のファイルを確認",
+        "failed": "スキャンが中断されました · {count}個のファイルを確認"
+      },
+      "progressLabel": "スキャンの進行状況",
+      "skipped": {
+        "dataless": "未ダウンロードの iCloud ファイル {count} 個をスキップ",
+        "tooLarge": "{count}個のファイルがスキャンの上限を超えたため、完全にはスキャンしていません",
+        "unreadable": "{count}個のファイルを読み取れませんでした（権限がない、暗号化されている、または対応していない形式です）",
+        "excluded": "{count}個のファイルが除外リストにあります"
+      }
+    },
+    "findings": {
+      "title": "見つかった脅威（{count}）",
+      "quarantine": "隔離",
+      "quarantined": "{name} を隔離しました",
+      "reveal": "Finder に表示",
+      "trust": "このファイルを信頼",
+      "delete": "削除",
+      "more": "{name} のその他の操作",
+      "status": {
+        "open": "未対応",
+        "quarantined": "隔離済み",
+        "deleted": "削除済み",
+        "trusted": "信頼済み"
+      },
+      "none": "脅威は見つかりませんでした",
+      "noneHint": "スキャンした場所に、ウイルス定義で検出できる脅威はありませんでした"
+    },
+    "startup": {
+      "summary": "サードパーティの起動項目が{count}件",
+      "notRead": "起動項目はまだ読み取っていません",
+      "untrusted": "そのうち{count}件は署名または公証がありません",
+      "missing": "フルディスクアクセスがないため、次の項目を読み取れません：{categories}",
+      "grant": "アクセスを許可",
+      "btmUnknown": "この Mac のバックグラウンド項目データベースの形式を認識できないため、一部のログイン項目が表示されていない可能性があります",
+      "new": "新規",
+      "toggle": "{name} を有効にする",
+      "openSettings": "システム設定で管理",
+      "none": "起動項目はありません",
+      "noneHint": "macOS に付属する項目はここに表示されません",
+      "noApps": "自動で起動する App はありません",
+      "others": "その他 {count} 件",
+      "othersHint": "コマンドラインツール、スクリプト、機能拡張、プラグイン",
+      "items": "{count} 件",
+      "stateMixed": "{count} 件が有効",
+      "add": "ログイン項目を追加",
+      "addHint": "選んだ App は、この Mac にログインしたときに自動で開きます",
+      "addSearch": "App を検索",
+      "addEmpty": "追加できる App はありません",
+      "adding": "追加中…",
+      "added": "{name} はログイン時に開きます",
+      "refreshing": "起動項目を確認しています…",
+      "removed": "{name} を削除しました。隔離から復元できます",
+      "removeTitle": "「{name}」を削除しますか？",
+      "removeBody": "まず無効にしてから、設定ファイルを隔離に移します。あとで復元できます。",
+      "removeBodyAdmin": "まず無効にしてから、設定ファイルを隔離に移します。あとで復元できます。システム全体の項目のため、管理者パスワードを一度入力します。",
+      "remove": "削除",
+      "enable": "有効にする",
+      "disable": "無効にする",
+      "keep": "そのままにする",
+      "scan": "ウイルス定義でスキャン",
+      "adminHint": "システム全体の項目です。無効にしたり削除したりするときに、管理者パスワードを一度入力します。",
+      "riskHigh": "高リスク",
+      "avClean": "脅威は見つかりませんでした",
+      "avThreat": "{name} として検出",
+      "avNotScanned": "まだスキャンしていません",
+      "category": {
+        "launch_items": "バックグラウンドサービス",
+        "btm": "バックグラウンド項目",
+        "login_items": "ログイン項目",
+        "cron": "定期タスク",
+        "browser_extensions": "ブラウザ機能拡張",
+        "kexts": "カーネル機能拡張",
+        "system_extensions": "システム機能拡張",
+        "app_extensions": "App 機能拡張",
+        "auth_plugins": "認証プラグイン",
+        "dir_services_plugins": "ディレクトリサービスプラグイン",
+        "spotlight": "Spotlight 読み込みプラグイン",
+        "quicklook": "クイックルックプラグイン",
+        "dock_tiles": "Dock タイルプラグイン",
+        "library_inserts": "ライブラリの挿入",
+        "library_proxies": "ライブラリのプロキシ",
+        "login_hooks": "ログインフック",
+        "periodic": "定期スクリプト",
+        "startup_scripts": "起動スクリプト",
+        "shell_config": "シェル設定ファイル",
+        "event_rules": "イベントルール"
+      },
+      "scope": {
+        "user": "このユーザー",
+        "system": "Mac 全体"
+      },
+      "state": {
+        "running": "実行中",
+        "loaded": "読み込み済み",
+        "enabled": "有効",
+        "disabled": "無効",
+        "unknown": "不明",
+        "removed": "削除済み"
+      },
+      "trust": {
+        "apple": "Apple",
+        "known": "確認済みの開発元",
+        "unknown": "確認できません",
+        "untrusted": "署名または公証なし"
+      },
+      "trigger": {
+        "at_load": "起動時に実行",
+        "keep_alive": "常駐",
+        "interval": "定期的に実行",
+        "calendar": "スケジュールで実行",
+        "watch_paths": "ファイルの変更時に実行",
+        "events": "イベントで実行"
+      },
+      "fields": {
+        "category": "種類",
+        "scope": "範囲",
+        "path": "場所",
+        "program": "プログラム",
+        "owner": "App",
+        "signature": "署名",
+        "team": "Team ID",
+        "state": "状態",
+        "triggers": "実行方法",
+        "firstSeen": "初めて検出",
+        "av": "ウイルス定義の結果"
+      },
+      "restore": "復元",
+      "restored": "{name} を復元しました",
+      "removedBackup": "{name} を削除しました。ここから復元できます",
+      "removeBodyBackup": "削除する前にバックアップを取るので、あとで起動項目の一覧から復元できます。"
+    },
+    "signature": {
+      "apple": "Apple の署名",
+      "appStore": "App Store の署名",
+      "notarized": "公証済み",
+      "notNotarized": "署名は有効ですが、公証されていません",
+      "adhoc": "アドホック署名のため、開発元を確認できません",
+      "unsigned": "署名なし",
+      "invalid": "署名が無効です",
+      "notCode": "プログラムではないため、署名の対象外です",
+      "unknown": "署名を確認できません",
+      "modified": "署名は有効ですが、署名後にファイルが変更されています"
+    },
+    "quarantine": {
+      "summary": "{count}個のファイル、合計 {size}",
+      "empty": "隔離されたファイルはありません",
+      "emptyHint": "隔離した脅威と削除した起動項目はここに保管され、いつでも復元できます",
+      "reason": {
+        "startup": "削除した起動項目",
+        "user": "手動で隔離"
+      },
+      "restore": "復元",
+      "restored": "{name} を復元しました",
+      "delete": "完全に削除",
+      "deleteTitle": "「{name}」を完全に削除しますか？",
+      "deleteBody": "この操作は取り消せません。"
+    },
+    "protection": {
+      "title": "リアルタイム保護",
+      "startupAlerts": {
+        "title": "起動項目の変化を通知",
+        "body": "新しい起動項目、ログイン項目、バックグラウンドサービスが現れたらすぐに通知し、署名と App を表示します。事後の通知なので、最初の実行は止められません。"
+      },
+      "watchDownloads": {
+        "title": "ダウンロードを自動スキャン",
+        "body": "「ダウンロード」フォルダを監視し、新しいファイルのダウンロードが終わるとウイルス定義でスキャンします。インストーラは署名と公証も確認します。"
+      },
+      "needsDb": "先にウイルス定義をダウンロードしてください",
+      "waiting": "{stage} · Apple の承認待ち",
+      "later": {
+        "realtime": {
+          "title": "起動項目をリアルタイムでブロック",
+          "body": "どのプログラムが起動項目を追加したかを把握し、すぐに無効にします。Apple による Endpoint Security の承認が必要です。"
+        },
+        "exec": {
+          "title": "未公証プログラムの実行確認",
+          "body": "ダウンロードした未公証のプログラムを初めて実行する前に確認します。Endpoint Security の承認が必要です。"
+        },
+        "ransomware": {
+          "title": "ランサムウェア対策",
+          "body": "短時間に暗号化されたようなファイルを大量に書き込むプログラムを一時停止し、どうするか確認します。Endpoint Security の承認が必要です。"
+        },
+        "firewall": {
+          "title": "App ファイアウォール",
+          "body": "App が初めてネットワークに接続するときに許可するかを確認し、ルールやブロックリストを設定できます。ネットワーク用システム機能拡張が必要で、今後のバージョンで提供します。"
+        }
+      },
+      "eventsTitle": "最近の記録",
+      "noEvents": "まだ記録はありません",
+      "events": {
+        "startup_added": "新しい起動項目：{name}",
+        "startup_removed": "起動項目を削除しました：{name}",
+        "download_threat": "ダウンロードしたファイルに脅威があります：{name}",
+        "download_unsigned": "署名のないインストーラをダウンロードしました：{name}",
+        "scan_threat": "スキャンで脅威が見つかりました：{name}",
+        "scheduled_scan_skipped": "定期スキャンをスキップ：{name}",
+        "signature_changed": "開発元の署名が変わりました：{name}",
+        "install_threat": "脅威が見つかりインストールを中止：{name}",
+        "paste_blocked": "怪しい貼り付けを一時停止：{name}"
+      },
+      "installThreatUnnamed": "脅威が見つかりインストールを中止しました"
+    },
+    "toasts": {
+      "startupAdded": "新しい起動項目が{count}件見つかりました",
+      "startupAddedBody": "{name} · {signer}",
+      "review": "確認",
+      "threats": "スキャンで脅威が{count}件見つかりました",
+      "clean": "スキャンが完了しました。脅威は見つかりませんでした",
+      "view": "表示",
+      "signatureChanged": "{count} 個の App で開発元の署名が変わりました",
+      "signatureChangedBody": "{names}：以前とは別の開発元が署名しています。置き換えられた可能性があります",
+      "installThreat": "ダウンロードに脅威が見つかったため、インストールを中止しました"
+    },
+    "rail": {
+      "engine": "スキャンエンジン",
+      "version": "バージョン",
+      "engineVersion": "ClamAV {version}",
+      "database": "ウイルス定義",
+      "noDatabase": "未ダウンロード",
+      "size": "サイズ",
+      "engineState": "エンジン",
+      "running": "実行中 · {size}",
+      "idle": "停止中",
+      "protection": "リアルタイム保護",
+      "on": "オン",
+      "off": "オフ",
+      "limitsTitle": "対応範囲",
+      "limits": "ウイルス定義は Mac 専用のマルウェアを一部しか検出できません。Apple の承認を得るまで、起動項目の通知は事後のもので、ブロックはできません。macOS に内蔵された保護機能を補うもので、置き換えるものではありません。100 MB を超える通常のファイルと、1 GB を超えるか展開後に 2 GB を超えるインストーラは、完全にはスキャンされません。"
+    },
+    "avSkipped": {
+      "no_database": "ウイルス定義がまだダウンロードされていません",
+      "no_consent": "ウイルス定義のダウンロードにまだ同意していません",
+      "excluded": "フォルダがスキャンの除外に含まれています",
+      "too_large": "スキャンの上限を超えています",
+      "unreadable": "読み取れません（権限がない、暗号化されている、または対応していない形式です）"
+    },
+    "installScan": {
+      "clean": "インストール前に {count} 個のファイルをスキャンしました。脅威はありません",
+      "skipped": "インストール前のスキャンは完了しませんでした：{reason}",
+      "skippedPartial": "インストール前に {count} 個のファイルをスキャンしましたが、すべては確認できませんでした：{reason}",
+      "threat": "インストール前のスキャンで検出：{names}"
+    },
+    "settings": {
+      "interval": "ウイルス定義の確認間隔",
+      "intervalHint": "まずバージョン情報を確認し、新しい版があるときだけ差分をダウンロードします。公式の最小間隔は 1 時間です",
+      "everyHours": "{count}時間ごと",
+      "resident": "スキャンエンジンを常駐させる",
+      "residentHint": "ダウンロードのスキャンが速くなりますが、約 1.1 GB のメモリを使い続けます。オフの場合、エンジンは 5 分間何もしないと終了します",
+      "watchDownloadsHint": "「ダウンロード」フォルダを監視します。ウイルス定義が必要です",
+      "startupAlertsHint": "新しい起動項目が現れたら通知します",
+      "exclusions": "スキャンの除外",
+      "exclusionsHint": "これらのフォルダはすべてのスキャンでスキップされます",
+      "addExclusion": "フォルダを追加",
+      "removeExclusion": "削除",
+      "choose": "選択…",
+      "beforeInstall": "インストール前にスキャン",
+      "beforeInstallHint": "Homebrew がダウンロードしたファイルをインストール前にスキャンし、脅威が見つかったらインストールを中止します。ウイルス定義が必要です。インストール中に追加でダウンロードされるもの（ソースからのビルドや、インストールスクリプト自身によるダウンロードなど）はスキャンの対象外です",
+      "schedule": {
+        "title": "定期スキャン",
+        "frequency": "自動クイックスキャン",
+        "hint": "設定した時刻にクイックスキャンを行います。OpenNavo の起動中だけ実行し、Mac をスリープから復帰させることはありません。バッテリー駆動中はスキップします",
+        "off": "オフ",
+        "daily": "毎日",
+        "weekly": "毎週",
+        "weekday": "曜日",
+        "time": "時刻",
+        "next": "次回のスキャン：{time}",
+        "skipped": "前回はスキップ：{reason}",
+        "reason": {
+          "no_database": "ウイルス定義がまだダウンロードされていません",
+          "no_consent": "ウイルス定義のダウンロードにまだ同意していません",
+          "on_battery": "バッテリー駆動中でした",
+          "busy": "別のスキャンを実行中でした",
+          "error": "スキャンを開始できませんでした"
+        }
+      },
+      "optional": {
+        "title": "オプション機能",
+        "hint": "オンにするまでは動作しません"
+      },
+      "paste": {
+        "title": "貼り付けの保護",
+        "hint": "「ダウンロードして実行」のような怪しいコマンドが ⌘V でターミナルに貼り付けられたとき、一時停止して確認します。対応するのはターミナル、iTerm2、Warp、kitty、Alacritty、Ghostty、WezTerm、Hyper、Tabby です。メニューや右クリックからの貼り付けはチェックしません。チェックはこの Mac 内だけで行い、貼り付けた内容は保存しません",
+        "needsAccess": "アクセシビリティの許可が必要です",
+        "needsAccessHint": "許可すると、ターミナルに貼り付ける前に OpenNavo がコマンドを確認できます",
+        "grant": "許可する"
+      },
+      "virusTotal": {
+        "title": "VirusTotal で照会",
+        "hint": "ご自身の API キーで、ファイルの SHA-256 を VirusTotal に照会します。送信するのはハッシュだけで、照会したときだけです。ファイルはアップロードしません",
+        "key": "API キー",
+        "keySaved": "キーチェーンに保存済み",
+        "keyHint": "virustotal.com でアカウントを作成すると、プロフィールで API キーを確認できます",
+        "removeKey": "キーを削除",
+        "placeholder": "API キーを貼り付け",
+        "saveKey": "保存",
+        "terms": "VirusTotal の公開 API は 1 分あたり 4 回までで、非商用の個人利用に限られます。商用で使う場合は、ご自身で VirusTotal の商用ライセンスを取得する必要があります。OpenNavo が自動で照会したり、ファイルをアップロードしたりすることはありません。"
+      }
+    },
+    "signatures": {
+      "title": "インストール済み App の署名チェック",
+      "never": "インストール済み App の署名はまだ確認していません",
+      "summaryIssues": "{count} 個の App を確認し、{issues} 個に問題がありました",
+      "summaryClean": "{count} 個の App を確認しました。署名と公証に問題はありません",
+      "issue": {
+        "invalid": "署名が無効",
+        "unsigned": "署名なし",
+        "adhoc": "アドホック署名",
+        "not_notarized": "公証なし",
+        "team_changed": "開発元が変更",
+        "unreadable": "署名を読み取れません",
+        "modified": "署名後に変更あり"
+      },
+      "check": "署名を確認",
+      "recheck": "もう一度確認"
+    },
+    "paste": {
+      "title": "「{app}」への貼り付けを一時停止しました",
+      "body": "このコマンドはプログラムをダウンロードして実行するようです。ご自身で実行するつもりでなければ、破棄してください。",
+      "bodyUnchecked": "貼り付ける内容が長すぎるため、すべてはチェックしていません。ご自身で貼り付けるつもりの場合だけ、今回だけ許可してください。",
+      "pattern": {
+        "pipe_to_interpreter": "ダウンロードした内容をそのままシェルに渡します",
+        "download_execute": "ダウンロード直後に実行します",
+        "encoded_command": "エンコードされたコマンドを含みます",
+        "remove_quarantine": "macOS の隔離属性を削除して安全確認を回避します",
+        "too_long": "長すぎるため、すべてはチェックしていません"
+      },
+      "expires": "{seconds} 秒後に自動で破棄します",
+      "allow": "今回だけ許可",
+      "discard": "破棄"
+    },
+    "virusTotal": {
+      "lookup": "VirusTotal で照会",
+      "malicious": "VirusTotal：{count} 個のエンジンが悪意ありと判定",
+      "suspicious": "VirusTotal：{count} 個のエンジンが疑わしいと判定",
+      "clean": "VirusTotal：悪意ありと判定したエンジンはありません",
+      "notFound": "VirusTotal にこのファイルの記録はありません",
+      "engines": "{total} 個のエンジンで検査",
+      "analyzed": "{time}に分析",
+      "hashOnly": "送信したのはファイルの SHA-256 だけで、ファイルはアップロードしていません",
+      "report": "レポートを表示"
+    },
+    "downloadThreat": {
+      "title": "ダウンロードしたファイルに脅威：{file}",
+      "body": "{signature} · このファイルをスキャンすると隔離できます",
+      "action": "スキャンして対処"
     }
   }
 }

@@ -9,6 +9,7 @@ import { useBrewfileStore } from '@/stores/brewfile';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { refreshPage } from '@/composables/usePageRefresh';
 import { useCleanupStore } from '@/stores/cleanup';
+import { useSecurityStore } from '@/stores/security';
 import { useLibraryStore, useLocalAppsStore, useUpdatesStore } from '@/stores';
 
 // Use shared @opennavo/ui OnSidebar (ADR-017); provide desktop groups and local counts here.
@@ -38,6 +39,17 @@ const cleanupItem = computed<Partial<OnSidebarItem>>(() => {
     };
   return summary.reclaimableBytes ? { meta: formatBytes(summary.reclaimableBytes, { locale: appLocale.value }) } : {};
 });
+
+// Security (store/security plan §6): a dot when threats or new startup items wait for review, like Clean Up Mac.
+const security = useSecurityStore();
+const securityItem = computed<Partial<OnSidebarItem>>(() =>
+  security.attention
+    ? {
+        dot: true,
+        badgeLabel: t('nav.securityBadge', { count: security.attention }, { plural: security.attention })
+      }
+    : {}
+);
 
 const item = (name: string, icon: string, label: string, extra: Partial<OnSidebarItem> = {}): OnSidebarItem => ({
   key: name,
@@ -82,7 +94,8 @@ const groups = computed<OnSidebarGroup[]>(() => [
         badgeLabel: t('nav.updatesBadge', { count: updates.actionable.length }, { plural: updates.actionable.length })
       }),
       item('cleanup', 'lucide:eraser', t('nav.cleanup'), cleanupItem.value),
-      item('monitor', 'lucide:activity', t('nav.monitor'))
+      item('monitor', 'lucide:activity', t('nav.monitor')),
+      item('security', 'lucide:shield-check', t('nav.security'), securityItem.value)
     ]
   }
 ]);

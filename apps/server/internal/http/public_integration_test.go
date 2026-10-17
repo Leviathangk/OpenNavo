@@ -225,7 +225,7 @@ func TestPublicAPIContractsWithPostgreSQLRedisCacheAndLimits(t *testing.T) {
 	require.NoError(t, st.Redis.Set(ctx, "auth:unrelated", "preserve", time.Minute).Err())
 	require.NoError(t, cache.PublishInvalidation(ctx, st.Redis, "c:home:*", "c:pkg:*"))
 	require.Eventually(t, func() bool {
-		n, err := st.Redis.Exists(ctx, "c:home:c2:zh-CN", "c:pkg:c3:cask:visual-studio-code:zh-CN").Result()
+		n, err := st.Redis.Exists(ctx, "c:home:c2:zh-CN", "c:pkg:c4:cask:visual-studio-code:zh-CN").Result()
 		return err == nil && n == 0
 	}, time.Second, 10*time.Millisecond)
 	require.Equal(t, "preserve", st.Redis.Get(ctx, "auth:unrelated").Val())

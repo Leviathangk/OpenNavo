@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { formatVersion, formatVersionChange, installCommand } from '@opennavo/shared';
@@ -9,13 +9,18 @@ import type { Kind } from '@/ipc/bindings';
 import { commands, unwrap } from '@/ipc/client';
 import type { LocalSearchHit } from '@/ipc/client';
 import { useAppLocale } from '@/composables/useAppLocale';
+import { searchApps } from '@/composables/searchApps';
+import { useMasSearch } from '@/composables/useMasSearch';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
-import { useCatalogStore, useLibraryStore, useUpdatesStore } from '@/stores';
+import { useCatalogStore, useLibraryStore, useSettingsStore, useUpdatesStore } from '@/stores';
+import { useLinksStore } from '@/stores/links';
+import { useMasStore } from '@/stores/mas';
 import { useNamesStore } from '@/stores/names';
 
 // Command-K palette (mockup 07, M3-11): local search (06 §7.1), first-result actions, and navigation.
-// Enter opens; Command-Enter installs/updates; Command-C copies brew command.
+// Enter opens; Command-Enter installs/updates; Command-C copies brew command. Up to three App Store results follow the
+// catalog (store/security plan §5); they arrive after the search debounce and never move the catalog rows.
 const open = defineModel<boolean>('open', { required: true });
 
 const { t } = useI18n();
@@ -32,11 +37,24 @@ const query = ref('');
 const hits = ref<LocalSearchHit[]>([]);
 const loading = ref(false);
 let sequence = 0;
+onScopeDispose(() => {
+  sequence += 1;
+});
+const mas = useMasStore();
+const links = useLinksStore();
+const settings = useSettingsStore();
+const masSearch = useMasSearch(
+  query,
+  computed(() => open.value && (settings.value?.appStoreSearch ?? true)),
+  3
+);
 
 watch(open, value => {
   if (value) {
     query.value = '';
     hits.value = [];
+    // Installed App Store apps label their rows; a failure only drops that label.
+    void mas.loadInstalled().catch(() => undefined);
   }
 });
 
@@ -50,19 +68,10 @@ watch([query, appLocale, () => catalog.revision], async ([value]) => {
   }
   loading.value = true;
   try {
-    const page = await unwrap(
-      commands.catalogSearch({
-        q: q.slice(0, 64),
-        // Cask-only catalog (ADR-018).
-        kind: 'cask',
-        category: null,
-        includeDisabled: false,
-        limit: 8,
-        offset: 0
-      })
-    );
+    const page = await searchApps(q.slice(0, 64), 8);
     if (current !== sequence) return;
     names.remember(page.items.map(hit => hit.item));
+    links.remember(page.items.map(hit => hit.item));
     hits.value = page.items;
   } finally {
     if (current === sequence) loading.value = false;
@@ -71,6 +80,7 @@ watch([query, appLocale, () => catalog.revision], async ([value]) => {
 
 type Payload =
   | { type: 'package'; kind: Kind; token: string; tap: string | null }
+  | { type: 'mas'; adamId: number }
   | { type: 'update'; kind: Kind; token: string }
   | { type: 'reveal'; kind: Kind; token: string }
   | { type: 'search'; q: string }
@@ -102,7 +112,12 @@ function packageItem(hit: LocalSearchHit): OnCommandItem {
     badge: outdated && !outdated.pinned ? t('palette.updatable') : undefined,
     badgeTone: 'accent',
     // Without Homebrew, Command-Enter opens Welcome; use the button's label for the notice.
-    hint: current.state === 'get' ? `⌘↵ ${current.label ?? t('palette.install')}` : `↵ ${t('palette.open')}`
+    hint:
+      current.state === 'get'
+        ? `⌘↵ ${current.label ?? t('palette.install')}`
+        : current.state === 'download'
+          ? `⌘↵ ${t('package.link.download')}`
+          : `↵ ${t('palette.open')}`
   };
 }
 
@@ -110,7 +125,16 @@ const groups = computed<OnCommandGroup[]>(() => {
   payloads.clear();
   const q = query.value.trim();
   if (!q) {
-    const pages = ['discover', 'categories', 'rankings', 'recent', 'installed', 'updates', 'settings'] as const;
+    const pages = [
+      'discover',
+      'categories',
+      'rankings',
+      'recent',
+      'installed',
+      'updates',
+      'security',
+      'settings'
+    ] as const;
     return [
       {
         key: 'navigation',
@@ -151,8 +175,25 @@ const groups = computed<OnCommandGroup[]>(() => {
   const searchKey = `search:${q}`;
   payloads.set(searchKey, { type: 'search', q });
   actions.push({ key: searchKey, label: t('palette.viewAll', { q }), icon: 'search' });
+  const store = (masSearch.results.value ?? []).slice(0, 3).map(app => {
+    const key = `mas:${app.adamId}`;
+    payloads.set(key, { type: 'mas', adamId: app.adamId });
+    const installed = mas.installedFor(app.adamId);
+    return {
+      key,
+      label: app.name,
+      description: installed
+        ? t('palette.installedVersion', { version: installed.version })
+        : [app.seller, app.price > 0 ? app.formattedPrice : t('appStore.free')].join(' · '),
+      app: { kind: 'mas' as const, token: String(app.adamId), name: app.name, src: app.iconUrl },
+      badge: t('appStore.badge'),
+      badgeTone: 'info' as const,
+      hint: `↵ ${t('palette.open')}`
+    };
+  });
   return [
     { key: 'apps', label: t('palette.apps'), items: apps },
+    ...(store.length ? [{ key: 'appstore', label: t('appStore.title'), items: store }] : []),
     { key: 'actions', label: t('palette.actions'), items: actions }
   ];
 });
@@ -164,10 +205,14 @@ async function select(item: OnCommandItem, options: { meta: boolean }) {
   switch (payload.type) {
     case 'package': {
       const state = stateOf(payload.kind, payload.token).state;
-      if (options.meta && (state === 'get' || state === 'update')) await act(payload.kind, payload.token, state);
+      if (options.meta && (state === 'get' || state === 'update' || state === 'download'))
+        await act(payload.kind, payload.token, state);
       else await router.push(`/package/${payload.kind}/${payload.token}`);
       break;
     }
+    case 'mas':
+      await router.push({ name: 'appstore', params: { id: String(payload.adamId) } });
+      break;
     case 'update':
       await act(payload.kind, payload.token, 'update');
       break;
@@ -185,7 +230,8 @@ async function select(item: OnCommandItem, options: { meta: boolean }) {
 
 async function copy(item: OnCommandItem) {
   const payload = payloads.get(item.key);
-  if (!payload || payload.type !== 'package') return;
+  // Link apps have no brew command (store/security plan §4); their row copies nothing.
+  if (!payload || payload.type !== 'package' || payload.kind === 'link') return;
   const command = installCommand(payload.kind, payload.token, payload.tap);
   await navigator.clipboard.writeText(command);
   toasts.push({ tone: 'success', title: t('palette.copied', { command }) });

@@ -18,6 +18,7 @@ import (
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/config"
+	"github.com/opennavo/opennavo/server/internal/domain"
 	httpserver "github.com/opennavo/opennavo/server/internal/http"
 	"github.com/opennavo/opennavo/server/internal/http/public"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
@@ -99,6 +100,80 @@ func TestDesktopFixturesMatchSeedAndProductionSerialization(t *testing.T) {
 		"changes-empty.json": call("/catalog/changes?since=64&limit=3", 200),
 		"client-config.json": call("/config/client?platform=desktop&version=0.1.0&locale=zh-CN", 200),
 	}
+
+	// Independent update rules must leave every legacy response byte unchanged.
+	feedKey := domain.UpdateFeedKey{BundleID: "com.example.Fixture", Source: "sparkle"}
+	require.NoError(t, st.WriteUpdateFeed(ctx, domain.UpdateFeedInput{UpdateFeedKey: feedKey, FeedURL: "https://example.org/feed.xml", Channel: "stable"}, "manual"))
+	rule, err := st.UpdateFeed(ctx, feedKey)
+	require.NoError(t, err)
+	require.NoError(t, st.CheckedUpdateFeed(ctx, *rule, "fixture-etag", nil))
+	feedResponse := call("/catalog/update-feeds", 200)
+	var feeds struct {
+		Data snapshot.CatalogUpdateFeeds `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(feedResponse, &feeds))
+	require.Len(t, feeds.Data.Items, 1)
+	conditional := httptest.NewRequest(http.MethodGet, "/api/v1/catalog/update-feeds", nil)
+	conditional.Header.Set("If-None-Match", feeds.Data.ETag)
+	cached := httptest.NewRecorder()
+	server.Engine.ServeHTTP(cached, conditional)
+	require.Equal(t, 304, cached.Code)
+	require.Empty(t, cached.Body.Bytes())
+	for target, name := range map[string]string{"/catalog/snapshot": "snapshot.json", "/catalog/changes?since=60&limit=3": "changes-page.json", "/catalog/changes?since=63&limit=3": "changes-final.json", "/catalog/changes?since=64&limit=3": "changes-empty.json"} {
+		require.Equal(t, files[name], call(target, 200), name)
+	}
+
+	// A new link must not change even the empty legacy cursor page or compressed
+	// base/language bytes. Exercise production serialization, not copied DTOs.
+	beforeLinks, err := snapshots.BuildLocal(ctx)
+	require.NoError(t, err)
+	home := "https://example.com/link-fixture"
+	var linkID int64
+	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
+		var err error
+		linkID, err = (&store.Store{DB: tx, Redis: st.Redis}).WriteLinkApp(ctx, 0, domain.LinkInput{Token: "link-fixture", Name: "Link Fixture", Homepage: &home, Pricing: "free"})
+		return err
+	}))
+	require.NoError(t, st.DB.Exec(`INSERT INTO package_categories(package_id,category_id,is_primary,source) SELECT ?,c.id,true,'human' FROM categories c WHERE NOT EXISTS(SELECT 1 FROM package_categories pc WHERE pc.category_id=c.id) ORDER BY c.id LIMIT 1`, linkID).Error)
+	afterLinks, err := snapshots.BuildLocal(domain.WithLinks(ctx, true))
+	require.NoError(t, err)
+	require.Equal(t, beforeLinks.Files, afterLinks.Files)
+	for path, name := range map[string]string{"/catalog/snapshot": "snapshot.json", "/catalog/changes?since=60&limit=3": "changes-page.json", "/catalog/changes?since=63&limit=3": "changes-final.json", "/catalog/changes?since=64&limit=3": "changes-empty.json"} {
+		require.Equal(t, files[name], call(path, 200), name)
+	}
+	require.NoError(t, st.DB.Exec("UPDATE packages SET version_changed_at='2026-10-16T00:00:00Z' WHERE id=?", linkID).Error)
+	var linkEnvelope struct {
+		Data snapshot.CatalogLinks `json:"data"`
+	}
+	linkBytes := call("/catalog/links", 200)
+	linkFixture := filepath.Join("..", "..", "..", "testdata", "desktop", "links.json")
+	if os.Getenv("UPDATE_LINK_FIXTURE") == "1" {
+		require.NoError(t, os.WriteFile(linkFixture, linkBytes, 0o600))
+	}
+	expectedLinks, err := os.ReadFile(linkFixture)
+	require.NoError(t, err)
+	var compactLinks bytes.Buffer
+	require.NoError(t, json.Compact(&compactLinks, expectedLinks))
+	require.Equal(t, compactLinks.Bytes(), linkBytes)
+	require.NoError(t, json.Unmarshal(linkBytes, &linkEnvelope))
+	require.Len(t, linkEnvelope.Data.Items, 1)
+	call("/packages/link/link-fixture", 200)
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/catalog/links", nil)
+	request.Header.Set("If-None-Match", linkEnvelope.Data.ETag)
+	reply := httptest.NewRecorder()
+	server.Engine.ServeHTTP(reply, request)
+	require.Equal(t, 304, reply.Code)
+	require.Empty(t, reply.Body.String())
+	request = httptest.NewRequest(http.MethodGet, "/api/v1/catalog/changes?since=64&limit=3", nil)
+	request.Header.Set("X-OpenNavo-Caps", "link")
+	reply = httptest.NewRecorder()
+	server.Engine.ServeHTTP(reply, request)
+	require.Equal(t, 200, reply.Code)
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, reply.Body.Bytes()))
+	require.Equal(t, files["changes-empty.json"], compact.Bytes())
+	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error { return (&store.Store{DB: tx, Redis: st.Redis}).RemoveLinkApp(ctx, linkID) }))
+	require.Equal(t, files["changes-empty.json"], call("/catalog/changes?since=64&limit=3", 200))
 	for _, locale := range []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU"} {
 		for key, data := range objects {
 			if strings.HasPrefix(key, "snapshots/text-v2-"+locale+"-") {

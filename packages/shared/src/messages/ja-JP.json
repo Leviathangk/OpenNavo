@@ -7,7 +7,8 @@
     "queued": "キュー待ち",
     "running": "処理中",
     "cancel": "キャンセル",
-    "unavailable": "利用できません"
+    "unavailable": "利用できません",
+    "download": "ダウンロード"
   },
   "action": {
     "checkUpdates": "更新を確認",
@@ -28,7 +29,8 @@
   },
   "kind": {
     "cask": "App",
-    "formula": "コマンドラインツール"
+    "formula": "コマンドラインツール",
+    "link": "App"
   },
   "card": {
     "installs30d": "30 日間のインストール数",

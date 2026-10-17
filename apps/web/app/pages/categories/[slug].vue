@@ -46,7 +46,6 @@ const { data, error, refresh, status } = await useAsyncData(
         params: {
           query: {
             category: slug.value,
-            kind: 'cask',
             includeFonts: true,
             sort: sort.value,
             current: page.value,

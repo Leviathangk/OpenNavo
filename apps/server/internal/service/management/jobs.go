@@ -44,6 +44,14 @@ func (s *Service) trigger(ctx context.Context, op string, in Input) (any, error)
 		taskType = "catalog:sync"
 		// Casks from third-party taps are read by the tap sync, one package at a time.
 		if in.ID > 0 {
+			link, err := s.Store.LinkApp(ctx, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			if link != nil && link.Kind == "link" && !link.Removed {
+				taskType, payload.PackageID = "links:sync", in.ID
+				break
+			}
 			cask, err := s.Store.TapCask(ctx, in.ID)
 			if err != nil {
 				return nil, err

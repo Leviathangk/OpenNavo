@@ -16,16 +16,23 @@ export interface PublicClientOptions {
   /** Client identifier (04 §6.2), used only for server statistics/compatibility. */
   platform?: 'web' | 'desktop';
   version?: string;
+  /**
+   * Response shapes this client understands, sent as X-OpenNavo-Caps. `link`: lists may include link apps
+   * (kind `link`, official-site or GitHub downloads; store/security plan §4). Released clients send nothing and keep
+   * getting Homebrew apps only.
+   */
+  capabilities?: readonly 'link'[];
   fetch?: typeof globalThis.fetch;
 }
 
-function clientHeaders({ locale, platform, version }: PublicClientOptions): Middleware {
+function clientHeaders({ locale, platform, version, capabilities }: PublicClientOptions): Middleware {
   return {
     onRequest({ request }) {
       const current = typeof locale === 'function' ? locale() : locale;
       if (current) request.headers.set('Accept-Language', current);
       if (platform) request.headers.set('X-Client-Platform', platform);
       if (version) request.headers.set('X-Client-Version', version);
+      if (capabilities?.length) request.headers.set('X-OpenNavo-Caps', capabilities.join(','));
       return request;
     },
     onError({ error }) {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useId, watch } from 'vue';
-import type { PackageKind } from '@opennavo/shared';
 import OnAppIcon from './OnAppIcon.vue';
+import type { OnAppIconKind } from './OnAppIcon.vue';
 import OnChip from './OnChip.vue';
 import type { OnChipTone } from './OnChip.vue';
 import OnDialogShell from './OnDialogShell.vue';
@@ -14,7 +14,7 @@ export interface OnCommandItem {
   /** Description after name, e.g. App · Installed 4.92.1. */
   description?: string;
   /** Package icon for apps/tools. */
-  app?: { kind: PackageKind; token: string; name: string; src?: string | null; accent?: string | null };
+  app?: { kind: OnAppIconKind; token: string; name: string; src?: string | null; accent?: string | null };
   /** 18 px Lucide icon for actions/navigation. */
   icon?: string;
   /** accent uses salmon for update actions. */

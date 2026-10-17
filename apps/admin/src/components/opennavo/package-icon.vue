@@ -6,13 +6,13 @@ defineOptions({ name: 'PackageIcon' });
 interface Props {
   url?: string | null;
   name: string;
-  kind: 'cask' | 'formula';
+  kind: 'cask' | 'formula' | 'link';
   size?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), { url: null, size: 32 });
 
-// Missing/failed icons: initial letter for apps, terminal prompt for command-line tools (NAvatar supplies themed backgrounds).
+// Missing/failed icons: initial letter for apps (casks and link apps), terminal prompt for command-line tools (NAvatar supplies themed backgrounds).
 const failed = ref(false);
 watch(
   () => props.url,

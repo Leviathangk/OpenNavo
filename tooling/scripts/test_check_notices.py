@@ -47,11 +47,12 @@ class NoticeGateTests(unittest.TestCase):
         npm = module('npm', 'browser-lib', 'runtime-candidate')
         asset = module('npm', 'icons', 'runtime-asset')
         template = module('Platform', 'soybean-admin')
+        native = module('Native', 'standalone-helper')
         self.dev = module('Python', 'test-only', 'development')
         external = module('Platform', 'Redis', 'external')
         self.canonical = dict(formatVersion=1, lockDigests={'lock.txt': hashlib.sha256(b'lock.txt\n').hexdigest()},
-                              modules=[go, go_std, *python, rust, rust_std, npm, asset, template, self.dev, external])
-        selections = [self.canonical['modules'], [go, go_std], python, [rust, rust_std, npm, asset, template]]
+                              modules=[go, go_std, *python, rust, rust_std, npm, asset, template, native, self.dev, external])
+        selections = [self.canonical['modules'], [go, go_std], python, [rust, rust_std, npm, asset, template, native]]
         for folder, selected in zip(BUNDLES, selections):
             path = self.root / folder
             (path / 'licenses').mkdir(parents=True)
@@ -78,6 +79,17 @@ class NoticeGateTests(unittest.TestCase):
         self.mutate(BUNDLES[3], lambda i: i['modules'].reverse())
         self.check()
 
+    def test_server_native_data_carries_its_notice_in_server_bundle(self):
+        native = copy.deepcopy(next(m for m in self.canonical['modules'] if m['ecosystem'] == 'Native'))
+        native['name'] = 'vendor-data'
+        native['evidence']['products'] = ['server']
+        self.mutate(BUNDLES[0], lambda i: i['modules'].append(native))
+        self.check(1)
+        self.mutate(BUNDLES[1], lambda i: i['modules'].append(native))
+        self.check()
+        self.mutate(BUNDLES[3], lambda i: i['modules'].append(native))
+        self.check(1)
+
     def test_empty_runtime_bundle_fails_for_each_distribution(self):
         for folder in BUNDLES[1:]:
             with self.subTest(folder=folder):
@@ -89,6 +101,16 @@ class NoticeGateTests(unittest.TestCase):
     def test_single_omission_fails(self):
         self.mutate(BUNDLES[2], lambda i: i['modules'].pop())
         self.check(1)
+
+    def test_project_relicense_requires_every_bundle_to_be_regenerated(self):
+        # A license change must carry the grant and section 7 notice together.
+        for name, text in [('LICENSE', 'GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007\n'),
+                           ('NOTICE', 'GPL-3.0-only; additional terms under sections 7(c) and 7(e)\n')]:
+            (self.root / name).write_text(text)
+            for folder in BUNDLES:
+                self.check(1)
+                shutil.copyfile(self.root / name, self.root / folder / name)
+            self.check()
 
     def test_duplicate_bundle_record_fails(self):
         self.mutate(BUNDLES[2], lambda i: i['modules'].append(copy.deepcopy(i['modules'][0])))

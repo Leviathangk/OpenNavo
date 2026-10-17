@@ -48,6 +48,14 @@ SELECTORS: dict[str, dict[str, Any]] = {
 PARTIAL = {"category_update", "collection_update", "feature_upsert"}
 # Image bytes never pass through MCP or model output; clients send local files straight to Go.
 USAGE = {
+    "update_feed_upsert": (
+        " Sparkle only in M2. Rules are keyed by bundle_id and source; new URLs are published"
+        " after nightly validation. package_id is optional. This does not install software."
+    ),
+    "update_feed_disable": (
+        " Disabling preserves an explicit manual rule so automated Homebrew/link imports"
+        " cannot reactivate it. Supports dry_run."
+    ),
     "tap_package_add": (
         " cask is what brew install --cask takes, e.g. swiftvm-app/tap/swiftvm (tap"
         " swiftvm-app/tap = github.com/swiftvm-app/homebrew-tap). The cask file is read from"
@@ -102,7 +110,10 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
                 required += [snake(k) for k in body.get("required", [])]
     if spec.name in SELECTORS:
         properties.update(SELECTORS[spec.name])
-    if any(OPERATIONS[op]["path"].startswith("/packages/{id}") for op in spec.operations):
+    if any(
+        OPERATIONS[op]["path"].startswith(("/packages/{id}", "/links/packages/{id}"))
+        for op in spec.operations
+    ):
         properties.pop("id", None)
         properties["package"] = {
             "anyOf": [
@@ -110,7 +121,7 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
                 {"type": "string", "pattern": "^[a-z0-9][a-z0-9@+._-]*$"},
             ],
             "description": (
-                "Admin ID or Homebrew token; resolving tokens also requires catalog:package:view"
+                "Admin ID or cask/link token; resolving tokens also requires catalog:package:view"
             ),
         }
         required = ["package" if key == "id" else key for key in required]
@@ -255,7 +266,7 @@ class AdapterTool(Tool):
                 while True:
                     page = await self.invoke(
                         "listAdminPackages",
-                        {"q": package, "current": current, "size": 100, "kind": "cask"},
+                        {"q": package, "current": current, "size": 100},
                     )
                     matches = [item for item in page["records"] if item["token"] == package]
                     if len(matches) == 1:

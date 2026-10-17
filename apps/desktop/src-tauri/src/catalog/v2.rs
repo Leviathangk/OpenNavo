@@ -328,7 +328,7 @@ pub fn import(
             false,
         )?;
         tx.execute_batch(
-            "DELETE FROM catalog_items; DELETE FROM catalog_fts; DELETE FROM categories;",
+            "DELETE FROM catalog_fts WHERE kind<>'link'; DELETE FROM catalog_items WHERE kind<>'link'; DELETE FROM categories;",
         )?;
         for item in &base.items {
             upsert_new(&tx, item)?;

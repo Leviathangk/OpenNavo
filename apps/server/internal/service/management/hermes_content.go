@@ -289,16 +289,16 @@ func (s *Service) translations(ctx context.Context, in Input) (any, error) {
 			secondary = "p.package_id"
 		}
 		if entity == "package" {
-			where = "p.kind='cask'"
+			where = "p.kind IN ('cask','link')"
 		}
 		if entity == "category" {
 			where += " AND p.applies_to<>'formula'"
 		}
 		if entity == "feature" {
-			where += " AND (p.target_type<>'package' OR EXISTS(SELECT 1 FROM packages pk WHERE pk.id=p.package_id AND pk.kind='cask'))"
+			where += " AND (p.target_type<>'package' OR EXISTS(SELECT 1 FROM packages pk WHERE pk.id=p.package_id AND pk.kind IN ('cask','link')))"
 		}
 		if entity == "release" || entity == "screenshot" || entity == "collection_item" {
-			where += " AND EXISTS(SELECT 1 FROM packages pk WHERE pk.id=p.package_id AND pk.kind='cask')"
+			where += " AND EXISTS(SELECT 1 FROM packages pk WHERE pk.id=p.package_id AND pk.kind IN ('cask','link'))"
 		}
 		if entity == "article" {
 			// Only the live revision of a published article is translated.

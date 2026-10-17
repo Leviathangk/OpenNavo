@@ -231,6 +231,93 @@ pub fn start(engine: &Arc<Engine>) -> Guard {
     Guard(stop)
 }
 
+/// General path watcher using the same native bridge. The callback only signals a
+/// bounded queue, and only for event paths `relevant` accepts; consumers perform
+/// work outside the FSEvents run loop.
+pub(crate) fn watch_paths(
+    paths: Vec<PathBuf>,
+    sender: mpsc::SyncSender<()>,
+    relevant: Box<dyn Fn(&std::path::Path) -> bool + Send>,
+) -> Guard {
+    struct Watch {
+        sender: mpsc::SyncSender<()>,
+        relevant: Box<dyn Fn(&std::path::Path) -> bool + Send>,
+    }
+    unsafe extern "C" fn signal(
+        _: Ref,
+        info: *mut c_void,
+        count: usize,
+        paths: *mut c_void,
+        _: *const u32,
+        _: *const u64,
+    ) {
+        if info.is_null() || paths.is_null() {
+            return;
+        }
+        let watch = unsafe { &*(info as *const Watch) };
+        let paths =
+            unsafe { std::slice::from_raw_parts(paths as *const *const std::ffi::c_char, count) };
+        if paths.iter().filter(|p| !p.is_null()).any(|p| {
+            use std::os::unix::ffi::OsStrExt;
+            let bytes = unsafe { CStr::from_ptr(*p) }.to_bytes();
+            (watch.relevant)(std::path::Path::new(std::ffi::OsStr::from_bytes(bytes)))
+        }) {
+            let _ = watch.sender.try_send(());
+        }
+    }
+    let stop = Arc::new(AtomicBool::new(false));
+    let stream_stop = stop.clone();
+    std::thread::spawn(move || {
+        objc2::rc::autoreleasepool(|_| {
+            let strings: Vec<_> = paths
+                .iter()
+                .map(|p| NSString::from_str(&p.to_string_lossy()))
+                .collect();
+            if strings.is_empty() {
+                return;
+            }
+            let references: Vec<_> = strings.iter().map(|s| &**s).collect();
+            let array = NSArray::from_slice(&references);
+            let mut watch = Watch { sender, relevant };
+            let mut context = Context {
+                version: 0,
+                info: &mut watch as *mut _ as *mut c_void,
+                retain: None,
+                release: None,
+                description: None,
+            };
+            unsafe {
+                let stream = FSEventStreamCreate(
+                    std::ptr::null(),
+                    signal,
+                    &mut context,
+                    &*array as *const _ as Ref,
+                    u64::MAX,
+                    0.5,
+                    0x04 | 0x10,
+                );
+                if stream.is_null() {
+                    return;
+                }
+                FSEventStreamScheduleWithRunLoop(
+                    stream,
+                    CFRunLoopGetCurrent(),
+                    kCFRunLoopDefaultMode,
+                );
+                if FSEventStreamStart(stream) != 0 {
+                    while !stream_stop.load(Ordering::Acquire) {
+                        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, 0);
+                    }
+                    FSEventStreamStop(stream);
+                }
+                FSEventStreamInvalidate(stream);
+                FSEventStreamRelease(stream);
+            }
+        })
+    });
+    Guard(stop)
+}
+
 #[cfg(test)]
 mod tests {
     use super::relevant;

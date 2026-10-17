@@ -346,12 +346,76 @@ impl CatalogService {
         let _lock = self.lock.lock().await;
         self.syncing.store(true, Ordering::Release);
         let _reset = Reset(&self.syncing);
-        let result = self.sync_inner(force).await;
+        let mut result = self.sync_inner(force).await;
+        let mut links_applied = 0;
+        match self.sync_links(force).await {
+            Ok(applied) => {
+                links_applied = applied;
+                if let Ok(result) = &mut result {
+                    result.applied += applied;
+                    if applied > 0 && result.mode == SyncMode::None {
+                        result.mode = SyncMode::Delta;
+                    }
+                }
+            }
+            Err(error) => {
+                let _ = self.database.set_meta("links_last_error", &error.code);
+                log::warn!("links sync failed: {}", error.code);
+            }
+        }
         // Snapshots/deltas may commit before sync fails; the UI must still read the available offline catalog.
-        if result.is_err() {
+        if result.is_err() || links_applied > 0 {
             let _ = self.finish(SyncMode::None, 0).await;
         }
         result
+    }
+    async fn sync_links(&self, force: bool) -> Result<u32, AppError> {
+        let url = format!("{}/catalog/links", self.base);
+        validate_url(&url)?;
+        let mut request = self.client()?.get(url);
+        let cached = self.database.meta("links_etag")?;
+        if !force && let Some(etag) = &cached {
+            request = request.header("If-None-Match", etag);
+        }
+        let response = request.send().await?;
+        if response.status() == reqwest::StatusCode::NOT_MODIFIED {
+            if cached.is_none() || force {
+                return Err(protocol("links_unexpected_304"));
+            }
+            self.database.with(|conn| {
+                let tx = conn.transaction()?;
+                super::set_meta(
+                    &tx,
+                    "links_synced_at",
+                    &chrono::Utc::now().timestamp_millis().to_string(),
+                )?;
+                tx.execute("DELETE FROM meta WHERE key='links_last_error'", [])?;
+                tx.commit()?;
+                Ok(())
+            })?;
+            return Ok(0);
+        }
+        let response_etag = response
+            .headers()
+            .get("ETag")
+            .and_then(|h| h.to_str().ok())
+            .map(str::to_owned);
+        let response = json::<Response<super::links::LinkCatalog>>(response).await?;
+        if response.code != "0000" {
+            return Err(protocol("links_response"));
+        }
+        let catalog = response.data.ok_or_else(|| protocol("links_response"))?;
+        if response_etag
+            .as_ref()
+            .is_some_and(|etag| etag != &catalog.etag)
+        {
+            return Err(protocol("links_etag_mismatch"));
+        }
+        let database = self.database.clone();
+        crate::blocking(move || {
+            super::links::apply(&database, &catalog, chrono::Utc::now().timestamp_millis())
+        })
+        .await
     }
     async fn sync_inner(&self, force: bool) -> Result<SyncResult, AppError> {
         let client = self.client()?;
@@ -478,6 +542,74 @@ mod tests {
     use super::*;
     use crate::model::{Kind, Locale};
     use std::io::{Read, Write};
+
+    #[tokio::test]
+    async fn links_etag_offline_cache_and_cask_snapshot_are_independent() {
+        let temp = tempfile::tempdir().unwrap();
+        let db = Database::open(&temp.path().join("catalog.db")).unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let catalog = super::super::links::LinkCatalog {
+            etag: "\"one\"".into(),
+            items: vec![super::super::links::tests::item()],
+        };
+        let raw = serde_json::json!({"code":"0000","data":catalog}).to_string();
+        let server = std::thread::spawn(move || {
+            for index in 0..4 {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                let mut request = Vec::new();
+                let mut b = [0u8; 1];
+                while !request.ends_with(b"\r\n\r\n") {
+                    stream.read_exact(&mut b).unwrap();
+                    request.push(b[0]);
+                }
+                let request = String::from_utf8(request).unwrap().to_lowercase();
+                assert!(request.starts_with("get /catalog/links "));
+                if index > 0 {
+                    assert!(request.contains("if-none-match: \"one\""));
+                }
+                let (status, body) = match index {
+                    0 => ("200 OK", raw.as_str()),
+                    1 => ("304 Not Modified", ""),
+                    2 => ("503 Unavailable", ""),
+                    _ => (
+                        "200 OK",
+                        "{\"code\":\"0000\",\"data\":{\"etag\":\"bad\",\"items\":[]}}",
+                    ),
+                };
+                write!(stream,"HTTP/1.1 {status}\r\nETag: \"one\"\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).unwrap();
+            }
+        });
+        let cache = temp.path().join("cache");
+        std::fs::create_dir(&cache).unwrap();
+        let service = CatalogService::new(
+            db.clone(),
+            base,
+            String::new(),
+            cache.clone(),
+            Arc::new(RwLock::new(Settings::default())),
+            Arc::new(|_| {}),
+        );
+        assert_eq!(service.sync_links(false).await.unwrap(), 1);
+        assert_eq!(service.sync_links(false).await.unwrap(), 0);
+        assert!(service.sync_links(false).await.is_err());
+        assert!(service.sync_links(false).await.is_err());
+        server.join().unwrap();
+        assert_eq!(db.meta("links_etag").unwrap().as_deref(), Some("\"one\""));
+        let info = cache_build(&cache, 1);
+        service.snapshot(&info).await.unwrap();
+        assert_eq!(service.status().await.unwrap().item_count, 41);
+        assert!(
+            super::super::get(&db, Kind::Link, "external-example")
+                .unwrap()
+                .is_some()
+        );
+        let found:i64=db.with(|c|Ok(c.query_row("SELECT count(*) FROM catalog_fts WHERE kind='link' AND catalog_fts MATCH 'External'",[],|r|r.get(0))?)).unwrap();
+        assert_eq!(found, 1);
+    }
 
     fn cache_build(cache: &std::path::Path, generation: i64) -> SnapshotInfo {
         let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

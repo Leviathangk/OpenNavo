@@ -165,9 +165,20 @@ impl AdminActions for Admin {
                     ItemAction::Forget { package } => {
                         assert!(!package.is_empty());
                     }
-                    ItemAction::RestoreTrash { original, .. } => {
+                    ItemAction::RestoreTrash { original, reason } => {
                         assert_eq!(path.parent(), Some(self.root.as_path()));
                         assert!(original.starts_with(&self.sandbox));
+                        if original
+                            .parent()
+                            .and_then(|p| p.file_name())
+                            .is_some_and(|n| n.to_string_lossy().starts_with(".opennavo-updates"))
+                        {
+                            assert_eq!(*reason, MatchReason::NameExact);
+                            assert!(opennavo_desktop_lib::updater::backup::is_directory(
+                                r.app_path.as_deref().expect("backup owner"),
+                                original
+                            ));
+                        }
                         fs::rename(path, original)?;
                     }
                     ItemAction::PurgeTrash => {
@@ -355,6 +366,85 @@ fn permissions() -> Permissions {
         app_management_pending: false,
         full_disk_access_pending: false,
     }
+}
+
+#[tokio::test]
+async fn uninstall_includes_both_recovery_roots_even_without_optional_data_selection() {
+    use opennavo_desktop_lib::updater::backup;
+    for admin in [false, true] {
+        for mode in [DeleteMode::Trash, DeleteMode::Delete] {
+            let f = Fixture::with_admin_apps(admin);
+            let app = f.app("Recoverable", "test.recoverable");
+            let other = f.app("Other", "test.other");
+            let paths = backup::directories(&app).unwrap();
+            let sibling = backup::directories(&other).unwrap()[0].clone();
+            for p in paths.iter().chain([&sibling]) {
+                fs::create_dir_all(p.join("previous.app/Contents")).unwrap();
+                fs::write(p.join("previous.app/Contents/keep"), b"backup").unwrap();
+            }
+            let plan = f.plan(&app).await;
+            for p in &paths {
+                let item = plan.apps[0]
+                    .items
+                    .iter()
+                    .find(|i| Path::new(&i.path) == p)
+                    .unwrap();
+                assert!(item.required && item.selected);
+                assert_eq!(item.category, ItemCategory::AppData);
+                assert_eq!(item.needs_admin, admin);
+                assert!(f.engine.roots.allowed(p, item.reason, Some(&app)));
+                assert!(!f.engine.roots.allowed(p, item.reason, Some(&other)));
+                assert!(
+                    !f.engine
+                        .roots
+                        .allowed(p.parent().unwrap(), item.reason, Some(&app))
+                );
+            }
+            let task = f.execute(&plan, mode, false, Some(vec![])).await;
+            assert_eq!(task.state, TaskState::Succeeded, "{:?}", task.error);
+            assert!(!app.exists());
+            assert!(paths.iter().all(|p| !p.exists()));
+            assert!(sibling.join("previous.app/Contents/keep").exists());
+            assert!(other.exists());
+            if mode == DeleteMode::Trash {
+                assert_eq!(task.outcome.unwrap().trashed, 4);
+                assert_eq!(f.engine.restore(&task.id).unwrap().restored, 4);
+                assert!(app.exists());
+                assert!(
+                    paths
+                        .iter()
+                        .all(|p| p.join("previous.app/Contents/keep").exists())
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn uninstall_never_follows_recovery_symlinks_or_deletes_a_replaced_recovery_root() {
+    use opennavo_desktop_lib::updater::backup;
+    let f = Fixture::new();
+    let app = f.app("Recoverable", "test.recoverable");
+    let path = backup::directories(&app).unwrap()[0].clone();
+    fs::create_dir_all(path.join("previous.app")).unwrap();
+    let plan = f.plan(&app).await;
+    let original = path.with_file_name("old-recovery");
+    fs::rename(&path, &original).unwrap();
+    let sentinel = f.dir("Library/Application Support/keep");
+    symlink(&sentinel, &path).unwrap();
+    let task = f
+        .execute(&plan, DeleteMode::Delete, false, Some(vec![]))
+        .await;
+    assert!(!app.exists());
+    assert!(sentinel.join("data").exists());
+    assert!(original.join("previous.app").exists());
+    assert!(
+        task.outcome
+            .unwrap()
+            .skipped
+            .iter()
+            .any(|item| Path::new(&item.path) == path && item.reason == SkippedItemReason::Changed)
+    );
 }
 async fn terminal(queue: &TaskQueue, id: &str) -> Task {
     tokio::time::timeout(Duration::from_secs(8), async {
@@ -2055,6 +2145,8 @@ fn personal_data_kinds_come_from_known_bundle_ids() {
             bundle_id: Some(id.into()),
             version: None,
             source: AppSource::Direct,
+            updater: None,
+            homebrew_cask: None,
             cask: None,
             catalog_token: None,
             team_id: None,

@@ -31,7 +31,7 @@ func (s *Store) ResolveReleaseNotesTarget(ctx context.Context, packageID int64, 
 		ID                   int64
 		Version, VersionBase string
 	}
-	if err := s.DB.WithContext(ctx).Raw(`SELECT v.id,v.version,v.version_base FROM package_versions v JOIN packages p ON p.id=v.package_id WHERE v.package_id=? AND p.kind='cask' AND (v.version=? OR v.version_base=?) ORDER BY v.version=? DESC,v.id DESC LIMIT 1`, packageID, version, version, version).Scan(&row).Error; err != nil || row.ID == 0 {
+	if err := s.DB.WithContext(ctx).Raw(`SELECT v.id,v.version,v.version_base FROM package_versions v JOIN packages p ON p.id=v.package_id WHERE v.package_id=? AND p.kind IN ('cask','link') AND (v.version=? OR v.version_base=?) ORDER BY v.version=? DESC,v.id DESC LIMIT 1`, packageID, version, version, version).Scan(&row).Error; err != nil || row.ID == 0 {
 		return ReleaseNotesTarget{}, false, err
 	}
 	if row.Version == version && row.Version != row.VersionBase {

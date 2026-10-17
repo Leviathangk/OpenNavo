@@ -6,6 +6,7 @@ import { OnAppIcon, OnButton, OnChip, OnIcon, OnKeyValueList, OnSheet, OnStackBa
 import type { OnKeyValueItem } from '@opennavo/ui';
 import type { LocalApp } from '@/ipc/bindings';
 import { useLocalAppsStore } from '@/stores/localApps';
+import { useMasStore } from '@/stores/mas';
 import { usePermissionsStore } from '@/stores';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { useLocalAppMenu } from '@/composables/useLocalAppMenu';
@@ -18,6 +19,7 @@ const open = defineModel<boolean>('open', { required: true });
 const emit = defineEmits<{
   uninstall: [app: LocalApp];
   detail: [token: string];
+  appStore: [adamId: number];
 }>();
 
 const { t } = useI18n();
@@ -26,6 +28,7 @@ const { localApp } = usePackageIdentity();
 const menu = useLocalAppMenu();
 const localApps = useLocalAppsStore();
 const permissions = usePermissionsStore();
+const mas = useMasStore();
 
 const identity = computed(() => (props.app ? localApp(props.app) : null));
 const format = (bytes: number) => formatBytes(bytes, { locale: appLocale.value });
@@ -111,6 +114,12 @@ const fields = computed<OnKeyValueItem[]>(() => {
       value: t(`library.sources.${app.source}`)
     },
     {
+      // How OpenNavo would update it (plan §11.4); not whether a newer version exists.
+      key: 'updater',
+      label: t('appInfo.fields.updater'),
+      value: app.updater ? t(`updates.source.${app.updater}`) : t('appInfo.updaterNone')
+    },
+    {
       key: 'installedAt',
       label: t('appInfo.fields.installedAt'),
       value: date(app.installedAt)
@@ -123,10 +132,24 @@ const fields = computed<OnKeyValueItem[]>(() => {
   ];
 });
 
+// App Store apps link to their App Store page in OpenNavo (store/security plan §5), matched by bundle ID.
+const adamId = computed(() => {
+  const bundleId = props.app?.source === 'app_store' ? props.app.bundleId : null;
+  return bundleId ? (mas.installed.find(item => item.bundleId === bundleId)?.adamId ?? null) : null;
+});
+watch(
+  () => (open.value && props.app?.source === 'app_store' ? props.app.id : undefined),
+  id => {
+    if (id && !mas.installed.length) void mas.loadInstalled().catch(() => undefined);
+  },
+  { immediate: true }
+);
+
 const catalogToken = computed(() => props.app?.cask ?? props.app?.catalogToken ?? null);
-// Only drag-installed and .pkg apps: an App Store copy stays with the App Store (Homebrew would replace its build).
+// Rust names the matching cask only for copies Homebrew does not manage yet (LocalApp.homebrewCask); an App Store copy
+// stays with the App Store (Homebrew would replace its build).
 const adoptable = computed(() =>
-  Boolean(props.app?.catalogToken && (props.app.source === 'direct' || props.app.source === 'pkg'))
+  Boolean(props.app?.homebrewCask && (props.app.source === 'direct' || props.app.source === 'pkg'))
 );
 const partialNote = computed(() =>
   permissions.fullDiskAccess === 'granted' ? t('appInfo.footprintPartial') : t('appInfo.footprintIncomplete')
@@ -154,6 +177,9 @@ const partialNote = computed(() =>
             }}</OnButton>
             <OnButton v-if="catalogToken" size="xs" variant="ghost" @click="emit('detail', catalogToken)">{{
               t('appInfo.detail')
+            }}</OnButton>
+            <OnButton v-if="adamId" size="xs" variant="ghost" @click="emit('appStore', adamId)">{{
+              t('appInfo.appStore')
             }}</OnButton>
           </div>
         </div>

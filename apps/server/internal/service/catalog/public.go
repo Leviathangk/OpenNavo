@@ -89,7 +89,7 @@ func summary(p store.PublicPackage) publicapi.PackageSummary {
 	}
 	source := publicapi.Locale(p.I18n.SourceLocale)
 	machine := p.I18n.MachineTranslated
-	s := publicapi.PackageSummary{SourceLocale: &source, MachineTranslated: &machine, Kind: publicapi.PackageKind(p.Kind), Token: p.Token, Name: p.Name, DisplayName: name, Summary: text, IconUrl: p.IconURL, AccentColor: p.Meta.AccentColor, Version: p.Version, Installs30d: p.Installs30d, Rank30d: p.Rank30d, AutoUpdates: p.AutoUpdates, Deprecated: p.Deprecated, Disabled: p.Disabled, IsFont: p.IsFont, IsLibrary: p.IsLibrary, EditorChoice: p.Meta.EditorChoice, VersionChangedAt: p.VersionChangedAt.UTC()}
+	s := publicapi.PackageSummary{Link: p.Link, BundleIds: p.BundleIDs, SourceLocale: &source, MachineTranslated: &machine, Kind: publicapi.PackageKind(p.Kind), Token: p.Token, Name: p.Name, DisplayName: name, Summary: text, IconUrl: p.IconURL, AccentColor: p.Meta.AccentColor, Version: p.Version, Installs30d: p.Installs30d, Rank30d: p.Rank30d, AutoUpdates: p.AutoUpdates, Deprecated: p.Deprecated, Disabled: p.Disabled, IsFont: p.IsFont, IsLibrary: p.IsLibrary, EditorChoice: p.Meta.EditorChoice, VersionChangedAt: p.VersionChangedAt.UTC()}
 	for _, category := range p.Categories {
 		if category.IsPrimary {
 			s.PrimaryCategory = &publicapi.CategoryRef{SourceLocale: localePointer(category.SourceLocale), MachineTranslated: boolPointer(category.MachineTranslated), Slug: category.Slug, Name: category.Name, Icon: category.Icon}
@@ -124,7 +124,7 @@ func (s *PublicService) List(ctx context.Context, f store.PublicFilter) (Summary
 	return SummaryPage{f.Current, f.Size, total, Summaries(rows)}, err
 }
 func (s *PublicService) Categories(ctx context.Context, locale string) ([]publicapi.CategoryNode, error) {
-	return cache.ReadThrough(ctx, s.Cache, "c:cat:tree:c2:"+locale, 30*time.Minute, func(ctx context.Context) ([]publicapi.CategoryNode, error) {
+	return cache.ReadThrough(ctx, s.Cache, "c:cat:tree:c2:"+locale+domain.LinksCacheKey(ctx), 30*time.Minute, func(ctx context.Context) ([]publicapi.CategoryNode, error) {
 		rows, err := s.Store.PublicCategories(ctx, locale)
 		if err != nil {
 			return nil, err
@@ -145,7 +145,7 @@ func (s *PublicService) Categories(ctx context.Context, locale string) ([]public
 	})
 }
 func (s *PublicService) Home(ctx context.Context, locale string) (publicapi.HomeData, error) {
-	data, err := cache.ReadThrough(ctx, s.Cache, "c:home:c2:"+locale, 5*time.Minute, func(ctx context.Context) (publicapi.HomeData, error) {
+	data, err := cache.ReadThrough(ctx, s.Cache, "c:home:c2:"+locale+domain.LinksCacheKey(ctx), 5*time.Minute, func(ctx context.Context) (publicapi.HomeData, error) {
 		data := publicapi.HomeData{PopularCli: []publicapi.PackageSummary{}, Features: []publicapi.Feature{}, Collections: []publicapi.CollectionSummary{}}
 		var err error
 		data.Categories, err = s.Categories(ctx, locale)
@@ -155,7 +155,7 @@ func (s *PublicService) Home(ctx context.Context, locale string) (publicapi.Home
 		for _, section := range []struct {
 			kind, sort string
 			target     *[]publicapi.PackageSummary
-		}{{"cask", "popular", &data.PopularApps}, {"", "updated", &data.RecentlyUpdated}} {
+		}{{"", "popular", &data.PopularApps}, {"", "updated", &data.RecentlyUpdated}} {
 			page, err := s.List(ctx, store.PublicFilter{Kind: section.kind, Sort: section.sort, Locale: locale, Current: 1, Size: 12, IncludeFonts: true})
 			if err != nil {
 				return data, err
@@ -181,7 +181,7 @@ func (s *PublicService) Home(ctx context.Context, locale string) (publicapi.Home
 
 }
 func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) (publicapi.PackageDetail, error) {
-	return cache.ReadThrough(ctx, s.Cache, "c:pkg:c3:"+kind+":"+token+":"+locale, 10*time.Minute, func(ctx context.Context) (publicapi.PackageDetail, error) {
+	return cache.ReadThrough(ctx, s.Cache, cache.PackageDetailPrefix+kind+":"+token+":"+locale+domain.LinksCacheKey(ctx), 10*time.Minute, func(ctx context.Context) (publicapi.PackageDetail, error) {
 		p, err := s.Store.PublicPackage(ctx, kind, token, locale)
 		if err != nil {
 			return publicapi.PackageDetail{}, notFound(err)
@@ -263,7 +263,22 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 		repo := strings.Replace(p.Tap, "/", "/homebrew-", 1)
 		d.SourceUrl = "https://github.com/" + repo + "/blob/HEAD/" + path
 		d.FormulaeUrl = "https://formulae.brew.sh/" + kind + "/" + token
-		if kind == "cask" {
+		if kind == "link" {
+			d.InstallCommand = ""
+			d.SourceUrl = ""
+			d.FormulaeUrl = ""
+			if p.DownloadURL != nil {
+				d.SourceUrl = *p.DownloadURL
+			}
+			if p.Homepage != nil {
+				d.SourceUrl = *p.Homepage
+			}
+			if p.Link != nil && p.Link.Github != nil {
+				d.SourceUrl = "https://github.com/" + p.Link.Github.Repo
+			}
+			d.FormulaeUrl = d.SourceUrl
+		}
+		if kind == "cask" || kind == "link" {
 			if d.Indexing, d.VersionCommittedAt, err = s.indexing(ctx, token); err != nil {
 				return d, err
 			}
@@ -637,7 +652,7 @@ func (s *PublicService) Lookup(ctx context.Context, items []publicapi.PackageRef
 	return out, nil
 }
 
-// Sitemap pages indexable casks in id order (WP3). Under an enforced index policy only eligible
+// Sitemap pages indexable casks and links in id order (WP3). Under an enforced index policy only eligible
 // apps and their published languages are listed; otherwise the long-standing rule applies (listed,
 // not disabled, all six languages). Records can be fewer than size: total counts candidates.
 func (s *PublicService) Sitemap(ctx context.Context, group string, current, size int) (SitemapPage, error) {
@@ -661,7 +676,7 @@ func (s *PublicService) Sitemap(ctx context.Context, group string, current, size
 		}
 		isFont, notes := row.IsFont, row.NotesCount
 		out.Records = append(out.Records, publicapi.SitemapEntry{
-			Kind: publicapi.PackageKindCask, Token: row.Token, UpdatedAt: row.UpdatedAt.UTC(),
+			Kind: publicapi.PackageKind(row.Kind), Token: row.Token, UpdatedAt: row.UpdatedAt.UTC(),
 			IsFont: &isFont, NotesCount: &notes, Locales: &locales,
 		})
 	}

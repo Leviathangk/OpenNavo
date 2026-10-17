@@ -1,0 +1,314 @@
+[
+  {
+    "bundleId": "com.tencent.xinWeChat",
+    "source": "vendor",
+    "feedUrl": "https://dldir1.qq.com/weixin/mac/mac-release.xml",
+    "teamId": "5A4RE8SF68",
+    "channel": "stable",
+    "resolver": {
+      "mode": "sparkle",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "^([0-9]+\\.[0-9]+\\.[0-9]+)(?:\\.[0-9]+)?$"
+    }
+  },
+  {
+    "bundleId": "com.sogou.inputmethod.sogou",
+    "source": "vendor",
+    "feedUrl": "https://macime.sogou.com/macversion.txt?v=0.0.0.1&sv=27.0&s=0",
+    "teamId": "DFD88F82SU",
+    "channel": "stable",
+    "resolver": {
+      "mode": "text",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "\\npid=0\\n(?:[^\\[]*?\\n)?version=([0-9]+(?:\\.[0-9]+)+)[^\\[]*?\\nupdate_pack_url=",
+      "downloadPattern": "\\npid=0\\n(?:[^\\[]*?\\n)?version=[0-9.]+[^\\[]*?\\nupdate_pack_url=(https?://[^\\s]+\\.zip)",
+      "architecture": "universal",
+      "httpsUpgrade": true
+    }
+  },
+  {
+    "bundleId": "com.bytedance.inputmethod.doubaoime",
+    "source": "vendor",
+    "feedUrl": "https://ime.doubao.com/api/v1/app/download_url?platform=macos",
+    "teamId": "96L78H6LMH",
+    "channel": "stable",
+    "resolver": {
+      "mode": "json",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPath": "data.version_name",
+      "downloadPath": "data.url",
+      "architecture": "universal"
+    }
+  },
+  {
+    "bundleId": "com.baidu.BaiduNetdisk-mac",
+    "source": "vendor",
+    "feedUrl": "https://pan.baidu.com/disk/cmsdata?do=client",
+    "teamId": "738UU3Y57V",
+    "channel": "stable",
+    "resolver": {
+      "mode": "text",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "/MACguanjia/([0-9]+(?:\\.[0-9]+)+)/BaiduNetdisk_mac_[0-9.]+_arm64\\.dmg",
+      "downloadPattern": "(https://pkg-ant\\.baidu\\.com/issue/netdisk/MACguanjia/[0-9.]+/BaiduNetdisk_mac_[0-9.]+_arm64\\.dmg)",
+      "architecture": "arm64"
+    }
+  },
+  {
+    "bundleId": "com.tencent.QQMusicMac",
+    "source": "vendor",
+    "feedUrl": "https://y.qq.com/download/download.js",
+    "teamId": "FN2V63AD2J",
+    "channel": "stable",
+    "resolver": {
+      "mode": "text",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "QQMusicMac([0-9]+(?:\\.[0-9]+)+)Build[0-9]+\\.dmg",
+      "downloadPattern": "(https://c\\.y\\.qq\\.com/cgi-bin/file_redirect\\.fcg\\?[^\"\\s]*QQMusicMac[0-9.]+Build[0-9]+\\.dmg[^\"\\s]*)",
+      "architecture": "universal",
+      "fileName": "QQMusic.dmg"
+    }
+  },
+  {
+    "bundleId": "com.tencent.inputmethod.wetype",
+    "source": "vendor",
+    "feedUrl": "https://z.weixin.qq.com/web/mac/download?channel=InstallInfo",
+    "teamId": "88L2Q4487U",
+    "channel": "stable",
+    "resolver": {
+      "mode": "text",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "\"zip_version\"\\s*:\\s*\"([0-9]+(?:\\.[0-9]+){2})\\.[0-9]+\"",
+      "downloadPattern": "\"zip_download_url\"\\s*:\\s*\"(https://[^\"\\s]+\\.zip)\"",
+      "architecture": "universal"
+    }
+  },
+  {
+    "bundleId": "com.tencent.workbuddy.mac",
+    "source": "vendor",
+    "feedUrl": "https://www.workbuddy.cn/v2/update?platform=workbuddy-darwin-arm64",
+    "teamId": "FN2V63AD2J",
+    "channel": "stable",
+    "resolver": {
+      "mode": "json",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPath": "productVersion",
+      "downloadPath": "url",
+      "sha256Path": "sha256hash",
+      "variants": [
+        {
+          "url": "https://www.workbuddy.cn/v2/update?platform=workbuddy-darwin-arm64",
+          "architecture": "arm64"
+        },
+        {
+          "url": "https://www.workbuddy.cn/v2/update?platform=workbuddy-darwin-x64",
+          "architecture": "x86_64"
+        }
+      ],
+      "versionPattern": "^([0-9]+\\.[0-9]+\\.[0-9]+)(?:\\.[0-9]+)?$"
+    }
+  },
+  {
+    "bundleId": "com.workbuddy.workbuddy-ai",
+    "source": "vendor",
+    "feedUrl": "https://www.workbuddy.ai/v2/update?platform=workbuddy-darwin-arm64",
+    "teamId": "FN2V63AD2J",
+    "channel": "stable",
+    "resolver": {
+      "mode": "json",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPath": "productVersion",
+      "downloadPath": "url",
+      "sha256Path": "sha256hash",
+      "variants": [
+        {
+          "url": "https://www.workbuddy.ai/v2/update?platform=workbuddy-darwin-arm64",
+          "architecture": "arm64"
+        },
+        {
+          "url": "https://www.workbuddy.ai/v2/update?platform=workbuddy-darwin-x64",
+          "architecture": "x86_64"
+        }
+      ],
+      "versionPattern": "^([0-9]+\\.[0-9]+\\.[0-9]+)(?:\\.[0-9]+)?$"
+    }
+  },
+  {
+    "bundleId": "com.qianwen.inputmethod.desktopime",
+    "source": "vendor",
+    "feedUrl": "https://download.qianwen.com/pcdownload/qwenimemac?ch=pcqwenime@homepage_official&platform=mac",
+    "teamId": "8T9NQJXDU3",
+    "channel": "stable",
+    "resolver": {
+      "mode": "text",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "QwenimeMac_V([0-9]+(?:\\.[0-9]+){2})\\.[0-9]+_mac_",
+      "downloadPattern": "\"url\"\\s*:\\s*\"(https://[^\"\\s]+/QwenimeMac_V[0-9.]+_mac_[^\"\\s]*_release_[^\"\\s]*\\.dmg)\"",
+      "architecture": "universal"
+    }
+  },
+  {
+    "bundleId": "com.aliyun.lingma.ide",
+    "source": "vendor",
+    "feedUrl": "https://lingma-api.tongyi.aliyun.com/algo/api/qodercn/update/darwin-arm64/stable/latest?machineId=opennavo",
+    "teamId": "9DFNGU9AK5",
+    "channel": "stable",
+    "resolver": {
+      "mode": "json",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPath": "productVersion",
+      "downloadUrl": "https://ide.qoder.com.cn/qoder/release/{version}/QoderCN-darwin-arm64.zip",
+      "sha256Path": "sha256hash",
+      "architecture": "arm64"
+    }
+  },
+  {
+    "bundleId": "com.qoder.ide",
+    "source": "vendor",
+    "feedUrl": "https://center.qoder.sh/algo/api/update/darwin-arm64/stable/latest?machineId=opennavo",
+    "teamId": "T27K5A5ZWD",
+    "channel": "stable",
+    "resolver": {
+      "mode": "json",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPath": "productVersion",
+      "downloadPath": "url",
+      "sha256Path": "sha256hash",
+      "architecture": "arm64"
+    }
+  },
+  {
+    "bundleId": "io.dcloud.HBuilderX",
+    "source": "vendor",
+    "feedUrl": "https://download1.dcloud.net.cn/hbuilderx/release.json",
+    "teamId": "YQM5H857L5",
+    "channel": "stable",
+    "resolver": {
+      "mode": "text",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "\"version\"\\s*:\\s*\"([0-9]+(?:\\.[0-9]+)+)\"",
+      "downloadPattern": "(https://download1\\.dcloud\\.net\\.cn/download/HBuilderX\\.[0-9.]+\\.arm64\\.dmg)",
+      "architecture": "arm64"
+    }
+  },
+  {
+    "bundleId": "xyz.chatboxapp.app",
+    "source": "vendor",
+    "feedUrl": "https://download.chatboxai.app/releases/latest-mac.yml",
+    "teamId": "YJ5GSB3AMW",
+    "channel": "stable",
+    "resolver": {
+      "mode": "electron",
+      "versionKey": "CFBundleShortVersionString"
+    }
+  },
+  {
+    "bundleId": "com.aionui.app",
+    "source": "vendor",
+    "feedUrl": "https://static.aionui.com/releases/latest-arm64-mac.yml",
+    "teamId": "52JQX2HUSC",
+    "channel": "stable",
+    "resolver": {
+      "mode": "electron",
+      "versionKey": "CFBundleShortVersionString"
+    }
+  },
+  {
+    "bundleId": "com.canva.CanvaDesktop",
+    "source": "vendor",
+    "feedUrl": "https://desktop-release.canva.com/latest-mac.yml",
+    "teamId": "5HD2ARTBFS",
+    "channel": "stable",
+    "resolver": {
+      "mode": "electron",
+      "versionKey": "CFBundleShortVersionString"
+    }
+  },
+  {
+    "bundleId": "ai.memoh.desktop",
+    "source": "vendor",
+    "feedUrl": "https://desktopresource.memoh.ai/latest-mac.yml",
+    "teamId": "P9R669C27U",
+    "channel": "stable",
+    "resolver": {
+      "mode": "electron",
+      "versionKey": "CFBundleShortVersionString"
+    }
+  },
+  {
+    "bundleId": "app.chatwise",
+    "source": "vendor",
+    "feedUrl": "https://releases.chatwise.app/releases?version=0.0.0&platform=osx",
+    "teamId": "GJE9R5VE87",
+    "channel": "stable",
+    "resolver": {
+      "mode": "text",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "\"version\"\\s*:\\s*\"([0-9]+(?:\\.[0-9]+)+)\"",
+      "downloadPattern": "\"url\"\\s*:\\s*\"(https://[^\"\\s]*arm64\\.zip)\"",
+      "architecture": "arm64"
+    }
+  },
+  {
+    "bundleId": "com.longbridge.app.desktop",
+    "source": "vendor",
+    "feedUrl": "https://assets.lbkrs.com/github/release/longbridge-desktop/stable/latest.json",
+    "teamId": "45NG8MW7WK",
+    "channel": "stable",
+    "resolver": {
+      "mode": "text",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "\"version\"\\s*:\\s*\"([0-9]+(?:\\.[0-9]+)+)\"",
+      "downloadPattern": "\"url\"\\s*:\\s*\"(https://assets\\.lbkrs\\.com/github/release/longbridge-desktop/stable/longbridge-v[0-9.]+-macos-aarch64\\.dmg)\"",
+      "checksumForUrl": true,
+      "architecture": "arm64"
+    }
+  },
+  {
+    "bundleId": "com.qoder.app",
+    "source": "vendor",
+    "feedUrl": "https://download.qoder.com/qoder-app/releases/latest/manifest.json",
+    "teamId": "B6U242QL73",
+    "channel": "stable",
+    "resolver": {
+      "mode": "text",
+      "versionKey": "CFBundleShortVersionString",
+      "versionPattern": "\"version\"\\s*:\\s*\"([0-9]+(?:\\.[0-9]+)+)\"",
+      "downloadPattern": "\"url\"\\s*:\\s*\"(https://download\\.qoder\\.com(?:\\.cn)?/qoder-app/releases/[0-9.]+/Qoder-mac-arm64\\.zip)\"",
+      "checksumForUrl": true,
+      "architecture": "arm64"
+    }
+  },
+  {
+    "bundleId": "com.trae.app",
+    "source": "vendor",
+    "feedUrl": "https://api.trae.ai/icube/api/v1/native/version/trae/latest",
+    "teamId": "79M8227NKH",
+    "channel": "stable",
+    "resolver": {
+      "mode": "json",
+      "versionKey": "CFBundleShortVersionString",
+      "scopePath": "data.manifest.darwin.versions",
+      "versionPath": "version",
+      "downloadPath": "url",
+      "variants": [
+        {
+          "url": "https://api.trae.ai/icube/api/v1/native/version/trae/latest",
+          "architecture": "arm64",
+          "match": {
+            "region": "va",
+            "arch": "apple"
+          }
+        },
+        {
+          "url": "https://api.trae.ai/icube/api/v1/native/version/trae/latest",
+          "architecture": "x86_64",
+          "match": {
+            "region": "va",
+            "arch": "intel"
+          }
+        }
+      ]
+    }
+  }
+]

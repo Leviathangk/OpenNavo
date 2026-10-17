@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/facts"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 )
@@ -41,7 +42,7 @@ func (s *Store) PackageFacts(ctx context.Context, id int64) (PackageFacts, bool,
 		UpdatedAt     *time.Time
 	}
 	err := s.DB.WithContext(ctx).Raw(`SELECT p.id,p.min_macos,p.supports_arm64,p.supports_x86_64,p.dependencies,f.price,f.macos,f.updated_at
- FROM packages p LEFT JOIN package_facts f ON f.package_id=p.id WHERE p.kind='cask' AND p.id=?`, id).Scan(&row).Error
+ FROM packages p LEFT JOIN package_facts f ON f.package_id=p.id WHERE p.kind IN ('cask','link') AND p.id=?`, id).Scan(&row).Error
 	if err != nil || row.ID == 0 {
 		return PackageFacts{}, false, err
 	}
@@ -111,7 +112,7 @@ func (s *Store) AlternativeTargets(ctx context.Context, ids []int64) (map[int64]
 		return out, nil
 	}
 	var found []int64
-	if err := s.DB.WithContext(ctx).Raw("SELECT id FROM packages WHERE kind='cask' AND removed_at IS NULL AND id IN ?", ids).Scan(&found).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw("SELECT id FROM packages WHERE kind IN ('cask','link') AND removed_at IS NULL AND id IN ?", ids).Scan(&found).Error; err != nil {
 		return nil, err
 	}
 	for _, id := range found {
@@ -131,13 +132,18 @@ func (s *Store) Alternatives(ctx context.Context, id int64, publicOnly bool) ([]
 		IconURL                  *string
 		Available                bool
 	}
+	visibilityContext := ctx
+	if !publicOnly {
+		visibilityContext = domain.WithLinks(ctx, true)
+	}
+	visible := linkSQL(visibilityContext, publicVisible)
 	condition := ""
 	if publicOnly {
-		condition = " AND " + publicVisible + " AND NOT " + PackageDisabledSQL
+		condition = " AND " + visible + " AND NOT " + PackageDisabledSQL
 	}
 	err := s.DB.WithContext(ctx).Raw(`SELECT a.alternative_id,to_jsonb(a.reasons)::text AS reasons,to_jsonb(a.limits)::text AS limits,a.best_for,a.note,a.source,
  p.token,p.name,COALESCE(NULLIF(si.display_name,''),p.name) AS display_name,ia.url AS icon_url,
- (`+publicVisible+` AND NOT `+PackageDisabledSQL+`) AS available
+ (`+visible+` AND NOT `+PackageDisabledSQL+`) AS available
  FROM package_alternatives a JOIN packages p ON p.id=a.alternative_id LEFT JOIN package_meta m ON m.package_id=p.id
  LEFT JOIN package_i18n si ON si.package_id=p.id AND si.locale=p.source_locale LEFT JOIN assets ia ON ia.id=m.icon_asset_id
  WHERE a.package_id=?`+condition+` ORDER BY a.sort,a.alternative_id`, id).Scan(&rows).Error

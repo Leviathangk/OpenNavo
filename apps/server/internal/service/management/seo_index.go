@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -122,7 +123,7 @@ func (s *Service) packageIndexStatus(ctx context.Context, op string, in Input) (
 		if err := st.AppendContentChange(ctx, in.ID); err != nil {
 			return err
 		}
-		if err := store.QueueCacheInvalidation(ctx, tx, "seo-index:"+before.Token, "c:pkg:c3:cask:"+before.Token+":*"); err != nil {
+		if err := store.QueueCacheInvalidation(ctx, tx, "seo-index:"+before.Token, cache.PackageDetailPrefix+before.Kind+":"+before.Token+":*"); err != nil {
 			return err
 		}
 		return store.Audit(ctx, tx, in.Actor, "SetPackageIndexStatus", "package", fmt.Sprint(in.ID), indexStatusView(before, policy), result)

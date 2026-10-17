@@ -45,8 +45,8 @@ export function isThirdPartyTap(tap: string | null | undefined): tap is string {
   return Boolean(tap) && !tap!.startsWith('homebrew/');
 }
 
-/** Install command, matching server installCommand rules (04 §4); casks from a third-party tap use `<tap>/<token>`. */
-export function installCommand(kind: PackageKind, token: string, tap?: string | null): string {
+/** Install command, matching server installCommand rules (04 §4); casks from a third-party tap use `<tap>/<token>`. Link apps have none. */
+export function installCommand(kind: Exclude<PackageKind, 'link'>, token: string, tap?: string | null): string {
   const args = brewArgs({ op: 'install', kind, token });
   if (kind === 'cask' && isThirdPartyTap(tap)) {
     if (!TAP_PATTERN.test(tap)) throw new InvalidTokenError(`${tap}/${token}`);

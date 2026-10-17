@@ -71,7 +71,7 @@ export { default as OnVersionTimeline } from './components/OnVersionTimeline.vue
 
 export type { OnAboutSectionProps } from './components/OnAboutSection.vue';
 export type { OnAppCardProps, OnAppCardStat } from './components/OnAppCard.vue';
-export type { OnAppIconProps, OnAppIconSize } from './components/OnAppIcon.vue';
+export type { OnAppIconKind, OnAppIconProps, OnAppIconSize } from './components/OnAppIcon.vue';
 export type { OnAppRowProps } from './components/OnAppRow.vue';
 export type { OnAppShellProps } from './components/OnAppShell.vue';
 export type { OnBreadcrumbItem, OnBreadcrumbProps } from './components/OnBreadcrumb.vue';

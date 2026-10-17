@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { PackageKind } from '@opennavo/shared';
 import { detailGlow } from '@opennavo/tokens';
 import OnAppIcon from './OnAppIcon.vue';
+import type { OnAppIconKind } from './OnAppIcon.vue';
 import OnChip from './OnChip.vue';
 import type { OnChipTone } from './OnChip.vue';
 
@@ -17,7 +17,7 @@ export interface OnPackageHeaderChip {
 }
 
 export interface OnPackageHeaderProps {
-  kind: PackageKind;
+  kind: OnAppIconKind;
   token: string;
   name: string;
   /** Developer and summary. */

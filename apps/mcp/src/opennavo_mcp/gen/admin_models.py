@@ -4,7 +4,167 @@
 from __future__ import annotations
 from typing import Annotated, Any, Literal
 from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, RootModel
+from typing_extensions import TypeAliasType
 from datetime import date as date_aliased
+
+
+class Object(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    entity: Literal['update_feed']
+    objectKey: str
+
+
+class Change(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    object: Object
+    action: Annotated[Literal['create', 'update', 'delete', 'restore', 'retranslate', 'trigger'], Field(examples=['create'])]
+    before: Annotated[dict[str, Any], Field(examples=[None])]
+    after: Annotated[dict[str, Any], Field(examples=[None])]
+
+
+class Notes(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    format: Literal['text', 'markdown', 'html'] | None = None
+    body: str | None = None
+    url: AnyUrl | None = None
+
+
+class UpdateFile(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    url: AnyUrl
+    name: Annotated[str, Field(max_length=512)]
+    size: Annotated[int, Field(ge=1)]
+    architecture: Literal['arm64', 'x86_64', 'universal']
+    sha256: Annotated[str, Field(pattern='^[a-fA-F0-9]{64}$')]
+    sha512: str
+
+
+
+MatchAdditionalProperty = TypeAliasType("MatchAdditionalProperty", Annotated[str, Field(max_length=256)])
+
+
+class Variant(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    match: Annotated[dict[str, MatchAdditionalProperty] | None, Field(max_length=8)] = None
+    url: AnyUrl
+    architecture: Literal['arm64', 'x86_64', 'universal']
+
+
+class VendorResolver(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    scopePath: Annotated[str | None, Field(max_length=256)] = None
+    match: Annotated[dict[str, MatchAdditionalProperty] | None, Field(max_length=8)] = None
+    httpsUpgrade: bool | None = None
+    mode: Literal['json', 'text', 'redirect', 'sparkle', 'electron']
+    versionKey: Literal['CFBundleShortVersionString', 'CFBundleVersion', 'Wave Build Version Number'] | None = None
+    versionPath: Annotated[str | None, Field(max_length=256)] = None
+    versionPattern: Annotated[str | None, Field(max_length=2048)] = None
+    downloadPath: Annotated[str | None, Field(max_length=256)] = None
+    downloadPattern: Annotated[str | None, Field(max_length=2048)] = None
+    downloadUrl: Annotated[str | None, Field(max_length=4096)] = None
+    sha256Path: Annotated[str | None, Field(max_length=256)] = None
+    sha256Pattern: Annotated[str | None, Field(max_length=2048)] = None
+    checksumForUrl: bool | None = None
+    fileName: Annotated[str | None, Field(max_length=255)] = None
+    architecture: Literal['arm64', 'x86_64', 'universal'] | None = None
+    variants: Annotated[list[Variant] | None, Field(max_length=4)] = None
+
+
+class UpdateFeedKey(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    bundleId: Annotated[str, Field(max_length=255, pattern='^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)+$')]
+    source: Literal['sparkle', 'electron', 'github', 'vendor']
+
+
+class UpdateFeedInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    githubRepo: Annotated[str | None, Field(pattern='^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$')] = None
+    assetPattern: Annotated[str | None, Field(max_length=2048)] = None
+    resolver: VendorResolver | None = None
+    bundleId: Annotated[str, Field(max_length=255, pattern='^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)+$')]
+    source: Literal['sparkle', 'electron', 'github', 'vendor']
+    feedUrl: AnyUrl | None = None
+    teamId: Annotated[str | None, Field(pattern='^[A-Z0-9]{10}$')] = None
+    channel: Literal['stable', 'beta'] | None = 'stable'
+    packageId: Annotated[int | None, Field(ge=1)] = None
+
+
+class ReleaseAsset(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    name: str
+    url: AnyUrl
+    size: Annotated[int, Field(ge=0)]
+    arch: Literal['arm64', 'x86_64', 'universal'] | None
+    format: Literal['dmg', 'zip', 'pkg', 'other']
+    sha256: Annotated[str, Field(pattern='^[a-f0-9]{64}$')]
+
+
+class GithubRelease(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    tag: str
+    version: str
+    publishedAt: AwareDatetime
+    url: AnyUrl
+    assets: list[ReleaseAsset]
+
+
+class Github(BaseModel):
+    repo: str
+    latest: GithubRelease
+
+
+class Notes1(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    en_US: Annotated[str | None, Field(alias='en-US')] = None
+    zh_CN: Annotated[str | None, Field(alias='zh-CN')] = None
+    ja_JP: Annotated[str | None, Field(alias='ja-JP')] = None
+    es_ES: Annotated[str | None, Field(alias='es-ES')] = None
+    pt_BR: Annotated[str | None, Field(alias='pt-BR')] = None
+    ru_RU: Annotated[str | None, Field(alias='ru-RU')] = None
+
+
+class LinkInfo(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    homepage: str
+    downloadUrl: str
+    github: Github
+    teamId: str
+    pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source']
+    notes: Notes1
+    adoptedByCask: str
+
+
+class AssetRules(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    arm64: str | None = None
+    x86_64: str | None = None
+    universal: str | None = None
 
 
 class GitHubSettingsUpdate(BaseModel):
@@ -267,8 +427,8 @@ class Locale(RootModel[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-
     root: Annotated[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'], Field(description='Supported language; without locale, match Accept-Language by q value and ultimately default to en-US.', examples=['en-US'])]
 
 
-class PackageKind(RootModel[Literal['cask', 'formula']]):
-    root: Annotated[Literal['cask', 'formula'], Field(description='Manages Casks only; formula remains an enum for historical data. Admin lists exclude Formula and details return business code 1002 (HTTP 200); explicit public formula requests return HTTP 404.', examples=['cask'])]
+class PackageKind(RootModel[Literal['cask', 'formula', 'link']]):
+    root: Annotated[Literal['cask', 'formula', 'link'], Field(description='Manages Casks only; formula remains an enum for historical data. Admin lists exclude Formula and details return business code 1002 (HTTP 200); explicit public formula requests return HTTP 404.', examples=['cask'])]
 
 
 class EnableStatus(RootModel[Literal['1', '2']]):
@@ -1407,7 +1567,7 @@ class ContentMutation(BaseModel):
     affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
 
 
-class Change(BaseModel):
+class Change1(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
@@ -2929,6 +3089,23 @@ class ResyncPackageInput(BaseModel):
     dryRun: Annotated[bool | None, Field(examples=[False])] = False
 
 
+class ListLinkPackagesInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    q: Annotated[str | None, Field(max_length=200)] = None
+    current: Annotated[int | None, Field(ge=1)] = 1
+    size: Annotated[int | None, Field(ge=1, le=100)] = 20
+
+
+class RemoveLinkPackageInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+
+
 class ListTapPackagesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -3623,6 +3800,154 @@ class ListAdminVersionsInput(BaseModel):
     sort: Annotated[Literal['updated', 'popular'] | None, Field(examples=['updated'])] = 'updated'
 
 
+class UpsertUpdateFeedInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: UpdateFeedInput
+
+
+class DisableUpdateFeedInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: UpdateFeedKey
+
+
+class UpdateFeedPreview(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[Literal[True], Field(examples=[True])]
+    requestId: Annotated[str, Field(examples=['demo-preview-001'], max_length=128)]
+    changes: Annotated[list[Change], Field(examples=[[{'object': {'entity': 'update_feed', 'objectKey': 'sparkle:com.example.App'}, 'action': 'create', 'before': None, 'after': {'bundleId': 'com.example.App', 'source': 'sparkle', 'feedUrl': 'https://example.com/appcast.xml', 'teamId': None, 'channel': 'stable', 'packageId': None}}]])]
+    affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
+    sourceGaps: Annotated[list[FactGap] | None, Field(description='App fact writes only: the evidence still missing or outdated after this write')] = None
+
+
+class UpdateFeedPreviewResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    code: Code
+    msg: Annotated[str, Field(examples=['ok'], max_length=200)]
+    data: UpdateFeedPreview
+
+
+class UpdateRelease(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    version: Annotated[str, Field(max_length=128)]
+    versionKey: Literal['CFBundleShortVersionString', 'CFBundleVersion', 'Wave Build Version Number']
+    notes: Notes
+    minimumOs: str
+    files: Annotated[list[UpdateFile], Field(max_length=100, min_length=1)]
+
+
+class UpdateFeed(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    githubRepo: Annotated[str | None, Field(pattern='^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$')] = None
+    assetPattern: Annotated[str | None, Field(max_length=2048)] = None
+    resolver: VendorResolver | None = None
+    release: UpdateRelease | None = None
+    revision: int | None = None
+    lastModified: str | None = None
+    bundleId: Annotated[str, Field(max_length=255, pattern='^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)+$')]
+    source: Literal['sparkle', 'electron', 'github', 'vendor']
+    feedUrl: AnyUrl
+    teamId: Annotated[str, Field(pattern='^[A-Z0-9]{10}$')]
+    channel: Literal['stable', 'beta']
+    packageId: Annotated[int, Field(ge=1)]
+    origin: Literal['seed', 'manual', 'homebrew', 'link']
+    enabled: bool
+    etag: str
+    verifiedAt: AwareDatetime
+    checkedAt: AwareDatetime
+    lastError: str
+    token: str
+    kind: Literal['cask', 'link']
+
+
+class UpdateFeedResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    code: str
+    msg: str
+    data: UpdateFeed
+
+
+class UpdateFeedResponseResult(RootModel[UpdateFeedResponse | BusinessErrorResponse]):
+    root: Annotated[UpdateFeedResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'bundleId': 'com.example.App', 'source': 'sparkle', 'feedUrl': 'https://example.com/appcast.xml', 'teamId': None, 'channel': 'stable', 'packageId': None, 'origin': 'manual', 'enabled': True, 'etag': None, 'verifiedAt': None, 'checkedAt': None, 'lastError': None, 'token': '', 'kind': 'cask'}}])]
+
+
+class LinkPackageAdd(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
+    name: Annotated[str, Field(max_length=256, min_length=1)]
+    sourceLocale: Locale | None = None
+    homepage: str | None = None
+    downloadUrl: str | None = None
+    githubRepo: Annotated[str | None, Field(description='GitHub owner/name, without a URL or .git suffix.')] = None
+    bundleIds: Annotated[list[str] | None, Field(max_length=32)] = None
+    teamId: Annotated[str | None, Field(pattern='^[A-Z0-9]{10}$')] = None
+    pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source']
+    sparkleFeed: str | None = None
+    assetRules: AssetRules | None = None
+    notes: Notes1 | None = None
+
+
+class LinkPackageUpdate(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    token: Annotated[str | None, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')] = None
+    name: Annotated[str | None, Field(max_length=256, min_length=1)] = None
+    sourceLocale: Locale | None = None
+    homepage: str | None = None
+    downloadUrl: str | None = None
+    githubRepo: Annotated[str | None, Field(description='GitHub owner/name, without a URL or .git suffix.')] = None
+    bundleIds: Annotated[list[str] | None, Field(max_length=32)] = None
+    teamId: Annotated[str | None, Field(pattern='^[A-Z0-9]{10}$')] = None
+    pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source'] | None = None
+    sparkleFeed: str | None = None
+    assetRules: AssetRules | None = None
+    notes: Notes1 | None = None
+
+
+class LinkPackage(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
+    name: Annotated[str, Field(max_length=256, min_length=1)]
+    sourceLocale: Locale
+    homepage: str
+    downloadUrl: str
+    githubRepo: Annotated[str, Field(description='GitHub owner/name, without a URL or .git suffix.')]
+    bundleIds: Annotated[list[str], Field(max_length=32)]
+    teamId: Annotated[str, Field(pattern='^[A-Z0-9]{10}$')]
+    pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source']
+    sparkleFeed: str
+    assetRules: AssetRules
+    notes: Notes1
+    id: int
+    kind: Literal['link', 'cask']
+    latest: GithubRelease
+    etag: str
+    syncedAt: AwareDatetime
+    lastError: str
+    adoptedByCaskAt: AwareDatetime
+    removed: bool
+
+
 class GitHubSettingsResponse(BaseModel):
     code: Code
     msg: str
@@ -4203,7 +4528,7 @@ class AgentDryRun(BaseModel):
     )
     dryRun: Annotated[Literal[True], Field(examples=[True])]
     requestId: Annotated[str, Field(examples=['demo-preview-001'], max_length=128)]
-    changes: Annotated[list[Change], Field(examples=[[{'object': {'entity': 'package', 'objectKey': '1'}, 'action': 'update', 'before': {'summary': '旧简介'}, 'after': {'summary': '新简介'}}]])]
+    changes: Annotated[list[Change1], Field(examples=[[{'object': {'entity': 'package', 'objectKey': '1'}, 'action': 'update', 'before': {'summary': '旧简介'}, 'after': {'summary': '新简介'}}]])]
     affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
     sourceGaps: Annotated[list[FactGap] | None, Field(description='App fact writes only: the evidence still missing or outdated after this write')] = None
 
@@ -4219,6 +4544,34 @@ class AgentDryRunResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'], max_length=200)]
     data: AgentDryRun
+
+
+class LinkPackageResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    code: str
+    msg: str
+    data: LinkPackage
+
+
+class Data27(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    records: list[LinkPackage]
+    total: int
+    current: int
+    size: int
+
+
+class LinkPackageListResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    code: str
+    msg: str
+    data: Data27
 
 
 class AddPackageScreenshotInput(BaseModel):
@@ -4238,6 +4591,23 @@ class UpdatePackageScreenshotInput(BaseModel):
     screenshotId: Annotated[int, Field(examples=[1])]
     dryRun: Annotated[bool | None, Field(examples=[False])] = False
     body: ScreenshotUpdate
+
+
+class AddLinkPackageInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: LinkPackageAdd
+
+
+class UpdateLinkPackageInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool | None, Field(examples=[False])] = False
+    body: LinkPackageUpdate
 
 
 class CreateCategoryInput(BaseModel):
@@ -4298,6 +4668,14 @@ class UpdateFeatureInput(BaseModel):
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool | None, Field(examples=[False])] = False
     body: FeatureUpsert
+
+
+class LinkPackageResponseResult(RootModel[LinkPackageResponse | BusinessErrorResponse]):
+    root: Annotated[LinkPackageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'token': 'example-app', 'name': 'Example App', 'sourceLocale': 'en-US', 'homepage': 'https://example.com', 'downloadUrl': None, 'githubRepo': 'owner/example', 'bundleIds': ['com.example.App'], 'teamId': None, 'pricing': 'free', 'sparkleFeed': None, 'assetRules': None, 'notes': None, 'id': 1, 'kind': 'link', 'latest': {'tag': 'v2.0', 'version': '2.0', 'publishedAt': '2026-10-16 00:00:00+00:00', 'url': 'https://github.com/owner/example/releases/tag/v2.0', 'assets': [{'name': 'Example-arm64.dmg', 'url': 'https://example.com/Example-arm64.dmg', 'size': 123, 'arch': 'arm64', 'format': 'dmg', 'sha256': None}]}, 'etag': None, 'syncedAt': None, 'lastError': None, 'adoptedByCaskAt': None, 'removed': False}}])]
+
+
+class LinkPackageListResponseResult(RootModel[LinkPackageListResponse | BusinessErrorResponse]):
+    root: Annotated[LinkPackageListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'token': 'example-app', 'name': 'Example App', 'sourceLocale': 'en-US', 'homepage': 'https://example.com', 'downloadUrl': None, 'githubRepo': 'owner/example', 'bundleIds': ['com.example.App'], 'teamId': None, 'pricing': 'free', 'sparkleFeed': None, 'assetRules': None, 'notes': None, 'id': 1, 'kind': 'link', 'latest': {'tag': 'v2.0', 'version': '2.0', 'publishedAt': '2026-10-16 00:00:00+00:00', 'url': 'https://github.com/owner/example/releases/tag/v2.0', 'assets': [{'name': 'Example-arm64.dmg', 'url': 'https://example.com/Example-arm64.dmg', 'size': 123, 'arch': 'arm64', 'format': 'dmg', 'sha256': None}]}, 'etag': None, 'syncedAt': None, 'lastError': None, 'adoptedByCaskAt': None, 'removed': False}], 'total': 1, 'current': 1, 'size': 20}}])]
 
 
 class TranslationSettingsResponseResult(RootModel[TranslationSettingsResponse | BusinessErrorResponse]):

@@ -5,6 +5,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+/// Clones share one serialized SQLite connection, not a connection pool.
+/// SQLite alone owns the database/WAL/SHM lifecycle: never open these files for
+/// raw reads, truncate, rename or unlink them while the connection is alive.
+/// Even a raw read's close() can drop this process's POSIX locks. For the path,
+/// inspect Connection::path() under with(), without opening another file.
 #[derive(Clone)]
 pub struct Database(Arc<Mutex<Connection>>);
 impl Database {
@@ -33,7 +38,7 @@ impl Database {
         } else {
             0
         };
-        if version > 4 {
+        if version > 7 {
             return Err(AppError::new("E_UNKNOWN", "newer_database_schema"));
         }
         if version == 0 {
@@ -63,6 +68,24 @@ impl Database {
             tx.execute("INSERT INTO meta(key,value) VALUES('schema_version','4') ON CONFLICT(key) DO UPDATE SET value='4'", [])?;
             tx.commit()?;
         }
+        if version < 5 {
+            let tx = connection.transaction()?;
+            tx.execute_batch(include_str!("../migrations/005_links.sql"))?;
+            tx.execute("INSERT INTO meta(key,value) VALUES('schema_version','5') ON CONFLICT(key) DO UPDATE SET value='5'", [])?;
+            tx.commit()?;
+        }
+        if version < 6 {
+            let tx = connection.transaction()?;
+            tx.execute_batch(include_str!("../migrations/006_update_prefs.sql"))?;
+            tx.execute("INSERT INTO meta(key,value) VALUES('schema_version','6') ON CONFLICT(key) DO UPDATE SET value='6'", [])?;
+            tx.commit()?;
+        }
+        if version < 7 {
+            let tx = connection.transaction()?;
+            tx.execute_batch(include_str!("../migrations/007_security.sql"))?;
+            tx.execute("INSERT INTO meta(key,value) VALUES('schema_version','7') ON CONFLICT(key) DO UPDATE SET value='7'", [])?;
+            tx.commit()?;
+        }
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -78,6 +101,9 @@ impl Database {
             .0
             .lock()
             .map_err(|_| AppError::new("E_UNKNOWN", "database_poisoned"))?;
+        // Do not replay this closure on BUSY/PROTOCOL: callers may perform writes
+        // or other side effects. SQLite's busy handler already waits for locks;
+        // a returned database error must remain a recoverable AppError.
         f(&mut connection)
     }
     pub fn meta(&self, key: &str) -> Result<Option<String>, AppError> {

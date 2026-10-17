@@ -16,6 +16,7 @@ declare module 'vue-router' {
       | 'updates'
       | 'cleanup'
       | 'monitor'
+      | 'security'
       | 'settings';
     /** Render without the app shell (Welcome, menu-bar popover). */
     bare?: boolean;
@@ -28,6 +29,7 @@ const LibraryRail = () => import('@/components/rails/LibraryRail.vue');
 const UpdatesRail = () => import('@/components/rails/UpdatesRail.vue');
 const CleanupRail = () => import('@/components/rails/CleanupRail.vue');
 const MonitorRail = () => import('@/components/rails/MonitorRail.vue');
+const SecurityRail = () => import('@/components/rails/SecurityRail.vue');
 
 export const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/discover' },
@@ -72,8 +74,16 @@ export const routes: RouteRecordRaw[] = [
     meta: { nav: 'discover' }
   },
   {
-    // Cask-only catalog (ADR-018): command-line tool URLs fall through to Discover.
-    path: '/package/:kind(cask)/:token',
+    // Mac App Store app (store/security plan §5): numeric App Store ID; the data comes straight from Apple.
+    path: '/appstore/:id(\\d+)',
+    name: 'appstore',
+    component: () => import('@/pages/AppStorePage.vue'),
+    props: true,
+    meta: { nav: 'discover' }
+  },
+  {
+    // Casks and link apps (store/security plan §4); command-line tool URLs fall through to Discover (ADR-018).
+    path: '/package/:kind(cask|link)/:token',
     component: () => import('@/pages/package/PackageLayout.vue'),
     props: true,
     meta: { nav: 'discover' },
@@ -169,12 +179,22 @@ export const routes: RouteRecordRaw[] = [
     meta: { nav: 'monitor' }
   },
   {
+    // Security (store/security plan §6): tabs live in the route so notifications can link to one.
+    path: '/security/:tab(scan|startup|protection|quarantine)?',
+    name: 'security',
+    components: {
+      default: () => import('@/pages/SecurityPage.vue'),
+      rail: SecurityRail
+    },
+    meta: { nav: 'security' }
+  },
+  {
     path: '/history',
     name: 'history',
     redirect: '/updates'
   },
   {
-    path: '/settings/:section(general|mirrors|homebrew|cleanup|monitor|privacy|about)?',
+    path: '/settings/:section(general|mirrors|homebrew|appstore|cleanup|monitor|security|privacy|about)?',
     name: 'settings',
     component: () => import('@/pages/SettingsPage.vue'),
     meta: { nav: 'settings' }

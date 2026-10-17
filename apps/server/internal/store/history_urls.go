@@ -34,7 +34,7 @@ func (s *Store) HistoryURLs(ctx context.Context, ref content.Ref, base string, s
 			}
 		}
 		var token string
-		if err := s.DB.WithContext(ctx).Raw("SELECT token FROM packages WHERE id=? AND kind='cask'", id).Scan(&token).Error; err != nil {
+		if err := s.DB.WithContext(ctx).Raw("SELECT token FROM packages WHERE id=? AND kind IN ('cask','link')", id).Scan(&token).Error; err != nil {
 			return nil, err
 		}
 		if token != "" {

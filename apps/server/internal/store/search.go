@@ -84,7 +84,7 @@ func (s *Store) Search(ctx context.Context, input domain.SearchInput, terms []st
 	}
 	arguments := []any{input.Category, string(encoded), fontPenalty, libraryPenalty, input.IncludeDisabled, input.Kind, input.Kind, input.Category}
 	var total int64
-	if err := s.DB.WithContext(ctx).Raw(searchCTE+" SELECT count(*) FROM matches", arguments...).Scan(&total).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(linkSQL(ctx, searchCTE)+" SELECT count(*) FROM matches", arguments...).Scan(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("count search matches: %w", err)
 	}
 	offset, found := domain.PageOffset(input.Current, input.Size, total)
@@ -93,7 +93,7 @@ func (s *Store) Search(ctx context.Context, input domain.SearchInput, terms []st
 	}
 	var records []domain.SearchMatch
 	args := append(append([]any{}, arguments...), input.Query, input.Size, offset)
-	if err := s.DB.WithContext(ctx).Raw(searchCTE+" SELECT matches.id,matches.score,(SELECT n FROM unnest(p.names) n WHERE lower(n)=? AND lower(n)<>p.token LIMIT 1) AS matched_name FROM matches JOIN packages p ON p.id=matches.id ORDER BY score DESC,matches.popularity DESC,p.token LIMIT ? OFFSET ?", args...).Scan(&records).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw(linkSQL(ctx, searchCTE)+" SELECT matches.id,matches.score,(SELECT n FROM unnest(p.names) n WHERE lower(n)=? AND lower(n)<>p.token LIMIT 1) AS matched_name FROM matches JOIN packages p ON p.id=matches.id ORDER BY score DESC,matches.popularity DESC,p.token LIMIT ? OFFSET ?", args...).Scan(&records).Error; err != nil {
 		return nil, 0, fmt.Errorf("find search matches: %w", err)
 	}
 	if records == nil {
@@ -117,7 +117,7 @@ func (s *Store) SearchPenalty(ctx context.Context, key string, fallback float64)
 func (s *Store) Suggest(ctx context.Context, query, locale string, limit int) ([]domain.Suggestion, error) {
 	var records []domain.Suggestion
 	prefix := searchtext.EscapeLike(query) + "%"
-	if err := s.DB.WithContext(ctx).Raw("SELECT 'package' AS type,p.source_locale,COALESCE(i.machine_translated,false) machine_translated,p.kind,p.token,coalesce(i.display_name,p.name) AS name,coalesce(i.summary,p.desc_en) AS summary,a.url AS icon_url,p.version FROM packages p LEFT JOIN LATERAL (SELECT t.* FROM package_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE COALESCE(NULLIF(t.display_name,''),NULLIF(t.summary,''),NULLIF(t.description,'')) IS NOT NULL AND t.package_id=p.id AND t.locale IN (lang.requested,p.source_locale,'en-US') ORDER BY "+publicLocaleOrder+" LIMIT 1) i ON TRUE LEFT JOIN package_meta m ON m.package_id=p.id LEFT JOIN assets a ON a.id=m.icon_asset_id WHERE p.kind='cask' AND p.removed_at IS NULL AND NOT (p.disabled OR p.stale_disabled) AND NOT coalesce(m.hidden,false) AND (p.token LIKE ? OR lower(coalesce(i.display_name,'')) LIKE ? OR EXISTS(SELECT 1 FROM unnest(p.names) n WHERE lower(n) LIKE ?) OR p.search_text LIKE ?) ORDER BY p.popularity DESC,p.token LIMIT ?", locale, prefix, prefix, prefix, "% "+prefix, limit).Scan(&records).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw("SELECT 'package' AS type,p.source_locale,COALESCE(i.machine_translated,false) machine_translated,p.kind,p.token,coalesce(i.display_name,p.name) AS name,coalesce(i.summary,p.desc_en) AS summary,a.url AS icon_url,p.version FROM packages p LEFT JOIN LATERAL (SELECT t.* FROM package_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE COALESCE(NULLIF(t.display_name,''),NULLIF(t.summary,''),NULLIF(t.description,'')) IS NOT NULL AND t.package_id=p.id AND t.locale IN (lang.requested,p.source_locale,'en-US') ORDER BY "+publicLocaleOrder+" LIMIT 1) i ON TRUE LEFT JOIN package_meta m ON m.package_id=p.id LEFT JOIN assets a ON a.id=m.icon_asset_id WHERE "+linkSQL(ctx, "p.kind='cask'")+" AND p.removed_at IS NULL AND NOT (p.disabled OR p.stale_disabled) AND NOT coalesce(m.hidden,false) AND (p.token LIKE ? OR lower(coalesce(i.display_name,'')) LIKE ? OR EXISTS(SELECT 1 FROM unnest(p.names) n WHERE lower(n) LIKE ?) OR p.search_text LIKE ?) ORDER BY p.popularity DESC,p.token LIMIT ?", locale, prefix, prefix, prefix, "% "+prefix, limit).Scan(&records).Error; err != nil {
 		return nil, fmt.Errorf("find search suggestions: %w", err)
 	}
 	if len(records) < limit {

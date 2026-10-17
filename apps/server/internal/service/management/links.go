@@ -28,7 +28,7 @@ func (s *Service) withWebURL(raw json.RawMessage, entity string) (json.RawMessag
 		case "package":
 			if !state.Hidden && !state.Removed {
 				switch state.Kind {
-				case "cask":
+				case "cask", "link":
 					path = "/apps/" + url.PathEscape(state.Token)
 				case "formula":
 					path = "/cli/" + url.PathEscape(state.Token)

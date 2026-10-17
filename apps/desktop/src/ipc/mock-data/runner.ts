@@ -2,6 +2,7 @@
 // Push brew-formatted task:log and staged task:updated events; on completion update installed packages and emit library:changed / updates:changed.
 // Firefox installs/updates always fail SHA-256 validation to demonstrate failure states; hooks.failure injects other scenario failures.
 import { events } from '../bindings';
+import { HOMEBREW_ROW } from './updater';
 import type { AppError, InstalledItem, OutdatedItem, Task, TaskOp, TaskPhase } from '../bindings';
 import { packageKey } from '../client';
 import { downloadSizeOf, findItem, nextTaskId } from './fixtures';
@@ -32,6 +33,10 @@ export interface Step {
   lines: string[];
   /** Cleanup: bytes freed at the start and end of the step, out of `total` (Rust reports them as bytesDone/bytesTotal). */
   freed?: { from: number; to: number; total: number };
+  /** Called as the step starts, for what Rust reports at that point (e.g. the scan before installing). */
+  enter?: () => void;
+  /** No measurable progress, e.g. clamd scanning one whole installer: percent and bytes stay null. */
+  indeterminate?: boolean;
 }
 
 /** Injected failure: emit `lines` at the first tick of zero-based `step`, then finish with `error`. */
@@ -53,6 +58,14 @@ export interface RunnerHooks {
   steps?: (task: Task) => Step[] | undefined;
   /** Called on success before the task is recorded and emitted, so results (task.outcome) ship with it. */
   completed?: (task: Task) => void;
+  /** Scan before installing (security S2): a step right after a Homebrew download, when the scan runs. */
+  scanStep?: (task: Task) => Step | undefined;
+}
+
+/** Rust scans what Homebrew fetched before installing it, so the scan follows the download. */
+function withScan(plan: Step[], scan: Step | undefined): Step[] {
+  const index = plan.findIndex(step => step.phase === 'downloading');
+  return scan && index >= 0 ? [...plan.slice(0, index + 1), scan, ...plan.slice(index + 1)] : plan;
 }
 
 function steps(task: Task, appName: string | undefined, url: string, installerUrl: string): Step[] {
@@ -204,6 +217,7 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
       const catalogItem = findItem(item.kind, item.token);
       return [
         {
+          ...HOMEBREW_ROW,
           kind: item.kind,
           token: item.token,
           name: item.name,
@@ -221,8 +235,8 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
 
   function applyResult(task: Task) {
     const target = task.target;
-    // Local apps outside Homebrew are not library entries; hooks.completed applies their results.
-    if (!target || target.kind === 'app') return;
+    // Local apps outside Homebrew and App Store apps are not library entries; hooks.completed applies their results.
+    if (!target || target.kind === 'app' || target.kind === 'mas') return;
     const index = state.installed.findIndex(item => item.kind === target.kind && item.token === target.token);
     const catalogItem = findItem(target.kind, target.token);
     switch (task.op) {
@@ -310,10 +324,12 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
       return;
     }
     const target = task.target;
-    const catalogItem = target && target.kind !== 'app' ? findItem(target.kind, target.token) : undefined;
+    const catalogItem =
+      target && target.kind !== 'app' && target.kind !== 'mas' ? findItem(target.kind, target.token) : undefined;
     const appName = catalogItem?.apps[0];
     const url = `https://example.test/downloads/${target?.token ?? 'brew'}-${task.toVersion ?? 'latest'}.zip`;
-    const plan = hooks.steps?.(task) ?? steps(task, appName, url, hooks.installerUrl?.() ?? url);
+    const plan =
+      hooks.steps?.(task) ?? withScan(steps(task, appName, url, hooks.installerUrl?.() ?? url), hooks.scanStep?.(task));
     const failure = hooks.failure?.(task);
     const total = catalogItem ? downloadSizeOf(catalogItem) : 48_000_000;
     task.state = 'running';
@@ -322,6 +338,7 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
     let stepIndex = 0;
     let tick = 0;
     log(task, plan[0]?.lines ?? []);
+    plan[0]?.enter?.();
 
     const advance = () => {
       if (task.state === 'canceled') return;
@@ -341,7 +358,7 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
       const ratio = Math.min(1, tick / step.ticks);
       task.phase = step.phase;
       task.stepIndex = stepIndex + 1;
-      task.percent = Math.round(step.from + (step.to - step.from) * ratio);
+      task.percent = step.indeterminate ? null : Math.round(step.from + (step.to - step.from) * ratio);
       if (step.phase === 'downloading') {
         task.bytesTotal = total;
         task.bytesDone = Math.round(total * ratio);
@@ -367,7 +384,10 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
         stepIndex += 1;
         tick = 0;
         const next = plan[stepIndex];
-        if (next) log(task, next.lines);
+        if (next) {
+          log(task, next.lines);
+          next.enter?.();
+        }
       }
       setTimeout(advance, tickMs);
     };
@@ -399,7 +419,8 @@ export function createRunner(state: MockState, tickMs = 200, hooks: RunnerHooks 
       return { ...existing };
     }
     const installed = target && state.installed.find(item => item.kind === target.kind && item.token === target.token);
-    const catalogItem = target && target.kind !== 'app' ? findItem(target.kind, target.token) : undefined;
+    const catalogItem =
+      target && target.kind !== 'app' && target.kind !== 'mas' ? findItem(target.kind, target.token) : undefined;
     const now = Date.now();
     const task: Task = {
       id: nextTaskId(now),

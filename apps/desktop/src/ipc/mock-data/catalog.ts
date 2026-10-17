@@ -2,14 +2,26 @@
 // Fonts ×0.5, libraries ×0.7. Browser mode/component tests only; production uses Rust FTS5.
 import type { CategoryItem, Kind, ListQuery, Locale, Page, SearchQuery } from '../bindings';
 import type { LocalItem, LocalSearchHit } from '../client';
-import { catalogCategories, catalogItems } from './fixtures';
+import { catalogCategories, catalogItems as caskItems } from './fixtures';
+import links from './links.json';
 import { pick } from '@opennavo/shared';
+
+// Link apps (store/security plan §4) come from their own feed in Rust; here they simply join the casks.
+// Read the cask list on every call: tests add fixtures to it at runtime.
+export const linkItems = links.items as unknown as LocalItem[];
+const allItems = (): LocalItem[] => [...caskItems, ...linkItems];
 
 const visible = (item: LocalItem, includeDisabled: boolean) => !item.hidden && (includeDisabled || !item.disabled);
 
 function names(item: LocalItem): string[] {
   return [item.token, item.name, ...item.names, ...Object.values(item.displayName), ...item.binaries].filter(Boolean);
 }
+
+// Same rule as Rust: kind cask with includeLinks also returns link apps, never command-line tools.
+const kindMatches = (item: LocalItem, query: { kind: Kind | null; includeLinks?: boolean }) =>
+  !query.kind ||
+  item.kind === query.kind ||
+  (query.kind === 'cask' && Boolean(query.includeLinks) && item.kind === 'link');
 
 // Ignore case, spaces, and hyphens: vscode matches VS Code.
 const normalize = (value: string) => value.toLowerCase().replace(/[\s-]+/g, '');
@@ -39,9 +51,9 @@ function matchScore(item: LocalItem, q: string, locale: Locale): { score: number
 export function searchCatalog(query: SearchQuery, locale: Locale = 'en-US'): Page<LocalSearchHit> {
   const q = query.q.trim();
   if (!q) return { total: 0, items: [] };
-  const hits = catalogItems
+  const hits = allItems()
     .filter(item => visible(item, query.includeDisabled))
-    .filter(item => !query.kind || item.kind === query.kind)
+    .filter(item => kindMatches(item, query))
     .filter(item => !query.category || inCategory(item, query.category))
     .map(item => ({ item, ...matchScore(item, q, locale) }))
     .filter(hit => hit.score > 0)
@@ -80,9 +92,9 @@ const SORTS: Record<Exclude<ListQuery['sort'], 'name'>, (a: LocalItem, b: LocalI
 
 export function listCatalog(query: ListQuery, locale: Locale = 'en-US'): Page<LocalItem> {
   const collator = new Intl.Collator(locale);
-  const items = catalogItems
+  const items = allItems()
     .filter(item => visible(item, query.includeDisabled))
-    .filter(item => !query.kind || item.kind === query.kind)
+    .filter(item => kindMatches(item, query))
     .filter(item => !query.category || inCategory(item, query.category))
     .filter(item => query.includeFonts || !item.isFont)
     .filter(item => query.includeLibraries || !item.isLibrary || query.category === 'libraries')
@@ -99,7 +111,7 @@ export function listCatalog(query: ListQuery, locale: Locale = 'en-US'): Page<Lo
 }
 
 export function getCatalogItem(kind: Kind, token: string): LocalItem | null {
-  return catalogItems.find(item => item.kind === kind && item.token === token && !item.hidden) ?? null;
+  return allItems().find(item => item.kind === kind && item.token === token && !item.hidden) ?? null;
 }
 
 export function listCategories(locale: Locale): CategoryItem[] {
@@ -112,7 +124,7 @@ export function listCategories(locale: Locale): CategoryItem[] {
       appliesTo: category.appliesTo,
       hiddenByDefault: category.hiddenByDefault,
       sort: category.sort,
-      packageCount: catalogItems.filter(item => !item.hidden && inCategory(item, category.slug)).length
+      packageCount: allItems().filter(item => !item.hidden && inCategory(item, category.slug)).length
     }))
     .sort((a, b) => a.sort - b.sort);
 }

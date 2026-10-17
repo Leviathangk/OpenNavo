@@ -189,9 +189,11 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   // App list total, so a cached list page can be made to run past its end.
   let packagesTotal = 50;
   let sitemapPackageRequests = 0;
+  const listCapabilities = [];
   const api = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     const match = /^\/api\/v1\/packages\/cask\/([^/]+)(\/related)?$/.exec(path);
+    const linkMatch = /^\/api\/v1\/packages\/link\/([^/]+)(\/related)?$/.exec(path);
     const query = new URL(req.url, 'http://localhost').searchParams;
     let data;
     let status = 200;
@@ -216,8 +218,79 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       };
     } else if (lifecycle === 'flaky-app') {
       status = 503;
+    } else if (linkMatch?.[1] === 'lumen-notes') {
+      // Link app (store/security plan §4): no Homebrew data, only the developer's download addresses.
+      data = linkMatch[2]
+        ? []
+        : {
+            id: 2,
+            kind: 'link',
+            token: 'lumen-notes',
+            name: 'Lumen Notes',
+            displayName: 'Lumen Notes',
+            names: ['Lumen Notes'],
+            isFont: false,
+            summary: 'Local-first Markdown notes',
+            description: 'A synthetic link app for SSR regression tests.',
+            version: '2.4.1',
+            versionChangedAt: '2026-10-13T00:00:00Z',
+            tap: '',
+            installCommand: '',
+            homepage: 'https://lumen.app/',
+            artifacts: { apps: [], pkgs: [], binaries: [], uninstallNotes: [] },
+            installs: { d30: 0, d90: 0, d365: 0 },
+            categories: [],
+            tags: [],
+            conflictsWith: { casks: [], formulae: [] },
+            supports: { status: 'unknown', arm64: false, x86_64: false },
+            platforms: [],
+            screenshots: [],
+            releaseCount: 0,
+            releaseStats: { count30d: 0, cadence: 'unknown', brewLag: null },
+            sourceUrl: 'https://github.com/lumen-labs/lumen',
+            formulaeUrl: 'https://github.com/lumen-labs/lumen',
+            sourceLocale: 'en-US',
+            machineTranslated: false,
+            bundleIds: ['app.lumen.notes'],
+            link: {
+              homepage: 'https://lumen.app/',
+              downloadUrl: 'https://lumen.app/download',
+              github: {
+                repo: 'lumen-labs/lumen',
+                latest: {
+                  tag: 'v2.4.1',
+                  version: '2.4.1',
+                  publishedAt: '2026-10-13T00:00:00Z',
+                  url: 'https://github.com/lumen-labs/lumen/releases/tag/v2.4.1',
+                  assets: [
+                    {
+                      name: 'Lumen-2.4.1-arm64.dmg',
+                      url: 'https://github.com/lumen-labs/lumen/releases/download/v2.4.1/Lumen-2.4.1-arm64.dmg',
+                      size: 50000000,
+                      arch: 'arm64',
+                      format: 'dmg',
+                      sha256: null
+                    },
+                    {
+                      name: 'Lumen-2.4.1.dmg',
+                      url: 'javascript:alert(1)',
+                      size: 1,
+                      arch: 'x86_64',
+                      format: 'dmg',
+                      sha256: null
+                    }
+                  ]
+                }
+              },
+              teamId: '7Q2XK4M9PL',
+              pricing: 'open_source',
+              notes: null,
+              adoptedByCask: null
+            }
+          };
     } else if (path === '/api/v1/packages') {
       packageQueries.push(Object.fromEntries(query));
+      listCapabilities.push(req.headers['x-opennavo-caps'] ?? '');
       const summary = {
         kind: 'cask',
         token: 'ordinary-app',
@@ -301,6 +374,31 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           cadence: 'irregular',
           brewLag: { medianMinutes: null, earlierCount: 0, compared: 0 }
         }
+      };
+    } else if (path === '/api/v1/packages/link/lumen-notes/releases') {
+      data = {
+        current: 1,
+        size: Number(query.get('size') ?? 20),
+        total: 1,
+        records: [
+          {
+            id: null,
+            version: '2.4.1',
+            title: null,
+            publishedAt: '2026-10-13T00:00:00Z',
+            brewCommittedAt: null,
+            source: 'github_release',
+            sourceUrl: 'https://github.com/lumen-labs/lumen/releases/tag/v2.4.1',
+            isLatest: true,
+            isPrerelease: false,
+            hasNotes: true,
+            summary: null,
+            sections: [],
+            bodyMarkdown: 'Lumen link release notes',
+            translation: { status: 'original', locale: 'en-US' }
+          }
+        ],
+        stats: { count30d: 1, cadence: 'irregular', brewLag: { medianMinutes: null, earlierCount: 0, compared: 0 } }
       };
     } else if (path === '/api/v1/desktop/releases/latest') {
       data = {
@@ -587,6 +685,31 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         assert.match(html, /<title>Example App @11 for Mac – Download &amp; Install · OpenNavo<\/title>/);
     });
   }
+  await t.test('link apps share /apps and download from the developer instead of installing', async () => {
+    const response = await fetch(`${origin}/apps/lumen-notes`, { headers: { accept: 'text/html' } });
+    const html = await response.text();
+    assert.equal(response.status, 200, logs);
+    assert.match(html, /<h1\b[^>]*>Lumen Notes<\/h1>/);
+    assert.doesNotMatch(html, /brew install/, 'no install command');
+    // Header and panel point at the developer's own addresses, in a new tab.
+    assert.match(html, /<a\b[^>]*href="https:\/\/lumen\.app\/download"[^>]*target="_blank"/);
+    assert.ok(html.includes('Lumen-2.4.1-arm64.dmg'), 'release files are listed');
+    assert.ok(!html.includes('javascript:alert'), 'only https files become links');
+    assert.ok(html.includes('OpenNavo hosts no installers'), 'the page says nothing is hosted');
+    // JSON-LD names the official download; tabs without Homebrew data are absent and 404.
+    assert.match(html, /"downloadUrl":"https:\/\/lumen\.app\/download"/);
+    assert.ok(!html.includes('/apps/lumen-notes/dependencies'), 'no dependencies tab');
+    assert.ok(!html.includes('/apps/lumen-notes/details'), 'no install details tab');
+    for (const tab of ['dependencies', 'details'])
+      assert.equal((await fetch(`${origin}/apps/lumen-notes/${tab}`)).status, 404, tab);
+    // Version history comes from the link app's own releases.
+    const versions = await fetch(`${origin}/apps/lumen-notes/versions`);
+    const versionsHtml = await versions.text();
+    assert.equal(versions.status, 200, logs);
+    assert.ok(versionsHtml.includes('Lumen link release notes'));
+    assert.ok(!versionsHtml.includes('Added to Homebrew'), 'no Homebrew adoption lag for link apps');
+  });
+
   await t.test('release label totals match locale and original mode', async () => {
     for (const [prefix, original, count, label, locale] of [
       ['/zh', false, 1, '有更新说明', 'zh-CN'],
@@ -907,7 +1030,14 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       paged.includes('rel="canonical" href="https://example.test/apps?page=2"'),
       'pagination keeps page in canonical'
     );
+    const before = packageQueries.length;
     assert.ok(!(await title('/apps')).includes('Page'), 'the first page has no page number');
+    // All apps mix in link apps: no kind filter, and the client says it understands them.
+    assert.deepEqual(
+      packageQueries.slice(before).map(({ kind }) => kind),
+      [undefined]
+    );
+    assert.equal(listCapabilities.at(-1), 'link');
   });
   await t.test('app titles name the platform once and descriptions keep their closing sentence', async () => {
     const page = async path => {

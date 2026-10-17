@@ -7,9 +7,10 @@ describe('Detail URLs', () => {
     expect(packagePath('python@3.14', 'versions')).toBe('/apps/python@3.14/versions');
   });
 
-  it('Mixed lists link only Casks and never create /cli URLs', () => {
+  it('Mixed lists link Casks and link apps and never create /cli URLs', () => {
     expect(packageLink('cask', 'docker-desktop')).toBe('/apps/docker-desktop');
     expect(packageLink('formula', 'docker')).toBeUndefined();
+    expect(packageLink('link', 'lumen-notes')).toBe('/apps/lumen-notes');
   });
 });
 

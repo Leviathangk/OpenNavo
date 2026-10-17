@@ -1,6 +1,15 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import type { Task, TaskKind, TaskLogEvent, TaskOp, TaskOptions, TaskTarget, TaskTrigger } from '@/ipc/bindings';
+import type {
+  RunningApp,
+  Task,
+  TaskKind,
+  TaskLogEvent,
+  TaskOp,
+  TaskOptions,
+  TaskTarget,
+  TaskTrigger
+} from '@/ipc/bindings';
 import { commands, packageKey, unwrap } from '@/ipc/client';
 import { useInstallConfirmStore } from './installConfirm';
 import { useTapConfirmStore } from './tapConfirm';
@@ -28,6 +37,14 @@ export const useTasksStore = defineStore('tasks', () => {
   const forPackage = (kind: TaskKind, token: string) =>
     active.value.find(task => task.target?.kind === kind && task.target.token === token);
 
+  // A step without measurable progress (the scan before installing) reports null mid-task; small progress rings hold
+  // the last known value through it instead of dropping back to 0.
+  const lastPercent = new Map<string, number>();
+  /** The task's percent, else its last known one; null before any is known. */
+  const knownPercent = (task: Task) => task.percent ?? lastPercent.get(task.id) ?? null;
+  /** 0–100 for progress rings, which never turn into spinners. */
+  const shownPercent = (task: Task) => knownPercent(task) ?? 0;
+
   async function load() {
     active.value = await unwrap(commands.taskListActive());
     loaded.value = true;
@@ -44,12 +61,14 @@ export const useTasksStore = defineStore('tasks', () => {
   function applyUpdate(task: Task | null) {
     if (!task) return;
     const index = active.value.findIndex(item => item.id === task.id);
+    if (task.percent !== null) lastPercent.set(task.id, task.percent);
     if (task.state === 'queued' || task.state === 'running') {
       if (index >= 0) active.value.splice(index, 1, task);
       else active.value.push(task);
       return;
     }
     if (index >= 0) active.value.splice(index, 1);
+    lastPercent.delete(task.id);
     finished.value = [task, ...finished.value.filter(item => item.id !== task.id)].slice(0, FINISHED_LIMIT);
     // In the same update as the finished task, so no frame shows its target's state from before it ran.
     useUpdatesStore().settle(task);
@@ -74,7 +93,13 @@ export const useTasksStore = defineStore('tasks', () => {
 
   let upgradeTail: Promise<unknown> = Promise.resolve();
 
-  function upgrade(targets: TaskTarget[], trigger: TaskTrigger, options: TaskOptions, batch: boolean): Promise<Task[]> {
+  function upgrade(
+    targets: TaskTarget[],
+    trigger: TaskTrigger,
+    options: TaskOptions,
+    batch: boolean,
+    known: readonly RunningApp[] = []
+  ): Promise<Task[]> {
     // Process repeated clicks in order; never replace an unanswered confirmation.
     const result = upgradeTail.then(async () => {
       const unique = [...new Map(targets.map(target => [packageKey(target.kind, target.token), target])).values()];
@@ -85,7 +110,18 @@ export const useTasksStore = defineStore('tasks', () => {
       const fresh = unique.filter(target => !forPackage(target.kind, target.token));
       if (!fresh.length) return existing;
       const unattended = trigger === 'schedule' || trigger === 'bundle';
-      const runningApps = unattended ? [] : await unwrap(commands.appsRunning(fresh));
+      // Rust finds running Homebrew apps (casks) from their installed bundles and accepts only casks. App Store and
+      // directly updated apps come with their update row's running flag (known); command-line formulae have no app to
+      // quit. Asking Rust about those targets would fail the whole update with E_INVALID_ARG.
+      const casks = fresh.filter(target => target.kind === 'cask');
+      const runningApps = unattended
+        ? []
+        : [
+            ...(casks.length ? await unwrap(commands.appsRunning(casks)) : []),
+            ...known.filter(app =>
+              fresh.some(target => target.kind === app.target.kind && target.token === app.target.token)
+            )
+          ];
       const choice = runningApps.length
         ? await useRunningAppsStore().ask(runningApps, batch)
         : { action: 'skip' as const, reopen: false };
@@ -126,6 +162,12 @@ export const useTasksStore = defineStore('tasks', () => {
     const result = installTail.then(async () => {
       const existing = forPackage(target.kind, target.token);
       if (existing) return existing;
+      // App Store installs (store/security plan §11.3) have no Homebrew preflight: Apple's own checks run in the task.
+      if (target.kind === 'mas') {
+        const task = await unwrap(commands.taskEnqueue('install', target, { ...options, source: 'mas' }, trigger));
+        applyUpdate(task);
+        return task;
+      }
       const check = await unwrap(commands.installPreflight(target));
       if (check.status === 'managed') {
         await useLibraryStore().refresh();
@@ -165,13 +207,19 @@ export const useTasksStore = defineStore('tasks', () => {
     return unwrap(commands.taskEnqueue(op, target, options, trigger));
   }
 
-  function enqueueMany(op: TaskOp, targets: TaskTarget[], trigger: TaskTrigger = 'manual', options: TaskOptions = {}) {
+  function enqueueMany(
+    op: TaskOp,
+    targets: TaskTarget[],
+    trigger: TaskTrigger = 'manual',
+    options: TaskOptions = {},
+    known: readonly RunningApp[] = []
+  ) {
     if (op === 'install') {
       return Promise.all(targets.map(target => install(target, trigger, options))).then(tasks =>
         tasks.filter((task): task is Task => task !== null)
       );
     }
-    if (op === 'upgrade') return upgrade(targets, trigger, options, true);
+    if (op === 'upgrade') return upgrade(targets, trigger, options, true, known);
     return unwrap(commands.taskEnqueueMany(op, targets, options, trigger));
   }
 
@@ -187,6 +235,8 @@ export const useTasksStore = defineStore('tasks', () => {
     running,
     queued,
     forPackage,
+    knownPercent,
+    shownPercent,
     load,
     applyUpdate,
     appendLog,

@@ -1,0 +1,182 @@
+{
+  "items": [
+    {
+      "sourceLocale": "en-US",
+      "kind": "link",
+      "autoUpdates": false,
+      "deprecated": false,
+      "disabled": false,
+      "hidden": false,
+      "isFont": false,
+      "isLibrary": false,
+      "tags": [],
+      "installs30d": 0,
+      "rank30d": null,
+      "popularity": null,
+      "accentColor": null,
+      "iconUrl": null,
+      "apps": [],
+      "binaries": [],
+      "downloadSize": null,
+      "onRequest": null,
+      "tap": null,
+      "token": "lumen-notes",
+      "name": "Lumen Notes",
+      "names": ["Lumen Notes", "Lumen"],
+      "displayName": {
+        "en-US": "Lumen Notes",
+        "zh-CN": "Lumen 笔记"
+      },
+      "summary": {
+        "en-US": "Local-first Markdown notes",
+        "zh-CN": "本地优先的 Markdown 笔记"
+      },
+      "version": "2.4.1",
+      "homepage": "https://lumen.example/",
+      "categories": ["productivity", "writing"],
+      "pinyin": "lumen biji lmbj",
+      "versionChangedAt": "2026-10-13T08:00:00Z",
+      "bundleIds": ["app.lumen.notes"],
+      "link": {
+        "homepage": "https://lumen.example/",
+        "downloadUrl": null,
+        "github": {
+          "repo": "lumen-labs/lumen",
+          "latest": {
+            "tag": "v2.4.1",
+            "version": "2.4.1",
+            "publishedAt": "2026-10-13T08:00:00Z",
+            "url": "https://github.com/lumen-labs/lumen/releases/tag/v2.4.1",
+            "assets": [
+              {
+                "name": "Lumen-2.4.1-arm64.dmg",
+                "url": "https://github.com/lumen-labs/lumen/releases/download/v2.4.1/Lumen-2.4.1-arm64.dmg",
+                "size": 50540134,
+                "arch": "arm64",
+                "format": "dmg",
+                "sha256": "1f3c5e7a9b2d4f6081a3c5e7f9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7"
+              },
+              {
+                "name": "Lumen-2.4.1-x64.dmg",
+                "url": "https://github.com/lumen-labs/lumen/releases/download/v2.4.1/Lumen-2.4.1-x64.dmg",
+                "size": 53477376,
+                "arch": "x86_64",
+                "format": "dmg",
+                "sha256": "2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c"
+              },
+              {
+                "name": "latest-mac.yml",
+                "url": "https://github.com/lumen-labs/lumen/releases/download/v2.4.1/latest-mac.yml",
+                "size": 612,
+                "arch": null,
+                "format": "other",
+                "sha256": null
+              }
+            ]
+          }
+        },
+        "teamId": "7Q2XK4M9PL",
+        "pricing": "open_source",
+        "notes": null,
+        "adoptedByCask": null
+      }
+    },
+    {
+      "sourceLocale": "en-US",
+      "kind": "link",
+      "autoUpdates": false,
+      "deprecated": false,
+      "disabled": false,
+      "hidden": false,
+      "isFont": false,
+      "isLibrary": false,
+      "tags": [],
+      "installs30d": 0,
+      "rank30d": null,
+      "popularity": null,
+      "accentColor": null,
+      "iconUrl": null,
+      "apps": [],
+      "binaries": [],
+      "downloadSize": null,
+      "onRequest": null,
+      "tap": null,
+      "token": "kite-clipboard",
+      "name": "Kite Clipboard",
+      "names": ["Kite Clipboard", "Kite"],
+      "displayName": {
+        "en-US": "Kite Clipboard",
+        "zh-CN": "风筝剪贴板"
+      },
+      "summary": {
+        "en-US": "Clipboard history with sync",
+        "zh-CN": "带同步的剪贴板历史"
+      },
+      "version": "",
+      "homepage": "https://kite.example/",
+      "categories": ["utilities"],
+      "pinyin": "fengzheng jiantieban fzjtb",
+      "versionChangedAt": "2026-10-01T00:00:00Z",
+      "bundleIds": ["com.kite.clipboard"],
+      "link": {
+        "homepage": "https://kite.example/",
+        "downloadUrl": "https://kite.example/download",
+        "github": null,
+        "teamId": "K1T3C2L9P8",
+        "pricing": "freemium",
+        "notes": {
+          "en-US": "The download page asks for an email address.",
+          "zh-CN": "下载页需要填写邮箱。"
+        },
+        "adoptedByCask": null
+      }
+    },
+    {
+      "sourceLocale": "en-US",
+      "kind": "link",
+      "autoUpdates": false,
+      "deprecated": false,
+      "disabled": false,
+      "hidden": false,
+      "isFont": false,
+      "isLibrary": false,
+      "tags": [],
+      "installs30d": 0,
+      "rank30d": null,
+      "popularity": null,
+      "accentColor": null,
+      "iconUrl": null,
+      "apps": [],
+      "binaries": [],
+      "downloadSize": null,
+      "onRequest": null,
+      "tap": null,
+      "token": "adobe-photoshop",
+      "name": "Adobe Photoshop",
+      "names": ["Adobe Photoshop", "Photoshop", "PS"],
+      "displayName": {
+        "en-US": "Adobe Photoshop",
+        "zh-CN": "Adobe Photoshop"
+      },
+      "summary": {
+        "en-US": "Image editing and design",
+        "zh-CN": "图像编辑与设计"
+      },
+      "version": "",
+      "homepage": "https://www.adobe.com/products/photoshop.html",
+      "categories": ["design"],
+      "pinyin": null,
+      "versionChangedAt": "2026-09-01T00:00:00Z",
+      "bundleIds": ["com.adobe.Photoshop"],
+      "link": {
+        "homepage": "https://www.adobe.com/products/photoshop.html",
+        "downloadUrl": "https://www.adobe.com/products/photoshop.html",
+        "github": null,
+        "teamId": "JQ525L2MZD",
+        "pricing": "subscription",
+        "notes": null,
+        "adoptedByCask": null
+      }
+    }
+  ]
+}

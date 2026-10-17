@@ -18,9 +18,11 @@ describe('Search page', () => {
     const { pinia, router } = await setup('/search');
     await startLocalState();
     const search = commands.catalogSearch;
-    let release: () => void = () => {};
+    // One search reads casks and link apps in parallel; hold every read for "cod" until released.
+    const held: (() => void)[] = [];
+    const release = () => held.splice(0).forEach(resolve => resolve());
     vi.spyOn(commands, 'catalogSearch').mockImplementation(async query => {
-      if (query.q === 'cod') await new Promise<void>(resolve => (release = resolve));
+      if (query.q === 'cod') await new Promise<void>(resolve => held.push(resolve));
       return search(query);
     });
     const wrapper = mount(SearchPage, { global: { plugins: [pinia, router, i18n] } });

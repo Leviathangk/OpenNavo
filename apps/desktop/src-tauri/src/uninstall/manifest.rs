@@ -111,6 +111,14 @@ impl Engine {
             return Err(unavailable());
         }
         values.sort_by_key(|e| e.original.components().count());
+        let app_paths: Vec<_> = values
+            .iter()
+            .filter(|e| {
+                self.roots
+                    .allowed(&e.original, MatchReason::AppBundle, Some(&e.original))
+            })
+            .map(|e| e.original.clone())
+            .collect();
         let root = self.trash_root()?;
         let mut admins = vec![];
         let mut result = RestoreResult {
@@ -150,7 +158,7 @@ impl Engine {
                 continue;
             }
             if self.roots.admin(&e.original) {
-                admins.push((e.clone(), trash_request(&e, true)?));
+                admins.push((e.clone(), trash_request(&e, true, &app_paths)?));
                 continue;
             }
             match super::execute::move_exclusive(path, &e.original) {
@@ -167,7 +175,7 @@ impl Engine {
                     self.audit(task_id, &format!("restored {}", e.original.display()))?;
                 }
                 Err(_) => {
-                    admins.push((e.clone(), trash_request(&e, true)?));
+                    admins.push((e.clone(), trash_request(&e, true, &app_paths)?));
                 }
             }
         }
@@ -248,7 +256,7 @@ impl Engine {
                 continue;
             }
             if self.roots.admin(&e.original) || super::execute::remove(path, false).is_err() {
-                admins.push((e.clone(), trash_request(&e, false)?));
+                admins.push((e.clone(), trash_request(&e, false, &[])?));
                 continue;
             }
             finish(
@@ -359,9 +367,18 @@ fn unavailable() -> AppError {
     AppError::new("E_RESTORE_UNAVAILABLE", "uninstall_restore_unavailable")
 }
 
-fn trash_request(e: &Entry, restore: bool) -> Result<super::execute::AdminRequest, AppError> {
+fn trash_request(
+    e: &Entry,
+    restore: bool,
+    apps: &[PathBuf],
+) -> Result<super::execute::AdminRequest, AppError> {
     let path = e.trash.as_ref().ok_or_else(unavailable)?;
-    let reason = if e.original.extension().is_some_and(|ext| ext == "app") {
+    let backup_app = apps
+        .iter()
+        .find(|app| crate::updater::backup::is_directory(app, &e.original));
+    let reason = if backup_app.is_some() {
+        MatchReason::NameExact
+    } else if e.original.extension().is_some_and(|ext| ext == "app") {
         MatchReason::AppBundle
     } else if e.original.starts_with("/private/var/db/receipts") {
         MatchReason::PkgReceipt
@@ -403,6 +420,8 @@ fn trash_request(e: &Entry, restore: bool) -> Result<super::execute::AdminReques
         },
         mode: DeleteMode::Delete,
         destination: None,
-        app_path: (reason == MatchReason::AppBundle).then(|| e.original.clone()),
+        app_path: backup_app
+            .cloned()
+            .or_else(|| (reason == MatchReason::AppBundle).then(|| e.original.clone())),
     })
 }

@@ -73,7 +73,9 @@ export default {
     updatesBadge: '{count} 个可用更新',
     cleanup: '清理电脑',
     cleanupBadge: '{count} 个失效的后台项目仍在加载',
-    monitor: '电脑监控'
+    monitor: '电脑监控',
+    security: '安全防护',
+    securityBadge: '{count} 项需要处理'
   },
   env: {
     label: 'Homebrew',
@@ -96,6 +98,7 @@ export default {
     search: '搜索 {count} 个 App',
     searchShort: '搜索 App',
     taskRunning: '{action} {name}',
+    taskScanning: '扫描 {name} 安装包',
     taskQueued: '另有 {count} 个排队'
   },
   rail: {
@@ -180,7 +183,60 @@ export default {
     empty: '没有找到「{q}」',
     emptyHint: '换个关键词，或试试英文名、拼音缩写',
     alias: '别名：{name}',
-    prompt: '输入名称、用途或命令开始搜索'
+    prompt: '输入名称、用途或命令开始搜索',
+    catalogEmpty: '目录里没有找到「{q}」',
+    sources: {
+      label: '结果来源',
+      all: '全部',
+      catalog: '目录'
+    }
+  },
+  appStore: {
+    title: 'App Store',
+    badge: 'App Store',
+    get: '获取',
+    getIn: '在 App Store 中获取 {name}',
+    free: '免费',
+    fromApple: '来自 Apple · {region}商店',
+    fromAppleNoRegion: '来自 Apple',
+    rating: '{rating} 分 · {count} 个评分',
+    rateLimited: 'App Store 搜索太频繁了，请过一分钟再试。',
+    offline: '暂时连不上 App Store，请检查网络后重试。',
+    searchFailed: 'App Store 搜索失败，请稍后再试。',
+    empty: 'App Store 里没有找到「{q}」',
+    emptyHint: '换个关键词试试，或者在设置里更换 App Store 地区',
+    showAll: '显示全部 {count} 个',
+    requiresOs: 'macOS {version} 或更高版本',
+    installedVersion: '已安装 {version}',
+    headerMeta: '由 App Store 下载 · 需要已登录 Apple ID',
+    viewInStore: '在 App Store 中查看',
+    alsoTitle: '也可以这样获取',
+    whatsNew: '新功能 · {version}',
+    whatsNewDated: '新功能 · {version} · {date}',
+    about: '介绍',
+    info: {
+      seller: '开发者',
+      version: '版本',
+      size: '大小',
+      requires: '系统要求',
+      category: '类别',
+      region: '商店地区',
+      bundleId: 'Bundle ID'
+    },
+    privacyNote: '这些信息由你的 Mac 直接向 Apple 获取，不经过 OpenNavo 的服务器。',
+    notInRegion: '这款 App 在{region}商店不可用',
+    notInRegionHint: '它可能已经下架，或者只在其他地区的商店上架。',
+    settings: {
+      region: '商店地区',
+      regionHint: '决定搜索结果、价格和能否获取。自动时读取 App Store 账户的地区，读不到就用系统地区',
+      auto: '自动',
+      autoDetected: '自动（{region}）',
+      search: '在搜索中显示 App Store 结果',
+      searchHint: '停止输入后才向 Apple 搜索，每分钟最多 15 次',
+      updates: '检查 App Store 更新',
+      updatesHint: '把 App Store 应用的新版本列在「更新」里',
+      privacy: '搜索、详情和更新检查都由这台 Mac 直接连接 Apple 完成，不经过 OpenNavo 的服务器。'
+    }
   },
   collections: {
     title: '合集',
@@ -197,6 +253,58 @@ export default {
     offline: '合集需要联网后查看'
   },
   package: {
+    link: {
+      chip: '官网下载',
+      chipGithub: 'GitHub',
+      meta: '下载地址来自 {source} · OpenNavo 不托管安装包',
+      notHosted: 'OpenNavo 不托管安装包，下载直接来自开发者。',
+      homepage: '主页',
+      downloadTitle: '下载',
+      officialDownload: '前往官网下载',
+      release: '{version} · {time}发布',
+      recommended: '推荐',
+      download: '下载',
+      allFiles: '在 GitHub 查看全部文件',
+      githubReleases: '前往 GitHub 下载',
+      teamId: '开发者签名',
+      pricingLabel: '价格',
+      adopted: 'Homebrew 已收录这款 App，现在可以一键安装',
+      arch: {
+        arm64: 'Apple 芯片',
+        x86_64: 'Intel',
+        universal: '通用'
+      },
+      pricing: {
+        free: '免费',
+        paid: '付费',
+        freemium: '免费，含付费功能',
+        subscription: '订阅',
+        open_source: '开源免费'
+      },
+      verdict: {
+        verifying: '正在核验 {file}…',
+        checked: '已核验 {file}：{details}',
+        title: '已核验 {file}',
+        view: '查看',
+        open: '打开安装包',
+        reveal: '在访达中显示',
+        who: '{signer}（{team}）',
+        teamMatch: '签名 {who} 与登记一致',
+        teamMismatch: '签名 {who} 与登记的开发者不一致',
+        signed: '开发者签名 {who}',
+        unsigned: '没有开发者签名',
+        zip: '压缩包没有解开，其中 App 的签名会在首次打开时由 macOS 核对',
+        invalid: '签名无效',
+        notarized: '已经 Apple 公证',
+        notNotarized: '没有经过 Apple 公证',
+        clean: '病毒库未发现威胁',
+        threat: '发现 {name}',
+        threatQuarantined: '发现 {name}，已移到隔离区',
+        notScanned: '没有做病毒扫描',
+        skipped: '没有做病毒扫描：{reason}',
+        modified: '签名后有文件被改动，可能被篡改'
+      }
+    },
     arch: {
       arm64: 'Apple 芯片',
       x86_64: 'Intel'
@@ -512,12 +620,92 @@ export default {
     updateAll: '全部更新',
     changelog: '更新内容',
     update: '更新',
-    ignore: '忽略此版本',
-    ignored: '已忽略 {name} {version}',
     pinned: '已固定，不会更新',
     patch: '补丁',
     empty: '所有软件都是最新的',
     emptyHint: '有新版本时会在这里列出',
+    source: {
+      homebrew: 'Homebrew',
+      mas: 'App Store',
+      sparkle: 'App 自带更新源',
+      electron: 'App 自带更新源',
+      github: 'GitHub',
+      vendor: '开发者网站',
+      msupdate: 'Microsoft AutoUpdate'
+    },
+    badge: {
+      critical: '重要更新',
+      beta: '测试版',
+      major: '大版本',
+      teamMismatch: '签名不一致'
+    },
+    hint: {
+      relaunch: '已更新到 {version}，重新打开后生效',
+      informational: '这个版本需要到开发者网站查看或下载',
+      running: '正在运行，更新前会先请你退出',
+      admin: '更新时需要管理员密码',
+      skipped: '已跳过 {version}',
+      teamMismatch: '预期的开发者签名与已装 App 不一致，OpenNavo 不会安装这个更新'
+    },
+    actions: {
+      skip: '跳过这个版本',
+      unskip: '取消跳过 {version}',
+      beta: '接收测试版',
+      stable: '只接收正式版',
+      unignoreApp: '恢复检查这个 App',
+      ignoreApp: '不再检查这个 App',
+      relaunch: '重新打开',
+      view: '查看'
+    },
+    toast: {
+      skipped: '已跳过 {name} {version}',
+      unskipped: '{name} 的新版本会重新提醒',
+      beta: '{name} 改为接收测试版',
+      stable: '{name} 只接收正式版',
+      unignoredApp: '已恢复检查 {name} 的更新',
+      ignoredApp: '不再检查 {name} 的更新'
+    },
+    notes: {
+      title: '{name} {version} 更新内容'
+    },
+    masSignedOut: 'App Store 没有登录 Apple 账户，App Store 的更新暂时装不了。登录后再试。',
+    failedSources: '这次没有查到：{sources}。其余来源的结果照常显示，下次检查会再试',
+    openAppStore: '打开 App Store',
+    major: {
+      titleOne: '{name} 是大版本更新',
+      title: '{count} 个大版本更新',
+      body: '大版本可能改变界面、要求重新授权，或不再兼容旧的文件。确定要更新吗？',
+      others: '其他更新会照常进行。',
+      skip: '暂不更新',
+      confirm: '继续更新'
+    },
+    filter: {
+      label: '来源',
+      all: '全部 {count}',
+      homebrew: 'Homebrew {count}',
+      mas: 'App Store {count}',
+      other: '其他来源 {count}'
+    },
+    meta: {
+      from: '来自 {host}',
+      teamMatch: '预期 Team ID 一致'
+    },
+    sources: {
+      title: '检查哪些来源',
+      subtitle: '关掉的来源不再检查',
+      homebrew: 'Homebrew',
+      homebrewHint: '运行 brew outdated',
+      mas: 'App Store',
+      masHint: '直接向 Apple 查询',
+      sparkle: 'App 自带更新源',
+      sparkleHint: '安装前核对签名和公证',
+      electron: 'Electron 自带更新源',
+      electronHint: '核对 sha512 和签名后安装',
+      github: 'GitHub Releases',
+      githubHint: '核对文件摘要和开发者签名',
+      vendor: '开发者网站',
+      vendorHint: '按 OpenNavo 维护的规则，核对开发者签名'
+    },
     queued: '已加入队列：{count} 个',
     history: {
       recheck: '重新检查',
@@ -535,7 +723,8 @@ export default {
       purge: '彻底删除',
       canceled: '已取消',
       batch: '{action} {count} 个{kind}',
-      empty: '还没有更新记录'
+      empty: '还没有更新记录',
+      rollback: '回滚'
     },
     month: {
       title: '本月',
@@ -569,6 +758,13 @@ export default {
     log: {
       title: '{name} 的日志',
       empty: '没有日志'
+    },
+    rollback: {
+      title: '把 {name} 回滚到 {version}？',
+      body: '换回这次更新前保留的 {version}。如果 {name} 正在运行，会先请它正常退出，回滚后再打开。',
+      skip: '之后不再提示 {version}，有更新的版本时再提示。',
+      confirm: '回滚',
+      notQuit: '{name} 没有退出，没有回滚；退出后可以再试'
     }
   },
   history: {
@@ -589,10 +785,12 @@ export default {
       general: '通用',
       mirrors: '下载源',
       homebrew: 'Homebrew',
+      appstore: 'App Store',
       privacy: '隐私',
       about: '关于',
       cleanup: '清理',
-      monitor: '电脑监控'
+      monitor: '电脑监控',
+      security: '安全防护'
     },
     general: {
       followSystem: '跟随系统（当前：{language}）',
@@ -906,7 +1104,9 @@ export default {
       update: '更新 Homebrew',
       install_homebrew: '安装 Homebrew',
       remove_leftovers: '清理残留',
-      clean: '清理电脑'
+      clean: '清理电脑',
+      av_db_update: '更新病毒库',
+      rollback: '回滚'
     },
     running: {
       install: '正在安装 {name}',
@@ -919,12 +1119,15 @@ export default {
       update: '正在更新 Homebrew',
       install_homebrew: '正在安装 Homebrew',
       remove_leftovers: '正在清理残留：{name}',
-      clean: '正在清理电脑'
+      clean: '正在清理电脑',
+      av_db_update: '正在更新病毒库',
+      rollback: '正在回滚 {name}'
     },
     phases: {
       preparing: '准备',
       fetching: '获取信息',
       downloading: '下载',
+      scanning: '扫描安装包',
       installing: '安装',
       linking: '链接',
       cleaning: '清理',
@@ -947,6 +1150,34 @@ export default {
     failed: '{name} {action}失败'
   },
   errors: {
+    E_STARTUP_PROTECTED: '这是 macOS 自带的项目，不能在这里更改',
+    E_AV_CONSENT: '需要先同意下载病毒库',
+    E_AV_NOT_READY: '病毒库还没有下载，请先在「病毒扫描」里下载',
+    E_AV_ENGINE: '病毒扫描引擎没有正常启动，请稍后重试',
+    E_AV_SCAN_FAILED: '扫描没有完成，请重新扫描',
+    E_AV_DB_RATE_LIMITED: '病毒库更新太频繁，被官方服务器暂时限制了，稍后会自动重试',
+    E_AV_DB_UPDATE: '病毒库更新失败，请检查网络后重试',
+    E_RESTORE_CONFLICT: '原来的位置已经有同名文件，没有恢复',
+    E_MAS_NOT_SIGNED_IN: '请先在 App Store 里登录 Apple 账户',
+    E_MAS_NOT_OWNED: '这个账户还没有获取过这款 App，请在 App Store 里点「获取」',
+    E_MAS_PAID: '付费 App 请在 App Store 里购买',
+    E_MAS_OTHER_ACCOUNT: '这款 App 由其他 Apple 账户购买，请在 App Store 里更新',
+    E_MAS_REGION: '这款 App 在当前商店地区不可用',
+    E_MAS_RATE_LIMITED: 'App Store 请求太频繁了，请过一分钟再试',
+    E_UPDATE_INTEGRITY: '下载的更新没有通过完整性校验，没有安装',
+    E_UPDATE_TEAM_MISMATCH: '新版本的开发者签名和已安装的不一致，没有安装',
+    E_UPDATE_NOT_NOTARIZED: '新版本没有经过 Apple 公证，没有安装',
+    E_UPDATE_ARCH: '新版本不支持这台 Mac 的芯片',
+    E_UPDATE_MIN_OS: '新版本需要更新的 macOS',
+    E_UPDATE_FEED: '读取更新源失败，请稍后再试',
+    E_UPDATE_DMG_LICENSE: '这个安装包要求先同意许可协议，请手动安装这个版本',
+    E_UPDATE_SWAP: '替换 App 时出错，已恢复到原来的版本',
+    E_ADMIN_CANCELED: '已取消管理员授权',
+    E_NOT_IMPLEMENTED: '这项功能还没有开放',
+    E_DOWNLOAD_UNSAFE: '这个安装包没有通过核验，已阻止打开',
+    E_MAS_ENGINE: 'App Store 下载组件出错，请改用 App Store 完成',
+    E_NOT_INSTALLABLE: '这款 App 只能从官网下载，不能用 Homebrew 安装',
+    E_LINK_URL: '这个下载地址不在登记范围内，没有打开',
     E_APP_RUNNING: '应用正在运行，已暂缓更新；退出后可再次更新',
     E_APP_QUIT_FAILED: '应用未退出，已暂缓更新；请保存工作并退出后重试',
     E_APP_CHECK_FAILED: '无法检查应用运行状态，已暂缓更新；请刷新已安装列表后重试',
@@ -985,7 +1216,22 @@ export default {
     E_FAN_WRITE_FAILED: '没能改变风扇设置',
     E_FAN_NO_MANUAL_SPEED: '还没有上次的手动转速',
     E_FAN_UNAUTHORIZED: '风扇辅助程序没通过签名校验，请重新安装 OpenNavo',
-    E_FAN_SENSOR_UNAVAILABLE: '读不到温度，为了安全不能切到手动'
+    E_FAN_SENSOR_UNAVAILABLE: '读不到温度，为了安全不能切到手动',
+    E_INSTALL_THREAT: '安装包里发现威胁，已停止安装',
+    E_INSTALL_SCAN: '安装前扫描没能完成，没有安装。可以稍后重试，或在「设置 → 安全防护」里关闭安装前扫描',
+    E_PASTE_EXPIRED: '这次粘贴已经过期，已自动丢弃',
+    E_ACCESSIBILITY_DENIED: '需要在系统设置里允许 OpenNavo 使用辅助功能',
+    E_VT_DISABLED: 'VirusTotal 查询没有开启',
+    E_VT_KEY_REQUIRED: '请先在设置里填写 VirusTotal API key',
+    E_VT_KEY_INVALID: 'VirusTotal API key 无效，请检查后重新填写',
+    E_VT_RATE_LIMITED: 'VirusTotal 查询太频繁了，公共 API 每分钟最多 4 次，请稍后再试',
+    E_VT_UNAVAILABLE: '暂时连不上 VirusTotal，请稍后再试',
+    E_KEYCHAIN: '没能读写钥匙串',
+    E_AUTOMATION_DENIED: '需要在「系统设置 → 隐私与安全性 → 自动化」里允许 OpenNavo 控制 System Events',
+    E_STARTUP_CHANGED: '这个启动项刚刚被其他程序改过，请刷新后再试',
+    E_LOGIN_ITEM_EXISTS: '这个 App 已经会在登录时打开',
+    E_ROLLBACK_UNAVAILABLE: '保留的旧版本已不可用，或这个 App 之后又有变化，不能回滚',
+    E_ROLLBACK_INTEGRITY: '保留的旧版本没有通过签名校验，没有回滚'
   },
   installConfirm: {
     title: '接管现有 {name}？',
@@ -1021,6 +1267,7 @@ export default {
     open: '打开',
     reveal: '在访达中显示',
     detail: '在 OpenNavo 中查看',
+    appStore: 'App Store 详情',
     adoptTitle: '可以交给 Homebrew 管理',
     adoptBody: 'Homebrew 收录了 {name}。接管后能在 OpenNavo 里一键更新，卸载时也能用上更全的清理规则。',
     adopt: '用 Homebrew 接管',
@@ -1039,9 +1286,11 @@ export default {
       vendor: '开发者',
       arch: '架构',
       source: '来源',
+      updater: '更新方式',
       installedAt: '安装于',
       lastUsed: '最近使用'
     },
+    updaterNone: 'OpenNavo 暂时不能更新它',
     arch: {
       arm64: 'Apple 芯片',
       x86_64: 'Intel',
@@ -1767,6 +2016,515 @@ export default {
       alerts: '提醒',
       alertsHint:
         '出现需要注意的问题时发通知，同一问题 1 小时内只提醒一次。开启后，即使菜单栏没有监控项也会在后台低频检查'
+    }
+  },
+  security: {
+    title: '安全防护',
+    subtitle: '体检、病毒扫描、启动项和实时防护，结果只保存在这台 Mac 上',
+    tabs: {
+      label: '安全防护',
+      overview: '概览',
+      scan: '病毒扫描',
+      startup: '启动项',
+      protection: '实时防护',
+      quarantine: '隔离区'
+    },
+    overview: {
+      attention: '有 {count} 项需要你看一下',
+      newStartup: '新增 {count} 个开机启动项',
+      openThreats: '{count} 个威胁还没有处理',
+      allGood: '一切正常',
+      allGoodHint: '系统防护都已开启，也没有待处理的威胁或新启动项',
+      viewStartup: '查看启动项',
+      postureTitle: '系统安全体检',
+      postureHint: '只读检查；需要修改时，会打开系统设置里对应的面板',
+      openSettings: '打开设置',
+      scheduleOff: '定时扫描：关闭',
+      scheduleDaily: '定时扫描：每天 {time}',
+      scheduleWeekly: '定时扫描：每{day} {time}'
+    },
+    postureState: {
+      ok: '正常',
+      warn: '注意',
+      bad: '风险',
+      info: '提示',
+      unknown: '未知'
+    },
+    posture: {
+      sip: {
+        title: '系统完整性保护（SIP）',
+        ok: '已开启',
+        bad: '系统完整性保护已关闭',
+        unknown: '无法读取'
+      },
+      ssv: {
+        title: '系统卷签名封存',
+        ok: '系统卷已签名封存',
+        bad: '系统卷没有封存',
+        unknown: '无法读取'
+      },
+      gatekeeper: {
+        title: 'Gatekeeper',
+        ok: '只允许运行经过验证的 App',
+        bad: 'Gatekeeper 已关闭，任何来源的 App 都能直接运行',
+        unknown: '无法读取'
+      },
+      filevault: {
+        title: 'FileVault 磁盘加密',
+        ok: '已开启',
+        bad: 'FileVault 没有开启，丢失 Mac 时数据可能被读取',
+        unknown: '无法读取'
+      },
+      firewall: {
+        title: '防火墙',
+        ok: '已开启',
+        bad: '防火墙已关闭（它只拦截入站连接，在公共网络建议开启）',
+        unknown: '无法读取'
+      },
+      xprotect: {
+        title: 'XProtect（Apple 内置防护）',
+        ok: '已是最新',
+        bad: 'XProtect 超过 30 天没有更新',
+        unknown: '无法读取版本',
+        detail: '版本 {version} · {time}更新'
+      },
+      updates: {
+        title: '自动安装安全更新',
+        ok: '已开启',
+        bad: '安全响应和数据文件不会自动安装',
+        unknown: '无法读取'
+      },
+      screenlock: {
+        title: '屏幕锁定',
+        ok: '唤醒后立即要求密码',
+        bad: '唤醒后不会立即要求密码',
+        unknown: '无法读取'
+      },
+      autologin: {
+        title: '自动登录',
+        ok: '已关闭',
+        bad: '已开启自动登录，开机不需要密码',
+        unknown: '无法读取'
+      },
+      guest: {
+        title: '访客用户',
+        ok: '已关闭',
+        bad: '访客用户已开启',
+        unknown: '无法读取'
+      },
+      sharing: {
+        title: '共享服务',
+        ok: '没有开启远程共享服务',
+        bad: '已开启远程共享服务',
+        unknown: '无法读取',
+        detail: '已开启：{services}',
+        services: {
+          ssh: '远程登录',
+          files: '文件共享',
+          screen: '屏幕共享',
+          remote: '远程管理'
+        }
+      }
+    },
+    engine: {
+      title: '病毒库',
+      setUp: '下载病毒库',
+      db: '病毒库 {version} · {time}更新',
+      downloading: '正在下载病毒库…',
+      noDb: '还没有下载病毒库',
+      lastScan: '上次{kind}：{date}，发现 {count} 个威胁',
+      neverScanned: '还没有扫描过',
+      consentTitle: '先下载官方病毒库',
+      consentBody: '病毒扫描使用 ClamAV 引擎和它的官方病毒库。病毒库直接从 ClamAV 官方服务器下载，不经过 OpenNavo。',
+      consentSize: '首次下载约 113 MB，之后只下载增量，磁盘上约占 170 MB。',
+      consentMemory: '扫描时引擎约占 1.1 GB 内存，空闲 5 分钟后自动退出。',
+      consentSource: '默认每 4 小时检查一次更新，遵守官方服务器的频率限制。',
+      consentCoverage:
+        'ClamAV 对 Mac 专用恶意软件覆盖有限，所以 OpenNavo 同时核对签名、公证和启动项，并显示 Apple XProtect 的状态。',
+      download: '同意并下载',
+      downloadFailed: '病毒库下载失败',
+      rateLimited: '病毒库更新被官方服务器暂时限制，稍后会自动重试'
+    },
+    scan: {
+      denied:
+        '没有权限读取：{folders}，这些位置没有扫描。可以在「系统设置 → 隐私与安全性 → 文件与文件夹」里允许 OpenNavo',
+      folders: {
+        downloads: '下载',
+        desktop: '桌面',
+        documents: '文稿'
+      },
+      quick: {
+        title: '快速扫描',
+        duration: '通常几分钟；下载和桌面里有大安装包时会更久',
+        body: '启动项指向的程序、下载、桌面、临时文件夹和最近 7 天新装的 App',
+        action: '快速扫描'
+      },
+      full: {
+        title: '全盘扫描',
+        duration: '可能要 1 小时以上',
+        body: '整台 Mac；不扫描系统卷、iCloud 未下载的文件、Time Machine 和网络卷',
+        action: '开始全盘扫描'
+      },
+      custom: {
+        title: '自定义扫描',
+        duration: '取决于选择的内容',
+        body: '选择文件夹或外置硬盘',
+        action: '选择并扫描'
+      },
+      failed: '扫描没有开始',
+      running: '正在{kind} · 已检查 {count} 个文件（{size}）',
+      state: {
+        done: '扫描完成 · 检查了 {count} 个文件 · {time}',
+        canceled: '扫描已取消 · 检查了 {count} 个文件',
+        failed: '扫描中断 · 检查了 {count} 个文件'
+      },
+      progressLabel: '扫描进度',
+      skipped: {
+        dataless: '跳过 {count} 个 iCloud 未下载的文件',
+        tooLarge: '{count} 个文件超出扫描上限，没有完整扫描',
+        unreadable: '{count} 个文件无法读取（没有权限、已加密或格式不支持）',
+        excluded: '{count} 个文件在排除列表里'
+      }
+    },
+    findings: {
+      title: '发现的威胁（{count}）',
+      quarantine: '隔离',
+      quarantined: '已隔离 {name}',
+      reveal: '在访达中显示',
+      trust: '信任此文件',
+      delete: '删除',
+      more: '{name} 的更多操作',
+      status: {
+        open: '待处理',
+        quarantined: '已隔离',
+        deleted: '已删除',
+        trusted: '已信任'
+      },
+      none: '没有发现威胁',
+      noneHint: '病毒库能识别的威胁都没有出现在这次扫描的范围里'
+    },
+    startup: {
+      summary: '{count} 个第三方启动项',
+      notRead: '还没有读取过启动项',
+      untrusted: '其中 {count} 个未签名或未公证',
+      missing: '没有「完全磁盘访问权限」，读不到：{categories}',
+      grant: '开启权限',
+      btmUnknown: '这台 Mac 的后台项目数据库格式没有识别出来，部分登录项可能没有列出',
+      new: '新',
+      toggle: '启用 {name}',
+      openSettings: '在系统设置中管理',
+      none: '没有启动项',
+      noneHint: 'macOS 自带的项目不在这里显示',
+      noApps: '没有 App 会自动启动',
+      others: '其他 {count} 项',
+      othersHint: '命令行工具、脚本、扩展和插件',
+      items: '{count} 项',
+      stateMixed: '{count} 项已启用',
+      add: '添加开机启动项',
+      addHint: '选中的 App 会在你登录这台 Mac 时自动打开',
+      addSearch: '搜索 App',
+      addEmpty: '没有可以添加的 App',
+      adding: '正在添加…',
+      added: '已添加，{name} 会在登录时打开',
+      refreshing: '正在检查启动项…',
+      removed: '已移除 {name}，可以在隔离区恢复',
+      removeTitle: '移除「{name}」？',
+      removeBody: '会先停用它，再把配置文件移到隔离区，之后可以恢复。',
+      removeBodyAdmin: '会先停用它，再把配置文件移到隔离区，之后可以恢复。这是系统级项目，需要输入一次管理员密码。',
+      remove: '移除',
+      enable: '启用',
+      disable: '停用',
+      keep: '保留',
+      scan: '用病毒库扫描',
+      adminHint: '这是系统级项目，停用或移除时需要输入一次管理员密码。',
+      riskHigh: '高风险',
+      avClean: '没有发现威胁',
+      avThreat: '识别为 {name}',
+      avNotScanned: '还没有扫描',
+      category: {
+        launch_items: '后台服务',
+        btm: '后台项目',
+        login_items: '登录项',
+        cron: '定时任务',
+        browser_extensions: '浏览器扩展',
+        kexts: '内核扩展',
+        system_extensions: '系统扩展',
+        app_extensions: 'App 扩展',
+        auth_plugins: '授权插件',
+        dir_services_plugins: '目录服务插件',
+        spotlight: '聚焦插件',
+        quicklook: '快速查看插件',
+        dock_tiles: '程序坞插件',
+        library_inserts: '动态库注入',
+        library_proxies: '动态库代理',
+        login_hooks: '登录钩子',
+        periodic: '周期脚本',
+        startup_scripts: '启动脚本',
+        shell_config: 'Shell 配置文件',
+        event_rules: '事件规则'
+      },
+      scope: {
+        user: '当前用户',
+        system: '整台电脑'
+      },
+      state: {
+        running: '运行中',
+        loaded: '已加载',
+        enabled: '已启用',
+        disabled: '已停用',
+        unknown: '未知',
+        removed: '已移除'
+      },
+      trust: {
+        apple: 'Apple',
+        known: '已知开发者',
+        unknown: '无法确认',
+        untrusted: '未签名或未公证'
+      },
+      trigger: {
+        at_load: '开机运行',
+        keep_alive: '常驻',
+        interval: '定时运行',
+        calendar: '按日程运行',
+        watch_paths: '文件变化时运行',
+        events: '事件触发'
+      },
+      fields: {
+        category: '类型',
+        scope: '范围',
+        path: '位置',
+        program: '程序',
+        owner: '所属 App',
+        signature: '签名',
+        team: 'Team ID',
+        state: '状态',
+        triggers: '运行方式',
+        firstSeen: '首次发现',
+        av: '病毒库结果'
+      },
+      restore: '恢复',
+      restored: '已恢复 {name}',
+      removedBackup: '已移除 {name}，可以在这里恢复',
+      removeBodyBackup: '会先备份再移除，之后可以在启动项列表里恢复。'
+    },
+    signature: {
+      apple: 'Apple 签名',
+      appStore: 'App Store 签名',
+      notarized: '已公证',
+      notNotarized: '签名有效，但未公证',
+      adhoc: '临时签名，无法确认开发者',
+      unsigned: '没有签名',
+      invalid: '签名无效',
+      notCode: '不是程序文件，不适用签名',
+      unknown: '无法核对签名',
+      modified: '签名有效，但签名后有文件被改动'
+    },
+    quarantine: {
+      summary: '{count} 个文件，共 {size}',
+      empty: '隔离区是空的',
+      emptyHint: '隔离的威胁和移除的启动项会放在这里，可以随时恢复',
+      reason: {
+        startup: '移除的启动项',
+        user: '手动隔离'
+      },
+      restore: '恢复',
+      restored: '已恢复 {name}',
+      delete: '彻底删除',
+      deleteTitle: '彻底删除「{name}」？',
+      deleteBody: '删除后无法恢复。'
+    },
+    protection: {
+      title: '实时防护',
+      startupAlerts: {
+        title: '启动项变化提醒',
+        body: '出现新的开机启动项、登录项或后台服务时立即提醒你，并显示签名和所属 App。它是事后提醒，不能阻止第一次运行。'
+      },
+      watchDownloads: {
+        title: '下载文件自动扫描',
+        body: '监视「下载」文件夹，新文件下载完成后用病毒库扫描；安装包还会核对签名和公证。'
+      },
+      needsDb: '需要先下载病毒库',
+      waiting: '{stage} · 等待 Apple 授权',
+      later: {
+        realtime: {
+          title: '启动项实时拦截',
+          body: '能知道是哪个程序添加的启动项，并立即停用。需要 Apple 批准 Endpoint Security 授权。'
+        },
+        exec: {
+          title: '未公证程序运行确认',
+          body: '下载来的、未经公证的程序第一次运行前先询问你。需要 Endpoint Security 授权。'
+        },
+        ransomware: {
+          title: '勒索软件防护',
+          body: '某个程序在短时间内大量写出加密文件时，暂停它并询问你。需要 Endpoint Security 授权。'
+        },
+        firewall: {
+          title: '应用防火墙',
+          body: 'App 第一次联网时询问你是否允许，可以设置规则和屏蔽列表。需要安装网络系统扩展，后续版本提供。'
+        }
+      },
+      eventsTitle: '最近的记录',
+      noEvents: '还没有记录',
+      events: {
+        startup_added: '新增启动项：{name}',
+        startup_removed: '启动项已移除：{name}',
+        download_threat: '下载的文件有威胁：{name}',
+        download_unsigned: '下载的安装包没有签名：{name}',
+        scan_threat: '扫描发现威胁：{name}',
+        scheduled_scan_skipped: '定时扫描已跳过：{name}',
+        signature_changed: '开发者签名变了：{name}',
+        install_threat: '安装包有威胁，已停止安装：{name}',
+        paste_blocked: '暂停了一次可疑的粘贴：{name}'
+      },
+      installThreatUnnamed: '安装包有威胁，已停止安装'
+    },
+    toasts: {
+      startupAdded: '出现 {count} 个新的开机启动项',
+      startupAddedBody: '{name} · {signer}',
+      review: '查看',
+      threats: '扫描发现 {count} 个威胁',
+      clean: '扫描完成，没有发现威胁',
+      view: '查看',
+      signatureChanged: '{count} 个 App 的开发者签名变了',
+      signatureChangedBody: '{names}：签名的开发者和之前不同，可能被替换过',
+      installThreat: '安装包里发现威胁，已停止安装'
+    },
+    rail: {
+      engine: '扫描引擎',
+      version: '版本',
+      engineVersion: 'ClamAV {version}',
+      database: '病毒库',
+      noDatabase: '未下载',
+      size: '大小',
+      engineState: '引擎',
+      running: '运行中 · {size}',
+      idle: '未运行',
+      protection: '实时防护',
+      on: '开启',
+      off: '关闭',
+      limitsTitle: '能力范围',
+      limits:
+        '病毒库对 Mac 专用恶意软件覆盖有限；在拿到 Apple 授权前，启动项提醒只能事后提醒、不能拦截。它是对 macOS 自带防护的补充，不能代替它。超过 100 MB 的普通文件、超过 1 GB 或展开后超过 2 GB 的安装包不会完整扫描。'
+    },
+    avSkipped: {
+      no_database: '还没有下载病毒库',
+      no_consent: '还没有同意下载病毒库',
+      excluded: '所在文件夹在排除列表里',
+      too_large: '超出扫描上限',
+      unreadable: '无法读取（没有权限、已加密或格式不支持）'
+    },
+    installScan: {
+      clean: '安装前扫描：检查了 {count} 个文件，没有发现威胁',
+      skipped: '安装前扫描没有完成：{reason}',
+      skippedPartial: '安装前扫描检查了 {count} 个文件，但没有完整扫描：{reason}',
+      threat: '安装前扫描发现：{names}'
+    },
+    settings: {
+      interval: '病毒库检查频率',
+      intervalHint: '先查询版本记录，有新版本才下载增量；官方要求间隔不少于 1 小时',
+      everyHours: '每 {count} 小时',
+      resident: '保持扫描引擎常驻',
+      residentHint: '下载扫描会更快，但会一直占用约 1.1 GB 内存。关闭时，引擎空闲 5 分钟后自动退出',
+      watchDownloadsHint: '监视「下载」文件夹；需要先下载病毒库',
+      startupAlertsHint: '出现新的开机启动项时通知你',
+      exclusions: '扫描排除项',
+      exclusionsHint: '这些文件夹在所有扫描中都会跳过',
+      addExclusion: '添加文件夹',
+      removeExclusion: '移除',
+      choose: '选择…',
+      beforeInstall: '安装前扫描',
+      beforeInstallHint:
+        'Homebrew 下载完成后、安装之前先扫描下载的安装文件，发现威胁就停止安装；需要先下载病毒库。安装过程中额外下载的内容（例如从源码构建，或安装脚本自己联网下载）不在扫描范围内',
+      schedule: {
+        title: '定时扫描',
+        frequency: '自动快速扫描',
+        hint: '在设定的时间做一次快速扫描。只在 OpenNavo 运行时进行，不会唤醒 Mac；使用电池时跳过',
+        off: '关闭',
+        daily: '每天',
+        weekly: '每周',
+        weekday: '星期',
+        time: '时间',
+        next: '下次扫描：{time}',
+        skipped: '上次跳过：{reason}',
+        reason: {
+          no_database: '还没有下载病毒库',
+          no_consent: '还没有同意下载病毒库',
+          on_battery: '当时在用电池供电',
+          busy: '当时有其他扫描在进行',
+          error: '扫描没能开始'
+        }
+      },
+      optional: {
+        title: '可选功能',
+        hint: '默认关闭，需要你自己开启'
+      },
+      paste: {
+        title: '粘贴命令保护',
+        hint: '在终端里用 ⌘V 粘贴「下载并执行」这类可疑命令时，先暂停并请你确认。支持终端、iTerm2、Warp、kitty、Alacritty、Ghostty、WezTerm、Hyper 和 Tabby；用菜单或右键粘贴不会检查。只在本机检查，不保存粘贴的内容',
+        needsAccess: '需要辅助功能权限',
+        needsAccessHint: '允许后，OpenNavo 才能在终端粘贴前检查命令',
+        grant: '开启权限'
+      },
+      virusTotal: {
+        title: 'VirusTotal 查询',
+        hint: '用你自己的 API key，按文件的 SHA-256 查询 VirusTotal 的检测结果；只在你点击查询时发送哈希，不上传文件',
+        key: 'API key',
+        keySaved: '已保存在钥匙串里',
+        keyHint: '在 virustotal.com 注册账户后，可以在个人资料里找到 API key',
+        removeKey: '移除 key',
+        placeholder: '粘贴 API key',
+        saveKey: '保存',
+        terms:
+          'VirusTotal 公共 API 每分钟最多查询 4 次，只限非商业的个人使用；用于商业用途时，你需要自己具备 VirusTotal 的商业许可。OpenNavo 不会自动查询，也不会上传任何文件。'
+      }
+    },
+    signatures: {
+      title: '已安装 App 签名体检',
+      never: '还没有检查过已安装 App 的签名',
+      summaryIssues: '检查了 {count} 个 App，{issues} 个有问题',
+      summaryClean: '检查了 {count} 个 App，签名和公证都正常',
+      issue: {
+        invalid: '签名无效',
+        unsigned: '没有签名',
+        adhoc: '临时签名',
+        not_notarized: '未经公证',
+        team_changed: '开发者变了',
+        unreadable: '读不到签名',
+        modified: '签名后有改动'
+      },
+      check: '检查签名',
+      recheck: '重新检查'
+    },
+    paste: {
+      title: '已暂停粘贴到「{app}」',
+      body: '这条命令看起来会从网上下载并运行程序。如果不是你自己要运行的，请丢弃。',
+      bodyUnchecked: '要粘贴的内容太长，没有完整检查。确认是你自己要粘贴的，再允许这一次。',
+      pattern: {
+        pipe_to_interpreter: '把下载的内容直接交给 Shell 运行',
+        download_execute: '下载后立即运行',
+        encoded_command: '包含经过编码的命令',
+        remove_quarantine: '去掉 macOS 的隔离标记，绕过安全检查',
+        too_long: '内容太长，没有完整检查'
+      },
+      expires: '{seconds} 秒后自动丢弃',
+      allow: '允许这一次',
+      discard: '丢弃'
+    },
+    virusTotal: {
+      lookup: '在 VirusTotal 查询',
+      malicious: 'VirusTotal：{count} 个引擎报毒',
+      suspicious: 'VirusTotal：{count} 个引擎认为可疑',
+      clean: 'VirusTotal：没有引擎报毒',
+      notFound: 'VirusTotal 没有这个文件的记录',
+      engines: '共 {total} 个引擎检测',
+      analyzed: '{time}分析',
+      hashOnly: '只发送了文件的 SHA-256，没有上传文件',
+      report: '查看报告'
+    },
+    downloadThreat: {
+      title: '下载的文件有威胁：{file}',
+      body: '{signature} · 扫描这个文件后可以把它移到隔离区',
+      action: '扫描并处理'
     }
   }
 };

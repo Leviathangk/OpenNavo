@@ -290,8 +290,22 @@ def main():
     rust_texts += [(str(path.relative_to(rustroot)), path.read_bytes()) for path in sorted((rustroot / 'licenses').glob('*.txt'))]
     modules.append(record('Platform', 'Rust standard library', rust_version, 'MIT OR Apache-2.0',
         'https://www.rust-lang.org/policies/licenses', 'runtime', {'source': 'Installed Rust standard-library copyright report and license texts', 'toolchain': rust_version}, rust_texts))
+    # Source ports and separately built helpers have no package-manager lock.
+    # Their own source locks and verbatim licenses are committed review inputs.
+    native_manifest = ROOT / 'docs/legal/native/manifest.json'
+    native_records = json.loads(native_manifest.read_text())['modules']
+    for item in native_records:
+        source = ROOT / item['source']
+        modules.append(record('Native', item['name'], item['version'], item['license'],
+            item['url'], item['scope'], {'source': item['source'], 'integration': item['kind'],
+                'sourceLockSha256': hashlib.sha256(source.read_bytes()).hexdigest(),
+                **({'products': item['products']} if 'products' in item else {})},
+            [(path, (ROOT / path).read_bytes()) for path in item['licensePaths']]))
     modules.sort(key=lambda m: (m['ecosystem'], m['name'].lower(), m['version']))
-    inventory = {'formatVersion': 1, 'lockDigests': {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in ['pnpm-lock.yaml', 'apps/server/go.mod', 'apps/server/go.sum', 'apps/mcp/uv.lock', 'apps/desktop/src-tauri/Cargo.lock']}, 'scopeNote': 'runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability', 'modules': modules}
+    inventory = {'formatVersion': 1, 'lockDigests': {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in ['pnpm-lock.yaml', 'apps/server/go.mod', 'apps/server/go.sum', 'apps/mcp/uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'docs/legal/native/manifest.json', 'apps/desktop/native/store/upstream.json', 'apps/desktop/native/clamav/sources.lock.json']}, 'scopeNote': 'runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability', 'modules': modules}
+    for item in native_records:
+        for path in [item['source'], *item['licensePaths']]:
+            inventory['lockDigests'][path] = hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
     write_json(OUT / 'inventory.json', inventory)
     shutil.copyfile(ROOT / 'LICENSE', OUT / 'LICENSE')
     shutil.copyfile(ROOT / 'NOTICE', OUT / 'NOTICE')
@@ -301,8 +315,8 @@ def main():
     write_json(args.about_output, about)
     # Context-local copies make both image and wheel builds self-contained.
     for destination, ecos in [(ROOT / 'apps/server/third-party', {'Go'}), (ROOT / 'apps/mcp/third-party', {'Python'}),
-                               (ROOT / 'apps/desktop/src-tauri/resources/third-party', {'npm', 'Rust', 'Platform'})]:
-        selected = [m for m in modules if (m['ecosystem'] in ecos or ('Go' in ecos and m['name'] == 'Go standard library')) and m['scope'] not in ('external', 'development') and not ('Rust' in ecos and m['name'] == 'Go standard library')]
+                               (ROOT / 'apps/desktop/src-tauri/resources/third-party', {'npm', 'Rust', 'Platform', 'Native'})]:
+        selected = [m for m in modules if (m['ecosystem'] in ecos or ('Go' in ecos and (m['name'] == 'Go standard library' or (m['ecosystem'] == 'Native' and 'server' in m['evidence'].get('products', []))))) and m['scope'] not in ('external', 'development') and not ('Rust' in ecos and (m['name'] == 'Go standard library' or (m['ecosystem'] == 'Native' and m['evidence'].get('products') and 'desktop' not in m['evidence']['products'])))]
         bundle(destination, selected, inventory)
     referenced = {f['path'] for m in modules for f in m['licenseFiles']}
     for stale in (OUT / 'licenses').glob('*.txt'):

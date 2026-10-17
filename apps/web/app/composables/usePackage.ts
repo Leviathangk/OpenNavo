@@ -11,7 +11,9 @@ type RemovedPackage = PublicComponents['schemas']['RemovedPackage'];
  * (WP2) the lifecycle endpoint decides: a renamed app redirects permanently to its current token
  * with the same language and tab, a removed app renders a 410 summary, anything else is a 404. If
  * that check itself fails the page shows the retryable error state with a 503, so an outage is never
- * cached as 404 or 410.
+ * cached as 404 or 410. Link apps (store/security plan §4) live under /apps too: tokens are unique
+ * across casks and links, so a cask miss is looked up as a link before it counts as missing. Callers
+ * use the returned detail's kind for everything after that.
  */
 export async function usePackage(kind: PackageKind) {
   const { locale } = useI18n();
@@ -27,30 +29,45 @@ export async function usePackage(kind: PackageKind) {
   if (!isValidToken(token.value))
     throw createError({ statusCode: 404, statusMessage: 'Package not found', fatal: true });
 
+  // Kinds a token may belong to on this route, in lookup order.
+  const kinds: PackageKind[] = kind === 'cask' ? ['cask', 'link'] : [kind];
+  const isNotFound = (error: unknown) => error instanceof ApiError && (error.isNotFound || error.status === 404);
+
   const result = await useAsyncData(
     () => `package:${kind}:${token.value}:${locale.value}`,
-    () =>
-      unwrap(api.GET('/packages/{kind}/{token}', { params: { path: { kind, token: token.value } } })).catch(
-        (error: unknown) => {
+    async () => {
+      for (const candidate of kinds) {
+        try {
+          return await unwrap(
+            api.GET('/packages/{kind}/{token}', { params: { path: { kind: candidate, token: token.value } } })
+          );
+        } catch (error) {
           // Convert business 404s into page 404s; other errors remain retryable page states.
-          if (error instanceof ApiError && (error.isNotFound || error.status === 404))
-            throw createError({ statusCode: 404, statusMessage: 'Package not found' });
-          throw error;
+          if (!isNotFound(error)) throw error;
         }
-      )
+      }
+      throw createError({ statusCode: 404, statusMessage: 'Package not found' });
+    }
   );
 
   if (result.error.value?.statusCode === 404) {
     const lifecycle = await nuxtApp.runWithContext(() =>
       useAsyncData(
         () => `package-lifecycle:${kind}:${token.value}:${locale.value}`,
-        () =>
-          unwrap(
-            api.GET('/packages/{kind}/{token}/lifecycle', { params: { path: { kind, token: token.value } } })
-          ).catch((error: unknown) => {
-            if (error instanceof ApiError && (error.isNotFound || error.status === 404)) return null;
-            throw error;
-          })
+        async () => {
+          for (const candidate of kinds) {
+            const value = await unwrap(
+              api.GET('/packages/{kind}/{token}/lifecycle', {
+                params: { path: { kind: candidate, token: token.value } }
+              })
+            ).catch((error: unknown) => {
+              if (isNotFound(error)) return null;
+              throw error;
+            });
+            if (value) return value;
+          }
+          return null;
+        }
       )
     );
     const value = lifecycle.data.value;

@@ -297,4 +297,16 @@ describe('sitemap source snapshot cache', () => {
     expect(apps).toHaveLength(1);
     expect(await bucket(apps[0]!['_sitemapName'])).toEqual([expect.objectContaining({ loc: '/apps/app-500' })]);
   });
+
+  it('lists link apps beside casks under /apps and leaves command-line tools out', async () => {
+    const { index, bucket } = await setup([
+      { kind: 'cask', token: 'zed', locales: [{ locale: 'en-US' }] },
+      { kind: 'link', token: 'lumen-notes', locales: [{ locale: 'en-US' }] },
+      { kind: 'formula', token: 'wget', locales: [{ locale: 'en-US' }] }
+    ]);
+    const apps = (await index()).filter(entry => entry['_sitemapName'].startsWith('apps-'));
+    const locs = (await Promise.all(apps.map(entry => bucket(entry['_sitemapName'])))).flat().map(entry => entry.loc);
+    expect(locs).toEqual(expect.arrayContaining(['/apps/zed', '/apps/lumen-notes']));
+    expect(locs).not.toContain('/apps/wget');
+  });
 });

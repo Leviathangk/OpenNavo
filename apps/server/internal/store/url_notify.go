@@ -44,7 +44,7 @@ func (s *Store) URLNotifyState(ctx context.Context) (URLNotifyState, error) {
 // before a commit have finished by then, so refreshing their pages cannot leave stale copies behind.
 func (s *Store) PendingURLChanges(ctx context.Context, cursor int64, before time.Time, limit int) ([]URLChange, error) {
 	var rows []URLChange
-	err := s.DB.WithContext(ctx).Raw("SELECT seq,package_id,kind,token,op,reason,event_type,previous_token,created_at FROM catalog_changes WHERE seq>? AND created_at<=? AND kind='cask' ORDER BY seq LIMIT ?", cursor, before, limit).Scan(&rows).Error
+	err := s.DB.WithContext(ctx).Raw("SELECT seq,package_id,kind,token,op,reason,event_type,previous_token,created_at FROM catalog_changes WHERE seq>? AND created_at<=? AND kind IN ('cask','link') ORDER BY seq LIMIT ?", cursor, before, limit).Scan(&rows).Error
 	return rows, err
 }
 

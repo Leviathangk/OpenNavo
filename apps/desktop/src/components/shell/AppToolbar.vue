@@ -52,11 +52,13 @@ const runningLabel = computed(() => {
   if (!task) return '';
   // Clean Up's target is its report, not a package; the action alone names it.
   const name = task.op !== 'clean' && task.target ? displayName(task.target.kind, task.target.token) : '';
+  // The scan before installing can take a minute with no measurable progress; say why the ring holds still.
+  if (task.phase === 'scanning') return t('toolbar.taskScanning', { name });
   return t('toolbar.taskRunning', { action: t(`tasks.ops.${task.op}`), name }).trim();
 });
 const ring = computed(() => {
   const circumference = 2 * Math.PI * 7;
-  const percent = runningTask.value?.percent ?? 0;
+  const percent = runningTask.value ? tasks.shownPercent(runningTask.value) : 0;
   return { circumference, offset: circumference * (1 - percent / 100) };
 });
 
@@ -106,8 +108,8 @@ const ring = computed(() => {
             :stroke-dashoffset="ring.offset"
           />
         </svg>
-        <span v-if="runningTask.percent !== null" class="font-600 tabular-nums">{{
-          formatPercent(runningTask.percent / 100, { locale: formattingLocale })
+        <span v-if="tasks.knownPercent(runningTask) !== null" class="font-600 tabular-nums">{{
+          formatPercent(tasks.shownPercent(runningTask) / 100, { locale: formattingLocale })
         }}</span>
         <span class="min-w-0 truncate text-ink-secondary">{{ runningLabel }}</span>
       </RouterLink>

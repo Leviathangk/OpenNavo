@@ -29,7 +29,6 @@ const { data, error, refresh, status } = await useAsyncData(
       api.GET('/packages', {
         params: {
           query: {
-            kind: 'cask',
             includeFonts: true,
             sort: sort.value,
             current: page.value,

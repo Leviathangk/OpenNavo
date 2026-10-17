@@ -40,3 +40,21 @@ func TestDeferredOutboxRetainsPayloadAndDoesNotBlockLaterBatches(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 101, delivered)
 }
+
+func TestUpdateFeedVerificationOutboxReachesWorker(t *testing.T) {
+	st := testutil.NewStore(t)
+	ctx := context.Background()
+	require.NoError(t, st.DB.Exec(`INSERT INTO job_outbox(job_type,unique_key,payload) VALUES('update-feeds:verify','update-feeds:verify:0','{"metadata":{"trigger":"manual"}}')`).Error)
+	delivered, err := st.DispatchOutbox(ctx, func(_ context.Context, kind string, raw json.RawMessage) error {
+		require.Equal(t, "update-feeds:verify", kind)
+		_, metadata, err := jobs.DecodeOutbox(raw)
+		require.NoError(t, err)
+		require.Equal(t, "manual", metadata.Trigger)
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, delivered)
+	var remaining int64
+	require.NoError(t, st.DB.Table("job_outbox").Where("job_type=?", "update-feeds:verify").Count(&remaining).Error)
+	require.Zero(t, remaining)
+}

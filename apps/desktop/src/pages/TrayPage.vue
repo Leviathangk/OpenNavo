@@ -12,6 +12,7 @@ import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useTrayWindowSize } from '@/composables/useTrayWindowSize';
 import { useLibraryStore, useTasksStore, useUpdatesStore } from '@/stores';
+import { rowKey, updateRequest } from '@/stores/updates';
 
 // Menu-bar popover (06 §4.2, mockup 07): update count, running tasks, update list, individual updates, and Update All.
 // Open OpenNavo and Settings show the main window and navigate through deeplink:received. Tray capability permits only installed, update, and task commands.
@@ -29,12 +30,13 @@ const tasks = useTasksStore();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 
-// Local apps outside Homebrew (`app` targets) are not in the library; use the name recorded on the task.
+// Local apps outside Homebrew (`app`) and App Store apps (`mas`) are not in the library; use the name recorded on the task.
+const inLibrary = (kind: TaskKind): kind is Exclude<TaskKind, 'app' | 'mas'> => kind !== 'app' && kind !== 'mas';
 const nameOf = (kind: TaskKind, token: string, fallback?: string | null) =>
-  (kind === 'app' ? undefined : library.find(kind, token)?.name) ?? fallback ?? token;
+  (inLibrary(kind) ? library.find(kind, token)?.name : undefined) ?? fallback ?? token;
 
 function iconOf(kind: TaskKind, token: string) {
-  const path = kind === 'app' ? null : library.find(kind, token)?.iconPath;
+  const path = inLibrary(kind) ? library.find(kind, token)?.iconPath : null;
   return path && isTauri() ? convertFileSrc(path) : null;
 }
 
@@ -59,11 +61,15 @@ const running = computed(() => {
 
 const rows = computed(() => updates.actionable.slice(0, VISIBLE));
 const hidden = computed(() => Math.max(0, updates.actionable.length - VISIBLE));
-const busy = (item: OutdatedItem) => Boolean(tasks.forPackage(item.kind, item.token));
+const busy = (item: OutdatedItem) => {
+  const { target } = updateRequest(item);
+  return Boolean(tasks.forPackage(target.kind, target.token));
+};
 
 async function upgrade(items: readonly OutdatedItem[]) {
   try {
-    const targets = items.map(item => ({ kind: item.kind, token: item.token }));
+    // Routed targets (App Store by adamId, other sources by local app); the main window matches them to rows.
+    const targets = items.map(item => updateRequest(item).target);
     await openMain('/updates');
     await emitTo('main', 'updates:requested', targets);
   } catch (error) {
@@ -139,7 +145,7 @@ async function openMain(route: string) {
       <ul v-if="rows.length" class="m-0 min-h-0 flex list-none flex-col gap-2px overflow-y-auto p-0 px-8px py-8px">
         <li
           v-for="item in rows"
-          :key="`${item.kind}/${item.token}`"
+          :key="rowKey(item)"
           class="flex shrink-0 items-center gap-10px rounded-default px-8px py-8px"
         >
           <OnAppIcon

@@ -23,7 +23,10 @@ def arguments(spec: ToolSpec) -> dict[str, Any]:
         body = resolve(raw["requestBody"])["content"]
         schema = next(iter(body.values()))["schema"]
         args.update({snake(k): v for k, v in example(schema, True).items()})
-    if any(OPERATIONS[op]["path"].startswith("/packages/{id}") for op in spec.operations):
+    if any(
+        OPERATIONS[op]["path"].startswith(("/packages/{id}", "/links/packages/{id}"))
+        for op in spec.operations
+    ):
         args["package"] = args.pop("id", 1)
     if spec.name == "asset_upload_from_url":
         args = {"url": "https://example.com/icon.png", "kind": "icon"}

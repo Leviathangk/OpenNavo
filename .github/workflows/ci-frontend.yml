@@ -63,7 +63,7 @@ jobs:
 
   desktop:
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -89,6 +89,23 @@ jobs:
         working-directory: apps/desktop/src-tauri
       - run: cargo test
         working-directory: apps/desktop/src-tauri
+      - run: swift test --package-path apps/desktop/native/store
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install standalone engine build tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/clamav-tools"
+          "$RUNNER_TEMP/clamav-tools/bin/pip" install cmake==4.1.2 ninja==1.13.0
+          echo "$RUNNER_TEMP/clamav-tools/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/clamav
+          key: clamav-1.5.4-macos15-aarch64-apple-darwin-${{ hashFiles('apps/desktop/native/clamav/**') }}
+      - name: Build standalone ClamAV for the debug bundle
+        run: |
+          python3 apps/desktop/native/clamav/build.py --work "$RUNNER_TEMP/clamav" --arch arm64
+          echo "OPENNAVO_CLAMAV_DIR=$RUNNER_TEMP/clamav/artifacts/arm64" >> "$GITHUB_ENV"
       # Unsigned debug builds; signing, notarization, and updater artifacts are handled by release-desktop.yml (M5-03).
       # With an updater public key, Tauri requires the private signing key; forks/PRs lack it, so disable updater artifacts here.
       - run: pnpm --filter @opennavo/desktop tauri build --debug --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'

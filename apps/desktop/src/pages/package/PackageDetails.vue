@@ -114,9 +114,11 @@ const items = computed<OnKeyValueItem[]>(() => {
   return list;
 });
 
-const command = computed(
-  () => detail.value?.installCommand ?? installCommand(kind.value, token.value, local.value?.tap)
-);
+// Link apps have no install command; their page shows download links instead (store/security plan §4).
+const command = computed(() => {
+  const value = kind.value;
+  return value === 'link' ? '' : (detail.value?.installCommand ?? installCommand(value, token.value, local.value?.tap));
+});
 
 function onCopied(text: string) {
   toasts.push({ tone: 'success', title: t('common.copied'), description: text });

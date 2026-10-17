@@ -10,12 +10,14 @@ import type {
   EnvInfo,
   HistoryQuery,
   Kind,
+  LinkOpenTarget,
   ListQuery,
   Permissions,
   PrivacyPane,
   SearchQuery,
   Task,
   TaskTarget,
+  UpdateSource,
   UpdatesStatus
 } from './bindings';
 import { events, packageKey } from './client';
@@ -31,6 +33,9 @@ import {
   storageFixture
 } from './mock-data/fixtures';
 import { createRunner } from './mock-data/runner';
+import { createAppStoreMock } from './mock-data/appstore';
+import { createUpdaterMock } from './mock-data/updater';
+import { createSecurityMock } from './mock-data/security';
 import { createCleanupMock } from './mock-data/cleanup';
 import { createMonitorMock } from './mock-data/monitor';
 import { createUninstallMock } from './mock-data/uninstall';
@@ -52,6 +57,22 @@ function defaultSettings(): AppSettings {
     trayShowCount: true,
     autoCheck: true,
     autoCheckAppUpdates: true,
+    appStoreRegion: 'auto',
+    appStoreSearch: true,
+    appStoreUpdates: true,
+    updateSources: {},
+    avConsent: false,
+    avDbCheckHours: 4,
+    avKeepResident: false,
+    watchDownloads: true,
+    startupAlerts: true,
+    avExclusions: [],
+    avSchedule: 'off',
+    avScheduleTime: '03:00',
+    avScheduleWeekday: 1,
+    avScanBeforeInstall: true,
+    pasteProtection: false,
+    virusTotalEnabled: false,
     checkTime: '09:00',
     runBrewUpdateOnCheck: true,
     includeGreedy: true,
@@ -142,7 +163,9 @@ function mockFailure(
   }
   const target = task.target;
   const app =
-    target && target.kind !== 'app' ? (findItem(target.kind, target.token)?.apps[0] ?? `${target.token}.app`) : '';
+    target && target.kind !== 'app' && target.kind !== 'mas'
+      ? (findItem(target.kind, target.token)?.apps[0] ?? `${target.token}.app`)
+      : '';
   // zap hits Full Disk Access-protected directories (06 §12.6): the app is already moved when Homebrew exits during data removal.
   if (task.op === 'uninstall' && target?.kind === 'cask' && task.options.zap && permissions.fullDiskAccess === 'denied')
     return {
@@ -291,12 +314,16 @@ export function installMockIpc(
   // Created after the runner because it queues tasks; runner hooks only call it once tasks run.
   let uninstall: ReturnType<typeof createUninstallMock> | undefined;
   let cleanup: ReturnType<typeof createCleanupMock> | undefined;
+  let updater: ReturnType<typeof createUpdaterMock> | undefined;
+  let security: ReturnType<typeof createSecurityMock> | undefined;
   const runner = createRunner(state, options.tickMs, {
-    steps: task => uninstall?.hooks.steps(task) ?? cleanup?.hooks.steps(task),
+    steps: task => uninstall?.hooks.steps(task) ?? cleanup?.hooks.steps(task) ?? updater?.hooks.steps(task),
     completed: task => {
       uninstall?.hooks.completed(task);
       cleanup?.hooks.completed(task);
+      updater?.hooks.completed(task);
     },
+    scanStep: task => security?.scanStep(task),
     beforeRun: task => {
       const token = task.target?.token;
       if (task.op !== 'upgrade' || !token) return;
@@ -321,7 +348,7 @@ export function installMockIpc(
     // Simulate completed Homebrew installation: brew appears in the environment and emits env:changed, as Rust does.
     homebrewInstalled: () => setEnv({ ...envFixture(), appManagement: env.appManagement }),
     installerUrl: () => (settings.mirror.key === 'official' ? OFFICIAL_INSTALLER : MIRROR_INSTALLER),
-    failure: task => mockFailure(task, flags, settings.mirror.key, permissions)
+    failure: task => security?.installFailure(task) ?? mockFailure(task, flags, settings.mirror.key, permissions)
   });
   uninstall = createUninstallMock({
     state,
@@ -371,6 +398,38 @@ export function installMockIpc(
     }
   });
   import.meta.hot?.dispose(monitor.stop);
+  const appStore = createAppStoreMock({ flags });
+  updater = createUpdaterMock({
+    enabled: flags.has('update-sources'),
+    masUpdates: appStore.updates,
+    apps: () => uninstall?.apps() ?? [],
+    masInstalled: appStore.markInstalled,
+    sources: () => settings.updateSources,
+    history: () => state.history,
+    rollback: update => {
+      const task = runner.enqueue(
+        'rollback',
+        update.target,
+        { source: update.options.source, rollbackOf: update.id, quitRunning: true, reopen: true },
+        'manual',
+        update.targetName
+      );
+      // Rust reports the versions with its first step: from the updated one back to the kept one.
+      const live = state.active.find(item => item.id === task.id);
+      if (live) Object.assign(live, { fromVersion: update.toVersion, toVersion: update.fromVersion, stepCount: 2 });
+      return task.id;
+    }
+  });
+  const updates = updater;
+  /** Download paths the simulated Downloads watch announced; download_act accepts only these. */
+  const downloads = new Set<string>();
+  const securityMock = createSecurityMock({
+    flags,
+    tickMs: options.tickMs ?? 250,
+    settings: () => settings
+  });
+  security = securityMock;
+  import.meta.hot?.dispose(securityMock.stop);
   let checkedAt: number | null = noBrew ? null : Date.now() - 2 * 60 * 60 * 1000;
   // ?mock=restore: two tasks were queued on last exit (startup recovery prompt).
   if (flags.has('restore')) {
@@ -414,6 +473,8 @@ export function installMockIpc(
     ...uninstall.handlers,
     ...cleanupMock.handlers,
     ...monitor.handlers,
+    ...appStore.handlers,
+    ...securityMock.handlers,
     // Clean tasks keep their own Trash manifests; everything else is an uninstall or leftovers task.
     uninstall_restore: args =>
       cleanupMock.restore(args.taskId as string) ?? uninstall?.handlers.uninstall_restore?.(args),
@@ -430,6 +491,57 @@ export function installMockIpc(
     catalog_search: args => searchCatalog(args.query as SearchQuery, settings.locale),
     catalog_list: args => listCatalog(args.query as ListQuery, settings.locale),
     catalog_get: args => getCatalogItem(args.kind as Kind, args.token as string),
+    // Like Rust, only addresses registered on the link app open; anything else is E_LINK_URL.
+    link_open: args => {
+      const link = getCatalogItem('link', args.token as string)?.link;
+      const target = args.target as LinkOpenTarget;
+      const url = !link
+        ? null
+        : typeof target === 'object'
+          ? link.github?.latest?.assets.find(asset => asset.name === target.asset)?.url
+          : target === 'download'
+            ? link.downloadUrl
+            : target === 'github'
+              ? link.github && (link.github.latest?.url ?? `https://github.com/${link.github.repo}/releases/latest`)
+              : link.homepage;
+      if (!url) throw { code: 'E_LINK_URL', message: 'unregistered_url', detail: null };
+      // Rust watches Downloads after a Download (plan §11.2): the file lands, then its verdict follows.
+      if (link && (typeof target === 'object' || target === 'download')) {
+        const token = args.token as string;
+        const file = typeof target === 'object' ? target.asset : `${token}.dmg`;
+        const path = `/Users/mock/Downloads/${file}`;
+        const tick = options.tickMs ?? 250;
+        const mismatch = flags.has('download-mismatch');
+        setTimeout(() => {
+          downloads.add(path);
+          void events.downloadDetected.emit({ token, path });
+        }, tick * 2);
+        setTimeout(
+          () =>
+            void events.downloadVerified.emit({
+              path,
+              sha256: 'a'.repeat(64),
+              size: 48 * 1024 * 1024,
+              format: file.endsWith('.zip') ? 'zip' : file.endsWith('.pkg') ? 'pkg' : 'dmg',
+              signature: {
+                status: 'developer_id',
+                teamId: mismatch ? 'ZZZZZZZZZZ' : (link.teamId ?? 'ABCDE12345'),
+                signer: mismatch ? 'Unknown Developer' : (getCatalogItem('link', token)?.name ?? token),
+                notarized: !mismatch
+              },
+              teamMatches: link.teamId ? !mismatch : null,
+              av: { clean: true, signature: null, scannedAt: Date.now() },
+              quarantined: false
+            }),
+          tick * 6
+        );
+      }
+      return null;
+    },
+    download_act: args => {
+      if (!downloads.has(String(args.path))) throw { code: 'E_INVALID_ARG', message: 'unknown_download', detail: null };
+      return null;
+    },
     catalog_categories: () => listCategories(settings.locale),
     library_list: () => state.installed,
     library_refresh: () => state.installed,
@@ -437,18 +549,25 @@ export function installMockIpc(
       ...storageFixture(state.installed),
       cacheBytes: state.cacheBytes
     }),
-    updates_list: () => runner.outdated(),
+    ...updates.handlers,
+    updates_list: () => updates.merge(runner.outdated()),
+    // ?mock=updates-partial: GitHub and developer-site rules could not be read in the last check.
     updates_status: (): UpdatesStatus => ({
       checkedAt,
       nextCheckAt: nextCheckAt(settings),
-      checking: false
+      checking: false,
+      failedSources: flags.has('updates-partial') ? ['github', 'vendor'] : []
     }),
-    updates_check: () => {
-      checkedAt = Date.now();
-      return runner.outdated();
+    // null checks every enabled source; [] only rereads the list (plan §11.4).
+    updates_check: args => {
+      if ((args.sources as UpdateSource[] | null)?.length !== 0) checkedAt = Date.now();
+      return updates.merge(runner.outdated());
     },
     updates_ignore: args => {
       const target = args.target as TaskTarget;
+      // Homebrew semantics only; other sources use update_ignore with a preference key.
+      if (target.kind === 'app' || target.kind === 'mas')
+        throw { code: 'E_INVALID_ARG', message: 'homebrew_only', detail: null };
       state.ignored.set(packageKey(target.kind, target.token), {
         version: (args.version as string | null) ?? null,
         until: (args.until as number | null) ?? null
@@ -480,20 +599,29 @@ export function installMockIpc(
         tap: item?.tap ?? null
       };
     },
-    apps_running: args =>
-      (args.targets as TaskTarget[])
+    // Like Rust's running_apps::identity, which looks running copies up from installed casks only.
+    apps_running: args => {
+      const targets = args.targets as TaskTarget[];
+      if (targets.some(target => target.kind !== 'cask'))
+        throw { code: 'E_INVALID_ARG', message: 'cask_only', detail: null };
+      return targets
         .filter(target => runningApps.has(target.token))
         .map(target => ({
           target,
           name: state.installed.find(item => item.token === target.token)?.name ?? target.token
-        })),
-    task_enqueue: args =>
-      runner.enqueue(
+        }));
+    },
+    task_enqueue: args => {
+      // Like Rust's queue: link apps are refused at the door, before anything is stored.
+      if ((args.target as TaskTarget | null)?.kind === 'link')
+        throw { code: 'E_NOT_INSTALLABLE', message: 'link_app', detail: null };
+      return runner.enqueue(
         args.op as Task['op'],
         (args.target as TaskTarget | null) ?? null,
         args.options as Task['options'],
         args.trigger as Task['trigger']
-      ),
+      );
+    },
     task_enqueue_many: args =>
       (args.targets as TaskTarget[]).map(target =>
         runner.enqueue(args.op as Task['op'], target, args.options as Task['options'], args.trigger as Task['trigger'])

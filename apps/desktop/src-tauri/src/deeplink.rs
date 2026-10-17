@@ -52,11 +52,14 @@ pub fn parse(input: &str) -> Option<DeepLinkEvent> {
     }
     let route = match url.host_str()? {
         "package" if segments.len() == 2 => {
-            if !matches!(segments[0], "cask" | "formula")
+            if !matches!(segments[0], "cask" | "formula" | "link")
                 || validate_token(segments[1]).is_err()
                 || query.iter().any(|(key, _)| key != "action")
             {
                 return None;
+            }
+            if segments[0] == "link" {
+                action = None;
             }
             format!("/package/{}/{}", segments[0], segments[1])
         }

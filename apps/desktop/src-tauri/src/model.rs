@@ -2,6 +2,7 @@ use crate::AppError;
 pub use crate::cleanup::types::*;
 pub use crate::monitor::types::*;
 pub use crate::uninstall::types::*;
+pub use crate::updater::types::*;
 use serde::{Deserialize, Serialize};
 
 /// Sparse maps accept legacy nulls; IPC emits only text actually present.
@@ -54,6 +55,10 @@ pub struct OnRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CatalogItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle_ids: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link: Option<crate::catalog::links::LinkInfo>,
     #[serde(default = "default_source_locale")]
     pub source_locale: Locale,
     pub kind: Kind,
@@ -102,6 +107,7 @@ pub struct CatalogItem {
 pub enum Kind {
     Cask,
     Formula,
+    Link,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
@@ -145,6 +151,8 @@ pub struct SyncResult {
 pub struct SearchQuery {
     pub q: String,
     pub kind: Option<Kind>,
+    #[serde(default)]
+    pub include_links: bool,
     pub category: Option<String>,
     pub include_disabled: bool,
     pub limit: u32,
@@ -163,6 +171,8 @@ pub struct SearchHit {
 #[serde(rename_all = "camelCase")]
 pub struct ListQuery {
     pub kind: Option<Kind>,
+    #[serde(default)]
+    pub include_links: bool,
     pub category: Option<String>,
     pub sort: ListSort, /* popular | updated | name */
     pub include_fonts: bool,
@@ -202,6 +212,21 @@ pub struct InstalledItem {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct OutdatedItem {
+    pub source: UpdateSource,
+    pub app_id: Option<String>,
+    pub bundle_id: Option<String>,
+    pub channel: Option<UpdateChannel>,
+    pub major: bool,
+    pub notes: Option<UpdateNotes>,
+    pub integrity: Option<UpdateIntegrity>,
+    pub requires_admin: bool,
+    pub running: bool,
+    pub relaunch_pending: bool,
+    pub skipped_version: Option<String>,
+    pub critical_update: bool,
+    pub informational_url: Option<String>,
+    pub download_host: Option<String>,
+    pub expected_team_match: Option<bool>,
     pub kind: Kind,
     pub token: String,
     pub name: String,
@@ -228,6 +253,9 @@ pub enum TaskOp {
     Clean,
     Update,
     InstallHomebrew,
+    AvDbUpdate,
+    /// Restores the version an OpenNavo update replaced (`TaskOptions.rollback_of`).
+    Rollback,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
@@ -242,6 +270,7 @@ pub struct TaskTarget {
 #[serde(default)]
 #[derive(Default)]
 pub struct TaskOptions {
+    pub source: Option<UpdateSource>,
     pub plan_id: Option<String>,
     pub item_ids: Option<Vec<String>>,
     pub delete_mode: Option<DeleteMode>,
@@ -252,6 +281,8 @@ pub struct TaskOptions {
     pub force: bool,
     pub quit_running: bool,
     pub reopen: bool,
+    /// Rollback only: the history id of the update being undone.
+    pub rollback_of: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -284,6 +315,7 @@ pub enum TaskState {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq, Copy, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskPhase {
+    Scanning,
     Preparing,
     Fetching,
     Downloading,
@@ -452,6 +484,23 @@ pub struct Settings {
     pub tray_show_count: bool,
     pub auto_check: bool,
     pub auto_check_app_updates: bool,
+    pub av_consent: bool,
+    pub av_db_check_hours: u32,
+    pub av_keep_resident: bool,
+    pub watch_downloads: bool,
+    pub startup_alerts: bool,
+    pub av_exclusions: Vec<String>,
+    pub av_schedule: crate::security::AvSchedule,
+    pub av_schedule_time: String,
+    pub av_schedule_weekday: u8,
+    pub av_scan_before_install: bool,
+    pub paste_protection: bool,
+    pub virus_total_enabled: bool,
+    pub app_store_region: String,
+    pub app_store_search: bool,
+    /// Deprecated compatibility mirror; updateSources.mas is authoritative.
+    pub app_store_updates: bool,
+    pub update_sources: UpdateSources,
     pub check_time: String, // "HH:MM" local time; invalid format returns E_INVALID_ARG.
     pub run_brew_update_on_check: bool,
     pub include_greedy: bool,
@@ -487,6 +536,23 @@ struct SettingsInput {
     pub tray_show_count: bool,
     pub auto_check: bool,
     pub auto_check_app_updates: bool,
+    pub av_consent: bool,
+    pub av_db_check_hours: u32,
+    pub av_keep_resident: bool,
+    pub watch_downloads: bool,
+    pub startup_alerts: bool,
+    pub av_exclusions: Vec<String>,
+    pub av_schedule: crate::security::AvSchedule,
+    pub av_schedule_time: String,
+    pub av_schedule_weekday: u8,
+    pub av_scan_before_install: bool,
+    pub paste_protection: bool,
+    pub virus_total_enabled: bool,
+    pub app_store_region: String,
+    pub app_store_search: bool,
+    /// Deprecated compatibility mirror; updateSources.mas is authoritative.
+    pub app_store_updates: bool,
+    pub update_sources: UpdateSources,
     pub check_time: String, // "HH:MM" local time; invalid format returns E_INVALID_ARG.
     pub run_brew_update_on_check: bool,
     pub include_greedy: bool,
@@ -523,6 +589,22 @@ impl Default for SettingsInput {
             tray_show_count: value.tray_show_count,
             auto_check: value.auto_check,
             auto_check_app_updates: value.auto_check_app_updates,
+            av_consent: value.av_consent,
+            av_db_check_hours: value.av_db_check_hours,
+            av_keep_resident: value.av_keep_resident,
+            watch_downloads: value.watch_downloads,
+            startup_alerts: value.startup_alerts,
+            av_exclusions: value.av_exclusions,
+            av_schedule: value.av_schedule,
+            av_schedule_time: value.av_schedule_time,
+            av_schedule_weekday: value.av_schedule_weekday,
+            av_scan_before_install: value.av_scan_before_install,
+            paste_protection: value.paste_protection,
+            virus_total_enabled: value.virus_total_enabled,
+            app_store_region: value.app_store_region,
+            app_store_search: value.app_store_search,
+            app_store_updates: value.app_store_updates,
+            update_sources: value.update_sources,
             check_time: value.check_time,
             run_brew_update_on_check: value.run_brew_update_on_check,
             include_greedy: value.include_greedy,
@@ -550,6 +632,11 @@ impl Default for SettingsInput {
 }
 impl From<SettingsInput> for Settings {
     fn from(value: SettingsInput) -> Self {
+        let mut update_sources = value.update_sources;
+        if !value.app_store_updates && !update_sources.0.contains_key(&UpdateSource::Mas) {
+            update_sources.0.insert(UpdateSource::Mas, false);
+        }
+        let app_store_updates = update_sources.enabled(UpdateSource::Mas);
         let mode = value.locale_mode.unwrap_or_else(|| {
             crate::settings::legacy_mode(value.locale, crate::settings::system_locale())
         });
@@ -563,6 +650,22 @@ impl From<SettingsInput> for Settings {
             tray_show_count: value.tray_show_count,
             auto_check: value.auto_check,
             auto_check_app_updates: value.auto_check_app_updates,
+            av_consent: value.av_consent,
+            av_db_check_hours: value.av_db_check_hours,
+            av_keep_resident: value.av_keep_resident,
+            watch_downloads: value.watch_downloads,
+            startup_alerts: value.startup_alerts,
+            av_exclusions: value.av_exclusions,
+            av_schedule: value.av_schedule,
+            av_schedule_time: value.av_schedule_time,
+            av_schedule_weekday: value.av_schedule_weekday,
+            av_scan_before_install: value.av_scan_before_install,
+            paste_protection: value.paste_protection,
+            virus_total_enabled: value.virus_total_enabled,
+            app_store_region: value.app_store_region,
+            app_store_search: value.app_store_search,
+            app_store_updates,
+            update_sources,
             check_time: value.check_time,
             run_brew_update_on_check: value.run_brew_update_on_check,
             include_greedy: value.include_greedy,
@@ -693,12 +796,13 @@ pub struct UpdatesChanged {
     pub count: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatesStatus {
     pub checked_at: Option<i64>,
     pub next_check_at: Option<i64>,
     pub checking: bool,
+    pub failed_sources: Vec<UpdateSource>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
@@ -727,12 +831,14 @@ impl Kind {
         match self {
             Self::Cask => "cask",
             Self::Formula => "formula",
+            Self::Link => "link",
         }
     }
     pub fn flag(self) -> &'static str {
         match self {
             Self::Cask => "--cask",
             Self::Formula => "--formula",
+            Self::Link => "",
         }
     }
 }
@@ -758,6 +864,22 @@ impl Default for Settings {
             tray_show_count: true,
             auto_check: true,
             auto_check_app_updates: true,
+            av_consent: false,
+            av_db_check_hours: 4,
+            av_keep_resident: false,
+            watch_downloads: true,
+            startup_alerts: true,
+            av_exclusions: Vec::new(),
+            av_schedule: crate::security::AvSchedule::Off,
+            av_schedule_time: "03:00".into(),
+            av_schedule_weekday: 1,
+            av_scan_before_install: true,
+            paste_protection: false,
+            virus_total_enabled: false,
+            app_store_region: "auto".into(),
+            app_store_search: true,
+            app_store_updates: true,
+            update_sources: UpdateSources::default(),
             check_time: "09:00".into(),
             run_brew_update_on_check: true,
             include_greedy: true,
@@ -829,12 +951,16 @@ pub enum TaskKind {
     Cask,
     Formula,
     App,
+    Mas,
+    // Accepted at the IPC boundary solely to reject it before queue persistence.
+    Link,
 }
 impl From<Kind> for TaskKind {
     fn from(k: Kind) -> Self {
         match k {
             Kind::Cask => Self::Cask,
             Kind::Formula => Self::Formula,
+            Kind::Link => Self::Link,
         }
     }
 }
@@ -854,6 +980,8 @@ impl TaskKind {
             Self::Cask => "cask",
             Self::Formula => "formula",
             Self::App => "app",
+            Self::Mas => "mas",
+            Self::Link => "link",
         }
     }
     pub fn flag(self) -> &'static str {
@@ -861,6 +989,8 @@ impl TaskKind {
             Self::Cask => "--cask",
             Self::Formula => "--formula",
             Self::App => "",
+            Self::Mas => "",
+            Self::Link => "",
         }
     }
     pub fn brew_kind(self) -> Result<Kind, AppError> {
@@ -868,6 +998,8 @@ impl TaskKind {
             Self::Cask => Ok(Kind::Cask),
             Self::Formula => Ok(Kind::Formula),
             Self::App => Err(AppError::new("E_INVALID_ARG", "local_app_target")),
+            Self::Mas => Err(AppError::new("E_INVALID_ARG", "mas_target")),
+            Self::Link => Err(AppError::new("E_NOT_INSTALLABLE", "link_target")),
         }
     }
 }

@@ -42,7 +42,9 @@ const { data: loaded, error } = useCatalogLoader(
     const key = queryKey.value;
     const result = await unwrap(
       commands.catalogList({
+        // Link apps belong to categories like any other app (store/security plan §4).
         kind: 'cask',
+        includeLinks: true,
         category: props.slug,
         sort: sort.value,
         includeFonts: true,
