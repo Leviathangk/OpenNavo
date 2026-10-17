@@ -1,6 +1,8 @@
+import { webRouteType } from '@opennavo/shared';
 import { describe, expect, it } from 'vitest';
 import {
   edgeCacheHeader,
+  edgeRouteType,
   LONG_EDGE_CACHE_VALUE,
   SHORT_EDGE_CACHE_VALUE,
   type EdgeCacheInput
@@ -30,6 +32,22 @@ describe('HTML edge cache switch', () => {
     for (const path of ['/', '/zh', '/ja/categories/browsers', '/apps', '/articles'])
       expect(edgeCacheHeader(page({ path })), path).toBe(SHORT_EDGE_CACHE_VALUE);
     expect(edgeCacheHeader(page({ method: 'HEAD' }))).toBe(LONG_EDGE_CACHE_VALUE);
+  });
+
+  it('Caches Recently Updated like the other lists without changing its analytics label', () => {
+    for (const path of ['/recent', '/zh/recent', '/ru/recent', '/recent?page=2', '/ja/recent?page=3&size=12']) {
+      expect(edgeRouteType(path), path).toBe('list');
+      expect(edgeCacheHeader(page({ path, cacheControl: 's-maxage=300, stale-while-revalidate' })), path).toBe(
+        SHORT_EDGE_CACHE_VALUE
+      );
+    }
+    // GA4 page_type and the crawler counters keep reporting it as "other".
+    expect(webRouteType('/recent')).toBe('other');
+    expect(webRouteType('/zh/recent?page=2')).toBe('other');
+    for (const path of ['/recent/extra', '/xx/recent', '/recentx', '/apps/recent'])
+      expect(edgeRouteType(path), path).toBe(webRouteType(path));
+    expect(edgeCacheHeader(page({ path: '/recent?page=99999', status: 404 }))).toBe('no-store');
+    expect(edgeCacheHeader(page({ path: '/recent/extra' }))).toBe('no-store');
   });
 
   it('Bypasses private, failed, uncached and not-yet-enabled responses', () => {

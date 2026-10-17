@@ -82,3 +82,7 @@ overrides:
   'uuid@8.3.2': 11.1.1
   'basic-ftp@5.3.1': 6.2.2
   'esbuild@0.27.7': 0.28.2
+
+# Local fixes to published packages; each patch explains itself at the changed lines.
+patchedDependencies:
+  nuxt-og-image@6.10.3: patches/nuxt-og-image@6.10.3.patch

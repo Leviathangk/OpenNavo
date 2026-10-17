@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CATALOG_SORTS,
   canonicalPageUrl,
+  GRID_PAGE_SIZE,
+  type ListQueryParam,
   mergeQuery,
   pageCount,
   parsePage,
@@ -44,30 +46,69 @@ describe('Query parameters', () => {
     expect(pageCount(50, 24)).toBe(3);
   });
 
-  it('Canonical and alternate URLs keep page from page 2 on', () => {
-    expect(canonicalPageUrl('https://opennavo.com/apps?page=1')).toBe('https://opennavo.com/apps');
-    expect(canonicalPageUrl('https://opennavo.com/zh/rankings?page=2')).toBe('https://opennavo.com/zh/rankings?page=2');
-    expect(canonicalPageUrl('https://opennavo.com/apps?page=abc')).toBe('https://opennavo.com/apps');
-    expect(canonicalPageUrl('https://opennavo.com/apps?page=2&page=3')).toBe('https://opennavo.com/apps');
-    expect(canonicalPageUrl('https://opennavo.com/articles?type=tutorial&page=1')).toBe(
+  // What useListPage records: every list keeps page; grid lists add size, apps and categories disabled.
+  const LIST: ListQueryParam[] = ['page'];
+  const RECENT: ListQueryParam[] = ['page', 'size'];
+  const GRID: ListQueryParam[] = ['page', 'size', 'disabled'];
+
+  it('Canonical and alternate URLs of a list keep page from page 2 on', () => {
+    expect(canonicalPageUrl('https://opennavo.com/apps?page=1', GRID)).toBe('https://opennavo.com/apps');
+    expect(canonicalPageUrl('https://opennavo.com/zh/rankings?page=2', LIST)).toBe(
+      'https://opennavo.com/zh/rankings?page=2'
+    );
+    expect(canonicalPageUrl('https://opennavo.com/apps?page=abc', GRID)).toBe('https://opennavo.com/apps');
+    expect(canonicalPageUrl('https://opennavo.com/apps?page=2&page=3', GRID)).toBe('https://opennavo.com/apps');
+    expect(canonicalPageUrl('https://opennavo.com/articles?type=tutorial&page=1', LIST)).toBe(
       'https://opennavo.com/articles?type=tutorial'
+    );
+    expect(canonicalPageUrl('https://opennavo.com/apps/nextpad++/versions?page=2', LIST)).toBe(
+      'https://opennavo.com/apps/nextpad++/versions?page=2'
     );
     expect(canonicalPageUrl('https://opennavo.com/apps/nextpad++')).toBe('https://opennavo.com/apps/nextpad++');
     expect(canonicalPageUrl('https://opennavo.com/')).toBe('https://opennavo.com/');
   });
 
+  it('Pages that are not paginated lists drop page, size and disabled', () => {
+    for (const url of [
+      'https://opennavo.com?page=2',
+      'https://opennavo.com/?page=2&size=12&disabled=1',
+      'https://opennavo.com/zh?page=3',
+      'https://opennavo.com/apps/wechat?page=3',
+      'https://opennavo.com/discover?page=2',
+      'https://opennavo.com/categories?page=2&size=12',
+      'https://opennavo.com/articles/choose-a-screenshot-app?page=2',
+      '/download?disabled=1&size=30&page=9'
+    ]) {
+      expect(canonicalPageUrl(url), url).toBe(url.slice(0, url.indexOf('?')));
+      expect(canonicalPageUrl(url, []), url).toBe(url.slice(0, url.indexOf('?')));
+    }
+  });
+
+  it('The site root keeps its slash before a query', () => {
+    expect(canonicalPageUrl('https://opennavo.com?page=2', LIST)).toBe('https://opennavo.com/?page=2');
+    expect(canonicalPageUrl('https://opennavo.com?ref=x&page=1', LIST)).toBe('https://opennavo.com/?ref=x');
+    expect(canonicalPageUrl('http://localhost:3000?page=2', LIST)).toBe('http://localhost:3000/?page=2');
+    expect(canonicalPageUrl('https://opennavo.com/?page=2', LIST)).toBe('https://opennavo.com/?page=2');
+    expect(canonicalPageUrl('https://opennavo.com/zh?page=2', LIST)).toBe('https://opennavo.com/zh?page=2');
+    expect(canonicalPageUrl('https://opennavo.com')).toBe('https://opennavo.com');
+  });
+
   it('Canonical URLs preserve filters that expand pagination, normalized like API queries', () => {
     for (const path of ['/apps', '/zh/apps', '/categories/utilities', '/ja/categories/utilities']) {
-      expect(canonicalPageUrl(`https://example.test${path}?page=4&disabled=1`)).toBe(
+      expect(canonicalPageUrl(`https://example.test${path}?page=4&disabled=1`, GRID)).toBe(
         `https://example.test${path}?page=4&disabled=1`
       );
-      expect(canonicalPageUrl(`${path}?page=1&disabled=1&disabled=0`)).toBe(`${path}?disabled=1`);
-      expect(canonicalPageUrl(`${path}?page=2&disabled=0`)).toBe(`${path}?page=2`);
+      expect(canonicalPageUrl(`${path}?page=1&disabled=1&disabled=0`, GRID)).toBe(`${path}?disabled=1`);
+      expect(canonicalPageUrl(`${path}?page=2&disabled=0`, GRID)).toBe(`${path}?page=2`);
     }
-    expect(canonicalPageUrl('/apps/example?page=2&disabled=1')).toBe('/apps/example?page=2');
+    // Lists without the filter, and pages that are not lists, drop it.
+    expect(canonicalPageUrl('/apps/example/versions?page=2&disabled=1', LIST)).toBe('/apps/example/versions?page=2');
+    expect(canonicalPageUrl('/recent?page=2&disabled=1', RECENT)).toBe('/recent?page=2');
+    expect(canonicalPageUrl('/apps/example?page=2&disabled=1')).toBe('/apps/example');
   });
 
   it('Grid page sizes and canonical URLs use the same bounds and defaults', () => {
+    expect(GRID_PAGE_SIZE).toBe(24);
     for (const [value, expected] of [
       ['1', 1],
       ['100', 100],
@@ -85,24 +126,27 @@ describe('Query parameters', () => {
     ] as const) {
       expect(readGridPageSize(value as Parameters<typeof readGridPageSize>[0])).toBe(expected);
     }
-    for (const path of [
-      '/apps',
-      '/zh/apps',
-      '/recent',
-      '/ja/recent',
-      '/categories/utilities',
-      '/ru/categories/utilities'
-    ]) {
+    for (const [path, keep] of [
+      ['/apps', GRID],
+      ['/zh/apps', GRID],
+      ['/recent', RECENT],
+      ['/ja/recent', RECENT],
+      ['/categories/utilities', GRID],
+      ['/ru/categories/utilities', GRID]
+    ] as const) {
       for (const size of ['1', '12', '100']) {
-        expect(canonicalPageUrl(`${path}?page=4&size=${size}`)).toBe(`${path}?page=4&size=${size}`);
+        expect(canonicalPageUrl(`${path}?page=4&size=${size}`, keep)).toBe(`${path}?page=4&size=${size}`);
       }
-      expect(canonicalPageUrl(`${path}?page=1&size=012`)).toBe(`${path}?size=12`);
+      expect(canonicalPageUrl(`${path}?page=1&size=012`, keep)).toBe(`${path}?size=12`);
       for (const size of ['24', '0', '101', 'abc', '12&size=12']) {
-        expect(canonicalPageUrl(`${path}?page=2&size=${size}`)).toBe(`${path}?page=2`);
+        expect(canonicalPageUrl(`${path}?page=2&size=${size}`, keep)).toBe(`${path}?page=2`);
       }
     }
-    for (const path of ['/apps/example', '/articles', '/rankings', '/categories']) {
-      expect(canonicalPageUrl(`${path}?page=2&size=12`)).toBe(`${path}?page=2`);
+    for (const path of ['/articles', '/rankings', '/collections', '/authors/lin-wei', '/apps/example/versions']) {
+      expect(canonicalPageUrl(`${path}?page=2&size=12`, LIST)).toBe(`${path}?page=2`);
+    }
+    for (const path of ['/apps/example', '/categories']) {
+      expect(canonicalPageUrl(`${path}?page=2&size=12`)).toBe(path);
     }
   });
 

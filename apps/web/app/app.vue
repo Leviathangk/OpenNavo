@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { canonicalPageUrl } from '~/utils/catalogQuery';
 
-// i18n generates html lang and hreflang (05 §6.1).
-// Canonical URLs retain page, size and the disabled filter that change list bounds; page only from page 2 on:
-// ?page=1 is the list itself. Values that are not page numbers never get here (useListPage: 404).
+// i18n generates html lang, canonical, hreflang and og:url (05 §6.1).
+// Canonical URLs of a paginated list retain page, size and the disabled filter that change its bounds;
+// page only from page 2 on: ?page=1 is the list itself. Values that are not page numbers never get
+// here (useListPage: 404). Every other page drops all three (useCanonicalQuery).
 const { locale } = useI18n();
 const head = useLocaleHead({ seo: { canonicalQueries: ['page', 'disabled', 'size'] } });
+const canonicalQuery = useCanonicalQuery();
 // Pages may limit alternates to their indexed languages (WP11, set by PackageDetailLayout).
 const hreflangs = useState<string[] | null>('page:hreflangs', () => null);
 useHead(() => ({
@@ -14,7 +16,7 @@ useHead(() => ({
     .filter(link => !hreflangs.value || !('hreflang' in link) || hreflangs.value.includes(String(link.hreflang)))
     .map(link =>
       typeof link.href === 'string' && (link.rel === 'canonical' || link.rel === 'alternate')
-        ? { ...link, href: canonicalPageUrl(link.href) }
+        ? { ...link, href: canonicalPageUrl(link.href, canonicalQuery.value) }
         : link
     ),
   meta: [
@@ -22,7 +24,7 @@ useHead(() => ({
       .filter(tag => tag.property !== 'og:locale')
       .map(tag =>
         tag.property === 'og:url' && typeof tag.content === 'string'
-          ? { ...tag, content: canonicalPageUrl(tag.content) }
+          ? { ...tag, content: canonicalPageUrl(tag.content, canonicalQuery.value) }
           : tag
       ),
     { property: 'og:locale', content: toAppLocale(locale.value).replace('-', '_') }

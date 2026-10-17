@@ -11,7 +11,7 @@ const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 
 // Category page (08 §10.2): shared OnPackageListView (ADR-017), breadcrumbs, title/description, sort and Show disabled,
 // card grid, pagination. Cask-only (ADR-018).
-const { pageSize, fitPage } = useGridPageSize();
+const { pageSize, customSize, fitPage } = useGridPageSize();
 
 const { t, locale } = useI18n();
 const api = useApi();
@@ -21,7 +21,7 @@ const NuxtLink = resolveComponent('NuxtLink');
 const { query, hrefWith, update } = useCatalogQuery({ page: 1, sort: 'popular', disabled: false });
 
 const slug = computed(() => String(route.params.slug ?? ''));
-const { page, assertExists } = useListPage();
+const { page, assertExists } = useListPage({ canonical: ['size', 'disabled'] });
 const sort = computed(() => readEnum(query.value.sort, CATALOG_SORTS, 'popular'));
 const includeDisabled = computed(() => readFlag(query.value.disabled));
 
@@ -106,8 +106,8 @@ useItemListSchema(
 
 // WP1: no "best" in titles; the legacy title is the rollout fallback selected in admin.
 const legacyTitles = useLegacyTitles();
-// Filtered lists retain their own canonical but stay out of the index.
-useSeoMeta({ robots: () => (includeDisabled.value ? 'noindex, follow' : undefined) });
+// Filtered lists and other page sizes retain their own canonical but stay out of the index.
+useSeoMeta({ robots: () => (includeDisabled.value || customSize.value ? 'noindex, follow' : undefined) });
 usePageSeo({
   title: () =>
     t(legacyTitles.value ? 'categories.itemMetaTitle' : 'categories.seo.itemTitle', {

@@ -108,6 +108,7 @@
     "title": "カテゴリ",
     "metaTitle": "Mac ソフトウェアカテゴリ · OpenNavo",
     "description": "用途別に Homebrew 収録の App を閲覧できます。",
+    "metaDescription": "Homebrew 収録の Mac アプリを用途別に探せます。AI ツールや開発ツールからブラウザー、デザイン、生産性まで、各カテゴリのアプリ数とサブカテゴリを確認できます。",
     "count": "{count} 件",
     "itemMetaTitle": "{name} ソフトウェアのおすすめ · OpenNavo",
     "seo": {

@@ -39,7 +39,8 @@ const items = computed<OnCategoriesItem[] | null>(() =>
     : null
 );
 
-usePageSeo({ title: () => t('categories.metaTitle'), description: () => t('categories.description') });
+// The search snippet names what the categories cover; the page subtitle and share image keep the short line.
+usePageSeo({ title: () => t('categories.metaTitle'), description: () => t('categories.metaDescription') });
 // Share image (WP13): category icons are not app icons, so the brand icon stands beside the text.
 defineOgImage('OgListSatori', {
   locale: formattingLocale.value,

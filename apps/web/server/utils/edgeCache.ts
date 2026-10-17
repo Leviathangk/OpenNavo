@@ -1,8 +1,19 @@
-import { webRouteType } from '@opennavo/shared';
+import { LOCALE_METADATA, webRouteType } from '@opennavo/shared';
 
 // HTML edge caching (WP5) is controlled per response with Cloudflare-CDN-Cache-Control, which only
 // Cloudflare reads: browsers keep the normal Cache-Control. The admin switch turns it off at once
 // (no-store), even while a Cloudflare cache rule makes HTML eligible.
+
+/**
+ * Recently Updated in every language. It is a list like /apps, but webRouteType reports it as
+ * "other", and that label stays: GA4 page_type and the crawler counters are keyed on it.
+ */
+const RECENT_PATHS = new Set(Object.values(LOCALE_METADATA).map(({ prefix }) => `${prefix}/recent`));
+
+/** Page type for edge caching: webRouteType, except that Recently Updated is cached as a list. */
+export function edgeRouteType(path: string): string {
+  return RECENT_PATHS.has(path.split('?', 1)[0] ?? '') ? 'list' : webRouteType(path);
+}
 
 /** Page types cached at the edge first; the rest stays at the origin until this list grows. */
 export const EDGE_CACHE_ROUTES = new Set([
@@ -49,7 +60,7 @@ export function edgeCacheHeader(input: EdgeCacheInput): string | undefined {
     // collections send no-store and stay uncached.
     /\bs-maxage=\d+/.test(input.cacheControl) &&
     !/\b(no-store|private|no-cache)\b/.test(input.cacheControl) &&
-    EDGE_CACHE_ROUTES.has(webRouteType(input.path));
+    EDGE_CACHE_ROUTES.has(edgeRouteType(input.path));
   if (!shareable) return 'no-store';
-  return LONG_EDGE_CACHE_ROUTES.has(webRouteType(input.path)) ? LONG_EDGE_CACHE_VALUE : SHORT_EDGE_CACHE_VALUE;
+  return LONG_EDGE_CACHE_ROUTES.has(edgeRouteType(input.path)) ? LONG_EDGE_CACHE_VALUE : SHORT_EDGE_CACHE_VALUE;
 }

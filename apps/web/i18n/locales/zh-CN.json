@@ -108,6 +108,7 @@
     "title": "分类",
     "metaTitle": "Mac 软件分类 · OpenNavo",
     "description": "按用途浏览 Homebrew 收录的 App。",
+    "metaDescription": "按用途浏览 Homebrew 收录的 Mac App，从 AI 工具、开发工具到浏览器、设计和效率软件，每个分类都列出 App 数量和子分类。",
     "count": "{count} 个",
     "itemMetaTitle": "{name}软件推荐 · OpenNavo",
     "seo": {

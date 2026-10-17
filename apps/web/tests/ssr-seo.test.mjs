@@ -315,10 +315,24 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       };
     } else if (
       match &&
-      ['versioned-app@11', 'plus-app++', 'ordinary-app', 'thin-app', 'font-sample', 'facts-app'].includes(match[1])
+      ['versioned-app@11', 'plus-app++', 'ordinary-app', 'thin-app', 'font-sample', 'facts-app', 'wechat'].includes(
+        match[1]
+      )
     ) {
       const token = match[1];
       requestedTokens.add(token);
+      // WeChat's catalog names already name the platform, and its summary is long (audit, 2026-10-17).
+      const zh = req.headers['accept-language'] === 'zh-CN';
+      const wechat =
+        token === 'wechat'
+          ? {
+              displayName: zh ? '微信 Mac 版' : 'WeChat for Mac',
+              names: ['WeChat for Mac'],
+              summary: zh
+                ? '腾讯的 Mac 即时通信客户端，可与 WeChat 联系人收发文字消息和文件，以及进行语音和视频通话。'
+                : 'Tencent’s Mac messaging client for text, files, voice and video calls with your WeChat contacts.'
+            }
+          : {};
       data = match[2]
         ? []
         : {
@@ -353,7 +367,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             machineTranslated: false,
             ...(indexing[token] ? { indexing: indexing[token] } : {}),
             ...(token === 'ordinary-app' ? { articles: [roundupCard(false)] } : {}),
-            ...(token === 'facts-app' ? factsApp : {})
+            ...(token === 'facts-app' ? factsApp : {}),
+            ...wechat
           };
     } else if (path === '/api/v1/sitemap/packages') {
       sitemapPackageRequests++;
@@ -849,6 +864,14 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.match(response.headers.get('cache-control') ?? '', /s-maxage=900/, path);
     }
     assert.deepEqual(await edge('/categories'), [200, 'max-age=600, stale-while-revalidate=3600']);
+    // Recently Updated is a list like /apps, paginated pages included. (Later tests need /recent itself
+    // uncached by the route cache, so these are other languages' URLs.)
+    for (const path of ['/pt/recent', '/ru/recent?page=2', '/es/recent?page=2&size=12'])
+      assert.deepEqual(await edge(path), [200, 'max-age=600, stale-while-revalidate=3600'], path);
+    // GA4 page_type and the crawler counters still call it "other".
+    const metrics = await (await fetch(`${internal}/metrics`)).text();
+    assert.match(metrics, /opennavo_web_requests_total\{agent="browser",route="other",status="200"\} \d+/);
+    assert.ok(!metrics.includes('route="recent"'), 'no new route label');
   });
   await t.test('guessed sitemap and icon addresses move permanently', async () => {
     for (const [path, target] of [
@@ -885,6 +908,61 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       'pagination keeps page in canonical'
     );
     assert.ok(!(await title('/apps')).includes('Page'), 'the first page has no page number');
+  });
+  await t.test('app titles name the platform once and descriptions keep their closing sentence', async () => {
+    const page = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      assert.equal(response.status, 200, `${path}\n${logs}`);
+      return response.text();
+    };
+    const title = html => /<title>([^<]*)<\/title>/.exec(html)?.[1];
+    const description = html => /<meta name="description" content="([^"]*)"/.exec(html)?.[1]?.replaceAll('&amp;', '&');
+    for (const [prefix, expected] of [
+      ['', 'WeChat for Mac – Download &amp; Install · OpenNavo'],
+      ['/zh', '微信 Mac 版下载安装 · OpenNavo'],
+      ['/ja', 'WeChat for Mac ダウンロード・インストール · OpenNavo'],
+      ['/es', 'Descargar WeChat para Mac · OpenNavo'],
+      ['/pt', 'Baixar WeChat para Mac · OpenNavo'],
+      ['/ru', 'WeChat для Mac — скачать и установить · OpenNavo']
+    ])
+      assert.equal(title(await page(`${prefix}/apps/wechat`)), expected, prefix || '/');
+    // The summary gives way, so search results show the whole closing sentence (about 160 columns).
+    assert.equal(
+      description(await page('/apps/wechat')),
+      'Tencent’s Mac messaging client for text, files, voice… See how to install WeChat for Mac on your Mac, along with its system requirements and release history.'
+    );
+    // Chinese names join the Chinese text around them; this one fits whole.
+    assert.equal(
+      description(await page('/zh/apps/wechat')),
+      '腾讯的 Mac 即时通信客户端，可与 WeChat 联系人收发文字消息和文件，以及进行语音和视频通话。查看微信 Mac 版在 Mac 上的安装方法、系统要求和版本记录。'
+    );
+  });
+  await t.test('catalog headings and the categories description read well in every language', async () => {
+    const page = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      assert.equal(response.status, 200, `${path}\n${logs}`);
+      return response.text();
+    };
+    assert.match(await page('/ru/apps'), /<h1\b[^>]*>Приложения<\/h1>/);
+    for (const [prefix, expected] of [
+      [
+        '',
+        'Browse Mac apps in Homebrew by category, from AI and developer tools to browsers, design and productivity, with each category’s app count and subcategories.'
+      ],
+      [
+        '/zh',
+        '按用途浏览 Homebrew 收录的 Mac App，从 AI 工具、开发工具到浏览器、设计和效率软件，每个分类都列出 App 数量和子分类。'
+      ],
+      [
+        '/ru',
+        'Просматривайте приложения для Mac из Homebrew по категориям: от ИИ и разработки до браузеров, дизайна и продуктивности, с числом приложений и подкатегорий.'
+      ]
+    ]) {
+      const html = await page(`${prefix}/categories`);
+      assert.equal(/<meta name="description" content="([^"]*)"/.exec(html)?.[1], expected, prefix || '/');
+    }
+    // The page keeps its short subtitle.
+    assert.ok((await page('/categories')).includes('Browse Homebrew apps by what they do.'));
   });
   await t.test('recently updated lists the newest releases with real page links', async () => {
     const page = async path => {
@@ -986,12 +1064,73 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.equal((await get(`${prefix}/apps?page=6&disabled=1`)).response.status, 404);
     }
   });
-  await t.test('grid list canonicals preserve the page size that makes a page valid', async () => {
+  await t.test('only paginated lists keep page, size and disabled in canonical, hreflang and og:url', async () => {
     const get = async path => {
       const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
       return { status: response.status, html: await response.text() };
     };
+    const unescape = value => value?.replaceAll('&amp;', '&');
+    const canonical = html => unescape(/<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(html)?.[1]);
+    const ogUrl = html => unescape(/<meta[^>]*property="og:url"[^>]*content="([^"]+)"/.exec(html)?.[1]);
+    const alternates = html =>
+      [...html.matchAll(/<link\b[^>]*\bhreflang="[^"]+"[^>]*>/g)].map(([tag]) =>
+        unescape(/href="([^"]+)"/.exec(tag)?.[1])
+      );
+    for (const [path, expected] of [
+      ['/?page=2', 'https://example.test'],
+      ['/?page=2&size=12&disabled=1', 'https://example.test'],
+      ['/zh?page=3', 'https://example.test/zh'],
+      ['/discover?page=2', 'https://example.test/discover'],
+      ['/categories?page=2', 'https://example.test/categories'],
+      ['/apps/ordinary-app?page=3', 'https://example.test/apps/ordinary-app'],
+      ['/ja/apps/plus-app++?page=2&size=12', 'https://example.test/ja/apps/plus-app++'],
+      ['/articles/choose-a-screenshot-app?page=2', 'https://example.test/articles/choose-a-screenshot-app'],
+      ['/download?page=2&disabled=1', 'https://example.test/download']
+    ]) {
+      const { status, html } = await get(path);
+      assert.equal(status, 200, `${path}\n${logs}`);
+      assert.equal(canonical(html), expected, `${path} canonical`);
+      assert.equal(ogUrl(html), expected, `${path} og:url`);
+      const hrefs = alternates(html);
+      assert.ok(hrefs.length > 0, path);
+      for (const href of hrefs) assert.ok(href && !href.includes('?'), `${path} hreflang: ${href}`);
+      assert.ok(!/<title>[^<]*(?:Page \d|第 \d+ 页)/.test(html), `${path} title`);
+    }
+    // Each list keeps its own bound parameters and drops the rest.
+    for (const [path, expected] of [
+      ['/apps?page=2&size=12&disabled=1', 'https://example.test/apps?page=2&disabled=1&size=12'],
+      ['/recent?page=2&size=12&disabled=1', 'https://example.test/recent?page=2&size=12'],
+      ['/zh/rankings?page=2&size=12&disabled=1', 'https://example.test/zh/rankings?page=2'],
+      ['/articles?page=2&size=12', 'https://example.test/articles?page=2']
+    ]) {
+      const { status, html } = await get(path);
+      assert.equal(status, 200, `${path}\n${logs}`);
+      assert.equal(canonical(html), expected, path);
+      assert.equal(ogUrl(html), expected, path);
+      for (const href of alternates(html)) assert.equal(new URL(href).search, new URL(expected).search, href);
+    }
+  });
+  await t.test('grid list canonicals preserve the page size that makes a page valid', async () => {
+    const get = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      return {
+        status: response.status,
+        html: await response.text(),
+        robotsHeader: response.headers.get('x-robots-tag')
+      };
+    };
     const canonical = html => /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(html)?.[1]?.replaceAll('&amp;', '&');
+    const robots = html => [...html.matchAll(/<meta name="robots" content="([^"]*)"/g)].map(m => m[1]);
+    // Another page size splits the same items into other pages: its canonical keeps the size (without
+    // it, page 4 below would be past the end), and it stays out of the index like other variants.
+    const unindexed = (page, label) => {
+      assert.deepEqual(robots(page.html), ['noindex, follow'], label);
+      assert.equal(page.robotsHeader, 'noindex, follow', label);
+    };
+    const indexed = (page, label) => {
+      assert.ok(!robots(page.html).some(value => value.includes('noindex')), label);
+      assert.ok(!(page.robotsHeader ?? '').includes('noindex'), label);
+    };
     for (const path of [
       '/apps',
       '/zh/apps',
@@ -1009,7 +1148,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       );
       const target = canonical(sized.html);
       assert.equal(target, `https://example.test${path}?page=4&size=12`);
+      unindexed(sized, path);
       assert.equal((await get(target.replace('https://example.test', ''))).status, 200, target);
+      indexed(await get(`${path}?page=2`), `${path}?page=2`);
       assert.equal((await get(`${path}?page=4`)).status, 404, path);
       assert.equal((await get(`${path}?page=6&size=12`)).status, 404, path);
       const ogUrl = /<meta[^>]*property="og:url"[^>]*content="([^"]+)"/.exec(sized.html)?.[1]?.replaceAll('&amp;', '&');
@@ -1025,10 +1166,16 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const combined = await get('/apps?page=8&disabled=1&size=12');
     assert.equal(combined.status, 200);
     assert.equal(canonical(combined.html), 'https://example.test/apps?page=8&disabled=1&size=12');
+    unindexed(combined, 'disabled and size');
     for (const size of ['24', '101', 'abc', '12&size=12']) {
-      assert.equal(canonical((await get(`/apps?page=2&size=${size}`)).html), 'https://example.test/apps?page=2');
+      const page = await get(`/apps?page=2&size=${size}`);
+      assert.equal(canonical(page.html), 'https://example.test/apps?page=2');
+      // The default size, or a value that falls back to it, is the list itself.
+      indexed(page, `size=${size}`);
     }
-    assert.equal(canonical((await get('/apps?page=1&size=012')).html), 'https://example.test/apps?size=12');
+    const first = await get('/apps?page=1&size=012');
+    assert.equal(canonical(first.html), 'https://example.test/apps?size=12');
+    unindexed(first, 'size=012');
   });
   await t.test('URL variants reach their page in one 301 that keeps the query', async () => {
     for (const [from, to] of [
@@ -1200,6 +1347,18 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const [client] = graphOf(await html('/download')).filter(node => node['@type'] === 'SoftwareApplication');
     assert.equal(client['@id'], 'https://example.test/#desktop-app');
     assert.equal(client.publisher['@id'], 'https://example.test/#identity');
+  });
+  await t.test('share images do not vary with the page query', async () => {
+    // patches/nuxt-og-image: a page's query string never reaches its share image URL, so return
+    // links and tracking parameters reuse the one image instead of rendering it again.
+    const shareImage = async path => {
+      const html = await (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+      return /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1];
+    };
+    const plain = await shareImage('/apps/ordinary-app');
+    assert.ok(plain && !plain.includes(',q_'), plain);
+    for (const query of ['?utm_source=newsletter', '?returnTo=%2Frecent', '?nocache=1'])
+      assert.equal(await shareImage(`/apps/ordinary-app${query}`), plain, query);
   });
   await t.test('every shared page type has a 1200×630 share image', async () => {
     const image = async path => {
@@ -1465,6 +1624,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     'ordinary-app',
     'plus-app++',
     'thin-app',
-    'versioned-app@11'
+    'versioned-app@11',
+    'wechat'
   ]);
 });

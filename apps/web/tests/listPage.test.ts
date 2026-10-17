@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { effectScope, nextTick, reactive, ref } from 'vue';
-import { useListPage } from '../app/composables/useListPage';
+import { effectScope, nextTick, reactive, ref, type Ref } from 'vue';
+import { useCanonicalQuery, useListPage } from '../app/composables/useListPage';
+import type { ListQueryParam } from '../app/utils/catalogQuery';
 
 const scopes: ReturnType<typeof effectScope>[] = [];
 afterEach(() => {
@@ -8,21 +9,64 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function setup(initialPage = '1') {
-  const route = reactive({ query: { page: initialPage } });
+function stubNuxt(initialPage = '1') {
+  const route = reactive({ path: '/apps', query: { page: initialPage } });
+  // The router's current route, as app.vue sees it; useRoute() in a page is that page's own route.
+  const router = { currentRoute: ref({ path: '/apps' }) };
+  const states = new Map<string, Ref<unknown>>();
   const showError = vi.fn();
   vi.stubGlobal('useRoute', () => route);
+  vi.stubGlobal('useRouter', () => router);
+  vi.stubGlobal('useState', (key: string, init: () => unknown) => {
+    if (!states.has(key)) states.set(key, ref(init()));
+    return states.get(key);
+  });
   vi.stubGlobal('createError', (options: object) => Object.assign(new Error('Page not found'), options));
   vi.stubGlobal('showError', showError);
   const scope = effectScope();
   scopes.push(scope);
-  const list = scope.run(() => useListPage())!;
+  return { route, router, states, showError, scope };
+}
+
+function setup(initialPage = '1', options: { canonical?: Exclude<ListQueryParam, 'page'>[] } = {}) {
+  const nuxt = stubNuxt(initialPage);
+  const list = nuxt.scope.run(() => useListPage(options))!;
   const total = ref<number | undefined>(50);
   const size = ref(24);
   const status = ref('success');
-  const register = () => scope.run(() => list.assertExists(total, size, status));
-  return { route, showError, total, size, status, register, scope, list };
+  const register = () => nuxt.scope.run(() => list.assertExists(total, size, status));
+  return { ...nuxt, total, size, status, register, list };
 }
+
+describe('canonical parameters of paginated lists', () => {
+  it('keeps page and the list’s own bound parameters on its route only', () => {
+    const state = setup('2', { canonical: ['size', 'disabled'] });
+    const kept = state.scope.run(() => useCanonicalQuery())!;
+    expect(kept.value).toEqual(['page', 'size', 'disabled']);
+    // Client-side navigation to a page that is not a list: the record names another path.
+    state.router.currentRoute.value = { path: '/apps/wechat' };
+    expect(kept.value).toEqual([]);
+    state.router.currentRoute.value = { path: '/apps' };
+    expect(kept.value).toEqual(['page', 'size', 'disabled']);
+  });
+
+  it('keeps only page by default and follows the path when the list is reused', async () => {
+    const state = setup('2');
+    const kept = state.scope.run(() => useCanonicalQuery())!;
+    expect(kept.value).toEqual(['page']);
+    state.route.path = '/zh/apps';
+    state.router.currentRoute.value = { path: '/zh/apps' };
+    expect(kept.value).toEqual([]);
+    await nextTick();
+    expect(kept.value).toEqual(['page']);
+  });
+
+  it('keeps nothing where no list was set up, or where the page number is a 404', () => {
+    const state = stubNuxt('abc');
+    expect(() => state.scope.run(() => useListPage())).toThrow('Page not found');
+    expect(state.scope.run(() => useCanonicalQuery())!.value).toEqual([]);
+  });
+});
 
 describe('reactive list page validation', () => {
   it('throws during setup for malformed and initially out-of-range pages', () => {

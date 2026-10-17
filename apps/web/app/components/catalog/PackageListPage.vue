@@ -10,7 +10,7 @@ const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 
 // App list /apps (05 §4, 08 §10.2): shared OnPackageListView (ADR-017), Cask-only (ADR-018).
-const { pageSize, fitPage } = useGridPageSize();
+const { pageSize, customSize, fitPage } = useGridPageSize();
 
 const { t, locale } = useI18n();
 const api = useApi();
@@ -18,7 +18,7 @@ const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const { query, hrefWith, update } = useCatalogQuery({ page: 1, sort: 'popular', disabled: false });
 
-const { page, assertExists } = useListPage();
+const { page, assertExists } = useListPage({ canonical: ['size', 'disabled'] });
 const sort = computed(() => readEnum(query.value.sort, CATALOG_SORTS, 'popular'));
 const includeDisabled = computed(() => readFlag(query.value.disabled));
 
@@ -58,8 +58,8 @@ useItemListSchema(
   () => (page.value - 1) * pageSize.value + 1
 );
 
-// Filtered lists retain their own canonical but stay out of the index.
-useSeoMeta({ robots: () => (includeDisabled.value ? 'noindex, follow' : undefined) });
+// Filtered lists and other page sizes retain their own canonical but stay out of the index.
+useSeoMeta({ robots: () => (includeDisabled.value || customSize.value ? 'noindex, follow' : undefined) });
 usePageSeo({
   title: () => t('catalog.appsMetaTitle'),
   page,

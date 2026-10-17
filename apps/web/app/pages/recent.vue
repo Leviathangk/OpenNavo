@@ -9,7 +9,7 @@ import { brandlessTitle } from '~/utils/seoTitles';
 
 // Recently Updated: Discover's section in full, newest version first, with real page links. Shared
 // OnPackageListView (ADR-017), Cask-only (ADR-018). Pages past the end answer 404.
-const { pageSize, fitPage } = useGridPageSize();
+const { pageSize, customSize, fitPage } = useGridPageSize();
 const STATS: readonly OnAppCardStat[] = ['version', 'installs30d'];
 
 const { t, locale } = useI18n();
@@ -17,7 +17,7 @@ const api = useApi();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const { hrefWith } = useCatalogQuery({ page: 1 });
-const { page, assertExists } = useListPage();
+const { page, assertExists } = useListPage({ canonical: ['size'] });
 
 const { data, error, refresh, status } = await useAsyncData(
   () => `recent:${page.value}:${pageSize.value}:${locale.value}`,
@@ -42,6 +42,8 @@ useItemListSchema(
   () => (page.value - 1) * pageSize.value + 1
 );
 
+// Other page sizes retain their own canonical but stay out of the index.
+useSeoMeta({ robots: () => (customSize.value ? 'noindex, follow' : undefined) });
 usePageSeo({ title: () => t('recent.metaTitle'), page, description: () => t('recent.description') });
 // Share image (WP13): the list beside the latest updated apps.
 defineOgImage('OgListSatori', {

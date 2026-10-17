@@ -2,12 +2,16 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   currentReleaseDate,
+  DESCRIPTION_WIDTH,
+  fitSummary,
   overviewDescription,
   overviewTitle,
   brandlessTitle,
   pagedDescription,
   pagedTitle,
   reliableVersion,
+  textWidth,
+  titleName,
   usableSummary,
   versionsDescription,
   versionsTitle,
@@ -136,5 +140,175 @@ describe('WP1 titles and descriptions', () => {
         const title = translator(code)(key);
         expect(brandlessTitle(title), `${code} ${key}`).not.toContain('OpenNavo');
       }
+  });
+});
+
+describe('App names that already name the platform', () => {
+  // [WeChat for Mac, 微信 Mac 版 (the Chinese catalog name), WeChat for Mac when Homebrew disabled it]
+  const expected: Record<(typeof LOCALES)[number], [string, string, string]> = {
+    'zh-CN': ['WeChat Mac 版下载安装 · OpenNavo', '微信 Mac 版下载安装 · OpenNavo', 'WeChat Mac 版 · OpenNavo'],
+    'en-US': [
+      'WeChat for Mac – Download & Install · OpenNavo',
+      '微信 for Mac – Download & Install · OpenNavo',
+      'WeChat for Mac · OpenNavo'
+    ],
+    'ja-JP': [
+      'WeChat for Mac ダウンロード・インストール · OpenNavo',
+      '微信 for Mac ダウンロード・インストール · OpenNavo',
+      'WeChatの Mac 版 · OpenNavo'
+    ],
+    'es-ES': [
+      'Descargar WeChat para Mac · OpenNavo',
+      'Descargar 微信 para Mac · OpenNavo',
+      'WeChat para Mac · OpenNavo'
+    ],
+    'pt-BR': ['Baixar WeChat para Mac · OpenNavo', 'Baixar 微信 para Mac · OpenNavo', 'WeChat para Mac · OpenNavo'],
+    'ru-RU': [
+      'WeChat для Mac — скачать и установить · OpenNavo',
+      '微信 для Mac — скачать и установить · OpenNavo',
+      'WeChat для компьютеров Mac · OpenNavo'
+    ]
+  };
+
+  it.each(LOCALES)('%s names the platform once', code => {
+    const t = translator(code);
+    const [latin, chinese, unavailable] = expected[code];
+    expect(overviewTitle({ ...app, displayName: 'WeChat for Mac' }, t)).toBe(latin);
+    expect(overviewTitle({ ...app, displayName: '微信 Mac 版' }, t)).toBe(chinese);
+    expect(overviewTitle({ ...app, displayName: 'WeChat for Mac', disabled: true }, t)).toBe(unavailable);
+    for (const name of ['WeChat for macOS', 'WeChat for Mac OS X', 'WeChat para Mac', 'WeChat для Mac', 'WeChat Mac版'])
+      expect(overviewTitle({ ...app, displayName: name }, t), name).toBe(latin);
+    // Names that only contain or start with Mac keep every word.
+    for (const name of ['Mac Mouse Fix', 'iMac版', 'CleanMyMac X', 'Helper for Mac Pro'])
+      expect(overviewTitle({ ...app, displayName: name }, t), name).toContain(name);
+  });
+
+  it('Takes only a trailing platform phrase off the name', () => {
+    expect(titleName('WeChat for Mac')).toBe('WeChat');
+    expect(titleName('Paragon NTFS for Mac')).toBe('Paragon NTFS');
+    expect(titleName('微信 Mac 版')).toBe('微信');
+    expect(titleName('微信Mac版')).toBe('微信');
+    expect(titleName('Foo for OS X')).toBe('Foo');
+    expect(titleName('Foo для macOS')).toBe('Foo');
+    expect(titleName('  WeChat for Mac  ')).toBe('WeChat');
+    for (const name of ['Mac Mouse Fix', 'iMac版', 'CleanMyMac X', 'Mac 版', 'for Mac', 'Macintosh for Macs'])
+      expect(titleName(name), name).toBe(name);
+    // Fonts are named once as well.
+    expect(overviewTitle({ ...app, displayName: 'SF Mono for Mac', isFont: true }, translator('en-US'))).toBe(
+      'SF Mono Font for Mac – Download & Install · OpenNavo'
+    );
+  });
+});
+
+describe('Descriptions that fit search results', () => {
+  // The summaries the audit found on /apps/wechat in each language (2026-10-17).
+  const wechat: Record<(typeof LOCALES)[number], [string, string]> = {
+    'zh-CN': [
+      '微信 Mac 版',
+      '腾讯的 Mac 即时通信客户端，可与 WeChat 联系人收发文字消息和文件，以及进行语音和视频通话。'
+    ],
+    'en-US': [
+      'WeChat for Mac',
+      'Tencent’s Mac messaging client for text, files, voice and video calls with your WeChat contacts.'
+    ],
+    'ja-JP': [
+      'WeChat for Mac',
+      'TencentのMac向けメッセージアプリです。WeChatの連絡先とテキストやファイルをやり取りしたり、音声・ビデオ通話をしたりできます。'
+    ],
+    'es-ES': [
+      'WeChat for Mac',
+      'Cliente de mensajería de Tencent para Mac para enviar mensajes de texto y archivos y hacer llamadas de voz y vídeo con tus contactos de WeChat.'
+    ],
+    'pt-BR': [
+      'WeChat for Mac',
+      'Cliente de mensagens da Tencent para Mac para enviar textos e arquivos e fazer chamadas de voz e vídeo com seus contatos do WeChat.'
+    ],
+    'ru-RU': [
+      'WeChat for Mac',
+      'Мессенджер Tencent для Mac для обмена текстовыми сообщениями и файлами, голосовых и видеозвонков с вашими контактами WeChat.'
+    ]
+  };
+
+  it.each(LOCALES)('%s shortens the summary and keeps the closing sentence whole', code => {
+    const t = translator(code);
+    const [displayName, summary] = wechat[code];
+    for (const pkg of [
+      { ...app, displayName, summary },
+      { ...app, displayName, summary, disabled: true }
+    ]) {
+      const description = overviewDescription(pkg, t);
+      const closing = overviewDescription({ ...pkg, summary: null }, t);
+      expect(textWidth(description), description).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
+      expect(description.endsWith(closing), description).toBe(true);
+      // The summary still says what the app is.
+      expect(description.length - closing.length, description).toBeGreaterThan(20);
+      expect(description).not.toMatch(/…\.|\p{Co}|[{}]/u);
+    }
+  });
+
+  it('Cuts where the summary reads complete, else between words with an ellipsis', () => {
+    const t = translator('en-US');
+    expect(overviewDescription({ ...app, displayName: 'WeChat for Mac', summary: wechat['en-US'][1] }, t)).toBe(
+      'Tencent’s Mac messaging client for text, files, voice… See how to install WeChat for Mac on your Mac, along with its system requirements and release history.'
+    );
+    expect(
+      overviewDescription({ ...app, displayName: 'WeChat for Mac', summary: wechat['ja-JP'][1] }, translator('ja-JP'))
+    ).toBe(
+      'TencentのMac向けメッセージアプリです。WeChat for Macを Mac にインストールする方法、システム要件、バージョン履歴を確認できます。'
+    );
+    // Short enough already: unchanged.
+    expect(overviewDescription(app, t)).toBe(
+      'Open-source code editor. See how to install Visual Studio Code on your Mac, along with its system requirements and release history.'
+    );
+    const english = 'Tencent’s Mac messaging client for text, files, voice and video calls with your WeChat contacts';
+    expect(fitSummary(english, 200)).toBe(english);
+    // Latin commas separate list items, so no clause ends at them; a dangling "with" goes too.
+    expect(fitSummary(english, 76)).toBe('Tencent’s Mac messaging client for text, files, voice and video calls…');
+    expect(fitSummary(english, 57)).toBe('Tencent’s Mac messaging client for text, files, voice…');
+    expect(
+      fitSummary('Converts documents, e.g. PDF and EPUB files, into plain text for every reader you use', 50)
+    ).toBe('Converts documents, e.g. PDF and EPUB files…');
+    expect(
+      fitSummary('A fast, extensible code editor for every language — with plugins, themes and a terminal', 60)
+    ).toBe('A fast, extensible code editor for every language');
+    // A clause that fills less than half the room loses to a longer cut.
+    expect(
+      fitSummary('A fast editor; with plugins, themes, language servers and a terminal for every project', 60)
+    ).toBe('A fast editor; with plugins, themes, language servers…');
+    expect(
+      fitSummary('腾讯的 Mac 即时通信客户端，可与 WeChat 联系人收发文字消息和文件，以及进行语音和视频通话', 80)
+    ).toBe('腾讯的 Mac 即时通信客户端，可与 WeChat 联系人收发文字消息和文件');
+    expect(fitSummary('这是一段没有任何标点符号的很长很长的中文摘要用来测试按字符截断', 40)).toBe(
+      '这是一段没有任何标点符号的很长很长的中…'
+    );
+    expect(fitSummary('Anything longer than the little room it gets', 20)).toBe('');
+    expect(textWidth('Mac 微信，アプリ')).toBe(4 + 4 + 2 + 6);
+  });
+
+  it('Joins Chinese names to the Chinese text beside them and spaces Latin ones', () => {
+    const zh = translator('zh-CN');
+    const chinese = { ...app, displayName: '微信 Mac 版', summary: null };
+    expect(overviewDescription(chinese, zh)).toBe('查看微信 Mac 版在 Mac 上的安装方法、系统要求和版本记录。');
+    expect(overviewDescription({ ...chinese, disabled: true }, zh)).toBe(
+      '微信 Mac 版已被 Homebrew 停用，可以查看版本记录和同类软件。'
+    );
+    expect(versionsTitle({ displayName: '网易云音乐', version: '3.1.2' }, zh)).toBe(
+      '网易云音乐更新日志（最新 3.1.2）· OpenNavo'
+    );
+    expect(versionsDescription({ displayName: '网易云音乐', version: 'latest' }, zh, iso => iso)).toBe(
+      '查看网易云音乐每个版本更新了什么。'
+    );
+    expect(versionsTitle({ displayName: 'QQ音乐', version: '10.0' }, zh)).toBe('QQ音乐更新日志（最新 10.0）· OpenNavo');
+    expect(versionsTitle({ displayName: 'Visual Studio Code', version: '1.95.3' }, zh)).toBe(
+      'Visual Studio Code 更新日志（最新 1.95.3）· OpenNavo'
+    );
+    // Japanese templates already attach the name without a space, for either script.
+    const ja = translator('ja-JP');
+    expect(overviewDescription({ ...app, displayName: 'WeChat for Mac', summary: null }, ja)).toBe(
+      'WeChat for Macを Mac にインストールする方法、システム要件、バージョン履歴を確認できます。'
+    );
+    expect(overviewDescription({ ...app, displayName: '微信', summary: null }, ja)).toBe(
+      '微信を Mac にインストールする方法、システム要件、バージョン履歴を確認できます。'
+    );
   });
 });

@@ -108,6 +108,7 @@
     "title": "Categories",
     "metaTitle": "Mac Software Categories · OpenNavo",
     "description": "Browse Homebrew apps by what they do.",
+    "metaDescription": "Browse Mac apps in Homebrew by category, from AI and developer tools to browsers, design and productivity, with each category’s app count and subcategories.",
     "count": "{count} app | {count} apps",
     "itemMetaTitle": "Best {name} for Mac · OpenNavo",
     "seo": {
