@@ -83,6 +83,8 @@ jobs:
 
   build:
     needs: meta
+    # Manual previews intentionally skip the tag gate; do not propagate that skip past meta.
+    if: always() && needs.meta.result == 'success'
     strategy:
       fail-fast: false
       matrix:
