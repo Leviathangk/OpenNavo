@@ -14,3 +14,7 @@
 
 - El código propio de OpenNavo ahora usa GPL-3.0-only. Los componentes de terceros conservan sus licencias y avisos.
 - Esta versión incluye el archivo del código fuente correspondiente al motor ClamAV integrado.
+
+## Problema conocido
+
+- Durante una sesión de validación en macOS se produjo un fallo SQLite SIGBUS después de actualizar apps. La causa sigue sin identificarse; las pruebas de carga posteriores no lo reprodujeron.

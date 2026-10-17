@@ -14,3 +14,7 @@
 
 - OpenNavo's own source now uses GPL-3.0-only. Third-party components retain their licenses and notices.
 - Include the corresponding source archive for the bundled ClamAV engine with this release.
+
+## Known issue
+
+- One macOS validation session encountered a SQLite SIGBUS crash after app updates. The root cause remains unidentified; subsequent stress tests did not reproduce it.
