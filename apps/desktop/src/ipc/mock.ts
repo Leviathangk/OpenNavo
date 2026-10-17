@@ -208,6 +208,9 @@ function nextCheckAt(settings: AppSettings, now = Date.now()): number | null {
   return next.getTime();
 }
 
+let stopPreviousMock: (() => void) | undefined;
+import.meta.hot?.dispose(() => stopPreviousMock?.());
+
 export function installMockIpc(
   options: {
     tickMs?: number;
@@ -216,6 +219,7 @@ export function installMockIpc(
     persistSettings?: boolean;
   } = {}
 ) {
+  stopPreviousMock?.();
   const params = new URLSearchParams(typeof location === 'undefined' ? '' : location.search);
   const systemLocale =
     options.systemLocale ??
@@ -387,7 +391,6 @@ export function installMockIpc(
     }
   };
   if (persist) window.addEventListener('storage', onStorage);
-  import.meta.hot?.dispose(() => window.removeEventListener('storage', onStorage));
   const monitor = createMonitorMock({
     tickMs: options.tickMs ?? 250,
     flags,
@@ -397,7 +400,6 @@ export function installMockIpc(
       settings = normalizeSettings({ ...settings, ...patch });
     }
   });
-  import.meta.hot?.dispose(monitor.stop);
   const appStore = createAppStoreMock({ flags });
   updater = createUpdaterMock({
     enabled: flags.has('update-sources'),
@@ -429,7 +431,12 @@ export function installMockIpc(
     settings: () => settings
   });
   security = securityMock;
-  import.meta.hot?.dispose(securityMock.stop);
+  // Reinstalling the simulator must not let the previous session emit into the new stores.
+  stopPreviousMock = () => {
+    window.removeEventListener('storage', onStorage);
+    monitor.stop();
+    securityMock.stop();
+  };
   let checkedAt: number | null = noBrew ? null : Date.now() - 2 * 60 * 60 * 1000;
   // ?mock=restore: two tasks were queued on last exit (startup recovery prompt).
   if (flags.has('restore')) {

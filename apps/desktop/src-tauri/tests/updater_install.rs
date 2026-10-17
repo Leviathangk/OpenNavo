@@ -582,9 +582,22 @@ fn package_payload_is_read_only_and_limited_to_the_expected_bundle() {
     );
     info.to_file_xml(app.join("Contents/Info.plist")).unwrap();
     let pkg = root.join("fixture.pkg");
+    // pkgbuild's bundle relocation defaults differ between macOS versions.
+    let components = root.join("components.plist");
+    let mut component = plist::Dictionary::new();
+    component.insert(
+        "RootRelativeBundlePath".into(),
+        plist::Value::String("Fixture.app".into()),
+    );
+    component.insert("BundleIsRelocatable".into(), plist::Value::Boolean(false));
+    plist::Value::Array(vec![plist::Value::Dictionary(component)])
+        .to_file_xml(&components)
+        .unwrap();
     let output = std::process::Command::new("/usr/bin/pkgbuild")
         .args(["--root"])
         .arg(&files)
+        .arg("--component-plist")
+        .arg(&components)
         .args(["--install-location"])
         .arg(&root)
         .args(["--identifier", "test.opennavo.Fixture", "--version", "101"])

@@ -255,6 +255,26 @@ describe('Background scans', () => {
 });
 
 describe('Scan failures', () => {
+  it('Stops an old mock scan before installing a new session', async () => {
+    vi.useFakeTimers();
+    try {
+      history.replaceState(null, '', '/?mock=av-ready');
+      await setup('/security/scan', { tickMs: TICK });
+      await unwrap(commands.avScanStart('quick', null));
+      await setup('/security/scan', { tickMs: TICK });
+      const finished = vi.fn();
+      const unlisten = await events.avFinished.listen(finished);
+      try {
+        await vi.advanceTimersByTimeAsync(TICK * 20);
+        expect(finished).not.toHaveBeenCalled();
+      } finally {
+        unlisten();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('Names the folders macOS refused and offers the privacy setting', async () => {
     const { wrapper } = await mountPage('/security/scan', 'av-ready,av-denied-downloads');
     await button(wrapper, '快速扫描')!.trigger('click');
