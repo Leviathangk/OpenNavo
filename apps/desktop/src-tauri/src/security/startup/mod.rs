@@ -5,6 +5,8 @@
 // injectable roots/commands, no cloud upload or product branding. See UPSTREAM.md.
 mod actions;
 pub mod btm;
+#[cfg(test)]
+mod concurrency;
 pub(crate) mod plugins;
 use super::*;
 use crate::uninstall::{identity, rules::Snapshot};
@@ -990,6 +992,9 @@ pub(crate) fn override_disabled(output: Option<&str>, label: &str) -> Option<boo
             _ => None,
         })
 }
+/// Standalone inventory for processes without an open application database.
+/// Database-owning callers must use `Service::startup_scan_at`, which excludes
+/// live SQLite files and their aliases before any file is opened.
 pub fn scan(roots: &Roots, commands: &dyn Commands) -> StartupSnapshot {
     scan_guarded(roots, commands, None)
 }
@@ -1092,7 +1097,15 @@ impl Service {
             .unwrap_or_else(|| Roots::native(self.home.clone()))
     }
     pub fn startup_scan_at(&self, roots: &Roots) -> Result<StartupSnapshot, AppError> {
-        let _guard = self.mutation.lock().map_err(poison)?;
+        let _inventory = self.startup_inventory.lock().map_err(poison)?;
+        loop {
+            if let Some(result) = self.startup_scan_attempt(roots)? {
+                return Ok(result);
+            }
+        }
+    }
+    fn startup_scan_attempt(&self, roots: &Roots) -> Result<Option<StartupSnapshot>, AppError> {
+        let guard = self.mutation.lock().map_err(poison)?;
         *self.last_roots.lock().map_err(poison)? = Some(roots.clone());
         let cron_issue = self.cron_scan_issue()?;
         let previous: BTreeMap<_, _> = self
@@ -1104,9 +1117,19 @@ impl Service {
         // additions: what it finds for the first time was there all along.
         let baseline = self.database.meta("startup_baseline")?.is_some()
             && self.database.meta("startup_scanner")?.as_deref() == Some(SCANNER_VERSION);
+        let revision = self.startup_revision.load(Ordering::Relaxed);
+        drop(guard);
+        // Filesystem enumeration, signature checks and icon extraction can take minutes.
+        // Only the short reconciliation/persistence phases share the action lock.
         let own_data = self.own_data()?;
         let mut result = scan_guarded(roots, self.commands.as_ref(), Some(&own_data));
         self.owner_icons(&mut result.items);
+        let _guard = self.mutation.lock().map_err(poison)?;
+        if revision != self.startup_revision.load(Ordering::Relaxed) {
+            // Do not publish stale states or recreate removed rows/backups. Read again
+            // outside the action lock; unchanged signatures reuse their cached verdicts.
+            return Ok(None);
+        }
         if let Some(error) = cron_issue {
             log::warn!("Cron scan unavailable: {} {}", error.code, error.message);
             result.cron_error = Some(error.code);
@@ -1214,7 +1237,7 @@ impl Service {
         if changed {
             self.changed(SecurityChangeReason::Startup);
         }
-        Ok(result)
+        Ok(Some(result))
     }
 }
 

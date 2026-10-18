@@ -15,6 +15,7 @@ use std::{
 
 pub struct Prepared {
     root: PathBuf,
+    sqlite_files: own_data::OwnData,
     files: Vec<(PathBuf, Snapshot, String)>,
     known: Mutex<BTreeSet<PathBuf>>,
 }
@@ -60,7 +61,9 @@ impl Prepared {
             files::same_file(snapshot, path)
                 .map_err(|_| AppError::new("E_INSTALL_SCAN", "install_download_changed"))?;
             let actual = files::hash(
-                &mut files::open_read(path, files::scan_limit(path)?)?,
+                &mut self
+                    .sqlite_files
+                    .open_read(path, self.sqlite_files.scan_limit(path)?)?,
                 cancel,
             )?;
             if &actual != expected {
@@ -122,6 +125,7 @@ impl Service {
             files::private_dir(&root)?;
             let mut prepared = Prepared {
                 root: root.clone(),
+                sqlite_files: self.sqlite_files()?,
                 files: vec![],
                 known: Mutex::new(BTreeSet::new()),
             };
@@ -274,7 +278,9 @@ impl Service {
         log_path: &Path,
         meter: &Meter,
     ) -> Result<(), AppError> {
-        // Only configured exclusions apply to this explicitly requested private cache.
+        // This cache is intentionally inside app data. Exclude live SQLite
+        // identities before the walker probes headers, while allowing downloads.
+        let sqlite_files = &prepared.sqlite_files;
         let excluded: Vec<_> = settings
             .av_exclusions
             .iter()
@@ -290,7 +296,7 @@ impl Service {
         let mut over_budget = false;
         // Metadata first. No clamd startup, content hashing or mount is needed
         // to reject an already oversized ZIP/ZIP64/DMG workload.
-        scan::walk(
+        scan::walk_guarded(
             vec![root.to_owned()],
             &excluded,
             cancel,
@@ -298,7 +304,7 @@ impl Service {
             &|_, m| files::dataless(m),
             &mut |path| {
                 let snapshot = Snapshot::capture(path)?;
-                let file = files::open_read(path, files::scan_limit(path)?)?;
+                let file = sqlite_files.open_read(path, sqlite_files.scan_limit(path)?)?;
                 let coverage = av::container::inspect(&file).ok();
                 let bytes = coverage
                     .as_ref()
@@ -311,6 +317,7 @@ impl Service {
                 planned.push((path.to_owned(), snapshot, bytes));
                 Ok(())
             },
+            Some(sqlite_files),
         )?;
         meter.plan(total);
         if over_budget || total > files::MAX_SCAN_SIZE {
@@ -334,7 +341,7 @@ impl Service {
             files::canceled(cancel)?;
             files::same_file(&snapshot, &path)?;
             meter.begin(bytes);
-            let mut file = files::open_read(&path, files::scan_limit(&path)?)?;
+            let mut file = sqlite_files.open_read(&path, sqlite_files.scan_limit(&path)?)?;
             let hash = files::hash(&mut file, cancel)?;
             file.seek(SeekFrom::Start(0))?;
             let scanned = self.scan_installer_logged(&path, cancel, log_path, meter)?;
@@ -471,6 +478,7 @@ mod tests {
         }
         let mut prepared = Prepared {
             root: root.clone(),
+            sqlite_files: s.sqlite_files().unwrap(),
             files: vec![],
             known: Mutex::new(BTreeSet::new()),
         };

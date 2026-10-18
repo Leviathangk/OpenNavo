@@ -22,24 +22,10 @@ final class Download: NSObject, CKDownloadQueueObserver {
     }
 
     func start(update: Bool) {
-        // Authorization/purchase always occurs in this logged-in user process.
-        // Never emit or persist Apple account identifiers.
-        ISServiceProxy.genericShared().accountService.primaryAccount { [self] account in
-            DispatchQueue.main.async {
-                guard !self.terminal else { return }
-                guard account != nil else {
-                    self.fail(StoreFailure(message: "Sign in to the App Store", code: "E_MAS_NOT_SIGNED_IN"))
-                    return
-                }
-                self.purchase(update: update)
-            }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [self] in
-            if !self.terminal && self.observer == nil { self.fail(StoreFailure(message: "Account service timed out")) }
-        }
-    }
-
-    private func purchase(update: Bool) {
+        // Let CommerceKit authorize the request in this user's session, as mas does.
+        // The private primaryAccount query can return nil for a signed-in user;
+        // it must not veto an update or be treated as proof of being signed out.
+        guard !terminal, observer == nil else { return }
         observer = CKDownloadQueue.shared().add(self)
         emit(["event": "phase", "adamId": id, "phase": "purchasing", "percent": 0])
         let purchase = SSPurchase(buyParameters:

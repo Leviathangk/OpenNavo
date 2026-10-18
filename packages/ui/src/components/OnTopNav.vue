@@ -116,7 +116,7 @@ const navLink = (active?: boolean) => [
       <div class="ml-auto flex shrink-0 items-center gap-12px lg:ml-0">
         <button
           type="button"
-          class="m-0 box-border hidden h-32px w-240px items-center gap-9px rounded-default border border-solid border-line-subtle bg-component-search-bg px-11px py-0 font-sans text-12.5px text-ink-tertiary outline-none transition-colors duration-fast ease-standard hover:border-line-strong focus-visible:shadow-focus-ring md:flex"
+          class="m-0 box-border hidden h-32px w-240px items-center gap-9px rounded-default border border-solid border-line-subtle bg-component-search-bg px-11px py-0 font-sans text-12.5px text-ink-tertiary outline-none transition-colors duration-fast ease-standard hover:border-line-strong focus-visible:shadow-focus-ring md:flex lg:hidden xl:flex"
           aria-haspopup="dialog"
           @click="emit('search')"
         >
@@ -130,8 +130,9 @@ const navLink = (active?: boolean) => [
             {{ searchShortcut }}
           </kbd>
         </button>
+        <!-- Between 1024 and 1279 px the full nav needs the room, so search shrinks to its icon there too. -->
         <OnButton
-          class="md:hidden"
+          class="md:hidden lg:inline-flex xl:hidden"
           variant="ghost"
           size="sm"
           icon="search"

@@ -143,7 +143,13 @@ async function grant() {
       role="status"
     >
       <span class="min-w-0 flex-1">{{ t('security.startup.missing', { categories: missing }) }}</span>
-      <OnButton variant="secondary" size="sm" @click="grant">{{ t('security.startup.grant') }}</OnButton>
+      <OnButton
+        v-if="permissions.fullDiskAccess === 'denied' && !permissions.fullDiskAccessPending"
+        variant="secondary"
+        size="sm"
+        @click="grant"
+        >{{ t('security.startup.grant') }}</OnButton
+      >
     </div>
     <p v-if="snapshot?.cronError" class="m-0 text-12.5px text-status-warning" role="status">
       {{ t('security.startup.category.cron') }} ·

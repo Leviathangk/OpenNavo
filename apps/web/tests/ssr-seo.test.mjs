@@ -413,9 +413,16 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       };
     } else if (
       match &&
-      ['versioned-app@11', 'plus-app++', 'ordinary-app', 'thin-app', 'font-sample', 'facts-app', 'wechat'].includes(
-        match[1]
-      )
+      [
+        'versioned-app@11',
+        'plus-app++',
+        'ordinary-app',
+        'thin-app',
+        'font-sample',
+        'facts-app',
+        'wechat',
+        'guard-app'
+      ].includes(match[1])
     ) {
       const token = match[1];
       requestedTokens.add(token);
@@ -466,6 +473,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             ...(indexing[token] ? { indexing: indexing[token] } : {}),
             ...(token === 'ordinary-app' ? { articles: [roundupCard(false)] } : {}),
             ...(token === 'facts-app' ? factsApp : {}),
+            // A security-category app, which points to OpenNavo's own malware scanning.
+            ...(token === 'guard-app'
+              ? { categories: [{ slug: 'security', name: 'Security & Privacy', icon: 'lucide:shield' }] }
+              : {}),
             ...wechat
           };
     } else if (path === '/api/v1/sitemap/packages') {
@@ -1346,11 +1357,11 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       const html = await (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
       return (/<h1\b[^>]*>([\s\S]*?)<\/h1>/.exec(html)?.[1] ?? '').replace(/<[^>]*>/g, '');
     };
-    assert.equal(await heading('/'), 'Installing Mac apps should be this simple.');
-    assert.equal(await heading('/ru'), 'Устанавливать приложения для Mac должно быть так просто.');
+    assert.equal(await heading('/'), 'The Homebrew app store for Mac, with free antivirus built in.');
+    assert.equal(await heading('/ru'), 'Магазин Homebrew для Mac с бесплатным антивирусом.');
     // Chinese and Japanese join their two lines without a space.
-    assert.equal(await heading('/zh'), '装 Mac 软件，本该这么简单。');
-    assert.equal(await heading('/ja'), 'Macアプリのインストールをもっとシンプルに。');
+    assert.equal(await heading('/zh'), 'Mac 上的 Homebrew 应用商店，自带免费杀毒。');
+    assert.equal(await heading('/ja'), 'MacのHomebrewアプリストア、無料のウイルス対策つき。');
   });
   await t.test('the home page and Discover describe themselves differently', async () => {
     const description = async path =>
@@ -1363,6 +1374,29 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.ok(home && discover, prefix);
       assert.notEqual(home, discover, prefix);
     }
+  });
+  await t.test('the security page states what it does and what it cannot do, and every entry links to it', async () => {
+    const html = async path => (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+    const heading = page => (/<h1\b[^>]*>([\s\S]*?)<\/h1>/.exec(page)?.[1] ?? '').replace(/<[^>]*>/g, '');
+    const zh = await html('/zh/security');
+    assert.equal(/<title>([^<]*)<\/title>/.exec(zh)?.[1], '免费 Mac 杀毒软件：ClamAV 病毒扫描与启动项检查 · OpenNavo');
+    assert.equal(heading(zh), '免费开源的 Mac 杀毒，装软件前先查毒。');
+    // The limits are in the server-rendered answers even while their questions are collapsed.
+    assert.ok(zh.includes('实时拦截需要 Apple 的 Endpoint Security 授权'), 'real-time blocking is not promised');
+    assert.ok(zh.includes('ClamAV 对 Mac 专用恶意软件的覆盖有限'), 'detection coverage is stated');
+    assert.equal(heading(await html('/security')), 'Free, open-source antivirus for Mac, from the moment you install.');
+    // The home announcement, the top navigation and the footer all reach the page.
+    const home = await html('/zh');
+    assert.ok((home.match(/href="\/zh\/security"/g) ?? []).length >= 3, 'home links to /zh/security');
+    const statics = await (await fetch(`${origin}/__sitemap__/zh-Hans-static.xml`)).text();
+    assert.ok(statics.includes('<loc>https://example.test/zh/security</loc>'), statics);
+  });
+  await t.test('security-category apps point to the security page', async () => {
+    const html = async path => (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+    const guard = await html('/zh/apps/guard-app');
+    const promo = /<section[^>]*aria-labelledby="package-security-promo"[\s\S]*?<\/section>/.exec(guard)?.[0] ?? '';
+    assert.ok(promo.includes('href="/zh/security"'), promo || 'no security promo');
+    assert.ok(!(await html('/apps/ordinary-app')).includes('package-security-promo'), 'other apps have no promo');
   });
   await t.test('links prefetch on pointer or focus only in the built client', async () => {
     // Prefetching on visibility had Google's renderer fetch the payload of every linked page.
@@ -1506,6 +1540,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.match(await image('/categories/utilities'), /c_OgListSatori,.*label_Category/);
     assert.match(await image('/collections/editors'), /c_OgListSatori,.*label_Collection/);
     assert.match(await image('/download'), /c_OgDefaultSatori,.*variant_home/);
+    assert.match(await image('/security'), /c_OgDefaultSatori,.*variant_home/);
     assert.match(await image('/articles'), /c_OgListSatori,.*label_Articles/);
     assert.match(await image('/articles/choose-a-screenshot-app'), /c_OgListSatori,.*label_Roundup/);
     assert.match(await image('/authors/lin-wei'), /c_OgListSatori,.*label_Author/);
@@ -1751,6 +1786,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   assert.deepEqual([...requestedTokens].sort(), [
     'facts-app',
     'font-sample',
+    'guard-app',
     'ordinary-app',
     'plus-app++',
     'thin-app',

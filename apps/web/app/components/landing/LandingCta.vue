@@ -2,7 +2,10 @@
 import { OnButton, OnIcon, OnInstallCommand } from '@opennavo/ui';
 import { DESKTOP_BREW_COMMAND } from '~/utils/download';
 
-// Landing conclusion (08 §10.14): glowing client icon, heading/copy, download/browse.
+// Landing conclusion (08 §10.14): glowing client icon, heading/copy, download/browse. Pages such as /security pass
+// their own heading and copy.
+const props = defineProps<{ title?: string; body?: string }>();
+
 const { t } = useI18n();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
@@ -29,14 +32,14 @@ function onCopied(command: string) {
         />
       </div>
       <h2 class="m-0 mt-28px text-title1 text-ink-primary md:text-section" data-reveal style="--landing-delay: 80ms">
-        {{ t('landing.cta.title') }}
+        {{ props.title ?? t('landing.cta.title') }}
       </h2>
       <p
         class="m-0 mt-16px max-w-560px text-15.5px leading-[1.7] text-ink-secondary"
         data-reveal
         style="--landing-delay: 140ms"
       >
-        {{ t('landing.cta.body') }}
+        {{ props.body ?? t('landing.cta.body') }}
       </p>
       <div class="mt-32px flex flex-wrap justify-center gap-12px" data-reveal style="--landing-delay: 200ms">
         <OnButton

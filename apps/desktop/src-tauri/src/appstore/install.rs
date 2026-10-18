@@ -90,12 +90,7 @@ pub struct Runner {
 }
 impl Runner {
     pub fn native() -> Result<Self, AppError> {
-        let executable = std::env::current_exe()?
-            .parent()
-            .and_then(|p| p.parent())
-            .map(|p| p.join("Helpers/opennavo-store"))
-            .filter(|p| p.is_file())
-            .ok_or_else(|| engine("store_helper_missing"))?;
+        let executable = super::native::store_helper(&std::env::current_exe()?)?;
         Ok(Self {
             executable,
             environment: BTreeMap::new(),

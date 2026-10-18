@@ -9,10 +9,13 @@ const palette = useCommandPalette();
 const toasts = useToasts();
 const NuxtLink = resolveComponent('NuxtLink');
 
+// Security (the antivirus page) sits beside the store entries and is marked while on it.
+const route = useRoute();
 const items = computed(() =>
-  (['discover', 'categories', 'rankings', 'collections'] as const).map(key => ({
+  (['discover', 'categories', 'rankings', 'collections', 'security'] as const).map(key => ({
     label: t(`nav.${key}`),
-    href: localePath(`/${key}`)
+    href: localePath(`/${key}`),
+    active: key === 'security' && route.path === localePath('/security')
   }))
 );
 </script>

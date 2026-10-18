@@ -5,7 +5,7 @@ import { OnButton, OnChip, OnIcon, OnInstallCommand, OnKeyValueList, useUiMessag
 import { trackEvent } from '~/utils/analytics';
 import { DESKTOP_BREW_COMMAND } from '~/utils/download';
 
-// Download (05 §7.4, 08 §10.14): client icon on glow/orbits, Universal DMG, three feature columns,
+// Download (05 §7.4, 08 §10.14): client icon on glow/orbits, Universal DMG, six feature cards,
 // install steps beside release details, latest notes.
 const { t, locale } = useI18n();
 const api = useApi();
@@ -46,10 +46,19 @@ const changelog = computed(() => {
   return recent.filter(entry => entry.notes).slice(0, 5);
 });
 
+const FEATURE_ICONS = {
+  install: 'download',
+  updates: 'circle-arrow-down',
+  security: 'shield-check',
+  uninstall: 'trash',
+  cleanup: 'eraser',
+  monitor: 'activity'
+} as const;
+
 const features = computed(() =>
-  (['install', 'updates', 'history'] as const).map(key => ({
+  (Object.keys(FEATURE_ICONS) as (keyof typeof FEATURE_ICONS)[]).map(key => ({
     key,
-    icon: { install: 'download', updates: 'circle-arrow-down', history: 'rotate-ccw-clock' }[key],
+    icon: FEATURE_ICONS[key],
     title: t(`download.features.${key}.title`),
     body: t(`download.features.${key}.body`)
   }))

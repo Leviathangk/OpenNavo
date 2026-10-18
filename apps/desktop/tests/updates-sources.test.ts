@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { createOnUi } from '@opennavo/ui';
 import { i18n } from '@/i18n';
-import type { OutdatedItem } from '@/ipc/bindings';
+import type { OutdatedItem, Task } from '@/ipc/bindings';
 import { commands } from '@/ipc/client';
 import RunningAppsConfirm from '@/components/shell/RunningAppsConfirm.vue';
 import MajorConfirm from '@/components/updates/MajorConfirm.vue';
@@ -13,7 +13,7 @@ import AppStorePage from '@/pages/AppStorePage.vue';
 import UpdatesPage from '@/pages/UpdatesPage.vue';
 import UpdatesRail from '@/components/rails/UpdatesRail.vue';
 import { useToasts } from '@/composables/useToasts';
-import { startLocalState, useSettingsStore, useUpdatesStore } from '@/stores';
+import { startLocalState, useSettingsStore, useTasksStore, useUpdatesStore } from '@/stores';
 import { updateRequest } from '@/stores/updates';
 import { setup } from './helpers';
 import type { TestContext } from './helpers';
@@ -141,6 +141,57 @@ async function chooseMenu(row: DOMWrapper<Element> | undefined, label: string) {
 }
 
 describe('Updates from every source', () => {
+  it('Explains a missing App Store component without blaming the account or creating a task', async () => {
+    const wrapper = await mountUpdates();
+    const previousHistory = activeContext!.state.history.length;
+    vi.spyOn(commands, 'taskEnqueue').mockResolvedValueOnce({
+      status: 'error',
+      error: { code: 'E_MAS_HELPER_MISSING', message: 'store_helper_missing', detail: null }
+    });
+    await button(rowOf(wrapper, 'Keynote'), '更新')!.trigger('click');
+    await flushPromises();
+    const toast = useToasts().items.value.at(-1);
+    expect(toast?.description).toContain('当前应用缺少 App Store 下载组件');
+    expect(toast?.description).toContain('重新安装完整的 OpenNavo 应用');
+    expect(toast?.description).not.toContain('登录');
+    expect(useUpdatesStore().masSignedOut).toBe(false);
+    expect(activeContext!.state.history).toHaveLength(previousHistory);
+    expect(button(rowOf(wrapper, 'Keynote'), '更新')).toBeTruthy();
+  });
+
+  it('Treats a legacy account preflight failure as a past attempt and allows retry', async () => {
+    const wrapper = await mountUpdates();
+    const failed: Task = {
+      ...activeContext!.state.history[0]!,
+      id: 'legacy-account-preflight',
+      op: 'upgrade',
+      target: { kind: 'mas', token: '409183694' },
+      targetName: 'Keynote',
+      options: { source: 'mas' },
+      state: 'failed',
+      error: { code: 'E_MAS_NOT_SIGNED_IN', message: 'Sign in to the App Store', detail: null },
+      finishedAt: Date.now()
+    };
+    activeContext!.state.history.unshift(failed);
+    useTasksStore().applyUpdate(failed);
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toContain('上次 App Store 更新未能确认账户状态');
+    expect(wrapper.text()).toContain('无法确认 App Store 账户状态');
+    expect(wrapper.text()).not.toContain('App Store 没有登录');
+    expect(wrapper.text()).not.toContain('请先在 App Store 里登录');
+    const enqueue = vi.spyOn(commands, 'taskEnqueue');
+    await button(rowOf(wrapper, 'Keynote'), '更新')!.trigger('click');
+    await flushPromises();
+    expect(enqueue).toHaveBeenCalledWith(
+      'upgrade',
+      { kind: 'mas', token: '409183694' },
+      expect.objectContaining({ source: 'mas' }),
+      'manual'
+    );
+    await vi.waitFor(() => expect(useUpdatesStore().masSignedOut).toBe(false));
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
   it('Labels each row with its source and what to expect before updating', async () => {
     const wrapper = await mountUpdates();
     expect(rowOf(wrapper, 'Keynote')?.text()).toContain('App Store');

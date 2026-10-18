@@ -33,8 +33,11 @@ const autoLabel = computed(() =>
 );
 const items = computed(() => [
   { key: 'auto', label: autoLabel.value },
-  { key: 'separator', label: '', separator: true },
-  ...COMMON.map(code => ({ key: code, label: masRegionName(code, appLocale.value) }))
+  ...COMMON.map((code, index) => ({
+    key: code,
+    label: masRegionName(code, appLocale.value),
+    separator: index === 0
+  }))
 ]);
 const label = computed(() =>
   current.value === 'auto' ? autoLabel.value : masRegionName(current.value, appLocale.value)

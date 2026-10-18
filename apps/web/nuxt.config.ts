@@ -165,6 +165,7 @@ export default defineNuxtConfig({
       // Follows Discover, whose Recently Updated section it lists in full.
       '/recent': { swr: 300 },
       '/download': { swr: 600 },
+      '/security': { swr: 900 },
       '/apps/**': { swr: 600 },
       // Publishing, withdrawing and translations purge these pages (WP4), so the cache can be long.
       '/articles': { swr: 600 },

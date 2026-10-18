@@ -26,6 +26,7 @@ describe('Web route types', () => {
       ['/authors/lin-wei', 'author'],
       ['/authors', 'other'],
       ['/download', 'download'],
+      ['/ja/security', 'security'],
       ['/search?q=editor', 'search'],
       ['/robots.txt', 'robots'],
       ['/sitemap_index.xml', 'sitemap'],

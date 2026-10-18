@@ -84,7 +84,7 @@ export const useUpdatesStore = defineStore('updates', () => {
   const pins = new Map<string, { pinned: boolean; at: number }>();
   const status = ref<UpdatesStatus | null>(null);
   const requested = ref(false);
-  /** The last App Store task failed because no Apple ID is signed in; cleared by the next one that succeeds. */
+  /** Legacy account-preflight failure from the last task, not a live sign-in check. */
   const masSignedOut = ref(false);
   const checking = computed(() => requested.value || Boolean(status.value?.checking));
   const checkedAt = computed(() => status.value?.checkedAt ?? null);

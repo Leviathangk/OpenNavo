@@ -6,7 +6,7 @@ import type { GetState } from '@opennavo/ui';
 
 // Hero desktop demo (08 §10.14): use Discover's 1120×680 layout (mockup 02), real shared components/homepage data,
 // then scale to container width, preserving the same scene on mobile. Treat as one image for screen readers; inner content is inert.
-// Loop: second card Get → progress → Open, with toolbar task progress.
+// Loop: second card Get → scan the download (the desktop install scan) → progress → Open, with the toolbar task pill.
 const props = defineProps<{
   apps: readonly PackageSummary[];
   categories: readonly { slug: string; name: string }[];
@@ -14,9 +14,10 @@ const props = defineProps<{
 
 const WIDTH = 1120;
 const TARGET = 1;
-// Steps: 0 Get (representative frame), 1–5 installing, 6 installed.
-const DURATIONS = [2600, 280, 280, 280, 280, 360, 2800] as const;
-const PROGRESS = [0, 8, 34, 61, 86, 100, 100] as const;
+// Steps: 0 Get (representative frame), 1 scanning the download, 2–6 installing, 7 installed.
+const DURATIONS = [2600, 1200, 280, 280, 280, 280, 360, 2800] as const;
+const PROGRESS = [0, 0, 8, 34, 61, 86, 100, 100] as const;
+const SCANNING = 1;
 
 const { t, locale } = useI18n();
 const messages = useUiMessages();
@@ -30,11 +31,13 @@ const height = computed(() => (cards.value.length > 3 ? 680 : 520));
 const featured = computed(() => props.apps[0]);
 const target = computed(() => cards.value[TARGET]);
 const progress = computed(() => PROGRESS[step.value] ?? 0);
-const running = computed(() => step.value >= 1 && step.value <= 5);
+const scanning = computed(() => step.value === SCANNING);
+const running = computed(() => step.value > SCANNING && step.value <= 6);
+const busy = computed(() => scanning.value || running.value);
 
 function stateOf(index: number): GetState {
   if (index !== TARGET || step.value === 0) return 'get';
-  return running.value ? 'running' : 'open';
+  return busy.value ? 'running' : 'open';
 }
 
 const chips = computed(() => [t('home.allCategories'), ...props.categories.slice(0, 5).map(item => item.name)]);
@@ -60,7 +63,9 @@ const nav = computed(() => [
         icon: 'lucide:circle-arrow-down',
         badge: 3
       },
-      { key: 'history', label: t('landing.window.history'), icon: 'lucide:rotate-ccw-clock' }
+      { key: 'cleanup', label: t('landing.window.cleanup'), icon: 'lucide:eraser' },
+      { key: 'monitor', label: t('landing.window.monitor'), icon: 'lucide:activity' },
+      { key: 'security', label: t('landing.window.security'), icon: 'lucide:shield-check' }
     ]
   }
 ]);
@@ -129,28 +134,38 @@ const RING = 2 * Math.PI * 7;
                 </span>
                 <span
                   class="landing-window-task box-border flex h-32px items-center gap-8px rounded-full border border-solid border-line-subtle bg-component-search-bg pl-8px pr-12px text-12px text-ink-secondary"
-                  :class="running ? 'opacity-100' : 'opacity-0'"
+                  :class="busy ? 'opacity-100' : 'opacity-0'"
                 >
-                  <svg viewBox="0 0 18 18" class="h-18px w-18px -rotate-90">
-                    <circle cx="9" cy="9" r="7" fill="none" stroke-width="2" class="stroke-accent-coral-subtle" />
-                    <circle
-                      cx="9"
-                      cy="9"
-                      r="7"
-                      fill="none"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      class="landing-window-ring stroke-brand-coral"
-                      :stroke-dasharray="RING"
-                      :stroke-dashoffset="RING * (1 - progress / 100)"
-                    />
-                  </svg>
-                  <span class="font-600 text-ink-primary tabular-nums">{{
-                    formatPercent(progress / 100, { locale: formattingLocale })
-                  }}</span>
-                  <span class="max-w-180px truncate">{{
-                    t('landing.window.installing', { name: target?.displayName })
-                  }}</span>
+                  <template v-if="scanning">
+                    <span class="grid h-18px w-18px place-items-center text-status-success">
+                      <OnIcon name="shield-check" :size="15" />
+                    </span>
+                    <span class="max-w-220px truncate">{{
+                      t('landing.window.scanning', { name: target?.displayName })
+                    }}</span>
+                  </template>
+                  <template v-else>
+                    <svg viewBox="0 0 18 18" class="h-18px w-18px -rotate-90">
+                      <circle cx="9" cy="9" r="7" fill="none" stroke-width="2" class="stroke-accent-coral-subtle" />
+                      <circle
+                        cx="9"
+                        cy="9"
+                        r="7"
+                        fill="none"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        class="landing-window-ring stroke-brand-coral"
+                        :stroke-dasharray="RING"
+                        :stroke-dashoffset="RING * (1 - progress / 100)"
+                      />
+                    </svg>
+                    <span class="font-600 text-ink-primary tabular-nums">{{
+                      formatPercent(progress / 100, { locale: formattingLocale })
+                    }}</span>
+                    <span class="max-w-180px truncate">{{
+                      t('landing.window.installing', { name: target?.displayName })
+                    }}</span>
+                  </template>
                 </span>
               </div>
 

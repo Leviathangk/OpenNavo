@@ -8,7 +8,7 @@ export const VERSION_PAGE_MIN_NOTES = 3;
 const LOCALE_PREFIXES = LOCALES.map(locale => LOCALE_METADATA[locale].prefix).filter(Boolean);
 const APP_TABS = new Set(['versions', 'dependencies', 'details']);
 const LISTS = new Set(['apps', 'categories', 'collections', 'rankings', 'discover']);
-const STATIC_PAGES = new Set(['download', 'about', 'feedback', 'brewfile', 'search']);
+const STATIC_PAGES = new Set(['download', 'security', 'about', 'feedback', 'brewfile', 'search']);
 
 export function webRouteType(path: string): string {
   let clean = path.split('?', 1)[0] || '/';

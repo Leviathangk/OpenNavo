@@ -247,6 +247,7 @@ impl Service {
     pub fn quarantine_restore(&self, ids: Vec<String>) -> Result<ActOutcome, AppError> {
         valid_ids(&ids)?;
         let _guard = self.mutation.lock().map_err(poison)?;
+        self.startup_revision.fetch_add(1, Ordering::Relaxed);
         let mut outcome = ActOutcome::default();
         let mut pending = vec![];
         for id in ids {
@@ -411,6 +412,9 @@ impl Service {
     ) -> Result<ActOutcome, AppError> {
         valid_ids(&ids)?;
         let _guard = self.mutation.lock().map_err(poison)?;
+        if matches!(action, FindingAction::Quarantine | FindingAction::Delete) {
+            self.startup_revision.fetch_add(1, Ordering::Relaxed);
+        }
         let mut results = std::collections::BTreeMap::<String, Result<(), AppError>>::new();
         let mut pending = vec![];
         let mut pending_ids = std::collections::BTreeSet::new();

@@ -3,7 +3,8 @@ import type { PackageSummary } from '@opennavo/api';
 import { LOCALES, formatCount } from '@opennavo/shared';
 import { OnAppIcon, OnButton, OnIcon } from '@opennavo/ui';
 
-// Catalog scale (08 §10.14): title/live count-up, two opposing app-icon rows, Rankings/Discover links.
+// App store (08 §10.14): the store right under the hero, ahead of security — title with the catalog count, live
+// count-up stats, two opposing app-icon rows, the three places apps come from, then Rankings/Discover links.
 // Icon wall is decorative, screen-reader-hidden and outside tab order; mouse links open details, hover pauses.
 const props = defineProps<{
   apps: readonly PackageSummary[];
@@ -23,6 +24,13 @@ const title = computed(() =>
     { plural: props.count }
   )
 );
+
+// Where apps come from (desktop search mixes all three): Homebrew casks, the Mac App Store, developer downloads.
+const SOURCES = [
+  { key: 'homebrew', icon: 'package' },
+  { key: 'appStore', icon: 'layout-grid' },
+  { key: 'link', icon: 'globe' }
+] as const;
 
 const stats = computed(() =>
   [
@@ -95,6 +103,27 @@ const rows = computed(() =>
         </div>
       </div>
     </div>
+
+    <ul class="m-0 mx-auto mt-40px box-border grid max-w-1240px list-none gap-12px px-24px md:grid-cols-3">
+      <li
+        v-for="(source, index) in SOURCES"
+        :key="source.key"
+        class="flex flex-col gap-10px rounded-big border border-solid border-line-subtle bg-surface-card px-20px pb-20px pt-18px"
+        data-reveal
+        :style="{ '--landing-delay': `${index * 90}ms` }"
+      >
+        <span
+          class="grid h-36px w-36px place-items-center rounded-default bg-accent-salmon-subtle text-brand-salmon"
+          aria-hidden="true"
+        >
+          <OnIcon :name="source.icon" :size="18" />
+        </span>
+        <h3 class="m-0 text-15px font-600 text-ink-primary">{{ t(`landing.catalog.sources.${source.key}.title`) }}</h3>
+        <p class="m-0 text-13.5px leading-[1.65] text-ink-secondary">
+          {{ t(`landing.catalog.sources.${source.key}.body`) }}
+        </p>
+      </li>
+    </ul>
 
     <div class="mt-36px flex flex-wrap justify-center gap-12px px-24px" data-reveal>
       <OnButton variant="secondary" shape="round" :href="localePath('/rankings')" :link-as="NuxtLink">

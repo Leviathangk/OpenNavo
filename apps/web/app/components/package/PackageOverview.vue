@@ -15,8 +15,9 @@ const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 
 // Overview (08 §10.5): shared OnPackageOverview (ADR-017); left screenshots → introduction → latest release →
 // install and uninstall → sourced facts → confirmed alternatives → questions (WP9, web only) → caveats.
-// Right: install command → information → monthly installs → similar apps. Link apps (store/security plan §4)
-// show their download panel instead of the command and have no install counts.
+// Right: install command → information → monthly installs → OpenNavo's own malware scanning on security-category
+// apps → similar apps. Link apps (store/security plan §4) show their download panel instead of the command and have
+// no install counts.
 const props = defineProps<{ kind: PackageKind }>();
 
 const route = useRoute();
@@ -30,6 +31,11 @@ const NuxtLink = resolveComponent('NuxtLink');
 const { data: pkg, token } = await usePackage(props.kind);
 // A cask route can resolve to a link app (usePackage); related apps follow what was found.
 const kind = computed(() => pkg.value?.kind ?? props.kind);
+const isSecurityApp = computed(
+  () =>
+    pkg.value?.primaryCategory?.slug === 'security' ||
+    Boolean(pkg.value?.categories?.some(category => category.slug === 'security'))
+);
 
 const { data: related } = await useAsyncData(
   () => `related:${kind.value}:${token.value}:${locale.value}`,
@@ -239,6 +245,7 @@ usePageSeo({
       </template>
       <template #aside>
         <MonthlyInstalls v-if="pkg.kind !== 'link'" :installs="pkg.installs" />
+        <PackageSecurityPromo v-if="isSecurityApp" />
       </template>
     </OnPackageOverview>
   </div>

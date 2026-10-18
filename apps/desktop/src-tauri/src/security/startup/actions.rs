@@ -12,6 +12,17 @@ impl Service {
     ) -> Result<ActOutcome, AppError> {
         valid_ids(&ids)?;
         let _guard = self.mutation.lock().map_err(poison)?;
+        if matches!(
+            action,
+            StartupItemAction::Enable
+                | StartupItemAction::Disable
+                | StartupItemAction::Remove
+                | StartupItemAction::Restore
+                | StartupItemAction::MarkReviewed
+        ) {
+            // Invalidate even failed attempts: an OS change can precede an error.
+            self.startup_revision.fetch_add(1, Ordering::Relaxed);
+        }
         let mut outcome = ActOutcome::default();
         let mut pending = vec![];
         for id in ids {
@@ -269,6 +280,7 @@ impl Service {
     /// way the next scan will: its own row, not reported as a new startup item.
     pub fn startup_login_add(&self, path: PathBuf) -> Result<StartupItem, AppError> {
         let _guard = self.mutation.lock().map_err(poison)?;
+        self.startup_revision.fetch_add(1, Ordering::Relaxed);
         let app: PathBuf = path.components().collect();
         let own_data = self.own_data()?;
         if !app.is_absolute()

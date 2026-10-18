@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { PackageSummary } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
-import { OnAppIcon, OnBadge, OnButton, OnHighlightText, OnIcon } from '@opennavo/ui';
+import { OnAppIcon, OnButton, OnHighlightText, OnIcon } from '@opennavo/ui';
 import type { OnAppIconSize } from '@opennavo/ui';
 
-// Hero (08 §10.14): mockup glow/concentric dashed circles with slow breathing/rotation, badge, two-line heading, introduction, download/browse,
+// Hero (08 §10.14): mockup glow/concentric dashed circles with slow breathing/rotation, announcement pill, two-line heading, introduction, download/browse,
 // then desktop demo. Wide screens show real floating app icons with subtle pointer parallax; text and window geometry remain static from first paint.
 const props = defineProps<{
   apps: readonly PackageSummary[];
@@ -17,15 +17,8 @@ const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const formattingLocale = computed(() => toAppLocale(locale.value));
 
-// The heading's two lines read as one sentence. Vue drops whitespace-only text between the block
-// spans, so the separating space ends the first line (on screen it vanishes at the line end);
-// Chinese and Japanese lines join without one.
-const titleLead = computed(() => {
-  const title = t('landing.hero.title');
-  return /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u3000-\u303f\uff00-\uffef]$/u.test(title)
-    ? title
-    : `${title} `;
-});
+// The heading's two lines read as one sentence (headingLead).
+const titleLead = computed(() => headingLead(t('landing.hero.title')));
 
 const lede = computed(() =>
   props.count
@@ -120,9 +113,19 @@ useLandingParallax(root);
     <div
       class="relative mx-auto box-border flex max-w-1160px flex-col items-center px-24px pt-64px text-center md:pt-96px"
     >
-      <span>
-        <OnBadge star>{{ t('landing.hero.badge') }}</OnBadge>
-      </span>
+      <!-- Announcement pill: the antivirus is the newest headline feature and links to /security. -->
+      <NuxtLink
+        :to="localePath('/security')"
+        class="landing-announce box-border inline-flex min-h-32px max-w-full items-center gap-8px rounded-full border border-solid border-line-default bg-surface-card py-3px pl-3px pr-12px text-13px text-ink-secondary no-underline outline-none transition-colors duration-fast ease-standard hover:border-line-strong hover:text-ink-primary focus-visible:shadow-focus-ring"
+      >
+        <span
+          class="inline-flex h-24px shrink-0 items-center gap-5px rounded-full bg-status-success-subtle px-9px text-12px font-600 text-status-success"
+        >
+          <OnIcon name="shield-check" :size="13" />{{ t('landing.hero.announceTag') }}
+        </span>
+        <span class="min-w-0 truncate">{{ t('landing.hero.announce') }}</span>
+        <OnIcon name="arrow-right" :size="13" class="shrink-0" />
+      </NuxtLink>
       <h1 class="landing-hero-title m-0 mt-24px text-display text-ink-primary md:mt-28px md:text-section lg:text-hero">
         <span class="block">{{ titleLead }}</span>
         <span class="block text-ink-tertiary">{{ t('landing.hero.titleAccent') }}</span>

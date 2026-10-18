@@ -24,6 +24,13 @@ impl Service {
         let database = self.database.with(|c| Ok(c.path().map(PathBuf::from)))?;
         OwnData::new(database.as_deref(), &self.data)
     }
+
+    /// Internal installer caches and mounted payloads live inside app data and
+    /// must remain readable, but never through an alias of a live SQLite file.
+    pub(super) fn sqlite_files(&self) -> Result<OwnData, AppError> {
+        let database = self.database.with(|c| Ok(c.path().map(PathBuf::from)))?;
+        OwnData::sqlite(database.as_deref())
+    }
 }
 
 fn protected() -> AppError {
@@ -32,25 +39,13 @@ fn protected() -> AppError {
 
 impl OwnData {
     fn new(database: Option<&Path>, security: &Path) -> Result<Self, AppError> {
-        let mut roots = vec![security.to_owned()];
-        let mut sqlite = vec![];
-        if let Some(database) = database.filter(|p| !p.as_os_str().is_empty()) {
-            if !database.is_absolute() {
-                return Err(AppError::new("E_PROTECTED", "security_database_path"));
-            }
-            roots.push(database.parent().ok_or_else(protected)?.to_owned());
-            for suffix in ["", "-wal", "-shm", "-journal"] {
-                let mut path = database.as_os_str().to_owned();
-                path.push(suffix);
-                sqlite.push(PathBuf::from(path));
-            }
+        let mut result = Self::sqlite(database)?;
+        result.roots.push(security.to_owned());
+        if let Some(database) = result.sqlite.first() {
+            result
+                .roots
+                .push(database.parent().ok_or_else(protected)?.to_owned());
         }
-        let mut result = Self {
-            roots,
-            directories: BTreeSet::new(),
-            sqlite,
-            sqlite_inodes: BTreeSet::new(),
-        };
         for root in &result.roots {
             if let Some(m) = metadata_if_present(root)? {
                 // Follow only the trusted root's directory alias for its identity;
@@ -66,6 +61,27 @@ impl OwnData {
                 result.directories.insert((m.dev(), m.ino()));
             }
         }
+        Ok(result)
+    }
+
+    fn sqlite(database: Option<&Path>) -> Result<Self, AppError> {
+        let mut sqlite = vec![];
+        if let Some(database) = database.filter(|p| !p.as_os_str().is_empty()) {
+            if !database.is_absolute() {
+                return Err(AppError::new("E_PROTECTED", "security_database_path"));
+            }
+            for suffix in ["", "-wal", "-shm", "-journal"] {
+                let mut path = database.as_os_str().to_owned();
+                path.push(suffix);
+                sqlite.push(PathBuf::from(path));
+            }
+        }
+        let mut result = Self {
+            roots: vec![],
+            directories: BTreeSet::new(),
+            sqlite,
+            sqlite_inodes: BTreeSet::new(),
+        };
         for path in &result.sqlite {
             if let Some(m) = metadata_if_present(path)? {
                 result.sqlite_inodes.insert((m.dev(), m.ino()));
@@ -189,15 +205,19 @@ mod tests {
     // A separate process must still fail to acquire each POSIX record lock.
     // Merely asserting that the AV visitor was not called misses magic reads.
     fn assert_locked(paths: &[PathBuf]) {
+        assert_locked_at(paths, 0);
+    }
+
+    fn assert_locked_at(paths: &[PathBuf], offset: u64) {
         let output = Command::new("/usr/bin/python3")
             .args([
                 "-c",
                 r#"
 import fcntl, os, sys
-for path in sys.argv[1:]:
+for path in sys.argv[1:-1]:
     fd = os.open(path, os.O_RDWR)
     try:
-        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB, 1)
+        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB, 1, int(sys.argv[-1]))
     except BlockingIOError:
         pass
     else:
@@ -207,6 +227,7 @@ for path in sys.argv[1:]:
 "#,
             ])
             .args(paths)
+            .arg(offset.to_string())
             .output()
             .unwrap();
         assert!(
@@ -347,6 +368,82 @@ for path in sys.argv[1:]:
     }
 
     #[test]
+    fn installer_reads_preserve_sqlite_locks_inside_the_private_cache() {
+        let (_temp, service, _) = super::super::tests::fixture();
+        let database = service
+            .database
+            .with(|c| Ok(PathBuf::from(c.path().unwrap())))
+            .unwrap();
+        let shm = database.with_file_name("opennavo.db-shm");
+        let cache = service.data.join("install-cache/fixture");
+        fs::create_dir_all(&cache).unwrap();
+        for suffix in ["-shm", "-wal", ""] {
+            let source = database.with_file_name(format!("opennavo.db{suffix}"));
+            let alias = cache.join("download.zip");
+            fs::hard_link(&source, &alias).unwrap();
+            assert_locked_at(std::slice::from_ref(&shm), 128);
+            let result = service.scan_installer_file(&alias, &AtomicBool::new(false));
+            assert_locked_at(std::slice::from_ref(&shm), 128);
+            assert_eq!(result.err().unwrap().message, "security_own_data");
+            fs::remove_file(alias).unwrap();
+        }
+    }
+
+    #[test]
+    fn preinstall_cache_walk_preserves_sqlite_locks() {
+        use crate::{brew::pty::Execution, model::TaskOp};
+        use std::{os::unix::fs::PermissionsExt, sync::Arc, time::Duration};
+        let (_temp, service, _) = super::super::tests::fixture();
+        super::super::tests::fake_engine(&service);
+        service.settings.write().unwrap().av_consent = true;
+        let database = service
+            .database
+            .with(|c| Ok(PathBuf::from(c.path().unwrap())))
+            .unwrap();
+        let shm = database.with_file_name("opennavo.db-shm");
+        let brew = service.home.join("fake-brew");
+        fs::write(
+            &brew,
+            r#"#!/usr/bin/env python3
+import os, pathlib, sys
+if sys.argv[1] == 'fetch':
+    root = pathlib.Path(os.environ['HOMEBREW_CACHE'])
+    os.link(os.environ['FIXTURE_SHM'], root / 'alias.zip')
+    (root / 'ordinary.zip').write_text('safe')
+"#,
+        )
+        .unwrap();
+        fs::set_permissions(&brew, fs::Permissions::from_mode(0o700)).unwrap();
+        let mut request = Execution {
+            executable: brew,
+            args: vec!["install".into(), "--formula".into(), "fixture".into()],
+            env: std::collections::BTreeMap::from([
+                ("PATH".into(), "/usr/bin:/bin".into()),
+                ("FIXTURE_SHM".into(), shm.to_string_lossy().into_owned()),
+            ]),
+            log_path: service.home.join("task.log"),
+            op: TaskOp::Install,
+            cancel: Arc::new(AtomicBool::new(false)),
+            grace: Duration::from_millis(100),
+            cache_dir: None,
+            download_total: None,
+        };
+        assert_locked_at(std::slice::from_ref(&shm), 128);
+        let id = uuid::Uuid::now_v7().to_string();
+        let prepared = service.prepare_install(&id, &mut request, |_, _| {});
+        assert_locked_at(std::slice::from_ref(&shm), 128);
+        let prepared = prepared.unwrap().unwrap();
+        let result = service.install_scan_get(&id).unwrap().unwrap();
+        assert_eq!(result.files_scanned, 1);
+        assert_eq!(
+            result.av_skipped,
+            Some(super::super::AvSkipReason::Excluded)
+        );
+        prepared.revalidate(&AtomicBool::new(false)).unwrap();
+        assert_locked_at(&[shm], 128);
+    }
+
+    #[test]
     fn startup_lsof_and_ps_probes_preserve_own_data_locks() {
         use super::super::{Commands, startup};
         use std::sync::Arc;
@@ -371,22 +468,81 @@ for path in sys.argv[1:]:
             .with(|c| Ok(PathBuf::from(c.path().unwrap())))
             .unwrap();
         let canary = database.parent().unwrap().join("locked-data");
+        let sidecar = |suffix: &str| {
+            let mut path = database.as_os_str().to_owned();
+            path.push(suffix);
+            PathBuf::from(path)
+        };
+        let wal = sidecar("-wal");
+        let shm = sidecar("-shm");
+        // SQLite holds the WAL dead-man-switch lock at byte 128. Opening and
+        // closing SHM for a Mach-O header probe drops that real lock, allowing
+        // another SQLite process to truncate our still-mapped WAL index.
+        // Only the child opens SHM; the database-owning process must not do so.
+        assert_locked_at(std::slice::from_ref(&shm), 128);
         let file = File::create(&canary).unwrap();
         file.set_len(512).unwrap();
         lock(&file);
         let alias = service.home.join("aliased-data");
         fs::hard_link(&canary, &alias).unwrap();
-        Arc::get_mut(&mut service).unwrap().commands =
-            Arc::new(ProcessFiles(vec![database, canary.clone(), alias]));
-        let snapshot = service
-            .startup_scan_at(&startup::Roots {
-                home: service.home.clone(),
-                root: temp.path().canonicalize().unwrap().join("system"),
-                applications: vec![],
-            })
-            .unwrap();
-        assert!(snapshot.items.is_empty());
-        assert_locked(&[canary]);
+        let mut candidates = vec![
+            database.clone(),
+            wal.clone(),
+            shm.clone(),
+            canary.clone(),
+            alias,
+        ];
+        for (index, source) in [&database, &wal, &shm].into_iter().enumerate() {
+            let alias = service.home.join(format!("sqlite-alias-{index}"));
+            fs::hard_link(source, &alias).unwrap();
+            candidates.push(alias);
+        }
+        Arc::get_mut(&mut service).unwrap().commands = Arc::new(ProcessFiles(candidates));
+        let roots = startup::Roots {
+            home: service.home.clone(),
+            root: temp.path().canonicalize().unwrap().join("system"),
+            applications: vec![],
+        };
+        let before = fs::metadata(&shm).unwrap();
+        for round in 0..3 {
+            let value = round.to_string();
+            service.database.set_meta("lock_probe", &value).unwrap();
+            let snapshot = service.startup_scan_at(&roots).unwrap();
+            assert!(snapshot.items.is_empty());
+            assert_locked(std::slice::from_ref(&canary));
+            // Fail on lock loss before launching SQLite: otherwise this regression
+            // could deliberately truncate the parent's mapping and crash libtest.
+            assert_locked_at(std::slice::from_ref(&shm), 128);
+            let reader = Command::new("/usr/bin/sqlite3")
+                .args(["-batch", "-readonly"])
+                .arg(&database)
+                .arg("SELECT count(*) FROM tasks;")
+                .output()
+                .unwrap();
+            assert!(
+                reader.status.success(),
+                "{}",
+                String::from_utf8_lossy(&reader.stderr)
+            );
+            assert_eq!(String::from_utf8_lossy(&reader.stdout).trim(), "0");
+            let after = fs::metadata(&shm).unwrap();
+            assert_eq!(
+                (after.dev(), after.ino(), after.len()),
+                (before.dev(), before.ino(), before.len())
+            );
+            assert_locked_at(std::slice::from_ref(&shm), 128);
+            assert_eq!(
+                service.database.meta("lock_probe").unwrap().as_deref(),
+                Some(value.as_str())
+            );
+        }
+        assert_eq!(
+            service
+                .database
+                .with(|c| Ok(c.query_row("PRAGMA integrity_check", [], |r| r.get::<_, String>(0))?))
+                .unwrap(),
+            "ok"
+        );
     }
     #[test]
     fn live_startup_download_btm_and_bundle_reads_preserve_data_locks() {

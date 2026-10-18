@@ -1,8 +1,8 @@
 {
   "site": {
     "name": "OpenNavo",
-    "title": "OpenNavo — a loja de apps Homebrew para Mac",
-    "description": "Explore {count} app para Mac, leia as notas de versão e instale ou atualize com um clique. | Explore {count} apps para Mac, leia as notas de versão e instale ou atualize com um clique."
+    "title": "OpenNavo — loja de apps Homebrew e antivírus grátis para Mac",
+    "description": "A loja de apps Homebrew para Mac: instale e atualize {count} app com um clique, com verificação de vírus antes. Grátis e de código aberto. | A loja de apps Homebrew para Mac: instale e atualize {count} apps com um clique, com verificação de vírus antes. Grátis e de código aberto."
   },
   "nav": {
     "label": "Navegação principal",
@@ -12,6 +12,7 @@
     "recent": "Recém-atualizados",
     "articles": "Artigos",
     "collections": "Coleções",
+    "security": "Segurança",
     "download": "Baixar app",
     "search": "Buscar apps",
     "switchLanguage": "Inglês",
@@ -34,7 +35,7 @@
   },
   "home": {
     "introTitle": "OpenNavo: a loja de apps Homebrew para Mac",
-    "introBody": "{count} app, cada um com descrição e notas de versão. Instale e atualize tudo com um clique pelo app para macOS. | {count} apps, cada um com descrição e notas de versão. Instale e atualize tudo com um clique pelo app para macOS.",
+    "introBody": "{count} app, com descrição e notas de versão. Instale e atualize com um clique pelo app para macOS, que verifica se há vírus antes de instalar. | {count} apps, cada um com descrição e notas de versão. Instale e atualize com um clique pelo app para macOS, que verifica se há vírus antes de instalar.",
     "introDismiss": "Fechar apresentação",
     "featured": "Destaques da semana",
     "popularApps": "Apps populares",
@@ -53,7 +54,7 @@
     "discoverHeading": "Descubra apps para Mac"
   },
   "footer": {
-    "tagline": "Interface gráfica de código aberto para Homebrew. Instalações feitas pelo cliente macOS ou pelo comando brew.",
+    "tagline": "A loja de apps Homebrew para Mac e uma interface gráfica de código aberto para Homebrew, com antivírus grátis, limpeza e monitoramento. Instalações feitas pelo cliente macOS ou pelo comando brew.",
     "copyright": "© {year} OpenNavo"
   },
   "analytics": {
@@ -80,7 +81,7 @@
   },
   "openInApp": {
     "title": "Ainda não instalou o OpenNavo?",
-    "body": "Cliente OpenNavo não detectado. Baixe-o para instalar {name} com um clique ou copie o comando de instalação e execute-o no terminal.",
+    "body": "Cliente OpenNavo não detectado. Baixe-o para instalar {name} com um clique, com verificação de vírus antes da instalação, ou copie o comando de instalação e execute-o no terminal.",
     "download": "Baixar app",
     "copyInstead": "Copiar comando de instalação",
     "dontAsk": "Não mostrar novamente"
@@ -587,6 +588,11 @@
       "alternativesQ": "Quais são as alternativas ao {name}?",
       "alternativesA": "Algumas alternativas são {list}."
     },
+    "securityPromo": {
+      "title": "Antivírus grátis no OpenNavo",
+      "body": "O app OpenNavo verifica downloads e o Mac inteiro com o ClamAV, além de checar itens de inicialização e assinaturas de apps. Grátis e de código aberto.",
+      "link": "Saiba mais sobre Segurança"
+    },
     "articles": {
       "title": "Artigos relacionados"
     }
@@ -668,9 +674,9 @@
     "remove": "Remover {name} da lista"
   },
   "download": {
-    "title": "A loja de apps Homebrew para Mac",
+    "title": "A loja de apps Homebrew para Mac, com antivírus grátis incluído",
     "metaTitle": "Baixar o app OpenNavo · OpenNavo",
-    "description": "Instale e atualize apps com um clique e acompanhe cada operação. O app usa o Homebrew instalado no seu computador, sem precisar de conta.",
+    "description": "Instale, atualize e desinstale apps com um clique, com verificação de vírus antes, limpeza e monitoramento. Usa o Homebrew do seu Mac, sem conta.",
     "button": "Baixar para macOS",
     "meta": "Versão {version} · {size} · macOS {macos} ou posterior · Lançado em {date}",
     "copySha": "Copiar checksum SHA-256",
@@ -685,11 +691,23 @@
       },
       "updates": {
         "title": "Atualizações sem complicação",
-        "body": "Verifique atualizações disponíveis automaticamente e atualize tudo com um clique. Apps com atualizador próprio também são reconhecidos."
+        "body": "Verifica de uma vez as atualizações do Homebrew, da App Store, do Sparkle, do GitHub e de outras fontes, e atualiza tudo com um clique."
       },
-      "history": {
-        "title": "Tudo fica registrado",
-        "body": "Instalações, atualizações e desinstalações ficam registradas localmente. Em caso de falha, você pode consultar o log e tentar novamente."
+      "security": {
+        "title": "Antivírus grátis",
+        "body": "Verificação de vírus com o ClamAV, inclusive antes de instalar, além da checagem de itens de inicialização e de assinaturas."
+      },
+      "uninstall": {
+        "title": "Desinstalação limpa",
+        "body": "Remove o app junto com os dados, caches e itens em segundo plano; arquivos compartilhados com outros apps são mantidos por padrão."
+      },
+      "cleanup": {
+        "title": "Limpeza do Mac",
+        "body": "Uma verificação somente leitura separa os arquivos em três níveis de risco, e nada é limpo antes da sua confirmação."
+      },
+      "monitor": {
+        "title": "Monitor do sistema",
+        "body": "CPU, memória, temperaturas e ventoinhas, sempre à vista na barra de menus."
       }
     },
     "steps": {
@@ -753,17 +771,204 @@
     "description": "O que é o OpenNavo, de onde vêm os dados e como tratamos suas informações.",
     "draft": "Em análise"
   },
+  "security": {
+    "metaTitle": "Antivírus grátis para Mac com ClamAV · OpenNavo",
+    "description": "Antivírus grátis e de código aberto para Mac com ClamAV: verifica apps antes de instalar, novos downloads, itens de inicialização e assinaturas.",
+    "hero": {
+      "kicker": "Segurança",
+      "title": "Antivírus grátis e de código aberto para Mac,",
+      "titleAccent": "com verificação antes de instalar.",
+      "lede": "O OpenNavo verifica seu Mac com o mecanismo **ClamAV** e o banco de dados oficial de vírus e acrescenta mais camadas de checagem: **verificação antes de instalar**, monitoramento de downloads, checagem de itens de inicialização e de assinaturas. Tudo é feito no seu Mac, sem enviar arquivos e sem precisar de conta.",
+      "source": "Ver o código-fonte"
+    },
+    "layers": {
+      "kicker": "Verificação em camadas",
+      "title": "Seis verificações, cada uma com sua função.",
+      "body": "O banco de dados de vírus reconhece arquivos maliciosos já conhecidos; a checagem de assinaturas, notarização e itens de inicialização cobre o que o banco de dados não enxerga."
+    },
+    "scan": {
+      "kicker": "Verificação de vírus",
+      "title": "Verifique os pontos-chave em minutos ou o Mac inteiro.",
+      "body": "Durante a verificação, o mecanismo usa cerca de 1,1 GB de memória e fecha sozinho após 5 minutos sem uso. As ameaças encontradas podem ser postas em quarentena, apagadas ou marcadas como confiáveis, e o que estiver em quarentena pode ser restaurado a qualquer momento.",
+      "modes": {
+        "quick": {
+          "title": "Verificação rápida",
+          "meta": "Normalmente alguns minutos",
+          "body": "Programas executados pelos itens de inicialização, Downloads, Mesa, pastas temporárias e apps instalados nos últimos 7 dias"
+        },
+        "full": {
+          "title": "Verificação completa",
+          "meta": "Pode levar mais de uma hora",
+          "body": "O Mac inteiro, exceto o volume do sistema, arquivos do iCloud não baixados, Time Machine e volumes de rede"
+        },
+        "custom": {
+          "title": "Verificação personalizada",
+          "meta": "Depende do que você escolher",
+          "body": "Escolha pastas ou um disco externo"
+        },
+        "schedule": {
+          "title": "Verificações programadas",
+          "meta": "Todo dia ou toda semana",
+          "body": "Verificação rápida automática no horário definido; só roda com o OpenNavo aberto, nunca acorda o Mac e é pulada quando ele está na bateria"
+        }
+      }
+    },
+    "startup": {
+      "kicker": "Itens de inicialização",
+      "title": "Tudo o que roda sozinho ao ligar o Mac, em uma só lista.",
+      "body": "Reúne por app 20 tipos de itens de inicialização, com assinatura, notarização e o app a que pertencem. Você recebe um alerta assim que surge um item novo, e o que for desativado ou removido pode ser restaurado.",
+      "points": {
+        "trust": "Distingue Apple, desenvolvedores conhecidos e programas sem assinatura, para você identificar itens suspeitos de relance",
+        "alerts": "Alerta imediato quando surge um novo item de inicialização, item de início ou serviço em segundo plano",
+        "restore": "Um backup é feito antes de desativar ou remover, e você pode restaurar quando quiser"
+      },
+      "categoriesTitle": "Os 20 tipos de itens de inicialização verificados",
+      "categories": {
+        "launch_items": "Serviço em segundo plano",
+        "btm": "Item em segundo plano",
+        "login_items": "Item de início",
+        "cron": "Tarefa agendada",
+        "browser_extensions": "Extensão do navegador",
+        "kexts": "Extensão do kernel",
+        "system_extensions": "Extensão do sistema",
+        "app_extensions": "Extensão de app",
+        "auth_plugins": "Plug-in de autorização",
+        "dir_services_plugins": "Plug-in de serviços de diretório",
+        "spotlight": "Importador do Spotlight",
+        "quicklook": "Plug-in de Visualização Rápida",
+        "dock_tiles": "Plug-in do Dock",
+        "library_inserts": "Injeção de bibliotecas",
+        "library_proxies": "Proxy de bibliotecas",
+        "login_hooks": "Gancho de início de sessão",
+        "periodic": "Script periódico",
+        "startup_scripts": "Script de inicialização",
+        "shell_config": "Configuração do shell",
+        "event_rules": "Regra de eventos"
+      },
+      "demo": {
+        "summary": "{count} itens de inicialização de terceiros",
+        "loginItem": "Item de início",
+        "service": "Serviço em segundo plano",
+        "known": "Desenvolvedor conhecido",
+        "untrusted": "Sem assinatura ou sem notarização",
+        "new": "Novo",
+        "disabled": "Desativado"
+      }
+    },
+    "posture": {
+      "kicker": "Verificação do sistema",
+      "title": "As proteções nativas do macOS estão todas ativadas?",
+      "body": "Verifica 11 ajustes do sistema em modo somente leitura, sem alterar nada. Quando algo precisa mudar, o OpenNavo abre direto o painel certo nos Ajustes do Sistema.",
+      "items": {
+        "sip": "Proteção da Integridade do Sistema",
+        "ssv": "Volume do sistema assinado",
+        "gatekeeper": "Gatekeeper",
+        "filevault": "Criptografia de disco FileVault",
+        "firewall": "Firewall",
+        "xprotect": "XProtect (proteção integrada da Apple)",
+        "updates": "Atualizações de segurança automáticas",
+        "screenlock": "Bloqueio de tela",
+        "autologin": "Início de sessão automático",
+        "guest": "Usuário convidado",
+        "sharing": "Serviços de compartilhamento"
+      },
+      "ok": "OK",
+      "warn": "Verificar",
+      "firewallOff": "O firewall está desativado",
+      "openSettings": "Abrir Ajustes"
+    },
+    "extras": {
+      "kicker": "Recursos opcionais",
+      "title": "Desativados por padrão; ative quando precisar.",
+      "paste": {
+        "title": "Proteção ao colar no terminal",
+        "body": "Quando você cola com ⌘V um comando suspeito do tipo “baixar e executar” em um terminal, o OpenNavo pausa e pede sua confirmação. A checagem é feita só no seu Mac, e o conteúdo colado não é salvo."
+      },
+      "virusTotal": {
+        "title": "Consulta no VirusTotal",
+        "body": "Consulta no VirusTotal o resultado da análise de um arquivo pelo SHA-256 dele, com a sua própria chave de API. Só o hash é enviado, nunca o arquivo."
+      },
+      "pasteDemo": {
+        "title": "Colagem no Terminal pausada",
+        "body": "Este comando parece baixar e executar um programa. Descarte-o se você não pretendia executá-lo.",
+        "allow": "Permitir uma vez",
+        "discard": "Descartar"
+      },
+      "vtDemo": {
+        "clean": "VirusTotal: nenhum antivírus detectou ameaça neste arquivo",
+        "engines": "Verificado por {total} antivírus",
+        "hashOnly": "Só o SHA-256 do arquivo foi enviado; o arquivo em si não foi enviado",
+        "lookup": "Consultar no VirusTotal"
+      }
+    },
+    "privacy": {
+      "title": "Seus arquivos ficam no seu Mac.",
+      "points": {
+        "local": {
+          "title": "Verificação local",
+          "body": "A verificação é feita no seu Mac, e os resultados ficam salvos só nele."
+        },
+        "database": {
+          "title": "Banco de dados oficial",
+          "body": "O banco de dados vem direto dos servidores oficiais do ClamAV, sem passar pelo OpenNavo."
+        },
+        "hashes": {
+          "title": "Nenhum arquivo enviado",
+          "body": "A consulta opcional no VirusTotal envia só o SHA-256 do arquivo, e só se você ativá-la."
+        }
+      }
+    },
+    "faq": {
+      "title": "Perguntas frequentes",
+      "items": {
+        "need": {
+          "q": "O Mac precisa de antivírus?",
+          "a": "O macOS já vem com Gatekeeper, notarização e XProtect, que barram muitas ameaças conhecidas. Mas software pirata, instaladores de origem desconhecida e comandos colados no Terminal ainda são portas de entrada comuns. O OpenNavo acrescenta uma verificação em cada um desses pontos: ele complementa a proteção do sistema, não a substitui."
+        },
+        "database": {
+          "q": "De onde vem o banco de dados de vírus e com que frequência ele é atualizado?",
+          "a": "É o banco de dados oficial do ClamAV, baixado direto dos servidores oficiais do ClamAV, sem passar pelo OpenNavo. O primeiro download tem cerca de 113 MB e ocupa aproximadamente 170 MB no disco; depois, por padrão, o OpenNavo verifica a cada 4 horas e só baixa as mudanças quando há uma versão nova."
+        },
+        "performance": {
+          "q": "Vai deixar meu Mac mais lento?",
+          "a": "Durante a verificação, o mecanismo usa cerca de 1,1 GB de memória e fecha sozinho após 5 minutos sem uso, então não consome recursos no resto do tempo. As verificações programadas só rodam com o OpenNavo aberto, nunca acordam o Mac e são puladas quando ele está na bateria."
+        },
+        "upload": {
+          "q": "Ele envia meus arquivos?",
+          "a": "Não. A verificação é feita no seu Mac, e os resultados ficam salvos só nele. A consulta opcional no VirusTotal precisa ser ativada por você, com a sua própria chave de API, e mesmo assim envia só o SHA-256 do arquivo."
+        },
+        "realtime": {
+          "q": "Ele bloqueia vírus em tempo real?",
+          "a": "Novos downloads e novos itens de inicialização são verificados assim que aparecem, e você recebe um alerta na hora, mas por enquanto não é possível barrar um programa antes da primeira execução. O bloqueio em tempo real exige que a Apple conceda a permissão de Endpoint Security; ele chegará depois que isso acontecer."
+        },
+        "coverage": {
+          "q": "Ele detecta todos os vírus de Mac?",
+          "a": "Não há como garantir. A cobertura do ClamAV para malware específico de Mac é limitada, por isso o OpenNavo também confere assinaturas, notarização e itens de inicialização, e mostra o estado do XProtect. Arquivos comuns com mais de 100 MB e instaladores com mais de 1 GB, ou mais de 2 GB depois de descompactados, não são verificados por completo."
+        },
+        "price": {
+          "q": "Precisa pagar?",
+          "a": "Não. É grátis e não precisa de conta. O OpenNavo é de código aberto sob a licença GPL-3.0, com o código publicado no GitHub."
+        }
+      }
+    },
+    "cta": {
+      "title": "Uma verificação a mais para o seu Mac.",
+      "body": "OpenNavo é grátis, de código aberto e funciona no macOS 13 ou posterior. Na primeira verificação de vírus, basta seguir as instruções para baixar o banco de dados oficial."
+    }
+  },
   "og": {
     "tagline": "A loja de apps do Homebrew",
     "platform": "cliente macOS",
-    "homeTitle": "A loja de apps\ndo Homebrew\npara Mac.",
-    "homeDescription": "Instale apps. Veja as novidades.\nMantenha seu Mac atualizado.",
+    "homeTitle": "A loja de apps\nHomebrew para Mac,\ncom antivírus grátis.",
+    "homeDescription": "Instale e atualize apps com um clique,\ncom verificação prévia de vírus.",
     "discoverTitle": "Descubra apps\npara Mac.",
     "discoverDescription": "Explore apps. Veja as novidades.\nEncontre seu próximo app.",
     "category": "Categoria",
     "collection": "Coleção",
     "downloadTitle": "Baixe o OpenNavo\npara Mac.",
-    "downloadDescription": "Instale e atualize Apps com um clique,\ncom registro de cada mudança."
+    "downloadDescription": "Instale, atualize, procure vírus e limpe:\ntudo em um só app.",
+    "securityTitle": "Antivírus para Mac\ngrátis e de código aberto",
+    "securityDescription": "Verifica vírus, itens de inicialização\ne assinaturas. Tudo grátis."
   },
   "languageSuggestion": {
     "message": "Gostaria de navegar em {language}?",
@@ -773,11 +978,12 @@
   "landing": {
     "footerNav": "Rodapé",
     "hero": {
-      "badge": "A loja de apps do Homebrew para Mac",
-      "title": "Instalar apps para Mac",
-      "titleAccent": "deveria ser assim tão simples.",
-      "lede": "Explore **{count} app** com descrições e notas de versão e depois **instale e atualize com um clique** pelo app para macOS. O Homebrew faz a instalação, e cada etapa fica visível. | Explore **{count} apps** com descrições e notas de versão e depois **instale e atualize com um clique** pelo app para macOS. O Homebrew faz a instalação, e cada etapa fica visível.",
-      "ledeFallback": "Explore apps com descrições e notas de versão e depois **instale e atualize com um clique** pelo app para macOS. O Homebrew faz a instalação, e cada etapa fica visível.",
+      "announceTag": "Novo",
+      "announce": "Chegou a verificação de vírus grátis",
+      "title": "A loja de apps Homebrew para Mac,",
+      "titleAccent": "com antivírus grátis incluído.",
+      "lede": "Instale e atualize **{count} app** com um clique, verificando se há vírus antes de instalar. Faça também uma **verificação completa de vírus**, gerencie os itens de inicialização, limpe o disco e monitore o hardware. Grátis, de código aberto e sem precisar de conta. | Instale e atualize **{count} apps** com um clique, verificando se há vírus antes de instalar. Faça também uma **verificação completa de vírus**, gerencie os itens de inicialização, limpe o disco e monitore o hardware. Grátis, de código aberto e sem precisar de conta.",
+      "ledeFallback": "Instale e atualize apps para Mac com um clique, verificando se há vírus antes de instalar. Faça também uma **verificação completa de vírus**, gerencie os itens de inicialização, limpe o disco e monitore o hardware. Grátis, de código aberto e sem precisar de conta.",
       "download": "Baixar para Mac",
       "browse": "Explorar apps",
       "github": "Código aberto no GitHub",
@@ -789,14 +995,109 @@
       "mine": "Biblioteca",
       "installed": "Instalados",
       "updates": "Atualizações",
-      "history": "Histórico",
+      "cleanup": "Limpeza",
+      "monitor": "Monitor",
+      "security": "Segurança",
       "settings": "Ajustes",
-      "installing": "Instalando {name}"
+      "installing": "Instalando {name}",
+      "scanning": "Verificando o instalador: {name}"
+    },
+    "security": {
+      "kicker": "Segurança",
+      "title": "Verifica antes de instalar e fica de olho depois.",
+      "body": "O OpenNavo traz embutido o mecanismo antivírus de código aberto **ClamAV**, com o banco de dados de vírus atualizado direto dos servidores oficiais do ClamAV. Os apps que você instala por ele passam por verificação antes da instalação, e novos downloads e novos itens de inicialização são checados assim que aparecem. A verificação é feita no seu Mac, e **nenhum arquivo é enviado**.",
+      "points": {
+        "scan": {
+          "title": "Verificação rápida, completa e programada",
+          "body": "A verificação rápida confere Downloads, Mesa e itens de inicialização em poucos minutos e pode rodar sozinha todo dia ou toda semana; a verificação completa cobre o Mac inteiro."
+        },
+        "install": {
+          "title": "Verificação antes de instalar",
+          "body": "Depois que o Homebrew termina o download e antes da instalação, os arquivos baixados são verificados com o banco de dados de vírus; se houver uma ameaça, a instalação para."
+        },
+        "downloads": {
+          "title": "Downloads verificados na hora",
+          "body": "Observa a pasta Downloads e verifica cada arquivo novo assim que o download termina; nos instaladores, também confere a assinatura e a notarização."
+        },
+        "startup": {
+          "title": "Itens de inicialização",
+          "body": "Lista 20 tipos de itens de inicialização, como serviços em segundo plano, itens de início e extensões do navegador, com a assinatura e o app a que pertencem; quando surge um novo, você recebe um alerta na hora."
+        },
+        "signatures": {
+          "title": "Checagem de assinaturas",
+          "body": "Confere a assinatura e a notarização dos apps instalados e avisa se a assinatura do desenvolvedor mudar de repente, sinal de que o app pode ter sido substituído."
+        },
+        "posture": {
+          "title": "Verificação de segurança do sistema",
+          "body": "Veja de relance quais dos 11 ajustes do sistema estão desativados, como SIP, Gatekeeper, FileVault, firewall e XProtect."
+        }
+      },
+      "more": "Saiba mais sobre a Segurança",
+      "note": "A cobertura do ClamAV para malware específico de Mac é limitada, por isso o OpenNavo também confere assinaturas, notarização e itens de inicialização. Ele complementa a proteção integrada do macOS, mas não a substitui.",
+      "demo": {
+        "label": "O app OpenNavo para Mac: a verificação de vírus encontra uma ameaça e a põe em quarentena",
+        "title": "Segurança",
+        "subtitle": "Verificação do sistema, verificação de vírus, itens de inicialização e proteção. Os resultados ficam neste Mac",
+        "tabs": {
+          "overview": "Visão geral",
+          "scan": "Verificação de vírus",
+          "startup": "Itens de inicialização",
+          "protection": "Proteção",
+          "quarantine": "Quarentena"
+        },
+        "quick": {
+          "title": "Verificação rápida",
+          "duration": "Normalmente alguns minutos",
+          "body": "Programas executados pelos itens de inicialização, Downloads, Mesa, pastas temporárias e apps instalados nos últimos 7 dias",
+          "action": "Verificação rápida"
+        },
+        "full": {
+          "title": "Verificação completa",
+          "duration": "Pode levar mais de uma hora",
+          "body": "O Mac inteiro, exceto o volume do sistema, arquivos do iCloud não baixados, Time Machine e volumes de rede",
+          "action": "Iniciar verificação completa"
+        },
+        "custom": {
+          "title": "Verificação personalizada",
+          "duration": "Depende do que você escolher",
+          "body": "Escolha pastas ou um disco externo",
+          "action": "Escolher e verificar"
+        },
+        "running": "Fazendo verificação rápida · {count} arquivos verificados ({size})",
+        "done": "Verificação concluída · {count} arquivos verificados",
+        "findings": "Ameaças encontradas ({count})",
+        "none": "Nenhuma ameaça encontrada até agora",
+        "quarantine": "Pôr em quarentena",
+        "quarantined": "Em quarentena",
+        "toast": "{name} foi posto em quarentena",
+        "engine": "Mecanismo de verificação",
+        "database": "Banco de dados",
+        "databaseValue": "Atualizado hoje",
+        "protection": "Proteção",
+        "downloads": "Verificar novos downloads",
+        "startupAlerts": "Alertas de itens de inicialização",
+        "installScan": "Verificar antes de instalar",
+        "on": "Ativada"
+      }
     },
     "catalog": {
-      "kicker": "Catálogo",
-      "title": "{count} app, tudo em um só lugar. | {count} apps, tudo em um só lugar.",
-      "body": "O catálogo vem do Homebrew e é sincronizado todos os dias. Os rankings seguem **as instalações reais dos últimos 30 dias**, e as **escolhas dos editores** e as **coleções** ajudam você a encontrar os melhores apps.",
+      "kicker": "Loja de apps",
+      "title": "{count} app para Mac em um só lugar, instalado com um clique. | {count} apps para Mac em um só lugar, instalados com um clique.",
+      "body": "Instale, atualize e desinstale em um só lugar. Os rankings seguem **as instalações reais dos últimos 30 dias**, e as **escolhas dos editores** e as **coleções** ajudam você a encontrar os melhores apps.",
+      "sources": {
+        "homebrew": {
+          "title": "Catálogo do Homebrew",
+          "body": "Sincronizado todos os dias com o catálogo oficial do Homebrew. O Homebrew cuida da instalação e das atualizações, e você vê cada comando e cada linha do log."
+        },
+        "appStore": {
+          "title": "Apps da Mac App Store",
+          "body": "Pesquise apps da App Store direto no cliente, com as informações vindas da Apple. Entre com sua Conta Apple para instalar e atualizar."
+        },
+        "link": {
+          "title": "Downloads do desenvolvedor",
+          "body": "Apps que não estão no Homebrew levam ao download oficial do desenvolvedor. O OpenNavo não hospeda instaladores e confere a assinatura quando o download termina."
+        }
+      },
       "stats": {
         "apps": "Apps no catálogo",
         "updated": "Atualizado nas últimas 24 horas",
@@ -819,22 +1120,74 @@
       "body": "Clique em Obter na página de um app e o OpenNavo executará o Homebrew no seu Mac para instalá-lo. Você pode ver **o comando exato** e **cada linha do registro**. Quando forem necessários direitos de administrador, o macOS pedirá sua senha, e o OpenNavo nunca a armazenará.",
       "points": {
         "queue": "As tarefas são executadas em fila, podem ser canceladas e, se falharem, podem ser tentadas novamente",
-        "confirm": "Instalações iniciadas pela web só são executadas depois da sua confirmação no app",
+        "scan": "Antes de instalar, o pacote é verificado com o banco de dados de vírus; se houver uma ameaça, a instalação para",
         "history": "Cada instalação, atualização e remoção fica registrada no seu Mac"
       }
     },
     "updates": {
       "kicker": "Atualizações",
       "title": "Atualizações resolvidas.",
-      "body": "O OpenNavo verifica se há atualizações todos os dias e mostra a quantidade na **barra de menus**. Um clique em **Atualizar tudo** resolve o resto. Os apps que se atualizam sozinhos são conferidos pela versão real, sem falsos alertas.",
+      "body": "Todo dia, em um horário definido, as atualizações do Homebrew, da App Store, do Sparkle, do Electron e do GitHub são verificadas e reunidas em uma lista, com a quantidade na **barra de menus**. Um clique em **Atualizar tudo** resolve o resto.",
       "points": {
         "schedule": "Verificações diárias em um horário definido, com notificações opcionais",
-        "pin": "Fixe um app em uma versão ou ignore uma versão; Atualizar tudo não mexerá nele",
-        "mirror": "Troque as fontes de download; após um teste de velocidade, a mais rápida é recomendada"
+        "verify": "Atualizações de fora do Homebrew passam pela conferência da assinatura do desenvolvedor; se não bater, não são instaladas",
+        "rollback": "Apps compatíveis podem ser revertidos para a versão anterior com um clique depois da atualização",
+        "pin": "Fixe um app em uma versão ou ignore uma versão; Atualizar tudo não mexerá nele"
       },
       "available": "{count} atualização disponível | {count} atualizações disponíveis",
       "upToDate": "Tudo está atualizado",
       "open": "Abrir OpenNavo"
+    },
+    "toolkit": {
+      "kicker": "Ferramentas do sistema",
+      "title": "Depois de instalar, ele também cuida do seu Mac.",
+      "body": "Desinstale apps junto com os restos; com o disco cheio, veja quanto espaço dá para liberar antes de limpar; e acompanhe CPU, memória, temperaturas e ventoinhas na barra de menus, quando quiser.",
+      "uninstall": {
+        "title": "Desinstalação sem restos",
+        "body": "Desinstale apps do Homebrew, da App Store ou baixados do site do desenvolvedor: os dados, caches, preferências e itens em segundo plano ligados a eles são encontrados junto; arquivos compartilhados com outros apps são mantidos por padrão."
+      },
+      "cleanup": {
+        "title": "Limpeza: veja antes de apagar",
+        "body": "A verificação somente leitura leva cerca de 30 segundos e separa o que encontra em três níveis de risco. Caches são apagados direto; restos vão para o Lixo, onde dá para desfazer. Itens das Chaves, VPNs, máquinas virtuais e afins ficam sempre protegidos."
+      },
+      "monitor": {
+        "title": "Monitoramento na barra de menus",
+        "body": "CPU, GPU, memória, disco, rede, bateria, temperaturas e ventoinhas: coloque na barra de menus o que quiser acompanhar e ajuste até a velocidade das ventoinhas."
+      },
+      "demo": {
+        "uninstallTitle": "Desinstalar {name}?",
+        "groups": {
+          "app": "App",
+          "app_data": "Dados do app",
+          "caches": "Caches",
+          "preferences": "Preferências e estado das janelas",
+          "background": "Itens em segundo plano"
+        },
+        "selection": "{selected} de {total} selecionados · {size}",
+        "uninstall": "Desinstalar",
+        "running": "Desinstalando {name}",
+        "done": "Desinstalação concluída",
+        "reclaimable": "Recuperável",
+        "categories": {
+          "app_caches": "Caches de apps",
+          "dev_caches": "Caches de desenvolvimento",
+          "leftovers": "Restos de apps apagados",
+          "installers": "Instaladores antigos"
+        },
+        "risks": {
+          "rebuildable": "Regenerável",
+          "review": "Revisar"
+        },
+        "clean": "Limpar {size}",
+        "freed": "{size} liberados",
+        "modules": {
+          "cpu": "CPU",
+          "memory": "Memória",
+          "sensors": "Sensores",
+          "fans": "Ventoinhas"
+        },
+        "health": "Tudo certo"
+      }
     },
     "more": {
       "kicker": "E mais",
@@ -868,12 +1221,12 @@
       },
       "privacy": {
         "title": "Não precisa de conta",
-        "body": "Sem login e sem coletar informações sobre os apps instalados. Sua lista do Brewfile fica no seu navegador."
+        "body": "Sem login e sem coletar informações sobre os apps que você instalou; a verificação de vírus é feita no seu Mac. Sua lista do Brewfile fica só no seu navegador."
       }
     },
     "cta": {
       "title": "Comece pelo seu próximo app.",
-      "body": "OpenNavo é grátis e funciona no macOS 13 ou posterior. Você também pode navegar pela web e copiar o comando brew para instalar."
+      "body": "OpenNavo é grátis e de código aberto, com verificação de vírus, limpeza e monitoramento incluídos, e funciona no macOS 13 ou posterior. Você também pode navegar pela web primeiro e copiar o comando brew para instalar."
     }
   }
 }

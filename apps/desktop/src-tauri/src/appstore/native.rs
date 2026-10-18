@@ -30,6 +30,19 @@ pub trait Host: Send + Sync {
     fn open_store(&self, url: &str) -> Result<(), AppError>;
 }
 pub struct NativeHost;
+
+/// Resolve the same companion binary for both availability and task execution.
+/// A bare local binary needs Helpers beside its profile directory; bundled Apps
+/// carry the helper inside Contents. Never borrow it from another installation.
+pub(super) fn store_helper(executable: &Path) -> Result<PathBuf, AppError> {
+    executable
+        .parent()
+        .and_then(Path::parent)
+        .map(|directory| directory.join("Helpers/opennavo-store"))
+        .filter(|path| path.is_file())
+        .ok_or_else(|| AppError::new("E_MAS_HELPER_MISSING", "store_helper_missing"))
+}
+
 impl Host for NativeHost {
     fn hints(&self) -> Result<Hints, AppError> {
         let read = |domain: &str, key: &str| {
@@ -58,10 +71,10 @@ impl Host for NativeHost {
             .ok_or_else(|| AppError::new("E_MAS_ENGINE", "system_version_unavailable"))?;
         let helper = std::env::current_exe()
             .ok()
-            .and_then(|exe| Some(exe.parent()?.parent()?.join("Helpers/opennavo-store")));
+            .and_then(|exe| store_helper(&exe).ok());
         // Availability describes packaging, not account authorization or proof of
         // a successful install on the current OS. Runtime errors remain explicit.
-        let engine = if helper.is_some_and(|path| path.is_file()) {
+        let engine = if helper.is_some() {
             MasEngineStatus::Ok
         } else {
             MasEngineStatus::Missing
@@ -205,6 +218,26 @@ pub fn scan(
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
+    #[test]
+    fn store_helper_reports_missing_bundle_contents_and_accepts_local_staging() {
+        let temp = tempfile::tempdir().unwrap();
+        for location in ["OpenNavo.app/Contents/MacOS", "target/release"] {
+            let directory = temp.path().join(location);
+            fs::create_dir_all(&directory).unwrap();
+            let executable = directory.join("opennavo-desktop");
+            assert_eq!(
+                store_helper(&executable).unwrap_err().code,
+                "E_MAS_HELPER_MISSING"
+            );
+            let helper = directory.parent().unwrap().join("Helpers/opennavo-store");
+            fs::create_dir_all(&helper).unwrap();
+            assert!(store_helper(&executable).is_err());
+            fs::remove_dir(&helper).unwrap();
+            fs::write(&helper, b"fixture helper").unwrap();
+            assert_eq!(store_helper(&executable).unwrap(), helper);
+        }
+    }
+
     #[test]
     fn inaccessible_siblings_and_recovery_copies_do_not_hide_store_apps() {
         let temp = tempfile::tempdir().unwrap();

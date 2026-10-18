@@ -651,7 +651,7 @@
     "notes": {
       "title": "Novedades de {name} {version}"
     },
-    "masSignedOut": "El App Store no tiene iniciada una sesión con una cuenta de Apple, así que sus actualizaciones no se pueden instalar. Inicia sesión y vuelve a intentarlo.",
+    "masSignedOut": "En la última actualización del App Store no se pudo confirmar el estado de la cuenta. Vuelve a intentarlo o completa la actualización en el App Store.",
     "failedSources": "Esta vez no se pudo comprobar {sources}. Los resultados de las demás fuentes se muestran como siempre y la próxima comprobación lo reintentará",
     "openAppStore": "Abrir App Store",
     "major": {
@@ -1140,13 +1140,14 @@
     "E_AV_DB_RATE_LIMITED": "El servidor oficial ha limitado temporalmente las actualizaciones de la base de datos. OpenNavo volverá a intentarlo más tarde",
     "E_AV_DB_UPDATE": "No se ha podido actualizar la base de datos de virus. Comprueba la conexión y vuelve a intentarlo",
     "E_RESTORE_CONFLICT": "Ya hay un archivo con el mismo nombre en la ubicación original, así que no se ha restaurado",
-    "E_MAS_NOT_SIGNED_IN": "Primero inicia sesión en el App Store con tu cuenta de Apple",
+    "E_MAS_NOT_SIGNED_IN": "No se pudo confirmar el estado de la cuenta del App Store. Vuelve a intentarlo o completa la operación en el App Store",
     "E_MAS_NOT_OWNED": "Esta cuenta de Apple aún no ha obtenido esta app. Haz clic en Obtener en el App Store",
     "E_MAS_PAID": "Las apps de pago se compran en el App Store",
     "E_MAS_OTHER_ACCOUNT": "Esta app se compró con otra cuenta de Apple. Actualízala en el App Store",
     "E_MAS_REGION": "Esta app no está disponible en la región de la tienda actual",
     "E_MAS_RATE_LIMITED": "Demasiadas solicitudes al App Store. Vuelve a intentarlo dentro de un minuto",
     "E_MAS_ENGINE": "El componente de descarga del App Store ha fallado. Termina la operación en el App Store",
+    "E_MAS_HELPER_MISSING": "A esta copia de OpenNavo le falta el componente de descarga del App Store. Reinstala la aplicación completa de OpenNavo o termina la operación en el App Store",
     "E_UPDATE_INTEGRITY": "La descarga no superó la comprobación de integridad, así que no se instaló la actualización",
     "E_UPDATE_TEAM_MISMATCH": "La nueva versión está firmada por otro desarrollador, así que no se instaló",
     "E_UPDATE_NOT_NOTARIZED": "La nueva versión no está notarizada por Apple, así que no se instaló",
@@ -2202,7 +2203,7 @@
       "summary": "{count} elemento de inicio de terceros | {count} elementos de inicio de terceros",
       "notRead": "Aún no se han leído los elementos de inicio",
       "untrusted": "{count} de ellos sin firmar o sin notarizar | {count} de ellos sin firmar o sin notarizar",
-      "missing": "Sin acceso total al disco no se pueden leer: {categories}",
+      "missing": "No se pudo completar la revisión de: {categories}. Algunos datos no se pudieron leer o analizar.",
       "grant": "Dar acceso",
       "btmUnknown": "La base de datos de elementos en segundo plano de este Mac usa un formato que OpenNavo no reconoce, así que puede que falten ítems de inicio",
       "new": "Nuevo",

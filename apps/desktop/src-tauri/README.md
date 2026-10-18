@@ -9,6 +9,26 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 pnpm --filter @opennavo/desktop gen
 ```
 
+## Local App Store helper
+
+`cargo build --release` builds the main executable without its companion App
+Store helper. Before running `target/release/opennavo-desktop` directly, stage
+the helper at the path that executable resolves (from the repository root):
+
+```sh
+python3 apps/desktop/scripts/prepare-native-helpers.py \
+  --work apps/desktop/src-tauri/target/local-store-helper \
+  --out apps/desktop/src-tauri/target/Helpers \
+  --target arm64 --allow-unsigned
+apps/desktop/src-tauri/target/Helpers/opennavo-store probe --real-read-only
+```
+
+Use `--target x86_64` on Intel Macs. These commands only build, stage and probe
+the component; they do not download or install an App Store app. Rebuild the
+helper after changing its Swift sources. For the complete application, use
+`pnpm --filter @opennavo/desktop tauri build --bundles app` and launch the
+generated `.app`; its bundle hook stages all native components automatically.
+
 ## Local self-update verification
 
 `tauri.conf.json` configures the update public key and stable manifest URL. `tauri.beta.conf.json` overrides only the beta manifest URL, merged through Tauri CLI `--config`. Updater access is limited to the main window. OpenNavo self-update checks are enabled by default, independently of Homebrew update settings; existing settings migrate to enabled. The main app shell checks after a 30-second startup delay, then hourly and when returning online or to the foreground. Successful checks run once per local calendar day; failed requests retry no sooner than one hour. Check history persists in webview local storage per installed version. Network failures remain silent during automatic checks.

@@ -685,7 +685,7 @@ const messages: MessageSchema = {
       title: 'What’s New in {name} {version}'
     },
     masSignedOut:
-      'The App Store isn’t signed in to an Apple Account, so App Store updates can’t install. Sign in and try again.',
+      'The last App Store update couldn’t confirm the account status. Try again, or finish the update in the App Store.',
     failedSources:
       'Couldn’t check {sources} this time. Results from the other sources are shown as usual, and the next check tries again',
     openAppStore: 'Open App Store',
@@ -1179,7 +1179,7 @@ const messages: MessageSchema = {
     E_AV_DB_RATE_LIMITED: 'Database updates are temporarily limited by the official server. OpenNavo will retry later',
     E_AV_DB_UPDATE: 'The virus database couldn’t be updated. Check your connection and try again',
     E_RESTORE_CONFLICT: 'A file with the same name is already in the original location, so nothing was restored',
-    E_MAS_NOT_SIGNED_IN: 'Sign in to the App Store with your Apple Account first',
+    E_MAS_NOT_SIGNED_IN: 'Couldn’t confirm the App Store account status. Try again, or finish this in the App Store',
     E_MAS_NOT_OWNED: 'This Apple Account hasn’t gotten this app yet. Click Get in the App Store',
     E_MAS_PAID: 'Buy paid apps in the App Store',
     E_MAS_OTHER_ACCOUNT: 'This app was bought with another Apple Account. Update it in the App Store',
@@ -1197,6 +1197,8 @@ const messages: MessageSchema = {
     E_NOT_IMPLEMENTED: 'This isn’t available yet',
     E_DOWNLOAD_UNSAFE: 'This installer didn’t pass the check, so it wasn’t opened',
     E_MAS_ENGINE: 'The App Store download component failed. Finish this in the App Store instead',
+    E_MAS_HELPER_MISSING:
+      'This copy of OpenNavo is missing the App Store download component. Reinstall the complete OpenNavo app, or finish this in the App Store',
     E_NOT_INSTALLABLE: 'This app is downloaded from its website and can’t be installed with Homebrew',
     E_LINK_URL: 'This download address isn’t registered for the app, so it wasn’t opened',
     E_APP_RUNNING: 'The app is running. Update deferred; quit the app and try again.',
@@ -2267,7 +2269,7 @@ const messages: MessageSchema = {
       summary: '{count} third-party startup item | {count} third-party startup items',
       notRead: 'Startup items haven’t been read yet',
       untrusted: '{count} of them unsigned or not notarized | {count} of them unsigned or not notarized',
-      missing: 'Without Full Disk Access, these can’t be read: {categories}',
+      missing: 'Couldn’t fully check: {categories}. Some data couldn’t be read or parsed.',
       grant: 'Allow Access',
       btmUnknown:
         'The background items database on this Mac uses a format OpenNavo doesn’t recognize, so some login items may be missing',

@@ -18,7 +18,8 @@ export const PAGE_SECTIONS: ReadonlySet<string> = new Set([
   'feedback',
   'rankings',
   'recent',
-  'search'
+  'search',
+  'security'
 ]);
 
 /**

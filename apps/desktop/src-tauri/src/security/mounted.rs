@@ -292,7 +292,8 @@ impl Service {
         commands: &dyn MountCommands,
         meter: &Meter,
     ) -> Result<InstallerFileScan, AppError> {
-        let mut file = files::open_read(path, files::scan_limit(path)?)?;
+        let sqlite_files = self.sqlite_files()?;
+        let mut file = sqlite_files.open_read(path, sqlite_files.scan_limit(path)?)?;
         files::canceled(cancel)?;
         let coverage = av::container::inspect(&file).ok();
         if coverage.as_ref().is_some_and(|c| {
@@ -349,6 +350,7 @@ impl Service {
         commands: &dyn MountCommands,
         meter: &Meter,
     ) -> Result<InstallerFileScan, AppError> {
+        self.sqlite_files()?.check(path)?;
         let snapshot = crate::uninstall::rules::Snapshot::capture(path)?;
         files::safe_metadata(path)?;
         let root = self
@@ -427,6 +429,7 @@ impl Service {
         meter: &Meter,
         commands: &dyn MountCommands,
     ) -> Result<InstallerFileScan, AppError> {
+        let sqlite_files = self.sqlite_files()?;
         let mut result = InstallerFileScan::default();
         let mut seen = BTreeSet::new();
         let mut total = 0u64;
@@ -446,6 +449,14 @@ impl Service {
             }
             if files::dataless(&meta) || files::safe_metadata(&path).is_err() {
                 result.skipped = Some(AvSkipReason::Unreadable);
+                continue;
+            }
+            if let Err(error) = sqlite_files.check(&path) {
+                result.skipped = Some(if error.message == "security_own_data" {
+                    AvSkipReason::Excluded
+                } else {
+                    AvSkipReason::Unreadable
+                });
                 continue;
             }
             if !seen.insert((meta.dev(), meta.ino())) {
@@ -486,7 +497,7 @@ impl Service {
         }
         for (path, bytes) in planned {
             files::canceled(cancel)?;
-            let mut file = match files::open_read(&path, files::MAX_INSTALLER_FILE) {
+            let mut file = match sqlite_files.open_read(&path, files::MAX_INSTALLER_FILE) {
                 Ok(f) => f,
                 Err(_) => {
                     result.skipped = Some(AvSkipReason::Unreadable);

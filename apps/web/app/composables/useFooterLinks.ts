@@ -16,7 +16,7 @@ export function useFooterLinks() {
       title: t('site.name'),
       // GitHub is a brand name in every locale, so it has no message key.
       links: [
-        ...links(['download', 'brewfile', 'about', 'feedback']),
+        ...links(['download', 'security', 'brewfile', 'about', 'feedback']),
         { key: 'github', label: 'GitHub', href: 'https://github.com/opennavo/OpenNavo', external: true }
       ]
     }

@@ -668,7 +668,7 @@ export default {
     notes: {
       title: '{name} {version} 更新内容'
     },
-    masSignedOut: 'App Store 没有登录 Apple 账户，App Store 的更新暂时装不了。登录后再试。',
+    masSignedOut: '上次 App Store 更新未能确认账户状态。请重试，或在 App Store 中完成更新。',
     failedSources: '这次没有查到：{sources}。其余来源的结果照常显示，下次检查会再试',
     openAppStore: '打开 App Store',
     major: {
@@ -1158,7 +1158,7 @@ export default {
     E_AV_DB_RATE_LIMITED: '病毒库更新太频繁，被官方服务器暂时限制了，稍后会自动重试',
     E_AV_DB_UPDATE: '病毒库更新失败，请检查网络后重试',
     E_RESTORE_CONFLICT: '原来的位置已经有同名文件，没有恢复',
-    E_MAS_NOT_SIGNED_IN: '请先在 App Store 里登录 Apple 账户',
+    E_MAS_NOT_SIGNED_IN: '无法确认 App Store 账户状态。请重试，或在 App Store 中完成操作',
     E_MAS_NOT_OWNED: '这个账户还没有获取过这款 App，请在 App Store 里点「获取」',
     E_MAS_PAID: '付费 App 请在 App Store 里购买',
     E_MAS_OTHER_ACCOUNT: '这款 App 由其他 Apple 账户购买，请在 App Store 里更新',
@@ -1176,6 +1176,7 @@ export default {
     E_NOT_IMPLEMENTED: '这项功能还没有开放',
     E_DOWNLOAD_UNSAFE: '这个安装包没有通过核验，已阻止打开',
     E_MAS_ENGINE: 'App Store 下载组件出错，请改用 App Store 完成',
+    E_MAS_HELPER_MISSING: '当前应用缺少 App Store 下载组件。请重新安装完整的 OpenNavo 应用，或在 App Store 中完成操作',
     E_NOT_INSTALLABLE: '这款 App 只能从官网下载，不能用 Homebrew 安装',
     E_LINK_URL: '这个下载地址不在登记范围内，没有打开',
     E_APP_RUNNING: '应用正在运行，已暂缓更新；退出后可再次更新',
@@ -2207,7 +2208,7 @@ export default {
       summary: '{count} 个第三方启动项',
       notRead: '还没有读取过启动项',
       untrusted: '其中 {count} 个未签名或未公证',
-      missing: '没有「完全磁盘访问权限」，读不到：{categories}',
+      missing: '未能完整检查：{categories}。部分内容无法读取或解析。',
       grant: '开启权限',
       btmUnknown: '这台 Mac 的后台项目数据库格式没有识别出来，部分登录项可能没有列出',
       new: '新',

@@ -145,6 +145,8 @@ pub enum MasErrorCode {
     RateLimited,
     #[serde(rename = "E_MAS_ENGINE")]
     Engine,
+    #[serde(rename = "E_MAS_HELPER_MISSING")]
+    HelperMissing,
     #[serde(rename = "E_ADMIN_CANCELED")]
     AdminCanceled,
 }

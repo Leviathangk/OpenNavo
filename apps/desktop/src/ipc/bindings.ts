@@ -1032,7 +1032,7 @@ export type MasEngineStatus = "ok" | "missing" | "unsupported";
  *  Exported vocabulary for AppError.code; detail carries serialized structured
  *  context (retryAfterSecs, or domain/code) where available.
  */
-export type MasErrorCode = "E_MAS_NOT_SIGNED_IN" | "E_MAS_NOT_OWNED" | "E_MAS_PAID" | "E_MAS_OTHER_ACCOUNT" | "E_MAS_REGION" | "E_MAS_RATE_LIMITED" | "E_MAS_ENGINE" | "E_ADMIN_CANCELED";
+export type MasErrorCode = "E_MAS_NOT_SIGNED_IN" | "E_MAS_NOT_OWNED" | "E_MAS_PAID" | "E_MAS_OTHER_ACCOUNT" | "E_MAS_REGION" | "E_MAS_RATE_LIMITED" | "E_MAS_ENGINE" | "E_MAS_HELPER_MISSING" | "E_ADMIN_CANCELED";
 
 export type MasInstalled = {
 	adamId: number,

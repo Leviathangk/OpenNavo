@@ -14,7 +14,7 @@ import SecurityProtectionPanel from '@/components/security/SecurityProtectionPan
 import SecuritySettings from '@/components/settings/SecuritySettings.vue';
 import HistoryList from '@/components/updates/HistoryList.vue';
 import SecurityPage from '@/pages/SecurityPage.vue';
-import { startLocalState, useSettingsStore, useTasksStore } from '@/stores';
+import { startLocalState, usePermissionsStore, useSettingsStore, useTasksStore } from '@/stores';
 import { useSecurityStore } from '@/stores/security';
 import { useDownloadsStore } from '@/stores/downloads';
 import DownloadNotifier from '@/components/package/DownloadNotifier.vue';
@@ -406,6 +406,50 @@ describe('Startup items', () => {
     expect(wrapper.text()).toContain('Docker');
   });
 
+  it.each([false, true])('Finishes switches without waiting for overview probes (scan pending: %s)', async scanning => {
+    const { wrapper } = await mountPage('/security/startup');
+    const store = useSecurityStore();
+    const oldScan = structuredClone(await commands.startupScan());
+    let finishScan!: (value: Awaited<ReturnType<typeof commands.startupScan>>) => void;
+    let pendingScan: Promise<void> | undefined;
+    if (scanning) {
+      vi.spyOn(commands, 'startupScan').mockReturnValueOnce(new Promise(resolve => (finishScan = resolve)));
+      pendingScan = store.loadStartup();
+      await flushPromises();
+    }
+    const overview = await commands.securityOverview();
+    let finishOverview!: (value: typeof overview) => void;
+    vi.spyOn(commands, 'securityOverview').mockReturnValue(new Promise(resolve => (finishOverview = resolve)));
+    const toggle = () => wrapper.get('[role="switch"][aria-label="启用 Docker"]');
+    try {
+      for (const checked of ['false', 'true']) {
+        await toggle().trigger('click');
+        await flushPromises();
+        await flushPromises();
+        expect(toggle().attributes('aria-checked')).toBe(checked);
+        expect(toggle().attributes('disabled')).toBeUndefined();
+        expect(store.busy.size).toBe(0);
+        expect(store.startupRefreshing).toBe(scanning);
+      }
+      // Leave a different state from the old scan so its delayed response must not undo the action.
+      await toggle().trigger('click');
+      await flushPromises();
+      await flushPromises();
+      if (scanning) {
+        finishScan(oldScan);
+        await pendingScan;
+        await flushPromises();
+      }
+      expect(toggle().attributes('aria-checked')).toBe('false');
+      expect(toggle().attributes('disabled')).toBeUndefined();
+    } finally {
+      finishOverview(overview);
+      if (scanning) finishScan(oldScan);
+      await pendingScan;
+      await flushPromises();
+    }
+  });
+
   it('Grades signatures: changed after signing is a warning, configuration files make no signing claim', async () => {
     const { wrapper } = await mountPage('/security/startup');
     const row = (name: string) => wrapper.findAll('li').find(item => item.text().includes(name));
@@ -421,12 +465,35 @@ describe('Startup items', () => {
     expect(config?.text()).not.toContain('在系统设置中管理');
   });
 
-  it('Says which categories need Full Disk Access instead of silently leaving them out', async () => {
+  it('Reports incomplete categories and offers access when Full Disk Access is denied', async () => {
     const { wrapper } = await mountPage('/security/startup', 'no-fda');
-    expect(wrapper.text()).toContain('没有「完全磁盘访问权限」，读不到');
+    expect(wrapper.text()).toContain('未能完整检查：后台项目');
     expect(wrapper.text()).toContain('后台项目');
     expect(button(wrapper, '开启权限')).toBeTruthy();
+    const guide = vi.spyOn(commands, 'permissionGuideOpen');
+    await button(wrapper, '开启权限')!.trigger('click');
+    expect(guide).toHaveBeenCalledWith('full_disk_access');
   });
+
+  it.each(['granted', 'unknown', 'pending'] as const)(
+    'Does not blame incomplete Dock plugin reads on Full Disk Access when permission is %s',
+    async state => {
+      const { wrapper } = await mountPage('/security/startup');
+      const permissions = usePermissionsStore();
+      permissions.apply({
+        ...permissions.status!,
+        fullDiskAccess: state === 'pending' ? 'denied' : state,
+        fullDiskAccessPending: state === 'pending',
+        relaunchRequired: state === 'pending'
+      });
+      const security = useSecurityStore();
+      security.startup = { ...security.startup!, missing: ['dock_tiles'] };
+      await flushPromises();
+      expect(wrapper.text()).toContain('未能完整检查：程序坞插件');
+      expect(wrapper.text()).not.toContain('没有「完全磁盘访问权限」');
+      expect(button(wrapper, '开启权限')).toBeUndefined();
+    }
+  );
 });
 
 describe('Protection', () => {

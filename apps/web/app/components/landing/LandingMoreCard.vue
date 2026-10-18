@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// One More grid cell: demo above, heading/description below.
-defineProps<{ title: string; body: string }>();
+// One More grid cell: demo above, heading/description below; tall gives the toolkit demos more room.
+defineProps<{ title: string; body: string; tall?: boolean }>();
 defineSlots<{ default?: () => unknown }>();
 </script>
 
@@ -9,7 +9,8 @@ defineSlots<{ default?: () => unknown }>();
     class="flex min-w-0 flex-col overflow-hidden rounded-huge border border-solid border-line-subtle bg-surface-card"
   >
     <div
-      class="landing-more-stage relative flex h-228px items-center justify-center overflow-hidden border-b border-b-solid border-line-subtle px-20px"
+      class="landing-more-stage relative flex items-center justify-center overflow-hidden border-b border-b-solid border-line-subtle px-20px"
+      :class="tall ? 'h-280px' : 'h-228px'"
     >
       <div class="relative w-full"><slot /></div>
     </div>

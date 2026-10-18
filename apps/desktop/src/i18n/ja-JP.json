@@ -651,7 +651,7 @@
     "notes": {
       "title": "{name} {version} の新機能"
     },
-    "masSignedOut": "App Store に Apple アカウントでサインインしていないため、App Store のアップデートをインストールできません。サインインしてからもう一度お試しください。",
+    "masSignedOut": "前回の App Store アップデートでは、アカウントの状態を確認できませんでした。もう一度試すか、App Store でアップデートを完了してください。",
     "failedSources": "今回は {sources} を確認できませんでした。ほかのソースの結果は通常どおり表示し、次回の確認で再試行します",
     "openAppStore": "App Store を開く",
     "major": {
@@ -1140,13 +1140,14 @@
     "E_AV_DB_RATE_LIMITED": "ウイルス定義の更新が公式サーバーによって一時的に制限されています。あとで自動的に再試行します",
     "E_AV_DB_UPDATE": "ウイルス定義を更新できませんでした。ネットワークを確認してから、もう一度お試しください",
     "E_RESTORE_CONFLICT": "元の場所に同じ名前のファイルがあるため、復元しませんでした",
-    "E_MAS_NOT_SIGNED_IN": "先に App Store で Apple アカウントにサインインしてください",
+    "E_MAS_NOT_SIGNED_IN": "App Store のアカウントの状態を確認できませんでした。もう一度試すか、App Store で操作を完了してください",
     "E_MAS_NOT_OWNED": "この Apple アカウントではまだこの App を入手していません。App Store で「入手」をクリックしてください",
     "E_MAS_PAID": "有料の App は App Store で購入してください",
     "E_MAS_OTHER_ACCOUNT": "この App は別の Apple アカウントで購入されています。App Store でアップデートしてください",
     "E_MAS_REGION": "この App は現在のストアの地域では入手できません",
     "E_MAS_RATE_LIMITED": "App Store へのリクエストが多すぎます。1 分ほど待ってからもう一度お試しください",
     "E_MAS_ENGINE": "App Store のダウンロード機能でエラーが発生しました。App Store で操作を完了してください",
+    "E_MAS_HELPER_MISSING": "この OpenNavo には App Store のダウンロードコンポーネントがありません。完全な OpenNavo アプリを再インストールするか、App Store で操作を完了してください",
     "E_UPDATE_INTEGRITY": "ダウンロードしたアップデートが整合性チェックに失敗したため、インストールしませんでした",
     "E_UPDATE_TEAM_MISMATCH": "新しいバージョンの開発元署名がインストール済みのものと異なるため、インストールしませんでした",
     "E_UPDATE_NOT_NOTARIZED": "新しいバージョンが Apple の公証を受けていないため、インストールしませんでした",
@@ -2202,7 +2203,7 @@
       "summary": "サードパーティの起動項目が{count}件",
       "notRead": "起動項目はまだ読み取っていません",
       "untrusted": "そのうち{count}件は署名または公証がありません",
-      "missing": "フルディスクアクセスがないため、次の項目を読み取れません：{categories}",
+      "missing": "完全に確認できなかった項目：{categories}。一部のデータを読み取れないか、解析できませんでした。",
       "grant": "アクセスを許可",
       "btmUnknown": "この Mac のバックグラウンド項目データベースの形式を認識できないため、一部のログイン項目が表示されていない可能性があります",
       "new": "新規",

@@ -3,7 +3,9 @@ import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 
 // Homepage introduces OpenNavo (05 §4, 08 §10.14); store Discover is /discover.
-// Hero → catalog scale/icon wall → releases/install/menu-bar updates → more details → download.
+// Hero → app store (catalog scale, icon wall, where apps come from) → security (antivirus) → releases/install/
+// menu-bar updates → uninstall/cleanup/monitor → more details → download. The store and security follow the
+// headline's order: the Homebrew app store, with free antivirus built in.
 // Counts/apps come from homepage/rankings APIs; if unavailable retain introduction and use name-only demo apps.
 definePageMeta({ layout: 'landing' });
 
@@ -92,6 +94,8 @@ useSchemaOrg([
       :categories="visibleCategories.map(({ slug, name }) => ({ slug, name }))"
     />
     <LandingCatalog v-if="count && wall.length" :apps="wall" :count="count" :updated="updatedToday" />
+    <!-- Below the fold: server-rendered in full, hydrated only when scrolled into view. -->
+    <LazyLandingSecurity hydrate-on-visible />
     <LandingFeature
       :kicker="t('landing.details.kicker')"
       :title="t('landing.details.title')"
@@ -111,7 +115,7 @@ useSchemaOrg([
       :body="t('landing.install.body')"
       :points="[
         t('landing.install.points.queue'),
-        t('landing.install.points.confirm'),
+        t('landing.install.points.scan'),
         t('landing.install.points.history')
       ]"
     >
@@ -123,12 +127,14 @@ useSchemaOrg([
       :body="t('landing.updates.body')"
       :points="[
         t('landing.updates.points.schedule'),
-        t('landing.updates.points.pin'),
-        t('landing.updates.points.mirror')
+        t('landing.updates.points.verify'),
+        t('landing.updates.points.rollback'),
+        t('landing.updates.points.pin')
       ]"
     >
       <LandingTrayDemo :apps="recentApps" />
     </LandingFeature>
+    <LazyLandingToolkit hydrate-on-visible :apps="demoApps" />
     <LandingMore :apps="demoApps" :count="count" />
     <LandingCta />
   </div>

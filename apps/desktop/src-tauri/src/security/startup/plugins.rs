@@ -342,6 +342,18 @@ impl Scanner<'_> {
             let mut dirs = vec![(root.clone(), 0)];
             while let Some((dir, depth)) = dirs.pop() {
                 for path in self.entries(&dir, StartupCategory::DockTiles) {
+                    // An .app suffix also occurs on Finder aliases and symbolic links.
+                    // They are not bundles to traverse under the scanner's no-follow policy.
+                    match std::fs::symlink_metadata(&path) {
+                        Ok(meta) if meta.is_dir() => {}
+                        Ok(_) => continue,
+                        Err(error) => {
+                            if error.kind() != std::io::ErrorKind::NotFound {
+                                self.missing.insert(StartupCategory::DockTiles);
+                            }
+                            continue;
+                        }
+                    }
                     if path.extension().is_some_and(|p| p == "app") {
                         apps.push(path);
                     } else if depth < 3 && files::safe_metadata(&path).is_ok_and(|m| m.is_dir()) {
@@ -852,6 +864,52 @@ pub(crate) fn login_items() -> Result<Vec<PathBuf>, AppError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn application_plugins_skip_aliases_but_report_unreadable_real_bundles() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let applications = root.join("Applications");
+        let app = applications.join("Utilities/Current.app");
+        std::fs::create_dir_all(app.join("Contents/PlugIns/Test.bundle")).unwrap();
+        std::fs::write(app.join("Contents/Info.plist"),
+            b"<?xml version=\"1.0\"?><plist version=\"1.0\"><dict><key>NSDockTilePlugIn</key><string>Test.bundle</string></dict></plist>").unwrap();
+        // Finder aliases are files; system apps can also be symbolic links.
+        std::fs::write(applications.join("Alias.app"), b"alias fixture").unwrap();
+        std::os::unix::fs::symlink(&app, applications.join("Linked.app")).unwrap();
+        std::os::unix::fs::symlink(root.join("Absent.app"), applications.join("Broken.app"))
+            .unwrap();
+        let roots = Roots {
+            home: root.join("home"),
+            root,
+            applications: vec![applications.clone()],
+        };
+        let commands = crate::security::tests::FakeCommands::default();
+        let mut scanner = Scanner {
+            roots: &roots,
+            commands: &commands,
+            own_data: None,
+            items: BTreeMap::new(),
+            missing: BTreeSet::new(),
+            btm_format: None,
+            hints: BTreeMap::new(),
+            user_overrides: None,
+            system_overrides: None,
+            user_uuid: None,
+        };
+        scanner.application_plugins();
+        assert_eq!(scanner.items.len(), 1);
+        assert_eq!(
+            scanner.items.values().next().unwrap().path,
+            app.join("Contents/PlugIns/Test.bundle").to_string_lossy()
+        );
+        assert!(scanner.missing.is_empty());
+
+        let invalid = applications.join("Invalid.app/Contents");
+        std::fs::create_dir_all(&invalid).unwrap();
+        std::fs::write(invalid.join("Info.plist"), b"not a plist").unwrap();
+        scanner.application_plugins();
+        assert!(scanner.missing.contains(&StartupCategory::DockTiles));
+    }
     #[test]
     fn application_plugins_and_registered_candidates_ignore_both_backup_roots() {
         let temp = tempfile::tempdir().unwrap();

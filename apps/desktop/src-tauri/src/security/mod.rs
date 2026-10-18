@@ -37,7 +37,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc, Mutex, RwLock,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
 };
 pub use types::*;
@@ -210,6 +210,10 @@ pub struct Service {
     pub commands: Arc<dyn Commands>,
     pub(crate) active_scan: Mutex<Option<(String, Arc<AtomicBool>)>>,
     pub(crate) mutation: Mutex<()>,
+    /// Inventories serialize with each other, without holding up user actions.
+    pub(crate) startup_inventory: Mutex<()>,
+    /// Read/advanced under `mutation`; actions invalidate inventory spanning their OS changes.
+    pub(crate) startup_revision: AtomicU64,
     pub(crate) scheduled: Mutex<()>,
     pub(crate) paste_pending: Mutex<Option<paste::Pending>>,
     pub vt_secrets: Arc<dyn virustotal::Secrets>,
@@ -258,6 +262,8 @@ impl Service {
             commands,
             active_scan: Mutex::new(None),
             mutation: Mutex::new(()),
+            startup_inventory: Mutex::new(()),
+            startup_revision: AtomicU64::new(0),
             scheduled: Mutex::new(()),
             paste_pending: Mutex::new(None),
             vt_secrets: Arc::new(virustotal::Keychain),

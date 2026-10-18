@@ -13,7 +13,7 @@ withDefaults(defineProps<{ kicker: string; title: string; body?: string; align?:
     :class="align === 'center' ? 'mx-auto max-w-760px items-center text-center' : 'items-start'"
   >
     <span class="text-13px font-600 tracking-[0.08em] text-brand-salmon">{{ kicker }}</span>
-    <h2 class="m-0 text-title1 text-ink-primary md:text-section">{{ title }}</h2>
+    <h2 class="landing-section-title m-0 text-title1 text-ink-primary md:text-section">{{ title }}</h2>
     <OnHighlightText
       v-if="body"
       as="p"
@@ -22,3 +22,18 @@ withDefaults(defineProps<{ kicker: string; title: string; body?: string; align?:
     />
   </div>
 </template>
+
+<style>
+/* Even line lengths keep long headings (and CJK ones in particular) from leaving a lone final character. */
+.landing-section-title {
+  text-wrap: balance;
+}
+
+/* Chinese and Japanese headings break at punctuation and spaces rather than inside a phrase ("一处" stays
+   together), and still break anywhere if a phrase cannot fit. */
+:lang(zh) .landing-section-title,
+:lang(ja) .landing-section-title {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+</style>

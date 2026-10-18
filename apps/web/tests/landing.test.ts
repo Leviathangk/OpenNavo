@@ -3,6 +3,7 @@ import type { PackageSummary } from '@opennavo/api';
 import {
   SAMPLE_APPS,
   easeOutCubic,
+  headingLead,
   installLog,
   marqueeRows,
   pickShowcaseApps,
@@ -105,5 +106,14 @@ describe('Demo animation', () => {
     const lines = installLog('ghostty');
     expect(lines[0]).toBe('$ brew install --cask ghostty');
     expect(lines.at(-1)).toBe('🍺  ghostty was successfully installed!');
+  });
+});
+
+describe('Two-line headings', () => {
+  it('End the first line with a space except after CJK text', () => {
+    expect(headingLead('Install apps, scan for malware,')).toBe('Install apps, scan for malware, ');
+    expect(headingLead('装软件、查病毒，')).toBe('装软件、查病毒，');
+    expect(headingLead('Macのアプリもウイルス対策も')).toBe('Macのアプリもウイルス対策も');
+    expect(headingLead('Устанавливайте приложения —')).toBe('Устанавливайте приложения — ');
   });
 });

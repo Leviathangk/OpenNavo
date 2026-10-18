@@ -111,15 +111,22 @@ export const useSecurityStore = defineStore('security', () => {
   // A startup scan takes a while. The saved list shows at once; while a scan runs, another request waits for it
   // instead of starting over.
   let startupLoad: Promise<void> | null = null;
+  let startupRevision = 0;
   function loadStartup() {
     startupLoad ??= (async () => {
       if (!startup.value) {
+        const revision = startupRevision;
         const saved = await unwrap(commands.startupCached()).catch(() => null);
-        if (saved && !startup.value) startup.value = saved;
+        if (saved && !startup.value && revision === startupRevision) startup.value = saved;
       }
       startupRefreshing.value = true;
       try {
-        startup.value = await unwrap(commands.startupScan());
+        const revision = startupRevision;
+        const result = await unwrap(commands.startupScan());
+        // An action/cache refresh may overtake this scan's IPC response. Read the
+        // persisted state again instead of putting an older switch state back.
+        if (revision === startupRevision) startup.value = result;
+        else await reloadStartup();
       } finally {
         startupRefreshing.value = false;
       }
@@ -130,13 +137,16 @@ export const useSecurityStore = defineStore('security', () => {
   }
   /** What the last scan or action saved: switches and additions show at once, without another scan. */
   async function reloadStartup() {
+    const revision = ++startupRevision;
     const saved = await unwrap(commands.startupCached());
-    if (saved) startup.value = saved;
+    if (saved && revision === startupRevision) startup.value = saved;
   }
   /** Opens an app at login; it is listed at once. */
   async function addLoginItem(path: string) {
+    ++startupRevision;
     const item = await unwrap(commands.startupLoginAdd(path));
-    await Promise.all([reloadStartup(), loadOverview()]);
+    await reloadStartup();
+    void loadOverview().catch(() => undefined);
     return item;
   }
 
@@ -247,8 +257,12 @@ export const useSecurityStore = defineStore('security', () => {
 
   async function actOnStartup(ids: string[], action: StartupAction | 'mark_reviewed') {
     return withBusy(ids, async () => {
+      ++startupRevision;
       const outcome = await unwrap(commands.startupItemAct(ids, action));
-      await Promise.all([reloadStartup(), loadOverview()]);
+      await reloadStartup();
+      // SIP, FileVault and other posture probes do not determine whether this
+      // action succeeded. Keep them out of the switch's pending state.
+      void loadOverview().catch(() => undefined);
       return outcome;
     });
   }

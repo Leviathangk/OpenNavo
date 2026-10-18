@@ -114,6 +114,11 @@ def client(c):
    if count==0 or b'always-close' in data:
     time.sleep(0.05)
     return
+  if b'wait-for-test-cancel' in data:
+   with open(os.path.join(config['TemporaryDirectory'].strip(chr(34)),'partial-extraction'),'w') as f:f.write('fixture')
+   # The test controls cancellation; do not race it against a fixed sleep.
+   while c.recv(1):pass
+   return
   if b'wait-for-cancel' in data:
    open(os.path.join(config['TemporaryDirectory'].strip(chr(34)),'partial-extraction'),'w').write('fixture')
    time.sleep(5)
@@ -1512,7 +1517,7 @@ fn threat_handled_during_scan_stays_handled_in_finished_event() {
     let threat = s.home.join("first-threat");
     let slow = s.home.join("second-slow");
     fs::write(&threat, b"fixture-threat").unwrap();
-    fs::write(&slow, b"wait-for-cancel").unwrap();
+    fs::write(&slow, b"wait-for-test-cancel").unwrap();
     let scan = s
         .scan_start(
             AvScanKind::Custom,
@@ -1534,9 +1539,16 @@ fn threat_handled_during_scan_stays_handled_in_finished_event() {
         {
             break current;
         }
+        assert_eq!(
+            current.state,
+            AvScanState::Running,
+            "scan ended before the cancellation handshake: {current:?}"
+        );
+        // Match wait_scan's engine-start budget under parallel CI load. Once
+        // the marker appears, the fixture waits for our cancellation/EOF.
         assert!(
-            started.elapsed() < Duration::from_secs(5),
-            "scan never reached the second file"
+            started.elapsed() < Duration::from_secs(120),
+            "scan never reached the second file: {current:?}"
         );
         std::thread::sleep(Duration::from_millis(10));
     };

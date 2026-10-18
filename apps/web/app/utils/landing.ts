@@ -110,3 +110,14 @@ export function installLog(token: string): string[] {
     `🍺  ${token} was successfully installed!`
   ];
 }
+
+/**
+ * First line of a two-line heading that reads as one sentence. Vue drops whitespace-only text between the block
+ * spans, so the separating space ends the first line (on screen it vanishes at the line end); Chinese and Japanese
+ * lines join without one.
+ */
+export function headingLead(title: string): string {
+  return /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u3000-\u303f\uff00-\uffef]$/u.test(title)
+    ? title
+    : `${title} `;
+}
