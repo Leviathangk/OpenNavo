@@ -21,6 +21,7 @@ import type { TestContext } from './helpers';
 const wrappers: VueWrapper[] = [];
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
+  firewallMock()?.stop();
   vi.useRealTimers();
   useToasts().clear();
   vi.restoreAllMocks();
