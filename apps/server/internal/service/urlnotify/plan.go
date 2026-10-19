@@ -18,8 +18,9 @@ import (
 // app in it) refresh pages but are not announced to IndexNow, since the pages barely changed.
 const bulkContentRows = 50
 
-// longCachedSections hold the pages the web caches at the edge for hours (app, app_versions, article
-// and author pages); they must match the long-TTL page types in apps/web/server/utils/edgeCache.ts.
+// longCachedSections hold the pages the web caches at the edge for hours (app pages with their
+// versions, details and dependencies tabs, articles and authors); they must match the long-TTL page
+// types in apps/web/server/utils/edgeCache.ts.
 // Home and list pages expire within minutes and need no purge. The whole host is never purged: that
 // would also evict the 30-day share images (/_og/) and the hashed build assets (/_nuxt/).
 var longCachedSections = []string{"/apps", "/articles", "/authors"}

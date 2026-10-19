@@ -163,7 +163,8 @@ func TestCatalogStalePolicyDatesVisibilityIncrementalsAndRecovery(t *testing.T) 
 	for _, row := range rankings.Records {
 		require.False(t, row.Package.Disabled)
 	}
-	// The desktop receives both the disabled flag and every shifted rank.
+	// The desktop receives the disabled flag as a change. "recent" only moved up a rank: that is
+	// no change of its own and reaches desktops with the next snapshot.
 	changes, err := (&snapshot.Service{Store: st}).Changes(ctx, cursor, 100)
 	require.NoError(t, err)
 	found := map[string]publicapi.CatalogItem{}
@@ -174,8 +175,11 @@ func TestCatalogStalePolicyDatesVisibilityIncrementalsAndRecovery(t *testing.T) 
 	}
 	require.True(t, found["old"].Disabled)
 	require.False(t, found["font-sample"].Disabled)
-	require.NotNil(t, found["recent"].Rank30d)
-	require.Equal(t, 1, *found["recent"].Rank30d)
+	require.NotContains(t, found, "recent")
+	recent, err := st.PublicPackage(ctx, "cask", "recent", "en-US")
+	require.NoError(t, err)
+	require.NotNil(t, recent.Rank30d)
+	require.Equal(t, 1, *recent.Rank30d)
 	_, cursorAfter, err := st.CatalogBounds(ctx)
 	require.NoError(t, err)
 	// Unchanged raw data does not remove the local flag or create duplicate changes.

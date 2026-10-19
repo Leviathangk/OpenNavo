@@ -10,13 +10,21 @@ const head = useLocaleHead({ seo: { canonicalQueries: ['page', 'disabled', 'size
 const canonicalQuery = useCanonicalQuery();
 // Pages may limit alternates to their indexed languages (WP11, set by PackageDetailLayout).
 const hreflangs = useState<string[] | null>('page:hreflangs', () => null);
+// A page may name another path of this site as its canonical (and og:url): install details point at
+// the app's overview (PackageDetailLayout).
+const canonicalPath = useState<string | null>('page:canonicalPath', () => null);
+const canonicalOf = (url: string) =>
+  canonicalPath.value ? new URL(canonicalPath.value, url).href : canonicalPageUrl(url, canonicalQuery.value);
 useHead(() => ({
   htmlAttrs: { lang: head.value.htmlAttrs.lang },
   link: (head.value.link ?? [])
     .filter(link => !hreflangs.value || !('hreflang' in link) || hreflangs.value.includes(String(link.hreflang)))
     .map(link =>
       typeof link.href === 'string' && (link.rel === 'canonical' || link.rel === 'alternate')
-        ? { ...link, href: canonicalPageUrl(link.href, canonicalQuery.value) }
+        ? {
+            ...link,
+            href: link.rel === 'canonical' ? canonicalOf(link.href) : canonicalPageUrl(link.href, canonicalQuery.value)
+          }
         : link
     ),
   meta: [
@@ -24,7 +32,7 @@ useHead(() => ({
       .filter(tag => tag.property !== 'og:locale')
       .map(tag =>
         tag.property === 'og:url' && typeof tag.content === 'string'
-          ? { ...tag, content: canonicalPageUrl(tag.content, canonicalQuery.value) }
+          ? { ...tag, content: canonicalOf(tag.content) }
           : tag
       ),
     { property: 'og:locale', content: toAppLocale(locale.value).replace('-', '_') }

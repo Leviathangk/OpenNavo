@@ -37,6 +37,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // SSR uses the internal URL (NUXT_API_BASE_INTERNAL), falling back to the public URL when unset.
     apiBaseInternal: '',
+    // The public CDN's object store inside the Docker network (NUXT_CDN_BASE_INTERNAL): share images
+    // read icons there (shared/utils/ogIcon.ts) instead of through Cloudflare; empty keeps the CDN.
+    cdnBaseInternal: '',
     // Trust only explicitly configured ingress proxy IPs (comma-separated); ignore forwarded headers by default.
     trustedProxies: '',
     // Internal port (NUXT_METRICS_PORT) for crawler counters and page-cache invalidation; empty disables it.

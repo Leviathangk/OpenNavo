@@ -36,6 +36,9 @@ export default defineNitroPlugin(nitroApp => {
   if (import.meta.dev || !Number.isInteger(port) || port <= 0) return;
   const counter = new RequestCounter();
   nitroApp.hooks.hook('afterResponse', event => {
+    // A share-image render fetches its template island and icons in-process with the visitor's
+    // headers; count the visit once, not each internal step.
+    if (event.path.startsWith('/__nuxt_island/') || getHeader(event, 'x-nuxt-og-image')) return;
     counter.add(
       agentLabel(getHeader(event, 'user-agent')),
       routeLabel(event.path),

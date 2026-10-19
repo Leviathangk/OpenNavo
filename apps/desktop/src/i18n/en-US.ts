@@ -66,6 +66,7 @@ const messages: MessageSchema = {
   nav: {
     browse: 'Browse',
     lists: 'Lists',
+    tools: 'Tools',
     mine: 'Library',
     discover: 'Discover',
     categories: 'Categories',
@@ -79,8 +80,10 @@ const messages: MessageSchema = {
     cleanup: 'Clean Up',
     cleanupBadge: '{count} broken background item still loads | {count} broken background items still load',
     monitor: 'Monitor',
-    security: 'Security',
-    securityBadge: '{count} item needs attention | {count} items need attention'
+    security: 'Scan for Viruses',
+    securityBadge: '{count} item needs attention | {count} items need attention',
+    firewall: 'App Firewall',
+    firewallBadge: '{count} connection waiting for an answer | {count} connections waiting for an answer'
   },
   env: {
     label: 'Homebrew',
@@ -349,6 +352,8 @@ const messages: MessageSchema = {
     },
     disabledNotice: 'Homebrew has disabled this package: {reason}',
     deprecatedNotice: 'Homebrew has deprecated this package: {reason}',
+    staleNotice:
+      'No new version for more than 90 days, so OpenNavo has paused recommending and installing it. Homebrew still offers this app.',
     noReason: 'no reason given',
     replacement: 'Use {token} instead',
     release: {
@@ -1258,7 +1263,18 @@ const messages: MessageSchema = {
     E_STARTUP_CHANGED: 'Another program just changed this startup item. Refresh and try again',
     E_LOGIN_ITEM_EXISTS: 'This app already opens at login',
     E_ROLLBACK_UNAVAILABLE: 'The kept version is gone or the app has changed since, so it can’t be rolled back',
-    E_ROLLBACK_INTEGRITY: 'The kept version didn’t pass the signature check, so nothing was rolled back'
+    E_ROLLBACK_INTEGRITY: 'The kept version didn’t pass the signature check, so nothing was rolled back',
+    E_FW_NOT_BUNDLED: 'This version doesn’t include the firewall component. Use the release version of OpenNavo',
+    E_FW_NOT_IN_APPLICATIONS: 'Move OpenNavo to the Applications folder, then reopen it',
+    E_FW_ACTIVATION: 'macOS didn’t finish installing the system extension. Try again',
+    E_FW_CONSENT_DENIED: 'Network content filtering wasn’t allowed, so the firewall is off',
+    E_FW_DISCONNECTED: 'The firewall component isn’t responding. Try again shortly',
+    E_FW_RULE_INVALID: 'The rule isn’t valid. Check the program, address and port',
+    E_FW_UNKNOWN_ALERT: 'This connection was already handled',
+    E_FW_BLOCKLIST_URL: 'Only https addresses or files on this Mac are supported',
+    E_FW_BLOCKLIST_FETCH: 'Couldn’t download the block list. Check the address and your connection',
+    E_FW_BLOCKLIST_FORMAT: 'No usable domains or IPs were found in the file',
+    E_FW_BLOCKLIST_TOO_LARGE: 'The block list is too large: at most 50 MB and 1,000,000 entries'
   },
   installConfirm: {
     title: 'Adopt the existing {name}?',
@@ -2421,10 +2437,6 @@ const messages: MessageSchema = {
         ransomware: {
           title: 'Ransomware protection',
           body: 'Pauses a program that writes many encrypted-looking files in a short time, and asks you what to do. Needs the Endpoint Security entitlement.'
-        },
-        firewall: {
-          title: 'App firewall',
-          body: 'Asks whether to allow an app the first time it connects to the network, with rules and block lists. Needs a network system extension; coming in a later version.'
         }
       },
       eventsTitle: 'Recent activity',
@@ -2595,6 +2607,301 @@ const messages: MessageSchema = {
       title: 'Threat in a download: {file}',
       body: '{signature} · Scan the file to move it to the quarantine',
       action: 'Scan and Handle'
+    }
+  },
+  firewall: {
+    title: 'App Firewall',
+    subtitle: 'Asks before an app connects, then allows or blocks it by your rules, all decided on this Mac',
+    tabs: {
+      label: 'App Firewall',
+      rules: 'Rules',
+      activity: 'Activity',
+      blocklists: 'Block Lists',
+      settings: 'Settings'
+    },
+    unavailable: {
+      not_bundled: {
+        title: 'This version doesn’t include the firewall',
+        body: 'The app firewall needs the network system extension that ships signed with the release version. Development and unsigned builds don’t have it. Use the release version of OpenNavo.'
+      },
+      not_in_applications: {
+        title: 'Move OpenNavo to the Applications folder first',
+        body: 'macOS only lets apps in the Applications folder install system extensions. Move it there, reopen OpenNavo, then come back here.'
+      },
+      unsupported_os: {
+        title: 'This version of macOS isn’t supported',
+        body: 'The app firewall needs macOS 13 or later.'
+      }
+    },
+    setup: {
+      title: 'Turn On App Firewall',
+      lead: 'The first time each app connects to the network, OpenNavo asks whether to allow or block it, and remembers your answer.',
+      points: {
+        ask: {
+          title: 'Asks before apps connect',
+          body: 'See which app it is, where it’s connecting and who signed it, then allow or block it.'
+        },
+        rules: {
+          title: 'By app or by destination',
+          body: 'Allow a whole app, or allow or block just one site or port.'
+        },
+        blocklists: {
+          title: 'Block lists',
+          body: 'Import lists of ad, tracking or malicious sites. Matching connections are blocked outright.'
+        }
+      },
+      enable: 'Turn On App Firewall',
+      retry: 'Try Again',
+      steps:
+        'macOS asks you twice along the way: allow OpenNavo’s system extension in System Settings, then allow it to filter network content.',
+      privacy: 'Everything is decided on this Mac. Connection details are never uploaded.',
+      failedTitle: 'Couldn’t turn on the app firewall',
+      failed: 'Couldn’t turn it on: {reason}'
+    },
+    options: {
+      allowApple: 'Allow Apple programs automatically',
+      allowAppleHint: 'Command-line tools such as curl, ssh and python still ask.',
+      allowInstalled: 'Allow apps that are already installed',
+      allowInstalledHint: 'Only apps you install later ask, so it interrupts less.'
+    },
+    progress: {
+      title: 'Turning on the app firewall',
+      uninstalling: 'Removing the app firewall…',
+      install: 'Install the system extension',
+      installHint: 'Handing the firewall component to macOS. This usually takes a few seconds.',
+      approve: 'Allow it in System Settings',
+      approveHint:
+        'In System Settings › General › Login Items & Extensions › Network Extensions, turn on OpenNavo. On macOS 14 and earlier, click Allow in Privacy & Security.',
+      consent: 'Allow network content filtering',
+      consentHint: 'Click Allow in the dialog that appears.',
+      openSettings: 'Open System Settings',
+      reboot: 'Restart your Mac to finish installing.'
+    },
+    status: {
+      on: 'App Firewall is on',
+      off: 'App Firewall is paused',
+      offBody: 'No connections are filtered right now. Your rules are kept.',
+      toggle: 'App Firewall',
+      rules: '{count} rule | {count} rules',
+      blockedToday: '{count} blocked today | {count} blocked today',
+      disconnected: 'The firewall component isn’t responding.',
+      disconnectedBody: 'Existing rules still apply. If this keeps happening, turn the firewall off and on again.',
+      serviceMissing: 'The firewall service didn’t start properly.',
+      serviceMissingBody:
+        'Existing rules still apply, and connections without a rule are allowed and recorded. Restart your Mac to fix this.',
+      preparing:
+        'Checking the apps already installed. This usually takes a few seconds, and the firewall keeps working meanwhile.',
+      mode: 'Connections without a rule',
+      modes: {
+        ask: 'Ask Me',
+        allow: 'Allow & Log',
+        block: 'Block & Log'
+      },
+      modeHints: {
+        ask: 'You’re asked, and your answer becomes a rule.',
+        allow: 'No more questions. See them under Activity.',
+        block: 'New apps can’t connect until you add an allow rule for them.'
+      },
+      pending: '{count} connection is waiting for you | {count} connections are waiting for you',
+      review: 'Review'
+    },
+    signer: {
+      apple: 'Signed by Apple',
+      app_store: 'App Store',
+      developer: 'Developer: {team}',
+      developer_id: 'Signed',
+      adhoc: 'Ad-hoc signed',
+      unsigned: 'Unsigned',
+      invalid: 'Invalid signature'
+    },
+    rules: {
+      search: 'Search apps, developers or addresses',
+      filterLabel: 'Filter rules',
+      filters: {
+        all: 'All',
+        allow: 'Allow',
+        block: 'Block',
+        user: 'Mine',
+        auto: 'Automatic'
+      },
+      add: 'Add Rule',
+      allApps: 'All Apps',
+      allAppsHint: 'Applies to every app',
+      anyRemote: 'Any address',
+      anyPort: 'Any port',
+      port: 'port {port}',
+      action: {
+        allow: 'Allow',
+        block: 'Block'
+      },
+      untilQuit: 'Until the app quits',
+      source: {
+        user: 'Mine',
+        apple: 'Apple program',
+        installed: 'Installed app'
+      },
+      lastMatch: 'Used {time} · {count}×',
+      neverMatched: 'Not used yet',
+      menuLabel: 'Rule actions for {name}',
+      menu: {
+        allow: 'Change to Allow',
+        block: 'Change to Block',
+        edit: 'Edit',
+        delete: 'Delete'
+      },
+      noMatch: 'No matching rules',
+      empty: 'No rules yet',
+      emptyBody: 'Your answers when apps connect become rules and appear here.',
+      deleteTitle: 'Delete this rule?',
+      deleteBody: 'Next time {name} connects, it’s handled like any connection without a rule.',
+      deleted: 'Rule deleted'
+    },
+    sheet: {
+      addTitle: 'Add Rule',
+      editTitle: 'Edit Rule',
+      program: 'Program',
+      oneApp: 'One App',
+      allApps: 'All Apps',
+      allAppsHint: 'Applies to every app and needs an address or a port.',
+      chooseApp: 'Choose an App or Program…',
+      change: 'Change',
+      needApp: 'Choose an app or a program',
+      action: 'Action',
+      remote: 'Destination',
+      someRemote: 'Specific Address',
+      remotePlaceholder: 'example.com, *.example.com, an IP or a range',
+      remoteHint: '*.example.com covers all of its subdomains. Write ranges like 10.0.0.0/8.',
+      port: 'Port',
+      somePort: 'Specific Port',
+      invalid: 'Check the address or port format',
+      needDestination: 'A rule for all apps needs an address or a port, or it would allow or block the whole Mac.',
+      order:
+        'More specific rules win: rules naming an address or port apply first, and at the same level, Block wins over Allow.',
+      save: 'Save',
+      saved: 'Rule saved',
+      added: 'Rule added'
+    },
+    activity: {
+      filterLabel: 'Filter activity',
+      filters: {
+        all: 'All',
+        blocked: 'Blocked Only'
+      },
+      hint: 'Connections a rule allows aren’t logged',
+      clear: 'Clear Activity',
+      clearTitle: 'Clear the activity log?',
+      clearBody: 'Only the log is deleted. Your rules stay.',
+      port: 'port {port}',
+      reason: {
+        rule: 'By rule',
+        blocklist: 'Block list',
+        apple: 'Apple program, allowed automatically',
+        installed: 'Installed app, allowed automatically',
+        mode: 'No rule',
+        answer: 'Your answer',
+        timeout: 'Not answered in time, allowed for now',
+        no_client: 'OpenNavo wasn’t running, allowed for now'
+      },
+      action: {
+        allow: 'Allowed',
+        block: 'Blocked'
+      },
+      count: '{count}×',
+      allowApp: 'Allow App',
+      blockApp: 'Block App',
+      ruled: {
+        allow: '{name} can now connect',
+        block: '{name} is now blocked'
+      },
+      ruledShort: {
+        allow: 'Now allowed',
+        block: 'Now blocked'
+      },
+      more: 'Load Earlier Activity',
+      empty: 'No activity yet',
+      emptyBlocked: 'No blocked connections yet',
+      emptyBody: 'Blocked connections, your answers and automatically allowed connections are logged here.'
+    },
+    blocklists: {
+      intro: 'Connections to a listed site or IP are blocked without asking. Lists from a web address update daily.',
+      source: 'Block list address or file',
+      placeholder: 'https://… or a file path',
+      add: 'Add',
+      chooseFile: 'Choose File…',
+      added: 'Added {name} with {count} entries',
+      addFailed: 'Couldn’t add the block list',
+      toggle: 'Use {name}',
+      entries: '{count} entry | {count} entries',
+      updated: 'updated {time}',
+      refresh: 'Update {name} now',
+      remove: 'Remove {name}',
+      empty: 'No block lists yet',
+      emptyBody: 'Hosts files work, and so do lists with one domain, IP or range per line.',
+      boundary:
+        'Some apps look up an IP themselves and connect to it directly. Those connections can only be blocked by the IPs on a list; blocking by domain may miss them.',
+      removeTitle: 'Remove this block list?',
+      removeBody: 'After removing {name}, its addresses are no longer blocked outright.',
+      removeAction: 'Remove'
+    },
+    settings: {
+      automatic: 'Allow Automatically',
+      allowInstalledHint:
+        'Apps installed before you turned on the firewall connect freely; only apps installed later ask.',
+      closedHint: 'The system extension keeps these settings, so they apply even when OpenNavo is closed.',
+      remove: 'Remove',
+      removeLabel: 'Remove App Firewall',
+      removeHint:
+        'Turns off filtering and uninstalls the system extension, deleting rules and activity. macOS may ask for your password.',
+      removeAction: 'Remove',
+      removeTitle: 'Remove the app firewall?',
+      removeBody:
+        'All apps can then connect freely, and rules, block lists and activity are deleted. You can turn it on again at any time.'
+    },
+    alert: {
+      title: '{name} wants to connect to the network',
+      warning: {
+        unsigned: 'This program isn’t signed, so its developer can’t be confirmed.',
+        adhoc: 'This program only has an ad-hoc signature, so its developer can’t be confirmed.',
+        invalid: 'This program’s signature is invalid. It may have been modified.'
+      },
+      to: 'Connecting to',
+      port: 'port {port}',
+      path: 'Location',
+      parents: 'Started by',
+      args: 'Arguments',
+      scope: 'Applies to',
+      scopes: {
+        app: 'All of this app’s connections',
+        destination: 'Only this address'
+      },
+      until: 'Duration',
+      untils: {
+        always: 'Forever',
+        app_quits: 'Until the app quits'
+      },
+      waiting:
+        '{count} more connection from this app is waiting for this answer | {count} more connections from this app are waiting for this answer',
+      queue: '{count} more connection waiting | {count} more connections waiting',
+      block: 'Block',
+      allow: 'Allow',
+      none: 'No connections are waiting',
+      deadline: 'Allowed for now if not answered within {time}',
+      released: 'This connection was allowed for now. Your answer still becomes a rule.'
+    },
+    rail: {
+      title: 'Firewall',
+      state: 'Status',
+      notSetUp: 'Off',
+      paused: 'Paused',
+      on: 'Running',
+      noResponse: 'Not responding',
+      mode: 'Without a rule',
+      rules: 'Rules',
+      blockedToday: 'Blocked today',
+      version: 'Component version',
+      limitsTitle: 'What it covers',
+      limits:
+        'Only connections that apps on this Mac start. Incoming connections are the job of the firewall built into macOS. While OpenNavo isn’t running it can’t ask, so connections without a rule are allowed for now and logged under Activity.'
     }
   }
 };

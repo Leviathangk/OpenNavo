@@ -73,3 +73,11 @@ records are retained in docs/legal/native/LICENSE.DuoUpdater,
 LICENSE.Installomator, duoupdater-upstream.json and installomator-upstream.json.
 The implementation is rewritten in Go and Rust; upstream shell/Swift recipes
 are never executed. These notices are included in the server distribution.
+
+Application firewall code in apps/desktop/native/firewall adapts LuLu v4.5.1
+by Objective-See / Patrick Wardle, Copyright (c) 2017-2020 Objective-See,
+GPL-3.0-only (https://github.com/objective-see/LuLu/tree/v4.5.1).
+OpenNavo modifications dated 2026-10-18 replace policy, IPC, persistence and
+UI integration; upstream names and icons are not used in product UI.
+The unmodified license text, source hashes, and adaptation notes are retained
+in LICENSE.LuLu, upstream.json and README.md in that directory.

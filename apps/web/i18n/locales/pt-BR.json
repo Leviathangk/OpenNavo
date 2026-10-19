@@ -1,7 +1,7 @@
 {
   "site": {
     "name": "OpenNavo",
-    "title": "OpenNavo — loja de apps Homebrew e antivírus grátis para Mac",
+    "title": "OpenNavo — loja Homebrew com antivírus e firewall para Mac",
     "description": "A loja de apps Homebrew para Mac: instale e atualize {count} app com um clique, com verificação de vírus antes. Grátis e de código aberto. | A loja de apps Homebrew para Mac: instale e atualize {count} apps com um clique, com verificação de vírus antes. Grátis e de código aberto."
   },
   "nav": {
@@ -54,7 +54,7 @@
     "discoverHeading": "Descubra apps para Mac"
   },
   "footer": {
-    "tagline": "A loja de apps Homebrew para Mac e uma interface gráfica de código aberto para Homebrew, com antivírus grátis, limpeza e monitoramento. Instalações feitas pelo cliente macOS ou pelo comando brew.",
+    "tagline": "A loja de apps Homebrew para Mac e uma interface gráfica de código aberto para Homebrew, com verificação de vírus, firewall de apps, limpeza e monitoramento. Instalações feitas pelo cliente macOS ou pelo comando brew.",
     "copyright": "© {year} OpenNavo"
   },
   "analytics": {
@@ -226,6 +226,7 @@
     },
     "disabledNotice": "O Homebrew desativou este pacote: {reason}",
     "deprecatedNotice": "O Homebrew descontinuou este pacote: {reason}",
+    "staleNotice": "Sem novas versões há mais de 90 dias, o OpenNavo pausou a recomendação e a instalação. O Homebrew ainda oferece este app.",
     "noReason": "Motivo não informado",
     "replacement": "Alternativa: {token}",
     "release": {
@@ -589,7 +590,7 @@
       "alternativesA": "Algumas alternativas são {list}."
     },
     "securityPromo": {
-      "title": "Antivírus grátis no OpenNavo",
+      "title": "OpenNavo: verificação de vírus e firewall de apps",
       "body": "O app OpenNavo verifica downloads e o Mac inteiro com o ClamAV, além de checar itens de inicialização e assinaturas de apps. Grátis e de código aberto.",
       "link": "Saiba mais sobre Segurança"
     },
@@ -674,7 +675,7 @@
     "remove": "Remover {name} da lista"
   },
   "download": {
-    "title": "A loja de apps Homebrew para Mac, com antivírus grátis incluído",
+    "title": "A loja de apps Homebrew para Mac, com verificação de vírus e firewall de apps",
     "metaTitle": "Baixar o app OpenNavo · OpenNavo",
     "description": "Instale, atualize e desinstale apps com um clique, com verificação de vírus antes, limpeza e monitoramento. Usa o Homebrew do seu Mac, sem conta.",
     "button": "Baixar para macOS",
@@ -959,7 +960,7 @@
   "og": {
     "tagline": "A loja de apps do Homebrew",
     "platform": "cliente macOS",
-    "homeTitle": "A loja de apps\nHomebrew para Mac,\ncom antivírus grátis.",
+    "homeTitle": "Loja Homebrew\npara Mac, antivírus\ne firewall.",
     "homeDescription": "Instale e atualize apps com um clique,\ncom verificação prévia de vírus.",
     "discoverTitle": "Descubra apps\npara Mac.",
     "discoverDescription": "Explore apps. Veja as novidades.\nEncontre seu próximo app.",
@@ -981,9 +982,9 @@
       "announceTag": "Novo",
       "announce": "Chegou a verificação de vírus grátis",
       "title": "A loja de apps Homebrew para Mac,",
-      "titleAccent": "com antivírus grátis incluído.",
-      "lede": "Instale e atualize **{count} app** com um clique, verificando se há vírus antes de instalar. Faça também uma **verificação completa de vírus**, gerencie os itens de inicialização, limpe o disco e monitore o hardware. Grátis, de código aberto e sem precisar de conta. | Instale e atualize **{count} apps** com um clique, verificando se há vírus antes de instalar. Faça também uma **verificação completa de vírus**, gerencie os itens de inicialização, limpe o disco e monitore o hardware. Grátis, de código aberto e sem precisar de conta.",
-      "ledeFallback": "Instale e atualize apps para Mac com um clique, verificando se há vírus antes de instalar. Faça também uma **verificação completa de vírus**, gerencie os itens de inicialização, limpe o disco e monitore o hardware. Grátis, de código aberto e sem precisar de conta.",
+      "titleAccent": "com **verificação de vírus** e firewall de apps.",
+      "lede": "Instale e atualize **{count} app** com um clique, verificando se há vírus antes de instalar. Faça também uma **verificação completa de vírus**, gerencie os itens de inicialização, limpe o disco e monitore o hardware. | Instale e atualize **{count} apps** com um clique, verificando se há vírus antes de instalar. Faça também uma **verificação completa de vírus**, gerencie os itens de inicialização, limpe o disco e monitore o hardware.",
+      "ledeFallback": "Instale e atualize apps para Mac com um clique, verificando se há vírus antes de instalar. Faça também uma **verificação completa de vírus**, gerencie os itens de inicialização, limpe o disco e monitore o hardware.",
       "download": "Baixar para Mac",
       "browse": "Explorar apps",
       "github": "Código aberto no GitHub",

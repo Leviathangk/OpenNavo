@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "firewall-alert",
+  "description": "Only firewall replies, pending alerts, effective locale and content sizing",
+  "windows": ["firewall-alert"],
+  "permissions": ["native-firewall-alert", "core:event:default", "core:window:allow-set-size"]
+}

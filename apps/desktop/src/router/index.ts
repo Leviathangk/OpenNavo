@@ -17,6 +17,7 @@ declare module 'vue-router' {
       | 'cleanup'
       | 'monitor'
       | 'security'
+      | 'firewall'
       | 'settings';
     /** Render without the app shell (Welcome, menu-bar popover). */
     bare?: boolean;
@@ -30,6 +31,7 @@ const UpdatesRail = () => import('@/components/rails/UpdatesRail.vue');
 const CleanupRail = () => import('@/components/rails/CleanupRail.vue');
 const MonitorRail = () => import('@/components/rails/MonitorRail.vue');
 const SecurityRail = () => import('@/components/rails/SecurityRail.vue');
+const FirewallRail = () => import('@/components/rails/FirewallRail.vue');
 
 export const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/discover' },
@@ -189,6 +191,16 @@ export const routes: RouteRecordRaw[] = [
     meta: { nav: 'security' }
   },
   {
+    // App firewall (plan M7 / S4): its own Tools entry below Scan for Viruses; tabs live in the route like Security.
+    path: '/firewall/:tab(rules|activity|blocklists|settings)?',
+    name: 'firewall',
+    components: {
+      default: () => import('@/pages/FirewallPage.vue'),
+      rail: FirewallRail
+    },
+    meta: { nav: 'firewall' }
+  },
+  {
     path: '/history',
     name: 'history',
     redirect: '/updates'
@@ -217,6 +229,13 @@ export const routes: RouteRecordRaw[] = [
     path: '/tray-monitor',
     name: 'tray-monitor',
     component: () => import('@/pages/TrayMonitorPage.vue'),
+    meta: { bare: true }
+  },
+  // A connection waiting for an answer (firewall plan §4.4): Rust's small always-on-top window.
+  {
+    path: '/firewall-alert',
+    name: 'firewall-alert',
+    component: () => import('@/pages/FirewallAlertPage.vue'),
     meta: { bare: true }
   },
   // Menu-bar popover (06 §4.2), without sidebar or toolbar.

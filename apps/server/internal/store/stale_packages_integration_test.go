@@ -59,9 +59,11 @@ func TestStaleTransitionRollsBackStatusRanksCursorAndNotification(t *testing.T) 
 	p, err = st.PublicPackage(ctx, "cask", "recent", "en-US")
 	require.NoError(t, err)
 	require.Equal(t, 1, *p.Rank30d)
+	// Only the app that flipped is a change; "recent" moved up a rank and gets it with the next snapshot.
 	changes, err := st.CatalogChanges(ctx, cursor, 100)
 	require.NoError(t, err)
-	require.Len(t, changes, 2)
+	require.Len(t, changes, 1)
+	require.Equal(t, "old", changes[0].Token)
 	require.NoError(t, st.DB.Table("job_outbox").Where("job_type='cache:invalidate'").Count(&outbox).Error)
 	require.EqualValues(t, 1, outbox)
 }

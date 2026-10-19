@@ -29,11 +29,15 @@ withDefaults(defineProps<{ kicker: string; title: string; body?: string; align?:
   text-wrap: balance;
 }
 
-/* Chinese and Japanese headings break at punctuation and spaces rather than inside a phrase ("一处" stays
-   together), and still break anywhere if a phrase cannot fit. */
-:lang(zh) .landing-section-title,
-:lang(ja) .landing-section-title {
+/* Chinese headings break at punctuation and spaces rather than inside a phrase ("一处" stays together); Japanese
+   ones between phrases where supported. Both still break anywhere if a phrase cannot fit. */
+:lang(zh) .landing-section-title {
   word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+:lang(ja) .landing-section-title {
+  word-break: auto-phrase;
   overflow-wrap: anywhere;
 }
 </style>

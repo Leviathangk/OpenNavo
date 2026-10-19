@@ -47,6 +47,7 @@
       "hardenedRuntime": true,
       "entitlements": "entitlements.plist",
       "files": {
+        "Library/SystemExtensions": "../native/staged/firewall/SystemExtensions",
         "Helpers/opennavo-store": "../native/staged/opennavo-store",
         "Library/LaunchDaemons/org.opennavo.desktop.FanHelper.plist": "fan-helper/org.opennavo.desktop.FanHelper.plist",
         "Library/Helpers/opennavo-fan-helper": "fan-helper/staged/opennavo-fan-helper",

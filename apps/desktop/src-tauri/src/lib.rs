@@ -9,6 +9,7 @@ pub mod db;
 pub mod deeplink;
 mod error;
 pub mod events;
+pub mod firewall;
 pub mod guide;
 pub mod install_preflight;
 pub mod installer;
@@ -50,7 +51,29 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         .typ::<appstore::MasErrorCode>()
         .typ::<security::SecurityErrorCode>()
         .typ::<security::SecuritySettings>()
+        .typ::<firewall::FirewallErrorCode>()
         .commands(collect_commands![
+            commands::firewall::firewall_status,
+            commands::firewall::firewall_enable,
+            commands::firewall::firewall_disable,
+            commands::firewall::firewall_uninstall,
+            commands::firewall::firewall_open_approval,
+            commands::firewall::firewall_app_identify,
+            commands::firewall::firewall_rules,
+            commands::firewall::firewall_rule_save,
+            commands::firewall::firewall_rule_delete,
+            commands::firewall::firewall_alerts,
+            commands::firewall::firewall_alert_reply,
+            commands::firewall::firewall_alert_show,
+            commands::firewall::firewall_events,
+            commands::firewall::firewall_events_clear,
+            commands::firewall::firewall_blocklists,
+            commands::firewall::firewall_blocklist_add,
+            commands::firewall::firewall_blocklist_set,
+            commands::firewall::firewall_blocklist_refresh,
+            commands::firewall::firewall_blocklist_remove,
+            commands::firewall::firewall_settings,
+            commands::firewall::firewall_settings_set,
             commands::security::security_overview,
             commands::security::posture_check,
             commands::security::av_engine_status,
@@ -178,6 +201,10 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::permissions::permission_guide_drag
         ])
         .events(collect_events![
+            events::FirewallStatusEvent,
+            events::FirewallAlertsEvent,
+            events::FirewallChangedEvent,
+            events::FirewallActivityEvent,
             events::SecurityChangedEvent,
             events::AvProgressEvent,
             events::AvFinishedEvent,
@@ -294,7 +321,7 @@ pub fn run() {
         .plugin(
             tauri_plugin_window_state::Builder::new()
                 .with_state_flags(lifecycle::window_state_flags(hidden))
-                .with_denylist(&[tray::LABEL, monitor::POPOVER_LABEL])
+                .with_denylist(&[tray::LABEL, monitor::POPOVER_LABEL, firewall::ALERT_LABEL])
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -412,6 +439,7 @@ pub fn run() {
             core.start_library_scan();
             uninstall::install_watch(app.handle());
             security::watch::install(app.handle());
+            firewall::install(app.handle(), &core);
             scheduler::start(&core);
             Ok(())
         })

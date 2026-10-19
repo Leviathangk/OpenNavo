@@ -375,6 +375,21 @@
       "licensePaths": [
         "docs/legal/native/LICENSE.Installomator"
       ]
+    },
+    {
+      "name": "LuLu",
+      "version": "4.5.1",
+      "license": "GPL-3.0-only",
+      "url": "https://github.com/objective-see/LuLu/tree/v4.5.1",
+      "scope": "runtime",
+      "kind": "ported",
+      "source": "apps/desktop/native/firewall/upstream.json",
+      "licensePaths": [
+        "apps/desktop/native/firewall/LICENSE.LuLu"
+      ],
+      "products": [
+        "desktop"
+      ]
     }
   ]
 }

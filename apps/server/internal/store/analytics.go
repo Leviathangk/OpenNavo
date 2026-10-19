@@ -34,7 +34,7 @@ func (s *Store) ApplyAnalytics(ctx context.Context, rows []domain.AnalyticsRow, 
 				return fmt.Errorf("update analytics batch: %w", err)
 			}
 		}
-		if _, err := refreshPackageRanks(ctx, tx); err != nil {
+		if err := refreshPackageRanks(ctx, tx); err != nil {
 			return err
 		}
 		if err := tx.WithContext(ctx).Exec("INSERT INTO analytics_snapshots (package_id,snapshot_date,installs_30d,installs_90d,installs_365d,on_request_30d,rank_30d) SELECT id,?::date,installs_30d,installs_90d,installs_365d,on_request_30d,rank_30d FROM packages WHERE kind='cask' AND removed_at IS NULL ON CONFLICT (package_id,snapshot_date) DO UPDATE SET installs_30d=EXCLUDED.installs_30d,installs_90d=EXCLUDED.installs_90d,installs_365d=EXCLUDED.installs_365d,on_request_30d=EXCLUDED.on_request_30d,rank_30d=EXCLUDED.rank_30d", date).Error; err != nil {

@@ -116,7 +116,7 @@ fn invalid_native_install_targets_never_fall_through_to_brew() {
         assert_eq!(
             error.code,
             if kind == TaskKind::Mas {
-                "E_MAS_ENGINE"
+                "E_MAS_HELPER_MISSING"
             } else {
                 "E_INVALID_ARG"
             }

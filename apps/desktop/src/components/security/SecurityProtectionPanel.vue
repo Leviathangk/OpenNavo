@@ -11,8 +11,8 @@ import { useToasts } from '@/composables/useToasts';
 import { useSecurityStore } from '@/stores/security';
 import { useTasksStore } from '@/stores/tasks';
 
-// Protection (plan §6.4): what runs today (S1 and S2, no Apple entitlement) is switchable; the rest says what it waits
-// for — Endpoint Security approval (S3) or the network extension (S4) — instead of pretending to be available.
+// Protection (plan §6.4): what runs today (S1 and S2, no Apple entitlement) is switchable; the rest says it waits for
+// Endpoint Security approval (S3) instead of pretending to be available. The app firewall (S4) has its own page.
 const { t, te } = useI18n();
 const { appLocale } = useAppLocale();
 const toasts = useToasts();
@@ -77,12 +77,11 @@ const live = computed<Live[]>(() => {
     }
   ];
 });
-const later = computed(() => [
-  { key: 'realtime', stage: 'S3', waiting: true },
-  { key: 'exec', stage: 'S3', waiting: true },
-  { key: 'ransomware', stage: 'S3', waiting: true },
-  { key: 'firewall', stage: 'S4', waiting: false }
-]);
+const later = [
+  { key: 'realtime', stage: 'S3' },
+  { key: 'exec', stage: 'S3' },
+  { key: 'ransomware', stage: 'S3' }
+];
 
 async function toggle(key: Switch, value: boolean) {
   try {
@@ -169,9 +168,7 @@ function eventText(event: ProtectionEvent): string {
               {{ t(`security.protection.later.${item.key}.body`) }}
             </p>
           </div>
-          <OnChip :tone="item.waiting ? 'warning' : 'neutral'" size="sm">
-            {{ item.waiting ? t('security.protection.waiting', { stage: item.stage }) : item.stage }}
-          </OnChip>
+          <OnChip tone="warning" size="sm">{{ t('security.protection.waiting', { stage: item.stage }) }}</OnChip>
         </li>
       </ul>
     </OnCard>

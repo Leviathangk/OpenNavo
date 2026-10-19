@@ -2,7 +2,7 @@
 // the intent the page serves; they never add "best", years or "free", and only claim a download
 // when Homebrew can still install the package. Descriptions say what the page answers instead of
 // stacking summary, command, version and install counts.
-import { formatVersion } from '@opennavo/shared';
+import { disabledByHomebrew, formatVersion, type HomebrewLifecycle } from '@opennavo/shared';
 
 export type Translate = (key: string, named?: Record<string, unknown>) => string;
 
@@ -141,12 +141,14 @@ export interface OverviewFacts {
   displayName: string;
   summary?: string | null;
   isFont: boolean;
+  /** The catalog flag, which also covers apps paused by the 90-day rule that Homebrew still installs. */
   disabled: boolean;
+  homebrewStatus?: HomebrewLifecycle | null;
 }
 
 export function overviewTitle(pkg: OverviewFacts, t: Translate): string {
   const name = titleName(pkg.displayName);
-  if (pkg.disabled) return withName(t, 'package.seo.titleUnavailable', name);
+  if (disabledByHomebrew(pkg)) return withName(t, 'package.seo.titleUnavailable', name);
   // Names such as "FiraCode Nerd Font" already say they are fonts.
   if (pkg.isFont && !/\bfonts?\b|字体/iu.test(pkg.displayName)) return withName(t, 'package.seo.titleFont', name);
   return withName(t, 'package.seo.titleApp', name);
@@ -160,7 +162,7 @@ export function overviewDescription(pkg: OverviewFacts, t: Translate): string {
   const name = pkg.displayName;
   const summary = usableSummary(pkg.summary, name);
   // Link apps have no install method on the page, only the developer's download (store/security plan §4).
-  const key = pkg.disabled
+  const key = disabledByHomebrew(pkg)
     ? 'package.seo.descriptionUnavailable'
     : pkg.kind === 'link'
       ? 'package.seo.descriptionLink'

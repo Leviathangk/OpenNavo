@@ -5,6 +5,32 @@ use tauri::Manager;
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(transparent)]
+#[tauri_specta(event_name = "firewall:status")]
+pub struct FirewallStatusEvent(pub crate::firewall::FirewallStatus);
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+#[tauri_specta(event_name = "firewall:alerts")]
+pub struct FirewallAlertsEvent {
+    pub alerts: Vec<crate::firewall::FirewallAlert>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+#[tauri_specta(event_name = "firewall:changed")]
+pub struct FirewallChangedEvent {
+    pub what: crate::firewall::FirewallChangeKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+#[tauri_specta(event_name = "firewall:activity")]
+pub struct FirewallActivityEvent {
+    pub events: Vec<crate::firewall::FirewallEvent>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(transparent)]
 #[tauri_specta(event_name = "env:changed")]
 pub struct EnvChanged(pub EnvInfo);
 

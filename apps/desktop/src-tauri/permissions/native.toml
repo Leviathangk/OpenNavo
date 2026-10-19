@@ -2,6 +2,10 @@
 identifier = "native-main"
 description = "Main window access to the specified client commands"
 commands.allow = [
+  "firewall_status", "firewall_enable", "firewall_disable", "firewall_uninstall", "firewall_open_approval", "firewall_app_identify",
+  "firewall_rules", "firewall_rule_save", "firewall_rule_delete", "firewall_alerts", "firewall_alert_reply", "firewall_alert_show",
+  "firewall_events", "firewall_events_clear", "firewall_blocklists", "firewall_blocklist_add", "firewall_blocklist_set", "firewall_blocklist_refresh", "firewall_blocklist_remove",
+  "firewall_settings", "firewall_settings_set",
   "download_act",
   "av_schedule_status", "install_scan_get", "app_signature_check", "app_signature_get", "paste_protection_status", "paste_protection_request_access", "paste_protection_act", "virus_total_status", "virus_total_key_set", "virus_total_lookup",
   "security_overview", "posture_check", "av_engine_status", "av_db_update", "av_scan_start", "av_scan_cancel", "av_scan_get", "av_findings_act", "quarantine_list", "quarantine_restore", "quarantine_delete", "startup_scan", "startup_cached", "startup_login_add", "startup_item_act", "protection_events", "download_verify",
@@ -18,6 +22,11 @@ commands.allow = [
   "app_open", "app_reveal", "system_open_privacy", "app_quit", "app_cancel_quit",
   "permissions_get", "permission_guide_open", "permission_guide_close"
 ]
+
+[[permission]]
+identifier = "native-firewall-alert"
+description = "Firewall alert can only read pending alerts, reply and read the locale"
+commands.allow = ["firewall_alerts", "firewall_alert_reply", "locale_get"]
 
 [[permission]]
 identifier = "native-tray"

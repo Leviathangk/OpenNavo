@@ -1,7 +1,7 @@
 {
   "site": {
     "name": "OpenNavo",
-    "title": "OpenNavo — Mac 上的 Homebrew 应用商店，自带免费杀毒",
+    "title": "OpenNavo — Mac 上的 Homebrew 应用商店，病毒扫描与应用防火墙",
     "description": "Mac 上的 Homebrew 应用商店：一键安装和更新 {count} 个 App，装之前先扫描病毒；还能检查启动项、清理磁盘和监控硬件。免费开源。"
   },
   "nav": {
@@ -54,7 +54,7 @@
     "discoverHeading": "发现 Mac App"
   },
   "footer": {
-    "tagline": "Mac 上的 Homebrew 应用商店，也是开源的 Homebrew 图形界面，自带免费杀毒、清理和监控。安装通过 macOS 客户端或 brew 命令完成。",
+    "tagline": "Mac 上的 Homebrew 应用商店，也是开源的 Homebrew 图形界面，自带病毒扫描、应用防火墙、清理和监控。安装通过 macOS 客户端或 brew 命令完成。",
     "copyright": "© {year} OpenNavo"
   },
   "analytics": {
@@ -226,6 +226,7 @@
     },
     "disabledNotice": "Homebrew 已停用此包：{reason}",
     "deprecatedNotice": "Homebrew 已弃用此包：{reason}",
+    "staleNotice": "超过 90 天没有新版本，OpenNavo 已暂停推荐和安装；Homebrew 仍在提供此应用。",
     "noReason": "未说明原因",
     "replacement": "替代：{token}",
     "release": {
@@ -589,7 +590,7 @@
       "alternativesA": "可以考虑 {list}。"
     },
     "securityPromo": {
-      "title": "OpenNavo 自带免费杀毒",
+      "title": "OpenNavo：病毒扫描与应用防火墙",
       "body": "用 ClamAV 扫描下载的文件和整台 Mac，还能检查开机启动项和 App 签名。免费开源。",
       "link": "了解安全防护"
     },
@@ -674,7 +675,7 @@
     "remove": "从清单移除 {name}"
   },
   "download": {
-    "title": "Mac 上的 Homebrew 应用商店，自带免费杀毒",
+    "title": "Mac 上的 Homebrew 应用商店，病毒扫描与应用防火墙",
     "metaTitle": "下载 OpenNavo 客户端 · OpenNavo",
     "description": "一键安装、更新和卸载 App，装之前先扫描病毒；还能清理磁盘、监控硬件。客户端调用你电脑上的 Homebrew，不需要账号。",
     "button": "下载 macOS 版",
@@ -959,7 +960,7 @@
   "og": {
     "tagline": "Homebrew 应用商店",
     "platform": "macOS 客户端",
-    "homeTitle": "Mac 上的\nHomebrew 应用商店，\n自带免费杀毒。",
+    "homeTitle": "Mac 上的 Homebrew\n应用商店，病毒扫描\n与应用防火墙。",
     "homeDescription": "一键安装和更新应用，\n装之前先扫描病毒。",
     "discoverTitle": "发现好用的\nMac 应用",
     "discoverDescription": "浏览应用，查看更新日志。\n找到下一款想安装的应用。",
@@ -981,9 +982,9 @@
       "announceTag": "新功能",
       "announce": "免费病毒扫描已上线",
       "title": "Mac 上的 Homebrew 应用商店，",
-      "titleAccent": "自带免费杀毒。",
-      "lede": "一键安装和更新 **{count} 个 App**，装之前先扫描病毒；还能**全盘查毒**、管理开机启动项、清理磁盘和监控硬件。免费开源，不需要账号。",
-      "ledeFallback": "一键安装和更新 Mac App，装之前先扫描病毒；还能**全盘查毒**、管理开机启动项、清理磁盘和监控硬件。免费开源，不需要账号。",
+      "titleAccent": "**病毒扫描**与应用防火墙。",
+      "lede": "一键安装和更新 **{count} 个 App**，装之前先扫描病毒；还能**全盘查毒**、管理开机启动项、清理磁盘和监控硬件。",
+      "ledeFallback": "一键安装和更新 Mac App，装之前先扫描病毒；还能**全盘查毒**、管理开机启动项、清理磁盘和监控硬件。",
       "download": "下载 Mac 版",
       "browse": "浏览 App",
       "github": "GitHub 开源",

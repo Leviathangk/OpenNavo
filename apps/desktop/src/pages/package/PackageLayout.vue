@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { recentReturnPath, withRecentReturn } from '@opennavo/shared';
+import { disabledByHomebrew, recentReturnPath, withRecentReturn } from '@opennavo/shared';
 import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -87,7 +87,7 @@ const notice = computed(() => {
       replacement: { kind: 'cask' as const, token: adopted }
     };
   if (!value) return null;
-  if (value.disable)
+  if (value.disable && disabledByHomebrew(value))
     return {
       tone: 'danger' as const,
       text: t('package.disabledNotice', { reason: value.disable.reason ?? t('package.noReason') }),
@@ -101,6 +101,9 @@ const notice = computed(() => {
       }),
       replacement: value.deprecation.replacement
     };
+  // Paused only by OpenNavo's 90-day rule: Homebrew still offers and installs the app.
+  if (value.disable)
+    return { tone: 'warning' as const, text: t('package.staleNotice'), replacement: value.disable.replacement };
   return null;
 });
 

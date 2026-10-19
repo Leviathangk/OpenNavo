@@ -1,0 +1,2 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+"NSSystemExtensionUsageDescription" = "Pergunta quais apps podem se conectar à rede e permite ou bloqueia as conexões conforme suas regras.";

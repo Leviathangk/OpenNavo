@@ -7,6 +7,8 @@ fn main() {
             "native/fan_bridge.m",
             "native/monitor_bridge.m",
             "native/security_bridge.m",
+            "native/firewall_bridge.m",
+            "../native/firewall/FWIdentity.m",
         ] {
             let object = out
                 .join(std::path::Path::new(source).file_stem().unwrap())
@@ -52,6 +54,8 @@ fn main() {
         );
         println!("cargo:rustc-link-search=native={}", out.display());
         println!("cargo:rustc-link-lib=static=opennavo_fan_bridge");
+        // Firewall peer diagnostics resolve the audit token's PID via libbsm.
+        println!("cargo:rustc-link-lib=bsm");
         // Objective-C @available emits __isPlatformVersionAtLeast. Rust links with
         // -nodefaultlibs, so Clang does not automatically add its availability runtime.
         let runtime = Command::new("xcrun")
@@ -77,10 +81,13 @@ fn main() {
             "ServiceManagement",
             "ApplicationServices",
             "LocalAuthentication",
+            "NetworkExtension",
+            "SystemExtensions",
         ] {
             println!("cargo:rustc-link-lib=framework={framework}");
         }
         println!("cargo:rerun-if-changed=native/fan_bridge.m");
+        println!("cargo:rerun-if-changed=../native/firewall/FWIdentity.h");
     }
     if std::env::var_os("CARGO_FEATURE_FAN_HELPER").is_some()
         && std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos")

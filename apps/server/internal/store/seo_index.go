@@ -10,12 +10,15 @@ import (
 
 // IndexRow is one cask or link with what the index rule (WP11) and the sitemap need. Text counts as
 // published in a language when its summary is non-empty and its status is source, machine or manual.
+// Disabled and Deprecated are Homebrew's flags; Stale is OpenNavo's 90-day rule (stale_disabled),
+// which the catalog shows as disabled but which does not stop Homebrew from installing the app.
 type IndexRow struct {
 	ID                                        int64
 	Kind, Token, Name, DisplayName, Version   string
 	SourceLocale                              string
 	Summary                                   string
 	Hidden, Disabled, HasRequirements, IsFont bool
+	Deprecated, Stale                         bool
 	Installs30d, NotesCount                   int
 	FirstSeenAt, UpdatedAt                    time.Time
 	Override                                  string
@@ -30,7 +33,7 @@ type IndexRow struct {
 const indexRowSelect = `SELECT p.id,p.kind,p.token,p.name,p.version,p.source_locale,p.installs_30d,p.first_seen_at,p.updated_at,p.is_font,
  COALESCE(NULLIF(btrim(si.summary),''),p.desc_en,'') AS summary,
  COALESCE(NULLIF(si.display_name,''),p.name) AS display_name,
- COALESCE(m.hidden,false) AS hidden,` + PackageDisabledSQL + ` AS disabled,
+ COALESCE(m.hidden,false) AS hidden,p.disabled,p.deprecated,p.stale_disabled AS stale,
  (p.min_macos IS NOT NULL OR p.raw->'depends_on'->'macos' IS NOT NULL) AS has_requirements,
  COALESCE(m.index_override,'auto') AS override,m.index_override_reason AS override_reason,m.index_override_at AS override_at,
  (SELECT v.brew_committed_at FROM package_versions v WHERE v.package_id=p.id AND v.version=p.version) AS committed_at,
@@ -45,6 +48,7 @@ type indexRowScan struct {
 	SourceLocale                              string
 	Summary                                   string
 	Hidden, Disabled, HasRequirements, IsFont bool
+	Deprecated, Stale                         bool
 	Installs30d, NotesCount                   int
 	FirstSeenAt, UpdatedAt                    time.Time
 	Override                                  string
@@ -64,6 +68,7 @@ func (s *Store) indexRows(ctx context.Context, condition, tail string, args ...a
 		r := IndexRow{
 			ID: row.ID, Kind: row.Kind, Token: row.Token, Name: row.Name, DisplayName: row.DisplayName, Version: row.Version,
 			SourceLocale: row.SourceLocale, Summary: row.Summary, Hidden: row.Hidden, Disabled: row.Disabled,
+			Deprecated: row.Deprecated, Stale: row.Stale,
 			HasRequirements: row.HasRequirements, IsFont: row.IsFont, Installs30d: row.Installs30d, NotesCount: row.NotesCount,
 			FirstSeenAt: row.FirstSeenAt, UpdatedAt: row.UpdatedAt, Override: row.Override, OverrideReason: row.OverrideReason, OverrideAt: row.OverrideAt,
 			CommittedAt: row.CommittedAt, ScreenshotsAt: row.ScreenshotsAt, TextUpdatedAt: map[string]time.Time{},
@@ -84,7 +89,8 @@ func (s *Store) indexRows(ctx context.Context, condition, tail string, args ...a
 // Facts converts a row for seo.Decide.
 func (r IndexRow) Facts() seo.Facts {
 	return seo.Facts{
-		Hidden: r.Hidden, Disabled: r.Disabled, Name: r.Name, Token: r.Token, Summary: r.Summary, Version: r.Version,
+		Hidden: r.Hidden, Disabled: r.Disabled, Deprecated: r.Deprecated, Stale: r.Stale,
+		Name: r.Name, Token: r.Token, Summary: r.Summary, Version: r.Version,
 		HasRequirements: r.HasRequirements, Installs30d: r.Installs30d, Override: r.Override, FirstSeenAt: r.FirstSeenAt,
 		SourceLocale: r.SourceLocale, PublishedLocales: r.PublishedLocales,
 	}
@@ -156,7 +162,7 @@ func (s *Store) IndexReportRows(ctx context.Context) ([]IndexRow, error) {
 	err := s.DB.WithContext(ctx).Raw(`SELECT p.id,p.kind,p.token,p.name,p.version,p.installs_30d,p.first_seen_at,
  COALESCE(NULLIF(btrim(si.summary),''),p.desc_en,'') AS summary,
  COALESCE(NULLIF(si.display_name,''),p.name) AS display_name,
- COALESCE(m.hidden,false) AS hidden,` + PackageDisabledSQL + ` AS disabled,
+ COALESCE(m.hidden,false) AS hidden,p.disabled,p.deprecated,p.stale_disabled AS stale,
  (p.min_macos IS NOT NULL OR p.raw->'depends_on'->'macos' IS NOT NULL) AS has_requirements,
  COALESCE(m.index_override,'auto') AS override,m.index_override_reason AS override_reason
  FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id
@@ -166,8 +172,8 @@ func (s *Store) IndexReportRows(ctx context.Context) ([]IndexRow, error) {
 	for _, row := range rows {
 		out = append(out, IndexRow{ID: row.ID, Kind: row.Kind, Token: row.Token, Name: row.Name, DisplayName: row.DisplayName,
 			Version: row.Version, Summary: row.Summary, Installs30d: row.Installs30d, FirstSeenAt: row.FirstSeenAt,
-			Hidden: row.Hidden, Disabled: row.Disabled, HasRequirements: row.HasRequirements,
-			Override: row.Override, OverrideReason: row.OverrideReason})
+			Hidden: row.Hidden, Disabled: row.Disabled, Deprecated: row.Deprecated, Stale: row.Stale,
+			HasRequirements: row.HasRequirements, Override: row.Override, OverrideReason: row.OverrideReason})
 	}
 	return out, err
 }

@@ -9,6 +9,11 @@ pub struct Rect {
     pub width: f64,
     pub height: f64,
 }
+impl Rect {
+    pub fn contains(self, x: f64, y: f64) -> bool {
+        x >= self.x && x < self.x + self.width && y >= self.y && y < self.y + self.height
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Anchor {
     pub item: Rect,
@@ -46,48 +51,70 @@ struct State {
     generation: u64,
     shown: bool,
 }
+impl State {
+    /// Toggle requested visibility, including before the first webview mount.
+    fn click(&mut self, module: MonitorModule, anchor: Anchor) -> bool {
+        if self.wanted && self.module == Some(module) {
+            self.hide();
+            return false;
+        }
+        self.module = Some(module);
+        self.anchor = Some(anchor);
+        self.wanted = true;
+        self.generation = self.generation.wrapping_add(1);
+        true
+    }
+
+    fn hide(&mut self) {
+        self.wanted = false;
+        self.shown = false;
+        self.generation = self.generation.wrapping_add(1);
+    }
+
+    fn can_present(&self, generation: u64) -> bool {
+        self.ready && self.wanted && self.generation == generation
+    }
+}
 #[derive(Default)]
 pub struct Popover(Mutex<State>);
 fn error() -> AppError {
     AppError::new("E_UNKNOWN", "monitor_popover")
 }
-fn cancel(app: &tauri::AppHandle) {
+fn cancel<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(sampler) = app.try_state::<Arc<Sampler>>() {
         sampler.remove_window(POPOVER_LABEL);
+        sampler.set_window_visible(POPOVER_LABEL, false);
     }
 }
-pub fn hide(app: &tauri::AppHandle) {
+pub(crate) fn wants_visible(app: &tauri::AppHandle) -> bool {
+    app.try_state::<Popover>()
+        .is_some_and(|popover| popover.0.lock().is_ok_and(|state| state.wanted))
+}
+pub fn hide<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(state) = app.try_state::<Popover>()
         && let Ok(mut state) = state.0.lock()
     {
-        state.wanted = false;
-        state.shown = false;
-        state.generation = state.generation.wrapping_add(1);
+        state.hide();
     }
     cancel(app);
     if let Some(window) = app.get_webview_window(POPOVER_LABEL) {
         let _ = window.hide();
     }
-    #[cfg(target_os = "macos")]
-    outside::sync(app);
 }
 pub fn click(
     app: &tauri::AppHandle,
     module: MonitorModule,
     anchor: Anchor,
 ) -> Result<(), AppError> {
+    crate::tray::hide(app);
     let popover = app.state::<Popover>();
     {
         let mut state = popover.0.lock().map_err(|_| error())?;
-        if state.wanted && state.module == Some(module) {
+        if !state.click(module, anchor) {
             drop(state);
             hide(app);
             return Ok(());
         }
-        state.module = Some(module);
-        state.anchor = Some(anchor);
-        state.wanted = true;
-        state.generation = state.generation.wrapping_add(1);
     }
     // Every module shares one webview; switching never navigates or reloads it.
     if app.get_webview_window(POPOVER_LABEL).is_none() {
@@ -100,6 +127,8 @@ pub fn click(
                 .shadow(false)
                 .always_on_top(true)
                 .visible(false)
+                .focused(false)
+                .accept_first_mouse(true)
                 .resizable(false)
                 .skip_taskbar(true)
                 .on_page_load(move |webview, payload| {
@@ -129,10 +158,14 @@ pub fn click(
                 })
                 .build()
                 .map_err(|_| error())?;
+        #[cfg(target_os = "macos")]
+        crate::tray::panel::configure(&window);
         let sampler = app.state::<Arc<Sampler>>().inner().clone();
         let instance = super::register_window(&window, &sampler)?;
+        sampler.set_window_visible(POPOVER_LABEL, false);
         let handle = app.clone();
         window.on_window_event(move |event| match event {
+            #[cfg(not(target_os = "macos"))]
             tauri::WindowEvent::Focused(false) => {
                 if handle
                     .get_webview_window(POPOVER_LABEL)
@@ -151,8 +184,6 @@ pub fn click(
                 {
                     *state = State::default();
                 }
-                #[cfg(target_os = "macos")]
-                outside::sync(&handle);
             }
             tauri::WindowEvent::Resized(_) | tauri::WindowEvent::ScaleFactorChanged { .. } => {
                 let ui = handle.clone();
@@ -200,97 +231,27 @@ fn present(app: &tauri::AppHandle) -> Result<(), AppError> {
             let Ok(mut state) = state.0.lock() else {
                 return;
             };
-            if state.wanted && state.generation == generation {
+            if state.can_present(generation) {
                 state.shown = true;
                 drop(state);
-                let _ = window.show();
-                let _ = window.set_focus();
                 #[cfg(target_os = "macos")]
-                outside::sync(&ui);
+                if let Err(error) = crate::tray::panel::show(&window) {
+                    log::warn!("Monitor panel failed: {}", error.code);
+                    hide(&ui);
+                    return;
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+                // Nonactivating panels do not rely on Focused(true) to resume sampling.
+                ui.state::<Arc<Sampler>>()
+                    .set_window_visible(POPOVER_LABEL, true);
             }
         });
     });
     Ok(())
-}
-/// A status item click does not reliably activate the app, so the popover may never become key and
-/// `Focused(false)` never fires. While it is shown, mouse-down monitors close it on any click outside it,
-/// as NSPopover's transient behavior does: the global one sees other apps, the local one our other windows.
-#[cfg(target_os = "macos")]
-mod outside {
-    use super::{POPOVER_LABEL, Popover};
-    use objc2::{MainThreadMarker, rc::Retained, runtime::AnyObject};
-    use objc2_app_kit::{NSEvent, NSEventMask, NSWindow};
-    use std::{cell::RefCell, ptr::NonNull};
-    use tauri::Manager;
-    thread_local! {static MONITORS:RefCell<Vec<Retained<AnyObject>>>=const {RefCell::new(Vec::new())};}
-    fn shown(app: &tauri::AppHandle) -> Option<u64> {
-        let popover = app.try_state::<Popover>()?;
-        let state = popover.0.lock().ok()?;
-        state.shown.then_some(state.generation)
-    }
-    fn inside(app: &tauri::AppHandle, window: &NSWindow, mtm: MainThreadMarker) -> bool {
-        app.get_webview_window(POPOVER_LABEL)
-            .and_then(|popover| popover.ns_window().ok())
-            .is_some_and(|popover| {
-                std::ptr::eq(popover.cast_const(), (window as *const NSWindow).cast())
-            })
-            || crate::monitor::menubar::owns_window(window, mtm)
-    }
-    /// Hides a turn later: hiding removes the monitor whose handler is still running.
-    fn dismiss(app: &tauri::AppHandle) {
-        let Some(generation) = shown(app) else {
-            return;
-        };
-        let app = app.clone();
-        tauri::async_runtime::spawn(async move {
-            let ui = app.clone();
-            let _ = app.run_on_main_thread(move || {
-                // Skip if it was hidden or reopened since the click.
-                if shown(&ui) == Some(generation) {
-                    super::hide(&ui);
-                }
-            });
-        });
-    }
-    /// Monitors exist exactly while the popover is shown.
-    pub fn sync(app: &tauri::AppHandle) {
-        let Some(mtm) = MainThreadMarker::new() else {
-            let ui = app.clone();
-            let _ = app.run_on_main_thread(move || sync(&ui));
-            return;
-        };
-        let _ = MONITORS.try_with(|monitors| {
-            let mut monitors = monitors.borrow_mut();
-            if shown(app).is_none() {
-                for monitor in monitors.drain(..) {
-                    unsafe { NSEvent::removeMonitor(&monitor) };
-                }
-                return;
-            }
-            if !monitors.is_empty() {
-                return;
-            }
-            let clicks = NSEventMask::LeftMouseDown
-                | NSEventMask::RightMouseDown
-                | NSEventMask::OtherMouseDown;
-            let handle = app.clone();
-            let global = block2::RcBlock::new(move |_: NonNull<NSEvent>| dismiss(&handle));
-            monitors.extend(NSEvent::addGlobalMonitorForEventsMatchingMask_handler(
-                clicks, &global,
-            ));
-            let handle = app.clone();
-            let local = block2::RcBlock::new(move |event: NonNull<NSEvent>| {
-                let window = unsafe { event.as_ref() }.window(mtm);
-                if !window.is_some_and(|window| inside(&handle, &window, mtm)) {
-                    dismiss(&handle);
-                }
-                event.as_ptr()
-            });
-            monitors.extend(unsafe {
-                NSEvent::addLocalMonitorForEventsMatchingMask_handler(clicks, &local)
-            });
-        });
-    }
 }
 pub fn reposition(app: &tauri::AppHandle) -> Result<(), AppError> {
     let anchor = app.state::<Popover>().0.lock().map_err(|_| error())?.anchor;
@@ -339,5 +300,95 @@ pub fn cancel_if_hidden(app: &tauri::AppHandle) {
             .is_some_and(|w| !w.is_visible().unwrap_or(false))
     {
         hide(app);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn anchor(x: f64) -> Anchor {
+        Anchor {
+            item: Rect {
+                x,
+                y: 900.0,
+                width: 30.0,
+                height: 24.0,
+            },
+            visible: Rect {
+                x: -1440.0,
+                y: 0.0,
+                width: 1440.0,
+                height: 900.0,
+            },
+        }
+    }
+
+    #[test]
+    fn repeated_click_cancels_even_before_mount_or_delayed_show() {
+        let mut state = State::default();
+        assert!(state.click(MonitorModule::Cpu, anchor(-80.0)));
+        let first = state.generation;
+        assert!(!state.can_present(first));
+        assert!(!state.click(MonitorModule::Cpu, anchor(-80.0)));
+        state.ready = true;
+        assert!(!state.can_present(first));
+        assert!(!state.wanted);
+        assert!(!state.shown);
+        assert!(state.click(MonitorModule::Cpu, anchor(-80.0)));
+        assert!(state.can_present(state.generation));
+        state.shown = true;
+        assert!(!state.click(MonitorModule::Cpu, anchor(-80.0)));
+        assert!(!state.shown);
+    }
+
+    #[test]
+    fn switching_modules_keeps_the_window_and_invalidates_old_presentation() {
+        let mut state = State {
+            ready: true,
+            ..State::default()
+        };
+        state.click(MonitorModule::Cpu, anchor(-80.0));
+        state.shown = true;
+        let cpu = state.generation;
+        assert!(state.click(MonitorModule::Memory, anchor(-150.0)));
+        assert!(state.shown);
+        assert_eq!(state.module, Some(MonitorModule::Memory));
+        assert_eq!(state.anchor, Some(anchor(-150.0)));
+        assert!(!state.can_present(cpu));
+        assert!(state.can_present(state.generation));
+    }
+
+    #[test]
+    fn outside_escape_or_updates_switch_cannot_resurrect_a_pending_monitor_show() {
+        let mut state = State {
+            ready: true,
+            ..State::default()
+        };
+        state.click(MonitorModule::Cpu, anchor(-80.0));
+        let pending = state.generation;
+        state.hide();
+        assert!(!state.can_present(pending));
+        assert!(!state.wanted);
+        state.click(MonitorModule::Cpu, anchor(-80.0));
+        assert!(!state.can_present(pending));
+        assert!(state.can_present(state.generation));
+    }
+
+    #[test]
+    fn status_hit_testing_uses_logical_coordinates_on_offset_screens() {
+        let item = anchor(-80.0).item;
+        assert!(item.contains(-80.0, 900.0));
+        assert!(item.contains(-65.0, 912.0));
+        assert!(!item.contains(-50.0, 912.0));
+        assert!(!item.contains(-65.0, 899.0));
+        let below = Rect {
+            x: 0.0,
+            y: -1100.0,
+            width: 40.0,
+            height: 24.0,
+        };
+        assert!(below.contains(20.0, -1088.0));
+        assert!(!below.contains(40.0, -1088.0));
     }
 }

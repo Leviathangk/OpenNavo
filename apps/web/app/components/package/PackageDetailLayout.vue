@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { recentReturnPath, withRecentReturn } from '@opennavo/shared';
+import { disabledByHomebrew, recentReturnPath, withRecentReturn } from '@opennavo/shared';
 import { unwrap } from '@opennavo/api';
 import type { PackageKind } from '@opennavo/shared';
 import { OnBreadcrumb, OnErrorState, OnPackageNotice, OnTabs } from '@opennavo/ui';
-import { allowedHreflangs, packageRobots } from '~/utils/indexing';
+import { allowedHreflangs, consolidatesToOverview, packageRobots } from '~/utils/indexing';
 import { packageLink, packagePath } from '~/utils/packageView';
 
 // Detail shell (05 §3): notice/header/stats shared with desktop (ADR-017), tabs with separate URLs, child-route content.
@@ -116,11 +116,17 @@ useBreadcrumbSchema(breadcrumb);
 // for languages that are not indexed are dropped from hreflang (app.vue reads this state).
 useSeoMeta({ robots: () => (pkg.value ? packageRobots(pkg.value, tab.value, toAppLocale(locale.value)) : undefined) });
 const hreflangs = useState<string[] | null>('page:hreflangs', () => null);
+// Install details hand their ranking to the overview through the canonical (app.vue reads this
+// state) and keep no alternates, so hreflang cannot pull them back into a cluster of their own.
+const canonicalPath = useState<string | null>('page:canonicalPath', () => null);
 watchEffect(() => {
-  hreflangs.value = allowedHreflangs(pkg.value?.indexing);
+  const toOverview = pkg.value ? consolidatesToOverview(pkg.value, tab.value, toAppLocale(locale.value)) : false;
+  canonicalPath.value = toOverview ? localePath(packagePath(token.value)) : null;
+  hreflangs.value = toOverview ? [] : allowedHreflangs(pkg.value?.indexing);
 });
 onUnmounted(() => {
   hreflangs.value = null;
+  canonicalPath.value = null;
 });
 
 const notice = computed(() => {
@@ -133,7 +139,7 @@ const notice = computed(() => {
       text: t('package.link.adopted'),
       replacement: { kind: 'cask' as const, token: value.link.adoptedByCask }
     };
-  if (value.disable)
+  if (value.disable && disabledByHomebrew(value))
     return {
       tone: 'danger' as const,
       text: t('package.disabledNotice', { reason: value.disable.reason ?? t('package.noReason') }),
@@ -145,6 +151,9 @@ const notice = computed(() => {
       text: t('package.deprecatedNotice', { reason: value.deprecation.reason ?? t('package.noReason') }),
       replacement: value.deprecation.replacement
     };
+  // Paused only by OpenNavo's 90-day rule: Homebrew still offers and installs the app.
+  if (value.disable)
+    return { tone: 'warning' as const, text: t('package.staleNotice'), replacement: value.disable.replacement };
   return null;
 });
 </script>

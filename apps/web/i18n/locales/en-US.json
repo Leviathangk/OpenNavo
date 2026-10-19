@@ -1,7 +1,7 @@
 {
   "site": {
     "name": "OpenNavo",
-    "title": "OpenNavo — Homebrew App Store and Free Antivirus for Mac",
+    "title": "OpenNavo — Mac Homebrew App Store, Virus Scan & App Firewall",
     "description": "The Homebrew app store for Mac. Install and update {count} app in one click, scanned for malware first, with cleanup and monitoring. Free and open source. | The Homebrew app store for Mac. Install and update {count} apps in one click, scanned for malware first, with cleanup and monitoring. Free and open source."
   },
   "nav": {
@@ -54,7 +54,7 @@
     "discoverHeading": "Discover Mac apps"
   },
   "footer": {
-    "tagline": "The Homebrew app store for Mac and an open-source Homebrew GUI, with free antivirus, cleanup and monitoring. Installs run through the macOS app or the brew command.",
+    "tagline": "The Homebrew app store for Mac and an open-source Homebrew GUI, with virus scanning, an app firewall, cleanup and monitoring. Installs run through the macOS app or the brew command.",
     "copyright": "© {year} OpenNavo"
   },
   "analytics": {
@@ -226,6 +226,7 @@
     },
     "disabledNotice": "Homebrew has disabled this package: {reason}",
     "deprecatedNotice": "Homebrew has deprecated this package: {reason}",
+    "staleNotice": "No new version for more than 90 days, so OpenNavo has paused recommending and installing it. Homebrew still offers this app.",
     "noReason": "no reason given",
     "replacement": "Use {token} instead",
     "release": {
@@ -589,7 +590,7 @@
       "alternativesA": "Alternatives include {list}."
     },
     "securityPromo": {
-      "title": "Free antivirus in OpenNavo",
+      "title": "OpenNavo: virus scanning and an app firewall",
       "body": "The OpenNavo app scans downloads and your whole Mac with ClamAV, and checks startup items and app signatures. Free and open source.",
       "link": "Learn about Security"
     },
@@ -674,7 +675,7 @@
     "remove": "Remove {name} from the list"
   },
   "download": {
-    "title": "The Homebrew app store for Mac, with free antivirus built in",
+    "title": "The Homebrew app store for Mac, with virus scanning and an app firewall",
     "metaTitle": "Download OpenNavo · OpenNavo",
     "description": "Install, update and uninstall apps in one click, scanned for malware first, plus cleanup and monitoring. Runs your own Homebrew; no account needed.",
     "button": "Download for macOS",
@@ -959,7 +960,7 @@
   "og": {
     "tagline": "The Homebrew App Store",
     "platform": "macOS app",
-    "homeTitle": "The Homebrew\napp store for Mac,\nwith free antivirus.",
+    "homeTitle": "Homebrew app store,\nvirus scanning and\napp firewall for Mac.",
     "homeDescription": "Install and update apps in one click,\nscanned for malware first.",
     "discoverTitle": "Discover\nMac apps.",
     "discoverDescription": "Browse apps. Read release notes.\nFind your next install.",
@@ -981,9 +982,9 @@
       "announceTag": "New",
       "announce": "Free malware scanning is here",
       "title": "The Homebrew app store for Mac,",
-      "titleAccent": "with free antivirus built in.",
-      "lede": "Install and update **{count} app** in one click, scanned for malware first. Run **full malware scans**, manage startup items, clean up your disk and watch your hardware. Free, open source, no account. | Install and update **{count} apps** in one click, scanned for malware first. Run **full malware scans**, manage startup items, clean up your disk and watch your hardware. Free, open source, no account.",
-      "ledeFallback": "Install and update Mac apps in one click, scanned for malware first. Run **full malware scans**, manage startup items, clean up your disk and watch your hardware. Free, open source, no account.",
+      "titleAccent": "with **virus scanning** and an app firewall.",
+      "lede": "Install and update **{count} app** in one click, scanned for malware first. Run **full malware scans**, manage startup items, clean up your disk and watch your hardware. | Install and update **{count} apps** in one click, scanned for malware first. Run **full malware scans**, manage startup items, clean up your disk and watch your hardware.",
+      "ledeFallback": "Install and update Mac apps in one click, scanned for malware first. Run **full malware scans**, manage startup items, clean up your disk and watch your hardware.",
       "download": "Download for Mac",
       "browse": "Browse Apps",
       "github": "Open source on GitHub",

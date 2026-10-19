@@ -47,6 +47,8 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 		`{"token":"gone-upstream","name":["Gone"],"version":"1","desc":"Old tool","disabled":true,"disable_date":"2026-01-01"}`,
 		`{"token":"font-good","name":["Good Font"],"version":"3","desc":"Typeface"}`,
 		`{"token":"hidden-app","name":["Hidden"],"version":"1","desc":"Hidden tool"}`,
+		`{"token":"paused-app","name":["Paused App"],"version":"5.0","desc":"Still in Homebrew"}`,
+		`{"token":"paused-deprecated","name":["Old Paused"],"version":"1","desc":"Retired tool","deprecated":true,"deprecation_date":"2026-01-01"}`,
 	} {
 		p, err := homebrew.Normalize("cask", json.RawMessage(raw))
 		require.NoError(t, err)
@@ -56,6 +58,8 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	for _, sql := range []string{
 		`UPDATE packages SET is_font=true WHERE token='font-good'`,
 		`INSERT INTO package_meta(package_id,hidden) SELECT id,true FROM packages WHERE token='hidden-app'`,
+		// The 90-day rule paused both; only the deprecated one is gone from Homebrew.
+		`UPDATE packages SET stale_disabled=true WHERE token IN ('paused-app','paused-deprecated')`,
 		// Sync touched the rows recently; only content times may reach lastmod.
 		`UPDATE packages SET updated_at='2026-10-07T00:00:00Z',version_changed_at='2026-10-07T00:00:00Z'`,
 		`UPDATE package_i18n SET updated_at='2025-01-01T00:00:00Z'`,
@@ -137,9 +141,11 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 		return adminCall("PUT", "/system/seo-settings", map[string]any{"settings": settings}, "0000")["settings"].(map[string]any)["pages"].(map[string]any)["indexPolicy"].(map[string]any)
 	}
 
-	// Shadow (the default) keeps today's sitemap: listed, not disabled, all six languages.
+	// Shadow (the default) keeps today's sitemap: listed, still offered by Homebrew, all six languages.
+	// An app paused only by the 90-day rule still installs with Homebrew, so it stays listed.
 	apps := sitemap("apps")
-	require.ElementsMatch(t, []string{"good-app", "no-summary"}, keys(apps))
+	require.ElementsMatch(t, []string{"good-app", "no-summary", "paused-app"}, keys(apps))
+	require.Len(t, apps["paused-app"], 6)
 	require.Len(t, apps["good-app"], 6)
 	lastmod := map[string]string{}
 	for _, entry := range apps["good-app"] {
@@ -159,11 +165,16 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.Equal(t, "", setPolicy("enforce", "all", "")["since"])
 	var policyChanges []string
 	require.NoError(t, st.DB.Raw("SELECT token FROM catalog_changes WHERE seq>? AND reason='content'", policyCursor).Scan(&policyChanges).Error)
-	require.ElementsMatch(t, []string{"good-app", "no-summary", "gone-upstream", "font-good", "hidden-app"}, policyChanges)
+	require.ElementsMatch(t, []string{"good-app", "no-summary", "gone-upstream", "font-good", "hidden-app", "paused-app", "paused-deprecated"}, policyChanges)
 
 	apps = sitemap("apps")
-	require.Equal(t, []string{"good-app"}, keys(apps))
+	require.Equal(t, []string{"good-app", "paused-app"}, keys(apps))
 	require.Equal(t, []publicapi.Locale{"en-US", "zh-CN"}, locales(apps["good-app"]))
+	require.Equal(t, []publicapi.Locale{"en-US"}, locales(apps["paused-app"]))
+	require.True(t, detail("paused-app").Indexable)
+	retired := detail("paused-deprecated")
+	require.False(t, retired.Indexable)
+	require.Equal(t, "unavailable", *retired.Reason)
 	noSummary := detail("no-summary")
 	require.False(t, noSummary.Indexable)
 	require.Equal(t, "missing_summary", *noSummary.Reason)
@@ -194,17 +205,17 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.Equal(t, "upsert", changes[0].Op)
 	adminCall("PUT", path(goodID), map[string]any{"override": "noindex", "reason": "Duplicate of another entry"}, "0000")
 	apps = sitemap("apps")
-	require.Equal(t, []string{"no-summary"}, keys(apps))
+	require.Equal(t, []string{"no-summary", "paused-app"}, keys(apps))
 	require.Equal(t, []publicapi.Locale{"en-US"}, locales(apps["no-summary"]))
 	status := adminCall("GET", path(goodID), nil, "0000")
 	require.Equal(t, "forced_noindex", status["reason"])
 	require.Equal(t, false, status["indexable"])
 
 	report := adminCall("GET", "/seo/index-report?size=10", nil, "0000")
-	require.Equal(t, map[string]any{"hidden": 1.0, "forcedNoindex": 1.0, "unavailable": 1.0, "missingSummary": 0.0, "thin": 0.0, "forcedIndex": 1.0}, report["counts"])
-	require.EqualValues(t, 4, report["total"])
+	require.Equal(t, map[string]any{"hidden": 1.0, "forcedNoindex": 1.0, "unavailable": 2.0, "missingSummary": 0.0, "thin": 0.0, "forcedIndex": 1.0}, report["counts"])
+	require.EqualValues(t, 5, report["total"])
 	full := report["records"].([]any)
-	for current := 1; current <= 5; current++ {
+	for current := 1; current <= 6; current++ {
 		paged := adminCall("GET", "/seo/index-report?size=1&current="+strconv.Itoa(current), nil, "0000")
 		require.Equal(t, report["counts"], paged["counts"])
 		require.Equal(t, report["total"], paged["total"])
@@ -226,8 +237,9 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, stamped, setPolicy("enforce", "new", "")["since"])
 	apps = sitemap("apps")
-	require.Equal(t, []string{"no-summary"}, keys(apps), "good-app stays forced out; nothing else is in scope")
+	require.Equal(t, []string{"no-summary", "paused-app"}, keys(apps), "good-app stays forced out; paused-app follows the long-standing rule")
 	require.Len(t, apps["no-summary"], 1)
+	require.Len(t, apps["paused-app"], 6)
 	adminCall("PUT", path(goodID), map[string]any{"override": "auto"}, "0000")
 	require.Len(t, sitemap("apps")["good-app"], 6, "outside the new scope the long-standing rule applies")
 	var policyQueued int

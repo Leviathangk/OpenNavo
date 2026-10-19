@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { cliAbbreviation, darken, iconColor, iconInitials } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
 import { color, radius, shadow } from '@opennavo/tokens';
+import { ogIconSrc } from '#shared/utils/ogIcon';
 
 const props = withDefaults(
   defineProps<{
@@ -16,6 +17,9 @@ const props = withDefaults(
   { kind: 'cask' }
 );
 const base = computed(() => iconColor(props.token, props.accent));
+// Share images render on the server only, where the private internal base is set.
+const config = useRuntimeConfig();
+const source = computed(() => ogIconSrc(props.src, config.public.cdnBase, config.cdnBaseInternal));
 const box = computed(() => ({
   display: 'flex',
   position: 'relative' as const,
@@ -31,10 +35,10 @@ const box = computed(() => ({
 <template>
   <!-- Backgrounds tolerate unavailable icon URLs without failing the entire Satori image. -->
   <div
-    v-if="src"
+    v-if="source"
     :style="{
       ...box,
-      backgroundImage: `url(${src})`,
+      backgroundImage: `url(${source})`,
       backgroundSize: `${size}px ${size}px`,
       backgroundRepeat: 'no-repeat',
       backgroundPosition: '0% 0%'

@@ -1,0 +1,2 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+"NSSystemExtensionUsageDescription" = "ネットワークに接続するアプリを確認し、設定したルールに従って接続を許可またはブロックします。";

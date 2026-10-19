@@ -4508,6 +4508,13 @@
     },
     {
       "ecosystem": "Native",
+      "name": "LuLu",
+      "version": "4.5.1",
+      "license": "GPL-3.0-only",
+      "url": "https://github.com/objective-see/LuLu/tree/v4.5.1"
+    },
+    {
+      "ecosystem": "Native",
       "name": "mas",
       "version": "7.0.0",
       "license": "MIT",

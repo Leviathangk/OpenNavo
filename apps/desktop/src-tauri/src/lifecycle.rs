@@ -244,6 +244,9 @@ pub async fn prepare_restart(queue: Arc<TaskQueue>) -> Result<bool, AppError> {
 
 /// Return fans to automatic control, stop notifications and the task queue, then mark the process ready to exit.
 async fn release<R: tauri::Runtime>(app: &tauri::AppHandle<R>, core: &Arc<DesktopCore>) {
+    if let Some(firewall) = app.try_state::<Arc<crate::firewall::Service>>() {
+        firewall.shutdown();
+    }
     crate::monitor::fan::client::shutdown(app).await;
     let native = app
         .try_state::<Arc<crate::notifications::NativeNotifications>>()
@@ -521,7 +524,9 @@ pub fn run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
             }
         }
         #[cfg(target_os = "macos")]
-        tauri::RunEvent::Reopen { .. } => crate::deeplink::show_main(app),
+        tauri::RunEvent::Reopen { .. } if !crate::tray::panel::suppress_reopen() => {
+            crate::deeplink::show_main(app);
+        }
         _ => {}
     }
 }

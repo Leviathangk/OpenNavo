@@ -5,5 +5,6 @@ import subprocess
 import sys
 
 scripts = Path(__file__).resolve().parent
+subprocess.run([sys.executable, str(scripts / 'prepare-firewall.py'), '--hook'], check=True)
 for script in ['prepare-fan-helper.py', 'prepare-security-helpers.py', 'prepare-store-helper.py']:
     subprocess.run([sys.executable, str(scripts / script), '--allow-unsigned'], check=True)

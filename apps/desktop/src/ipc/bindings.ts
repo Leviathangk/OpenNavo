@@ -6,6 +6,30 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	firewallStatus: () => typedError<FirewallStatus, AppError>(__TAURI_INVOKE("firewall_status")),
+	firewallEnable: (options: {
+	allowApple: boolean,
+	allowInstalled: boolean,
+} | null) => typedError<FirewallStatus, AppError>(__TAURI_INVOKE("firewall_enable", { options })),
+	firewallDisable: () => typedError<FirewallStatus, AppError>(__TAURI_INVOKE("firewall_disable")),
+	firewallUninstall: () => typedError<FirewallStatus, AppError>(__TAURI_INVOKE("firewall_uninstall")),
+	firewallOpenApproval: () => typedError<null, AppError>(__TAURI_INVOKE("firewall_open_approval")),
+	firewallAppIdentify: (path: string) => typedError<FirewallApp, AppError>(__TAURI_INVOKE("firewall_app_identify", { path })),
+	firewallRules: () => typedError<FirewallRule[], AppError>(__TAURI_INVOKE("firewall_rules")),
+	firewallRuleSave: (input: FirewallRuleInput) => typedError<FirewallRule, AppError>(__TAURI_INVOKE("firewall_rule_save", { input })),
+	firewallRuleDelete: (ids: string[]) => typedError<null, AppError>(__TAURI_INVOKE("firewall_rule_delete", { ids })),
+	firewallAlerts: () => typedError<FirewallAlert[], AppError>(__TAURI_INVOKE("firewall_alerts")),
+	firewallAlertReply: (reply: FirewallReply) => typedError<null, AppError>(__TAURI_INVOKE("firewall_alert_reply", { reply })),
+	firewallAlertShow: () => typedError<null, AppError>(__TAURI_INVOKE("firewall_alert_show")),
+	firewallEvents: (query: FirewallEventsQuery) => typedError<FirewallEvent[], AppError>(__TAURI_INVOKE("firewall_events", { query })),
+	firewallEventsClear: () => typedError<null, AppError>(__TAURI_INVOKE("firewall_events_clear")),
+	firewallBlocklists: () => typedError<FirewallBlocklist[], AppError>(__TAURI_INVOKE("firewall_blocklists")),
+	firewallBlocklistAdd: (source: string) => typedError<FirewallBlocklist, AppError>(__TAURI_INVOKE("firewall_blocklist_add", { source })),
+	firewallBlocklistSet: (id: string, enabled: boolean) => typedError<FirewallBlocklist, AppError>(__TAURI_INVOKE("firewall_blocklist_set", { id, enabled })),
+	firewallBlocklistRefresh: (id: string) => typedError<FirewallBlocklist, AppError>(__TAURI_INVOKE("firewall_blocklist_refresh", { id })),
+	firewallBlocklistRemove: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("firewall_blocklist_remove", { id })),
+	firewallSettings: () => typedError<FirewallSettings, AppError>(__TAURI_INVOKE("firewall_settings")),
+	firewallSettingsSet: (settings: FirewallSettings) => typedError<FirewallSettings, AppError>(__TAURI_INVOKE("firewall_settings_set", { settings })),
 	securityOverview: () => typedError<SecurityOverview, AppError>(__TAURI_INVOKE("security_overview")),
 	postureCheck: () => typedError<PostureCheck[], AppError>(__TAURI_INVOKE("posture_check")),
 	avEngineStatus: () => typedError<AvEngineStatus, AppError>(__TAURI_INVOKE("av_engine_status")),
@@ -215,6 +239,10 @@ export const events = {
 	downloadVerified: makeEvent<DownloadVerifiedEvent>("download:verified"),
 	envChanged: makeEvent<EnvChanged>("env:changed"),
 	fanChanged: makeEvent<FanChanged>("fan:changed"),
+	firewallActivity: makeEvent<FirewallActivityEvent>("firewall:activity"),
+	firewallAlerts: makeEvent<FirewallAlertsEvent>("firewall:alerts"),
+	firewallChanged: makeEvent<FirewallChangedEvent>("firewall:changed"),
+	firewallStatus: makeEvent<FirewallStatusEvent>("firewall:status"),
 	installScanned: makeEvent<InstallScannedEvent>("install:scanned"),
 	libraryChanged: makeEvent<LibraryEvent>("library:changed"),
 	localAppsChanged: makeEvent<LocalAppsEvent>("local-apps:changed"),
@@ -790,6 +818,174 @@ export type FindingOwner = {
 };
 
 export type FindingStatus = "open" | "quarantined" | "deleted" | "trusted";
+
+export type FirewallAction = "allow" | "block";
+
+export type FirewallActivityEvent = {
+	events: FirewallEvent[],
+};
+
+export type FirewallAlert = {
+	id: string,
+	app: FirewallApp,
+	pid: number,
+	args: string[],
+	ancestors: FirewallProcess[],
+	remoteAddress: string,
+	remoteHost: string | null,
+	port: number,
+	protocol: FirewallProtocol,
+	at: number,
+	waiting: number,
+	released: boolean,
+	deadline: number | null,
+};
+
+export type FirewallAlertsEvent = {
+	alerts: FirewallAlert[],
+};
+
+export type FirewallApp = {
+	key: string,
+	name: string,
+	path: string,
+	bundlePath: string | null,
+	bundleId: string | null,
+	signingId: string | null,
+	teamId: string | null,
+	teamName: string | null,
+	signer: FirewallSigner,
+	iconPath: string | null,
+};
+
+export type FirewallAvailability = "available" | "not_bundled" | "not_in_applications" | "unsupported_os";
+
+export type FirewallBlocklist = {
+	id: string,
+	name: string,
+	source: string,
+	enabled: boolean,
+	entries: number,
+	updatedAt: number | null,
+	error: FirewallErrorCode | null,
+};
+
+export type FirewallChangeKind = "rules" | "settings" | "blocklists";
+
+export type FirewallChangedEvent = {
+	what: FirewallChangeKind,
+};
+
+export type FirewallEnableOptions = {
+	allowApple: boolean,
+	allowInstalled: boolean,
+};
+
+export type FirewallErrorCode = "E_FW_NOT_BUNDLED" | "E_FW_NOT_IN_APPLICATIONS" | "E_FW_ACTIVATION" | "E_FW_CONSENT_DENIED" | "E_FW_DISCONNECTED" | "E_FW_RULE_INVALID" | "E_FW_UNKNOWN_ALERT" | "E_FW_BLOCKLIST_URL" | "E_FW_BLOCKLIST_FETCH" | "E_FW_BLOCKLIST_FORMAT" | "E_FW_BLOCKLIST_TOO_LARGE";
+
+export type FirewallEvent = {
+	id: string,
+	at: number,
+	app: FirewallApp,
+	remoteAddress: string,
+	remoteHost: string | null,
+	port: number,
+	protocol: FirewallProtocol,
+	action: FirewallAction,
+	reason: FirewallVerdictReason,
+	ruleId: string | null,
+	blocklistId: string | null,
+	count: number,
+};
+
+export type FirewallEventsQuery = {
+	before: number | null,
+	beforeId: string | null,
+	limit: number,
+	blockedOnly: boolean,
+};
+
+export type FirewallExtensionState = "not_installed" | "activating" | "needs_approval" | "needs_reboot" | "installed" | "uninstalling" | "failed";
+
+export type FirewallFailure = {
+	code: FirewallErrorCode,
+	detail: string | null,
+};
+
+export type FirewallFilterState = "off" | "needs_consent" | "on";
+
+export type FirewallMode = "ask" | "allow" | "block";
+
+export type FirewallProcess = {
+	pid: number,
+	name: string,
+	path: string | null,
+};
+
+export type FirewallProtocol = "tcp" | "udp";
+
+export type FirewallReply = {
+	alertId: string,
+	action: FirewallAction,
+	scope: FirewallReplyScope,
+	until: FirewallRuleUntil,
+};
+
+export type FirewallReplyScope = "app" | "destination";
+
+export type FirewallRule = {
+	id: string,
+	app: FirewallApp | null,
+	action: FirewallAction,
+	remote: string | null,
+	port: number | null,
+	until: FirewallRuleUntil,
+	pid: number | null,
+	source: FirewallRuleSource,
+	createdAt: number,
+	lastMatchAt: number | null,
+	matchCount: number,
+};
+
+export type FirewallRuleInput = {
+	id: string | null,
+	appKey: string | null,
+	appPath: string | null,
+	action: FirewallAction,
+	remote: string | null,
+	port: number | null,
+};
+
+export type FirewallRuleSource = "user" | "apple" | "installed";
+
+export type FirewallRuleUntil = "always" | "app_quits";
+
+export type FirewallSettings = {
+	mode: FirewallMode,
+	allowApple: boolean,
+	allowInstalled: boolean,
+};
+
+export type FirewallSigner = "apple" | "app_store" | "developer_id" | "adhoc" | "unsigned" | "invalid";
+
+export type FirewallStatus = {
+	availability: FirewallAvailability,
+	extension: FirewallExtensionState,
+	extensionVersion: string | null,
+	filter: FirewallFilterState,
+	connected: boolean,
+	/**  Installed-app baseline is being collected; filtering remains active. */
+	preparing?: boolean,
+	mode: FirewallMode,
+	ruleCount: number,
+	pendingAlerts: number,
+	blockedToday: number,
+	error: FirewallFailure | null,
+};
+
+export type FirewallStatusEvent = FirewallStatus;
+
+export type FirewallVerdictReason = "rule" | "blocklist" | "apple" | "installed" | "mode" | "answer" | "timeout" | "no_client";
 
 export type Footprint = {
 	appBytes: number,

@@ -37,6 +37,7 @@
   "nav": {
     "browse": "見つける",
     "lists": "リスト",
+    "tools": "ツール",
     "mine": "マイページ",
     "discover": "見つける",
     "categories": "カテゴリ",
@@ -50,8 +51,10 @@
     "cleanup": "クリーンアップ",
     "cleanupBadge": "不要なバックグラウンド項目{count}件がまだ読み込まれています",
     "monitor": "システムモニタ",
-    "security": "セキュリティ",
-    "securityBadge": "確認が必要な項目が{count}件あります"
+    "security": "ウイルススキャン",
+    "securityBadge": "確認が必要な項目が{count}件あります",
+    "firewall": "App ファイアウォール",
+    "firewallBadge": "{count} 件の接続が確認を待っています"
   },
   "env": {
     "label": "Homebrew",
@@ -318,6 +321,7 @@
     },
     "disabledNotice": "Homebrewによりこのパッケージは無効化されています：{reason}",
     "deprecatedNotice": "Homebrewによりこのパッケージは非推奨になっています：{reason}",
+    "staleNotice": "90 日以上新しいバージョンがないため、OpenNavo はおすすめとインストールを一時停止しています。Homebrew では引き続き提供されています。",
     "noReason": "理由は記載されていません",
     "replacement": "代替：{token}",
     "release": {
@@ -1213,7 +1217,18 @@
     "E_STARTUP_CHANGED": "この起動項目はほかのプログラムによって変更されました。更新してからもう一度お試しください",
     "E_LOGIN_ITEM_EXISTS": "この App はすでにログイン時に開きます",
     "E_ROLLBACK_UNAVAILABLE": "保存した以前のバージョンが使えないか、その後アプリが変更されたため、ロールバックできません",
-    "E_ROLLBACK_INTEGRITY": "保存した以前のバージョンが署名の確認に通らなかったため、ロールバックしていません"
+    "E_ROLLBACK_INTEGRITY": "保存した以前のバージョンが署名の確認に通らなかったため、ロールバックしていません",
+    "E_FW_NOT_BUNDLED": "このバージョンにはファイアウォールのコンポーネントが含まれていません。OpenNavo の正式版をお使いください",
+    "E_FW_NOT_IN_APPLICATIONS": "OpenNavo を「アプリケーション」フォルダに移動してから開き直してください",
+    "E_FW_ACTIVATION": "macOS でシステム拡張のインストールが完了しませんでした。もう一度お試しください",
+    "E_FW_CONSENT_DENIED": "ネットワークコンテンツのフィルタリングが許可されなかったため、ファイアウォールはオフのままです",
+    "E_FW_DISCONNECTED": "ファイアウォールのコンポーネントが応答していません。しばらくしてからもう一度お試しください",
+    "E_FW_RULE_INVALID": "ルールが正しくありません。プログラム、アドレス、ポートを確認してください",
+    "E_FW_UNKNOWN_ALERT": "この接続はすでに処理されています",
+    "E_FW_BLOCKLIST_URL": "https のアドレスか、この Mac 上のファイルのみ使えます",
+    "E_FW_BLOCKLIST_FETCH": "ブロックリストをダウンロードできませんでした。アドレスとネットワークを確認してください",
+    "E_FW_BLOCKLIST_FORMAT": "ファイルに使えるドメインや IP が見つかりませんでした",
+    "E_FW_BLOCKLIST_TOO_LARGE": "ブロックリストが大きすぎます。上限は 50 MB、100 万件です"
   },
   "installConfirm": {
     "title": "既存の{name}を引き継ぎますか？",
@@ -2353,10 +2368,6 @@
         "ransomware": {
           "title": "ランサムウェア対策",
           "body": "短時間に暗号化されたようなファイルを大量に書き込むプログラムを一時停止し、どうするか確認します。Endpoint Security の承認が必要です。"
-        },
-        "firewall": {
-          "title": "App ファイアウォール",
-          "body": "App が初めてネットワークに接続するときに許可するかを確認し、ルールやブロックリストを設定できます。ネットワーク用システム機能拡張が必要で、今後のバージョンで提供します。"
         }
       },
       "eventsTitle": "最近の記録",
@@ -2518,6 +2529,290 @@
       "title": "ダウンロードしたファイルに脅威：{file}",
       "body": "{signature} · このファイルをスキャンすると隔離できます",
       "action": "スキャンして対処"
+    }
+  },
+  "firewall": {
+    "title": "App ファイアウォール",
+    "subtitle": "App が通信する前に確認し、ルールに従って許可またはブロックします。判断はすべてこの Mac 上で行われます",
+    "tabs": {
+      "label": "App ファイアウォール",
+      "rules": "ルール",
+      "activity": "接続履歴",
+      "blocklists": "ブロックリスト",
+      "settings": "設定"
+    },
+    "unavailable": {
+      "not_bundled": {
+        "title": "このバージョンにはファイアウォールが含まれていません",
+        "body": "App ファイアウォールには、正式版と一緒に署名されて配布されるネットワークシステム拡張が必要です。開発版や未署名の版には含まれていません。OpenNavo の正式版をお使いください。"
+      },
+      "not_in_applications": {
+        "title": "先に OpenNavo を「アプリケーション」フォルダに移動してください",
+        "body": "macOS では「アプリケーション」フォルダ内の App だけがシステム拡張をインストールできます。移動して OpenNavo を開き直してから、ここに戻ってください。"
+      },
+      "unsupported_os": {
+        "title": "この Mac の macOS バージョンには対応していません",
+        "body": "App ファイアウォールには macOS 13 以降が必要です。"
+      }
+    },
+    "setup": {
+      "title": "App ファイアウォールをオンにする",
+      "lead": "各 App が初めてネットワークに接続するとき、OpenNavo が許可するかブロックするかを確認し、その答えを記憶します。",
+      "points": {
+        "ask": {
+          "title": "接続の前に確認",
+          "body": "どの App が、どこに接続し、誰が署名したかを見てから、許可かブロックかを決められます。"
+        },
+        "rules": {
+          "title": "App ごと、または接続先ごとに",
+          "body": "App 全体を許可することも、特定のサイトやポートだけを許可・ブロックすることもできます。"
+        },
+        "blocklists": {
+          "title": "ブロックリスト",
+          "body": "広告、トラッキング、悪意のあるサイトのリストを読み込み、該当する接続をそのままブロックします。"
+        }
+      },
+      "enable": "App ファイアウォールをオンにする",
+      "retry": "もう一度試す",
+      "steps": "オンにする途中で macOS から 2 回確認があります。まず「システム設定」で OpenNavo のシステム拡張を許可し、次にネットワークコンテンツのフィルタリングを許可します。",
+      "privacy": "判断はすべてこの Mac 上で行われ、接続情報がアップロードされることはありません。",
+      "failedTitle": "App ファイアウォールをオンにできませんでした",
+      "failed": "オンにできませんでした：{reason}"
+    },
+    "options": {
+      "allowApple": "Apple のプログラムを自動的に許可",
+      "allowAppleHint": "curl、ssh、python などのコマンドラインツールは引き続き確認します。",
+      "allowInstalled": "インストール済みの App を自動的に許可",
+      "allowInstalledHint": "このあと入れる App だけを確認するので、確認の回数が減ります。"
+    },
+    "progress": {
+      "title": "App ファイアウォールをオンにしています",
+      "uninstalling": "App ファイアウォールを削除しています…",
+      "install": "システム拡張をインストール",
+      "installHint": "ファイアウォールのコンポーネントを macOS に渡しています。通常は数秒で終わります。",
+      "approve": "「システム設定」で許可",
+      "approveHint": "「システム設定」→「一般」→「ログイン項目と機能拡張」→「ネットワーク機能拡張」で OpenNavo をオンにします。macOS 14 以前では「プライバシーとセキュリティ」で「許可」をクリックします。",
+      "consent": "ネットワークコンテンツのフィルタリングを許可",
+      "consentHint": "表示されたダイアログで「許可」をクリックします。",
+      "openSettings": "システム設定を開く",
+      "reboot": "Mac を再起動するとインストールが完了します。"
+    },
+    "status": {
+      "on": "App ファイアウォールはオンです",
+      "off": "App ファイアウォールは一時停止中です",
+      "offBody": "現在は接続をフィルタリングしていません。ルールはそのまま残っています。",
+      "toggle": "App ファイアウォール",
+      "rules": "ルール {count} 件",
+      "blockedToday": "今日のブロック {count} 回",
+      "disconnected": "ファイアウォールのコンポーネントが応答していません。",
+      "disconnectedBody": "既存のルールは引き続き有効です。この状態が続く場合は、ファイアウォールをオフにしてからもう一度オンにしてください。",
+      "serviceMissing": "ファイアウォールのサービスが正しく起動しませんでした。",
+      "serviceMissingBody": "既存のルールは引き続き有効で、ルールのない接続は許可して記録します。Mac を再起動すると元に戻ります。",
+      "preparing": "インストール済みの App を確認しています。通常は数秒で終わり、その間もファイアウォールは動作しています。",
+      "mode": "ルールのない接続",
+      "modes": {
+        "ask": "確認する",
+        "allow": "許可して記録",
+        "block": "ブロックして記録"
+      },
+      "modeHints": {
+        "ask": "確認が表示され、答えがルールになります。",
+        "allow": "確認は表示しません。「接続履歴」で確認できます。",
+        "block": "新しい App は、許可ルールを追加するまで接続できません。"
+      },
+      "pending": "{count} 件の接続が確認を待っています",
+      "review": "確認する"
+    },
+    "signer": {
+      "apple": "Apple の署名",
+      "app_store": "App Store の署名",
+      "developer": "開発元：{team}",
+      "developer_id": "署名あり",
+      "adhoc": "アドホック署名",
+      "unsigned": "署名なし",
+      "invalid": "無効な署名"
+    },
+    "rules": {
+      "search": "App、開発元、アドレスを検索",
+      "filterLabel": "ルールを絞り込む",
+      "filters": {
+        "all": "すべて",
+        "allow": "許可",
+        "block": "ブロック",
+        "user": "自分で設定",
+        "auto": "自動で追加"
+      },
+      "add": "ルールを追加",
+      "allApps": "すべての App",
+      "allAppsHint": "すべての App に適用されます",
+      "anyRemote": "すべてのアドレス",
+      "anyPort": "すべてのポート",
+      "port": "ポート {port}",
+      "action": {
+        "allow": "許可",
+        "block": "ブロック"
+      },
+      "untilQuit": "App の終了まで",
+      "source": {
+        "user": "自分で設定",
+        "apple": "Apple のプログラム",
+        "installed": "インストール済みの App"
+      },
+      "lastMatch": "{time}に使用 · {count} 回",
+      "neverMatched": "まだ使われていません",
+      "menuLabel": "「{name}」のルール操作",
+      "menu": {
+        "allow": "許可に変更",
+        "block": "ブロックに変更",
+        "edit": "編集",
+        "delete": "削除"
+      },
+      "noMatch": "条件に合うルールはありません",
+      "empty": "ルールはまだありません",
+      "emptyBody": "App が接続するときの答えがルールになり、ここに表示されます。",
+      "deleteTitle": "このルールを削除しますか？",
+      "deleteBody": "削除すると、「{name}」の次の接続は「ルールのない接続」として扱われます。",
+      "deleted": "ルールを削除しました"
+    },
+    "sheet": {
+      "addTitle": "ルールを追加",
+      "editTitle": "ルールを編集",
+      "program": "プログラム",
+      "oneApp": "1 つの App",
+      "allApps": "すべての App",
+      "allAppsHint": "すべての App に適用されます。アドレスかポートの指定が必要です。",
+      "chooseApp": "App またはプログラムを選択…",
+      "change": "変更",
+      "needApp": "App またはプログラムを選んでください",
+      "action": "操作",
+      "remote": "接続先",
+      "someRemote": "アドレスを指定",
+      "remotePlaceholder": "example.com、*.example.com、IP または範囲",
+      "remoteHint": "*.example.com はすべてのサブドメインを含みます。範囲は 10.0.0.0/8 のように書きます。",
+      "port": "ポート",
+      "somePort": "ポートを指定",
+      "invalid": "アドレスまたはポートの形式が正しくありません",
+      "needDestination": "すべての App 向けのルールにはアドレスかポートの指定が必要です。指定しないと Mac 全体の通信を許可またはブロックしてしまいます。",
+      "order": "より具体的なルールが優先されます。アドレスやポートを指定したルールが先に適用され、同じ具体さならブロックが許可より優先されます。",
+      "save": "保存",
+      "saved": "ルールを保存しました",
+      "added": "ルールを追加しました"
+    },
+    "activity": {
+      "filterLabel": "履歴を絞り込む",
+      "filters": {
+        "all": "すべて",
+        "blocked": "ブロックのみ"
+      },
+      "hint": "ルールで許可された接続は記録しません",
+      "clear": "履歴を消去",
+      "clearTitle": "接続履歴を消去しますか？",
+      "clearBody": "消去されるのは履歴だけで、ルールはそのまま残ります。",
+      "port": "ポート {port}",
+      "reason": {
+        "rule": "ルールによる",
+        "blocklist": "ブロックリスト",
+        "apple": "Apple のプログラム（自動で許可）",
+        "installed": "インストール済みの App（自動で許可）",
+        "mode": "ルールなし",
+        "answer": "あなたの回答",
+        "timeout": "時間内に回答がなかったため一時的に許可",
+        "no_client": "OpenNavo が起動していなかったため一時的に許可"
+      },
+      "action": {
+        "allow": "許可済み",
+        "block": "ブロック済み"
+      },
+      "count": "{count} 回",
+      "allowApp": "この App を許可",
+      "blockApp": "この App をブロック",
+      "ruled": {
+        "allow": "「{name}」の接続を許可しました",
+        "block": "「{name}」の接続をブロックしました"
+      },
+      "ruledShort": {
+        "allow": "許可に変更済み",
+        "block": "ブロックに変更済み"
+      },
+      "more": "さらに前の履歴を読み込む",
+      "empty": "履歴はまだありません",
+      "emptyBlocked": "ブロックされた接続はまだありません",
+      "emptyBody": "ブロックされた接続、あなたの回答、自動で許可された接続がここに記録されます。"
+    },
+    "blocklists": {
+      "intro": "リストにあるサイトや IP への接続は、確認せずにブロックします。Web アドレスから読み込んだリストは毎日自動で更新されます。",
+      "source": "ブロックリストのアドレスまたはファイル",
+      "placeholder": "https://… またはファイルのパス",
+      "add": "追加",
+      "chooseFile": "ファイルを選択…",
+      "added": "「{name}」を追加しました（{count} 件）",
+      "addFailed": "ブロックリストを追加できませんでした",
+      "toggle": "「{name}」を使用",
+      "entries": "{count} 件",
+      "updated": "{time}に更新",
+      "refresh": "「{name}」を今すぐ更新",
+      "remove": "「{name}」を削除",
+      "empty": "ブロックリストはまだありません",
+      "emptyBody": "hosts ファイルのほか、1 行に 1 つのドメイン、IP、範囲を書いたリストも使えます。",
+      "boundary": "自分で IP を調べて直接接続する App もあります。そうした接続はリスト内の IP でしかブロックできず、ドメインでは防げない場合があります。",
+      "removeTitle": "このブロックリストを削除しますか？",
+      "removeBody": "「{name}」を削除すると、リストのアドレスは直接ブロックされなくなります。",
+      "removeAction": "削除"
+    },
+    "settings": {
+      "automatic": "自動で許可",
+      "allowInstalledHint": "ファイアウォールをオンにした時点でインストール済みの App はそのまま許可し、その後に入れた App だけを確認します。",
+      "closedHint": "これらの設定はシステム拡張が保持するため、OpenNavo を終了しても有効です。",
+      "remove": "削除",
+      "removeLabel": "App ファイアウォールを削除",
+      "removeHint": "フィルタリングをオフにしてシステム拡張をアンインストールし、ルールと履歴も削除します。macOS からパスワードを求められることがあります。",
+      "removeAction": "削除",
+      "removeTitle": "App ファイアウォールを削除しますか？",
+      "removeBody": "すべての App が自由に接続できるようになり、ルール、ブロックリスト、接続履歴も削除されます。いつでも再びオンにできます。"
+    },
+    "alert": {
+      "title": "「{name}」がネットワークに接続しようとしています",
+      "warning": {
+        "unsigned": "このプログラムには署名がないため、開発元を確認できません。",
+        "adhoc": "このプログラムはアドホック署名のみのため、開発元を確認できません。",
+        "invalid": "このプログラムの署名は無効です。改ざんされている可能性があります。"
+      },
+      "to": "接続先",
+      "port": "ポート {port}",
+      "path": "場所",
+      "parents": "起動元",
+      "args": "引数",
+      "scope": "対象",
+      "scopes": {
+        "app": "この App のすべての接続",
+        "destination": "このアドレスのみ"
+      },
+      "until": "期間",
+      "untils": {
+        "always": "無期限",
+        "app_quits": "App の終了まで"
+      },
+      "waiting": "この App のほかの {count} 件の接続がこの回答を待っています",
+      "queue": "ほかに {count} 件の接続が確認を待っています",
+      "block": "ブロック",
+      "allow": "許可",
+      "none": "確認待ちの接続はありません",
+      "deadline": "{time} 以内に回答がない場合、この接続はいったん許可されます",
+      "released": "この接続はいったん許可されました。回答は引き続きルールとして記憶されます。"
+    },
+    "rail": {
+      "title": "ファイアウォール",
+      "state": "状態",
+      "notSetUp": "オフ",
+      "paused": "一時停止中",
+      "on": "動作中",
+      "noResponse": "応答なし",
+      "mode": "ルールがないとき",
+      "rules": "ルール",
+      "blockedToday": "今日のブロック",
+      "version": "コンポーネントのバージョン",
+      "limitsTitle": "対象となる範囲",
+      "limits": "この Mac の App が外部へ始める接続だけが対象です。外部からの接続は macOS 内蔵のファイアウォールが担当します。OpenNavo が起動していないときは確認できないため、ルールのない接続はいったん許可し、接続履歴に記録します。"
     }
   }
 }

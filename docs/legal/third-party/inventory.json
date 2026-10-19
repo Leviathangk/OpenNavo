@@ -5,8 +5,8 @@
     "apps/server/go.mod": "6d64638fcd95df0f3512fd647528e7b8d179f2b3eb37c31dc68d498ac2cae756",
     "apps/server/go.sum": "8e49c990b927c1cd3e3c79e49e534ee4ead68daff3a48274c2cf134e89096b96",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
-    "apps/desktop/src-tauri/Cargo.lock": "9ae37220d6e35b84ee05b210aa5058996559712353be7bfd61c95538415497e9",
-    "docs/legal/native/manifest.json": "b821f0990fcaa9b3b74588a0b08b119a0cff8e6c0faa4ce92c108fd1e25f01e1",
+    "apps/desktop/src-tauri/Cargo.lock": "e68ee8f8254068d4996af4517485dedb8b25ea4c4926e80a2ab00f622e3e3f4c",
+    "docs/legal/native/manifest.json": "ecf558c84dd1f56ebe06e9bcc87edc818aca30cba9397ef66e68a78f9dce9a58",
     "apps/desktop/native/store/upstream.json": "c85b3ebf2515718f8b066febf42d4f5ffe609941f2957cc8bd73f348a828e9c8",
     "apps/desktop/native/clamav/sources.lock.json": "f6257ce0e0aa9bfc7dfb7f891bb11bf77655ef1aa54040653d55a673e26385c3",
     "apps/desktop/native/store/LICENSE.mas": "926b52ce77b2a26ac5cb7be146678a965d3a0d420187677368e6169cf3587f4d",
@@ -228,7 +228,10 @@
     "docs/legal/native/duoupdater-upstream.json": "512864cee5a1d2728314bc413c3c78b2487a47bc0131f1918084b3b3beb52326",
     "docs/legal/native/LICENSE.DuoUpdater": "8f7cee0d02b9b8fd00a9074c34ea1c701bc5ac8587b4fa13410d86ef9b2b165f",
     "docs/legal/native/installomator-upstream.json": "91dc8759b8e58b5c1cf6d11352666e1118651f0e209b64b986b248ff6678e162",
-    "docs/legal/native/LICENSE.Installomator": "ea938190e03013466f80311ee9b3753b9e476b920d8290b9a90a0864edff522e"
+    "docs/legal/native/LICENSE.Installomator": "ea938190e03013466f80311ee9b3753b9e476b920d8290b9a90a0864edff522e",
+    "apps/desktop/native/firewall/core/Cargo.lock": "22bdb9a96ef3b8a62249637d81060826ff82e3eff3e158125d51e269c35bd798",
+    "apps/desktop/native/firewall/upstream.json": "80bde1e4ff88a4cd151147795bb7944c20e9c728d6a84a330e3c6c25b83268ce",
+    "apps/desktop/native/firewall/LICENSE.LuLu": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
   },
   "scopeNote": "runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability",
   "modules": [
@@ -13246,6 +13249,29 @@
           "source": "docs/legal/native/licenses/d6a2cb265a0a249a234b89eeffa7f316ebe5bff546672a0a2b1a861dd2238460.txt",
           "path": "licenses/d6a2cb265a0a249a234b89eeffa7f316ebe5bff546672a0a2b1a861dd2238460.txt",
           "sha256": "d6a2cb265a0a249a234b89eeffa7f316ebe5bff546672a0a2b1a861dd2238460"
+        }
+      ]
+    },
+    {
+      "name": "LuLu",
+      "version": "4.5.1",
+      "license": "GPL-3.0-only",
+      "url": "https://github.com/objective-see/LuLu/tree/v4.5.1",
+      "scope": "runtime",
+      "ecosystem": "Native",
+      "evidence": {
+        "source": "apps/desktop/native/firewall/upstream.json",
+        "integration": "ported",
+        "sourceLockSha256": "80bde1e4ff88a4cd151147795bb7944c20e9c728d6a84a330e3c6c25b83268ce",
+        "products": [
+          "desktop"
+        ]
+      },
+      "licenseFiles": [
+        {
+          "source": "apps/desktop/native/firewall/LICENSE.LuLu",
+          "path": "licenses/3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986.txt",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
         }
       ]
     },

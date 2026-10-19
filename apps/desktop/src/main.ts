@@ -14,7 +14,14 @@ import { deepLinkOpened, resumeDeepLink, startDeepLinks } from './composables/us
 import { startAppLocale } from './composables/startAppLocale';
 import { syncMainWindow } from './composables/syncMainWindow';
 import { startupRedirect } from './composables/startupRoute';
-import { startGuideState, startLocalState, startMonitorPopoverState, startTrayState, useSettingsStore } from './stores';
+import {
+  startFirewallAlertState,
+  startGuideState,
+  startLocalState,
+  startMonitorPopoverState,
+  startTrayState,
+  useSettingsStore
+} from './stores';
 import { useStateSubscriptions } from './stores/stateSubscriptions';
 
 // Regular browsers (pnpm dev:web) have no Tauri runtime; simulate IPC with fixtures (06 §16).
@@ -48,6 +55,10 @@ if (location.hash.startsWith('#/tray-monitor')) {
   document.documentElement.dataset.opennavoWindow = 'tray';
   // Menu-bar popover: read only state allowed by the tray capability (06 §4.2, §14).
   await startTrayState();
+} else if (location.hash.startsWith('#/firewall-alert')) {
+  document.documentElement.dataset.opennavoWindow = 'firewall-alert';
+  // Firewall question window: only the waiting connections and the answer (firewall plan §4.4).
+  await startFirewallAlertState();
 } else if (location.hash.startsWith('#/permission-guide')) {
   document.documentElement.dataset.opennavoWindow = 'guide';
   // Permission guidance overlay: read only permissions and language allowed by the guide capability (06 §12.7, §14).

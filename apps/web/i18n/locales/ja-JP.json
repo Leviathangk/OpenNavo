@@ -1,7 +1,7 @@
 {
   "site": {
     "name": "OpenNavo",
-    "title": "OpenNavo — Mac向けHomebrewアプリストアと無料ウイルス対策",
+    "title": "OpenNavo — Homebrewアプリストア、ウイルススキャンとファイアウォール",
     "description": "Mac向けのHomebrewアプリストア。{count}個のアプリをワンクリックでインストール・更新し、事前にウイルスをチェック。無料・オープンソース。"
   },
   "nav": {
@@ -54,7 +54,7 @@
     "discoverHeading": "Macアプリを探す"
   },
   "footer": {
-    "tagline": "Mac向けのHomebrewアプリストアで、オープンソースのHomebrew用GUIです。無料のウイルス対策、クリーンアップ、監視機能を内蔵しています。インストールはmacOSクライアントまたはbrewコマンドで行います。",
+    "tagline": "Mac向けのHomebrewアプリストアで、オープンソースのHomebrew用GUIです。ウイルススキャン、App ファイアウォール、クリーンアップ、監視機能を内蔵しています。インストールはmacOSクライアントまたはbrewコマンドで行います。",
     "copyright": "© {year} OpenNavo"
   },
   "analytics": {
@@ -226,6 +226,7 @@
     },
     "disabledNotice": "Homebrewによりこのパッケージは無効化されています：{reason}",
     "deprecatedNotice": "Homebrewによりこのパッケージは非推奨になっています：{reason}",
+    "staleNotice": "90 日以上新しいバージョンがないため、OpenNavo はおすすめとインストールを一時停止しています。Homebrew では引き続き提供されています。",
     "noReason": "理由は記載されていません",
     "replacement": "代替：{token}",
     "release": {
@@ -589,7 +590,7 @@
       "alternativesA": "{list} などがあります。"
     },
     "securityPromo": {
-      "title": "OpenNavoにも無料のウイルス対策",
+      "title": "OpenNavo：ウイルススキャンとApp ファイアウォール",
       "body": "OpenNavoクライアントはClamAVでダウンロードしたファイルやMac全体をスキャンし、起動項目とアプリの署名もチェックします。無料・オープンソースです。",
       "link": "セキュリティについて"
     },
@@ -674,7 +675,7 @@
     "remove": "リストから{name}を削除"
   },
   "download": {
-    "title": "MacのHomebrewアプリストア、無料のウイルス対策つき",
+    "title": "MacのHomebrewアプリストア、ウイルススキャンとApp ファイアウォールも搭載",
     "metaTitle": "OpenNavoクライアントをダウンロード · OpenNavo",
     "description": "アプリのインストール・更新・削除をワンクリックで。事前にウイルスをチェックし、クリーンアップと監視も可能。MacのHomebrewを使い、アカウントは不要です。",
     "button": "macOS版をダウンロード",
@@ -959,7 +960,7 @@
   "og": {
     "tagline": "Homebrew アプリストア",
     "platform": "macOS クライアント",
-    "homeTitle": "MacのHomebrew\nアプリストア、\n無料のウイルス対策つき。",
+    "homeTitle": "Homebrewストア、\nウイルススキャンと\nファイアウォール。",
     "homeDescription": "ワンクリックでアプリをインストール・更新、\nインストール前にウイルスをスキャン。",
     "discoverTitle": "Mac アプリを\n見つけよう",
     "discoverDescription": "アプリと更新履歴をチェック。\n次に使いたいアプリを見つけよう。",
@@ -981,9 +982,9 @@
       "announceTag": "新機能",
       "announce": "無料のウイルススキャンが登場",
       "title": "MacのHomebrewアプリストア、",
-      "titleAccent": "無料のウイルス対策つき。",
-      "lede": "**{count}個のアプリ**をワンクリックでインストール・更新。インストール前にはウイルスをチェックします。さらに**Mac全体のウイルススキャン**、起動項目の管理、ディスクのクリーンアップ、ハードウェアの監視にも対応。無料・オープンソースで、アカウントは不要です。",
-      "ledeFallback": "Macアプリをワンクリックでインストール・更新。インストール前にはウイルスをチェックします。さらに**Mac全体のウイルススキャン**、起動項目の管理、ディスクのクリーンアップ、ハードウェアの監視にも対応。無料・オープンソースで、アカウントは不要です。",
+      "titleAccent": "**ウイルススキャン**とApp ファイアウォールも搭載。",
+      "lede": "**{count}個のアプリ**をワンクリックでインストール・更新。インストール前にはウイルスをチェックします。さらに**Mac全体のウイルススキャン**、起動項目の管理、ディスクのクリーンアップ、ハードウェアの監視にも対応。",
+      "ledeFallback": "Macアプリをワンクリックでインストール・更新。インストール前にはウイルスをチェックします。さらに**Mac全体のウイルススキャン**、起動項目の管理、ディスクのクリーンアップ、ハードウェアの監視にも対応。",
       "download": "Mac版をダウンロード",
       "browse": "アプリを探す",
       "github": "GitHub でソース公開",

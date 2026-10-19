@@ -6,6 +6,9 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 
+#[cfg(target_os = "macos")]
+pub(crate) mod panel;
+
 pub const LABEL: &str = "tray";
 pub const ROUTE: &str = "index.html#/tray";
 pub const WIDTH: f64 = 330.;
@@ -80,10 +83,15 @@ pub fn refresh(app: &tauri::AppHandle) {
     });
 }
 
-pub(crate) fn navigate(app: &tauri::AppHandle, route: &str) {
+pub(crate) fn hide<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(window) = app.get_webview_window(LABEL) {
         let _ = window.hide();
     }
+}
+
+pub(crate) fn navigate(app: &tauri::AppHandle, route: &str) {
+    hide(app);
+    crate::monitor::popover::hide(app);
     if let Some(router) = app.try_state::<Arc<Router>>() {
         router.navigate(route);
     }
@@ -97,16 +105,41 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), AppError> {
         .shadow(false)
         .always_on_top(true)
         .visible(false)
+        .focused(false)
+        .accept_first_mouse(true)
         .resizable(false)
         .skip_taskbar(true)
         .build()
         .map_err(error)?;
-    let hidden = window.clone();
-    window.on_window_event(move |event| {
-        if matches!(event, tauri::WindowEvent::Focused(false)) {
-            let _ = hidden.hide();
-        }
-    });
+    #[cfg(target_os = "macos")]
+    {
+        panel::configure(&window);
+        let handle = app.clone();
+        window.on_window_event(move |event| {
+            if matches!(
+                event,
+                tauri::WindowEvent::Resized(_) | tauri::WindowEvent::ScaleFactorChanged { .. }
+            ) {
+                let ui = handle.clone();
+                let _ = handle.run_on_main_thread(move || {
+                    if let Some(window) = ui.get_webview_window(LABEL)
+                        && window.is_visible().unwrap_or(false)
+                    {
+                        let _ = panel::position_updates(&window);
+                    }
+                });
+            }
+        });
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let hidden = window.clone();
+        window.on_window_event(move |event| {
+            if matches!(event, tauri::WindowEvent::Focused(false)) {
+                let _ = hidden.hide();
+            }
+        });
+    }
     let settings = app.state::<Arc<DesktopCore>>().current_settings()?;
     let icon = image::load_from_memory(include_bytes!("../icons/trayTemplate@2x.png"))
         .map_err(error)?
@@ -124,6 +157,10 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), AppError> {
         .on_tray_icon_event(|tray, event| {
             let app = tray.app_handle();
             tauri_plugin_positioner::on_tray_event(app, &event);
+            #[cfg(target_os = "macos")]
+            if matches!(event, TrayIconEvent::Click { .. }) {
+                panel::status_click();
+            }
             if matches!(
                 event,
                 TrayIconEvent::Click {
@@ -133,13 +170,22 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), AppError> {
                 }
             ) && let Some(window) = app.get_webview_window(LABEL)
             {
+                // Invalidate delayed monitor shows as well as a visible popover.
+                crate::monitor::popover::hide(app);
                 if window.is_visible().unwrap_or(false) {
-                    let _ = window.hide();
+                    hide(app);
                 } else {
-                    use tauri_plugin_positioner::{Position, WindowExt};
-                    let _ = window.move_window_constrained(Position::TrayBottomCenter);
-                    let _ = window.show();
-                    let _ = window.set_focus();
+                    #[cfg(target_os = "macos")]
+                    if let Err(error) = panel::show(&window) {
+                        log::warn!("Tray panel failed: {}", error.code);
+                    }
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        use tauri_plugin_positioner::{Position, WindowExt};
+                        let _ = window.move_window_constrained(Position::TrayBottomCenter);
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
                 }
             }
         })
@@ -183,6 +229,8 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), AppError> {
         })
         .build(app)
         .map_err(error)?;
+    #[cfg(target_os = "macos")]
+    panel::install(app);
     refresh(app);
     Ok(())
 }

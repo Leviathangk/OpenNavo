@@ -1,6 +1,7 @@
 pub mod app;
 pub mod catalog;
 pub mod env;
+pub mod firewall;
 pub mod library;
 pub mod maintenance;
 pub mod mirror;

@@ -12,7 +12,7 @@ import (
 const (
 	ReasonHidden         = "hidden"          // hidden from browsing in admin
 	ReasonForcedNoindex  = "forced_noindex"  // manual override
-	ReasonUnavailable    = "unavailable"     // disabled upstream or by the stale rule
+	ReasonUnavailable    = "unavailable"     // Homebrew no longer offers it (Facts.Unavailable)
 	ReasonMissingSummary = "missing_summary" // no usable summary in the source language
 	ReasonThin           = "thin"            // no version, system requirement or install count to show
 )
@@ -30,7 +30,9 @@ var Locales = []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU"}
 // Facts are what the rule needs about one app.
 type Facts struct {
 	Hidden           bool
-	Disabled         bool // upstream disabled or stale-disabled
+	Disabled         bool // disabled by Homebrew
+	Deprecated       bool // deprecated by Homebrew
+	Stale            bool // paused by OpenNavo's 90-day rule; Homebrew may still offer it
 	Name, Token      string
 	Summary          string // source-language summary
 	Version          string
@@ -61,6 +63,13 @@ type Decision struct {
 	Enforced       bool
 }
 
+// Unavailable reports whether Homebrew no longer offers the app: disabled, or deprecated and no
+// longer updated. An app paused only by the 90-day rule still installs with Homebrew, so its pages
+// stay in search (and the sitemap) like any other.
+func (f Facts) Unavailable() bool {
+	return f.Disabled || f.Deprecated && f.Stale
+}
+
 // Evaluate applies the computable rule and the manual override.
 func Evaluate(f Facts) (bool, string) {
 	if f.Hidden {
@@ -72,7 +81,7 @@ func Evaluate(f Facts) (bool, string) {
 	case OverrideIndex:
 		return true, ""
 	}
-	if f.Disabled {
+	if f.Unavailable() {
 		return false, ReasonUnavailable
 	}
 	summary := strings.TrimSpace(f.Summary)

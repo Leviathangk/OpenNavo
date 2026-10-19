@@ -5,6 +5,7 @@ export * from './commands';
 export * from './deeplink';
 export * from './format';
 export * from './icons';
+export * from './lifecycle';
 export * from './locale';
 export * from './plural';
 export * from './robots';

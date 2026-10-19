@@ -1,7 +1,7 @@
 {
   "site": {
     "name": "OpenNavo",
-    "title": "OpenNavo — tienda de apps Homebrew y antivirus gratis para Mac",
+    "title": "OpenNavo — tienda Homebrew con antivirus y cortafuegos para Mac",
     "description": "La tienda de apps Homebrew para Mac: instala y actualiza {count} app con un clic, con análisis de virus previo. Gratis y de código abierto. | La tienda de apps Homebrew para Mac: instala y actualiza {count} apps con un clic, con análisis de virus previo. Gratis y de código abierto."
   },
   "nav": {
@@ -54,7 +54,7 @@
     "discoverHeading": "Descubre apps para Mac"
   },
   "footer": {
-    "tagline": "La tienda de apps Homebrew para Mac y una interfaz gráfica de código abierto para Homebrew, con antivirus gratis, limpieza y monitorización. La instalación se realiza desde el cliente de macOS o con el comando brew.",
+    "tagline": "La tienda de apps Homebrew para Mac y una interfaz gráfica de código abierto para Homebrew, con análisis de virus, cortafuegos de apps, limpieza y monitorización. La instalación se realiza desde el cliente de macOS o con el comando brew.",
     "copyright": "© {year} OpenNavo"
   },
   "analytics": {
@@ -226,6 +226,7 @@
     },
     "disabledNotice": "Homebrew ha deshabilitado este paquete: {reason}",
     "deprecatedNotice": "Homebrew ha marcado este paquete como obsoleto: {reason}",
+    "staleNotice": "Sin versiones nuevas durante más de 90 días, OpenNavo ha pausado su recomendación e instalación. Homebrew sigue ofreciendo esta app.",
     "noReason": "No se indica el motivo",
     "replacement": "Alternativa: {token}",
     "release": {
@@ -589,7 +590,7 @@
       "alternativesA": "Algunas alternativas son {list}."
     },
     "securityPromo": {
-      "title": "Antivirus gratis en OpenNavo",
+      "title": "OpenNavo: análisis de virus y cortafuegos de apps",
       "body": "La app de OpenNavo analiza las descargas y todo tu Mac con ClamAV, y revisa los elementos de inicio y las firmas de las apps. Gratis y de código abierto.",
       "link": "Más sobre Seguridad"
     },
@@ -674,7 +675,7 @@
     "remove": "Eliminar {name} de la lista"
   },
   "download": {
-    "title": "La tienda de apps Homebrew para Mac, con antivirus gratis incluido",
+    "title": "La tienda de apps Homebrew para Mac, con análisis de virus y cortafuegos de apps",
     "metaTitle": "Descargar el cliente de OpenNavo · OpenNavo",
     "description": "Instala, actualiza y desinstala apps con un clic, con análisis de virus previo, limpieza y monitorización. Usa el Homebrew de tu Mac y no requiere cuenta.",
     "button": "Descargar para macOS",
@@ -959,7 +960,7 @@
   "og": {
     "tagline": "La tienda de apps de Homebrew",
     "platform": "cliente de macOS",
-    "homeTitle": "La tienda de apps\nHomebrew para Mac,\ncon antivirus gratis.",
+    "homeTitle": "Tienda Homebrew\npara Mac, antivirus\ny cortafuegos.",
     "homeDescription": "Instala y actualiza apps con un clic.\nAntes de instalar, se buscan virus.",
     "discoverTitle": "Descubre apps\npara Mac.",
     "discoverDescription": "Explora apps. Lee las novedades.\nEncuentra tu próxima app.",
@@ -981,9 +982,9 @@
       "announceTag": "Novedad",
       "announce": "Análisis de virus gratis, ya disponible",
       "title": "La tienda de apps Homebrew para Mac,",
-      "titleAccent": "con antivirus gratis incluido.",
-      "lede": "Instala y actualiza **{count} app** con un solo clic; antes de instalar, se analiza en busca de virus. Además, puedes hacer un **análisis completo de virus**, gestionar los elementos de inicio, limpiar el disco y monitorizar el hardware. Gratis, de código abierto y sin necesidad de cuenta. | Instala y actualiza **{count} apps** con un solo clic; antes de instalar, se analizan en busca de virus. Además, puedes hacer un **análisis completo de virus**, gestionar los elementos de inicio, limpiar el disco y monitorizar el hardware. Gratis, de código abierto y sin necesidad de cuenta.",
-      "ledeFallback": "Instala y actualiza apps para Mac con un solo clic; antes de instalar, se analizan en busca de virus. Además, puedes hacer un **análisis completo de virus**, gestionar los elementos de inicio, limpiar el disco y monitorizar el hardware. Gratis, de código abierto y sin necesidad de cuenta.",
+      "titleAccent": "con **análisis de virus** y cortafuegos de apps.",
+      "lede": "Instala y actualiza **{count} app** con un solo clic; antes de instalar, se analiza en busca de virus. Además, puedes hacer un **análisis completo de virus**, gestionar los elementos de inicio, limpiar el disco y monitorizar el hardware. | Instala y actualiza **{count} apps** con un solo clic; antes de instalar, se analizan en busca de virus. Además, puedes hacer un **análisis completo de virus**, gestionar los elementos de inicio, limpiar el disco y monitorizar el hardware.",
+      "ledeFallback": "Instala y actualiza apps para Mac con un solo clic; antes de instalar, se analizan en busca de virus. Además, puedes hacer un **análisis completo de virus**, gestionar los elementos de inicio, limpiar el disco y monitorizar el hardware.",
       "download": "Descargar para Mac",
       "browse": "Explorar apps",
       "github": "Código abierto en GitHub",

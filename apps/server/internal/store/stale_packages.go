@@ -96,15 +96,17 @@ func refreshStalePackages(ctx context.Context, tx *gorm.DB, now time.Time, ids [
 			return stats, fmt.Errorf("update stale package status: %w", err)
 		}
 	}
-	rankIDs, err := refreshPackageRanks(ctx, tx)
-	if err != nil {
+	if err := refreshPackageRanks(ctx, tx); err != nil {
 		return stats, err
 	}
-	changed := make([]int64, 0, len(disabledIDs)+len(activeIDs)+len(rankIDs))
+	// Only apps whose status flipped are recorded. Every app ranked below them shifts by one, and
+	// recording those too meant thousands of rows per transition: past 1000 the URL feed purges
+	// the whole /apps section in every language, and every desktop pulled them as deltas. Shifted
+	// ranks reach desktops with the next hourly snapshot (this change advances its cursor), as the
+	// daily analytics ranks do, and reach pages when their caches expire.
+	changed := make([]int64, 0, len(disabledIDs)+len(activeIDs))
 	changed = append(changed, disabledIDs...)
 	changed = append(changed, activeIDs...)
-	changed = append(changed, rankIDs...)
-	// IN selects each package once, including other apps whose rank shifted.
 	if err := tx.WithContext(ctx).Exec(`INSERT INTO catalog_changes(package_id,kind,token,op,reason)
  SELECT id,kind,token,'upsert','content' FROM packages WHERE id IN ?`, changed).Error; err != nil {
 		return stats, fmt.Errorf("record stale package changes: %w", err)
@@ -112,19 +114,18 @@ func refreshStalePackages(ctx context.Context, tx *gorm.DB, now time.Time, ids [
 	return stats, addCatalogInvalidation(ctx, tx)
 }
 
-func refreshPackageRanks(ctx context.Context, tx *gorm.DB) ([]int64, error) {
-	var excluded, ranked []int64
-	if err := tx.WithContext(ctx).Raw(`UPDATE packages SET rank_30d=NULL
+func refreshPackageRanks(ctx context.Context, tx *gorm.DB) error {
+	if err := tx.WithContext(ctx).Exec(`UPDATE packages SET rank_30d=NULL
  WHERE kind='cask' AND (removed_at IS NOT NULL OR is_font OR disabled OR stale_disabled)
- AND rank_30d IS NOT NULL RETURNING id`).Scan(&excluded).Error; err != nil {
-		return nil, fmt.Errorf("reset excluded ranks: %w", err)
+ AND rank_30d IS NOT NULL`).Error; err != nil {
+		return fmt.Errorf("reset excluded ranks: %w", err)
 	}
-	if err := tx.WithContext(ctx).Raw(`WITH ranked AS (
+	if err := tx.WithContext(ctx).Exec(`WITH ranked AS (
  SELECT id,row_number() OVER (ORDER BY installs_30d DESC,token) AS rank FROM packages
  WHERE kind='cask' AND removed_at IS NULL AND NOT is_font AND NOT disabled AND NOT stale_disabled)
  UPDATE packages p SET rank_30d=ranked.rank FROM ranked
- WHERE p.id=ranked.id AND p.rank_30d IS DISTINCT FROM ranked.rank RETURNING p.id`).Scan(&ranked).Error; err != nil {
-		return nil, fmt.Errorf("compute analytics ranks: %w", err)
+ WHERE p.id=ranked.id AND p.rank_30d IS DISTINCT FROM ranked.rank`).Error; err != nil {
+		return fmt.Errorf("compute analytics ranks: %w", err)
 	}
-	return append(excluded, ranked...), nil
+	return nil
 }

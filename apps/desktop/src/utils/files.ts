@@ -28,3 +28,19 @@ export async function pickFolder(): Promise<string | null> {
   const selected = await open({ multiple: false, directory: true });
   return typeof selected === 'string' ? selected : null;
 }
+
+/** Choose an app or a program for a firewall rule; .app bundles count as one file. Return null on cancel. */
+export async function pickProgram(): Promise<string | null> {
+  if (!isTauri()) return '/Applications/Visual Studio Code.app';
+  const { open } = await import('@tauri-apps/plugin-dialog');
+  const selected = await open({ multiple: false, directory: false, defaultPath: '/Applications' });
+  return typeof selected === 'string' ? selected : null;
+}
+
+/** Choose a block list file (hosts format or one entry per line); return null on cancel. */
+export async function pickListFile(): Promise<string | null> {
+  if (!isTauri()) return '~/Documents/blocklist.txt';
+  const { open } = await import('@tauri-apps/plugin-dialog');
+  const selected = await open({ multiple: false, directory: false });
+  return typeof selected === 'string' ? selected : null;
+}

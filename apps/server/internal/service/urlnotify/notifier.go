@@ -123,6 +123,10 @@ func (n *Notifier) Run(ctx context.Context) (Result, error) {
 			return result, err
 		}
 	}
+	// A one-time announcement of pages an index rule change made indexable (backfill.go).
+	if err := n.backfill(ctx, &state); err != nil {
+		return result, err
+	}
 	before := n.Now().Add(-n.Settle)
 	end, err := n.Store.URLChangeCursorEnd(ctx, state.Cursor, before, n.Batch)
 	if err != nil {
@@ -442,11 +446,17 @@ func (n *Notifier) announce(ctx context.Context, settings store.SEOSettingsRow, 
 	if err != nil || key == "" {
 		return "error: IndexNow key unavailable", 0
 	}
+	return n.announceURLs(ctx, key, urls)
+}
+
+// announceURLs submits every batch, including when IndexNow accepts a batch for key verification.
+func (n *Notifier) announceURLs(ctx context.Context, key string, urls []string) (string, int) {
 	site, err := url.Parse(n.Config.WebBaseURL)
 	if err != nil {
 		return "error: invalid WEB_BASE_URL", 0
 	}
 	announced := 0
+	verificationPending := false
 	for start := 0; start < len(urls); start += indexNowChunk {
 		batch := urls[start:min(start+indexNowChunk, len(urls))]
 		status, _, err := n.withRetry(func() (int, string, error) {
@@ -462,10 +472,13 @@ func (n *Notifier) announce(ctx context.Context, settings store.SEOSettingsRow, 
 		case status == http.StatusAccepted:
 			// Accepted while the key file is being verified; track separately from plain success.
 			announced += len(batch)
-			return fmt.Sprintf("accepted: %d URLs, key verification pending", announced), announced
+			verificationPending = true
 		default:
 			return fmt.Sprintf("error: IndexNow returned %d", status), announced
 		}
+	}
+	if verificationPending {
+		return fmt.Sprintf("accepted: %d URLs, key verification pending", announced), announced
 	}
 	return fmt.Sprintf("ok: %d URLs", announced), announced
 }

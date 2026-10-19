@@ -2958,6 +2958,7 @@ dependencies = [
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
+ "opennavo-firewall-core",
  "plist",
  "portable-pty",
  "quick-xml 0.42.0",
@@ -2996,6 +2997,16 @@ dependencies = [
  "uuid",
  "yaml-rust2",
  "zip",
+]
+
+[[package]]
+name = "opennavo-firewall-core"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "specta",
+ "uuid",
 ]
 
 [[package]]

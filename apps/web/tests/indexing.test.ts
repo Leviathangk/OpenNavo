@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PackageDetail } from '@opennavo/api';
-import { allowedHreflangs, latestVersionDate, packageRobots } from '../app/utils/indexing';
+import { allowedHreflangs, consolidatesToOverview, latestVersionDate, packageRobots } from '../app/utils/indexing';
 import { localizedEntries } from '../server/utils/sitemapEntries';
 
 type Indexing = NonNullable<PackageDetail['indexing']>;
@@ -40,7 +40,9 @@ describe('WP11 page decisions', () => {
         'en-US'
       )
     ).toBeUndefined();
-    expect(packageRobots(pkg, 'details', 'en-US')).toBe('noindex, follow');
+    // Install details point their canonical at the overview instead (consolidatesToOverview).
+    expect(packageRobots(pkg, 'details', 'en-US')).toBeUndefined();
+    expect(packageRobots(pkg, 'details', 'ja-JP')).toBe('noindex, follow');
     expect(
       packageRobots(
         { ...pkg, indexing: indexing({ indexable: false, reason: 'thin', locales: [] }) },
@@ -48,6 +50,23 @@ describe('WP11 page decisions', () => {
         'en-US'
       )
     ).toBe('noindex, follow');
+  });
+
+  it('Hands install details to the overview only where the overview is indexed', () => {
+    const pkg = { ...noRelations, indexing: indexing() };
+    expect(consolidatesToOverview(pkg, 'details', 'en-US')).toBe(true);
+    expect(consolidatesToOverview(pkg, 'details', 'ja-JP')).toBe(false);
+    for (const tab of ['overview', 'versions', 'dependencies'] as const)
+      expect(consolidatesToOverview(pkg, tab, 'en-US'), tab).toBe(false);
+    expect(
+      consolidatesToOverview(
+        { ...pkg, indexing: indexing({ indexable: false, reason: 'unavailable', locales: [] }) },
+        'details',
+        'en-US'
+      )
+    ).toBe(false);
+    expect(consolidatesToOverview({ ...pkg, indexing: indexing({ enforced: false }) }, 'details', 'en-US')).toBe(false);
+    expect(consolidatesToOverview({ ...noRelations, indexing: undefined }, 'details', 'en-US')).toBe(false);
   });
 
   it('Limits hreflang to indexed languages, with x-default only alongside English', () => {

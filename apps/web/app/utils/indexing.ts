@@ -20,7 +20,7 @@ function hasRelations(pkg: IndexFacts): boolean {
 /**
  * robots value for one tab; undefined keeps the default (index). While the policy does not apply to
  * the app (enforced false) every page keeps today's behaviour. Install details repeat the overview,
- * so they are only indexed while the policy is off.
+ * so they are not noindexed but point their canonical at it (consolidatesToOverview).
  */
 export function packageRobots(pkg: IndexFacts, tab: PackageTab, locale: Locale): string | undefined {
   const indexing = pkg.indexing;
@@ -28,9 +28,21 @@ export function packageRobots(pkg: IndexFacts, tab: PackageTab, locale: Locale):
   const pageHasValue =
     !indexing.enforced ||
     tab === 'overview' ||
+    tab === 'details' ||
     (tab === 'versions' && indexing.notesCount >= VERSION_PAGE_MIN_NOTES) ||
     (tab === 'dependencies' && hasRelations(pkg));
   return indexing.indexable && indexing.locales.includes(locale) && pageHasValue ? undefined : 'noindex, follow';
+}
+
+/**
+ * Whether a tab hands its ranking to the app's overview through its canonical. Google prefers a
+ * canonical over noindex for pages that repeat another one, and install details repeat the
+ * overview. Only while the policy applies and the overview is indexed in this language; anywhere
+ * else the tab keeps its own canonical, and packageRobots decides whether it is indexed.
+ */
+export function consolidatesToOverview(pkg: IndexFacts, tab: PackageTab, locale: Locale): boolean {
+  const indexing = pkg.indexing;
+  return tab === 'details' && !!indexing?.enforced && indexing.indexable && indexing.locales.includes(locale);
 }
 
 /**

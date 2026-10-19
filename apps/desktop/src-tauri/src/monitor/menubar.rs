@@ -241,6 +241,7 @@ mod mac {
         impl Target {
             #[unsafe(method(clicked:))]
             fn clicked(&self,sender:&NSStatusBarButton) {
+                crate::tray::panel::status_click();
                 let Some(window)=sender.window() else {return;};let Some(screen)=window.screen() else {return;};
                 let rect=window.convertRectToScreen(sender.convertRect_toView(sender.bounds(),None));
                 let anchor=super::super::popover::Anchor::new(rect,screen.visibleFrame());
@@ -511,20 +512,19 @@ mod mac {
                 .collect()
         })
     }
-    /// Whether a click landed on a monitor item, whose `clicked:` toggles or switches the popover.
-    pub fn owns_window(window: &NSWindow, mtm: MainThreadMarker) -> bool {
+    /// Also works for global events, where AppKit supplies no local status window.
+    pub fn contains_point(point: NSPoint, mtm: MainThreadMarker) -> bool {
         ITEMS.with(|items| {
             items.borrow().values().any(|item| {
                 item.status
                     .button(mtm)
-                    .and_then(|button| button.window())
-                    .is_some_and(|own| std::ptr::eq(&*own, window))
+                    .is_some_and(|button| crate::tray::panel::contains_button(&button, point))
             })
         })
     }
 }
 #[cfg(target_os = "macos")]
-pub use mac::{owns_window, render as render_template};
+pub use mac::{contains_point, render as render_template};
 pub fn refresh(app: &tauri::AppHandle, p: Publication) {
     if !p.menu_due {
         return;

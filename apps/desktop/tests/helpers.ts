@@ -96,6 +96,12 @@ export const stubRoutes: RouteRecordRaw[] = [
     meta: { nav: 'security' }
   },
   {
+    path: '/firewall/:tab?',
+    name: 'firewall',
+    components: { default: stub('应用防火墙页'), rail: stub('防火墙状态') },
+    meta: { nav: 'firewall' }
+  },
+  {
     path: '/history',
     name: 'history',
     redirect: '/updates'

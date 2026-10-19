@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PackageSummary } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
-import { OnAppIcon, OnButton, OnHighlightText, OnIcon } from '@opennavo/ui';
+import { OnAppIcon, OnButton, OnHighlightText, OnIcon, parseHighlight } from '@opennavo/ui';
 import type { OnAppIconSize } from '@opennavo/ui';
 
 // Hero (08 §10.14): mockup glow/concentric dashed circles with slow breathing/rotation, announcement pill, two-line heading, introduction, download/browse,
@@ -19,6 +19,8 @@ const formattingLocale = computed(() => toAppLocale(locale.value));
 
 // The heading's two lines read as one sentence (headingLead).
 const titleLead = computed(() => headingLead(t('landing.hero.title')));
+// The second line marks its **…** phrase (virus scanning) in the brand's orange.
+const titleAccent = computed(() => parseHighlight(t('landing.hero.titleAccent')));
 
 const lede = computed(() =>
   props.count
@@ -128,12 +130,17 @@ useLandingParallax(root);
       </NuxtLink>
       <h1 class="landing-hero-title m-0 mt-24px text-display text-ink-primary md:mt-28px md:text-section lg:text-hero">
         <span class="block">{{ titleLead }}</span>
-        <span class="block text-ink-tertiary">{{ t('landing.hero.titleAccent') }}</span>
+        <span class="block text-ink-tertiary">
+          <template v-for="(part, index) in titleAccent" :key="index">
+            <span v-if="part.strong" class="landing-hero-accent">{{ part.text }}</span>
+            <template v-else>{{ part.text }}</template>
+          </template>
+        </span>
       </h1>
       <OnHighlightText
         as="p"
         :text="lede"
-        class="m-0 mt-24px max-w-720px text-16px leading-[1.7] text-ink-secondary md:mt-28px md:text-19px"
+        class="landing-hero-lede m-0 mt-24px max-w-720px text-16px leading-[1.7] text-ink-secondary md:mt-28px md:text-19px"
       />
       <div class="mt-32px flex flex-wrap justify-center gap-12px">
         <OnButton
@@ -244,6 +251,36 @@ useLandingParallax(root);
 
 .landing-hero-title span {
   text-wrap: balance;
+}
+
+/* Japanese lines break between phrases where supported (起動項目 stays together), and inside one only when it
+   cannot fit; others keep balance only. */
+:lang(ja) .landing-hero-title span {
+  word-break: auto-phrase;
+  overflow-wrap: anywhere;
+}
+
+/* Even lines; Chinese breaks at punctuation (启动项 stays together), Japanese between phrases where supported. */
+.landing-hero-lede {
+  text-wrap: balance;
+}
+
+:lang(zh) .landing-hero-lede {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+:lang(ja) .landing-hero-lede {
+  word-break: auto-phrase;
+  overflow-wrap: anywhere;
+}
+
+/* Orange accent in the logo's gradient, clipped to the glyphs. */
+.landing-hero-accent {
+  background: linear-gradient(120deg, var(--on-brand-logo-gradient));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .landing-hero-fade {

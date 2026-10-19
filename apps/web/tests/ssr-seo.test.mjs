@@ -833,7 +833,25 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const hreflangs = [...overview.matchAll(/<link[^>]+hreflang="([^"]+)"/g)].map(m => m[1]).sort();
     assert.deepEqual(hreflangs, ['en', 'x-default', 'zh', 'zh-Hans']);
     assert.deepEqual(robots(await html('/ja/apps/ordinary-app')), ['noindex, follow']);
-    assert.deepEqual(robots(await html('/apps/ordinary-app/details')), ['noindex, follow']);
+    // Install details are not noindexed: canonical and og:url name the overview, with no alternates.
+    const tag = (page, pattern) => pattern.exec(page)?.[1];
+    for (const [path, overviewUrl] of [
+      ['/apps/ordinary-app/details', 'https://example.test/apps/ordinary-app'],
+      ['/zh/apps/ordinary-app/details', 'https://example.test/zh/apps/ordinary-app']
+    ]) {
+      const details = await html(path);
+      assert.ok(!robots(details).some(value => value.includes('noindex')), `${path}: ${robots(details).join()}`);
+      assert.equal(tag(details, /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/), overviewUrl, `${path} canonical`);
+      assert.equal(tag(details, /<meta[^>]*property="og:url"[^>]*content="([^"]+)"/), overviewUrl, `${path} og:url`);
+      assert.equal([...details.matchAll(/<link[^>]+hreflang="/g)].length, 0, `${path} hreflang`);
+    }
+    // Where the overview is not indexed, details keep their own canonical and stay noindexed.
+    const unpublished = await html('/ja/apps/ordinary-app/details');
+    assert.deepEqual(robots(unpublished), ['noindex, follow']);
+    assert.equal(
+      tag(unpublished, /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/),
+      'https://example.test/ja/apps/ordinary-app/details'
+    );
     // An older API without index decisions keeps every language.
     const legacy = await html('/apps/versioned-app@11');
     assert.equal([...legacy.matchAll(/<link[^>]+hreflang="/g)].length, 9);
@@ -842,7 +860,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     for (const path of [
       '/apps/thin-app',
       '/ja/apps/ordinary-app',
-      '/apps/ordinary-app/details',
+      '/ja/apps/ordinary-app/details',
       '/apps/gone-app',
       '/search?q=example',
       '/articles?type=roundup',
@@ -982,9 +1000,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       await response.text();
       return [response.status, response.headers.get('cloudflare-cdn-cache-control')];
     };
-    // App and article pages are purged on change and after each release, so they stay for hours.
+    // App pages with their tabs, and article pages, are purged on change and after each release, so
+    // they stay for hours.
     assert.deepEqual(await edge('/apps/ordinary-app'), [200, 'max-age=21600, stale-while-revalidate=86400']);
-    assert.deepEqual(await edge('/apps/ordinary-app/details'), [200, 'no-store']);
+    assert.deepEqual(await edge('/apps/ordinary-app/details'), [200, 'max-age=21600, stale-while-revalidate=86400']);
     // Search and collections send no-store themselves (search also fails here: no search fixture).
     assert.equal((await edge('/search?q=editor'))[1], 'no-store');
     assert.equal((await edge('/collections'))[1], 'no-store');
@@ -1357,11 +1376,11 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       const html = await (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
       return (/<h1\b[^>]*>([\s\S]*?)<\/h1>/.exec(html)?.[1] ?? '').replace(/<[^>]*>/g, '');
     };
-    assert.equal(await heading('/'), 'The Homebrew app store for Mac, with free antivirus built in.');
-    assert.equal(await heading('/ru'), 'Магазин Homebrew для Mac с бесплатным антивирусом.');
+    assert.equal(await heading('/'), 'The Homebrew app store for Mac, with virus scanning and an app firewall.');
+    assert.equal(await heading('/ru'), 'Магазин Homebrew для Mac с проверкой на вирусы и брандмауэром приложений.');
     // Chinese and Japanese join their two lines without a space.
-    assert.equal(await heading('/zh'), 'Mac 上的 Homebrew 应用商店，自带免费杀毒。');
-    assert.equal(await heading('/ja'), 'MacのHomebrewアプリストア、無料のウイルス対策つき。');
+    assert.equal(await heading('/zh'), 'Mac 上的 Homebrew 应用商店，病毒扫描与应用防火墙。');
+    assert.equal(await heading('/ja'), 'MacのHomebrewアプリストア、ウイルススキャンとApp ファイアウォールも搭載。');
   });
   await t.test('the home page and Discover describe themselves differently', async () => {
     const description = async path =>

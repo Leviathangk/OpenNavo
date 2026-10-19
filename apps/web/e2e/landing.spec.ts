@@ -4,7 +4,9 @@ import { gotoReady } from './helpers';
 // Landing page (05 §4, 08 §10.14): hero and download/browse links; store Discover lives at /discover.
 test('Homepage is introduction with download/browse; Discover navigation points to /discover', async ({ page }) => {
   await gotoReady(page, '/zh');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Mac 上的 Homebrew 应用商店，\s*自带免费杀毒。/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    /Mac 上的 Homebrew 应用商店，\s*病毒扫描与应用防火墙。/
+  );
   await expect(page.getByRole('link', { name: /免费病毒扫描已上线/ })).toHaveAttribute('href', '/zh/security');
   await expect(page.getByRole('link', { name: '下载 Mac 版' }).first()).toHaveAttribute('href', '/zh/download');
   await expect(page.getByRole('link', { name: '浏览 App' }).first()).toHaveAttribute('href', '/zh/discover');

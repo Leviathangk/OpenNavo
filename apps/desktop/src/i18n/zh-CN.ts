@@ -61,6 +61,7 @@ export default {
   nav: {
     browse: '浏览',
     lists: '清单',
+    tools: '工具',
     mine: '我的',
     discover: '发现',
     categories: '分类',
@@ -74,8 +75,10 @@ export default {
     cleanup: '清理电脑',
     cleanupBadge: '{count} 个失效的后台项目仍在加载',
     monitor: '电脑监控',
-    security: '安全防护',
-    securityBadge: '{count} 项需要处理'
+    security: '扫描病毒',
+    securityBadge: '{count} 项需要处理',
+    firewall: '应用防火墙',
+    firewallBadge: '{count} 个连接等待确认'
   },
   env: {
     label: 'Homebrew',
@@ -342,6 +345,7 @@ export default {
     },
     disabledNotice: 'Homebrew 已停用此包：{reason}',
     deprecatedNotice: 'Homebrew 已弃用此包：{reason}',
+    staleNotice: '超过 90 天没有新版本，OpenNavo 已暂停推荐和安装；Homebrew 仍在提供此应用。',
     noReason: '未说明原因',
     replacement: '替代：{token}',
     release: {
@@ -1232,7 +1236,18 @@ export default {
     E_STARTUP_CHANGED: '这个启动项刚刚被其他程序改过，请刷新后再试',
     E_LOGIN_ITEM_EXISTS: '这个 App 已经会在登录时打开',
     E_ROLLBACK_UNAVAILABLE: '保留的旧版本已不可用，或这个 App 之后又有变化，不能回滚',
-    E_ROLLBACK_INTEGRITY: '保留的旧版本没有通过签名校验，没有回滚'
+    E_ROLLBACK_INTEGRITY: '保留的旧版本没有通过签名校验，没有回滚',
+    E_FW_NOT_BUNDLED: '这个版本没有包含防火墙组件，请使用 OpenNavo 正式版',
+    E_FW_NOT_IN_APPLICATIONS: '请先把 OpenNavo 移到「应用程序」文件夹，再重新打开',
+    E_FW_ACTIVATION: 'macOS 没有完成系统扩展的安装，请重试',
+    E_FW_CONSENT_DENIED: '没有允许过滤网络内容，防火墙没有开启',
+    E_FW_DISCONNECTED: '防火墙组件没有响应，请稍后重试',
+    E_FW_RULE_INVALID: '规则不正确：请检查程序、地址和端口',
+    E_FW_UNKNOWN_ALERT: '这个连接已经处理过了',
+    E_FW_BLOCKLIST_URL: '只支持 https 网址或这台 Mac 上的文件',
+    E_FW_BLOCKLIST_FETCH: '没能下载屏蔽列表，请检查网址和网络',
+    E_FW_BLOCKLIST_FORMAT: '没有在文件里找到可用的域名或 IP',
+    E_FW_BLOCKLIST_TOO_LARGE: '屏蔽列表太大了，最多 50 MB、100 万条'
   },
   installConfirm: {
     title: '接管现有 {name}？',
@@ -2358,10 +2373,6 @@ export default {
         ransomware: {
           title: '勒索软件防护',
           body: '某个程序在短时间内大量写出加密文件时，暂停它并询问你。需要 Endpoint Security 授权。'
-        },
-        firewall: {
-          title: '应用防火墙',
-          body: 'App 第一次联网时询问你是否允许，可以设置规则和屏蔽列表。需要安装网络系统扩展，后续版本提供。'
         }
       },
       eventsTitle: '最近的记录',
@@ -2526,6 +2537,283 @@ export default {
       title: '下载的文件有威胁：{file}',
       body: '{signature} · 扫描这个文件后可以把它移到隔离区',
       action: '扫描并处理'
+    }
+  },
+  firewall: {
+    title: '应用防火墙',
+    subtitle: 'App 联网前先问你，按你的规则允许或阻止，判断都在这台 Mac 上完成',
+    tabs: {
+      label: '应用防火墙',
+      rules: '规则',
+      activity: '连接记录',
+      blocklists: '屏蔽列表',
+      settings: '设置'
+    },
+    unavailable: {
+      not_bundled: {
+        title: '这个版本没有包含防火墙组件',
+        body: '应用防火墙需要随正式版一起签名发布的网络系统扩展，开发版和未签名的版本没有这个组件。请使用 OpenNavo 正式版。'
+      },
+      not_in_applications: {
+        title: '请先把 OpenNavo 移到「应用程序」文件夹',
+        body: 'macOS 只允许「应用程序」文件夹里的 App 安装系统扩展。移动后重新打开 OpenNavo，再回到这里开启。'
+      },
+      unsupported_os: {
+        title: '这台 Mac 的系统版本不支持',
+        body: '应用防火墙需要 macOS 13 或更新的版本。'
+      }
+    },
+    setup: {
+      title: '开启应用防火墙',
+      lead: '每个 App 第一次连接网络时，OpenNavo 会先问你允许还是阻止，并记住你的选择。',
+      points: {
+        ask: { title: '联网前先问你', body: '能看到是哪个 App、要连到哪里、谁签的名，再决定允许或阻止。' },
+        rules: { title: '按 App 或按目的地', body: '可以放行整个 App，也可以只允许或阻止某个网站、某个端口。' },
+        blocklists: { title: '屏蔽列表', body: '导入广告、跟踪或恶意网站列表，命中的连接直接阻止。' }
+      },
+      enable: '开启应用防火墙',
+      retry: '重新开启',
+      steps: '开启时 macOS 会请你确认两次：先在「系统设置」里允许 OpenNavo 的系统扩展，再允许它过滤网络内容。',
+      privacy: '判断都在这台 Mac 上完成，连接信息不会上传。',
+      failedTitle: '没能开启应用防火墙',
+      failed: '没能开启：{reason}'
+    },
+    options: {
+      allowApple: '自动允许 Apple 的程序',
+      allowAppleHint: 'curl、ssh、python 等命令行工具仍会询问。',
+      allowInstalled: '自动允许已经安装的 App',
+      allowInstalledHint: '只问之后新装的 App，打扰更少。'
+    },
+    progress: {
+      title: '正在开启应用防火墙',
+      uninstalling: '正在移除应用防火墙…',
+      install: '安装系统扩展',
+      installHint: '正在把防火墙组件交给 macOS，通常只要几秒钟。',
+      approve: '在「系统设置」中允许',
+      approveHint:
+        '在「系统设置」→「通用」→「登录项与扩展」→「网络扩展」里打开 OpenNavo；macOS 14 及更早的版本在「隐私与安全性」里点「允许」。',
+      consent: '允许过滤网络内容',
+      consentHint: '在弹出的对话框里点「允许」。',
+      openSettings: '打开系统设置',
+      reboot: '重启 Mac 后完成安装。'
+    },
+    status: {
+      on: '应用防火墙已开启',
+      off: '应用防火墙已暂停',
+      offBody: '现在不拦截任何连接，规则都还在。',
+      toggle: '应用防火墙',
+      rules: '{count} 条规则',
+      blockedToday: '今天阻止 {count} 次',
+      disconnected: '防火墙组件没有响应。',
+      disconnectedBody: '已有规则仍然生效。如果一直这样，可以关掉防火墙再重新打开。',
+      serviceMissing: '防火墙服务没有正常启动。',
+      serviceMissingBody: '已有规则仍然生效，没有规则的连接会先放行并记录。重启 Mac 后会恢复。',
+      preparing: '正在检查已经安装的 App，通常几秒钟完成；这期间防火墙照常工作。',
+      mode: '没有规则的连接',
+      modes: {
+        ask: '询问我',
+        allow: '允许并记录',
+        block: '阻止并记录'
+      },
+      modeHints: {
+        ask: '弹出询问，你的回答会变成规则。',
+        allow: '不再询问，可以在「连接记录」里查看。',
+        block: '新的 App 都连不上网，直到你为它添加允许规则。'
+      },
+      pending: '{count} 个连接等待你确认',
+      review: '去确认'
+    },
+    signer: {
+      apple: 'Apple 签名',
+      app_store: 'App Store',
+      developer: '开发者：{team}',
+      developer_id: '已签名',
+      adhoc: '本机签名',
+      unsigned: '未签名',
+      invalid: '签名无效'
+    },
+    rules: {
+      search: '搜索 App、开发者或地址',
+      filterLabel: '筛选规则',
+      filters: {
+        all: '全部',
+        allow: '允许',
+        block: '阻止',
+        user: '我设置的',
+        auto: '自动添加'
+      },
+      add: '添加规则',
+      allApps: '所有 App',
+      allAppsHint: '对每个 App 都生效',
+      anyRemote: '任何地址',
+      anyPort: '任何端口',
+      port: '端口 {port}',
+      action: {
+        allow: '允许',
+        block: '阻止'
+      },
+      untilQuit: '直到 App 退出',
+      source: {
+        user: '我设置的',
+        apple: 'Apple 程序',
+        installed: '已安装的 App'
+      },
+      lastMatch: '{time}用过 · {count} 次',
+      neverMatched: '还没用过',
+      menuLabel: '「{name}」的规则操作',
+      menu: {
+        allow: '改为允许',
+        block: '改为阻止',
+        edit: '编辑',
+        delete: '删除'
+      },
+      noMatch: '没有符合条件的规则',
+      empty: '还没有规则',
+      emptyBody: 'App 联网时你的回答会变成规则，出现在这里。',
+      deleteTitle: '删除这条规则？',
+      deleteBody: '删除后，「{name}」下次联网时按「没有规则的连接」处理。',
+      deleted: '已删除规则'
+    },
+    sheet: {
+      addTitle: '添加规则',
+      editTitle: '编辑规则',
+      program: '程序',
+      oneApp: '一个 App',
+      allApps: '所有 App',
+      allAppsHint: '对每个 App 都生效，需要指定地址或端口。',
+      chooseApp: '选择 App 或程序…',
+      change: '更换',
+      needApp: '请选择一个 App 或程序',
+      action: '操作',
+      remote: '目的地',
+      someRemote: '指定地址',
+      remotePlaceholder: 'example.com、*.example.com、IP 或网段',
+      remoteHint: '*.example.com 包含它的所有子域名；网段写成 10.0.0.0/8 这样。',
+      port: '端口',
+      somePort: '指定端口',
+      invalid: '地址或端口的格式不对',
+      needDestination: '给所有 App 设的规则要指定地址或端口，否则会放行或阻止整台 Mac 的网络。',
+      order: '越具体的规则越优先：指定了地址或端口的规则先生效；同样具体时，阻止优先于允许。',
+      save: '保存',
+      saved: '已保存规则',
+      added: '已添加规则'
+    },
+    activity: {
+      filterLabel: '筛选记录',
+      filters: {
+        all: '全部',
+        blocked: '只看阻止'
+      },
+      hint: '被规则放行的连接不记录',
+      clear: '清空记录',
+      clearTitle: '清空连接记录？',
+      clearBody: '只删除记录，规则不受影响。',
+      port: '端口 {port}',
+      reason: {
+        rule: '按规则',
+        blocklist: '屏蔽列表',
+        apple: 'Apple 程序，自动允许',
+        installed: '已安装的 App，自动允许',
+        mode: '没有规则',
+        answer: '你的回答',
+        timeout: '没有及时回答，先放行',
+        no_client: 'OpenNavo 没在运行，先放行'
+      },
+      action: {
+        allow: '已允许',
+        block: '已阻止'
+      },
+      count: '{count} 次',
+      allowApp: '允许这个 App',
+      blockApp: '阻止这个 App',
+      ruled: {
+        allow: '已允许「{name}」联网',
+        block: '已阻止「{name}」联网'
+      },
+      ruledShort: {
+        allow: '已改为允许',
+        block: '已改为阻止'
+      },
+      more: '加载更早的记录',
+      empty: '还没有记录',
+      emptyBlocked: '还没有被阻止的连接',
+      emptyBody: '被阻止的连接、你的回答和自动允许的连接会记在这里。'
+    },
+    blocklists: {
+      intro: '连接到列表里的网站或 IP 时直接阻止，不再询问。来自网址的列表每天自动更新。',
+      source: '屏蔽列表的网址或文件',
+      placeholder: 'https://… 或本地文件路径',
+      add: '添加',
+      chooseFile: '选择文件…',
+      added: '已添加「{name}」，共 {count} 条',
+      addFailed: '没能添加屏蔽列表',
+      toggle: '启用「{name}」',
+      entries: '{count} 条',
+      updated: '{time}更新',
+      refresh: '立即更新「{name}」',
+      remove: '移除「{name}」',
+      empty: '还没有屏蔽列表',
+      emptyBody: '支持 hosts 文件，也支持每行一个域名、IP 或网段的列表。',
+      boundary: '有些 App 自己查好 IP 再直接连接，这类连接只能按列表里的 IP 屏蔽，按域名可能拦不到。',
+      removeTitle: '移除这个屏蔽列表？',
+      removeBody: '移除「{name}」后，列表里的地址不再被直接阻止。',
+      removeAction: '移除'
+    },
+    settings: {
+      automatic: '自动允许',
+      allowInstalledHint: '开启防火墙时已经装好的 App 直接放行，只询问之后新装的 App。',
+      closedHint: '这些设置由系统扩展保存，OpenNavo 退出后也照常生效。',
+      remove: '移除',
+      removeLabel: '移除应用防火墙',
+      removeHint: '关闭过滤并卸载系统扩展，规则和记录会一起删除。macOS 可能会要求输入密码。',
+      removeAction: '移除',
+      removeTitle: '移除应用防火墙？',
+      removeBody: '之后所有 App 都能直接联网，规则、屏蔽列表和连接记录会一起删除。可以随时重新开启。'
+    },
+    alert: {
+      title: '「{name}」想连接网络',
+      warning: {
+        unsigned: '这个程序没有签名，无法确认是谁开发的。',
+        adhoc: '这个程序只有本机签名，无法确认是谁开发的。',
+        invalid: '这个程序的签名无效，可能被改动过。'
+      },
+      to: '连接到',
+      port: '端口 {port}',
+      path: '程序位置',
+      parents: '由谁启动',
+      args: '命令参数',
+      scope: '范围',
+      scopes: {
+        app: '这个 App 的所有连接',
+        destination: '只限这个地址'
+      },
+      until: '有效期',
+      untils: {
+        always: '永久',
+        app_quits: '直到 App 退出'
+      },
+      waiting: '这个 App 还有 {count} 个连接在等这次回答',
+      queue: '还有 {count} 个连接等待确认',
+      block: '阻止',
+      allow: '允许',
+      none: '没有等待确认的连接',
+      deadline: '{time} 内不回答会先放行这次连接',
+      released: '这次连接已先放行，你的回答仍会记成规则。'
+    },
+    rail: {
+      title: '防火墙',
+      state: '状态',
+      notSetUp: '未开启',
+      paused: '已暂停',
+      on: '运行中',
+      noResponse: '没有响应',
+      mode: '没有规则时',
+      rules: '规则',
+      blockedToday: '今天阻止',
+      version: '组件版本',
+      limitsTitle: '它管什么',
+      limits:
+        '只管这台 Mac 上的 App 向外发起的连接，不管别人连进来的连接，那由 macOS 自带的防火墙负责。OpenNavo 没有运行时没法询问，没有规则的连接会先放行，并记在连接记录里。'
     }
   }
 };

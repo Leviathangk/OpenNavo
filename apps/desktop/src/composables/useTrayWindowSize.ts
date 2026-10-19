@@ -10,8 +10,8 @@ export function useTrayWindowSize(content: Ref<HTMLElement | null>) {
   onMounted(() => {
     if (!isTauri() || !content.value) return;
     const window = getCurrentWindow();
-    // The updates popover and the shared monitoring popover both size themselves to content.
-    if (window.label !== 'tray' && window.label !== 'tray-monitor') return;
+    // The updates popover, the shared monitoring popover and the firewall's question all size themselves to content.
+    if (!['tray', 'tray-monitor', 'firewall-alert'].includes(window.label)) return;
     let previous = '';
     observer = new ResizeObserver(() => {
       if (!content.value) return;

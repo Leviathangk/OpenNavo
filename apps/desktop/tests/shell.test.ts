@@ -41,11 +41,13 @@ describe('AppShell', () => {
       '/articles',
       '/collections',
       '/brewfile',
+      // Tools: Scan for Viruses, then the app firewall right below it, then Monitor.
+      '/security',
+      '/firewall',
+      '/monitor',
       '/installed',
       '/updates',
       '/cleanup',
-      '/monitor',
-      '/security',
       '/settings'
     ]);
     expect(links[0]?.attributes('aria-current')).toBe('page');

@@ -281,6 +281,10 @@ fn fit_main_to_work_area<R: tauri::Runtime>(
 }
 
 pub fn show_main<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    // Explicit navigation/Dock requests supersede transient menu-bar panels.
+    // They no longer close through Focused(false) on macOS.
+    crate::tray::hide(app);
+    crate::monitor::popover::hide(app);
     if let Some(window) = app.get_webview_window("main") {
         // Resize to Welcome before first display to avoid flashing the full app frame.
         let welcome = app

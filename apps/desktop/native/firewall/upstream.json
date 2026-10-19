@@ -1,0 +1,46 @@
+{
+  "name": "LuLu",
+  "version": "4.5.1",
+  "tag": "v4.5.1",
+  "repository": "https://github.com/objective-see/LuLu",
+  "archive": "https://codeload.github.com/objective-see/LuLu/tar.gz/refs/tags/v4.5.1",
+  "archiveSha256": "866a8126fc6416274da14a1a049022fdc748b82ab2013c97d860b32d2e862f6f",
+  "license": "GPL-3.0-only",
+  "modifiedAt": "2026-10-18",
+  "files": [
+    {
+      "path": "LuLu/Extension/FilterDataProvider.m",
+      "sha256": "58108cd5838ccd4f5518344a8092a8a65904cfe5be1b65cfd1513a6e4d2ff770"
+    },
+    {
+      "path": "LuLu/Extension/GrayList.m",
+      "sha256": "8e0a4bbdbd1d6af78095297df2076907086737e48dfeb0ecd5a9ad1342de4948"
+    },
+    {
+      "path": "LuLu/Extension/Rules.m",
+      "sha256": "a157e74dad736b04fddd6a26b848203a7af005ac47f60733856de5a318a0af10"
+    },
+    {
+      "path": "LuLu/Extension/main.m",
+      "sha256": "4b24add8506b67a5e336eade617f67c5643e3487da157884e9a0014b886e9104"
+    },
+    {
+      "path": "LuLu/Extension/Info.plist",
+      "sha256": "42402787bcf6c270569a6c7813bd842989a6125cd83511235b2d6d106ad23193"
+    },
+    {
+      "path": "LuLu/Extension/Extension.entitlements",
+      "sha256": "ae119efb1fcae82266faa09ddd3b2efceb57ad5c59c9f30d65aaf53cd2019bb1"
+    },
+    {
+      "path": "LICENSE.md",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    }
+  ],
+  "changes": [
+    "Port outbound NE filter setup, pause/resume lifecycle and Apple command-line graylist; no upstream UI or branding.",
+    "Rewrite rule evaluation in independently tested Rust with explicit OpenNavo precedence, same-destination upsert, PID generation checks, bounded pauses and fail-open behavior.",
+    "Replace upstream XPC and persistence with audit-token authenticated JSON IPC and extension-owned state.",
+    "Use direct clang/Cargo build without upstream build scripts or LaunchServices registration."
+  ]
+}

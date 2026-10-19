@@ -77,6 +77,14 @@ describe('WP1 titles and descriptions', () => {
     expect(overviewDescription({ ...app, disabled: true }, t)).toBe(
       'Open-source code editor. Homebrew has disabled Visual Studio Code; see its release history and similar apps.'
     );
+    // Paused only by the 90-day rule (or deprecated): Homebrew still installs it, so the page says so.
+    const disabledHere = { ...app, disabled: true, homebrewStatus: { state: 'disabled' } };
+    expect(overviewTitle(disabledHere, t)).toBe('Visual Studio Code for Mac · OpenNavo');
+    for (const state of ['active', 'deprecated']) {
+      const paused = { ...app, disabled: true, homebrewStatus: { state } };
+      expect(overviewTitle(paused, t), state).toBe(overviewTitle(app, t));
+      expect(overviewDescription(paused, t), state).toBe(overviewDescription(app, t));
+    }
     for (const text of [overviewTitle(app, t), t('categories.seo.itemTitle', { name: 'Browsers' })])
       expect(text).not.toMatch(/\b(best|free|20\d\d)\b/i);
   });

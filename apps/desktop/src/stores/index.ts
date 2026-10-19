@@ -4,6 +4,7 @@ import { events } from '@/ipc/client';
 import { useCatalogStore } from './catalog';
 import { useCleanupStore } from './cleanup';
 import { useSecurityStore } from './security';
+import { useFirewallStore } from './firewall';
 import { useMasStore } from './mas';
 import { useLinksStore } from './links';
 import { useDownloadsStore } from './downloads';
@@ -42,6 +43,7 @@ export function startLocalState() {
     const cleanup = useCleanupStore();
     const monitor = useMonitorStore();
     const security = useSecurityStore();
+    const firewall = useFirewallStore();
     const updates = useUpdatesStore();
     const mas = useMasStore();
     const links = useLinksStore();
@@ -89,6 +91,10 @@ export function startLocalState() {
           security.paste = event.payload;
         })
       ),
+      register(events.firewallStatus.listen(event => firewall.applyStatus(event.payload))),
+      register(events.firewallAlerts.listen(event => firewall.applyAlerts(event.payload.alerts))),
+      register(events.firewallChanged.listen(event => firewall.applyChanged(event.payload.what))),
+      register(events.firewallActivity.listen(event => firewall.applyActivity(event.payload.events))),
       register(events.downloadDetected.listen(event => downloads.detected(event.payload))),
       register(events.downloadVerified.listen(event => downloads.verified(event.payload))),
       register(events.updatesChanged.listen(() => void updates.load().catch(() => undefined))),
@@ -151,7 +157,9 @@ export function startLocalState() {
       permissions.refresh(),
       cleanup.loadSummary(),
       cleanup.loadRules(),
-      security.loadOverview()
+      security.loadOverview(),
+      // The sidebar counts connections waiting for an answer.
+      firewall.loadStatus().then(() => (firewall.installed ? firewall.loadAlerts() : undefined))
     ]);
   });
 }
@@ -197,6 +205,18 @@ export function startMonitorPopoverState() {
       register(events.monitorSample.listen(event => monitor.applySample(event.payload))),
       register(events.fanChanged.listen(event => monitor.applyFanChange(event.payload)))
     ]);
+  });
+}
+
+/**
+ * Firewall question window (firewall plan §4.4): its capability allows only reading and answering waiting connections,
+ * so it subscribes to the list Rust sends after every change and reads it once.
+ */
+export function startFirewallAlertState() {
+  return useStateSubscriptions().start('firewall-alert', async register => {
+    const firewall = useFirewallStore();
+    await register(events.firewallAlerts.listen(event => firewall.applyAlerts(event.payload.alerts)));
+    await firewall.loadAlerts().catch(() => undefined);
   });
 }
 

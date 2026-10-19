@@ -37,6 +37,7 @@
   "nav": {
     "browse": "Explorar",
     "lists": "Listas",
+    "tools": "Ferramentas",
     "mine": "Minha conta",
     "discover": "Descobrir",
     "categories": "Categorias",
@@ -50,8 +51,10 @@
     "cleanup": "Limpeza",
     "cleanupBadge": "{count} item em segundo plano quebrado ainda é carregado | {count} itens em segundo plano quebrados ainda são carregados",
     "monitor": "Monitor",
-    "security": "Segurança",
-    "securityBadge": "{count} item precisa de atenção | {count} itens precisam de atenção"
+    "security": "Verificar vírus",
+    "securityBadge": "{count} item precisa de atenção | {count} itens precisam de atenção",
+    "firewall": "Firewall de apps",
+    "firewallBadge": "{count} conexão aguarda resposta | {count} conexões aguardam resposta"
   },
   "env": {
     "label": "Homebrew",
@@ -318,6 +321,7 @@
     },
     "disabledNotice": "O Homebrew desativou este pacote: {reason}",
     "deprecatedNotice": "O Homebrew descontinuou este pacote: {reason}",
+    "staleNotice": "Sem novas versões há mais de 90 dias, o OpenNavo pausou a recomendação e a instalação. O Homebrew ainda oferece este app.",
     "noReason": "Motivo não informado",
     "replacement": "Alternativa: {token}",
     "release": {
@@ -1213,7 +1217,18 @@
     "E_STARTUP_CHANGED": "Outro programa acabou de alterar este item de inicialização. Atualize e tente de novo",
     "E_LOGIN_ITEM_EXISTS": "Este app já abre no início da sessão",
     "E_ROLLBACK_UNAVAILABLE": "A versão guardada não está mais disponível ou o app mudou desde então, então não é possível reverter",
-    "E_ROLLBACK_INTEGRITY": "A versão guardada não passou na verificação de assinatura, então nada foi revertido"
+    "E_ROLLBACK_INTEGRITY": "A versão guardada não passou na verificação de assinatura, então nada foi revertido",
+    "E_FW_NOT_BUNDLED": "Esta versão não inclui o componente do firewall. Use a versão oficial do OpenNavo",
+    "E_FW_NOT_IN_APPLICATIONS": "Mova o OpenNavo para a pasta Aplicativos e abra-o de novo",
+    "E_FW_ACTIVATION": "O macOS não concluiu a instalação da extensão do sistema. Tente de novo",
+    "E_FW_CONSENT_DENIED": "A filtragem de conteúdo de rede não foi permitida, então o firewall está desativado",
+    "E_FW_DISCONNECTED": "O componente do firewall não está respondendo. Tente de novo daqui a pouco",
+    "E_FW_RULE_INVALID": "A regra não é válida. Confira o programa, o endereço e a porta",
+    "E_FW_UNKNOWN_ALERT": "Esta conexão já foi tratada",
+    "E_FW_BLOCKLIST_URL": "Só são aceitos endereços https ou arquivos deste Mac",
+    "E_FW_BLOCKLIST_FETCH": "Não foi possível baixar a lista de bloqueio. Confira o endereço e a conexão",
+    "E_FW_BLOCKLIST_FORMAT": "Nenhum domínio ou IP utilizável foi encontrado no arquivo",
+    "E_FW_BLOCKLIST_TOO_LARGE": "A lista de bloqueio é grande demais: no máximo 50 MB e um milhão de entradas"
   },
   "installConfirm": {
     "title": "Adotar o {name} existente?",
@@ -2353,10 +2368,6 @@
         "ransomware": {
           "title": "Proteção contra ransomware",
           "body": "Pausa um programa que grava muitos arquivos com cara de criptografados em pouco tempo e pergunta o que fazer. Requer a permissão de Endpoint Security."
-        },
-        "firewall": {
-          "title": "Firewall de apps",
-          "body": "Pergunta se deve permitir um app na primeira vez que ele se conecta à rede, com regras e listas de bloqueio. Requer uma extensão de rede do sistema; chega numa versão futura."
         }
       },
       "eventsTitle": "Atividade recente",
@@ -2518,6 +2529,290 @@
       "title": "Ameaça em um download: {file}",
       "body": "{signature} · Verifique o arquivo para movê-lo para a quarentena",
       "action": "Verificar e resolver"
+    }
+  },
+  "firewall": {
+    "title": "Firewall de apps",
+    "subtitle": "Pergunta antes de um app se conectar e o permite ou bloqueia conforme suas regras, tudo decidido neste Mac",
+    "tabs": {
+      "label": "Firewall de apps",
+      "rules": "Regras",
+      "activity": "Atividade",
+      "blocklists": "Listas de bloqueio",
+      "settings": "Ajustes"
+    },
+    "unavailable": {
+      "not_bundled": {
+        "title": "Esta versão não inclui o firewall",
+        "body": "O firewall de apps precisa da extensão de rede do sistema distribuída assinada com a versão oficial. Versões de desenvolvimento e sem assinatura não a incluem. Use a versão oficial do OpenNavo."
+      },
+      "not_in_applications": {
+        "title": "Primeiro mova o OpenNavo para a pasta Aplicativos",
+        "body": "O macOS só deixa apps da pasta Aplicativos instalarem extensões do sistema. Mova-o, abra o OpenNavo de novo e volte aqui."
+      },
+      "unsupported_os": {
+        "title": "Esta versão do macOS não é compatível",
+        "body": "O firewall de apps precisa do macOS 13 ou posterior."
+      }
+    },
+    "setup": {
+      "title": "Ativar o firewall de apps",
+      "lead": "Na primeira vez que cada app se conecta à rede, o OpenNavo pergunta se deve permiti-lo ou bloqueá-lo e lembra a sua resposta.",
+      "points": {
+        "ask": {
+          "title": "Pergunta antes de conectar",
+          "body": "Veja qual é o app, para onde ele se conecta e quem o assinou, e então permita ou bloqueie."
+        },
+        "rules": {
+          "title": "Por app ou por destino",
+          "body": "Permita um app inteiro, ou permita ou bloqueie só um site ou uma porta."
+        },
+        "blocklists": {
+          "title": "Listas de bloqueio",
+          "body": "Importe listas de sites de anúncios, rastreamento ou maliciosos; as conexões correspondentes são bloqueadas direto."
+        }
+      },
+      "enable": "Ativar o firewall de apps",
+      "retry": "Tentar de novo",
+      "steps": "No caminho, o macOS vai pedir duas confirmações: permitir a extensão do sistema do OpenNavo nos Ajustes do Sistema e depois permitir que ela filtre o conteúdo de rede.",
+      "privacy": "Tudo é decidido neste Mac; os dados das conexões nunca são enviados.",
+      "failedTitle": "Não foi possível ativar o firewall de apps",
+      "failed": "Não foi possível ativar: {reason}"
+    },
+    "options": {
+      "allowApple": "Permitir programas da Apple automaticamente",
+      "allowAppleHint": "Ferramentas de linha de comando como curl, ssh e python continuam perguntando.",
+      "allowInstalled": "Permitir apps já instalados",
+      "allowInstalledHint": "Só perguntam os apps que você instalar depois, então incomoda menos."
+    },
+    "progress": {
+      "title": "Ativando o firewall de apps",
+      "uninstalling": "Removendo o firewall de apps…",
+      "install": "Instalar a extensão do sistema",
+      "installHint": "Entregando o componente do firewall ao macOS. Costuma levar alguns segundos.",
+      "approve": "Permitir nos Ajustes do Sistema",
+      "approveHint": "Em Ajustes do Sistema › Geral › Itens de Início e Extensões › Extensões de Rede, ative o OpenNavo. No macOS 14 e anteriores, clique em Permitir em Privacidade e Segurança.",
+      "consent": "Permitir a filtragem de conteúdo de rede",
+      "consentHint": "Clique em Permitir na caixa de diálogo que aparecer.",
+      "openSettings": "Abrir Ajustes do Sistema",
+      "reboot": "Reinicie o Mac para concluir a instalação."
+    },
+    "status": {
+      "on": "O firewall de apps está ativado",
+      "off": "O firewall de apps está pausado",
+      "offBody": "Nenhuma conexão está sendo filtrada agora. Suas regras continuam salvas.",
+      "toggle": "Firewall de apps",
+      "rules": "{count} regra | {count} regras",
+      "blockedToday": "{count} bloqueio hoje | {count} bloqueios hoje",
+      "disconnected": "O componente do firewall não está respondendo.",
+      "disconnectedBody": "As regras existentes continuam valendo. Se isso continuar, desative e ative o firewall de novo.",
+      "serviceMissing": "O serviço do firewall não iniciou corretamente.",
+      "serviceMissingBody": "As regras existentes continuam valendo, e as conexões sem regra são permitidas e registradas. Reinicie o Mac para resolver.",
+      "preparing": "Verificando os apps já instalados. Costuma levar alguns segundos, e o firewall continua funcionando enquanto isso.",
+      "mode": "Conexões sem regra",
+      "modes": {
+        "ask": "Perguntar",
+        "allow": "Permitir e registrar",
+        "block": "Bloquear e registrar"
+      },
+      "modeHints": {
+        "ask": "Você recebe a pergunta, e a sua resposta vira uma regra.",
+        "allow": "Sem perguntas; veja em Atividade.",
+        "block": "Apps novos não conseguem se conectar até você adicionar uma regra que os permita."
+      },
+      "pending": "{count} conexão aguarda sua resposta | {count} conexões aguardam sua resposta",
+      "review": "Revisar"
+    },
+    "signer": {
+      "apple": "Assinado pela Apple",
+      "app_store": "Assinado pela App Store",
+      "developer": "Desenvolvedor: {team}",
+      "developer_id": "Assinado",
+      "adhoc": "Assinatura ad hoc",
+      "unsigned": "Sem assinatura",
+      "invalid": "Assinatura inválida"
+    },
+    "rules": {
+      "search": "Buscar apps, desenvolvedores ou endereços",
+      "filterLabel": "Filtrar regras",
+      "filters": {
+        "all": "Todas",
+        "allow": "Permitir",
+        "block": "Bloquear",
+        "user": "Minhas",
+        "auto": "Automáticas"
+      },
+      "add": "Adicionar regra",
+      "allApps": "Todos os apps",
+      "allAppsHint": "Vale para todos os apps",
+      "anyRemote": "Qualquer endereço",
+      "anyPort": "Qualquer porta",
+      "port": "porta {port}",
+      "action": {
+        "allow": "Permitir",
+        "block": "Bloquear"
+      },
+      "untilQuit": "Até o app ser encerrado",
+      "source": {
+        "user": "Minha",
+        "apple": "Programa da Apple",
+        "installed": "App instalado"
+      },
+      "lastMatch": "Usada {time} · {count} vezes",
+      "neverMatched": "Ainda não usada",
+      "menuLabel": "Ações de regra de {name}",
+      "menu": {
+        "allow": "Mudar para Permitir",
+        "block": "Mudar para Bloquear",
+        "edit": "Editar",
+        "delete": "Apagar"
+      },
+      "noMatch": "Nenhuma regra corresponde",
+      "empty": "Ainda não há regras",
+      "emptyBody": "Suas respostas quando os apps se conectam viram regras e aparecem aqui.",
+      "deleteTitle": "Apagar esta regra?",
+      "deleteBody": "Na próxima vez que {name} se conectar, isso será tratado como qualquer conexão sem regra.",
+      "deleted": "Regra apagada"
+    },
+    "sheet": {
+      "addTitle": "Adicionar regra",
+      "editTitle": "Editar regra",
+      "program": "Programa",
+      "oneApp": "Um app",
+      "allApps": "Todos os apps",
+      "allAppsHint": "Vale para todos os apps e precisa de um endereço ou de uma porta.",
+      "chooseApp": "Escolher um app ou programa…",
+      "change": "Trocar",
+      "needApp": "Escolha um app ou programa",
+      "action": "Ação",
+      "remote": "Destino",
+      "someRemote": "Endereço específico",
+      "remotePlaceholder": "example.com, *.example.com, um IP ou uma faixa",
+      "remoteHint": "*.example.com inclui todos os subdomínios. Escreva faixas como 10.0.0.0/8.",
+      "port": "Porta",
+      "somePort": "Porta específica",
+      "invalid": "Confira o formato do endereço ou da porta",
+      "needDestination": "Uma regra para todos os apps precisa de um endereço ou de uma porta; senão, ela permitiria ou bloquearia a rede do Mac inteiro.",
+      "order": "Regras mais específicas têm prioridade: as que indicam um endereço ou uma porta valem primeiro e, no mesmo nível, Bloquear vence Permitir.",
+      "save": "Salvar",
+      "saved": "Regra salva",
+      "added": "Regra adicionada"
+    },
+    "activity": {
+      "filterLabel": "Filtrar atividade",
+      "filters": {
+        "all": "Tudo",
+        "blocked": "Só bloqueadas"
+      },
+      "hint": "Conexões permitidas por uma regra não são registradas",
+      "clear": "Limpar atividade",
+      "clearTitle": "Limpar o registro de atividade?",
+      "clearBody": "Só o registro é apagado; suas regras continuam.",
+      "port": "porta {port}",
+      "reason": {
+        "rule": "Por regra",
+        "blocklist": "Lista de bloqueio",
+        "apple": "Programa da Apple, permitido automaticamente",
+        "installed": "App instalado, permitido automaticamente",
+        "mode": "Sem regra",
+        "answer": "Sua resposta",
+        "timeout": "Sem resposta a tempo; permitida por enquanto",
+        "no_client": "O OpenNavo não estava aberto; permitida por enquanto"
+      },
+      "action": {
+        "allow": "Permitida",
+        "block": "Bloqueada"
+      },
+      "count": "{count} vezes",
+      "allowApp": "Permitir app",
+      "blockApp": "Bloquear app",
+      "ruled": {
+        "allow": "{name} agora pode se conectar",
+        "block": "{name} agora está bloqueado"
+      },
+      "ruledShort": {
+        "allow": "Agora permitido",
+        "block": "Agora bloqueado"
+      },
+      "more": "Carregar atividade anterior",
+      "empty": "Ainda não há atividade",
+      "emptyBlocked": "Ainda não há conexões bloqueadas",
+      "emptyBody": "Conexões bloqueadas, suas respostas e conexões permitidas automaticamente são registradas aqui."
+    },
+    "blocklists": {
+      "intro": "Conexões a um site ou IP da lista são bloqueadas sem perguntar. Listas de um endereço da web são atualizadas todos os dias.",
+      "source": "Endereço ou arquivo da lista de bloqueio",
+      "placeholder": "https://… ou o caminho de um arquivo",
+      "add": "Adicionar",
+      "chooseFile": "Escolher arquivo…",
+      "added": "{name} adicionada com {count} entradas",
+      "addFailed": "Não foi possível adicionar a lista de bloqueio",
+      "toggle": "Usar {name}",
+      "entries": "{count} entrada | {count} entradas",
+      "updated": "atualizada {time}",
+      "refresh": "Atualizar {name} agora",
+      "remove": "Remover {name}",
+      "empty": "Ainda não há listas de bloqueio",
+      "emptyBody": "Arquivos hosts funcionam, assim como listas com um domínio, IP ou faixa por linha.",
+      "boundary": "Alguns apps descobrem o IP por conta própria e se conectam direto a ele. Essas conexões só podem ser bloqueadas pelos IPs de uma lista; o bloqueio por domínio pode não pegá-las.",
+      "removeTitle": "Remover esta lista de bloqueio?",
+      "removeBody": "Depois de remover {name}, os endereços dela deixam de ser bloqueados direto.",
+      "removeAction": "Remover"
+    },
+    "settings": {
+      "automatic": "Permitir automaticamente",
+      "allowInstalledHint": "Apps instalados antes de você ativar o firewall se conectam livremente; só perguntam os instalados depois.",
+      "closedHint": "A extensão do sistema guarda estes ajustes, então eles valem mesmo com o OpenNavo fechado.",
+      "remove": "Remover",
+      "removeLabel": "Remover o firewall de apps",
+      "removeHint": "Desativa a filtragem e desinstala a extensão do sistema, apagando regras e atividade. O macOS pode pedir sua senha.",
+      "removeAction": "Remover",
+      "removeTitle": "Remover o firewall de apps?",
+      "removeBody": "Depois disso, todos os apps poderão se conectar livremente, e regras, listas de bloqueio e atividade serão apagadas. Você pode ativá-lo de novo quando quiser."
+    },
+    "alert": {
+      "title": "{name} quer se conectar à rede",
+      "warning": {
+        "unsigned": "Este programa não é assinado, então não dá para confirmar o desenvolvedor.",
+        "adhoc": "Este programa só tem uma assinatura ad hoc, então não dá para confirmar o desenvolvedor.",
+        "invalid": "A assinatura deste programa é inválida. Ele pode ter sido modificado."
+      },
+      "to": "Conectando a",
+      "port": "porta {port}",
+      "path": "Local",
+      "parents": "Iniciado por",
+      "args": "Argumentos",
+      "scope": "Vale para",
+      "scopes": {
+        "app": "Todas as conexões deste app",
+        "destination": "Só este endereço"
+      },
+      "until": "Duração",
+      "untils": {
+        "always": "Sempre",
+        "app_quits": "Até o app ser encerrado"
+      },
+      "waiting": "Mais {count} conexão deste app aguarda esta resposta | Mais {count} conexões deste app aguardam esta resposta",
+      "queue": "Mais {count} conexão aguardando | Mais {count} conexões aguardando",
+      "block": "Bloquear",
+      "allow": "Permitir",
+      "none": "Nenhuma conexão aguardando",
+      "deadline": "Se você não responder em {time}, a conexão será permitida por enquanto",
+      "released": "Esta conexão já foi permitida por enquanto; sua resposta ainda vira uma regra."
+    },
+    "rail": {
+      "title": "Firewall de apps",
+      "state": "Estado",
+      "notSetUp": "Desativado",
+      "paused": "Pausado",
+      "on": "Em execução",
+      "noResponse": "Sem resposta",
+      "mode": "Sem regra",
+      "rules": "Regras",
+      "blockedToday": "Bloqueios hoje",
+      "version": "Versão do componente",
+      "limitsTitle": "O que ele cobre",
+      "limits": "Só as conexões que os apps deste Mac iniciam. Conexões de entrada ficam a cargo do firewall integrado do macOS. Enquanto o OpenNavo não está aberto, ele não consegue perguntar, então conexões sem regra são permitidas por enquanto e registradas em Atividade."
     }
   }
 }

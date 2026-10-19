@@ -37,6 +37,7 @@
   "nav": {
     "browse": "Explorar",
     "lists": "Listas",
+    "tools": "Herramientas",
     "mine": "Mi cuenta",
     "discover": "Explorar",
     "categories": "Categorías",
@@ -50,8 +51,10 @@
     "cleanup": "Limpieza",
     "cleanupBadge": "{count} elemento en segundo plano huérfano sigue cargándose | {count} elementos en segundo plano huérfanos siguen cargándose",
     "monitor": "Monitor",
-    "security": "Seguridad",
-    "securityBadge": "{count} elemento requiere atención | {count} elementos requieren atención"
+    "security": "Buscar virus",
+    "securityBadge": "{count} elemento requiere atención | {count} elementos requieren atención",
+    "firewall": "Cortafuegos de apps",
+    "firewallBadge": "{count} conexión espera respuesta | {count} conexiones esperan respuesta"
   },
   "env": {
     "label": "Homebrew",
@@ -318,6 +321,7 @@
     },
     "disabledNotice": "Homebrew ha deshabilitado este paquete: {reason}",
     "deprecatedNotice": "Homebrew ha marcado este paquete como obsoleto: {reason}",
+    "staleNotice": "Sin versiones nuevas durante más de 90 días, OpenNavo ha pausado su recomendación e instalación. Homebrew sigue ofreciendo esta app.",
     "noReason": "No se indica el motivo",
     "replacement": "Alternativa: {token}",
     "release": {
@@ -1213,7 +1217,18 @@
     "E_STARTUP_CHANGED": "Otro programa acaba de cambiar este elemento de inicio. Actualiza e inténtalo de nuevo",
     "E_LOGIN_ITEM_EXISTS": "Esta app ya se abre al iniciar sesión",
     "E_ROLLBACK_UNAVAILABLE": "La versión guardada ya no está disponible o la app cambió desde entonces, así que no se puede revertir",
-    "E_ROLLBACK_INTEGRITY": "La versión guardada no superó la comprobación de firma, así que no se revirtió nada"
+    "E_ROLLBACK_INTEGRITY": "La versión guardada no superó la comprobación de firma, así que no se revirtió nada",
+    "E_FW_NOT_BUNDLED": "Esta versión no incluye el componente del cortafuegos. Usa la versión oficial de OpenNavo",
+    "E_FW_NOT_IN_APPLICATIONS": "Mueve OpenNavo a la carpeta Aplicaciones y vuelve a abrirlo",
+    "E_FW_ACTIVATION": "macOS no terminó de instalar la extensión del sistema. Inténtalo de nuevo",
+    "E_FW_CONSENT_DENIED": "No se permitió el filtrado de contenido de red, así que el cortafuegos está desactivado",
+    "E_FW_DISCONNECTED": "El componente del cortafuegos no responde. Inténtalo de nuevo en un momento",
+    "E_FW_RULE_INVALID": "La regla no es válida. Revisa el programa, la dirección y el puerto",
+    "E_FW_UNKNOWN_ALERT": "Esta conexión ya se gestionó",
+    "E_FW_BLOCKLIST_URL": "Solo se admiten direcciones https o archivos de este Mac",
+    "E_FW_BLOCKLIST_FETCH": "No se pudo descargar la lista de bloqueo. Revisa la dirección y la conexión",
+    "E_FW_BLOCKLIST_FORMAT": "No se encontraron dominios ni IP utilizables en el archivo",
+    "E_FW_BLOCKLIST_TOO_LARGE": "La lista de bloqueo es demasiado grande: como máximo 50 MB y un millón de entradas"
   },
   "installConfirm": {
     "title": "¿Adoptar la app existente {name}?",
@@ -2353,10 +2368,6 @@
         "ransomware": {
           "title": "Protección contra ransomware",
           "body": "Detiene un programa que escribe muchos archivos con aspecto cifrado en poco tiempo y te pregunta qué hacer. Requiere el permiso de Endpoint Security."
-        },
-        "firewall": {
-          "title": "Cortafuegos de apps",
-          "body": "Pregunta si permitir una app la primera vez que se conecta a la red, con reglas y listas de bloqueo. Requiere una extensión de red del sistema; llegará en una versión posterior."
         }
       },
       "eventsTitle": "Actividad reciente",
@@ -2518,6 +2529,290 @@
       "title": "Amenaza en una descarga: {file}",
       "body": "{signature} · Analiza el archivo para moverlo a cuarentena",
       "action": "Analizar y resolver"
+    }
+  },
+  "firewall": {
+    "title": "Cortafuegos de apps",
+    "subtitle": "Pregunta antes de que una app se conecte y la permite o bloquea según tus reglas, todo decidido en este Mac",
+    "tabs": {
+      "label": "Cortafuegos de apps",
+      "rules": "Reglas",
+      "activity": "Actividad",
+      "blocklists": "Listas de bloqueo",
+      "settings": "Ajustes"
+    },
+    "unavailable": {
+      "not_bundled": {
+        "title": "Esta versión no incluye el cortafuegos",
+        "body": "El cortafuegos de apps necesita la extensión de red del sistema que se distribuye firmada con la versión oficial. Las versiones de desarrollo y sin firmar no la incluyen. Usa la versión oficial de OpenNavo."
+      },
+      "not_in_applications": {
+        "title": "Primero mueve OpenNavo a la carpeta Aplicaciones",
+        "body": "macOS solo deja instalar extensiones del sistema a las apps de la carpeta Aplicaciones. Muévelo, vuelve a abrir OpenNavo y regresa aquí."
+      },
+      "unsupported_os": {
+        "title": "Esta versión de macOS no es compatible",
+        "body": "El cortafuegos de apps necesita macOS 13 o posterior."
+      }
+    },
+    "setup": {
+      "title": "Activar el cortafuegos de apps",
+      "lead": "La primera vez que cada app se conecta a la red, OpenNavo te pregunta si permitirla o bloquearla y recuerda tu respuesta.",
+      "points": {
+        "ask": {
+          "title": "Pregunta antes de conectar",
+          "body": "Ves qué app es, adónde se conecta y quién la firmó, y luego decides si permitirla o bloquearla."
+        },
+        "rules": {
+          "title": "Por app o por destino",
+          "body": "Permite una app entera, o permite o bloquea solo un sitio o un puerto."
+        },
+        "blocklists": {
+          "title": "Listas de bloqueo",
+          "body": "Importa listas de sitios de anuncios, rastreo o maliciosos; las conexiones que coincidan se bloquean directamente."
+        }
+      },
+      "enable": "Activar el cortafuegos de apps",
+      "retry": "Reintentar",
+      "steps": "Durante el proceso, macOS te pedirá dos confirmaciones: permitir la extensión del sistema de OpenNavo en Ajustes del Sistema y luego permitir que filtre el contenido de red.",
+      "privacy": "Todo se decide en este Mac; los datos de las conexiones nunca se suben.",
+      "failedTitle": "No se pudo activar el cortafuegos de apps",
+      "failed": "No se pudo activar: {reason}"
+    },
+    "options": {
+      "allowApple": "Permitir automáticamente los programas de Apple",
+      "allowAppleHint": "Las herramientas de línea de comandos como curl, ssh y python seguirán preguntando.",
+      "allowInstalled": "Permitir las apps ya instaladas",
+      "allowInstalledHint": "Solo preguntan las apps que instales después, así molesta menos."
+    },
+    "progress": {
+      "title": "Activando el cortafuegos de apps",
+      "uninstalling": "Quitando el cortafuegos de apps…",
+      "install": "Instalar la extensión del sistema",
+      "installHint": "Entregando el componente del cortafuegos a macOS. Suele tardar unos segundos.",
+      "approve": "Permitirla en Ajustes del Sistema",
+      "approveHint": "En Ajustes del Sistema › General › Ítems de inicio y extensiones › Extensiones de red, activa OpenNavo. En macOS 14 y anteriores, haz clic en Permitir en Privacidad y seguridad.",
+      "consent": "Permitir el filtrado de contenido de red",
+      "consentHint": "Haz clic en Permitir en el cuadro de diálogo que aparece.",
+      "openSettings": "Abrir Ajustes del Sistema",
+      "reboot": "Reinicia el Mac para terminar la instalación."
+    },
+    "status": {
+      "on": "El cortafuegos de apps está activado",
+      "off": "El cortafuegos de apps está en pausa",
+      "offBody": "Ahora no se filtra ninguna conexión. Tus reglas se conservan.",
+      "toggle": "Cortafuegos de apps",
+      "rules": "{count} regla | {count} reglas",
+      "blockedToday": "{count} bloqueo hoy | {count} bloqueos hoy",
+      "disconnected": "El componente del cortafuegos no responde.",
+      "disconnectedBody": "Las reglas existentes siguen aplicándose. Si sigue así, desactiva el cortafuegos y vuelve a activarlo.",
+      "serviceMissing": "El servicio del cortafuegos no se inició correctamente.",
+      "serviceMissingBody": "Las reglas existentes siguen aplicándose y las conexiones sin regla se permiten y se registran. Reinicia el Mac para solucionarlo.",
+      "preparing": "Comprobando las apps ya instaladas. Suele tardar unos segundos y, mientras tanto, el cortafuegos sigue funcionando.",
+      "mode": "Conexiones sin regla",
+      "modes": {
+        "ask": "Preguntarme",
+        "allow": "Permitir y registrar",
+        "block": "Bloquear y registrar"
+      },
+      "modeHints": {
+        "ask": "Se te pregunta y tu respuesta se convierte en una regla.",
+        "allow": "Sin preguntas; puedes verlas en Actividad.",
+        "block": "Las apps nuevas no pueden conectarse hasta que les añadas una regla que las permita."
+      },
+      "pending": "{count} conexión espera tu respuesta | {count} conexiones esperan tu respuesta",
+      "review": "Revisar"
+    },
+    "signer": {
+      "apple": "Firmado por Apple",
+      "app_store": "Firmado por el App Store",
+      "developer": "Desarrollador: {team}",
+      "developer_id": "Firmado",
+      "adhoc": "Firma ad hoc",
+      "unsigned": "Sin firmar",
+      "invalid": "Firma no válida"
+    },
+    "rules": {
+      "search": "Buscar apps, desarrolladores o direcciones",
+      "filterLabel": "Filtrar reglas",
+      "filters": {
+        "all": "Todas",
+        "allow": "Permitir",
+        "block": "Bloquear",
+        "user": "Mías",
+        "auto": "Automáticas"
+      },
+      "add": "Añadir regla",
+      "allApps": "Todas las apps",
+      "allAppsHint": "Se aplica a todas las apps",
+      "anyRemote": "Cualquier dirección",
+      "anyPort": "Cualquier puerto",
+      "port": "puerto {port}",
+      "action": {
+        "allow": "Permitir",
+        "block": "Bloquear"
+      },
+      "untilQuit": "Hasta que la app se cierre",
+      "source": {
+        "user": "Mía",
+        "apple": "Programa de Apple",
+        "installed": "App instalada"
+      },
+      "lastMatch": "Usada {time} · {count} veces",
+      "neverMatched": "Aún sin usar",
+      "menuLabel": "Acciones de reglas de {name}",
+      "menu": {
+        "allow": "Cambiar a Permitir",
+        "block": "Cambiar a Bloquear",
+        "edit": "Editar",
+        "delete": "Eliminar"
+      },
+      "noMatch": "No hay reglas que coincidan",
+      "empty": "Aún no hay reglas",
+      "emptyBody": "Tus respuestas cuando las apps se conectan se convierten en reglas y aparecen aquí.",
+      "deleteTitle": "¿Eliminar esta regla?",
+      "deleteBody": "La próxima vez que {name} se conecte, se tratará como cualquier conexión sin regla.",
+      "deleted": "Regla eliminada"
+    },
+    "sheet": {
+      "addTitle": "Añadir regla",
+      "editTitle": "Editar regla",
+      "program": "Programa",
+      "oneApp": "Una app",
+      "allApps": "Todas las apps",
+      "allAppsHint": "Se aplica a todas las apps y necesita una dirección o un puerto.",
+      "chooseApp": "Elegir una app o un programa…",
+      "change": "Cambiar",
+      "needApp": "Elige una app o un programa",
+      "action": "Acción",
+      "remote": "Destino",
+      "someRemote": "Dirección concreta",
+      "remotePlaceholder": "example.com, *.example.com, una IP o un rango",
+      "remoteHint": "*.example.com incluye todos sus subdominios. Escribe los rangos como 10.0.0.0/8.",
+      "port": "Puerto",
+      "somePort": "Puerto concreto",
+      "invalid": "Revisa el formato de la dirección o del puerto",
+      "needDestination": "Una regla para todas las apps necesita una dirección o un puerto; si no, permitiría o bloquearía la red de todo el Mac.",
+      "order": "Las reglas más concretas tienen prioridad: primero se aplican las que indican una dirección o un puerto y, al mismo nivel, Bloquear prevalece sobre Permitir.",
+      "save": "Guardar",
+      "saved": "Regla guardada",
+      "added": "Regla añadida"
+    },
+    "activity": {
+      "filterLabel": "Filtrar actividad",
+      "filters": {
+        "all": "Todo",
+        "blocked": "Solo bloqueadas"
+      },
+      "hint": "Las conexiones que permite una regla no se registran",
+      "clear": "Borrar actividad",
+      "clearTitle": "¿Borrar el registro de actividad?",
+      "clearBody": "Solo se borra el registro; tus reglas se mantienen.",
+      "port": "puerto {port}",
+      "reason": {
+        "rule": "Por regla",
+        "blocklist": "Lista de bloqueo",
+        "apple": "Programa de Apple, permitido automáticamente",
+        "installed": "App instalada, permitida automáticamente",
+        "mode": "Sin regla",
+        "answer": "Tu respuesta",
+        "timeout": "Sin respuesta a tiempo; permitida de momento",
+        "no_client": "OpenNavo no estaba abierto; permitida de momento"
+      },
+      "action": {
+        "allow": "Permitida",
+        "block": "Bloqueada"
+      },
+      "count": "{count} veces",
+      "allowApp": "Permitir app",
+      "blockApp": "Bloquear app",
+      "ruled": {
+        "allow": "{name} ya puede conectarse",
+        "block": "{name} queda bloqueada"
+      },
+      "ruledShort": {
+        "allow": "Ahora permitida",
+        "block": "Ahora bloqueada"
+      },
+      "more": "Cargar actividad anterior",
+      "empty": "Aún no hay actividad",
+      "emptyBlocked": "Aún no hay conexiones bloqueadas",
+      "emptyBody": "Aquí se registran las conexiones bloqueadas, tus respuestas y las conexiones permitidas automáticamente."
+    },
+    "blocklists": {
+      "intro": "Las conexiones a un sitio o una IP de la lista se bloquean sin preguntar. Las listas de una dirección web se actualizan cada día.",
+      "source": "Dirección o archivo de la lista de bloqueo",
+      "placeholder": "https://… o la ruta de un archivo",
+      "add": "Añadir",
+      "chooseFile": "Elegir archivo…",
+      "added": "Se añadió {name} con {count} entradas",
+      "addFailed": "No se pudo añadir la lista de bloqueo",
+      "toggle": "Usar {name}",
+      "entries": "{count} entrada | {count} entradas",
+      "updated": "actualizada {time}",
+      "refresh": "Actualizar {name} ahora",
+      "remove": "Quitar {name}",
+      "empty": "Aún no hay listas de bloqueo",
+      "emptyBody": "Sirven los archivos hosts y las listas con un dominio, una IP o un rango por línea.",
+      "boundary": "Algunas apps buscan la IP por su cuenta y se conectan directamente a ella. Esas conexiones solo se pueden bloquear por las IP de una lista; el bloqueo por dominio puede no detectarlas.",
+      "removeTitle": "¿Quitar esta lista de bloqueo?",
+      "removeBody": "Al quitar {name}, sus direcciones dejan de bloquearse directamente.",
+      "removeAction": "Quitar"
+    },
+    "settings": {
+      "automatic": "Permitir automáticamente",
+      "allowInstalledHint": "Las apps instaladas antes de activar el cortafuegos se conectan libremente; solo preguntan las que instales después.",
+      "closedHint": "La extensión del sistema guarda estos ajustes, así que se aplican aunque OpenNavo esté cerrado.",
+      "remove": "Quitar",
+      "removeLabel": "Quitar el cortafuegos de apps",
+      "removeHint": "Desactiva el filtrado y desinstala la extensión del sistema, y borra las reglas y la actividad. Puede que macOS te pida la contraseña.",
+      "removeAction": "Quitar",
+      "removeTitle": "¿Quitar el cortafuegos de apps?",
+      "removeBody": "A partir de entonces, todas las apps podrán conectarse libremente y se borrarán las reglas, las listas de bloqueo y la actividad. Puedes volver a activarlo cuando quieras."
+    },
+    "alert": {
+      "title": "{name} quiere conectarse a la red",
+      "warning": {
+        "unsigned": "Este programa no está firmado, así que no se puede confirmar su desarrollador.",
+        "adhoc": "Este programa solo tiene una firma ad hoc, así que no se puede confirmar su desarrollador.",
+        "invalid": "La firma de este programa no es válida. Puede que lo hayan modificado."
+      },
+      "to": "Se conecta a",
+      "port": "puerto {port}",
+      "path": "Ubicación",
+      "parents": "Iniciado por",
+      "args": "Argumentos",
+      "scope": "Se aplica a",
+      "scopes": {
+        "app": "Todas las conexiones de esta app",
+        "destination": "Solo esta dirección"
+      },
+      "until": "Duración",
+      "untils": {
+        "always": "Siempre",
+        "app_quits": "Hasta que la app se cierre"
+      },
+      "waiting": "{count} conexión más de esta app espera esta respuesta | {count} conexiones más de esta app esperan esta respuesta",
+      "queue": "{count} conexión más en espera | {count} conexiones más en espera",
+      "block": "Bloquear",
+      "allow": "Permitir",
+      "none": "No hay conexiones en espera",
+      "deadline": "Si no respondes en {time}, la conexión se permitirá de momento",
+      "released": "Esta conexión ya se permitió de momento; tu respuesta se guardará igualmente como regla."
+    },
+    "rail": {
+      "title": "Cortafuegos",
+      "state": "Estado",
+      "notSetUp": "Desactivado",
+      "paused": "En pausa",
+      "on": "En funcionamiento",
+      "noResponse": "Sin respuesta",
+      "mode": "Sin regla",
+      "rules": "Reglas",
+      "blockedToday": "Bloqueos de hoy",
+      "version": "Versión del componente",
+      "limitsTitle": "Qué cubre",
+      "limits": "Solo las conexiones que inician las apps de este Mac. De las conexiones entrantes se encarga el cortafuegos integrado en macOS. Mientras OpenNavo no está abierto no puede preguntar, así que las conexiones sin regla se permiten de momento y se registran en Actividad."
     }
   }
 }

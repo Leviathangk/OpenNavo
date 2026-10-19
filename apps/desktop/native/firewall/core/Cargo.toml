@@ -1,0 +1,27 @@
+[package]
+name = "opennavo-firewall-core"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.96"
+license = "GPL-3.0-only"
+publish = false
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[features]
+specta = ["dep:specta"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v7"] }
+specta = { version = "=2.0.0-rc.25", optional = true, features = ["derive"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+
+[profile.release.build-override]
+strip = false

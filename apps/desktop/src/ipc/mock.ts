@@ -36,6 +36,7 @@ import { createRunner } from './mock-data/runner';
 import { createAppStoreMock } from './mock-data/appstore';
 import { createUpdaterMock } from './mock-data/updater';
 import { createSecurityMock } from './mock-data/security';
+import { createFirewallMock } from './mock-data/firewall';
 import { createCleanupMock } from './mock-data/cleanup';
 import { createMonitorMock } from './mock-data/monitor';
 import { createUninstallMock } from './mock-data/uninstall';
@@ -209,6 +210,9 @@ function nextCheckAt(settings: AppSettings, now = Date.now()): number | null {
 }
 
 let stopPreviousMock: (() => void) | undefined;
+let currentFirewall: ReturnType<typeof createFirewallMock> | undefined;
+/** The running firewall simulation, so component tests can make a new connection ask. */
+export const firewallMock = () => currentFirewall;
 import.meta.hot?.dispose(() => stopPreviousMock?.());
 
 export function installMockIpc(
@@ -431,11 +435,14 @@ export function installMockIpc(
     settings: () => settings
   });
   security = securityMock;
+  const firewall = createFirewallMock({ flags, tickMs: options.tickMs ?? 250 });
+  currentFirewall = firewall;
   // Reinstalling the simulator must not let the previous session emit into the new stores.
   stopPreviousMock = () => {
     window.removeEventListener('storage', onStorage);
     monitor.stop();
     securityMock.stop();
+    firewall.stop();
   };
   let checkedAt: number | null = noBrew ? null : Date.now() - 2 * 60 * 60 * 1000;
   // ?mock=restore: two tasks were queued on last exit (startup recovery prompt).
@@ -482,6 +489,7 @@ export function installMockIpc(
     ...monitor.handlers,
     ...appStore.handlers,
     ...securityMock.handlers,
+    ...firewall.handlers,
     // Clean tasks keep their own Trash manifests; everything else is an uninstall or leftovers task.
     uninstall_restore: args =>
       cleanupMock.restore(args.taskId as string) ?? uninstall?.handlers.uninstall_restore?.(args),

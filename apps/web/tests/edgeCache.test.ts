@@ -25,6 +25,8 @@ describe('HTML edge cache switch', () => {
     for (const path of [
       '/zh/apps/visual-studio-code',
       '/apps/x/versions',
+      '/apps/x/details',
+      '/ja/apps/x/dependencies',
       '/zh/articles/choose-a-screenshot-app',
       '/authors/lin-wei'
     ])
@@ -64,7 +66,7 @@ describe('HTML edge cache switch', () => {
       { cacheControl: '' },
       { path: '/search' },
       { path: '/collections/new-mac' },
-      { path: '/apps/x/details' }
+      { path: '/apps/x/unknown-tab' }
     ];
     for (const overrides of bypass)
       expect(edgeCacheHeader(page(overrides)), JSON.stringify(overrides)).toBe('no-store');

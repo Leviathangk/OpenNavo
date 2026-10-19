@@ -10,6 +10,7 @@ import { useAppLocale } from '@/composables/useAppLocale';
 import { refreshPage } from '@/composables/usePageRefresh';
 import { useCleanupStore } from '@/stores/cleanup';
 import { useSecurityStore } from '@/stores/security';
+import { useFirewallStore } from '@/stores/firewall';
 import { useLibraryStore, useLocalAppsStore, useUpdatesStore } from '@/stores';
 
 // Use shared @opennavo/ui OnSidebar (ADR-017); provide desktop groups and local counts here.
@@ -51,6 +52,13 @@ const securityItem = computed<Partial<OnSidebarItem>>(() =>
     : {}
 );
 
+// App firewall: connections waiting for an answer are counted, like Updates.
+const firewall = useFirewallStore();
+const firewallItem = computed<Partial<OnSidebarItem>>(() => {
+  const pending = firewall.alerts.length;
+  return pending ? { badge: pending, badgeLabel: t('nav.firewallBadge', { count: pending }, { plural: pending }) } : {};
+});
+
 const item = (name: string, icon: string, label: string, extra: Partial<OnSidebarItem> = {}): OnSidebarItem => ({
   key: name,
   label,
@@ -83,6 +91,15 @@ const groups = computed<OnSidebarGroup[]>(() => [
     ]
   },
   {
+    key: 'tools',
+    label: t('nav.tools'),
+    items: [
+      item('security', 'lucide:shield-check', t('nav.security'), securityItem.value),
+      item('firewall', 'lucide:brick-wall-fire', t('nav.firewall'), firewallItem.value),
+      item('monitor', 'lucide:activity', t('nav.monitor'))
+    ]
+  },
+  {
     key: 'mine',
     label: t('nav.mine'),
     items: [
@@ -93,9 +110,7 @@ const groups = computed<OnSidebarGroup[]>(() => [
         badge: updates.actionable.length || undefined,
         badgeLabel: t('nav.updatesBadge', { count: updates.actionable.length }, { plural: updates.actionable.length })
       }),
-      item('cleanup', 'lucide:eraser', t('nav.cleanup'), cleanupItem.value),
-      item('monitor', 'lucide:activity', t('nav.monitor')),
-      item('security', 'lucide:shield-check', t('nav.security'), securityItem.value)
+      item('cleanup', 'lucide:eraser', t('nav.cleanup'), cleanupItem.value)
     ]
   }
 ]);

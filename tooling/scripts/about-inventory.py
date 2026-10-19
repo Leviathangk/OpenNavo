@@ -302,7 +302,7 @@ def main():
                 **({'products': item['products']} if 'products' in item else {})},
             [(path, (ROOT / path).read_bytes()) for path in item['licensePaths']]))
     modules.sort(key=lambda m: (m['ecosystem'], m['name'].lower(), m['version']))
-    inventory = {'formatVersion': 1, 'lockDigests': {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in ['pnpm-lock.yaml', 'apps/server/go.mod', 'apps/server/go.sum', 'apps/mcp/uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'docs/legal/native/manifest.json', 'apps/desktop/native/store/upstream.json', 'apps/desktop/native/clamav/sources.lock.json']}, 'scopeNote': 'runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability', 'modules': modules}
+    inventory = {'formatVersion': 1, 'lockDigests': {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in ['pnpm-lock.yaml', 'apps/server/go.mod', 'apps/server/go.sum', 'apps/mcp/uv.lock', 'apps/desktop/src-tauri/Cargo.lock', 'apps/desktop/native/firewall/core/Cargo.lock', 'docs/legal/native/manifest.json', 'apps/desktop/native/store/upstream.json', 'apps/desktop/native/clamav/sources.lock.json']}, 'scopeNote': 'runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability', 'modules': modules}
     for item in native_records:
         for path in [item['source'], *item['licensePaths']]:
             inventory['lockDigests'][path] = hashlib.sha256((ROOT / path).read_bytes()).hexdigest()

@@ -1,5 +1,9 @@
 // Original OpenNavo read-only boundary. SDK interfaces are included, not vendored or transplanted.
 #import <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
+#import <CoreServices/CoreServices.h>
+#import <objc/message.h>
+#import <objc/runtime.h>
 #import <IOKit/IOKitLib.h>
 #import <IOKit/IOCFPlugIn.h>
 #import <IOKit/storage/ata/ATASMARTLib.h>
@@ -7,6 +11,104 @@
 #include <dlfcn.h>
 #include <sys/mount.h>
 #include <math.h>
+
+// WebKit/AppKit may wrap TaoWindow in an NSKVONotifying subclass. Keep its isa,
+// observer bookkeeping, delegate and WebView intact; never replace its class.
+static char menubarConfigurationKey;
+
+// AppKit needs both the WindowServer activation flag and this predicate to
+// acquire/release keyboard focus without activating the application. Install an
+// opt-in override on TaoWindow, below any KVO subclass. Other windows still call
+// the original implementation; no isa, ivars or observer bookkeeping is changed.
+static BOOL installMenubarKeyboardBehavior(NSWindow *window) {
+    Class tao = NSClassFromString(@"TaoWindow");
+    SEL selector = NSSelectorFromString(@"_isNonactivatingPanel");
+    if (!tao || ![window isKindOfClass:tao]) return NO;
+    static BOOL installed = NO;
+    if (installed) return YES;
+    Method method = class_getInstanceMethod(tao, selector);
+    if (!method) return NO;
+    IMP original = method_getImplementation(method);
+    IMP override = imp_implementationWithBlock(^BOOL(NSWindow *candidate) {
+        if ([objc_getAssociatedObject(candidate, &menubarConfigurationKey) intValue] == 1) return YES;
+        return ((BOOL (*)(id, SEL))original)(candidate, selector);
+    });
+    installed = class_addMethod(tao, selector, override, method_getTypeEncoding(method));
+    if (!installed) imp_removeBlock(override);
+    if (installed) {
+        SEL mainSelector = @selector(canBecomeMainWindow);
+        Method mainMethod = class_getInstanceMethod(tao, mainSelector);
+        IMP originalMain = method_getImplementation(mainMethod);
+        IMP panelMain = imp_implementationWithBlock(^BOOL(NSWindow *candidate) {
+            if (objc_getAssociatedObject(candidate, &menubarConfigurationKey)) return NO;
+            return ((BOOL (*)(id, SEL))originalMain)(candidate, mainSelector);
+        });
+        class_replaceMethod(tao, mainSelector, panelMain, method_getTypeEncoding(mainMethod));
+    }
+    return installed;
+}
+
+int on_menubar_panel_configure(void *pointer) {
+    if (![NSThread isMainThread] || !pointer) return 0;
+    NSWindow *window = (__bridge NSWindow *)pointer;
+    SEL preventsActivation = NSSelectorFromString(@"_setPreventsActivation:");
+    @try {
+        objc_setAssociatedObject(window, &menubarConfigurationKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        if (![window respondsToSelector:preventsActivation]) return 0;
+        ((void (*)(id, SEL, BOOL))objc_msgSend)(window, preventsActivation, YES);
+        BOOL keyboard = installMenubarKeyboardBehavior(window);
+        window.releasedWhenClosed = NO;
+        window.hidesOnDeactivate = NO;
+        window.level = NSStatusWindowLevel;
+        window.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
+            NSWindowCollectionBehaviorFullScreenAuxiliary |
+            NSWindowCollectionBehaviorTransient | NSWindowCollectionBehaviorIgnoresCycle;
+        objc_setAssociatedObject(window, &menubarConfigurationKey, keyboard ? @1 : @2, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        return keyboard ? 1 : 2;
+    } @catch (NSException *exception) {
+        NSLog(@"Menu-bar configuration failed (%@): %@; trying mouse-only mode", exception.name, exception.reason);
+        // If AppKit rejects the collection change, still offer a mouse-only
+        // surface without changing its class or asking the application for focus.
+        @try {
+            if ([window respondsToSelector:preventsActivation]) {
+                ((void (*)(id, SEL, BOOL))objc_msgSend)(window, preventsActivation, YES);
+                objc_setAssociatedObject(window, &menubarConfigurationKey, @2, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                return 2;
+            }
+        } @catch (NSException *fallbackException) {
+            NSLog(@"Menu-bar fallback failed (%@): %@", fallbackException.name, fallbackException.reason);
+        }
+        return 0;
+    }
+}
+
+int on_menubar_panel_show(void *pointer) {
+    if (![NSThread isMainThread] || !pointer) return 0;
+    NSWindow *window = (__bridge NSWindow *)pointer;
+    @try {
+        int mode = [objc_getAssociatedObject(window, &menubarConfigurationKey) intValue];
+        if (!mode) return 0;
+        [window orderFrontRegardless];
+        if (mode == 1) [window makeKeyWindow];
+        return 1;
+    } @catch (NSException *exception) {
+        NSLog(@"Menu-bar presentation failed (%@): %@", exception.name, exception.reason);
+        @try { [window orderOut:nil]; } @catch (NSException *hideException) { (void)hideException; }
+        return 0;
+    }
+}
+
+int on_menubar_reopen_from_dock(void) {
+    if (![NSThread isMainThread]) return 0;
+    NSAppleEventDescriptor *event = NSAppleEventManager.sharedAppleEventManager.currentAppleEvent;
+    if (!event || event.eventClass != kCoreEventClass || event.eventID != kAEReopenApplication) return 0;
+    pid_t sender = [event attributeDescriptorForKeyword:keySenderPIDAttr].int32Value;
+    if (sender <= 0) return 0;
+    // Also preserve accessibility-triggered Dock presses, which may have no
+    // mouse-down. Missing sender metadata still uses the bounded Rust guard.
+    NSRunningApplication *app = [NSRunningApplication runningApplicationWithProcessIdentifier:sender];
+    return [app.bundleIdentifier isEqualToString:@"com.apple.dock"];
+}
 
 typedef CFDictionaryRef (*CopyChannels)(CFStringRef,CFStringRef,uint64_t,uint64_t,uint64_t);
 typedef CFTypeRef (*Subscribe)(CFAllocatorRef,CFMutableDictionaryRef,CFMutableDictionaryRef *,uint64_t,CFTypeRef);

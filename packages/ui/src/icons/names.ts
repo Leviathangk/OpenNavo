@@ -67,7 +67,9 @@ export const UI_ICONS = [
   'battery-charging',
   'container',
   'newspaper',
-  'rss'
+  'rss',
+  'brick-wall-fire',
+  'ban'
 ] as const;
 
 /** Category icons (03 §5.3 seed categories). */

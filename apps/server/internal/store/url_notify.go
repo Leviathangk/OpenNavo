@@ -18,13 +18,15 @@ type URLChange struct {
 }
 
 type URLNotifyState struct {
-	Cursor               int64
-	ContentCursor        int64
-	LastRunAt            *time.Time
-	LastURLs             int
-	LastIndexnowStatus   string
-	LastPurgeStatus      string
-	LastError            string
+	Cursor             int64
+	ContentCursor      int64
+	LastRunAt          *time.Time
+	LastURLs           int
+	LastIndexnowStatus string
+	LastPurgeStatus    string
+	LastError          string
+	// IndexBackfill names the completed backfill, or "<name>:purging" once its purge queue is durable.
+	IndexBackfill        string
 	PendingPurgePrefixes []string `gorm:"-"`
 }
 
@@ -33,7 +35,7 @@ func (s *Store) URLNotifyState(ctx context.Context) (URLNotifyState, error) {
 		URLNotifyState
 		PendingPurges string
 	}
-	err := s.DB.WithContext(ctx).Raw("SELECT cursor,content_cursor,last_run_at,last_urls,last_indexnow_status,last_purge_status,last_error,pending_purges::text FROM url_notify_state WHERE id=true").Scan(&row).Error
+	err := s.DB.WithContext(ctx).Raw("SELECT cursor,content_cursor,last_run_at,last_urls,last_indexnow_status,last_purge_status,last_error,index_backfill,pending_purges::text FROM url_notify_state WHERE id=true").Scan(&row).Error
 	if err == nil {
 		err = json.Unmarshal([]byte(row.PendingPurges), &row.PendingPurgePrefixes)
 	}
@@ -80,6 +82,12 @@ func (s *Store) CurrentPackageTokens(ctx context.Context, ids []int64) (map[int6
 	return out, nil
 }
 
+// PausedIndexRows loads index facts for live apps the 90-day rule paused, in id order; hidden ones
+// included, so callers apply the same decision as everywhere else.
+func (s *Store) PausedIndexRows(ctx context.Context) ([]IndexRow, error) {
+	return s.indexRows(ctx, "p.stale_disabled", "ORDER BY p.id")
+}
+
 // IndexRowsByID loads index facts for live casks (removed ones are absent).
 func (s *Store) IndexRowsByID(ctx context.Context, ids []int64) ([]IndexRow, error) {
 	if len(ids) == 0 {
@@ -93,8 +101,8 @@ func (s *Store) SaveURLNotifyState(ctx context.Context, state URLNotifyState) er
 	if err != nil {
 		return err
 	}
-	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET pending_purges=?::jsonb,cursor=?,content_cursor=?,last_run_at=?,last_urls=?,last_indexnow_status=?,last_purge_status=?,last_error=? WHERE id=true",
-		string(pending), state.Cursor, state.ContentCursor, state.LastRunAt, state.LastURLs, state.LastIndexnowStatus, state.LastPurgeStatus, state.LastError).Error
+	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET pending_purges=?::jsonb,cursor=?,content_cursor=?,last_run_at=?,last_urls=?,last_indexnow_status=?,last_purge_status=?,last_error=?,index_backfill=? WHERE id=true",
+		string(pending), state.Cursor, state.ContentCursor, state.LastRunAt, state.LastURLs, state.LastIndexnowStatus, state.LastPurgeStatus, state.LastError, state.IndexBackfill).Error
 }
 
 // ContentURLChange is a batch of changed pages outside the catalog (articles, authors).

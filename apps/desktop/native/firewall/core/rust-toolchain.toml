@@ -1,0 +1,5 @@
+# Keep this exact release aligned with the committed standard-library notices.
+[toolchain]
+channel = "1.96.0"
+profile = "minimal"
+components = ["rustfmt", "clippy", "rust-docs"]

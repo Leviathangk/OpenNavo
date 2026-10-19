@@ -428,3 +428,110 @@ func TestPendingPurgesSurviveFailuresAndRestart(t *testing.T) {
 		})
 	}
 }
+
+func TestIndexBackfillAnnouncesPausedAppsOnce(t *testing.T) {
+	ctx := context.Background()
+	f := newFeed(t)
+	st := f.st
+	for _, raw := range []string{
+		`{"token":"paused-app","name":["Paused App"],"version":"5.0","desc":"Still in Homebrew"}`,
+		`{"token":"gone-app","name":["Gone"],"version":"1","desc":"Old tool","disabled":true,"disable_date":"2026-01-01"}`,
+		`{"token":"hidden-paused","name":["Hidden"],"version":"1","desc":"Hidden tool"}`,
+		`{"token":"fresh-app","name":["Fresh"],"version":"1","desc":"New tool"}`,
+	} {
+		p, err := homebrew.Normalize("cask", json.RawMessage(raw))
+		require.NoError(t, err)
+		require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
+	}
+	for _, sql := range []string{
+		`UPDATE packages SET stale_disabled=true WHERE token IN ('paused-app','gone-app','hidden-paused')`,
+		`INSERT INTO package_meta(package_id,hidden) SELECT id,true FROM packages WHERE token='hidden-paused'`,
+		// Only the rule changed: the feed itself has no catalog change left to announce them.
+		`UPDATE url_notify_state SET cursor=(SELECT max(seq) FROM catalog_changes)`,
+	} {
+		require.NoError(t, st.DB.Exec(sql).Error, sql)
+	}
+
+	// A page that still fails holds the announcement back, and the backfill waits instead of
+	// refreshing every run.
+	f.web.replies = map[string]string{"/cache/probe": `{"statuses":{"/apps/paused-app":503}}`}
+	_, err := f.run(ctx)
+	require.NoError(t, err)
+	state, err := st.URLNotifyState(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "index backfill skipped: probe /apps/paused-app returned 503", state.LastIndexnowStatus)
+	require.Equal(t, "2026-10-18-paused-apps:purging", state.IndexBackfill)
+	require.Empty(t, f.indexNow.requests)
+	calls := len(f.web.requests)
+	_, err = f.run(ctx)
+	require.NoError(t, err)
+	require.Len(t, f.web.requests, calls, "waiting: no second refresh")
+
+	// Then it refreshes, purges and announces only the paused app that Homebrew still offers.
+	require.NoError(t, st.Redis.Del(ctx, "opennavo:url-notify:index-backfill:retry").Err())
+	f.web.replies = nil
+	f.web.requests, f.web.paths, f.cloudflare.requests = nil, nil, nil
+	_, err = f.run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []string{"/cache/invalidate", "/cache/probe"}, f.web.paths)
+	require.ElementsMatch(t, []any{"/apps/paused-app", "/zh/apps/paused-app", "/ja/apps/paused-app", "/es/apps/paused-app", "/pt/apps/paused-app", "/ru/apps/paused-app"}, f.web.requests[0]["paths"])
+	require.Empty(t, f.cloudflare.requests, "completed backfill purges must not be requeued")
+	require.Len(t, f.indexNow.requests, 1)
+	urls := f.indexNow.requests[0]["urlList"].([]any)
+	require.Len(t, urls, 6)
+	require.Equal(t, "https://opennavo.example/apps/paused-app", urls[0])
+	for _, url := range urls {
+		require.Contains(t, url, "/apps/paused-app")
+	}
+	state, err = st.URLNotifyState(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "2026-10-18-paused-apps", state.IndexBackfill)
+	require.Equal(t, "index backfill ok: 6 URLs", state.LastIndexnowStatus)
+	var queued int
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM job_outbox WHERE unique_key='cache:invalidate:url-notify:index-backfill'").Scan(&queued).Error)
+	require.Zero(t, queued, "the Go API cache invalidation was published before the pages were refreshed")
+
+	// Once finished it never runs again.
+	_, err = f.run(ctx)
+	require.NoError(t, err)
+	require.Len(t, f.indexNow.requests, 1)
+}
+
+func TestIndexBackfillPurgeProgressSurvivesRestart(t *testing.T) {
+	ctx := context.Background()
+	f := newFeed(t)
+	for i := 0; i < 40; i++ {
+		p, err := homebrew.Normalize("cask", json.RawMessage(fmt.Sprintf(
+			`{"token":"paused-%d","name":["Paused"],"version":"1","desc":"Still available"}`, i)))
+		require.NoError(t, err)
+		require.NoError(t, f.st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
+	}
+	require.NoError(t, f.st.DB.Exec("UPDATE packages SET stale_disabled=true").Error)
+	require.NoError(t, f.st.DB.Exec("UPDATE url_notify_state SET cursor=(SELECT max(seq) FROM catalog_changes)").Error)
+	seen := map[string]bool{}
+	for attempt := 0; attempt < 5; attempt++ {
+		require.NoError(t, f.st.Redis.Del(ctx, "opennavo:url-notify:index-backfill:retry").Err())
+		// A fresh worker must use the persisted phase and remaining prefixes.
+		restarted := *f.notifier
+		f.notifier = &restarted
+		_, err := f.run(ctx)
+		require.NoError(t, err)
+		for _, request := range f.cloudflare.requests {
+			for _, value := range request["prefixes"].([]any) {
+				prefix := value.(string)
+				require.False(t, seen[prefix], "completed prefix requeued: %s", prefix)
+				seen[prefix] = true
+			}
+		}
+		f.cloudflare.requests = nil
+		state, err := f.st.URLNotifyState(ctx)
+		require.NoError(t, err)
+		if state.IndexBackfill == "2026-10-18-paused-apps" {
+			require.Len(t, seen, 240)
+			require.NotEmpty(t, f.indexNow.requests)
+			return
+		}
+		require.Empty(t, f.indexNow.requests)
+	}
+	t.Fatal("backfill did not finish")
+}

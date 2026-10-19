@@ -22,6 +22,8 @@ export const EDGE_CACHE_ROUTES = new Set([
   'category',
   'app',
   'app_versions',
+  'app_details',
+  'app_dependencies',
   'article_list',
   'article',
   'author'
@@ -31,7 +33,14 @@ export const EDGE_CACHE_ROUTES = new Set([
  * every web release (the /apps, /articles and /authors prefixes in urlnotify), so crawlers' long
  * tail can be answered at the edge for hours. Keep both lists in step.
  */
-export const LONG_EDGE_CACHE_ROUTES = new Set(['app', 'app_versions', 'article', 'author']);
+export const LONG_EDGE_CACHE_ROUTES = new Set([
+  'app',
+  'app_versions',
+  'app_details',
+  'app_dependencies',
+  'article',
+  'author'
+]);
 export const LONG_EDGE_CACHE_VALUE = 'max-age=21600, stale-while-revalidate=86400';
 /** Home and lists change with every catalog sync and are never purged, so they expire quickly. */
 export const SHORT_EDGE_CACHE_VALUE = 'max-age=600, stale-while-revalidate=3600';

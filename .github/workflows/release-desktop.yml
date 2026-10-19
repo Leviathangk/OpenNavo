@@ -112,6 +112,9 @@ jobs:
       APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      # Optional: absence of either profile completely skips the firewall extension.
+      OPENNAVO_FIREWALL_APP_PROFILE_B64: ${{ secrets.OPENNAVO_FIREWALL_APP_PROFILE_B64 }}
+      OPENNAVO_FIREWALL_EXTENSION_PROFILE_B64: ${{ secrets.OPENNAVO_FIREWALL_EXTENSION_PROFILE_B64 }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -187,17 +190,30 @@ jobs:
           python3 apps/desktop/native/clamav/build.py --work "$RUNNER_TEMP/clamav" --arch "$arch" --source-bundle
           echo "OPENNAVO_CLAMAV_DIR=$RUNNER_TEMP/clamav/artifacts/$arch" >> "$GITHUB_ENV"
 
+      - name: Prepare optional application firewall
+        run: |
+          umask 022
+          python3 apps/desktop/scripts/prepare-firewall.py --target "${{ matrix.target }}" --version "$VERSION" --config-out "$RUNNER_TEMP/firewall-config.json"
+          echo "OPENNAVO_FIREWALL_CONFIG=$RUNNER_TEMP/firewall-config.json" >> "$GITHUB_ENV"
+        env:
+          OPENNAVO_FIREWALL_STAGE: ${{ runner.temp }}/firewall
+
       - name: Package
         env:
           APPLE_SIGNED: ${{ steps.signing.outputs.apple }}
         run: |
+          umask 022
           printf '{"version":"%s"}\n' "$VERSION" > "$RUNNER_TEMP/version.json"
-          args=(--ci --target "${{ matrix.target }}" --bundles "${{ matrix.bundles }}" --config "$RUNNER_TEMP/version.json")
+          args=(--ci --target "${{ matrix.target }}" --bundles "${{ matrix.bundles }}" --config "$RUNNER_TEMP/version.json" --config "$RUNNER_TEMP/firewall-config.json")
           # Override the updater endpoint with tauri.beta.conf.json for beta (path relative to apps/desktop).
           if [ "$CHANNEL" = beta ]; then args+=(--config src-tauri/tauri.beta.conf.json); fi
           # Skip signing without Apple secrets; --no-sign also skips updater signing, applied separately in the next step (06 section 15).
           if [ "$APPLE_SIGNED" != true ]; then args+=(--no-sign); fi
           pnpm --filter @opennavo/desktop exec tauri build "${args[@]}"
+          # Check the final distribution tree, including copied profiles and nested
+          # extensions. Signature verification alone does not check readability.
+          python3 apps/desktop/scripts/prepare-firewall.py --verify-bundle-permissions apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
+          python3 apps/desktop/scripts/prepare-firewall.py --verify-bundle-services apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
 
       - name: Sign updater artifacts separately
         if: matrix.artifact != 'dmg-universal' && steps.signing.outputs.apple != 'true' && steps.signing.outputs.updater == 'true'
@@ -263,6 +279,8 @@ jobs:
         run: |
           security delete-keychain "$RUNNER_TEMP/opennavo-signing.keychain-db" || true
           rm -f "$RUNNER_TEMP/certificate.p12" "$RUNNER_TEMP/AuthKey.p8"
+          rm -rf "$RUNNER_TEMP/firewall"
+          rm -f "$RUNNER_TEMP/firewall-config.json"
 
   publish:
     needs: [meta, build]

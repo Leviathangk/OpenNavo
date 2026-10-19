@@ -64,7 +64,7 @@ impl Service {
                 startup_alerts: settings.startup_alerts,
                 watch_downloads: settings.watch_downloads && settings.av_consent,
                 endpoint_security: ProtectionState::Unavailable,
-                firewall: ProtectionState::Unavailable,
+                firewall: crate::firewall::protection(),
             },
             quarantine: QuarantineOverview {
                 count: quarantine.len() as u64,

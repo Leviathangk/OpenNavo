@@ -654,7 +654,8 @@ func (s *PublicService) Lookup(ctx context.Context, items []publicapi.PackageRef
 
 // Sitemap pages indexable casks and links in id order (WP3). Under an enforced index policy only eligible
 // apps and their published languages are listed; otherwise the long-standing rule applies (listed,
-// not disabled, all six languages). Records can be fewer than size: total counts candidates.
+// still offered by Homebrew, all six languages). Apps paused only by the 90-day rule are listed in
+// both cases. Records can be fewer than size: total counts candidates.
 func (s *PublicService) Sitemap(ctx context.Context, group string, current, size int) (SitemapPage, error) {
 	if !ValidPage(current, size, 5000) || (group != "" && group != "apps" && group != "fonts") {
 		return SitemapPage{}, domain.Validation()
@@ -666,8 +667,9 @@ func (s *PublicService) Sitemap(ctx context.Context, group string, current, size
 	rows, total, err := s.Store.SitemapIndexRows(ctx, group, current, size)
 	out := SitemapPage{current, size, total, []publicapi.SitemapEntry{}}
 	for _, row := range rows {
-		decision := seo.Decide(row.Facts(), policy)
-		if !decision.Indexable || (!decision.Enforced && row.Disabled) {
+		facts := row.Facts()
+		decision := seo.Decide(facts, policy)
+		if !decision.Indexable || (!decision.Enforced && facts.Unavailable()) {
 			continue
 		}
 		locales := make([]publicapi.SitemapLocale, 0, len(decision.Locales))

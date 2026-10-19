@@ -140,6 +140,8 @@ services:
       NUXT_PUBLIC_SITE_URL: ${WEB_BASE_URL}
       NUXT_PUBLIC_I18N_BASE_URL: ${WEB_BASE_URL}
       NUXT_PUBLIC_CDN_BASE: ${CDN_BASE_URL}
+      # Where share images read icons inside the Docker network; empty fetches them from the CDN.
+      NUXT_CDN_BASE_INTERNAL: ${CDN_BASE_URL_INTERNAL:-}
       NUXT_REDIS_URL: redis://web-cache:6379/0
       NUXT_OG_IMAGE_SECRET: ${NUXT_OG_IMAGE_SECRET:?Set a stable OG image signing secret}
       # Internal port: crawler counters for Prometheus and page-cache invalidation for the worker.
