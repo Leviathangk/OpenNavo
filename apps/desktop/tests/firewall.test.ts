@@ -21,6 +21,7 @@ import type { TestContext } from './helpers';
 const wrappers: VueWrapper[] = [];
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
+  vi.useRealTimers();
   useToasts().clear();
   vi.restoreAllMocks();
   history.replaceState(null, '', '/');
@@ -30,7 +31,10 @@ afterEach(() => {
 const TICK = 15;
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function settle(ticks = 0) {
-  if (ticks) await wait(TICK * ticks + 5);
+  if (ticks) {
+    if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(TICK * ticks + 5);
+    else await wait(TICK * ticks + 5);
+  }
   await flushPromises();
   await flushPromises();
 }
@@ -95,6 +99,8 @@ describe('Turning it on', () => {
   it('Explains first, then follows macOS through extension approval and the filter dialog', async () => {
     const enable = vi.spyOn(commands, 'firewallEnable');
     const { wrapper } = await open('/firewall');
+    // Observe each transient setup state without racing the CI runner's wall clock.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     expect(wrapper.text()).toContain('每个 App 第一次连接网络时');
     // Keep Apple programs automatic, but ask about apps that are already installed too.
     const installed = wrapper.findAll('input[type="checkbox"]')[1]!;
