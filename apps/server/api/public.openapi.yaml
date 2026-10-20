@@ -21,7 +21,7 @@ info:
 
     M8-02: all catalog responses, snapshots and deltas contain Casks only; explicit kind=formula returns 404. Formula dependencies of Casks retain names but have no catalog links.
 
-    Six-language negotiation prefers locale over Accept-Language (by q value), defaulting to en-US. Content falls back from the requested language to en-US, then the object''s source language. Optional sourceLocale identifies the source language; machineTranslated describes the text actually returned. Select Prism''s static six-language examples with Prefer: example=<locale-code>; locale does not switch them automatically.'
+    Content-language negotiation prefers locale over Accept-Language (by q value), defaulting to en-US. Content falls back from the requested language to en-US, then the object''s source language. Optional sourceLocale identifies the source language; machineTranslated describes the text actually returned. Select Prism''s static content-language examples with Prefer: example=<locale-code>; locale does not switch them automatically.'
 servers:
   - url: https://api.opennavo.example/api/v1
   - url: http://localhost:8080/api/v1
@@ -49,6 +49,502 @@ tags:
     description: 'Published articles and author pages'
 
 paths:
+  /seo/experiment:
+    get:
+      tags: [site]
+      operationId: getSeoExperimentAssignment
+      summary: Get the stable template experiment assignment for a canonical page
+      description: Render a variant only when eligible is true and arm is treatment. The web layer renders titles; this response never overrides factual page eligibility.
+      parameters:
+        - in: query
+          name: url
+          required: true
+          schema:
+            type: string
+            format: uri
+            maxLength: 2048
+            example: https://opennavo.example/apps/example-editor
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeoExperimentAssignmentResponse'
+              examples:
+                en-US:
+                  summary: en-US
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+                zh-CN:
+                  summary: zh-CN
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+                ja-JP:
+                  summary: ja-JP
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+                es-ES:
+                  summary: es-ES
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+                pt-BR:
+                  summary: pt-BR
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+                ru-RU:
+                  summary: ru-RU
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+                de-DE:
+                  summary: de-DE
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+                fr-FR:
+                  summary: fr-FR
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+                it-IT:
+                  summary: it-IT
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+                zh-Hant:
+                  summary: zh-Hant
+                  value: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+        default:
+          $ref: '#/components/responses/Error'
+  /background-items:
+    get:
+      tags:
+        - catalog
+      operationId: listBackgroundItems
+      summary: List declared background items and candidate apps
+      parameters:
+        - $ref: "#/components/parameters/Locale"
+        - in: query
+          name: q
+          schema:
+            type: string
+            maxLength: 255
+        - in: query
+          name: current
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 24
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackgroundItemsResponse"
+              examples:
+                en-US:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+                zh-CN:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+                ja-JP:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+                es-ES:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+                pt-BR:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+                ru-RU:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+                de-DE:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+                fr-FR:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+                it-IT:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+                zh-Hant:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      current: 0
+                      size: 0
+                      total: 0
+                      records: []
+        default:
+          $ref: '#/components/responses/Error'
+
+  /background-items/{label}:
+    get:
+      tags:
+        - catalog
+      operationId: getBackgroundItem
+      summary: Read declared ownership; labels alone never prove local identity
+      parameters:
+        - $ref: "#/components/parameters/Locale"
+        - in: path
+          name: label
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackgroundItemResponse"
+              examples:
+                en-US:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+                zh-CN:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+                ja-JP:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+                es-ES:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+                pt-BR:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+                ru-RU:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+                de-DE:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+                fr-FR:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+                it-IT:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+                zh-Hant:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      label: example
+                      apps: []
+                      developers: []
+                      locales: []
+                      shared: false
+                      ownership: declared_candidates
+                      identityChecks: []
+                      content:
+                        locale: en-US
+                        description: example
+                        itemType: unknown
+                        commonPaths: []
+                        evidence:
+                          sourceUrl: https://vendor.example/docs
+                          checkedAt: null
+                          validUntil: null
+                          status: unknown
+                      indexable: false
+                      startupUrl: https://vendor.example/docs
+        default:
+          $ref: '#/components/responses/Error'
+
+  /browse:
+    get:
+      tags: [catalog]
+      operationId: getBrowse
+      summary: Indexable apps or fonts grouped by localized display name
+      parameters:
+        - name: kind
+          in: query
+          schema: {type: string, enum: [apps, fonts], default: apps}
+        - name: bucket
+          in: query
+          schema: {type: string, pattern: '^([a-z]|0-9|other)?$'}
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 1, default: 1}
+        - $ref: '#/components/parameters/Locale'
+      responses:
+        '200':
+          description: Directory buckets and at most 300 leaf links
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowseResponse'
+              examples:
+                en-US:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+                zh-CN:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+                ja-JP:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+                es-ES:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+                pt-BR:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+                ru-RU:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+                de-DE:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+                fr-FR:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+                it-IT:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+                zh-Hant:
+                  value: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+        '404':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /home:
     get:
       tags:
@@ -56,6 +552,10 @@ paths:
       operationId: getHome
       summary: 'Home page data'
       parameters:
+        - name: sectionSize
+          in: query
+          description: Number of apps or collections per Discover group.
+          schema: {type: integer, minimum: 1, maximum: 24, default: 12}
         - $ref: '#/components/parameters/Locale'
       responses:
         '200':
@@ -2045,6 +2545,14 @@ paths:
                         casks: 40
                         formulae: 0
                         updatedLast24h: 3
+                de-DE:
+                  $ref: '#/paths/~1home/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1home/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1home/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1home/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -2165,6 +2673,14 @@ paths:
                         children: []
                         sourceLocale: en-US
                         machineTranslated: true
+                de-DE:
+                  $ref: '#/paths/~1categories/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1categories/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1categories/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1categories/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -2437,6 +2953,14 @@ paths:
                           versionChangedAt: 2026-09-30T08:00:00Z
                           sourceLocale: en-US
                           machineTranslated: true
+                de-DE:
+                  $ref: '#/paths/~1packages/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1packages/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1packages/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1packages/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -3338,6 +3862,14 @@ paths:
                           compared: 5
                       sourceLocale: en-US
                       machineTranslated: false
+                de-DE:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -3452,6 +3984,13 @@ paths:
                           compared: 5
                           earlierCount: 0
                           medianMinutes: 60
+                      indexing:
+                        robots: noindex, follow
+                        canonicalPath: ""
+                        hreflang: []
+                        inSitemap: false
+                        announce: false
+                        reason: locale_not_ready
                 zh-CN:
                   summary: zh-CN
                   value:
@@ -3521,6 +4060,13 @@ paths:
                           compared: 5
                           earlierCount: 0
                           medianMinutes: 60
+                      indexing:
+                        robots: noindex, follow
+                        canonicalPath: ""
+                        hreflang: []
+                        inSitemap: false
+                        announce: false
+                        reason: locale_not_ready
                 ja-JP:
                   summary: ja-JP
                   value:
@@ -3590,6 +4136,13 @@ paths:
                           compared: 5
                           earlierCount: 0
                           medianMinutes: 60
+                      indexing:
+                        robots: noindex, follow
+                        canonicalPath: ""
+                        hreflang: []
+                        inSitemap: false
+                        announce: false
+                        reason: locale_not_ready
                 es-ES:
                   summary: es-ES
                   value:
@@ -3659,6 +4212,13 @@ paths:
                           compared: 5
                           earlierCount: 0
                           medianMinutes: 60
+                      indexing:
+                        robots: noindex, follow
+                        canonicalPath: ""
+                        hreflang: []
+                        inSitemap: false
+                        announce: false
+                        reason: locale_not_ready
                 pt-BR:
                   summary: pt-BR
                   value:
@@ -3728,6 +4288,13 @@ paths:
                           compared: 5
                           earlierCount: 0
                           medianMinutes: 60
+                      indexing:
+                        robots: noindex, follow
+                        canonicalPath: ""
+                        hreflang: []
+                        inSitemap: false
+                        announce: false
+                        reason: locale_not_ready
                 ru-RU:
                   summary: ru-RU
                   value:
@@ -3797,6 +4364,21 @@ paths:
                           compared: 5
                           earlierCount: 0
                           medianMinutes: 60
+                      indexing:
+                        robots: noindex, follow
+                        canonicalPath: ""
+                        hreflang: []
+                        inSitemap: false
+                        announce: false
+                        reason: locale_not_ready
+                de-DE:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1releases/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1releases/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1releases/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1releases/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -4117,6 +4699,14 @@ paths:
                         casks: []
                         formulae: []
                         reasons: []
+                de-DE:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1dependencies/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1dependencies/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1dependencies/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1dependencies/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -4132,7 +4722,7 @@ paths:
       tags:
         - catalog
       operationId: listRelatedPackages
-      summary: 'Similar packages with the same primary category and similar popularity'
+      summary: 'Similar packages with the same content type and primary category'
       parameters:
         - $ref: '#/components/parameters/KindPath'
         - $ref: '#/components/parameters/TokenPath'
@@ -4142,7 +4732,7 @@ paths:
             type: integer
             minimum: 1
             maximum: 12
-            default: 6
+            default: 8
             example: 1
         - $ref: '#/components/parameters/Locale'
       responses:
@@ -4339,6 +4929,14 @@ paths:
                         versionChangedAt: 2026-09-30T08:00:00Z
                         sourceLocale: en-US
                         machineTranslated: true
+                de-DE:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1related/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1related/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1related/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1related/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -4492,6 +5090,14 @@ paths:
                           - slug: utilities
                             name: Utilities
                             icon: lucide:wrench
+                de-DE:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1lifecycle/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1lifecycle/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1lifecycle/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1packages~1{kind}~1{token}~1lifecycle/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -4537,6 +5143,14 @@ paths:
                   $ref: '#/components/examples/ArticlePageSixLocales'
                 ru-RU:
                   $ref: '#/components/examples/ArticlePageSixLocales'
+                de-DE:
+                  $ref: '#/paths/~1articles/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1articles/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1articles/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1articles/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -4575,6 +5189,14 @@ paths:
                   $ref: '#/components/examples/ArticleLookupSixLocales'
                 ru-RU:
                   $ref: '#/components/examples/ArticleLookupSixLocales'
+                de-DE:
+                  $ref: '#/paths/~1articles~1{slug}/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1articles~1{slug}/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1articles~1{slug}/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1articles~1{slug}/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -4616,6 +5238,14 @@ paths:
                   $ref: '#/components/examples/AuthorPageSixLocales'
                 ru-RU:
                   $ref: '#/components/examples/AuthorPageSixLocales'
+                de-DE:
+                  $ref: '#/paths/~1authors~1{slug}/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1authors~1{slug}/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1authors~1{slug}/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1authors~1{slug}/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -4651,6 +5281,14 @@ paths:
                   $ref: '#/components/examples/ArticleSitemapSixLocales'
                 ru-RU:
                   $ref: '#/components/examples/ArticleSitemapSixLocales'
+                de-DE:
+                  $ref: '#/paths/~1sitemap~1articles/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1sitemap~1articles/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1sitemap~1articles/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1sitemap~1articles/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -4775,6 +5413,14 @@ paths:
                         deprecated: null
                         disabled: null
                         latestRelease: null
+                de-DE:
+                  $ref: '#/paths/~1packages~1lookup/post/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1packages~1lookup/post/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1packages~1lookup/post/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1packages~1lookup/post/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -5076,6 +5722,14 @@ paths:
                       queryId: '1'
                       expandedTerms:
                         - 本地演示样本
+                de-DE:
+                  $ref: '#/paths/~1search/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1search/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1search/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1search/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -5212,6 +5866,14 @@ paths:
                         version: 1.140.0
                         sourceLocale: en-US
                         machineTranslated: true
+                de-DE:
+                  $ref: '#/paths/~1search~1suggest/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1search~1suggest/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1search~1suggest/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1search~1suggest/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -5281,6 +5943,14 @@ paths:
                     code: '0000'
                     msg: ok
                     data: null
+                de-DE:
+                  $ref: '#/paths/~1search~1clicks/post/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1search~1clicks/post/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1search~1clicks/post/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1search~1clicks/post/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -5567,6 +6237,14 @@ paths:
                             versionChangedAt: 2026-09-30T08:00:00Z
                             sourceLocale: en-US
                             machineTranslated: true
+                de-DE:
+                  $ref: '#/paths/~1rankings/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1rankings/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1rankings/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1rankings/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -5815,6 +6493,14 @@ paths:
                           updatedAt: 2026-09-30T08:00:00Z
                           sourceLocale: en-US
                           machineTranslated: true
+                de-DE:
+                  $ref: '#/paths/~1collections/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1collections/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1collections/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1collections/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -6374,6 +7060,14 @@ paths:
                           note: Для повседневной работы
                       sourceLocale: en-US
                       machineTranslated: true
+                de-DE:
+                  $ref: '#/paths/~1collections~1{slug}/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1collections~1{slug}/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1collections~1{slug}/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1collections~1{slug}/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -6477,6 +7171,14 @@ paths:
                     data:
                       etag: '"example"'
                       items: []
+                de-DE:
+                  $ref: '#/paths/~1catalog~1links/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1catalog~1links/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1catalog~1links/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1catalog~1links/get/responses/200/content/application~1json/examples/en-US'
         '304':
           description: The catalog has not changed
           headers:
@@ -6835,6 +7537,14 @@ paths:
                           url: https://cdn.opennavo.example/snapshots/text-v2-ru-RU-60-local.json.gz
                           sha256: '6666666666666666666666666666666666666666666666666666666666666666'
                           bytes: 1200
+                de-DE:
+                  $ref: '#/paths/~1catalog~1snapshot/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1catalog~1snapshot/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1catalog~1snapshot/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1catalog~1snapshot/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -7343,6 +8053,14 @@ paths:
                           developer-tools: 开发工具
                         ja-JP:
                           developer-tools: 開発ツール
+                de-DE:
+                  $ref: '#/paths/~1catalog~1changes/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1catalog~1changes/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1catalog~1changes/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1catalog~1changes/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -7606,6 +8324,14 @@ paths:
                         download: https://opennavo.example/download
                         feedback: https://opennavo.example/feedback
                         privacy: https://opennavo.example/about
+                de-DE:
+                  $ref: '#/paths/~1config~1client/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1config~1client/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1config~1client/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1config~1client/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -7951,6 +8677,14 @@ paths:
                           machineTranslated: true
                       sourceLocale: en-US
                       machineTranslated: true
+                de-DE:
+                  $ref: '#/paths/~1desktop~1releases~1latest/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1desktop~1releases~1latest/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1desktop~1releases~1latest/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1desktop~1releases~1latest/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -8033,6 +8767,14 @@ paths:
                     msg: ok
                     data:
                       id: 1
+                de-DE:
+                  $ref: '#/paths/~1feedback/post/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1feedback/post/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1feedback/post/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1feedback/post/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -8153,6 +8895,14 @@ paths:
                         - kind: cask
                           token: visual-studio-code
                           updatedAt: 2026-09-30T08:00:00Z
+                de-DE:
+                  $ref: '#/paths/~1sitemap~1packages/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1sitemap~1packages/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1sitemap~1packages/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1sitemap~1packages/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -8602,6 +9352,14 @@ paths:
                           scope: new
                           since: ''
                         versionsSitemap: false
+                de-DE:
+                  $ref: '#/paths/~1site~1settings/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1site~1settings/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1site~1settings/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1site~1settings/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -8675,6 +9433,14 @@ paths:
                     msg: ok
                     data:
                       key: example-indexnow-key
+                de-DE:
+                  $ref: '#/paths/~1site~1indexnow-keys~1{key}/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1site~1indexnow-keys~1{key}/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1site~1indexnow-keys~1{key}/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1site~1indexnow-keys~1{key}/get/responses/200/content/application~1json/examples/en-US'
           headers:
             Vary:
               description: 'Includes at least Origin and Accept-Language; preserves existing Vary values.'
@@ -8756,6 +9522,14 @@ paths:
                     data:
                       etag: '"example"'
                       items: []
+                de-DE:
+                  $ref: '#/paths/~1catalog~1update-feeds/get/responses/200/content/application~1json/examples/en-US'
+                fr-FR:
+                  $ref: '#/paths/~1catalog~1update-feeds/get/responses/200/content/application~1json/examples/en-US'
+                it-IT:
+                  $ref: '#/paths/~1catalog~1update-feeds/get/responses/200/content/application~1json/examples/en-US'
+                zh-Hant:
+                  $ref: '#/paths/~1catalog~1update-feeds/get/responses/200/content/application~1json/examples/en-US'
         '304':
           description: The catalog has not changed
           headers:
@@ -8820,6 +9594,1484 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
+    SeoExperimentAssignmentResponse:
+      type: object
+      additionalProperties: false
+      required: [code, msg, data]
+      properties:
+        code:
+          type: string
+          example: '0000'
+        msg:
+          type: string
+          example: ok
+        data:
+          $ref: '#/components/schemas/SeoExperimentAssignment'
+      example: {code: '0000', msg: ok, data: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}}
+    SeoExperimentAssignment:
+      type: object
+      additionalProperties: false
+      required: [experimentId, arm, variant, templateVersion, eligible, expiresAt]
+      properties:
+        experimentId:
+          type: integer
+          format: int64
+          nullable: true
+          example: null
+        arm:
+          type: string
+          enum: [none, control, treatment]
+          example: none
+        variant:
+          type: string
+          nullable: true
+          enum: [verified_free, current_version, uninstall_alternatives, null]
+          example: null
+        templateVersion:
+          type: string
+          example: snippet-v1
+        eligible:
+          type: boolean
+          example: false
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+      example: {experimentId: null, arm: none, variant: null, templateVersion: snippet-v1, eligible: false, expiresAt: null}
+    ImageVariant:
+      type: object
+      required:
+        - width
+        - height
+        - url
+        - type
+      properties:
+        width:
+          type: integer
+          minimum: 1
+        height:
+          type: integer
+          minimum: 1
+        url:
+          type: string
+          format: uri
+        type:
+          type: string
+          enum:
+            - image/webp
+      additionalProperties: false
+      example:
+        width: 64
+        height: 64
+        url: https://cdn.example.test/icon-64.webp
+        type: image/webp
+    AppIntegrationFact:
+      type: object
+      required:
+        - kind
+        - name
+        - repositoryUrl
+        - version
+        - installation
+        - clients
+        - permissions
+        - appleSilicon
+        - versions
+        - evidence
+      properties:
+        kind:
+          type: string
+          enum:
+            - mcp
+            - skill
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        appVersion:
+          type: string
+          maxLength: 100
+        repositoryUrl:
+          type: string
+          format: uri
+        version:
+          type: string
+          minLength: 1
+          maxLength: 100
+        installation:
+          type: object
+          required:
+            - method
+            - package
+          properties:
+            method:
+              type: string
+              enum:
+                - homebrew
+                - uv
+                - npm
+            package:
+              type: string
+              minLength: 1
+              maxLength: 200
+              description: Package identifier only. Commands, arguments, URLs and version selectors are not accepted.
+          additionalProperties: false
+        clients:
+          type: array
+          items:
+            type: string
+            enum:
+              - claude_desktop
+              - cursor
+              - codex
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+        permissions:
+          type: object
+          required:
+            - files
+            - network
+          properties:
+            files:
+              type: array
+              items:
+                type: object
+                required:
+                  - path
+                  - access
+                properties:
+                  path:
+                    type: string
+                    minLength: 1
+                    maxLength: 1024
+                  access:
+                    type: string
+                    enum:
+                      - read
+                      - write
+                      - read_write
+                additionalProperties: false
+              maxItems: 30
+            network:
+              type: array
+              items:
+                type: string
+                format: uri
+                description: HTTPS origin only.
+              maxItems: 30
+          additionalProperties: false
+        appleSilicon:
+          type: string
+          enum:
+            - yes
+            - no
+            - unknown
+        versions:
+          type: array
+          items:
+            type: object
+            required:
+              - version
+              - releasedAt
+              - sourceUrl
+            properties:
+              version:
+                type: string
+                minLength: 1
+                maxLength: 100
+              releasedAt:
+                type: string
+                format: date-time
+              sourceUrl:
+                type: string
+                format: uri
+            additionalProperties: false
+          minItems: 1
+          maxItems: 30
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+      additionalProperties: false
+      example:
+        kind: mcp
+        name: Example App connector
+        repositoryUrl: https://github.com/example/example-mcp
+        version: 1.0.0
+        installation:
+          method: npm
+          package: "@example/example-mcp"
+        clients:
+          - claude_desktop
+          - codex
+        permissions:
+          files:
+            - path: ~/Documents/Example
+              access: read
+          network:
+            - https://api.vendor.example
+        appleSilicon: unknown
+        versions:
+          - version: 1.0.0
+            releasedAt: 2026-10-01T00:00:00Z
+            sourceUrl: https://github.com/example/example-mcp/releases/tag/v1.0.0
+        evidence:
+          sourceUrl: https://github.com/example/example-mcp
+          checkedAt: null
+          validUntil: null
+          status: unknown
+    AppIntegration:
+      type: object
+      required:
+        - kind
+        - name
+        - repositoryUrl
+        - version
+        - installation
+        - clients
+        - permissions
+        - appleSilicon
+        - versions
+      properties:
+        kind:
+          type: string
+          enum:
+            - mcp
+            - skill
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        appVersion:
+          type: string
+          maxLength: 100
+        repositoryUrl:
+          type: string
+          format: uri
+        version:
+          type: string
+          minLength: 1
+          maxLength: 100
+        installation:
+          type: object
+          required:
+            - method
+            - package
+          properties:
+            method:
+              type: string
+              enum:
+                - homebrew
+                - uv
+                - npm
+            package:
+              type: string
+              minLength: 1
+              maxLength: 200
+              description: Package identifier only. Commands, arguments, URLs and version selectors are not accepted.
+          additionalProperties: false
+        clients:
+          type: array
+          items:
+            type: string
+            enum:
+              - claude_desktop
+              - cursor
+              - codex
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+        permissions:
+          type: object
+          required:
+            - files
+            - network
+          properties:
+            files:
+              type: array
+              items:
+                type: object
+                required:
+                  - path
+                  - access
+                properties:
+                  path:
+                    type: string
+                    minLength: 1
+                    maxLength: 1024
+                  access:
+                    type: string
+                    enum:
+                      - read
+                      - write
+                      - read_write
+                additionalProperties: false
+              maxItems: 30
+            network:
+              type: array
+              items:
+                type: string
+                format: uri
+                description: HTTPS origin only.
+              maxItems: 30
+          additionalProperties: false
+        appleSilicon:
+          type: string
+          enum:
+            - yes
+            - no
+            - unknown
+        versions:
+          type: array
+          items:
+            type: object
+            required:
+              - version
+              - releasedAt
+              - sourceUrl
+            properties:
+              version:
+                type: string
+                minLength: 1
+                maxLength: 100
+              releasedAt:
+                type: string
+                format: date-time
+              sourceUrl:
+                type: string
+                format: uri
+            additionalProperties: false
+          minItems: 1
+          maxItems: 30
+      additionalProperties: false
+      example:
+        kind: mcp
+        name: Example App connector
+        repositoryUrl: https://github.com/example/example-mcp
+        version: 1.0.0
+        installation:
+          method: npm
+          package: "@example/example-mcp"
+        clients:
+          - claude_desktop
+          - codex
+        permissions:
+          files:
+            - path: ~/Documents/Example
+              access: read
+          network:
+            - https://api.vendor.example
+        appleSilicon: unknown
+        versions:
+          - version: 1.0.0
+            releasedAt: 2026-10-01T00:00:00Z
+            sourceUrl: https://github.com/example/example-mcp/releases/tag/v1.0.0
+    BrowseBucket:
+      type: object
+      required: [key, count, pages]
+      properties:
+        key: {type: string}
+        count: {type: integer, minimum: 1}
+        pages: {type: integer, minimum: 1}
+      example: {key: a, count: 320, pages: 2}
+    BrowseItem:
+      type: object
+      required: [token, displayName]
+      properties:
+        token: {type: string}
+        displayName: {type: string}
+      example: {token: example, displayName: Example}
+    BrowsePage:
+      type: object
+      required: [buckets, items]
+      properties:
+        buckets:
+          type: array
+          items:
+            $ref: '#/components/schemas/BrowseBucket'
+        items:
+          type: array
+          maxItems: 300
+          items:
+            $ref: '#/components/schemas/BrowseItem'
+      example: {buckets: [], items: []}
+    BrowseResponse:
+      type: object
+      required: [code, msg, data]
+      properties:
+        code:
+          $ref: '#/components/schemas/Code'
+        msg: {type: string}
+        data:
+          $ref: '#/components/schemas/BrowsePage'
+      example: {code: '0000', msg: ok, data: {buckets: [], items: []}}
+    PackageCollectionRef:
+      type: object
+      required: [slug, title]
+      properties:
+        slug: {type: string}
+        title: {type: string}
+      example: {slug: developer-tools, title: Developer tools}
+    KnownIssueFact:
+      type: object
+      required:
+        - locale
+        - title
+        - symptom
+        - appVersions
+        - macosVersions
+        - steps
+        - communityLinks
+        - evidence
+      properties:
+        locale:
+          type: string
+          enum:
+            - en-US
+            - zh-CN
+            - ja-JP
+            - es-ES
+            - pt-BR
+            - ru-RU
+            - de-DE
+            - fr-FR
+            - it-IT
+            - zh-Hant
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        symptom:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        appVersions:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+          minItems: 1
+          maxItems: 32
+        macosVersions:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 32
+        steps:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 4000
+          minItems: 1
+          maxItems: 20
+        communityLinks:
+          type: array
+          items:
+            type: string
+            format: uri
+          maxItems: 5
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+      example:
+        locale: en-US
+        title: Import stalls
+        symptom: Import stops before completion.
+        appVersions:
+          - "1.2"
+        macosVersions:
+          - "15.0"
+        steps:
+          - Restart the app and retry importing.
+        communityLinks: []
+        evidence:
+          sourceUrl: https://vendor.example/support
+          checkedAt: null
+          validUntil: null
+          status: unknown
+    KnownIssue:
+      type: object
+      required:
+        - locale
+        - title
+        - symptom
+        - appVersions
+        - macosVersions
+        - steps
+        - communityLinks
+      properties:
+        locale:
+          type: string
+          enum:
+            - en-US
+            - zh-CN
+            - ja-JP
+            - es-ES
+            - pt-BR
+            - ru-RU
+            - de-DE
+            - fr-FR
+            - it-IT
+            - zh-Hant
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        symptom:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        appVersions:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+          minItems: 1
+          maxItems: 32
+        macosVersions:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 32
+        steps:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 4000
+          minItems: 1
+          maxItems: 20
+        communityLinks:
+          type: array
+          items:
+            type: string
+            format: uri
+          maxItems: 5
+      additionalProperties: false
+      example:
+        locale: en-US
+        title: Import stalls
+        symptom: Import stops before completion.
+        appVersions:
+          - "1.2"
+        macosVersions:
+          - "15.0"
+        steps:
+          - Restart the app and retry importing.
+        communityLinks: []
+    VersionCompatibility:
+      example:
+        appVersion: example
+        minimumMacOS: null
+        maximumMacOS: null
+        appleSilicon: unknown
+        requirements: []
+      type: object
+      required:
+        - appVersion
+        - minimumMacOS
+        - maximumMacOS
+        - appleSilicon
+        - requirements
+      properties:
+        appVersion:
+          type: string
+          minLength: 1
+          maxLength: 100
+        minimumMacOS:
+          type: string
+          nullable: true
+        maximumMacOS:
+          type: string
+          nullable: true
+        appleSilicon:
+          type: string
+          enum:
+            - yes
+            - no
+            - unknown
+        requirements:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequirementFact"
+      additionalProperties: false
+    CompatibilityObservation:
+      example: {"appVersion":"example","minimumMacOS":null,"maximumMacOS":null,"appleSilicon":"unknown"}
+      type: object
+      required:
+        - appVersion
+        - minimumMacOS
+        - maximumMacOS
+        - appleSilicon
+      properties:
+        appVersion:
+          type: string
+          minLength: 1
+          maxLength: 100
+        minimumMacOS:
+          type: string
+          nullable: true
+        maximumMacOS:
+          type: string
+          nullable: true
+        appleSilicon:
+          type: string
+          enum:
+            - yes
+            - no
+            - unknown
+      additionalProperties: false
+    CollectionPriceTotal:
+      example: {"region":"US","currency":"USD","period":"example","amount":"9.99","coveredApps":0}
+      type: object
+      required:
+        - region
+        - currency
+        - period
+        - amount
+        - coveredApps
+      properties:
+        region:
+          type: string
+        currency:
+          type: string
+        period:
+          type: string
+        amount:
+          type: string
+        coveredApps:
+          type: integer
+    CollectionCompatibility:
+      example: {"token":"example","requirements":[]}
+      type: object
+      required:
+        - token
+        - requirements
+      properties:
+        token:
+          type: string
+        requirements:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequirementFact"
+    CollectionExternalApp:
+      example: {"token":"example","url":"https://vendor.example/docs"}
+      type: object
+      required:
+        - token
+        - url
+      properties:
+        token:
+          type: string
+        url:
+          type: string
+          format: uri
+    CollectionSetup:
+      example: {"criteria":{"locale":"en-US","criteria":"example","evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}},"installableTokens":[],"externalApps":[],"brewfile":"example","priceTotals":[],"priceUnknownCount":0,"compatibility":[]}
+      type: object
+      required:
+        - criteria
+        - installableTokens
+        - externalApps
+        - brewfile
+        - priceTotals
+        - priceUnknownCount
+        - compatibility
+      properties:
+        criteria:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CollectionCriteria"
+        installableTokens:
+          type: array
+          items:
+            type: string
+        externalApps:
+          type: array
+          items:
+            $ref: "#/components/schemas/CollectionExternalApp"
+        brewfile:
+          type: string
+        priceTotals:
+          type: array
+          items:
+            $ref: "#/components/schemas/CollectionPriceTotal"
+        priceUnknownCount:
+          type: integer
+        compatibility:
+          type: array
+          items:
+            $ref: "#/components/schemas/CollectionCompatibility"
+    CollectionCriteria:
+      example: {"locale":"en-US","criteria":"example","evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}}
+      type: object
+      required:
+        - locale
+        - criteria
+        - evidence
+      properties:
+        locale:
+          type: string
+          enum:
+            - en-US
+            - zh-CN
+            - ja-JP
+            - es-ES
+            - pt-BR
+            - ru-RU
+            - de-DE
+            - fr-FR
+            - it-IT
+            - zh-Hant
+        criteria:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+    BackgroundOwner:
+      example: {"package":{"kind":"cask","token":"visual-studio-code","name":"Microsoft Visual Studio Code","displayName":"Visual Studio Code","summary":"Code editor with debugging and extensions","iconUrl":null,"accentColor":null,"version":"1.140.0","primaryCategory":{"slug":"developer-tools","name":"Developer Tools","icon":"lucide:code-xml","sourceLocale":"en-US","machineTranslated":false},"installs30d":17392,"rank30d":9,"autoUpdates":true,"deprecated":false,"disabled":false,"isFont":false,"isLibrary":false,"editorChoice":true,"versionChangedAt":"2026-09-30T08:00:00Z","sourceLocale":"en-US","machineTranslated":false},"kind":"launchctl","phase":"uninstall","evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"},"uninstallUrl":"https://vendor.example/docs"}
+      type: object
+      required:
+        - package
+        - kind
+        - phase
+        - evidence
+        - uninstallUrl
+      properties:
+        package:
+          $ref: "#/components/schemas/PackageSummary"
+        kind:
+          type: string
+          enum:
+            - launchctl
+            - login_item
+            - pkgutil
+        phase:
+          type: string
+          enum:
+            - uninstall
+            - zap
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+        uninstallUrl:
+          type: string
+    BackgroundItem:
+      example: {"label":"example","apps":[],"developers":[],"locales":[],"shared":false,"ownership":"declared_candidates","identityChecks":[],"content":{"locale":"en-US","description":"example","itemType":"unknown","commonPaths":[],"evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}},"indexable":false,"startupUrl":"https://vendor.example/docs"}
+      type: object
+      required:
+        - label
+        - apps
+        - developers
+        - locales
+        - shared
+        - ownership
+        - identityChecks
+        - content
+        - indexable
+        - startupUrl
+      properties:
+        label:
+          type: string
+        apps:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackgroundOwner"
+        developers:
+          type: array
+          items:
+            type: string
+        locales:
+          description: Languages with currently verified body content and a visible app with fresh ownership evidence; empty when none are ready.
+          type: array
+          items:
+            $ref: "#/components/schemas/Locale"
+        shared:
+          type: boolean
+        ownership:
+          type: string
+          enum:
+            - declared_candidates
+        identityChecks:
+          type: array
+          items:
+            type: string
+            enum:
+              - signature
+              - path
+              - version
+        content:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/BackgroundContent"
+        indexable:
+          type: boolean
+        startupUrl:
+          type: string
+    BackgroundItemResponse:
+      example: {"code":"0000","msg":"ok","data":{"label":"example","apps":[],"developers":[],"locales":[],"shared":false,"ownership":"declared_candidates","identityChecks":[],"content":{"locale":"en-US","description":"example","itemType":"unknown","commonPaths":[],"evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}},"indexable":false,"startupUrl":"https://vendor.example/docs"}}
+      type: object
+      required:
+        - code
+        - msg
+        - data
+      properties:
+        code:
+          type: string
+        msg:
+          type: string
+        data:
+          $ref: "#/components/schemas/BackgroundItem"
+    BackgroundItemsResponse:
+      example: {"code":"0000","msg":"ok","data":{"current":0,"size":0,"total":0,"records":[]}}
+      type: object
+      required:
+        - code
+        - msg
+        - data
+      properties:
+        code:
+          type: string
+        msg:
+          type: string
+        data:
+          type: object
+          required:
+            - current
+            - size
+            - total
+            - records
+          properties:
+            current:
+              type: integer
+            size:
+              type: integer
+            total:
+              type: integer
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/BackgroundItem"
+    BackgroundContent:
+      example: {"locale":"en-US","description":"example","itemType":"unknown","commonPaths":[],"evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}}
+      type: object
+      required:
+        - locale
+        - description
+        - itemType
+        - commonPaths
+        - evidence
+      properties:
+        locale:
+          type: string
+          enum:
+            - en-US
+            - zh-CN
+            - ja-JP
+            - es-ES
+            - pt-BR
+            - ru-RU
+            - de-DE
+            - fr-FR
+            - it-IT
+            - zh-Hant
+        description:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        itemType:
+          type: string
+          enum:
+            - launch_agent
+            - launch_daemon
+            - login_item
+            - package_receipt
+            - unknown
+        commonPaths:
+          type: array
+          items:
+            type: string
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+      additionalProperties: false
+    ComparisonAttributeFact:
+      example:
+        name: open_source
+        evidence:
+          sourceUrl: https://vendor.example/docs
+          checkedAt: null
+          validUntil: null
+          status: unknown
+      type: object
+      required:
+        - name
+        - evidence
+      properties:
+        name:
+          type: string
+          enum:
+            - open_source
+            - offline
+            - apple_silicon
+            - import_formats
+            - export_formats
+        appVersion:
+          type: string
+        booleanValue:
+          type: boolean
+        formats:
+          type: array
+          items:
+            type: string
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+      additionalProperties: false
+    ComparisonAttribute:
+      example: {"name":"open_source"}
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          enum:
+            - open_source
+            - offline
+            - apple_silicon
+            - import_formats
+            - export_formats
+        appVersion:
+          type: string
+        booleanValue:
+          type: boolean
+        formats:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+    MigrationGuide:
+      example:
+        targetPackageId: 1
+        locale: en-US
+        steps: []
+        evidence:
+          sourceUrl: https://vendor.example/docs
+          checkedAt: null
+          validUntil: null
+          status: unknown
+      type: object
+      required:
+        - targetPackageId
+        - locale
+        - steps
+        - evidence
+      properties:
+        targetPackageId:
+          type: integer
+          format: int64
+          minimum: 1
+        locale:
+          type: string
+          enum:
+            - en-US
+            - zh-CN
+            - ja-JP
+            - es-ES
+            - pt-BR
+            - ru-RU
+            - de-DE
+            - fr-FR
+            - it-IT
+            - zh-Hant
+        sourceVersion:
+          type: string
+        targetVersion:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/MigrationStep"
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+      additionalProperties: false
+    MigrationStep:
+      example: {"action":"backup","text":"example","evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}}
+      type: object
+      required:
+        - action
+        - text
+        - evidence
+      properties:
+        action:
+          type: string
+          enum:
+            - backup
+            - export
+            - import
+            - verify
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+      additionalProperties: false
+    SecurityObservation:
+      example: {"channels":[],"openSource":"unknown"}
+      type: object
+      required:
+        - channels
+        - openSource
+      properties:
+        appVersion:
+          type: string
+        developer:
+          type: string
+          maxLength: 160
+        teamId:
+          type: string
+          pattern: ^[A-Z0-9]{10}$
+        channels:
+          type: array
+          items:
+            type: string
+            enum:
+              - homebrew
+              - vendor
+              - app_store
+        openSource:
+          type: string
+          enum:
+            - yes
+            - no
+            - unknown
+        repositoryUrl:
+          type: string
+          format: uri
+        productCpe:
+          type: string
+      additionalProperties: false
+    SecurityIdentityFact:
+      example:
+        channels: []
+        openSource: unknown
+        evidence:
+          sourceUrl: https://vendor.example/docs
+          checkedAt: null
+          validUntil: null
+          status: unknown
+      type: object
+      required:
+        - channels
+        - openSource
+        - evidence
+      properties:
+        appVersion:
+          type: string
+        developer:
+          type: string
+          maxLength: 160
+        teamId:
+          type: string
+          pattern: ^[A-Z0-9]{10}$
+        channels:
+          type: array
+          items:
+            type: string
+            enum:
+              - homebrew
+              - vendor
+              - app_store
+        openSource:
+          type: string
+          enum:
+            - yes
+            - no
+            - unknown
+        repositoryUrl:
+          type: string
+          format: uri
+        productCpe:
+          type: string
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+      additionalProperties: false
+    VulnerabilityFact:
+      example: {"id":"CVE-2026-12345","productCpe":"example","appVersion":"example","sourceUrl":"https://vendor.example/docs","evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}}
+      type: object
+      required:
+        - id
+        - productCpe
+        - appVersion
+        - sourceUrl
+        - evidence
+      properties:
+        id:
+          type: string
+          pattern: ^CVE-[0-9]{4}-[0-9]{4,}$
+        productCpe:
+          type: string
+        appVersion:
+          type: string
+        sourceUrl:
+          type: string
+          format: uri
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+    SecurityFacts:
+      example: {"identities":[],"vulnerabilities":[],"scanUrl":"https://vendor.example/docs"}
+      type: object
+      required:
+        - identities
+        - vulnerabilities
+        - scanUrl
+      properties:
+        identities:
+          type: array
+          items:
+            $ref: "#/components/schemas/SecurityIdentityFact"
+        vulnerabilities:
+          type: array
+          items:
+            $ref: "#/components/schemas/VulnerabilityFact"
+        scanUrl:
+          type: string
+    PriceObservation:
+      example: {"region":"US","edition":"example","period":"unknown","usage":"unknown","downloadFree":false,"purchaseUrl":"https://vendor.example/docs","channel":"vendor"}
+      type: object
+      required:
+        - region
+        - edition
+        - period
+        - usage
+        - downloadFree
+        - purchaseUrl
+        - channel
+      properties:
+        region:
+          type: string
+          pattern: ^[A-Z]{2}$
+        edition:
+          type: string
+          minLength: 1
+          maxLength: 100
+        period:
+          type: string
+          enum:
+            - free
+            - one_time
+            - monthly
+            - yearly
+            - unknown
+        usage:
+          type: string
+          enum:
+            - free
+            - free_with_iap
+            - paid
+            - subscription
+            - trial
+            - unknown
+        downloadFree:
+          type: boolean
+        amount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,9})(\.[0-9]{1,6})?$
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        purchaseUrl:
+          type: string
+          format: uri
+        channel:
+          type: string
+          enum:
+            - vendor
+            - app_store
+      additionalProperties: false
+    PriceFact:
+      example:
+        region: US
+        edition: example
+        period: unknown
+        usage: unknown
+        downloadFree: false
+        purchaseUrl: https://vendor.example/docs
+        channel: vendor
+        evidence:
+          sourceUrl: https://vendor.example/docs
+          checkedAt: null
+          validUntil: null
+          status: unknown
+      type: object
+      required:
+        - region
+        - edition
+        - period
+        - usage
+        - downloadFree
+        - purchaseUrl
+        - channel
+        - evidence
+      properties:
+        region:
+          type: string
+          pattern: ^[A-Z]{2}$
+        edition:
+          type: string
+          minLength: 1
+          maxLength: 100
+        period:
+          type: string
+          enum:
+            - free
+            - one_time
+            - monthly
+            - yearly
+            - unknown
+        usage:
+          type: string
+          enum:
+            - free
+            - free_with_iap
+            - paid
+            - subscription
+            - trial
+            - unknown
+        downloadFree:
+          type: boolean
+        amount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,9})(\.[0-9]{1,6})?$
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        purchaseUrl:
+          type: string
+          format: uri
+        channel:
+          type: string
+          enum:
+            - vendor
+            - app_store
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+      additionalProperties: false
+    FactEvidence:
+      example: {"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}
+      type: object
+      required:
+        - sourceUrl
+        - checkedAt
+        - validUntil
+        - status
+      properties:
+        sourceUrl:
+          type: string
+        checkedAt:
+          type: string
+          format: date-time
+          nullable: true
+        validUntil:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum:
+            - verified
+            - stale
+            - needs_review
+            - unknown
+    RequirementFact:
+      example: {"versions":[],"architectures":[],"platformMacOS":[],"minimumMacOS":null,"maximumMacOS":null,"appleSilicon":"unknown","downloadUrl":null,"sha256":null,"evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}}
+      type: object
+      required:
+        - versions
+        - architectures
+        - platformMacOS
+        - minimumMacOS
+        - maximumMacOS
+        - appleSilicon
+        - downloadUrl
+        - sha256
+        - evidence
+      properties:
+        versions:
+          type: array
+          items:
+            type: string
+        architectures:
+          type: array
+          items:
+            type: string
+        platformMacOS:
+          type: array
+          items:
+            type: string
+        minimumMacOS:
+          type: string
+          nullable: true
+        maximumMacOS:
+          type: string
+          nullable: true
+        appleSilicon:
+          type: string
+          enum:
+            - yes
+            - no
+            - unknown
+        downloadUrl:
+          type: string
+          nullable: true
+        sha256:
+          type: string
+          nullable: true
+          pattern: ^[a-fA-F0-9]{64}$
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+    UninstallFact:
+      example: {"kind":"zap","value":"example","phase":"uninstall","deletesUserData":false,"evidence":{"sourceUrl":"https://vendor.example/docs","checkedAt":null,"validUntil":null,"status":"unknown"}}
+      type: object
+      required:
+        - kind
+        - value
+        - phase
+        - deletesUserData
+        - evidence
+      properties:
+        kind:
+          type: string
+          enum:
+            - zap
+            - launchctl
+            - pkgutil
+            - login_item
+        value:
+          type: string
+        phase:
+          type: string
+          enum:
+            - uninstall
+            - zap
+        deletesUserData:
+          type: boolean
+        evidence:
+          $ref: "#/components/schemas/FactEvidence"
+    OverviewFacts:
+      example: {"version":"example","downloadUrl":null,"sha256":null,"artifacts":{"apps":["Visual Studio Code.app"],"binaries":["code"],"pkgs":[],"uninstallNotes":[],"entries":[{"type":"app","phase":"install","sources":["Visual Studio Code.app"],"target":null,"declaration":{"app":["Visual Studio Code.app"]}}]},"caveats":null,"aliases":[],"dependencyCount":0,"conflictCount":0}
+      type: object
+      required:
+        - version
+        - downloadUrl
+        - sha256
+        - artifacts
+        - caveats
+        - aliases
+        - dependencyCount
+        - conflictCount
+      properties:
+        version:
+          type: string
+        downloadUrl:
+          type: string
+          nullable: true
+        sha256:
+          type: string
+          nullable: true
+          pattern: ^[a-fA-F0-9]{64}$
+        artifacts:
+          $ref: "#/components/schemas/Artifacts"
+        caveats:
+          type: string
+          nullable: true
+        aliases:
+          type: array
+          items:
+            type: string
+        dependencyCount:
+          type: integer
+        conflictCount:
+          type: integer
+    AppFacts:
+      example:
+        requirements: []
+        uninstall: []
+        overview:
+          version: example
+          downloadUrl: null
+          sha256: null
+          artifacts:
+            apps:
+              - Visual Studio Code.app
+            binaries:
+              - code
+            pkgs: []
+            uninstallNotes: []
+            entries:
+              - type: app
+                phase: install
+                sources:
+                  - Visual Studio Code.app
+                target: null
+                declaration:
+                  app:
+                    - Visual Studio Code.app
+          caveats: null
+          aliases: []
+          dependencyCount: 0
+          conflictCount: 0
+        alternatives: []
+      type: object
+      required:
+        - requirements
+        - uninstall
+        - overview
+        - alternatives
+      properties:
+        security:
+          $ref: "#/components/schemas/SecurityFacts"
+        prices:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceFact"
+        offers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceFact"
+        requirements:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequirementFact"
+        uninstall:
+          type: array
+          items:
+            $ref: "#/components/schemas/UninstallFact"
+        overview:
+          $ref: "#/components/schemas/OverviewFacts"
+        alternatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/PackageAlternative"
+        price:
+          $ref: "#/components/schemas/AppPrice"
+        macosSupplement:
+          $ref: "#/components/schemas/MacosSupplement"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnownIssueFact"
+        integrations:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppIntegrationFact"
+          description: Verified current integrations. Empty while web.appIntegrationsEnabled is false (default).
     UpdateRelease:
       type: object
       additionalProperties: false
@@ -9107,6 +11359,7 @@ components:
             - freemium
             - subscription
             - open_source
+            - unknown
         notes:
           type: object
           nullable: true
@@ -9128,6 +11381,18 @@ components:
               type: string
               nullable: true
             ru-RU:
+              type: string
+              nullable: true
+            de-DE:
+              type: string
+              nullable: true
+            fr-FR:
+              type: string
+              nullable: true
+            it-IT:
+              type: string
+              nullable: true
+            zh-Hant:
               type: string
               nullable: true
         adoptedByCask:
@@ -9444,8 +11709,23 @@ components:
         - es-ES
         - pt-BR
         - ru-RU
+        - de-DE
+        - fr-FR
+        - it-IT
+        - zh-Hant
       example: en-US
       description: 'Supported language; without locale, match Accept-Language by q value and ultimately default to en-US.'
+    AppLocale:
+      type: string
+      enum:
+        - en-US
+        - zh-CN
+        - ja-JP
+        - es-ES
+        - pt-BR
+        - ru-RU
+      example: en-US
+      description: Application UI and client release-note language; content APIs use Locale.
     PackageKind:
       type: string
       enum:
@@ -9561,6 +11841,10 @@ components:
         - editorChoice
         - versionChangedAt
       properties:
+        recommendationPaused:
+          type: boolean
+          description: OpenNavo paused recommendations because upstream version data is stale; separate from Homebrew
+            disabled status.
         bundleIds:
           type: array
           items:
@@ -9569,9 +11853,9 @@ components:
           type: object
           nullable: true
           allOf:
-            - $ref: '#/components/schemas/LinkInfo'
+            - $ref: "#/components/schemas/LinkInfo"
         kind:
-          $ref: '#/components/schemas/PackageKind'
+          $ref: "#/components/schemas/PackageKind"
         token:
           type: string
           example: visual-studio-code
@@ -9580,12 +11864,13 @@ components:
           example: Microsoft Visual Studio Code
         displayName:
           type: string
-          description: 'Display name in the negotiated language; falls back to en-US, then the source language. Brand names may remain unchanged.'
+          description: Display name in the negotiated language; falls back to en-US, then the source language. Brand
+            names may remain unchanged.
           example: Visual Studio Code
         summary:
           type: string
           nullable: true
-          description: 'Localized one-sentence summary'
+          description: Localized one-sentence summary
           example: 开源代码编辑器，支持调试、扩展与智能代码辅助
         iconUrl:
           type: string
@@ -9602,7 +11887,7 @@ components:
         primaryCategory:
           type: object
           allOf:
-            - $ref: '#/components/schemas/CategoryRef'
+            - $ref: "#/components/schemas/CategoryRef"
           nullable: true
         installs30d:
           type: integer
@@ -9634,11 +11919,16 @@ components:
           format: date-time
           example: 2026-09-30T08:00:00Z
         sourceLocale:
-          $ref: '#/components/schemas/Locale'
+          $ref: "#/components/schemas/Locale"
         machineTranslated:
           type: boolean
-          description: 'Whether the returned text is machine-translated; false for source fallback or manual translations.'
+          description: Whether the returned text is machine-translated; false for source fallback or manual translations.
           example: false
+        iconVariants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageVariant"
+          description: Stored 64/128/256 pixel WebP icons. Empty or absent for legacy assets; fall back to iconUrl.
       example:
         kind: cask
         token: visual-studio-code
@@ -10023,11 +12313,21 @@ components:
             - light
           example: dark
         sourceLocale:
-          $ref: '#/components/schemas/Locale'
+          $ref: "#/components/schemas/Locale"
         machineTranslated:
           type: boolean
-          description: 'Whether the returned text is machine-translated; false for source fallback or manual translations.'
+          description: Whether the returned text is machine-translated; false for source fallback or manual translations.
           example: false
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageVariant"
+          description: Proportional 64/128/256 pixel WebP images. Empty or absent for legacy assets.
+        thumbnailVariants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageVariant"
+          description: Stored WebP card crops in ascending width order. New screenshots contain 318 by 200 and 636 by 400 renditions of the same centered crop, upscaled when the source is smaller. Legacy assets may have only 318 by 200 or no crops; use separately from proportional variants.
       example:
         url: https://cdn.opennavo.example/screenshots/cask/visual-studio-code/editor-1280.png
         thumbUrl: https://cdn.opennavo.example/screenshots/cask/visual-studio-code/editor-640.png
@@ -10052,7 +12352,7 @@ components:
             - pending
             - failed
             - skipped
-          description: 'source is original text, machine is machine translation and manual is a correction; pending/failed may display old translations, while none/skipped preserve legacy no-translation semantics.'
+          description: 'source is original text, machine is machine translation and manual is a correction. Editorial release notes never expose pending/failed or stale translated text; pending also represents a missing translation. Other content may retain old translations while pending/failed. none/skipped preserve legacy no-translation semantics.'
           example: manual
         locale:
           type: string
@@ -10092,6 +12392,10 @@ components:
             - formulaeUrl
             - summaryTranslation
           properties:
+            collections:
+              type: array
+              items:
+                $ref: '#/components/schemas/PackageCollectionRef'
             names:
               type: array
               items:
@@ -10255,6 +12559,8 @@ components:
               example: 2026-09-30T09:00:00Z
             releaseStats:
               $ref: '#/components/schemas/ReleaseStats'
+            facts:
+              $ref: '#/components/schemas/AppFacts'
             price:
               type: object
               allOf:
@@ -10405,9 +12711,44 @@ components:
         indexing:
           indexable: true
           reason: null
-          locales: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU]
+          locales:
+            - en-US
+            - zh-CN
+            - ja-JP
+            - es-ES
+            - pt-BR
+            - ru-RU
           enforced: false
           notesCount: 12
+          pages:
+            overview:
+              robots: noindex, follow
+              canonicalPath: ""
+              hreflang: &a1 []
+              inSitemap: false
+              announce: false
+              reason: locale_not_ready
+            versions:
+              robots: noindex, follow
+              canonicalPath: ""
+              hreflang: *a1
+              inSitemap: false
+              announce: false
+              reason: locale_not_ready
+            dependencies:
+              robots: noindex, follow
+              canonicalPath: ""
+              hreflang: *a1
+              inSitemap: false
+              announce: false
+              reason: locale_not_ready
+            details:
+              robots: noindex, follow
+              canonicalPath: ""
+              hreflang: *a1
+              inSitemap: false
+              announce: false
+              reason: consolidated
         versionCommittedAt: 2026-09-30T09:00:00Z
         releaseStats:
           count30d: 5
@@ -10440,6 +12781,7 @@ components:
           - Improve keyboard navigation.
     ReleaseEntry:
       type: object
+      description: 'Editorial notes are shown only in the requested locale: source text for the source locale, otherwise manual/machine text matching the current source hash. Unavailable editorial translations fall back to original upstream notes for the same version using source priority; without upstream notes, hasNotes is false and translation reports pending/failed/skipped. The selected note supplies id/source/sourceLocale. Version and build grouping are preserved.'
       required:
         - version
         - source
@@ -10449,6 +12791,8 @@ components:
         - sections
         - translation
       properties:
+        compatibility:
+          $ref: "#/components/schemas/VersionCompatibility"
         id:
           type: integer
           format: int64
@@ -10610,6 +12954,7 @@ components:
         - total
         - records
         - stats
+        - indexing
       properties:
         current:
           type: integer
@@ -10623,9 +12968,11 @@ components:
         records:
           type: array
           items:
-            $ref: '#/components/schemas/ReleaseEntry'
+            $ref: "#/components/schemas/ReleaseEntry"
         stats:
-          $ref: '#/components/schemas/ReleaseStats'
+          $ref: "#/components/schemas/ReleaseStats"
+        indexing:
+          $ref: "#/components/schemas/PageDecision"
       example:
         current: 1
         size: 24
@@ -10690,6 +13037,13 @@ components:
             compared: 5
             earlierCount: 0
             medianMinutes: 60
+        indexing:
+          robots: noindex, follow
+          canonicalPath: ""
+          hreflang: []
+          inSitemap: false
+          announce: false
+          reason: locale_not_ready
     DependencyNode:
       type: object
       required:
@@ -11180,6 +13534,8 @@ components:
           required:
             - items
           properties:
+            setup:
+              $ref: "#/components/schemas/CollectionSetup"
             body:
               type: string
               nullable: true
@@ -11965,7 +14321,15 @@ components:
           $ref: '#/components/schemas/CatalogTextPackInfo'
         ru-RU:
           $ref: '#/components/schemas/CatalogTextPackInfo'
-      description: 'Complete six-language text-pack manifest; keys match pack locales. Contains only text actually present in each language, never English or source text copied as translations.'
+        de-DE:
+          $ref: '#/components/schemas/CatalogTextPackInfo'
+        fr-FR:
+          $ref: '#/components/schemas/CatalogTextPackInfo'
+        it-IT:
+          $ref: '#/components/schemas/CatalogTextPackInfo'
+        zh-Hant:
+          $ref: '#/components/schemas/CatalogTextPackInfo'
+      description: 'Text-pack manifest for site languages (six app languages required for backward compatibility); keys match pack locales. Contains only text actually present in each language, never English or source text copied as translations.'
       example:
         en-US:
           locale: en-US
@@ -12673,6 +15037,22 @@ components:
           example: null
           nullable: true
         ru-RU:
+          type: string
+          example: null
+          nullable: true
+        de-DE:
+          type: string
+          example: null
+          nullable: true
+        fr-FR:
+          type: string
+          example: null
+          nullable: true
+        it-IT:
+          type: string
+          example: null
+          nullable: true
+        zh-Hant:
           type: string
           example: null
           nullable: true
@@ -13438,7 +15818,7 @@ components:
               pubDate: 2026-09-10T08:00:00Z
               notes: 改善浏览、搜索与更新体验。
         sourceLocale:
-          $ref: '#/components/schemas/Locale'
+          $ref: '#/components/schemas/AppLocale'
         machineTranslated:
           type: boolean
           description: 'Whether the returned text is machine-translated; false for source fallback or manual translations.'
@@ -13510,7 +15890,7 @@ components:
         packageKind:
           type: string
           allOf:
-            - $ref: '#/components/schemas/PackageKind'
+            - $ref: "#/components/schemas/PackageKind"
           nullable: true
           example: cask
         packageToken:
@@ -13518,6 +15898,7 @@ components:
           nullable: true
           example: visual-studio-code
         content:
+          description: Private plain text; URLs remain text and do not count toward the explicit links limit. HTML and sensitive data are sanitized.
           type: string
           minLength: 5
           maxLength: 2000
@@ -13537,18 +15918,51 @@ components:
           type: string
           nullable: true
           example: 0.3.0
+          maxLength: 100
         osVersion:
           type: string
           nullable: true
-          example: '15.0'
+          example: "15.0"
+          maxLength: 100
         errorCode:
           type: string
           nullable: true
           example: null
+          maxLength: 100
         website:
           type: string
-          description: 'Honeypot field; must be empty. Nonempty submissions are silently discarded and reported as successful.'
-          example: ''
+          description: Honeypot field; must be empty. Nonempty submissions are silently discarded and reported as successful.
+          example: ""
+        packageVersion:
+          type: string
+          nullable: true
+          maxLength: 100
+        macosVersion:
+          type: string
+          nullable: true
+          maxLength: 100
+        symptom:
+          type: string
+          nullable: true
+          maxLength: 500
+        diagnosticLog:
+          type: string
+          nullable: true
+          maxLength: 16384
+          description: Private diagnostic text, at most 16 KiB UTF-8; secrets and personal paths are redacted before storage.
+        links:
+          type: array
+          items:
+            type: string
+            format: uri
+            maxLength: 2048
+          maxItems: 3
+        attachments:
+          type: array
+          items:
+            type: string
+          maxItems: 0
+          description: Attachments are not accepted.
       example:
         type: wrong_info
         packageKind: cask
@@ -13557,8 +15971,8 @@ components:
         contact: local-user@opennavo.example
         platform: web
         appVersion: 0.3.0
-        osVersion: '15.0'
-        website: ''
+        osVersion: "15.0"
+        website: ""
     SiteCrawlerRule:
       type: object
       required: [mode, delaySeconds, bots]
@@ -13657,6 +16071,37 @@ components:
                   enum: [new, all]
                 since:
                   type: string
+            translationMode:
+              type: string
+              enum: [shadow, enforce]
+              default: shadow
+              description: Published translation quality rollout; new site-only languages are always enforced.
+            translationLocales:
+              type: array
+              uniqueItems: true
+              description: Locales to enforce; empty means all locales.
+              items:
+                $ref: '#/components/schemas/Locale'
+            versionsMinNotesChars:
+              type: integer
+              minimum: 1
+              maximum: 100000
+              default: 300
+            openLocales:
+              type: array
+              uniqueItems: true
+              description: Languages open for non-entity pages; defaults to the six application languages. Entity pages use their own PageDecision.
+              default: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU]
+              items:
+                $ref: '#/components/schemas/Locale'
+            intentPagesEnabled:
+              type: boolean
+              default: false
+              description: Enable qualified intent pages backed by confirmed search demand and unique targets.
+            detailsRedirect:
+              type: boolean
+              default: false
+              description: Enable details redirects after migrated overview content has been verified.
             versionsSitemap:
               type: boolean
       example:
@@ -13922,32 +16367,75 @@ components:
                 icon: lucide:wrench
     PackageIndexing:
       type: object
-      required: [indexable, reason, locales, enforced, notesCount]
+      required: ["indexable","reason","locales","enforced","notesCount","pages"]
       description: "Index decision for the app's pages (WP11). Pages outside locales, or with indexable false, render noindex and stay out of hreflang and the sitemap."
       properties:
+        detailsMerged:
+          type: boolean
+          description: Overview facts include the original details fields.
+        detailsRedirect:
+          type: boolean
+          description: Rollout enabled and this locale has an indexable overview; false for link apps.
         indexable:
           type: boolean
         reason:
           type: string
           nullable: true
-          description: 'hidden, forced_noindex, unavailable, missing_summary or thin when not indexable.'
+          description: hidden, forced_noindex, unavailable, missing_summary or thin when not indexable.
         locales:
           type: array
           items:
-            $ref: '#/components/schemas/Locale'
+            $ref: "#/components/schemas/Locale"
         enforced:
           type: boolean
-          description: "Whether the index policy applies to this app. While false, pages keep today's behaviour."
+          description: Whether the index policy applies to this app. While false, pages keep today's behaviour.
         notesCount:
           type: integer
           minimum: 0
-          description: 'Visible releases with their own notes; the versions page needs several to be indexed on its own.'
+          description: Visible releases with their own notes; the versions page needs several to be indexed on its own.
+        pages:
+          $ref: "#/components/schemas/PackagePageDecisions"
       example:
         indexable: true
         reason: null
-        locales: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU]
+        locales:
+          - en-US
+          - zh-CN
+          - ja-JP
+          - es-ES
+          - pt-BR
+          - ru-RU
         enforced: false
         notesCount: 12
+        pages:
+          overview:
+            robots: noindex, follow
+            canonicalPath: ""
+            hreflang: &a1 []
+            inSitemap: false
+            announce: false
+            reason: locale_not_ready
+          versions:
+            robots: noindex, follow
+            canonicalPath: ""
+            hreflang: *a1
+            inSitemap: false
+            announce: false
+            reason: locale_not_ready
+          dependencies:
+            robots: noindex, follow
+            canonicalPath: ""
+            hreflang: *a1
+            inSitemap: false
+            announce: false
+            reason: locale_not_ready
+          details:
+            robots: noindex, follow
+            canonicalPath: ""
+            hreflang: *a1
+            inSitemap: false
+            announce: false
+            reason: consolidated
     AppPrice:
       type: object
       required: [type, amount, currency, region, plan, period, appVersion, sourceUrl, method, verifiedAt, stale, offer]
@@ -14190,6 +16678,16 @@ components:
       required: [package, reasons, limits, bestFor]
       description: 'A human-confirmed alternative, in editor order. Distinct from automatically related apps.'
       properties:
+        attributes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComparisonAttributeFact"
+        prices:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceFact"
+        migration:
+          $ref: "#/components/schemas/MigrationGuide"
         package:
           $ref: '#/components/schemas/PackageSummary'
         reasons:
@@ -14312,7 +16810,11 @@ components:
         height: 800
     ArticleCover:
       type: object
-      required: [url, width, height, alt]
+      required:
+        - url
+        - width
+        - height
+        - alt
       properties:
         url:
           type: string
@@ -14328,6 +16830,7 @@ components:
         alt:
           type: string
           example: Four screenshot apps side by side
+          description: Ready requested-language alt, falling back to ready English then revision source alt.
       example:
         url: https://cdn.opennavo.example/screenshots/uploads/cover/a.png
         width: 1280
@@ -14753,12 +17256,20 @@ components:
       required: [locale, lastmod]
       properties:
         locale:
-          $ref: '#/components/schemas/Locale'
+          $ref: "#/components/schemas/Locale"
         lastmod:
           type: string
           format: date-time
           nullable: true
-          description: 'Latest reliable content change for this language: Homebrew commit of the current version, published text or screenshots. Null when no reliable time exists.'
+          description: "Persistent overview content hash date; reliable source date until initialized. Null when no reliable time exists."
+        pageLastmod:
+          type: object
+          additionalProperties:
+            type: string
+            format: date-time
+          description: Content hash dates by page kind; versions:N identifies later pages.
+        pages:
+          $ref: "#/components/schemas/PackagePageDecisions"
       example:
         locale: en-US
         lastmod: 2026-09-30T08:00:00Z
@@ -15504,6 +18015,13 @@ components:
               compared: 5
               earlierCount: 0
               medianMinutes: 60
+          indexing:
+            robots: noindex, follow
+            canonicalPath: ""
+            hreflang: []
+            inSitemap: false
+            announce: false
+            reason: locale_not_ready
     DependenciesResponse:
       type: object
       required:
@@ -16204,6 +18722,11 @@ components:
             - total
             - records
           properties:
+            lastmod:
+              type: string
+              format: date-time
+              nullable: true
+              description: Latest content date within this sitemap shard, for sitemap index lastmod.
             current:
               type: integer
               example: 1
@@ -16247,7 +18770,7 @@ components:
           description: 'Localized client release notes in Markdown'
           example: 改善浏览、搜索与更新体验。
         sourceLocale:
-          $ref: '#/components/schemas/Locale'
+          $ref: '#/components/schemas/AppLocale'
         machineTranslated:
           type: boolean
           description: 'Whether the returned text is machine-translated; false for source fallback or manual translations.'
@@ -16258,6 +18781,94 @@ components:
         notes: Improve usability and stability.
         sourceLocale: en-US
         machineTranslated: false
+    PageDecision:
+      type: object
+      required:
+        - robots
+        - canonicalPath
+        - hreflang
+        - inSitemap
+        - announce
+        - reason
+      properties:
+        robots:
+          type: string
+          enum:
+            - index, follow
+            - noindex, follow
+        canonicalPath:
+          type: string
+          description: Empty means self; otherwise a locale-prefixed canonical path.
+        hreflang:
+          type: array
+          items:
+            $ref: "#/components/schemas/Locale"
+        inSitemap:
+          type: boolean
+        announce:
+          type: boolean
+        reason:
+          type: string
+      example:
+        robots: noindex, follow
+        canonicalPath: ""
+        hreflang: &a1 []
+        inSitemap: false
+        announce: false
+        reason: locale_not_ready
+    PackagePageDecisions:
+      type: object
+      required:
+        - overview
+        - versions
+        - dependencies
+        - details
+      properties:
+        troubleshooting:
+          description: Indexable only when the locale's overview is indexable and at least three verified, unexpired issues have complete content in that exact locale. Otherwise noindex with overview canonical, excluded from sitemap and announcements.
+          allOf:
+            - $ref: '#/components/schemas/PageDecision'
+        alternatives:
+          $ref: '#/components/schemas/PageDecision'
+        uninstall:
+          $ref: '#/components/schemas/PageDecision'
+        overview:
+          $ref: "#/components/schemas/PageDecision"
+        versions:
+          $ref: "#/components/schemas/PageDecision"
+        dependencies:
+          $ref: "#/components/schemas/PageDecision"
+        details:
+          $ref: "#/components/schemas/PageDecision"
+      example:
+        overview:
+          robots: noindex, follow
+          canonicalPath: ""
+          hreflang: *a1
+          inSitemap: false
+          announce: false
+          reason: locale_not_ready
+        versions:
+          robots: noindex, follow
+          canonicalPath: ""
+          hreflang: *a1
+          inSitemap: false
+          announce: false
+          reason: locale_not_ready
+        dependencies:
+          robots: noindex, follow
+          canonicalPath: ""
+          hreflang: *a1
+          inSitemap: false
+          announce: false
+          reason: locale_not_ready
+        details:
+          robots: noindex, follow
+          canonicalPath: ""
+          hreflang: *a1
+          inSitemap: false
+          announce: false
+          reason: consolidated
   examples:
     ArticlePageSixLocales:
       value:

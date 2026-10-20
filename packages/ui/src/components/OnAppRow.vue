@@ -3,12 +3,15 @@ import { computed } from 'vue';
 import type { Component } from 'vue';
 import OnAppIcon from './OnAppIcon.vue';
 import type { OnAppIconKind } from './OnAppIcon.vue';
+import type { OnImageVariant } from '../utils/image';
 
 export interface OnAppRowProps {
   kind: OnAppIconKind;
   token: string;
   name: string;
   src?: string | null;
+  /** Stored WebP renditions of the icon (X3). */
+  variants?: readonly OnImageVariant[] | null;
   accent?: string | null;
   /** Secondary information beneath name, e.g. 1.139.1 → 1.140.0. */
   meta?: string;
@@ -40,7 +43,7 @@ defineSlots<{
   <div
     class="relative box-border flex min-h-64px min-w-0 items-center gap-12px border-b border-b-solid border-line-subtle py-12px last:border-b-0"
   >
-    <OnAppIcon :kind="kind" :token="token" :name="name" :src="src" :accent="accent" :size="40" />
+    <OnAppIcon :kind="kind" :token="token" :name="name" :src="src" :variants="variants" :accent="accent" :size="40" />
     <div class="flex min-w-0 flex-1 flex-col gap-2px">
       <!-- Badges wrap to their own line rather than squeezing the name away (several long ones in es/pt/ru). -->
       <div class="flex min-w-0 flex-wrap items-center gap-x-6px gap-y-2px">

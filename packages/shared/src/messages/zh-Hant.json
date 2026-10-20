@@ -1,0 +1,181 @@
+{
+  "getButton": {
+    "get": "取得",
+    "open": "開啟",
+    "installed": "已安裝",
+    "update": "更新",
+    "queued": "排隊中",
+    "running": "正在處理",
+    "cancel": "取消",
+    "unavailable": "不可用",
+    "download": "下載"
+  },
+  "action": {
+    "checkUpdates": "檢查更新",
+    "updateTo": "更新到 {version}",
+    "updateAll": "全部更新（{count}）",
+    "retry": "重試",
+    "viewLog": "檢視記錄",
+    "cancel": "取消",
+    "openInApp": "在 OpenNavo 中開啟",
+    "copyInstallCommand": "複製安裝命令",
+    "addToBrewfile": "加入 Brewfile 清單",
+    "inBrewfile": "已在清單中",
+    "uninstall": "解除安裝",
+    "delete": "刪除",
+    "copy": "複製",
+    "copied": "已複製",
+    "clear": "清除"
+  },
+  "kind": {
+    "cask": "App",
+    "formula": "命令列工具",
+    "link": "App"
+  },
+  "card": {
+    "installs30d": "30 天安裝",
+    "version": "版本",
+    "category": "分類"
+  },
+  "nav": {
+    "breadcrumb": "麵包屑",
+    "pagination": "分頁",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "page": "第 {page} 頁",
+    "loadMore": "載入更多",
+    "categories": "分類篩選"
+  },
+  "installCommand": {
+    "title": "安裝命令"
+  },
+  "cask": {
+    "version": "可安裝版本",
+    "unknown": "尚未確認",
+    "noMac": "未宣告支援 macOS",
+    "rosetta": "需要 Rosetta",
+    "legacy": "部分平台提供舊版本",
+    "declarations": "安裝與解除安裝內容",
+    "install": "安裝",
+    "uninstall": "解除安裝",
+    "cleanup": "清理使用者資料",
+    "source": "來源檔案",
+    "target": "宣告的目標位置",
+    "declaration": "檢視完整宣告",
+    "download": "下載網址"
+  },
+  "hero": {
+    "viewDetails": "檢視詳情"
+  },
+  "about": {
+    "title": "介紹",
+    "machineTranslated": "AI 翻譯",
+    "viewOriginal": "檢視原文",
+    "expand": "展開全文",
+    "collapse": "收起"
+  },
+  "gallery": {
+    "label": "截圖",
+    "item": "截圖 {index}",
+    "dialog": "截圖預覽",
+    "position": "{index} / {total}",
+    "previous": "上一張",
+    "next": "下一張",
+    "close": "關閉"
+  },
+  "dialog": {
+    "close": "關閉",
+    "confirm": "確認",
+    "cancel": "取消"
+  },
+  "toast": {
+    "region": "通知",
+    "view": "檢視",
+    "close": "關閉通知"
+  },
+  "menu": {
+    "more": "更多操作"
+  },
+  "palette": {
+    "label": "命令面板",
+    "placeholder": "搜尋 App 或操作",
+    "results": "搜尋結果",
+    "empty": "沒有匹配的結果",
+    "loading": "正在搜尋…",
+    "hintSelect": "↑↓ 選擇",
+    "hintOpen": "↵ 開啟",
+    "hintInstall": "⌘↵ 安裝 / 更新",
+    "hintCopy": "⌘C 複製 brew 命令"
+  },
+  "collection": {
+    "viewAll": "檢視全部 {count} 款"
+  },
+  "rank": {
+    "up": "上升 {n} 位",
+    "down": "下降 {n} 位",
+    "same": "排名不變"
+  },
+  "progress": {
+    "busy": "進行中"
+  },
+  "task": {
+    "queued": "排隊中：",
+    "expandLog": "展開記錄",
+    "collapseLog": "收起記錄"
+  },
+  "log": {
+    "label": "記錄"
+  },
+  "chart": {
+    "other": "其他",
+    "item": "項目",
+    "value": "數值",
+    "share": "佔比"
+  },
+  "table": {
+    "sortBy": "按{label}排序"
+  },
+  "topNav": {
+    "label": "主導覽",
+    "home": "OpenNavo 首頁",
+    "search": "搜尋 App",
+    "download": "下載用戶端",
+    "openMenu": "開啟選單",
+    "closeMenu": "關閉選單"
+  },
+  "version": {
+    "timeline": "版本記錄",
+    "latest": "最新",
+    "installed": "當前安裝",
+    "patch": "修補版",
+    "prerelease": "預發布版",
+    "machineTranslation": "AI 翻譯",
+    "noNotes": "此版本沒有單獨的更新說明",
+    "viewOriginal": "檢視原文",
+    "expand": "展開",
+    "collapse": "收起",
+    "updateTo": "更新到此版本",
+    "showEarlier": "顯示更早的 {count} 個版本",
+    "sources": {
+      "webpage": "官網更新頁",
+      "sparkle": "Sparkle 更新來源",
+      "github_release": "GitHub Release",
+      "manual": "人工整理",
+      "editorial": "OpenNavo 編輯",
+      "homebrew": "Homebrew 收錄"
+    }
+  },
+  "state": {
+    "loadFailedTitle": "載入失敗",
+    "loadFailedDescription": "網路或服務暫時不可用，稍後重試。",
+    "noResultsTitle": "沒有找到「{q}」",
+    "noResultsDescription": "試試英文名稱，或者告訴我們想收錄什麼。",
+    "offlineTitle": "已離線",
+    "offlineDescription": "正在顯示本地快取的目錄，聯網後自動更新。"
+  },
+  "languageSuggestion": {
+    "message": "是否使用{language}瀏覽？",
+    "switch": "切換到{language}",
+    "dismiss": "不再提示"
+  }
+}

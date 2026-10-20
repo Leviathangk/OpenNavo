@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatBytes, formatRelativeTime } from '@opennavo/shared';
-import { OnButton, OnCard, OnChip, OnEmpty, OnIcon, OnMenu, OnProgressMeter } from '@opennavo/ui';
+import { OnAppIcon, OnButton, OnCard, OnChip, OnEmpty, OnIcon, OnMenu, OnProgressMeter } from '@opennavo/ui';
 import type { OnMenuItem } from '@opennavo/ui';
+import PreviewNotice from '@/components/common/PreviewNotice.vue';
 import { IpcError } from '@/ipc/client';
 import type { AvFinding, AvScanKind } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
+import { usePackageIdentity } from '@/composables/usePackageIdentity';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useVirusTotal } from '@/composables/useVirusTotal';
+import { useLocalAppsStore } from '@/stores/localApps';
 import { useSecurityStore } from '@/stores/security';
+import { matchLocalApps, NO_PREVIEW } from '@/utils/deepLinkPreview';
+import type { Preview } from '@/utils/deepLinkPreview';
 import { pickFolder } from '@/utils/files';
 import { displayPath } from '@/utils/paths';
 import { openExternal } from '@/utils/external';
@@ -19,6 +24,9 @@ import { requireDone } from './outcome';
 
 // Virus scan (plan §6.2, mockup E): the first download needs consent; then quick, full or custom scans with live
 // progress. Threats default to Quarantine (restorable); Delete and Trust are in the row menu.
+// A preview link (opennavo://scan/{token}?preview=1, F5) names a catalog app: the panel finds it on this Mac and
+// offers a custom scan of it, which starts only when the user clicks. An app that is not here is just said so.
+const props = withDefaults(defineProps<{ preview?: Preview }>(), { preview: () => NO_PREVIEW });
 const { t, te } = useI18n();
 const { appLocale } = useAppLocale();
 const toasts = useToasts();
@@ -32,6 +40,48 @@ const consented = computed(() => store.securitySettings.avConsent);
 const downloading = ref(false);
 const scan = computed(() => store.scan);
 const kinds: AvScanKind[] = ['quick', 'full', 'custom'];
+
+const localApps = useLocalAppsStore();
+const { localApp } = usePackageIdentity();
+const previewToken = computed(() => (props.preview.state === 'ok' ? props.preview.value : null));
+const appsLoading = ref(false);
+watch(
+  previewToken,
+  async token => {
+    if (!token || localApps.loaded || appsLoading.value) return;
+    appsLoading.value = true;
+    try {
+      await localApps.load();
+    } catch {
+      // Nothing to preselect: the notice says the app was not found on this Mac.
+    } finally {
+      appsLoading.value = false;
+    }
+  },
+  { immediate: true }
+);
+const previewApps = computed(() => (previewToken.value ? matchLocalApps(localApps.items, previewToken.value) : []));
+const previewState = computed(() => {
+  if (props.preview.state === 'none') return null;
+  if (props.preview.state === 'invalid') return 'invalid';
+  if (previewApps.value.length) return 'found';
+  return appsLoading.value || !localApps.loaded ? 'looking' : 'notFound';
+});
+const previewName = computed(() => {
+  const app = previewApps.value[0];
+  return app ? localApp(app).name : '';
+});
+
+/** The user's click on the preview: a custom scan of just the matched app bundles. */
+async function scanPreviewed() {
+  const paths = previewApps.value.map(app => app.path);
+  if (!paths.length) return;
+  try {
+    await store.startScan('custom', paths);
+  } catch (error) {
+    toasts.push({ tone: 'danger', title: t('security.scan.failed'), description: errorText(error) });
+  }
+}
 
 async function download() {
   downloading.value = true;
@@ -151,6 +201,42 @@ const skippedText = computed(() => {
 
 <template>
   <div class="flex flex-col gap-16px">
+    <PreviewNotice
+      v-if="previewState === 'invalid'"
+      tone="warning"
+      :title="t('deeplink.preview.invalid')"
+      :body="t('deeplink.preview.invalidBody')"
+    />
+    <PreviewNotice
+      v-else-if="previewState === 'looking'"
+      :title="t('deeplink.preview.scan.looking', { token: previewToken ?? '' })"
+    />
+    <PreviewNotice
+      v-else-if="previewState === 'found'"
+      :title="t('deeplink.preview.scan.title', { name: previewName })"
+      :body="t('deeplink.preview.scan.body')"
+    >
+      <ul class="m-0 mb-10px flex list-none flex-col gap-6px p-0">
+        <li v-for="app in previewApps" :key="app.id" class="flex min-w-0 items-center gap-8px">
+          <OnAppIcon v-bind="localApp(app).icon" :size="24" />
+          <span class="min-w-0 truncate font-mono text-11.5px text-ink-tertiary">{{ displayPath(app.path) }}</span>
+        </li>
+      </ul>
+      <OnButton
+        variant="primary"
+        size="sm"
+        icon="scan-search"
+        :disabled="!ready || store.scanning"
+        @click="scanPreviewed"
+      >
+        {{ t('deeplink.preview.scan.action') }}
+      </OnButton>
+    </PreviewNotice>
+    <PreviewNotice
+      v-else-if="previewState === 'notFound'"
+      :title="t('deeplink.preview.scan.notFound', { token: previewToken ?? '' })"
+      :body="t('deeplink.preview.scan.notFoundBody')"
+    />
     <OnCard v-if="!ready" padding="lg" as="section" class="flex flex-col gap-10px" aria-labelledby="av-consent">
       <h2 id="av-consent" class="m-0 flex items-center gap-8px text-15px font-600 text-ink-primary">
         <OnIcon name="download" :size="17" />{{ t('security.engine.consentTitle') }}

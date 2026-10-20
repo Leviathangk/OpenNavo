@@ -50,6 +50,26 @@ describe('site settings cache', () => {
     expect((await get()).revision).toBe(3);
   });
 
+  it('reloads at once on a settings invalidation and reports a failed reload (S6)', async () => {
+    let clock = 0;
+    const load = vi.fn().mockResolvedValueOnce(settings(5)).mockResolvedValueOnce(settings(6));
+    const get = createSiteSettingsCache(load, () => clock);
+    expect((await get()).revision).toBe(5);
+    expect(await get.reload()).toBe(true);
+    expect((await get()).revision).toBe(6);
+    load.mockRejectedValueOnce(new Error('offline'));
+    expect(await get.reload()).toBe(false);
+    // The last good copy stays in use, and the next request tries again.
+    load.mockResolvedValueOnce(settings(7));
+    expect((await get()).revision).toBe(6);
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(4));
+  });
+
+  it('opens only the six app languages for non-entity pages by default (L1)', () => {
+    expect(DEFAULT_SITE_SETTINGS.pages.openLocales).toEqual(['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU']);
+    expect(DEFAULT_SITE_SETTINGS.pages.detailsRedirect).toBe(false);
+  });
+
   it('shares one request between concurrent first callers', async () => {
     let resolve!: (value: SiteSettings) => void;
     const load = vi.fn(() => new Promise<SiteSettings>(done => (resolve = done)));
@@ -59,4 +79,44 @@ describe('site settings cache', () => {
     expect((await pending).map(value => value.revision)).toEqual([4, 4]);
     expect(load).toHaveBeenCalledTimes(1);
   });
+});
+
+it('does not let an older refresh or reload overwrite an acknowledged revision', async () => {
+  const resolvers: ((value: SiteSettings) => void)[] = [];
+  const get = createSiteSettingsCache(
+    () => new Promise(resolve => resolvers.push(resolve)),
+    () => 0
+  );
+  const initial = get();
+  const firstReload = get.reload();
+  const secondReload = get.reload();
+  resolvers[2]!(settings(9));
+  expect(await secondReload).toBe(true);
+  resolvers[1]!(settings(8));
+  expect(await firstReload).toBe(true);
+  resolvers[0]!(settings(7));
+  expect((await initial).revision).toBe(9);
+  expect((await get()).revision).toBe(9);
+});
+
+it('cold invalidation does not acknowledge a failed API load and retries', async () => {
+  vi.resetModules();
+  vi.stubGlobal('useRuntimeConfig', () => ({
+    apiBaseInternal: 'http://api.test',
+    public: { apiBase: 'http://api.test' }
+  }));
+  const fetch = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('503'))
+    .mockResolvedValueOnce({ data: settings(11) });
+  vi.stubGlobal('$fetch', fetch);
+  try {
+    const { reloadSiteSettings, getSiteSettings } = await import('../server/utils/siteSettings');
+    expect(await reloadSiteSettings()).toBe(false);
+    expect(await reloadSiteSettings()).toBe(true);
+    expect((await getSiteSettings()).revision).toBe(11);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

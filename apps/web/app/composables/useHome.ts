@@ -1,45 +1,18 @@
 import { unwrap } from '@opennavo/api';
 
+/**
+ * Apps and collections per Discover group (T1): the server renders exactly this many in every group, and
+ * the API returns no more, so the HTML and the payload hold the same set on every screen.
+ */
+export const HOME_SECTION_SIZE = 12;
+
 /** Homepage data: Discover and rail share a cache key and one SSR request. */
 export function useHome() {
   const { locale } = useI18n();
   const api = useApi();
   return useAsyncData(
     () => `home:${locale.value}`,
-    () => unwrap(api.GET('/home'))
-  );
-}
-
-/** Match desktop discovery: enough popular apps for three responsive rows, with home data as fallback. */
-export function usePopularApps() {
-  const { locale } = useI18n();
-  const api = useApi();
-  return useAsyncData(
-    () => `home:popular:${locale.value}`,
-    () =>
-      unwrap(
-        api.GET('/packages', {
-          params: { query: { kind: 'cask', sort: 'popular', size: 100, includeFonts: true } }
-        })
-      )
-        .then(page => page.records)
-        .catch(() => null)
-  );
-}
-
-export function useRecentPreview() {
-  const { locale } = useI18n();
-  const api = useApi();
-  return useAsyncData(
-    () => `home:recent:${locale.value}`,
-    () =>
-      unwrap(
-        api.GET('/packages', {
-          params: { query: { kind: 'cask', sort: 'updated', size: 100, includeFonts: true } }
-        })
-      )
-        .then(page => page.records)
-        .catch(() => null)
+    () => unwrap(api.GET('/home', { params: { query: { sectionSize: HOME_SECTION_SIZE } } }))
   );
 }
 

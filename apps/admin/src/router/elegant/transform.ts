@@ -200,7 +200,6 @@ const routeMap: RouteMap = {
   "system_github": "/system/github",
   "system_role": "/system/role",
   "system_seo": "/system/seo",
-  "system_translation": "/system/translation",
   "system_user": "/system/user",
   "user-center": "/user-center"
 };

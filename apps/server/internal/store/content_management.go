@@ -14,7 +14,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var textAPIFields = map[string]string{"displayName": "display_name", "bodyMarkdown": "body_markdown", "ctaLabel": "cta_label", "testNote": "test_note", "seoTitle": "seo_title", "seoDescription": "seo_description"}
+var textAPIFields = map[string]string{"displayName": "display_name", "bodyMarkdown": "body_markdown", "ctaLabel": "cta_label", "testNote": "test_note", "seoTitle": "seo_title", "seoDescription": "seo_description", "coverAlt": "cover_alt"}
 
 func textColumn(key string) string {
 	if v, ok := textAPIFields[key]; ok {
@@ -77,7 +77,7 @@ func ValidateContentFields(entity string, fields map[string]any) error {
 	return nil
 }
 func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale string, fields map[string]any, source bool) error {
-	if !ref.Valid() || !i18n.Valid(locale) {
+	if !ref.Valid() || !i18n.Valid(locale) || (ref.Entity == "desktop_release" && !i18n.ValidApp(locale)) {
 		return domain.Validation()
 	}
 	if err := ValidateContentFields(ref.Entity, fields); err != nil {
@@ -114,6 +114,7 @@ func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale st
 		}
 	}
 	src := locale
+	translationModel := ""
 	if source {
 		if ref.Entity != "announcement" {
 			if err := s.DB.WithContext(ctx).Table(spec.Parent).Where(parentWhere, args...).Update("source_locale", locale).Error; err != nil {
@@ -125,6 +126,10 @@ func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale st
 		if err != nil {
 			return err
 		}
+		translationModel, err = s.validateTranslationWrite(ctx, current, locale, fields)
+		if err != nil {
+			return err
+		}
 		src = current.SourceLocale
 		if src == locale {
 			return domain.Validation()
@@ -133,8 +138,14 @@ func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale st
 	where, keysArgs := textWhere(ref)
 	keys := []clause.Column{{Name: spec.Key}, {Name: "locale"}}
 	row := map[string]any{spec.Key: ref.ID, "locale": locale, "source_locale": src, "status": "manual", "updated_at": time.Now().UTC(), "fail_reason": nil}
+	row["model"] = nil
+	row["translated_at"] = nil
 	if source {
 		row["status"] = "source"
+	} else if translationModel != "" {
+		row["status"] = "machine"
+		row["model"] = translationModel
+		row["translated_at"] = time.Now().UTC()
 	}
 	if ref.Entity == "announcement" {
 		row[spec.Key] = ref.Key()
@@ -145,6 +156,9 @@ func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale st
 	}
 	if ref.Entity == "package" {
 		row["source"] = "human"
+		if translationModel != "" {
+			row["source"] = "llm"
+		}
 	}
 	for key, v := range fields {
 		col := textColumn(key)
@@ -273,7 +287,7 @@ func (s *Store) ContentView(ctx context.Context, ref content.Ref) (map[string]an
 		return nil, readErr
 	}
 	locales := map[string]any{}
-	for _, code := range i18n.Locales {
+	for _, code := range i18n.ContentLocales(ref.Entity) {
 		fields := map[string]any{}
 		for col := range spec.Fields {
 			if col == "sections" {

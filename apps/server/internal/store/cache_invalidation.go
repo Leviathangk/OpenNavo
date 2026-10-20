@@ -27,8 +27,22 @@ func QueueCacheInvalidation(ctx context.Context, tx *gorm.DB, key string, patter
 	return addCacheInvalidation(ctx, tx, key, patterns...)
 }
 
+// Merge scopes which share one delivery key without discarding a wider pending
+// invalidation. The upsert retains the same row lock as ordinary delivery.
+func mergeCacheInvalidation(ctx context.Context, tx *gorm.DB, key string, patterns ...string) error {
+	payload, err := json.Marshal(patterns)
+	if err != nil {
+		return err
+	}
+	return tx.WithContext(ctx).Exec(`INSERT INTO job_outbox(unique_key,job_type,payload) VALUES(?,'cache:invalidate',?::jsonb)
+ ON CONFLICT(unique_key) DO UPDATE SET payload=(
+ SELECT jsonb_agg(pattern ORDER BY pattern) FROM (
+ SELECT DISTINCT jsonb_array_elements_text(job_outbox.payload || EXCLUDED.payload) AS pattern
+ ) scopes),available_at=now()`, "cache:invalidate:"+key, string(payload)).Error
+}
+
 func addCatalogInvalidation(ctx context.Context, tx *gorm.DB) error {
-	return addCacheInvalidation(ctx, tx, "catalog", "c:pkg:*", "c:home:*", "c:rank:*", "c:cat:*", "c:sug:*", "c:dep:*", "c:related:*")
+	return mergeCacheInvalidation(ctx, tx, "catalog", "c:pkg:*", "c:home:*", "c:rank:*", "c:cat:*", "c:sug:*", "c:dep:*", "c:related:*", "c:browse:*")
 }
 
 // DispatchCacheInvalidations acknowledges only successful publications. Keeping

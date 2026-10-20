@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"encoding/json"
 	"path"
 	"strconv"
 	"strings"
@@ -29,6 +30,17 @@ type Service struct {
 
 func VariantKeys(a store.Asset) []string {
 	out := []string{a.StorageKey}
+	var files []store.AssetFile
+	if json.Unmarshal(a.Files, &files) == nil && len(files) > 0 {
+		seen := map[string]bool{a.StorageKey: true}
+		for _, f := range files {
+			if f.StorageKey != "" && !seen[f.StorageKey] {
+				out = append(out, f.StorageKey)
+				seen[f.StorageKey] = true
+			}
+		}
+		return out
+	}
 	if a.MIME != "image/png" {
 		return out
 	}

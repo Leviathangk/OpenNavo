@@ -7,9 +7,7 @@ import (
 	"strings"
 
 	"github.com/opennavo/opennavo/server/internal/about"
-	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
-	"github.com/opennavo/opennavo/server/internal/jobs"
 	"github.com/opennavo/opennavo/server/internal/searchtext"
 	"github.com/opennavo/opennavo/server/internal/service/seed"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -105,19 +103,7 @@ func (s *Service) systemWrite(ctx context.Context, op string, in Input) (any, er
 			if err := st.DB.WithContext(ctx).Exec("INSERT INTO app_config(key,value,description,updated_by,updated_at) VALUES(?,?::jsonb,?,?,?) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,description=EXCLUDED.description,updated_by=EXCLUDED.updated_by,updated_at=EXCLUDED.updated_at", in.Key, string(data), in.Body["description"], in.Actor.ID, s.now()).Error; err != nil {
 				return nil, err
 			}
-			if in.Key == about.Key {
-				c, err := about.Parse(data)
-				if err != nil {
-					return nil, domain.Validation()
-				}
-				payload, err := json.Marshal(jobs.Payload{Content: &content.Ref{Entity: "about"}, SourceHash: c.SourceHash(), Origin: domain.CurrentOperation(ctx)})
-				if err != nil {
-					return nil, err
-				}
-				if err := st.DB.WithContext(ctx).Exec(`INSERT INTO job_outbox(unique_key,job_type,payload,available_at) VALUES('translate:content:about:site.about','translate:content',?::jsonb,clock_timestamp()) ON CONFLICT(unique_key) DO UPDATE SET payload=EXCLUDED.payload,available_at=EXCLUDED.available_at`, string(payload)).Error; err != nil {
-					return nil, err
-				}
-			}
+
 		case "CreateSynonym", "UpdateSynonym":
 			terms, err := stringList(in.Body["terms"])
 			if err != nil {

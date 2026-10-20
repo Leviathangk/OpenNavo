@@ -15,6 +15,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/facts"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/seo"
@@ -43,6 +44,7 @@ type RankingPage struct {
 	Records []publicapi.RankingEntry `json:"records"`
 }
 type SitemapPage struct {
+	Lastmod *time.Time               `json:"lastmod"`
 	Current int                      `json:"current"`
 	Size    int                      `json:"size"`
 	Total   int                      `json:"total"`
@@ -89,7 +91,12 @@ func summary(p store.PublicPackage) publicapi.PackageSummary {
 	}
 	source := publicapi.Locale(p.I18n.SourceLocale)
 	machine := p.I18n.MachineTranslated
-	s := publicapi.PackageSummary{Link: p.Link, BundleIds: p.BundleIDs, SourceLocale: &source, MachineTranslated: &machine, Kind: publicapi.PackageKind(p.Kind), Token: p.Token, Name: p.Name, DisplayName: name, Summary: text, IconUrl: p.IconURL, AccentColor: p.Meta.AccentColor, Version: p.Version, Installs30d: p.Installs30d, Rank30d: p.Rank30d, AutoUpdates: p.AutoUpdates, Deprecated: p.Deprecated, Disabled: p.Disabled, IsFont: p.IsFont, IsLibrary: p.IsLibrary, EditorChoice: p.Meta.EditorChoice, VersionChangedAt: p.VersionChangedAt.UTC()}
+	s := publicapi.PackageSummary{RecommendationPaused: &p.StaleDisabled, Link: p.Link, BundleIds: p.BundleIDs, SourceLocale: &source, MachineTranslated: &machine, Kind: publicapi.PackageKind(p.Kind), Token: p.Token, Name: p.Name, DisplayName: name, Summary: text, IconUrl: p.IconURL, AccentColor: p.Meta.AccentColor, Version: p.Version, Installs30d: p.Installs30d, Rank30d: p.Rank30d, AutoUpdates: p.AutoUpdates, Deprecated: p.Deprecated, Disabled: p.Disabled, IsFont: p.IsFont, IsLibrary: p.IsLibrary, EditorChoice: p.Meta.EditorChoice, VersionChangedAt: p.VersionChangedAt.UTC()}
+	variants := make([]publicapi.ImageVariant, 0, len(p.IconVariants))
+	for _, v := range p.IconVariants {
+		variants = append(variants, publicapi.ImageVariant{Width: v.Width, Height: v.Height, Url: v.URL, Type: publicapi.ImageVariantType(v.Type)})
+	}
+	s.IconVariants = &variants
 	for _, category := range p.Categories {
 		if category.IsPrimary {
 			s.PrimaryCategory = &publicapi.CategoryRef{SourceLocale: localePointer(category.SourceLocale), MachineTranslated: boolPointer(category.MachineTranslated), Slug: category.Slug, Name: category.Name, Icon: category.Icon}
@@ -144,8 +151,15 @@ func (s *PublicService) Categories(ctx context.Context, locale string) ([]public
 		return tree(nil, map[int64]bool{}), nil
 	})
 }
-func (s *PublicService) Home(ctx context.Context, locale string) (publicapi.HomeData, error) {
-	data, err := cache.ReadThrough(ctx, s.Cache, "c:home:c2:"+locale+domain.LinksCacheKey(ctx), 5*time.Minute, func(ctx context.Context) (publicapi.HomeData, error) {
+func (s *PublicService) Home(ctx context.Context, locale string, requestedSize ...int) (publicapi.HomeData, error) {
+	sectionSize := 12
+	if len(requestedSize) > 0 {
+		sectionSize = requestedSize[0]
+	}
+	if sectionSize < 1 || sectionSize > 24 {
+		return publicapi.HomeData{}, domain.Validation()
+	}
+	data, err := cache.ReadThrough(ctx, s.Cache, fmt.Sprintf("c:home:c2:%s:%d%s", locale, sectionSize, domain.LinksCacheKey(ctx)), 5*time.Minute, func(ctx context.Context) (publicapi.HomeData, error) {
 		data := publicapi.HomeData{PopularCli: []publicapi.PackageSummary{}, Features: []publicapi.Feature{}, Collections: []publicapi.CollectionSummary{}}
 		var err error
 		data.Categories, err = s.Categories(ctx, locale)
@@ -156,7 +170,7 @@ func (s *PublicService) Home(ctx context.Context, locale string) (publicapi.Home
 			kind, sort string
 			target     *[]publicapi.PackageSummary
 		}{{"", "popular", &data.PopularApps}, {"", "updated", &data.RecentlyUpdated}} {
-			page, err := s.List(ctx, store.PublicFilter{Kind: section.kind, Sort: section.sort, Locale: locale, Current: 1, Size: 12, IncludeFonts: true})
+			page, err := s.List(ctx, store.PublicFilter{Kind: section.kind, Sort: section.sort, Locale: locale, Current: 1, Size: sectionSize, IncludeFonts: true})
 			if err != nil {
 				return data, err
 			}
@@ -175,13 +189,13 @@ func (s *PublicService) Home(ctx context.Context, locale string) (publicapi.Home
 	if err != nil {
 		return data, err
 	}
-	collections, err := s.Collections(ctx, locale, 1, 6)
+	collections, err := s.Collections(ctx, locale, 1, sectionSize)
 	data.Collections = collections.Records
 	return data, err
 
 }
 func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) (publicapi.PackageDetail, error) {
-	return cache.ReadThrough(ctx, s.Cache, cache.PackageDetailPrefix+kind+":"+token+":"+locale+domain.LinksCacheKey(ctx), 10*time.Minute, func(ctx context.Context) (publicapi.PackageDetail, error) {
+	d, err := cache.ReadThrough(ctx, s.Cache, cache.PackageDetailPrefix+kind+":"+token+":"+locale+domain.LinksCacheKey(ctx), cache.PackageDetailTTL, func(ctx context.Context) (publicapi.PackageDetail, error) {
 		p, err := s.Store.PublicPackage(ctx, kind, token, locale)
 		if err != nil {
 			return publicapi.PackageDetail{}, notFound(err)
@@ -279,7 +293,7 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 			d.FormulaeUrl = d.SourceUrl
 		}
 		if kind == "cask" || kind == "link" {
-			if d.Indexing, d.VersionCommittedAt, err = s.indexing(ctx, token); err != nil {
+			if d.Indexing, d.VersionCommittedAt, err = s.indexing(ctx, token, locale); err != nil {
 				return d, err
 			}
 			if err := s.appFacts(ctx, &d, p.ID, locale); err != nil {
@@ -293,6 +307,11 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 				return d, err
 			}
 			d.Articles = &related
+			collections, err := s.Store.PackageCollections(ctx, p.ID, locale)
+			if err != nil {
+				return d, err
+			}
+			d.Collections = &collections
 		}
 		shots, err := s.Store.PublicScreenshots(ctx, p.ID, locale)
 		if err != nil {
@@ -311,8 +330,50 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 			entry := releases.Records[0]
 			d.LatestRelease = &entry
 		}
+		if err := s.normalizedFacts(ctx, &d, p, locale); err != nil {
+			return d, err
+		}
 		return d, nil
 	})
+	if err != nil {
+		return d, err
+	}
+	now := time.Now()
+	if s.Now != nil {
+		now = s.Now()
+	}
+	if err := refreshFacts(&d, now); err != nil {
+		return d, err
+	}
+	if err := s.refreshIntentPages(ctx, token, locale, &d); err != nil {
+		return d, err
+	}
+	enabled, err := s.Store.AppIntegrationsEnabled(ctx)
+	if err != nil {
+		return d, err
+	}
+	if !enabled && d.Facts != nil {
+		empty := []publicapi.AppIntegrationFact{}
+		d.Facts.Integrations = &empty
+	}
+	if d.LatestRelease != nil && d.LatestRelease.Compatibility != nil {
+		raw, err := json.Marshal(d.LatestRelease.Compatibility)
+		if err != nil {
+			return d, err
+		}
+		var v facts.VersionCompatibility
+		if err = json.Unmarshal(raw, &v); err != nil {
+			return d, err
+		}
+		raw, err = json.Marshal(facts.SummarizeCompatibility(v.AppVersion, v.Requirements, now))
+		if err != nil {
+			return d, err
+		}
+		if err = json.Unmarshal(raw, d.LatestRelease.Compatibility); err != nil {
+			return d, err
+		}
+	}
+	return d, nil
 }
 func packageDisable(p store.PublicPackage, locale string) *publicapi.LifecycleNotice {
 	if p.StaleDisabled && !p.UpstreamDisabled {
@@ -328,6 +389,14 @@ func packageDisable(p store.PublicPackage, locale string) *publicapi.LifecycleNo
 			reason = "Sem atualização de versão há mais de 90 dias"
 		case "ru-RU":
 			reason = "Версия не обновлялась более 90 дней"
+		case "de-DE":
+			reason = "Seit mehr als 90 Tagen kein Versionsupdate"
+		case "fr-FR":
+			reason = "Aucune mise à jour de version depuis plus de 90 jours"
+		case "it-IT":
+			reason = "Nessun aggiornamento di versione da oltre 90 giorni"
+		case "zh-Hant":
+			reason = "超過 90 天沒有版本更新"
 		}
 		return &publicapi.LifecycleNotice{Reason: &reason}
 	}
@@ -478,6 +547,9 @@ func packageForPlatform(p store.PublicPackage, tag string) (store.PublicPackage,
 }
 
 func (s *PublicService) Dependencies(ctx context.Context, kind, token, locale string, depth int, platformTag string) (publicapi.Dependencies, error) {
+	if kind == "link" {
+		return publicapi.Dependencies{}, notFound(gorm.ErrRecordNotFound)
+	}
 	key := fmt.Sprintf("c:dep:c1:%s:%s:%s:%d:%s", kind, token, locale, depth, platformTag)
 	return cache.ReadThrough(ctx, s.Cache, key, 10*time.Minute, func(ctx context.Context) (publicapi.Dependencies, error) {
 		return s.dependencies(ctx, kind, token, locale, depth, platformTag)
@@ -665,16 +737,66 @@ func (s *PublicService) Sitemap(ctx context.Context, group string, current, size
 		return SitemapPage{}, err
 	}
 	rows, total, err := s.Store.SitemapIndexRows(ctx, group, current, size)
-	out := SitemapPage{current, size, total, []publicapi.SitemapEntry{}}
-	for _, row := range rows {
-		facts := row.Facts()
-		decision := seo.Decide(facts, policy)
-		if !decision.Indexable || (!decision.Enforced && facts.Unavailable()) {
-			continue
+	out := SitemapPage{Current: current, Size: size, Total: total, Records: []publicapi.SitemapEntry{}}
+	if err != nil {
+		return out, err
+	}
+	if err = s.Store.PopulatePageNotes(ctx, rows, 1); err != nil {
+		return out, err
+	}
+	if err := s.Store.PopulateIntentEligibility(ctx, rows, policy, s.WebBaseURL); err != nil {
+		return out, err
+	}
+	ids := make([]int64, len(rows))
+	for i, row := range rows {
+		ids[i] = row.ID
+	}
+	states, err := s.Store.PageStates(ctx, ids)
+	if err != nil {
+		return out, err
+	}
+	dates := map[int64]map[string]map[string]time.Time{}
+	for _, state := range states {
+		if dates[state.PackageID] == nil {
+			dates[state.PackageID] = map[string]map[string]time.Time{}
 		}
-		locales := make([]publicapi.SitemapLocale, 0, len(decision.Locales))
-		for _, locale := range decision.Locales {
-			locales = append(locales, publicapi.SitemapLocale{Locale: publicapi.Locale(locale), Lastmod: row.Lastmod(locale)})
+		if dates[state.PackageID][state.Locale] == nil {
+			dates[state.PackageID][state.Locale] = map[string]time.Time{}
+		}
+		key := state.PageKind
+		if state.PageNumber > 1 {
+			key += fmt.Sprintf(":%d", state.PageNumber)
+		}
+		dates[state.PackageID][state.Locale][key] = state.ContentModifiedAt.UTC()
+	}
+	for _, row := range rows {
+		locales := []publicapi.SitemapLocale{}
+		for _, locale := range seo.Locales {
+			pages := packagePages(row, locale, policy)
+			if !pages.Overview.InSitemap {
+				continue
+			}
+			lastmod := row.Lastmod(locale)
+			pageDates := dates[row.ID][locale]
+			if pageDates == nil {
+				pageDates = map[string]time.Time{}
+			}
+			if value, ok := pageDates["overview"]; ok {
+				lastmod = &value
+			}
+			if lastmod != nil && (out.Lastmod == nil || lastmod.After(*out.Lastmod)) {
+				out.Lastmod = lastmod
+			}
+			for _, value := range pageDates {
+				if out.Lastmod == nil || value.After(*out.Lastmod) {
+					date := value
+					out.Lastmod = &date
+				}
+			}
+			locales = append(locales, publicapi.SitemapLocale{Locale: publicapi.Locale(locale), Lastmod: lastmod, Pages: &pages, PageLastmod: &pageDates})
+		}
+		if len(locales) == 0 {
+			continue
 		}
 		isFont, notes := row.IsFont, row.NotesCount
 		out.Records = append(out.Records, publicapi.SitemapEntry{
@@ -687,7 +809,7 @@ func (s *PublicService) Sitemap(ctx context.Context, group string, current, size
 
 // indexing is the WP11 decision for one cask's pages, plus the Homebrew commit time of its current
 // version. Both are nil for unknown tokens.
-func (s *PublicService) indexing(ctx context.Context, token string) (*publicapi.PackageIndexing, *time.Time, error) {
+func (s *PublicService) indexing(ctx context.Context, token, locale string) (*publicapi.PackageIndexing, *time.Time, error) {
 	row, found, err := s.Store.IndexRowByToken(ctx, token)
 	if err != nil || !found {
 		return nil, nil, err
@@ -696,16 +818,27 @@ func (s *PublicService) indexing(ctx context.Context, token string) (*publicapi.
 	if err != nil {
 		return nil, nil, err
 	}
+	rows := []store.IndexRow{row}
+	if err := s.Store.PopulatePageNotes(ctx, rows, 1); err != nil {
+		return nil, nil, err
+	}
+	if err := s.Store.PopulateIntentEligibility(ctx, rows, policy, s.WebBaseURL); err != nil {
+		return nil, nil, err
+	}
+	row = rows[0]
+	pages := packagePages(row, locale, policy)
 	decision := seo.Decide(row.Facts(), policy)
-	locales := make([]publicapi.Locale, 0, len(decision.Locales))
-	for _, locale := range decision.Locales {
-		locales = append(locales, publicapi.Locale(locale))
-	}
 	var reason *string
-	if decision.Reason != "" {
-		reason = &decision.Reason
+	if pages.Overview.Reason != "" {
+		reason = &pages.Overview.Reason
 	}
-	return &publicapi.PackageIndexing{Indexable: decision.Indexable, Reason: reason, Locales: locales, Enforced: decision.Enforced, NotesCount: row.NotesCount}, row.CommittedAt, nil
+	settings, err := s.Store.SEOSettings(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	merged := row.Kind == "cask"
+	redirect := merged && settings.Settings.Pages.DetailsRedirect && pages.Overview.Robots == "index, follow"
+	return &publicapi.PackageIndexing{DetailsMerged: &merged, DetailsRedirect: &redirect, Indexable: pages.Overview.Robots == "index, follow", Reason: reason, Locales: pages.Overview.Hreflang, Enforced: decision.Enforced, NotesCount: row.NotesCount, Pages: pages}, row.CommittedAt, nil
 }
 func (s *PublicService) Config(ctx context.Context, platform, version, locale string) (publicapi.ClientConfig, error) {
 	if platform == "desktop" && version == "" {
@@ -773,6 +906,13 @@ func (s *PublicService) Feedback(ctx context.Context, r publicapi.FeedbackCreate
 		return 0, nil
 	}
 	input := store.FeedbackInput{Type: string(r.Type), Content: r.Content, Contact: r.Contact, Platform: string(r.Platform), AppVersion: r.AppVersion, OSVersion: r.OsVersion, ErrorCode: r.ErrorCode}
+	if r.Attachments != nil && len(*r.Attachments) > 0 {
+		return 0, domain.Validation()
+	}
+	input.PackageVersion, input.MacOSVersion, input.Symptom, input.DiagnosticLog = r.PackageVersion, r.MacosVersion, r.Symptom, r.DiagnosticLog
+	if r.Links != nil {
+		input.Links = *r.Links
+	}
 	if r.PackageKind != nil && r.PackageToken != nil {
 		p, err := s.Store.PublicPackage(ctx, string(*r.PackageKind), *r.PackageToken, "zh-CN")
 		if err == nil {
@@ -781,5 +921,9 @@ func (s *PublicService) Feedback(ctx context.Context, r publicapi.FeedbackCreate
 			return 0, err
 		}
 	}
-	return s.Store.SaveFeedback(ctx, input)
+	id, err := s.Store.SaveFeedback(ctx, input)
+	if errors.Is(err, facts.ErrInvalid) {
+		return 0, domain.Validation()
+	}
+	return id, err
 }

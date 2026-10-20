@@ -1,5 +1,8 @@
+import { BRAND } from '@opennavo/shared';
+
 // Footer link groups shared by the landing and store footers (WP7), so every page links the core
 // entry points: browsing lists plus download, Brewfile, about, feedback and the source repository.
+// All Apps and the A–Z directory (T1) put every listed app within three clicks of any page.
 export function useFooterLinks() {
   const { t } = useI18n();
   const localePath = useLocalePath();
@@ -9,7 +12,11 @@ export function useFooterLinks() {
     {
       key: 'browse',
       title: t('nav.browse'),
-      links: links(['discover', 'categories', 'rankings', 'recent', 'articles', 'collections'])
+      links: [
+        ...links(['discover', 'apps']),
+        { key: 'az', label: t('nav.az'), href: localePath('/browse'), external: false },
+        ...links(['categories', 'rankings', 'recent', 'articles', 'collections'])
+      ]
     },
     {
       key: 'site',
@@ -17,7 +24,7 @@ export function useFooterLinks() {
       // GitHub is a brand name in every locale, so it has no message key.
       links: [
         ...links(['download', 'security', 'brewfile', 'about', 'feedback']),
-        { key: 'github', label: 'GitHub', href: 'https://github.com/opennavo/OpenNavo', external: true }
+        { key: 'github', label: 'GitHub', href: BRAND.repository, external: true }
       ]
     }
   ]);

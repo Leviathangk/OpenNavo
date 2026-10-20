@@ -309,6 +309,9 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 					return fail(domain.CodeInvalidState)
 				}
 			}
+			if err := s.validateRestoration(ctx, st, ref, current, target); err != nil {
+				return err
+			}
 			if err := st.RestoreHistoryState(ctx, ref, target); err != nil {
 				return err
 			}
@@ -323,7 +326,7 @@ func (s *Service) restoreHistory(ctx context.Context, opName string, in Input) (
 					if err := st.ForgetContentTranslation(ctx, translatedRef); err != nil {
 						return err
 					}
-					if err := st.ForceContentTranslation(ctx, translatedRef); err != nil {
+					if err := st.ScheduleContentTranslation(ctx, translatedRef); err != nil {
 						return err
 					}
 					src, err := st.ReadContentSource(ctx, translatedRef)

@@ -5,6 +5,15 @@ import vm from 'node:vm';
 import ts from 'typescript';
 export const read = path => JSON.parse(readFileSync(path, 'utf8'));
 export const manifest = read('packages/shared/src/locales.json');
+// web and shared strings ship on the website, so they cover every site locale; the other targets are app surfaces.
+const SITE_TARGETS = new Set(['web', 'shared']);
+export const targetLocales = name =>
+  SITE_TARGETS.has(name) ? manifest.locales : manifest.locales.filter(locale => locale.surfaces.includes('app'));
+/** Locales a target needs translated files for: everything except the zh-CN source and the en-US authoring text. */
+export const translatedCodes = name =>
+  targetLocales(name)
+    .map(locale => locale.code)
+    .filter(code => !['zh-CN', 'en-US'].includes(code));
 export const hash = value => createHash('sha256').update(value).digest('hex');
 export function sourceObject(path, name, bindings = {}) {
   const ast = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
@@ -134,9 +143,7 @@ export function exportPlan(names) {
     validate(source, english, source, 'zh-CN', name);
     validate(source, english, english, 'en-US', name);
     const translations = Object.fromEntries(
-      manifest.locales
-        .filter(x => !['zh-CN', 'en-US'].includes(x.code))
-        .map(({ code }) => [code, existsSync(target.path(code)) ? flatten(read(target.path(code))) : {}])
+      translatedCodes(name).map(code => [code, existsSync(target.path(code)) ? flatten(read(target.path(code))) : {}])
     );
     const localeHashes = {};
     for (const [code, values] of Object.entries(translations)) {
@@ -195,7 +202,7 @@ export function writeResult(plan, result, partial = false) {
     if (
       Object.keys(result[name] ?? {})
         .sort()
-        .join(',') !== ['ja-JP', 'es-ES', 'pt-BR', 'ru-RU'].sort().join(',')
+        .join(',') !== translatedCodes(name).sort().join(',')
     )
       throw new Error(`Missing translation results: ${name}`);
   withLock(() => {

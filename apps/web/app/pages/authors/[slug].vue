@@ -63,19 +63,19 @@ useSchemaOrg(
     if (value.bio) person.description = value.bio;
     if (value.avatarUrl) person.image = value.avatarUrl;
     if (value.links.length) person.sameAs = value.links.map(link => link.url);
-    return [
-      defineWebPage({ '@type': 'ProfilePage', mainEntity: { '@id': personId } }),
-      definePerson(person as PersonInput)
-    ];
+    return [definePerson(person as PersonInput)];
   })
 );
+usePageSchema(() => ({ type: 'ProfilePage', mainEntity: author.value ? personId : undefined }));
 useItemListSchema(
   () =>
     (data.value?.articles.records ?? []).map(card => ({
       name: card.title,
       path: localePath(`/articles/${card.slug}`)
     })),
-  () => (page.value - 1) * ARTICLE_PAGE_SIZE + 1
+  () => (page.value - 1) * ARTICLE_PAGE_SIZE + 1,
+  () => data.value?.articles.total,
+  { asPage: false }
 );
 
 usePageSeo({

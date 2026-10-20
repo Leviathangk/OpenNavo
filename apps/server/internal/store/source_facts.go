@@ -136,5 +136,11 @@ func (s *Store) DeleteSourceFact(ctx context.Context, key SourceFactKey, token s
 }
 
 func sourceFactInvalidation(ctx context.Context, tx *gorm.DB, packageID int64, token string) error {
-	return addCacheInvalidation(ctx, tx, fmt.Sprintf("source-facts:%d", packageID), cache.PackageDetailPrefix+"*:"+cache.PatternLiteral(token)+":*")
+	var kind string
+	if err := tx.WithContext(ctx).Raw("SELECT kind FROM packages WHERE id=?", packageID).Scan(&kind).Error; err != nil {
+		return err
+	}
+	// Agent writes enqueue this same canonical entity after the fact transaction.
+	// Merge so a later source refresh cannot replace its wider pending scope.
+	return mergeCacheInvalidation(ctx, tx, fmt.Sprintf("seo-content:pkg:%d", packageID), cache.PackageDetailPrefix+cache.PatternLiteral(kind)+":"+cache.PatternLiteral(token)+":*")
 }

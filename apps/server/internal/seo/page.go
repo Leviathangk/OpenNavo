@@ -1,0 +1,201 @@
+package seo
+
+import (
+	"net/url"
+	"slices"
+	"strings"
+	"unicode"
+
+	"github.com/opennavo/opennavo/server/internal/i18n"
+)
+
+type PageKind string
+
+const (
+	PageTroubleshooting      PageKind = "troubleshooting"
+	PageAlternatives         PageKind = "alternatives"
+	PageUninstall            PageKind = "uninstall"
+	PageOverview             PageKind = "overview"
+	PageVersions             PageKind = "versions"
+	PageDependencies         PageKind = "dependencies"
+	PageDetails              PageKind = "details"
+	VersionsPageSize                  = 24
+	TroubleshootingMinIssues          = 3
+)
+
+type NotesFacts struct {
+	Chars     int
+	HasSource bool
+}
+
+type PageRef struct {
+	Kind     PageKind
+	Locale   string
+	Page     int
+	Filtered bool
+}
+
+type PageDecision struct {
+	Robots        string   `json:"robots"`
+	CanonicalPath string   `json:"canonicalPath"`
+	Hreflang      []string `json:"hreflang"`
+	InSitemap     bool     `json:"inSitemap"`
+	Announce      bool     `json:"announce"`
+	Reason        string   `json:"reason"`
+}
+
+func OverviewPath(f Facts, locale string) string {
+	return i18n.Metadata[i18n.LocaleCode(locale)].Prefix + "/apps/" + url.PathEscape(f.Token)
+}
+
+// TranslationReady describes a published snapshot, not its freshness against today's source.
+// The write path checks the source hash when publishing; source edits do not invalidate snapshots.
+func TranslationReady(f Facts, locale string) bool {
+	return locale == f.SourceLocale || slices.Contains(f.ReadyLocales, locale)
+}
+
+// DecidePage is the single policy for a concrete URL. Hreflang is filtered using the same page
+// number and notes threshold for every language, making the links reciprocal.
+func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
+	d := PageDecision{Robots: "noindex, follow", Hreflang: []string{}}
+	if !i18n.Valid(ref.Locale) || ref.Page < 0 {
+		d.Reason = "invalid_page"
+		return d
+	}
+	if f.Kind == "link" && (ref.Kind == PageDetails || ref.Kind == PageDependencies) {
+		d.Reason = "unsupported_page"
+		return d
+	}
+	if ref.Kind == PageAlternatives || ref.Kind == PageUninstall {
+		return decideIntentPage(f, ref, p)
+	}
+	if ref.Kind == PageTroubleshooting {
+		return decideTroubleshootingPage(f, ref, p)
+	}
+	if ref.Kind == PageDetails {
+		d.CanonicalPath, d.Reason = OverviewPath(f, ref.Locale), "consolidated"
+		return d
+	}
+	if ref.Kind == PageDependencies && !f.HasDependencyContent {
+		d.CanonicalPath, d.Reason = OverviewPath(f, ref.Locale), "duplicate_of_overview"
+		return d
+	}
+	if ref.Kind != PageOverview && ref.Kind != PageVersions && ref.Kind != PageDependencies {
+		d.Reason = "unsupported_page"
+		return d
+	}
+	if ref.Filtered {
+		d.Reason = "filtered_view"
+		return d
+	}
+	entity := Decide(f, p)
+	if f.Hidden || f.Unavailable() || !entity.Indexable {
+		d.Reason = entity.Reason
+		if d.Reason == "" {
+			_, d.Reason = Evaluate(f)
+		}
+		return d
+	}
+	page := max(1, ref.Page)
+	minimum := p.VersionsMinNotesChars
+	if minimum <= 0 {
+		minimum = 300
+	}
+	locales := []string{}
+	for _, locale := range entity.Locales {
+		if !i18n.ValidApp(locale) && !entity.Eligible {
+			continue
+		}
+		strict := !i18n.ValidApp(locale) || (p.TranslationMode == "enforce" && (len(p.TranslationLocales) == 0 || slices.Contains(p.TranslationLocales, locale)))
+		if strict && !TranslationReady(f, locale) {
+			continue
+		}
+		if ref.Kind == PageVersions {
+			notes := f.NotesPages[page][locale]
+			if notes.Chars < minimum || !notes.HasSource {
+				continue
+			}
+		}
+		locales = append(locales, locale)
+	}
+	if !slices.Contains(locales, ref.Locale) {
+		d.Reason = "locale_not_ready"
+		if ref.Kind == PageVersions && TranslationReady(f, ref.Locale) {
+			d.Reason = "thin_notes_page"
+		}
+		return d
+	}
+	d.Robots, d.Hreflang, d.Announce = "index, follow", locales, true
+	d.InSitemap = page == 1 && (ref.Kind != PageVersions || p.VersionsSitemap)
+	return d
+}
+
+func decideTroubleshootingPage(f Facts, ref PageRef, p Policy) PageDecision {
+	d := PageDecision{Robots: "noindex, follow", CanonicalPath: OverviewPath(f, ref.Locale), Hreflang: []string{}, Reason: "insufficient_verified_issues"}
+	if ref.Filtered || ref.Page > 1 {
+		d.Reason = "filtered_view"
+		return d
+	}
+	overview := DecidePage(f, PageRef{Kind: PageOverview, Locale: ref.Locale, Page: 1}, p)
+	if !overview.InSitemap {
+		d.Reason = overview.Reason
+		return d
+	}
+	if f.TroubleshootingIssues[ref.Locale] < TroubleshootingMinIssues {
+		return d
+	}
+	for _, locale := range overview.Hreflang {
+		if f.TroubleshootingIssues[locale] >= TroubleshootingMinIssues {
+			d.Hreflang = append(d.Hreflang, locale)
+		}
+	}
+	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = "index, follow", "", true, true, ""
+	return d
+}
+
+// ReadableChars counts visible text characters; CJK letters count twice. Callers supply
+// rendered Markdown text, so formatting and link destinations never meet the threshold.
+func ReadableChars(text string) int {
+	n := 0
+	for _, r := range strings.TrimSpace(text) {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			n++
+			if unicode.In(r, unicode.Han, unicode.Hiragana, unicode.Katakana, unicode.Hangul) {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+func decideIntentPage(f Facts, ref PageRef, p Policy) PageDecision {
+	d := PageDecision{Robots: "noindex, follow", CanonicalPath: OverviewPath(f, ref.Locale), Hreflang: []string{}, Reason: "intent_not_eligible"}
+	if !p.IntentPagesEnabled {
+		d.Reason = "intent_disabled"
+		return d
+	}
+	if ref.Filtered || ref.Page > 1 {
+		d.Reason = "filtered_view"
+		return d
+	}
+	if ref.Kind == PageUninstall && f.Kind != "cask" {
+		d.Reason = "unsupported_page"
+		return d
+	}
+	overview := DecidePage(f, PageRef{Kind: PageOverview, Locale: ref.Locale, Page: 1}, p)
+	if !overview.InSitemap {
+		d.Reason = overview.Reason
+		return d
+	}
+	for _, locale := range overview.Hreflang {
+		if slices.Contains(f.IntentLocales[ref.Kind], locale) {
+			d.Hreflang = append(d.Hreflang, locale)
+		}
+	}
+	if !slices.Contains(d.Hreflang, ref.Locale) {
+		d.Hreflang = []string{}
+		return d
+	}
+	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = "index, follow", "", true, true, ""
+	return d
+}

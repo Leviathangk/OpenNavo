@@ -19,12 +19,76 @@ const privateRules = [
   '/pt/search',
   '/pt/brewfile',
   '/ru/search',
-  '/ru/brewfile'
+  '/ru/brewfile',
+  '/de/search',
+  '/de/brewfile',
+  '/fr/search',
+  '/fr/brewfile',
+  '/it/search',
+  '/it/brewfile',
+  '/zh-hant/search',
+  '/zh-hant/brewfile'
 ].map(path => `Disallow: ${path}`);
 
 describe('robots.txt generation', () => {
+  it('Search, user-fetch and existing diagnostic tokens cannot be blocked or limited', () => {
+    const expected = [
+      'Googlebot',
+      'Googlebot-Image',
+      'Googlebot-News',
+      'Googlebot-Video',
+      'Storebot-Google',
+      'Google-InspectionTool',
+      'AdsBot-Google',
+      'Bingbot',
+      'BingPreview',
+      'msnbot',
+      'OAI-SearchBot',
+      'ChatGPT-User',
+      'Claude-SearchBot',
+      'Claude-User',
+      'PerplexityBot',
+      'Perplexity-User',
+      'DuckDuckBot',
+      'DuckAssistBot',
+      'Applebot',
+      'YandexBot',
+      'Baiduspider',
+      'Meta-WebIndexer',
+      'Meta-ExternalFetcher',
+      'MistralAI-Index',
+      'MistralAI-User',
+      'Yeti'
+    ];
+    expect([...LOCKED_CRAWLERS].sort()).toEqual([...expected].sort());
+    for (const category of ['training', 'seoTools'] as const) {
+      for (const mode of ['block', 'limit'] as const) {
+        const rule = { mode: 'allow' as const, delaySeconds: 10, bots: [] };
+        const policy: CrawlerPolicy = { training: rule, seoTools: rule };
+        policy[category] = { mode, delaySeconds: 10, bots: expected.map(bot => bot.toUpperCase()) };
+        expect(buildRobotsTxt({ crawlers: policy, indexable: true })).toBe(
+          ['User-agent: *', ...privateRules, ''].join('\n')
+        );
+      }
+    }
+  });
+
+  it('Preserves training and use-control defaults while leaving them configurable', () => {
+    const unlocked = ['GPTBot', 'Google-Extended', 'Applebot-Extended', 'Meta-ExternalAgent', 'MistralAI-Training'];
+    const defaults = buildRobotsTxt({ crawlers: DEFAULT_CRAWLER_POLICY, indexable: true });
+    expect(DEFAULT_CRAWLER_POLICY.training).toEqual({ mode: 'limit', delaySeconds: 10, bots: ['ClaudeBot'] });
+    for (const bot of unlocked) {
+      expect(defaults).not.toContain(`User-agent: ${bot}\n`);
+      const crawlers: CrawlerPolicy = {
+        ...DEFAULT_CRAWLER_POLICY,
+        training: { mode: 'block', delaySeconds: 10, bots: [bot] }
+      };
+      expect(buildRobotsTxt({ crawlers, indexable: true })).toContain(`User-agent: ${bot}\nDisallow: /\n`);
+    }
+  });
+
   it('Default policy keeps search engines on the default group, blocks SEO tools and slows ClaudeBot', () => {
-    expect(ROBOTS_PRIVATE_PATHS).toHaveLength(12);
+    expect(ROBOTS_PRIVATE_PATHS).toHaveLength(20);
     expect(
       buildRobotsTxt({
         crawlers: DEFAULT_CRAWLER_POLICY,

@@ -46,7 +46,6 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   system_github: () => import("@/views/system/github/index.vue"),
   system_role: () => import("@/views/system/role/index.vue"),
   system_seo: () => import("@/views/system/seo/index.vue"),
-  system_translation: () => import("@/views/system/translation/index.vue"),
   system_user: () => import("@/views/system/user/index.vue"),
   "user-center": () => import("@/views/user-center/index.vue"),
 };

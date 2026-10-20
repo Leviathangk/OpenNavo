@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { matchLocale } from '../src/locale';
+import { SITE_LOCALES } from '../src/locales.gen';
 import { readFileSync } from 'node:fs';
 
 const sharedCases: { name: string; languages: string[]; expected: string }[] = JSON.parse(
@@ -27,4 +28,27 @@ describe('Locale matching', () => {
     [[''], 'en-US'],
     [[], 'en-US']
   ])('%j → %s', (languages, expected) => expect(matchLocale(languages)).toBe(expected));
+
+  it.each([
+    [['de-AT'], 'de-DE'],
+    [['fr-CA', 'en-US'], 'fr-FR'],
+    [['it-CH'], 'it-IT'],
+    [['zh-TW'], 'zh-Hant'],
+    [['zh-HK'], 'zh-Hant'],
+    [['zh-MO'], 'zh-Hant'],
+    [['zh-Hant-TW'], 'zh-Hant'],
+    [['zh-Hans-HK'], 'zh-CN'],
+    [['zh-SG'], 'zh-CN'],
+    [['zh'], 'zh-CN'],
+    [['nl-NL', 'it-IT'], 'it-IT'],
+    [['nl-NL'], 'en-US']
+  ])('site %j → %s', (languages, expected) => expect(matchLocale(languages, SITE_LOCALES)).toBe(expected));
+
+  it('keeps Traditional Chinese browsers on Simplified when only app locales are supported', () => {
+    expect(matchLocale(['zh-TW'])).toBe('zh-CN');
+  });
+
+  it('moves on to the next preference when no Chinese locale is supported', () => {
+    expect(matchLocale(['zh-TW', 'ja-JP'], ['en-US', 'ja-JP'])).toBe('ja-JP');
+  });
 });

@@ -23,10 +23,11 @@ const bulkContentRows = 50
 // types in apps/web/server/utils/edgeCache.ts.
 // Home and list pages expire within minutes and need no purge. The whole host is never purged: that
 // would also evict the 30-day share images (/_og/) and the hashed build assets (/_nuxt/).
-var longCachedSections = []string{"/apps", "/articles", "/authors"}
+var longCachedSections = []string{"/apps", "/articles", "/authors", "/collections"}
 
 // Plan lists what one run refreshes and announces.
 type Plan struct {
+	Decisions map[string]seo.PageDecision
 	// Paths are page-cache prefixes, one per language and token; each covers that app's tabs and payloads.
 	Paths []string
 	// PurgePrefixes are the same pages as Cloudflare purge prefixes (host and path, no scheme), each
@@ -96,7 +97,7 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 			announce[change.PackageID] = true
 		}
 	}
-	var plan Plan
+	plan := Plan{Decisions: map[string]seo.PageDecision{}}
 	seenPath, seenPurge, seenAnnounce := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, id := range order {
 		now, known := current[id]
@@ -116,18 +117,24 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 		}
 		row, live := index[id]
 		for _, token := range list {
-			locales := seo.Locales
-			// The current token of a live app is announced only where it is indexable; former
-			// tokens (now redirects) and removed apps (now 410) are announced as changed.
-			if live && known && token == now.Token {
-				decision := seo.Decide(row.Facts(), policy)
-				if row.Hidden || !decision.Indexable {
-					continue
+			for _, locale := range seo.Locales {
+				if live && known && token == now.Token {
+					for _, kind := range []seo.PageKind{seo.PageOverview, seo.PageVersions, seo.PageDependencies, seo.PageDetails, seo.PageAlternatives, seo.PageUninstall, seo.PageTroubleshooting} {
+						d := seo.DecidePage(row.Facts(), seo.PageRef{Kind: kind, Locale: locale, Page: 1}, policy)
+						if !d.Announce {
+							continue
+						}
+						path := localePrefix(locale) + "/apps/" + token
+						if kind != seo.PageOverview {
+							path += "/" + string(kind)
+						}
+						plan.IndexNowURLs = appendUnique(plan.IndexNowURLs, seenAnnounce, siteURL+path)
+						plan.Decisions[siteURL+path] = d
+					}
+				} else {
+					// Redirects and removals must still be announced, so engines can retire old URLs.
+					plan.IndexNowURLs = appendUnique(plan.IndexNowURLs, seenAnnounce, siteURL+localePrefix(locale)+"/apps/"+token)
 				}
-				locales = decision.Locales
-			}
-			for _, locale := range locales {
-				plan.IndexNowURLs = appendUnique(plan.IndexNowURLs, seenAnnounce, siteURL+localePrefix(locale)+"/apps/"+token)
 			}
 		}
 	}
@@ -141,7 +148,7 @@ func ptr(value *string) string {
 	return *value
 }
 
-// ContentPlan covers changed pages outside the catalog (articles, authors) in all six languages.
+// ContentPlan covers changed pages outside the catalog in all site languages.
 func ContentPlan(changes []store.ContentURLChange, siteURL string) Plan {
 	siteURL, host := strings.TrimRight(siteURL, "/"), purgeHost(siteURL)
 	var plan Plan
@@ -154,7 +161,7 @@ func ContentPlan(changes []store.ContentURLChange, siteURL string) Plan {
 				// A home path would purge a whole language, or the whole host with its share images and
 				// build assets; section roots would evict every detail page. These short-TTL
 				// pages expire within minutes instead.
-				if strings.Trim(path, "/") != "" && !slices.Contains(longCachedSections, "/"+strings.Trim(path, "/")) {
+				if strings.Trim(path, "/") != "" && (change.PurgeSections || !slices.Contains(longCachedSections, "/"+strings.Trim(path, "/"))) {
 					plan.PurgePrefixes = appendUnique(plan.PurgePrefixes, seenPurge, host+full)
 				}
 				if change.Announce {
@@ -178,5 +185,12 @@ func (p Plan) Merge(other Plan) Plan {
 		}
 		return list
 	}
-	return Plan{Paths: merge(p.Paths, other.Paths), PurgePrefixes: merge(p.PurgePrefixes, other.PurgePrefixes), IndexNowURLs: merge(p.IndexNowURLs, other.IndexNowURLs)}
+	decisions := map[string]seo.PageDecision{}
+	for url, d := range p.Decisions {
+		decisions[url] = d
+	}
+	for url, d := range other.Decisions {
+		decisions[url] = d
+	}
+	return Plan{Paths: merge(p.Paths, other.Paths), PurgePrefixes: merge(p.PurgePrefixes, other.PurgePrefixes), IndexNowURLs: merge(p.IndexNowURLs, other.IndexNowURLs), Decisions: decisions}
 }

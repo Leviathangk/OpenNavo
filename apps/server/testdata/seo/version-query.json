@@ -1,0 +1,13 @@
+[
+  {"query":"notes=true","notes":true,"original":false,"noindex":false,"canonical":"","status":200,"robots":"noindex, follow"},
+  {"query":"notes=true&page=2","notes":true,"original":false,"noindex":false,"canonical":"page=2","status":404,"robots":""},
+  {"query":"notes=1&notes=0&page=2","notes":false,"original":false,"noindex":true,"canonical":"page=2","status":200,"robots":"noindex, follow"},
+  {"query":"notes=0&notes=1&page=2","notes":false,"original":false,"noindex":true,"canonical":"page=2","status":200,"robots":"noindex, follow"},
+  {"query":"notes=1&notes=1&page=2","notes":false,"original":false,"noindex":true,"canonical":"page=2","status":200,"robots":"noindex, follow"},
+  {"query":"notes=true&notes=0","notes":false,"original":false,"noindex":false,"canonical":"","status":200,"robots":"index, follow"},
+  {"query":"notes=0","notes":false,"original":false,"noindex":false,"canonical":"","status":200,"robots":"index, follow"},
+  {"query":"original=true","notes":false,"original":true,"noindex":false,"canonical":"","status":200,"robots":"index, follow"},
+  {"query":"original=1","notes":false,"original":true,"noindex":true,"canonical":"original=1","status":200,"robots":"noindex, follow"},
+  {"query":"original=1&original=0","notes":false,"original":false,"noindex":true,"canonical":"","status":200,"robots":"noindex, follow"},
+  {"query":"original=0&original=1","notes":false,"original":false,"noindex":true,"canonical":"","status":200,"robots":"noindex, follow"}
+]

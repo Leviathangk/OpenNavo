@@ -222,5 +222,5 @@ func TestLinkIndexOverrideInvalidatesLinkDetails(t *testing.T) {
 	require.NoError(t, err)
 	var payload string
 	require.NoError(t, st.DB.Raw("SELECT payload::text FROM job_outbox WHERE unique_key='cache:invalidate:seo-index:link-seo'").Scan(&payload).Error)
-	require.JSONEq(t, `["c:pkg:c4:link:link-seo:*"]`, payload)
+	require.JSONEq(t, `["c:pkg:c5:link:link-seo:*"]`, payload)
 }

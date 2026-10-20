@@ -11,6 +11,7 @@ import {
   useUiMessages
 } from '@opennavo/ui';
 import type { OnKeyValueItem } from '@opennavo/ui';
+import { detailsDescription } from '~/utils/seoTitles';
 
 // Installation details (08 §10.8): location, bundled commands, uninstall behavior, caveats, download URLs, definition/formulae.brew.sh links.
 const props = defineProps<{ kind: PackageKind }>();
@@ -22,12 +23,15 @@ const { data: pkg, token } = await usePackage(props.kind);
 if (pkg.value?.kind === 'link') throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true });
 
 const messages = useUiMessages();
-const downloadSha = computed(() => pkg.value?.downloadSha256);
+// T6: the download, its checksum, artifacts and caveats come from facts.overview, as on the overview.
+const overview = computed(() => pkg.value?.facts.overview);
+const downloadSha = computed(() => overview.value?.sha256);
 
 const items = computed<OnKeyValueItem[]>(() => {
   const value = pkg.value;
   if (!value) return [];
-  const artifacts = value.artifacts;
+  const artifacts = value.facts.overview.artifacts;
+  const download = value.facts.overview.downloadUrl;
   const list: OnKeyValueItem[] = [{ key: 'tap', label: t('package.details.tap'), value: value.tap, mono: true }];
   if (value.names.length > 1)
     list.push({ key: 'names', label: t('package.details.names'), value: value.names.join(' · ') });
@@ -50,16 +54,15 @@ const items = computed<OnKeyValueItem[]>(() => {
     });
   if (value.kegOnly)
     list.push({ key: 'keg', label: t('package.details.kegOnly'), value: t('package.details.kegOnlyValue') });
-  if (value.downloadUrl)
+  if (download)
     list.push({
       key: 'download',
       label: t('package.details.download'),
-      value: displayUrl(value.downloadUrl),
-      href: value.downloadUrl
+      value: displayUrl(download),
+      href: download
     });
-  // 08 §10.8: truncate displayed SHA-256; copy full value with the button below.
-  if (downloadSha.value)
-    list.push({ key: 'sha256', label: 'SHA-256', value: `${downloadSha.value.slice(0, 16)}…`, mono: true });
+  // B8: the full SHA-256 is in the HTML (the row may still shorten it on screen); the button copies it.
+  if (downloadSha.value) list.push({ key: 'sha256', label: 'SHA-256', value: downloadSha.value, mono: true });
   list.push({
     key: 'source',
     label: t('package.details.source'),
@@ -96,7 +99,7 @@ async function copySha() {
 
 usePageSeo({
   title: () => t('package.details.metaTitle', { name: pkg.value?.displayName ?? token.value }),
-  description: () => pkg.value?.summary ?? undefined
+  description: () => detailsDescription(pkg.value?.displayName ?? token.value, t)
 });
 </script>
 
@@ -109,14 +112,14 @@ usePageSeo({
           <OnButton size="xs" icon="copy" @click="copySha">{{ t('download.copySha') }}</OnButton>
         </div>
       </section>
-      <OnCaskArtifacts v-if="pkg.artifacts.entries?.length" :entries="pkg.artifacts.entries" />
+      <OnCaskArtifacts v-if="overview?.artifacts.entries?.length" :entries="overview.artifacts.entries" />
       <section
-        v-if="pkg.caveats"
+        v-if="overview?.caveats"
         class="rounded-big border border-solid border-status-warning bg-surface-card px-18px py-14px"
       >
         <h2 class="m-0 text-13.5px font-600 text-status-warning">{{ t('package.caveats') }}</h2>
         <pre class="m-0 mt-8px whitespace-pre-wrap font-mono text-12px leading-[1.6] text-ink-secondary"><OnCodeText
-          :text="pkg.caveats"
+          :text="overview.caveats"
         /></pre>
       </section>
     </div>

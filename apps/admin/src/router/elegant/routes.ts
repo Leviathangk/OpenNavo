@@ -430,17 +430,6 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
-        name: 'system_translation',
-        path: '/system/translation',
-        component: 'view.system_translation',
-        meta: {
-          title: 'system_translation',
-          i18nKey: 'route.system_translation',
-          order: 4,
-          roles: ['R_ADMIN']
-        }
-      },
-      {
         name: 'system_user',
         path: '/system/user',
         component: 'view.system_user',

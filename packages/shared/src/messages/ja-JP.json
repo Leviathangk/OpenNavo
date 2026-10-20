@@ -172,5 +172,10 @@
     "noResultsDescription": "英語名または拼音をお試しいただくか、収録してほしい App をお知らせください。",
     "offlineTitle": "オフラインです",
     "offlineDescription": "ローカルにキャッシュされたカタログを表示中です。オンラインになると自動で更新します。"
+  },
+  "languageSuggestion": {
+    "message": "{language}で閲覧しますか？",
+    "switch": "{language}に切り替える",
+    "dismiss": "今後表示しない"
   }
 }

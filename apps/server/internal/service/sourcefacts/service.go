@@ -22,7 +22,7 @@ const (
 	AppStore = "app_store"
 
 	recheck      = 30 * 24 * time.Hour
-	priceRecheck = 14 * 24 * time.Hour
+	priceRecheck = 24 * time.Hour
 	maxBackoff   = 7 * 24 * time.Hour
 )
 
@@ -34,6 +34,7 @@ type AppStoreSource interface {
 }
 
 type Service struct {
+	NVD      NVDSource
 	Store    *store.Store
 	GitHub   GitHubSource
 	AppStore AppStoreSource
@@ -110,6 +111,9 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		return nil, err
 	}
 	if err := s.runAppStore(ctx, queues[AppStore], start.Add(budget), stats); err != nil {
+		return nil, err
+	}
+	if err := s.runNVD(ctx, start.Add(budget)); err != nil {
 		return nil, err
 	}
 	var out map[string]any
@@ -230,7 +234,7 @@ func (s *Service) runAppStore(ctx context.Context, queue []pending, deadline tim
 			ids = ids[:sources.MaxLookupIDs]
 		}
 		if stats.Lookups > 0 {
-			if err := s.sleep(ctx, s.AppStorePause); err != nil {
+			if err := s.sleep(ctx, max(s.AppStorePause, 3*time.Second)); err != nil {
 				return err
 			}
 		}
@@ -258,7 +262,10 @@ func (s *Service) runAppStore(ctx context.Context, queue []pending, deadline tim
 				if err != nil {
 					return err
 				}
-				fact.Status, fact.Subject, fact.Data, fact.NextCheckAt = "found", listing.BundleID, data, next(now, priceRecheck, item.pkg.ID)
+				fact.Status, fact.Subject, fact.Data, fact.NextCheckAt = "found", listing.BundleID, data, now.Add(priceRecheck)
+				if err := s.Store.SaveAppStorePriceSnapshot(ctx, item.pkg.ID, listing, now); err != nil {
+					return err
+				}
 			}
 			if err := s.save(ctx, item, fact, stats); err != nil {
 				return err

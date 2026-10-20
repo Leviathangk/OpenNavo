@@ -10,6 +10,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/opennavo/opennavo/server/gen/adminapi"
 	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/seeds"
 	"github.com/stretchr/testify/require"
 )
@@ -28,6 +29,13 @@ func TestStaticContractExamplesConformAndHaveAbsoluteLinks(t *testing.T) {
 			})
 		}
 		require.NoError(t, spec.Validate(context.Background()))
+		for name, locales := range map[string][]i18n.LocaleCode{"Locale": i18n.SiteLocales[:], "AppLocale": i18n.Locales[:]} {
+			values := make([]any, 0, len(locales))
+			for _, locale := range locales {
+				values = append(values, string(locale))
+			}
+			require.ElementsMatch(t, values, spec.Components.Schemas[name].Value.Enum, group+"/"+name)
+		}
 	}
 	data := exampleObject(t, public.Components.Schemas["HomeData"].Value.Example)
 	for _, section := range []string{"popularApps", "popularCli", "recentlyUpdated"} {
@@ -57,6 +65,7 @@ func TestStaticContractExamplesConformAndHaveAbsoluteLinks(t *testing.T) {
 	require.NoError(t, err)
 	buttons := []any{}
 	for _, permission := range seed.Permissions {
+		require.NotEmpty(t, permission.Code, "retired permissions must be removed, not left as empty grants")
 		buttons = append(buttons, permission.Code)
 	}
 	require.ElementsMatch(t, buttons, user["buttons"])
@@ -96,7 +105,17 @@ func checkExampleLinks(t *testing.T, path string, value any) {
 	case map[string]any:
 		for key, child := range value {
 			lower := strings.ToLower(key)
-			link := lower == "url" || lower == "homepage" || strings.HasSuffix(lower, "url") || strings.HasSuffix(lower, "domain") || strings.HasSuffix(lower, "gitremote") || strings.HasSuffix(path, ".links")
+			link := lower == "url" || lower == "homepage" || strings.HasSuffix(lower, "url") || (strings.HasSuffix(lower, "domain") && lower != "domain") || strings.HasSuffix(lower, "gitremote") || strings.HasSuffix(path, ".links")
+			if text, ok := child.(string); ok && lower == "domain" {
+				u, err := url.Parse("https://" + text)
+				require.NoError(t, err)
+				require.Equal(t, text, u.Hostname(), path+".domain must be a hostname")
+				require.Contains(t, text, ".")
+				require.Empty(t, u.Path)
+				require.Empty(t, u.RawQuery)
+				require.Empty(t, u.Fragment)
+				require.Nil(t, u.User)
+			}
 			if text, ok := child.(string); ok && link {
 				u, err := url.Parse(text)
 				require.NoError(t, err, "%s.%s", path, key)

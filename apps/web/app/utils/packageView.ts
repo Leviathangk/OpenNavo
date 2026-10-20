@@ -2,7 +2,18 @@
 // Monthly installs, trends, architecture, and URL display live in shared @opennavo/ui; only web-specific calculations remain here.
 
 /** Detail URLs: Casks (ADR-018) and link apps share /apps; their tokens never collide. */
-export function packagePath(token: string, tab?: 'versions' | 'dependencies' | 'details'): string {
+/** Pages under an app: its tabs, the troubleshooting page (F7) and the intent pages (X2). */
+export const PACKAGE_SUBPAGES = [
+  'versions',
+  'dependencies',
+  'details',
+  'troubleshooting',
+  'alternatives',
+  'uninstall'
+] as const;
+export type PackageSubpage = (typeof PACKAGE_SUBPAGES)[number];
+
+export function packagePath(token: string, tab?: PackageSubpage): string {
   return `/apps/${token}${tab ? `/${tab}` : ''}`;
 }
 
@@ -11,7 +22,7 @@ export function packageLink(kind: string, token: string): string | undefined {
   return kind === 'cask' || kind === 'link' ? packagePath(token) : undefined;
 }
 
-/** Map categories to schema.org applicationCategory (05 §6.2), defaulting to UtilitiesApplication. */
+/** Map categories to schema.org applicationCategory (05 §6.2, T4), defaulting to UtilitiesApplication. */
 const APPLICATION_CATEGORY: Record<string, string> = {
   'developer-tools': 'DeveloperApplication',
   terminal: 'DeveloperApplication',
@@ -23,9 +34,23 @@ const APPLICATION_CATEGORY: Record<string, string> = {
   communication: 'CommunicationApplication',
   games: 'GameApplication',
   security: 'SecurityApplication',
-  education: 'EducationalApplication'
+  education: 'EducationalApplication',
+  browsers: 'BrowserApplication',
+  drivers: 'DriverApplication',
+  'menu-bar': 'DesktopEnhancementApplication',
+  office: 'BusinessApplication',
+  productivity: 'BusinessApplication',
+  writing: 'BusinessApplication'
 };
 
-export function applicationCategory(slug: string | null | undefined): string {
-  return (slug && APPLICATION_CATEGORY[slug]) || 'UtilitiesApplication';
+/**
+ * schema.org applicationCategory from the primary category, else the first of the app's other categories
+ * that has one (subcategories and unmapped primaries fall through to a mapped one).
+ */
+export function applicationCategory(slug: string | null | undefined, others: readonly string[] = []): string {
+  for (const candidate of [slug, ...others]) {
+    const category = candidate ? APPLICATION_CATEGORY[candidate] : undefined;
+    if (category) return category;
+  }
+  return 'UtilitiesApplication';
 }

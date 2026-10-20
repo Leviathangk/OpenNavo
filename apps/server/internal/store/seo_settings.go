@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/config"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 )
 
 // SEO crawler classes that admins may tune. Search engines and user-requested
@@ -61,7 +62,13 @@ type SEOSettings struct {
 			// Since is set by the server when enforcement first covers new apps (RFC 3339).
 			Since string `json:"since"`
 		} `json:"indexPolicy"`
-		VersionsSitemap bool `json:"versionsSitemap"`
+		VersionsSitemap       bool     `json:"versionsSitemap"`
+		TranslationMode       string   `json:"translationMode"`
+		TranslationLocales    []string `json:"translationLocales"`
+		VersionsMinNotesChars int      `json:"versionsMinNotesChars"`
+		OpenLocales           []string `json:"openLocales"`
+		IntentPagesEnabled    bool     `json:"intentPagesEnabled"`
+		DetailsRedirect       bool     `json:"detailsRedirect"`
 	} `json:"pages"`
 }
 
@@ -80,6 +87,12 @@ func DefaultSEOSettings() SEOSettings {
 	s.Analytics.ConsentRegions = append([]string{}, ConsentRegionsDefault...)
 	s.Crawlers.Training = SEOCrawlerRule{Mode: CrawlerModeLimit, DelaySeconds: 10, Bots: []string{"ClaudeBot"}}
 	s.Crawlers.SEOTools = SEOCrawlerRule{Mode: CrawlerModeBlock, DelaySeconds: 10, Bots: []string{"MJ12bot", "SerpstatBot"}}
+	for _, locale := range i18n.Locales {
+		s.Pages.OpenLocales = append(s.Pages.OpenLocales, string(locale))
+	}
+	s.Pages.TranslationMode = "shadow"
+	s.Pages.TranslationLocales = []string{}
+	s.Pages.VersionsMinNotesChars = 300
 	s.Pages.TitleTemplate = "new"
 	s.Pages.IndexPolicy.Mode = "shadow"
 	s.Pages.IndexPolicy.Scope = "new"

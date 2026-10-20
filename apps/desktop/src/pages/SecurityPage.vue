@@ -11,13 +11,18 @@ import SecurityStartupPanel from '@/components/security/SecurityStartupPanel.vue
 import { SECURITY_TABS } from '@/components/security/meta';
 import type { SecurityTab } from '@/components/security/meta';
 import { useSecurityStore } from '@/stores/security';
+import { NO_PREVIEW, scanPreview, startupPreview } from '@/utils/deepLinkPreview';
 
 // Security (store/security plan §6, mockup E): one page, five tabs addressed by the route so notifications can deep-link.
+// Preview links from the web (F1, F5) open the startup tab with ?label=…&preview=1 and the scan tab with
+// ?token=…&preview=1: the panels find and preselect the item or app, and nothing runs until the user acts.
 const { t } = useI18n();
 const route = useRoute();
 const store = useSecurityStore();
 
 const tab = computed<SecurityTab>(() => SECURITY_TABS.find(value => value === route.params.tab) ?? 'overview');
+const startupLink = computed(() => (tab.value === 'startup' ? startupPreview(route.query) : NO_PREVIEW));
+const scanLink = computed(() => (tab.value === 'scan' ? scanPreview(route.query) : NO_PREVIEW));
 const tabs = computed(() =>
   SECURITY_TABS.map(value => ({
     value,
@@ -46,8 +51,8 @@ onMounted(() => void store.loadOverview().catch(() => undefined));
       :link-as="RouterLink"
     />
     <SecurityOverviewPanel v-if="tab === 'overview'" />
-    <SecurityScanPanel v-else-if="tab === 'scan'" />
-    <SecurityStartupPanel v-else-if="tab === 'startup'" />
+    <SecurityScanPanel v-else-if="tab === 'scan'" :preview="scanLink" />
+    <SecurityStartupPanel v-else-if="tab === 'startup'" :preview="startupLink" />
     <SecurityProtectionPanel v-else-if="tab === 'protection'" />
     <SecurityQuarantinePanel v-else />
   </div>

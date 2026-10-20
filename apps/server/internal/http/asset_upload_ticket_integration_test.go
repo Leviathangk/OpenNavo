@@ -29,6 +29,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/desktop"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/seed"
+	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/opennavo/opennavo/server/seeds"
@@ -37,7 +38,7 @@ import (
 
 func TestAgentAssetUploadTicketLifecycle(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	data, err := seeds.Load()
 	require.NoError(t, err)
 	hash, err := seed.HashPassword("upload-ticket-test-only")
@@ -63,7 +64,7 @@ func TestAgentAssetUploadTicketLifecycle(t *testing.T) {
 			Data json.RawMessage
 		}
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
-		require.Equal(t, expected, out.Code, r.URL.Path)
+		require.Equal(t, expected, out.Code, r.URL.Path+" "+w.Body.String())
 		if expected == "0000" {
 			testutil.ValidateResponse(t, spec, base, r, w)
 		}
@@ -86,6 +87,7 @@ func TestAgentAssetUploadTicketLifecycle(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(backend("POST", "/agent/clients/"+strconv.FormatInt(client.ID, 10)+"/tokens", `{"name":"uploader","permissions":["catalog:asset:upload"],"allowDelete":false,"ipAllowlist":["127.0.0.1/32"]}`, "0000"), &credential))
 	tokenPath := "/agent/tokens/" + strconv.FormatInt(credential.Token.ID, 10)
+	fixture := httpExecutionFixture{t: t, st: st, owner: seotasks.Owner(client.ID, credential.Token.ID)}
 	issue := func(query, body, expected string) json.RawMessage {
 		t.Helper()
 		r := httptest.NewRequest("POST", "/agent-api/assets/upload-tickets"+query, strings.NewReader(body))
@@ -95,6 +97,7 @@ func TestAgentAssetUploadTicketLifecycle(t *testing.T) {
 		r.Header.Set("X-Agent-Client-IP", "127.0.0.1")
 		r.Header.Set("X-Agent-Tool", "asset_upload_ticket")
 		r.Header.Set("X-Request-ID", uuid.NewString())
+		fixture.attach(r, "asset:new:http-ticket")
 		return send(r, "/agent-api", expected)
 	}
 	type ticket struct {

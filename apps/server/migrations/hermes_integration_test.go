@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/testutil"
+
 	"github.com/getkin/kin-openapi/openapi3"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/opennavo/opennavo/server/migrations"
@@ -22,7 +24,7 @@ import (
 func TestHermesMigrationsPreserveDataAndEnforceCredentialBounds(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
-	pg, err := postgres.Run(ctx, "postgres:18", postgres.WithDatabase("hermes_migration_test"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies())
+	pg, err := postgres.Run(ctx, "postgres:18", postgres.WithDatabase("hermes_migration_test"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies(), testutil.PostgresTestPorts(t))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pg.Terminate(context.Background())) })
 	dsn, err := pg.ConnectionString(ctx, "sslmode=disable")
@@ -71,7 +73,7 @@ func TestHermesMigrationsPreserveDataAndEnforceCredentialBounds(t *testing.T) {
 	for _, value := range spec.Components.Schemas["AgentPermission"].Value.Enum {
 		expected = append(expected, value.(string))
 	}
-	require.Len(t, expected, 23)
+	require.Len(t, expected, 28)
 	slices.Sort(expected)
 	require.JSONEq(t, mustJSON(t, expected), permissionJSON)
 	for _, denied := range []string{"agent:manage", "i18n:settings", "system:config:edit", "system:user:edit", "system:role:edit", "system:audit:view", "release:desktop:edit", "release:desktop:publish"} {

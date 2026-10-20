@@ -5,6 +5,7 @@ import { OnEmpty, OnErrorState, OnPagination, OnRankingsView } from '@opennavo/u
 import type { OnRankingsEntry } from '@opennavo/ui';
 import { pageCount as countPages, RANKING_PERIODS, readEnum } from '~/utils/catalogQuery';
 import { flattenCategories } from '~/utils/categories';
+import { decorative } from '~/utils/decorative';
 import { brandlessTitle } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
@@ -24,11 +25,15 @@ const { query, hrefWith, update } = useCatalogQuery({ page: 1, period: '30d', ca
 const period = computed(() => readEnum(query.value.period, RANKING_PERIODS, '30d'));
 const category = computed(() => (typeof query.value.category === 'string' ? query.value.category : ''));
 const { page, assertExists } = useListPage();
+useKnownQueryValue('period', RANKING_PERIODS);
 
+// The category filter is decorative (S7): without the tree the ranking still renders, unfiltered choices only.
 const { data: tree } = await useAsyncData(
-  () => `categories:${locale.value}`,
-  () => unwrap(api.GET('/categories'))
+  () => `rankings:categories:${locale.value}`,
+  () => decorative(unwrap(api.GET('/categories')), null, 'rankings category filter')
 );
+// An unknown category is a 404 once the tree is known (S4), not an empty ranking.
+useKnownQueryValue('category', () => (tree.value ? flattenCategories(tree.value).map(({ node }) => node.slug) : null));
 
 const { data, error, refresh, status } = await useAsyncData(
   () => `rankings:${period.value}:${category.value}:${page.value}:${locale.value}`,
@@ -79,7 +84,8 @@ function onCategory(event: Event) {
 // Positions follow the ranks on the page.
 useItemListSchema(
   () => (error.value ? null : entries.value?.map(entry => ({ name: entry.pkg.displayName, path: entry.href }))),
-  () => entries.value?.[0]?.rank ?? 1
+  () => entries.value?.[0]?.rank ?? 1,
+  () => data.value?.total
 );
 
 usePageSeo({ title: () => t('rankings.metaTitle'), page, description: () => t('rankings.description') });

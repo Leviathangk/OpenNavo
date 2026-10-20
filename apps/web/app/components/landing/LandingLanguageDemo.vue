@@ -10,7 +10,11 @@ const DURATIONS = LOCALES.map(() => 1600);
 
 const { locale } = useI18n();
 const root = ref<HTMLElement>();
-const step = useDemoLoop(root, DURATIONS, Math.max(0, LOCALES.indexOf(toAppLocale(locale.value))));
+const step = useDemoLoop(
+  root,
+  DURATIONS,
+  Math.max(0, (LOCALES as readonly string[]).indexOf(toAppLocale(locale.value)))
+);
 
 const items = computed(() =>
   LOCALES.map((code, index) => ({

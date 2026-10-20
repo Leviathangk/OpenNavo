@@ -43,6 +43,12 @@ func TestSEOSettingsValidation(t *testing.T) {
 		seoBody(t, nil, map[string]any{"indexNowKey": "fixture-indexnow-key"}),
 		seoBody(t, nil, map[string]any{"indexNowKey": "", "clearIndexNowKey": true, "cloudflareToken": "", "clearCloudflareToken": true}),
 		seoBody(t, nil, map[string]any{"cloudflareToken": "fixture_cloudflare-token.1"}),
+		seoBody(t, func(s *store.SEOSettings) {
+			s.Pages.OpenLocales = []string{"en-US", "de-DE", "zh-Hant"}
+			s.Pages.TranslationMode = "enforce"
+			s.Pages.TranslationLocales = []string{"de-DE"}
+			s.Pages.DetailsRedirect = true
+		}, nil),
 	}
 	for _, body := range valid {
 		_, err := decodeSEOUpdate(body)
@@ -78,6 +84,11 @@ func TestSEOSettingsValidation(t *testing.T) {
 		seoBody(t, func(s *store.SEOSettings) { s.Pages.TitleTemplate = "custom" }, nil),
 		seoBody(t, func(s *store.SEOSettings) { s.Pages.IndexPolicy.Mode = "on" }, nil),
 		seoBody(t, func(s *store.SEOSettings) { s.Pages.IndexPolicy.Scope = "some" }, nil),
+		seoBody(t, func(s *store.SEOSettings) { s.Pages.OpenLocales = []string{"de-DE", "de-DE"} }, nil),
+		seoBody(t, func(s *store.SEOSettings) { s.Pages.OpenLocales = []string{"zh-TW"} }, nil),
+		seoBody(t, func(s *store.SEOSettings) { s.Pages.TranslationMode = "on" }, nil),
+		seoBody(t, func(s *store.SEOSettings) { s.Pages.TranslationLocales = []string{"fr-FR", "fr-FR"} }, nil),
+		seoBody(t, func(s *store.SEOSettings) { s.Pages.VersionsMinNotesChars = -1 }, nil),
 		seoBody(t, nil, map[string]any{"indexNowKey": "short"}),
 		seoBody(t, nil, map[string]any{"indexNowKey": "has space key"}),
 		seoBody(t, nil, map[string]any{"indexNowKey": "fixture-indexnow-key", "clearIndexNowKey": true}),
@@ -102,4 +113,41 @@ func TestSEOSettingsDecodeKeepsDefaultsForMissingFields(t *testing.T) {
 	require.True(t, validateSEOSettings(&settings))
 	defaults := store.DefaultSEOSettings()
 	require.True(t, validateSEOSettings(&defaults))
+}
+
+func TestSEOSettingsCrawlerLocksAndDefaults(t *testing.T) {
+	locked := []string{
+		"Googlebot", "Googlebot-Image", "Googlebot-News", "Googlebot-Video", "Storebot-Google",
+		"Google-InspectionTool", "AdsBot-Google", "Bingbot", "BingPreview", "msnbot",
+		"OAI-SearchBot", "ChatGPT-User", "Claude-SearchBot", "Claude-User", "PerplexityBot",
+		"Perplexity-User", "DuckDuckBot", "DuckAssistBot", "Applebot", "YandexBot", "Baiduspider",
+		"Meta-WebIndexer", "Meta-ExternalFetcher", "MistralAI-Index", "MistralAI-User", "Yeti", "*",
+	}
+	for _, bot := range locked {
+		for _, category := range []string{"training", "seoTools"} {
+			for _, mode := range []string{store.CrawlerModeBlock, store.CrawlerModeLimit} {
+				t.Run(bot+"/"+category+"/"+mode, func(t *testing.T) {
+					_, err := decodeSEOUpdate(seoBody(t, func(s *store.SEOSettings) {
+						rule := store.SEOCrawlerRule{Mode: mode, DelaySeconds: 10, Bots: []string{strings.ToUpper(bot)}}
+						if category == "training" {
+							s.Crawlers.Training = rule
+						} else {
+							s.Crawlers.SEOTools = rule
+						}
+					}, nil))
+					require.Error(t, err)
+				})
+			}
+		}
+	}
+	defaults := store.DefaultSEOSettings()
+	require.Equal(t, store.SEOCrawlerRule{Mode: store.CrawlerModeLimit, DelaySeconds: 10, Bots: []string{"ClaudeBot"}}, defaults.Crawlers.Training)
+	for _, bot := range []string{"GPTBot", "Google-Extended", "Applebot-Extended", "Meta-ExternalAgent", "MistralAI-Training"} {
+		require.NotContains(t, defaults.Crawlers.Training.Bots, bot)
+		require.NotContains(t, defaults.Crawlers.SEOTools.Bots, bot)
+		_, err := decodeSEOUpdate(seoBody(t, func(s *store.SEOSettings) {
+			s.Crawlers.Training = store.SEOCrawlerRule{Mode: store.CrawlerModeBlock, DelaySeconds: 10, Bots: []string{bot}}
+		}, nil))
+		require.NoError(t, err, bot)
+	}
 }

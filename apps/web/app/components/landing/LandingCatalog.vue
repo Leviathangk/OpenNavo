@@ -36,6 +36,7 @@ const stats = computed(() =>
   [
     { key: 'apps', value: props.count },
     { key: 'updated', value: props.updated },
+    // The Mac app's languages; the website itself has more (SITE_LOCALES).
     { key: 'languages', value: LOCALES.length }
   ].filter(stat => stat.value > 0)
 );

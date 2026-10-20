@@ -18,10 +18,11 @@ type Definition struct {
 }
 
 var Definitions = []Definition{
+	{Type: "seo:pages", Queue: "default", Cron: "*/2 * * * *", Retries: 3},
 	{Type: "catalog:sync", Queue: "critical", Cron: "*/15 * * * *", Retries: 3},
 	{Type: "analytics:sync", Queue: "default", Cron: "0 3 * * *", Retries: 5},
 	{Type: "snapshot:build", Queue: "critical", Cron: "5 * * * *", Retries: 3},
-	{Type: "translate:content", Queue: "llm", Retries: 0, Ref: "content"},
+
 	{Type: "changelog:schedule", Queue: "default", Cron: "*/10 * * * *", Retries: 3},
 	{Type: "changelog:resolve", Queue: "changelog", Retries: 3, Ref: "package"},
 	{Type: "changelog:fetch", Queue: "changelog", Retries: 3, Ref: "source"},
@@ -31,6 +32,13 @@ var Definitions = []Definition{
 	{Type: "update-feeds:verify", Queue: "default", Cron: "15 2 * * *", Retries: 1},
 	{Type: "links:sync", Queue: "default", Cron: "40 * * * *", Retries: 1, Ref: "package"},
 	{Type: "taps:sync", Queue: "default", Cron: "20,50 * * * *", Retries: 1, Ref: "package"},
+	{Type: "seo:gsc", Queue: "default", Cron: "10 */6 * * *", Retries: 3},
+	{Type: "seo:inspect", Queue: "default", Cron: "30 3 * * *", Retries: 1},
+	{Type: "seo:bing", Queue: "default", Cron: "40 4 * * *", Retries: 2},
+	{Type: "seo:audit", Queue: "default", Cron: "15 * * * *", Retries: 1},
+	{Type: "seo:opportunities", Queue: "default", Cron: "*/5 * * * *", Retries: 1},
+	{Type: "seo:evaluate", Queue: "default", Cron: "*/15 * * * *", Retries: 1},
+	{Type: "seo:experiments", Queue: "default", Cron: "30 9 * * *", Retries: 1},
 }
 
 type Payload struct {
@@ -102,7 +110,7 @@ func NewTask(taskType string, payload Payload) (*asynq.Task, []asynq.Option, err
 	return asynq.NewTask(taskType, encoded), options, nil
 }
 
-var MainQueues = map[string]int{"critical": 6, "default": 3, "llm": 2}
+var MainQueues = map[string]int{"critical": 6, "default": 3}
 
 func MainConfig() asynq.Config {
 	return asynq.Config{Concurrency: 12, Queues: MainQueues, ShutdownTimeout: 30 * time.Second}

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { unwrap } from '@opennavo/api';
 import type { PackageKind } from '@opennavo/shared';
-import { formatCount } from '@opennavo/shared';
+import { formatCount, formatList } from '@opennavo/shared';
 import { architectures, OnAppRow, OnChip, OnEmpty, OnErrorState, OnKeyValueList, useUiMessages } from '@opennavo/ui';
 import type { OnKeyValueItem } from '@opennavo/ui';
+import { homebrewRows } from '~/utils/packageFacts';
 import { packageLink, packagePath } from '~/utils/packageView';
+import { dependenciesDescription } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -22,7 +24,8 @@ const { data: pkg, token } = await usePackage(props.kind);
 if (pkg.value?.kind === 'link') throw createError({ statusCode: 404, statusMessage: 'Page not found', fatal: true });
 
 const messages = useUiMessages();
-const platforms = computed(() => pkg.value?.platforms ?? []);
+// Homebrew's per-platform declarations (T6: from facts.requirements, not the dropped platforms list).
+const platformRows = computed(() => (pkg.value ? homebrewRows(pkg.value) : []));
 
 const { data, error, refresh } = await useAsyncData(
   () => `dependencies:${props.kind}:${token.value}:${locale.value}`,
@@ -46,8 +49,9 @@ const groups = computed(() => {
 const requirements = computed<OnKeyValueItem[]>(() => {
   const value = data.value;
   if (!value || props.kind !== 'cask') return [];
-  // Requirements differ per platform when a cask lists platforms, so one default list would mislead.
-  if (platforms.value.length) return [];
+  // Requirements differ per platform when a cask lists platforms, so one default list would mislead; the
+  // overview's requirements table shows each platform's.
+  if (platformRows.value.length) return [];
   const items: OnKeyValueItem[] = [];
   const dependsOn = value.dependsOn;
   if (dependsOn?.macos) items.push({ key: 'macos', label: t('package.deps.macos'), value: dependsOn.macos });
@@ -105,7 +109,20 @@ if (
 
 usePageSeo({
   title: () => t('package.deps.metaTitle', { name: pkg.value?.displayName ?? token.value }),
-  description: () => pkg.value?.summary ?? undefined
+  description: () =>
+    dependenciesDescription(
+      {
+        displayName: pkg.value?.displayName ?? token.value,
+        runtime: groups.value.runtime.length,
+        build: groups.value.build.length,
+        other: groups.value.other.length,
+        conflicts: conflicts.value.length,
+        dependents: data.value?.dependents.count ?? 0
+      },
+      t,
+      values => formatList(values, { locale: formattingLocale.value }),
+      value => formatCount(value, { locale: formattingLocale.value })
+    )
 });
 </script>
 

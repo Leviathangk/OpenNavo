@@ -29,7 +29,7 @@ import (
 
 func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshSixLocaleContent(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	password, err := seed.HashPassword("dashboard-test-password")
 	require.NoError(t, err)
 	seedData, err := seeds.Load()
@@ -62,11 +62,16 @@ func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshSixLocaleContent(t *tes
 		require.NoError(t, st.ScheduleContentTranslation(ctx, content.Ref{Entity: "package", ID: id}))
 		source, sourceErr := st.ReadContentSource(ctx, content.Ref{Entity: "package", ID: id})
 		require.NoError(t, sourceErr)
+		// S8 records translation work, but no longer creates placeholder locale rows.
+		for _, target := range i18n.SiteLocales {
+			require.NoError(t, st.DB.Exec(`INSERT INTO package_i18n(package_id,locale,display_name,summary,description,status,source,source_locale,source_hash)
+ VALUES(?,?,'Coverage','Summary','Description','machine','llm',?,?) ON CONFLICT(package_id,locale) DO NOTHING`, id, string(target), locale, source.Hash).Error)
+		}
 		require.NoError(t, st.DB.Exec(`UPDATE package_i18n SET summary='Summary',description='Description',
 	 source_locale=?,source_hash=?,status=CASE WHEN locale=? THEN 'source' WHEN locale='en-US' THEN 'manual' ELSE 'machine' END WHERE package_id=?`, locale, source.Hash, locale, id).Error)
 		var count int64
 		require.NoError(t, st.DB.Table("package_i18n").Where("package_id=?", id).Count(&count).Error)
-		require.Equal(t, int64(len(i18n.Locales)), count)
+		require.Equal(t, int64(len(i18n.SiteLocales)), count)
 	}
 	tailID := ids["coverage-1001"]
 	complete(tailID, "zh-CN")
@@ -91,7 +96,7 @@ func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshSixLocaleContent(t *tes
 		require.NoError(t, st.DB.Exec("INSERT INTO releases(package_id,source,source_key,version,title) VALUES(?,'editorial',?,'1','Latest notes')", ids[token], token).Error)
 	}
 	require.NoError(t, st.DB.Exec("INSERT INTO releases(package_id,source,source_key,version,title,hidden) VALUES(?,'editorial','hidden','1','Hidden',true),(?,'editorial','old','0.9','Older',false),(?,'manual','legacy','1','Legacy',false)", ids["coverage-2"], ids["coverage-3"], ids["coverage-4"]).Error)
-	cfg := config.Config{JWTSecret: strings.Repeat("c", 32), JWTAccessTTL: time.Hour, JWTRefreshTTL: 24 * time.Hour, LLMModel: "gpt-6-luna", LLMMonthlyTokenBudget: 30000000}
+	cfg := config.Config{JWTSecret: strings.Repeat("c", 32), JWTAccessTTL: time.Hour, JWTRefreshTTL: 24 * time.Hour}
 	authentication, err := auth.New(st, cfg)
 	require.NoError(t, err)
 	pair, err := authentication.Login(ctx, "dashboard-tester", "dashboard-test-password", store.AuditActor{})

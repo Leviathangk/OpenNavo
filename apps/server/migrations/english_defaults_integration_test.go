@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/opennavo/opennavo/server/internal/testutil"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/opennavo/opennavo/server/migrations"
 	"github.com/pressly/goose/v3"
@@ -16,7 +18,7 @@ import (
 
 func TestEnglishDefaultsPreserveExistingSourceLanguages(t *testing.T) {
 	ctx := context.Background()
-	pg, err := postgres.Run(ctx, "postgres:18", postgres.WithDatabase("english_defaults"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies())
+	pg, err := postgres.Run(ctx, "postgres:18", postgres.WithDatabase("english_defaults"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies(), testutil.PostgresTestPorts(t))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pg.Terminate(context.Background())) })
 	dsn, err := pg.ConnectionString(ctx, "sslmode=disable")

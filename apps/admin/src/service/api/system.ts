@@ -45,25 +45,6 @@ export const updateProfile = (data: BodyOf<'updateProfile'>) => request({ url: '
 export const changePassword = (data: BodyOf<'changePassword'>) =>
   request({ url: '/profile/password', method: 'put', data });
 
-export const fetchTranslationSettings = () =>
-  request<DataOf<'getTranslationSettings'>>({
-    url: '/system/translation-settings'
-  });
-
-export const updateTranslationSettings = (data: BodyOf<'updateTranslationSettings'>) =>
-  request<DataOf<'updateTranslationSettings'>>({
-    url: '/system/translation-settings',
-    method: 'put',
-    data
-  });
-
-export const fetchTranslationModels = (data: BodyOf<'listTranslationModels'>) =>
-  request<DataOf<'listTranslationModels'>>({
-    url: '/system/translation-settings/models',
-    method: 'post',
-    data
-  });
-
 export const fetchGitHubSettings = () => request<DataOf<'getGitHubSettings'>>({ url: '/system/github-settings' });
 
 export const updateGitHubSettings = (data: BodyOf<'updateGitHubSettings'>) =>

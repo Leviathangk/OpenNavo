@@ -38,7 +38,10 @@ void load();
 
 const rows = computed(() =>
   view.value
-    ? CONTENT_LOCALES.map(code => ({ code, state: view.value!.i18n[code] }))
+    ? CONTENT_LOCALES.flatMap(code => {
+        const state = view.value!.i18n[code];
+        return state ? [{ code, state }] : [];
+      })
     : ([] as { code: ContentLocale; state: Schemas['ContentLocaleState'] }[])
 );
 

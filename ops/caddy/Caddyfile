@@ -2,6 +2,20 @@
 	{$CADDY_GLOBAL_OPTIONS}
 }
 
+# Diagnostic only. Enable after approval and verification that this site's Cloudflare rule
+# overwrites this header with true/false on EVERY request. No access/rate-limit exemption.
+# remote_ip uses the connection peer, never XFF/CF-Connecting-IP. Do not enable with an
+# unverified intermediary or PROXY protocol listener which can replace that peer address.
+# Public Cloudflare ranges checked 2026-10-20: https://www.cloudflare.com/ips-v4/ and /ips-v6/.
+# Changes require review/reload, not request-time network lookups. Unknown peers fail closed.
+(verified-bot-ingress) {
+	@botVerificationDisabled expression `{env.OPENNAVO_CF_VERIFIED_BOT_ENABLED} != 'true'`
+	request_header @botVerificationDisabled -X-OpenNavo-Verified-Bot
+	@botNotCloudflare not remote_ip 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+	request_header @botNotCloudflare -X-OpenNavo-Verified-Bot
+	# Preserve the original values for trusted peers: Nitro must reject duplicates/invalid values.
+}
+
 (security) {
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -25,6 +39,7 @@
 }
 
 {$WEB_DOMAIN} {
+	import verified-bot-ingress
 	@internalAgent path /agent-api /agent-api/*
 	handle @internalAgent {
 		respond 404
@@ -43,6 +58,7 @@
 }
 
 {$API_DOMAIN} {
+	import verified-bot-ingress
 	@internalAgent path /agent-api /agent-api/*
 	handle @internalAgent {
 		respond 404
@@ -67,6 +83,7 @@
 }
 
 {$ADMIN_DOMAIN} {
+	import verified-bot-ingress
 	@internalAgent path /agent-api /agent-api/*
 	handle @internalAgent {
 		respond 404

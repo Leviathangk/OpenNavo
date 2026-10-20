@@ -2,6 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { cliAbbreviation, darken, iconColor, iconInitials } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
+import { imageSrcset } from '../utils/image';
+import type { OnImageVariant } from '../utils/image';
 
 export type OnAppIconSize = 20 | 24 | 26 | 28 | 30 | 32 | 40 | 44 | 46 | 54 | 64 | 96 | 118;
 
@@ -14,6 +16,8 @@ export interface OnAppIconProps {
   name: string;
   /** Remote/local extracted icon, falling back to a tile on load failure. */
   src?: string | null;
+  /** Stored WebP renditions of `src` (64/128/256 px, X3); the browser picks one for the size and pixel density. */
+  variants?: readonly OnImageVariant[] | null;
   size?: OnAppIconSize;
   /** Package accent for letter-tile background. */
   accent?: string | null;
@@ -42,6 +46,7 @@ watch(
 );
 
 const showImage = computed(() => Boolean(props.src) && !failed.value);
+const srcset = computed(() => imageSrcset(props.variants));
 const box = computed(() => ({ width: `${props.size}px`, height: `${props.size}px` }));
 
 // App letter tile (casks and App Store apps): accent or token hash, 160° gradient darkened 18%, text 42% of side (08 §8.10).
@@ -70,6 +75,8 @@ const barColor = computed(() => iconColor(props.token));
       v-if="showImage"
       ref="image"
       :src="src ?? undefined"
+      :srcset="srcset"
+      :sizes="srcset ? `${size}px` : undefined"
       alt=""
       :loading="priority ? 'eager' : 'lazy'"
       :fetchpriority="priority ? 'high' : undefined"

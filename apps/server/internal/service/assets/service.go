@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -60,11 +61,13 @@ type Service struct {
 
 func (s *Service) save(ctx context.Context, kind, prefix string, variants []images.Variant, sourceURL *string, actor *store.AuditActor) (store.Asset, error) {
 	var primary store.Asset
+	files := []store.AssetFile{}
 	for index, v := range variants {
 		key := prefix + variants[0].SHA256[:12] + "-" + strconv.Itoa(v.Width) + ".png"
 		if err := s.Objects.Put(ctx, key, v.PNG, "image/png"); err != nil {
 			return primary, fmt.Errorf("upload normalized image: %w", err)
 		}
+		files = append(files, store.AssetFile{Width: v.Width, Height: v.Height, URL: s.Objects.URL(key), Type: "image/png", Role: "normalized", StorageKey: key, SHA256: v.SHA256, Bytes: int64(len(v.PNG))})
 		if index == 0 {
 			primary = store.Asset{Kind: kind, StorageKey: key, URL: s.Objects.URL(key), MIME: "image/png", Width: v.Width, Height: v.Height, Bytes: int64(len(v.PNG)), SHA256: v.SHA256, SourceURL: sourceURL}
 			if actor != nil {
@@ -72,6 +75,19 @@ func (s *Service) save(ctx context.Context, kind, prefix string, variants []imag
 			}
 		}
 	}
+	for _, v := range variants[0].Files {
+		extension := strings.TrimPrefix(v.MIME, "image/")
+		key := prefix + variants[0].SHA256[:12] + "-" + v.Role + "-" + v.SHA256[:12] + "-" + strconv.Itoa(v.Width) + "." + extension
+		if err := s.Objects.Put(ctx, key, v.Data, v.MIME); err != nil {
+			return primary, fmt.Errorf("upload image rendition: %w", err)
+		}
+		files = append(files, store.AssetFile{Width: v.Width, Height: v.Height, URL: s.Objects.URL(key), Type: v.MIME, Role: v.Role, StorageKey: key, SHA256: v.SHA256, Bytes: int64(len(v.Data))})
+	}
+	raw, err := json.Marshal(files)
+	if err != nil {
+		return primary, err
+	}
+	primary.Files = raw
 	return s.Store.SaveAsset(ctx, primary, actor)
 }
 func (s *Service) Upload(ctx context.Context, kind string, data []byte, sourceURL *string, actor store.AuditActor) (adminapi.Asset, error) {

@@ -20,7 +20,13 @@ describe('Structured data', () => {
     expect(applicationCategory('virtualization')).toBe('DeveloperApplication');
     expect(applicationCategory('media')).toBe('MultimediaApplication');
     expect(applicationCategory('education')).toBe('EducationalApplication');
-    expect(applicationCategory('productivity')).toBe('UtilitiesApplication');
+    expect(applicationCategory('productivity')).toBe('BusinessApplication');
+    expect(applicationCategory('browsers')).toBe('BrowserApplication');
+    expect(applicationCategory('menu-bar')).toBe('DesktopEnhancementApplication');
+    expect(applicationCategory('utilities')).toBe('UtilitiesApplication');
+    // An unmapped primary falls through to the first mapped category of the app.
+    expect(applicationCategory('ai', ['ai', 'developer-tools'])).toBe('DeveloperApplication');
+    expect(applicationCategory(null, ['network'])).toBe('UtilitiesApplication');
     expect(applicationCategory(null)).toBe('UtilitiesApplication');
   });
 });

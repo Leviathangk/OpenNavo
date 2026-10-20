@@ -2,7 +2,8 @@ import { ApiError, unwrap } from '@opennavo/api';
 import type { PublicComponents } from '@opennavo/api';
 import { isValidToken } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
-import { packagePath } from '~/utils/packageView';
+import { slimPackage } from '~/utils/packageFacts';
+import { PACKAGE_SUBPAGES, packagePath } from '~/utils/packageView';
 
 type RemovedPackage = PublicComponents['schemas']['RemovedPackage'];
 
@@ -47,7 +48,9 @@ export async function usePackage(kind: PackageKind) {
         }
       }
       throw createError({ statusCode: 404, statusMessage: 'Package not found' });
-    }
+    },
+    // T6: the payload keeps only what the pages read; facts carries what the dropped copies held.
+    { transform: slimPackage }
   );
 
   if (result.error.value?.statusCode === 404) {
@@ -74,8 +77,9 @@ export async function usePackage(kind: PackageKind) {
     // A failed check keeps the retryable error state; plugins/ssr-errors answers 503 (no-store).
     if (lifecycle.error.value) return { ...result, token, removed };
     if (value?.state === 'renamed') {
+      // The same page under the new token: a tab, the troubleshooting page or an intent page.
       const last = route.path.split('/').at(-1);
-      const tab = last === 'versions' || last === 'dependencies' || last === 'details' ? last : undefined;
+      const tab = PACKAGE_SUBPAGES.find(page => page === last);
       await nuxtApp.runWithContext(() => navigateTo(localePath(packagePath(value.token, tab)), { redirectCode: 301 }));
     } else if (value?.state === 'removed' && value.removed) {
       removed.value = value.removed;

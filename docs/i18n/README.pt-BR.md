@@ -25,11 +25,15 @@ e instale e atualize com um clique pelo app para macOS. O Homebrew cuida de cada
 
 ## Introdução
 
+<!-- brand-definition -->
+O OpenNavo é um cliente gráfico de Homebrew para Mac, gratuito e de código aberto, que instala e atualiza apps do Homebrew no seu Mac com um clique, e seu site é um diretório de apps para Mac com informações sobre histórico de versões, requisitos do sistema e instruções de desinstalação.
+<!-- /brand-definition -->
+
 O Homebrew é uma forma confiável de instalar software no Mac, mas a linha de comando não é confortável para todo mundo, e `brew outdated` não explica o que mudou. O OpenNavo oferece uma interface de loja de apps para o Homebrew Cask:
 
 - **Web**: Navegue, pesquise e compare apps, consulte as notas de cada versão e copie comandos de instalação.
 - **App para macOS**: Todos os recursos da web, além de instalação e atualização pelo Homebrew do seu Mac, desinstalação completa de apps de qualquer origem, limpeza cuidadosa de caches e restos, monitoramento do Mac na barra de menus e um registro de cada operação.
-- **Seis idiomas**: English, 简体中文, 日本語, Español, Português (Brasil) e Русский. Toda a interface é localizada; descrições e notas de versão são traduzidas automaticamente, e você pode consultar o texto original a qualquer momento.
+- **Idiomas**: O site oferece dez idiomas: English, 简体中文, 繁體中文, 日本語, Español, Português (Brasil), Русский, Deutsch, Français e Italiano. O app para macOS e o painel de administração usam seis deles: English, 简体中文, 日本語, Español, Português (Brasil) e Русский. Descrições e notas de versão são traduzidas automaticamente, e você pode consultar o texto original a qualquer momento.
 - **Sem conta**: Não é preciso se cadastrar nem fazer login. Basta abrir e começar a usar.
 
 [opennavo.com](https://opennavo.com/pt) usa o código deste repositório.
@@ -58,7 +62,7 @@ O Homebrew é uma forma confiável de instalar software no Mac, mas a linha de c
 
 ### Administração e gerenciamento de conteúdo
 
-- Gerencie categorias, textos em seis idiomas, ícones e cores de destaque, capturas de tela, seleções editoriais, coleções, glossários e avisos do cliente.
+- Gerencie categorias, textos em todos os idiomas do site, ícones e cores de destaque, capturas de tela, seleções editoriais, coleções, glossários e avisos do cliente.
 - Gerencie notas de versão e traduções, tarefas de sincronização, análises de pesquisa, feedback, versões do cliente, mirrors e configurações remotas. Inclui administradores, funções, permissões e logs de auditoria. Alterações podem ser restauradas, e itens excluídos vão primeiro para a lixeira.
 - Serviço [MCP](https://modelcontextprotocol.io) integrado: agentes de IA podem manter o conteúdo dos apps dentro das permissões concedidas. Todas as operações de escrita permitem simulação (dry run).
 
@@ -179,7 +183,7 @@ Para alterações apenas no frontend, não é necessário iniciar o backend: `ma
 make lint test
 ```
 
-Inclui validação de OpenAPI, análise estática e testes unitários de Go / TypeScript / Rust / Python, além da verificação de integridade dos textos nos seis idiomas. Os testes de ponta a ponta no navegador estão disponíveis com `make e2e`.
+Inclui validação de OpenAPI, análise estática e testes unitários de Go / TypeScript / Rust / Python, além da verificação de integridade dos textos em todos os idiomas de cada interface (dez no site e seis no app para macOS e no painel de administração). Os testes de ponta a ponta no navegador estão disponíveis com `make e2e`.
 
 > [!IMPORTANT]
 > Durante o desenvolvimento e os testes, não execute de verdade `brew install`, `upgrade`, `uninstall`, `cleanup` nem `update` no seu computador. Teste as operações de escrita do cliente com o brew simulado: configure `OPENNAVO_BREW_PATH` como `apps/desktop/src-tauri/tests/fake-brew/brew`.
@@ -200,7 +204,7 @@ Issues e pull requests são bem-vindas. Antes de começar:
 - **Contratos primeiro**: Altere `apps/server/api/*.openapi.yaml` antes da implementação e execute `make gen`. Não edite arquivos gerados manualmente.
 - **Tokens de design**: Use `packages/tokens/tokens.json` para cores, raios e outros valores. Não escreva cores diretamente nos componentes.
 - **Banco de dados**: Adicione novas migrações; não altere as existentes.
-- **Textos**: Coloque todo texto destinado ao usuário nos arquivos de idiomas, com versões nos seis idiomas. `make lint` verifica a integridade.
+- **Textos**: Coloque todo texto destinado ao usuário nos arquivos de idiomas, com versões em todos os idiomas da interface correspondente: dez para o site e seis para o app para macOS e o painel de administração. `make lint` verifica a integridade.
 - **Mensagens de commit**: Siga [Conventional Commits](https://www.conventionalcommits.org/en/), por exemplo `feat(desktop): …` ou `fix(server): …`.
 - Verifique se `make lint test` passa antes de fazer um commit.
 

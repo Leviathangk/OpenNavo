@@ -19,6 +19,43 @@ def tool(
 
 
 TOOLS = (
+    tool("seo_task_claim", "seo:task:handle", "claimSeoTasks", write=True),
+    tool("seo_task_get", "seo:task:handle", "getSeoTask"),
+    tool("seo_task_complete", "seo:task:handle", "completeSeoTask", write=True),
+    tool("seo_task_defer", "seo:task:handle", "deferSeoTask", write=True),
+    tool("seo_evidence_capture", "seo:task:handle", "createSeoEvidence", write=True),
+    tool("seo_actions_list", "seo:insight:view", "listSeoActions"),
+    tool(
+        "seo_snippet_template_propose", "seo:snippet:propose", "proposeSnippetTemplate", write=True
+    ),
+    tool("seo_action_compensate", "seo:task:handle", "compensateSeoAction", write=True),
+    tool("seo_listing_get", "catalog:package:edit", "getSeoListingCandidate"),
+    tool("seo_listing_upsert", "catalog:package:edit", "upsertSeoListingCandidate", write=True),
+    tool("article_test_artifacts_list", "content:article:edit", "listArticleTestArtifacts"),
+    tool(
+        "seo_automation_set",
+        "seo:automation:tune",
+        "updateSeoAutomation getSeoAutomation",
+        write=True,
+    ),
+    tool("seo_tasks_import", "seo:task:handle", "importSeoTasks", write=True),
+    tool(
+        "translations_write",
+        "translation:review",
+        "writeTranslations getTranslationsSource",
+        write=True,
+    ),
+    tool("package_fact_records_get", "catalog:package:view", "getPackageFactRecords"),
+    tool(
+        "package_fact_records_upsert", "catalog:package:edit", "setPackageFactRecords", write=True
+    ),
+    tool("seo_geo_record", "seo:task:handle", "recordSeoGeo", write=True),
+    tool("seo_geo_list", "seo:insight:view", "listSeoGeo"),
+    tool("seo_geo_get", "seo:insight:view", "getSeoGeo"),
+    tool("seo_overview", "seo:insight:view", "getSeoOverview"),
+    tool("seo_page_get", "seo:insight:view", "getSeoPage"),
+    tool("seo_keywords_list", "seo:insight:view", "listSeoKeywords"),
+    tool("seo_keywords_upsert", "seo:keyword:edit", "upsertSeoKeywords", write=True),
     tool("whoami", "", "introspectAgentToken"),
     tool(
         "logs_search",
@@ -200,9 +237,12 @@ TOOLS = (
         write=True,
     ),
     tool("release_update", "changelog:release:edit", "updateRelease", write=True),
+    tool("background_item_set", "catalog:package:edit", "setBackgroundItem", write=True),
+    tool(
+        "collection_setup_set", "content:collection:edit", "setCollectionSetupCriteria", write=True
+    ),
     tool("translation_list", "translation:review", "listTranslations"),
     tool("translation_status", "translation:review", "getTranslationStatus"),
-    tool("translation_retranslate", "translation:review", "retranslateContent", write=True),
     tool("translation_fix", "translation:review", "fixTranslation", write=True),
     tool("jobs_runs", "ops:job:view", "listJobRuns getJobRun"),
     tool("queues_status", "ops:job:view", "listQueues"),
@@ -215,7 +255,7 @@ TOOLS = (
     tool("feedback_get", "ops:feedback:handle", "getFeedback"),
     tool("feedback_update", "ops:feedback:handle", "updateFeedback", write=True),
     tool("catalog_changes", "catalog:package:view", "listAdminCatalogChanges"),
-    tool("dashboard_overview", "dashboard:view", "getDashboardOverview getLlmUsage"),
+    tool("dashboard_overview", "dashboard:view", "getDashboardOverview"),
     tool("announcement_get", "content:announcement:edit", "getAnnouncement"),
     tool("announcement_set", "content:announcement:edit", "updateAnnouncement", write=True),
     tool("desktop_releases_list", "release:desktop:notes", "listDesktopReleases getDesktopRelease"),
@@ -229,6 +269,8 @@ TOOLS = (
 BY_NAME = {item.name: item for item in TOOLS}
 
 RESOURCE_PERMISSIONS = {
+    "opennavo://guide/geo-routine": "",
+    "opennavo://guide/seo-routine": "",
     "opennavo://guide/daily-routine": "",
     "opennavo://guide/content-style": "",
     "opennavo://guide/app-intro": "",

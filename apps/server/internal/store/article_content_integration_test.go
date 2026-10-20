@@ -30,10 +30,10 @@ func TestManualArticleContentRefreshesPages(t *testing.T) {
 			require.NoError(t, st.DB.Exec("DELETE FROM content_url_changes").Error)
 			require.NoError(t, st.DB.Exec("DELETE FROM job_outbox").Error)
 			ref := content.Ref{Entity: entity, ID: 30}
-			fields := map[string]any{"title": "Revised title"}
+			fields := map[string]any{"title": "修订后的文章标题"}
 			if entity == "article_author" {
 				ref.ID = 10
-				fields = map[string]any{"bio": "Revised biography"}
+				fields = map[string]any{"role": "编辑", "bio": "修订后的作者介绍"}
 			}
 			require.NoError(t, st.DB.Transaction(func(tx *gorm.DB) error {
 				return (&store.Store{DB: tx}).WriteContentText(ctx, ref, "zh-CN", fields, false)
@@ -54,10 +54,10 @@ func TestManualArticleContentRefreshesPages(t *testing.T) {
 			var saved string
 			if entity == "article" {
 				require.NoError(t, st.DB.Raw("SELECT title FROM article_revision_i18n WHERE revision_id=30 AND locale='zh-CN'").Scan(&saved).Error)
-				require.Equal(t, "Revised title", saved)
+				require.Equal(t, "修订后的文章标题", saved)
 			} else {
 				require.NoError(t, st.DB.Raw("SELECT bio FROM article_author_i18n WHERE author_id=10 AND locale='zh-CN'").Scan(&saved).Error)
-				require.Equal(t, "Revised biography", saved)
+				require.Equal(t, "修订后的作者介绍", saved)
 			}
 		})
 	}

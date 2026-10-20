@@ -57,6 +57,11 @@ func (h *Handler) UploadAsset(ctx context.Context, request adminapi.UploadAssetR
 	if (data == nil) == (form.downloadURL == "") {
 		return nil, domain.Validation()
 	}
+	if op := domain.CurrentOperation(requestContext(ctx)); op != nil && op.AgentClientID > 0 {
+		if err := h.Assets.ValidateUploadTicket(requestContext(ctx)); err != nil {
+			return nil, err
+		}
+	}
 	if form.downloadURL != "" {
 		data, err = h.Assets.DownloadURL(requestContext(ctx), form.downloadURL)
 		if err != nil {
@@ -65,6 +70,10 @@ func (h *Handler) UploadAsset(ctx context.Context, request adminapi.UploadAssetR
 		if source == nil {
 			source = &form.downloadURL
 		}
+	}
+	if op := domain.CurrentOperation(requestContext(ctx)); op != nil && op.AgentClientID > 0 {
+		value, err := h.Assets.UploadAgent(requestContext(ctx), kind, data, source, actor)
+		return response[adminapi.UploadAsset200JSONResponse](value, err)
 	}
 	if op := domain.CurrentOperation(requestContext(ctx)); op != nil && op.DryRun {
 		after, err := h.Assets.Preview(requestContext(ctx), kind, data)
@@ -163,7 +172,13 @@ func (h *Handler) CreateAssetUploadTicket(ctx context.Context, request adminapi.
 	if request.Body == nil {
 		return nil, domain.Validation()
 	}
-	grant := agent.UploadGrant{Kind: string(request.Body.Kind), Tool: op.Tool, RequestID: op.RequestID}
+	if h.Assets == nil {
+		return nil, domain.Internal(nil)
+	}
+	if err := h.Assets.ValidateUploadTicket(requestContext(ctx)); err != nil {
+		return nil, err
+	}
+	grant := agent.UploadGrant{Kind: string(request.Body.Kind), Tool: op.Tool, RequestID: op.RequestID, Execution: op.Execution}
 	if request.Body.SourceUrl != nil {
 		grant.SourceURL = *request.Body.SourceUrl
 	}
@@ -210,13 +225,6 @@ func (h *Handler) UploadAssetWithTicket(ctx context.Context, request adminapi.Up
 	if grant.SourceURL != "" {
 		source = &grant.SourceURL
 	}
-	asset, err := h.Assets.Upload(requestContext(ctx), grant.Kind, form.data, source, actor)
-	if err != nil {
-		return nil, err
-	}
-	var out adminapi.AssetResponseResult
-	if err := out.FromAssetResponse(adminapi.AssetResponse{Code: domain.CodeOK, Msg: "ok", Data: &asset}); err != nil {
-		return nil, err
-	}
-	return adminapi.UploadAssetWithTicket200JSONResponse{Body: out}, nil
+	value, err = h.Assets.UploadAgent(requestContext(ctx), grant.Kind, form.data, source, actor)
+	return response[adminapi.UploadAssetWithTicket200JSONResponse](value, err)
 }

@@ -26,7 +26,7 @@ func loadMessages() map[string]map[string]string {
 }
 
 func Message(code, locale string) string {
-	if !Valid(locale) {
+	if !ValidApp(locale) {
 		locale = string(DefaultLocale)
 	}
 	if value := messages[locale][code]; value != "" {

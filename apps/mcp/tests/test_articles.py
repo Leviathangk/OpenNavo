@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 import pytest
-from conftest import Backend
+from conftest import Backend, execution_args
 from fastmcp import Client
 
 from opennavo_mcp.contracts import OPERATIONS
@@ -17,7 +17,7 @@ def test_every_article_operation_has_a_tool() -> None:
         for name, op in OPERATIONS.items()
         if op["path"].startswith(("/articles", "/article-authors"))
     }
-    assert len(article_ops) == 15
+    assert len(article_ops) == 16
     assert article_ops == {
         op
         for tool in TOOLS
@@ -57,7 +57,7 @@ async def test_article_revision_and_payload(
 ) -> None:
     async with Client(backend.server) as client:
         result = await client.call_tool(
-            name, {"id": 7, "expected_revision": 9, "dry_run": True, **extra}
+            name, execution_args(name, {"id": 7, "expected_revision": 9, "dry_run": True, **extra})
         )
         assert not result.is_error
         request = backend.calls[-1][1]

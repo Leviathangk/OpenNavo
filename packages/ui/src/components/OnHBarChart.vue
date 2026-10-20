@@ -52,7 +52,7 @@ const rows = computed(() =>
         <div class="relative mr-40px h-16px">
           <span class="on-hbar-axis absolute left-0 w-1px bg-chart-axis"></span>
           <span class="absolute inset-y-0 left-0" :style="{ width: `${row.percent}%` }">
-            <OnTooltip :content="`${row.label}：${row.full}`" :delay="100" class="h-full w-full">
+            <OnTooltip :content="`${row.label}：${row.full}`" :delay="100" lazy class="h-full w-full">
               <span
                 class="mt-2px block h-12px w-full rounded-r-tiny"
                 :class="row.emphasis ? 'bg-chart-emphasis' : 'bg-chart-deemphasis'"

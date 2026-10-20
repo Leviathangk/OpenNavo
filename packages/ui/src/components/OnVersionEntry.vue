@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { ReleaseEntry } from '@opennavo/api';
 import { formatDate, formatReleaseVersion, formatTime } from '@opennavo/shared';
 import OnButton from './OnButton.vue';
@@ -7,13 +7,15 @@ import OnChip from './OnChip.vue';
 import OnCodeText from './OnCodeText.vue';
 import OnIcon from './OnIcon.vue';
 import { useUiLocale, useUiMessages } from '../composables/locale';
+import { compatibilityText } from '../utils/compatibility';
+import type { OnVersionCompatibilityLabels } from '../utils/compatibility';
 import { isMachineTranslated, isPatchVersion, parseInline } from '../utils/version';
 
 export interface OnVersionEntryProps {
   entry: ReleaseEntry;
   /** Current installed desktop version. */
   installed?: boolean;
-  /** Collapsed single row: version, date, Expand. */
+  /** Collapsed single row: version, date, Expand. The body stays in the HTML inside a closed <details>. */
   collapsed?: boolean;
   /** Allow collapsing expanded entries that the timeline initially collapsed. */
   collapsible?: boolean;
@@ -22,6 +24,8 @@ export interface OnVersionEntryProps {
   /** Show Update to this version on desktop when newer than installed. */
   canUpdate?: boolean;
   headingLevel?: 2 | 3 | 4;
+  /** Web (F6): copy for the version's macOS compatibility row, "unknown" without data; no row when omitted. */
+  compatibilityLabels?: OnVersionCompatibilityLabels;
 }
 
 const props = withDefaults(defineProps<OnVersionEntryProps>(), { headingLevel: 3 });
@@ -52,34 +56,58 @@ function validDate(value: string | null | undefined): string | null {
   return Number.isFinite(parsed.getTime()) && parsed.getUTCFullYear() > 1 ? value : null;
 }
 
+// Open state follows the collapsed prop and also records native <details> toggles, so the summary stays right
+// when a host does not handle the toggle event (and the page still works before hydration or without JS).
+const details = ref<HTMLDetailsElement>();
+const open = ref(!props.collapsed);
+watch(
+  () => props.collapsed,
+  value => {
+    open.value = !value;
+  }
+);
+const isCollapsed = computed(() => !open.value);
+// As before, only collapsed entries and entries the timeline collapsed first can be toggled.
+const toggleable = computed(() => isCollapsed.value || props.collapsible);
+
+function onSummaryClick(event: MouseEvent) {
+  if (!toggleable.value) event.preventDefault();
+}
+
+function onToggle() {
+  const next = details.value?.open ?? open.value;
+  // A toggle event also fires when the collapsed prop changes the open attribute; only report user toggles.
+  if (next === open.value) return;
+  open.value = next;
+  emit('toggle');
+}
+
 const publishedAt = computed(() => validDate(props.entry.publishedAt));
 const brewCommittedAt = computed(() => validDate(props.entry.brewCommittedAt));
-const date = computed(() => {
-  const at = publishedAt.value ?? brewCommittedAt.value;
-  return at ? formatDate(at, { locale: locale.value, weekday: !props.collapsed }) : '';
-});
+const dateIso = computed(() => publishedAt.value ?? brewCommittedAt.value);
+const date = computed(() =>
+  dateIso.value ? formatDate(dateIso.value, { locale: locale.value, weekday: !isCollapsed.value }) : ''
+);
+const stamp = (at: string) => `${formatDate(at, { locale: locale.value })} ${formatTime(at)}`;
 
 // Source row: upstream body source chart.series1, Homebrew adoption time chart.series2.
 const sources = computed(() => {
-  const items: { key: string; tone: 'upstream' | 'homebrew'; label: string; href: string | null }[] = [];
+  const items: {
+    key: string;
+    tone: 'upstream' | 'homebrew';
+    label: string;
+    at: string | null;
+    href: string | null;
+  }[] = [];
   const { source, sourceUrl } = props.entry;
   const published = publishedAt.value;
   const brewed = brewCommittedAt.value;
   if (source !== 'homebrew') {
-    const label = text.value.sources[source];
-    const at =
-      source === 'github_release' && published
-        ? ` ${formatDate(published, { locale: locale.value })} ${formatTime(published)}`
-        : '';
-    items.push({ key: 'upstream', tone: 'upstream', label: `${label}${at}`, href: sourceUrl ?? null });
+    const at = source === 'github_release' && published ? published : null;
+    items.push({ key: 'upstream', tone: 'upstream', label: text.value.sources[source], at, href: sourceUrl ?? null });
   }
   if (brewed) {
-    items.push({
-      key: 'homebrew',
-      tone: 'homebrew',
-      label: `${text.value.sources.homebrew} ${formatDate(brewed, { locale: locale.value })} ${formatTime(brewed)}`,
-      href: null
-    });
+    items.push({ key: 'homebrew', tone: 'homebrew', label: text.value.sources.homebrew, at: brewed, href: null });
   }
   return items;
 });
@@ -93,6 +121,19 @@ const sections = computed(() =>
   }))
 );
 const heading = computed(() => `h${props.headingLevel}`);
+// Anchors are stable only within one page: versions move between pages as new releases arrive.
+const anchorId = computed(() =>
+  props.entry.id ? `r-${props.entry.id}` : `v-${props.entry.version.replace(/[^0-9A-Za-z._-]+/g, '-')}`
+);
+// Notes shown in another language (source fallback or the original switch) carry their own lang.
+const bodyLang = computed(() => {
+  const value = props.entry.translation?.locale;
+  return value && value !== locale.value ? value : undefined;
+});
+// F6: sourced bounds and Apple silicon support for this version, shown only when the host supplies the copy.
+const compatibility = computed(() =>
+  props.compatibilityLabels ? compatibilityText(props.entry.compatibility, props.compatibilityLabels) : null
+);
 // Entries for one build show a short build tag; the full build version stays in the tooltip.
 const label = computed(() => formatReleaseVersion(props.entry));
 const fullVersion = computed(() => (props.entry.build ? props.entry.version : undefined));
@@ -100,52 +141,55 @@ const fullVersion = computed(() => (props.entry.build ? props.entry.version : un
 
 <template>
   <article
+    :id="anchorId"
     class="on-version-entry rounded-big border border-solid"
     :class="[
       entry.isLatest ? 'on-version-entry--latest' : 'border-line-subtle bg-surface-card',
-      collapsed ? 'px-20px py-14px' : 'px-24px py-18px'
+      isCollapsed ? 'px-20px py-14px' : 'px-24px py-18px'
     ]"
   >
-    <button
-      v-if="collapsed"
-      type="button"
-      class="flex w-full cursor-pointer items-center gap-12px border-0 bg-transparent p-0 text-left"
-      :aria-expanded="false"
-      @click="emit('toggle')"
+    <!-- Kept outside <summary>: a button inside it would be presentational to assistive technology. -->
+    <OnButton
+      v-if="canUpdate && !isCollapsed"
+      variant="primary"
+      size="sm"
+      class="on-version-entry__update float-right ml-12px"
+      @click="emit('update')"
+      >{{ text.updateTo }}</OnButton
     >
-      <component :is="heading" class="m-0 text-14px font-600 text-ink-primary" :title="fullVersion">{{
-        label
-      }}</component>
-      <span class="text-12.5px text-ink-tertiary">{{ date }}</span>
-      <span class="ml-auto flex items-center gap-4px text-12.5px text-ink-tertiary">
-        {{ text.expand }}
-        <OnIcon name="lucide:chevron-down" :size="14" />
-      </span>
-    </button>
-    <template v-else>
-      <header class="flex flex-wrap items-center gap-x-10px gap-y-6px">
-        <component :is="heading" class="m-0 text-17px font-600 text-ink-primary" :title="fullVersion">{{
-          label
-        }}</component>
-        <OnChip v-if="entry.isLatest" tone="accent">{{ text.latest }}</OnChip>
-        <OnChip v-if="installed" tone="success" dot>{{ text.installed }}</OnChip>
-        <OnChip v-if="entry.isPrerelease" tone="warning" outline>{{ text.prerelease }}</OnChip>
-        <OnChip v-else-if="patch" tone="outline">{{ text.patch }}</OnChip>
-        <span class="text-12.5px text-ink-tertiary">{{ date }}</span>
-        <span class="ml-auto flex items-center gap-8px">
-          <OnButton v-if="canUpdate" variant="primary" size="sm" @click="emit('update')">{{ text.updateTo }}</OnButton>
-          <button
-            v-if="collapsible"
-            type="button"
-            class="flex cursor-pointer items-center gap-4px border-0 bg-transparent p-0 text-12.5px text-ink-tertiary hover:text-ink-secondary"
-            :aria-expanded="true"
-            @click="emit('toggle')"
-          >
-            {{ text.collapse }}
-            <OnIcon name="lucide:chevron-up" :size="14" />
-          </button>
+    <details ref="details" :open="open" @toggle="onToggle">
+      <summary
+        class="on-version-entry__summary group flex w-full items-center rounded-tiny outline-none focus-visible:shadow-focus-ring"
+        :class="[
+          isCollapsed ? 'gap-12px' : 'flex-wrap gap-x-10px gap-y-6px',
+          toggleable ? 'cursor-pointer' : 'cursor-default'
+        ]"
+        @click="onSummaryClick"
+      >
+        <component
+          :is="heading"
+          class="m-0 font-600 text-ink-primary"
+          :class="isCollapsed ? 'text-14px' : 'text-17px'"
+          :title="fullVersion"
+          >{{ label }}</component
+        >
+        <template v-if="!isCollapsed">
+          <OnChip v-if="entry.isLatest" tone="accent">{{ text.latest }}</OnChip>
+          <OnChip v-if="installed" tone="success" dot>{{ text.installed }}</OnChip>
+          <OnChip v-if="entry.isPrerelease" tone="warning" outline>{{ text.prerelease }}</OnChip>
+          <OnChip v-else-if="patch" tone="outline">{{ text.patch }}</OnChip>
+        </template>
+        <time v-if="dateIso" :datetime="dateIso" class="on-version-entry__date text-12.5px text-ink-tertiary">{{
+          date
+        }}</time>
+        <span
+          v-if="toggleable"
+          class="ml-auto flex items-center gap-4px text-12.5px text-ink-tertiary group-hover:text-ink-secondary"
+        >
+          {{ isCollapsed ? text.expand : text.collapse }}
+          <OnIcon :name="isCollapsed ? 'lucide:chevron-down' : 'lucide:chevron-up'" :size="14" />
         </span>
-      </header>
+      </summary>
       <p
         v-if="sources.length || machine"
         class="m-0 mt-8px flex flex-wrap items-center gap-x-16px gap-y-4px text-12.5px text-ink-tertiary"
@@ -164,11 +208,20 @@ const fullVersion = computed(() => (props.entry.build ? props.entry.version : un
             class="text-ink-tertiary no-underline hover:text-ink-secondary hover:underline"
             @click="event => emit('openSource', event)"
           >
-            {{ item.label }}
+            {{ item.label }} <time v-if="item.at" :datetime="item.at">{{ stamp(item.at) }}</time>
           </a>
-          <template v-else>{{ item.label }}</template>
+          <span v-else
+            >{{ item.label }} <time v-if="item.at" :datetime="item.at">{{ stamp(item.at) }}</time></span
+          >
         </span>
         <OnChip v-if="machine" tone="outline">{{ text.machineTranslation }}</OnChip>
+      </p>
+      <p
+        v-if="compatibility && compatibilityLabels"
+        class="on-version-entry__compatibility m-0 mt-6px flex flex-wrap gap-x-8px gap-y-2px text-12.5px text-ink-tertiary"
+      >
+        <span class="text-ink-secondary">{{ compatibilityLabels.title }}</span>
+        <span>{{ compatibility }}</span>
       </p>
 
       <div v-if="!entry.hasNotes" class="mt-12px flex flex-wrap items-center gap-12px text-13px text-ink-tertiary">
@@ -185,35 +238,31 @@ const fullVersion = computed(() => (props.entry.build ? props.entry.version : un
           <OnIcon name="lucide:arrow-up-right" :size="13" />
         </a>
       </div>
-      <p
-        v-if="entry.hasNotes && entry.summary"
-        class="m-0 mt-12px whitespace-pre-line text-13px leading-[1.5] text-ink-secondary"
-      >
-        {{ entry.summary }}
-      </p>
-      <dl
-        v-if="entry.hasNotes && sections.length"
-        class="m-0 mt-14px grid grid-cols-[76px_minmax(0,1fr)] gap-x-24px gap-y-10px"
-      >
-        <template v-for="section in sections" :key="section.area">
-          <dt class="pt-1px text-12px leading-[1.6] text-ink-tertiary">{{ section.area }}</dt>
-          <dd class="m-0 flex flex-col gap-4px text-13px leading-[1.5] text-ink-secondary">
-            <span v-for="(item, index) in section.items" :key="index">
-              <template v-for="(segment, part) in item" :key="part">
-                <strong v-if="segment.type === 'strong'" class="font-600 text-ink-primary">{{ segment.text }}</strong>
-                <code v-else-if="segment.type === 'code'" class="on-version-entry__code"
-                  ><OnCodeText :text="segment.text"
-                /></code>
-                <template v-else>{{ segment.text }}</template>
-              </template>
-            </span>
-          </dd>
-        </template>
-      </dl>
-      <div v-else-if="entry.hasNotes && entry.bodyMarkdown" class="mt-12px">
-        <slot name="markdown" :source="entry.bodyMarkdown">
-          <p v-if="!entry.summary" class="m-0 text-13px leading-[1.5] text-ink-secondary">{{ entry.bodyMarkdown }}</p>
-        </slot>
+      <div v-else :lang="bodyLang">
+        <p v-if="entry.summary" class="m-0 mt-12px whitespace-pre-line text-13px leading-[1.5] text-ink-secondary">
+          {{ entry.summary }}
+        </p>
+        <dl v-if="sections.length" class="m-0 mt-14px grid grid-cols-[76px_minmax(0,1fr)] gap-x-24px gap-y-10px">
+          <template v-for="section in sections" :key="section.area">
+            <dt class="pt-1px text-12px leading-[1.6] text-ink-tertiary">{{ section.area }}</dt>
+            <dd class="m-0 flex flex-col gap-4px text-13px leading-[1.5] text-ink-secondary">
+              <span v-for="(item, index) in section.items" :key="index">
+                <template v-for="(segment, part) in item" :key="part">
+                  <strong v-if="segment.type === 'strong'" class="font-600 text-ink-primary">{{ segment.text }}</strong>
+                  <code v-else-if="segment.type === 'code'" class="on-version-entry__code"
+                    ><OnCodeText :text="segment.text"
+                  /></code>
+                  <template v-else>{{ segment.text }}</template>
+                </template>
+              </span>
+            </dd>
+          </template>
+        </dl>
+        <div v-else-if="entry.bodyMarkdown" class="mt-12px">
+          <slot name="markdown" :source="entry.bodyMarkdown">
+            <p v-if="!entry.summary" class="m-0 text-13px leading-[1.5] text-ink-secondary">{{ entry.bodyMarkdown }}</p>
+          </slot>
+        </div>
       </div>
 
       <div
@@ -223,11 +272,20 @@ const fullVersion = computed(() => (props.entry.build ? props.entry.version : un
         <OnIcon name="lucide:rotate-ccw-clock" :size="15" class="shrink-0 text-status-success" />
         <slot name="local" />
       </div>
-    </template>
+    </details>
   </article>
 </template>
 
 <style>
+/* The disclosure marker is replaced by the Expand/Collapse label. */
+.on-version-entry__summary {
+  list-style: none;
+}
+
+.on-version-entry__summary::-webkit-details-marker {
+  display: none;
+}
+
 .on-version-entry--latest {
   border-color: color-mix(in srgb, var(--on-brand-salmon) 22%, transparent);
   background:

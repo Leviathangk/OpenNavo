@@ -1,0 +1,7 @@
+{
+  "rule": "HTML pages on the edge cache (WP5): cache key, query string",
+  "queryString": {
+    "include": ["category", "disabled", "kind", "notes", "original", "page", "period", "q", "sort", "token", "type"]
+  },
+  "note": "Mirror of the cache parameters in apps/web/shared/utils/routeQuery.ts (S4). apps/web/tests/routeQuery.test.ts fails when the two drift. Set the same list in the Cloudflare dashboard: Caching > Cache Rules > the HTML rule > Cache key > Query string > Include."
+}

@@ -13,7 +13,7 @@ import (
 
 // Every live FK into packages has an explicit policy below. Audit snapshots also
 // include colliding rows and overflow alternatives; history keeps its original IDs.
-var linkMergeTables = []string{"package_meta", "package_i18n", "package_categories", "package_screenshots", "package_versions", "releases", "changelog_sources", "analytics_snapshots", "collection_items", "features", "feedback", "package_aliases", "tap_casks", "article_revision_packages", "package_source_facts", "package_facts", "package_alternatives", "link_apps", "update_feeds"}
+var linkMergeTables = append([]string{"package_meta", "package_i18n", "package_categories", "package_screenshots", "package_versions", "releases", "changelog_sources", "analytics_snapshots", "collection_items", "features", "feedback", "package_aliases", "tap_casks", "article_revision_packages", "article_test_artifacts", "package_source_facts", "package_facts", "package_alternatives", "link_apps", "update_feeds", "package_page_state", "package_page_dirty", "seo_urls", "seo_keyword_links", "seo_listing_baselines", "seo_listing_candidates"}, factRelationshipTables...)
 
 func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutation, now time.Time) error {
 	if mutation.Previous == nil || mutation.RenamedFrom == "" {
@@ -52,10 +52,17 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 		}
 	}
 	archive := map[string]json.RawMessage{}
+	if err := archiveSEOLink(db, archive, from, to); err != nil {
+		return err
+	}
+
 	snapshots := map[string]string{"packages": "id IN (?,?)"}
 	for _, table := range linkMergeTables {
 		snapshots[table] = "package_id IN (?,?)"
 	}
+	snapshots["seo_listing_candidates"] = "package_id IN (?,?) OR baseline_package_id IN (?,?) OR payload->>'evidenceId' IN (SELECT id::text FROM seo_evidence_snapshots WHERE entity_key IN ('pkg:'||(?::bigint)::text,'pkg:'||(?::bigint)::text))"
+	snapshots["seo_listing_baselines"] = "package_id IN (?,?) OR fact_id IN (SELECT id FROM package_fact_records WHERE package_id IN (?,?)) OR evidence_id IN (SELECT id FROM seo_evidence_snapshots WHERE entity_key IN ('pkg:'||(?::bigint)::text,'pkg:'||(?::bigint)::text))"
+	snapshots["package_fact_records"] = "package_id IN (?,?) OR (kind='migration' AND value->>'targetPackageId' IN ((?::bigint)::text,(?::bigint)::text))"
 	snapshots["package_alternatives"] = "package_id IN (?,?) OR alternative_id IN (?,?)"
 	snapshots["release_i18n"] = "release_id IN (SELECT id FROM releases WHERE package_id IN (?,?))"
 	snapshots["screenshot_i18n"] = "screenshot_id IN (SELECT id FROM package_screenshots WHERE package_id IN (?,?))"
@@ -64,8 +71,11 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 	snapshots["job_outbox"] = "(payload->>'packageId')::bigint IN (?,?) OR (payload->>'sourceId')::bigint IN (SELECT id FROM changelog_sources WHERE package_id IN (?,?))"
 	for table, where := range snapshots {
 		args := []any{from, to}
-		if table == "package_alternatives" || table == "content_translation_sources" || table == "job_outbox" {
+		if table == "package_fact_records" || table == "package_alternatives" || table == "content_translation_sources" || table == "job_outbox" {
 			args = append(args, from, to)
+		}
+		if table == "seo_listing_baselines" || table == "seo_listing_candidates" {
+			args = append(args, from, to, from, to)
 		}
 		var raw string
 		if err := db.Raw("SELECT coalesce(jsonb_agg(to_jsonb(r)),'[]'::jsonb)::text FROM "+table+" r WHERE "+where, args...).Scan(&raw).Error; err != nil {
@@ -89,7 +99,13 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 	if err != nil {
 		return err
 	}
-	if err := db.Exec("INSERT INTO audit_logs(action,entity_type,entity_id,before,after) VALUES('link.adopt.rename','package',?,?::jsonb,jsonb_build_object('retiredId',?::bigint,'canonicalId',?::bigint,'policy','canonical wins equal priority; human before machine; hidden OR; overflow archived'))", fmt.Sprint(to), string(before), from, to).Error; err != nil {
+	if err := db.Exec("INSERT INTO audit_logs(action,entity_type,entity_id,before,after) VALUES('link.adopt.rename','package',?,?::jsonb,jsonb_build_object('retiredId',?::bigint,'canonicalId',?::bigint,'policy','canonical wins equal priority; human before machine; hidden OR; overflow archived; SEO newest row wins (keyword xmin ordering); differing baseline identities rejected; original candidate baseline IDs and artifact payload/hash preserved; article package references remapped, evidence IDs preserved; page state recomputed; leases revoked'))", fmt.Sprint(to), string(before), from, to).Error; err != nil {
+		return err
+	}
+	if err := mergeSEORelationships(ctx, tx, from, to); err != nil {
+		return err
+	}
+	if err := mergeArticleRelationships(db, from, to); err != nil {
 		return err
 	}
 	st := &Store{DB: tx}
@@ -318,15 +334,26 @@ func mergeLinkIntoCask(ctx context.Context, tx *gorm.DB, mutation CatalogMutatio
 	if err := exec("INSERT INTO catalog_changes(package_id,kind,token,op,reason) VALUES(?,'link',?,'delete','link')", from, source.Token); err != nil {
 		return err
 	}
+	if err := mergeFactRelationships(ctx, tx, from, to); err != nil {
+		return err
+	}
 	// Remove explicitly migrated/archived sources; no relationship is left to CASCADE.
 	for _, table := range []string{"collection_item_i18n", "collection_items", "package_versions", "package_meta", "package_i18n", "package_categories", "package_source_facts", "analytics_snapshots", "article_revision_packages", "tap_casks", "package_facts", "link_apps"} {
 		if err := exec("DELETE FROM "+table+" WHERE package_id=?", from); err != nil {
 			return err
 		}
 	}
+	if err := mergePageStates(ctx, tx, from, to); err != nil {
+		return err
+	}
 	for _, table := range linkMergeTables {
 		var n int64
-		if err := db.Raw("SELECT count(*) FROM "+table+" WHERE package_id=?", from).Scan(&n).Error; err != nil {
+		condition, args := "package_id=?", []any{from}
+		if table == "seo_listing_candidates" {
+			condition += " OR baseline_package_id=?"
+			args = append(args, from)
+		}
+		if err := db.Raw("SELECT count(*) FROM "+table+" WHERE "+condition, args...).Scan(&n).Error; err != nil {
 			return err
 		}
 		if n != 0 {

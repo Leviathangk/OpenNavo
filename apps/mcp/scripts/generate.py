@@ -43,13 +43,26 @@ def generate_files() -> dict[str, str]:
             name: str = operation["operationId"]
             properties: dict[str, Any] = {}
             required: list[str] = []
-            parameters: dict[str, list[str]] = {"path": [], "query": []}
+            parameters: dict[str, list[str]] = {"path": [], "query": [], "header": []}
+            execution_headers = {
+                "X-SEO-Task-ID": "taskId",
+                "X-SEO-Fencing": "fencing",
+                "X-SEO-Expected-Revision": "expectedRevision",
+                "Idempotency-Key": "idempotencyKey",
+                "X-SEO-Evidence-IDs": "evidenceIds",
+            }
+            header_names: dict[str, str] = {}
             for raw in item.get("parameters", []) + operation.get("parameters", []):
                 param = resolve(raw)
                 location = param["in"]
                 if location not in parameters:
                     continue
                 key = param["name"]
+                if location == "header":
+                    if key not in execution_headers:
+                        continue
+                    header_names[execution_headers[key]] = key
+                    key = execution_headers[key]
                 parameters[location].append(key)
                 properties[key] = param["schema"]
                 if param.get("required"):
@@ -78,6 +91,7 @@ def generate_files() -> dict[str, str]:
                 "method": method.upper(),
                 "model": model,
                 "parameters": parameters,
+                "headerNames": header_names,
                 "policy": policy,
                 "summary": operation.get("summary", ""),
                 "body": body_schema,
@@ -89,6 +103,7 @@ def generate_files() -> dict[str, str]:
         target_python_version=PythonVersion.PY_313,
         disable_timestamp=True,
         field_constraints=True,
+        strict_nullable=True,
         use_annotated=True,
         use_standard_collections=True,
         use_union_operator=True,

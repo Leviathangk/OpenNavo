@@ -33,18 +33,21 @@ type PublicArticleRow struct {
 const readyText = `x.status IN ('source','machine','manual') AND NOT x.withheld AND btrim(x.title)<>''`
 
 const publicArticleSelect = `SELECT a.id,a.slug,r.type,r.source_locale,t.locale AS text_locale,t.title,t.summary,t.body_markdown,t.test_note,t.seo_title,t.seo_description,
- t.machine_translated,ca.url AS cover_url,ca.width AS cover_width,ca.height AS cover_height,r.cover_alt,r.author_id,au.slug AS author_slug,au.name AS author_name,
+ t.machine_translated,ca.url AS cover_url,ca.width AS cover_width,ca.height AS cover_height,
+ COALESCE((SELECT NULLIF(btrim(x.cover_alt),'') FROM article_revision_i18n x WHERE x.revision_id=r.id
+ AND x.locale IN (lang.requested,'en-US') AND ` + readyText + ` AND NULLIF(btrim(x.cover_alt),'') IS NOT NULL
+ ORDER BY (x.locale=lang.requested) DESC LIMIT 1),r.cover_alt) AS cover_alt,r.author_id,au.slug AS author_slug,au.name AS author_name,
  a.first_published_at,a.content_updated_at,r.number AS revision,r.id AS revision_id,r.sources::text AS sources,
  COALESCE((SELECT json_agg(x.locale ORDER BY x.locale) FROM article_revision_i18n x WHERE x.revision_id=r.id AND ` + readyText + `),'[]')::text AS ready_locales
- FROM articles a JOIN article_revisions r ON r.id=a.published_revision_id
+ FROM articles a JOIN article_revisions r ON r.id=a.published_revision_id CROSS JOIN (SELECT ?::text requested) lang
  LEFT JOIN assets ca ON ca.id=r.cover_asset_id LEFT JOIN article_authors au ON au.id=r.author_id
- JOIN LATERAL (SELECT x.* FROM article_revision_i18n x WHERE x.revision_id=r.id AND ((x.locale=? AND ` + readyText + `) OR x.locale=r.source_locale)
-   ORDER BY (x.locale=?) DESC LIMIT 1) t ON TRUE
+ JOIN LATERAL (SELECT x.* FROM article_revision_i18n x WHERE x.revision_id=r.id AND ((x.locale=lang.requested AND ` + readyText + `) OR x.locale=r.source_locale)
+   ORDER BY (x.locale=lang.requested) DESC LIMIT 1) t ON TRUE
  WHERE a.status='published'`
 
 // PublicArticles lists published articles, newest first; authorID limits them to one author.
 func (s *Store) PublicArticles(ctx context.Context, locale, kind string, authorID int64, current, size int) ([]PublicArticleRow, int64, error) {
-	where, args := "", []any{locale, locale}
+	where, args := "", []any{locale}
 	if kind != "" {
 		where += " AND r.type=?"
 		args = append(args, kind)
@@ -65,7 +68,7 @@ func (s *Store) PublicArticles(ctx context.Context, locale, kind string, authorI
 // PublicArticle reads one published article by its current slug.
 func (s *Store) PublicArticle(ctx context.Context, slug, locale string) (PublicArticleRow, bool, error) {
 	var row PublicArticleRow
-	err := s.DB.WithContext(ctx).Raw(publicArticleSelect+" AND a.slug=?", locale, locale, slug).Scan(&row).Error
+	err := s.DB.WithContext(ctx).Raw(publicArticleSelect+" AND a.slug=?", locale, slug).Scan(&row).Error
 	return row, row.ID != 0, err
 }
 

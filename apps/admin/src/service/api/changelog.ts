@@ -17,8 +17,6 @@ export const updateRelease = (id: number, data: BodyOf<'updateRelease'>) =>
 export const updateReleaseI18n = (id: number, locale: Schemas['Locale'], data: BodyOf<'updateReleaseI18n'>) =>
   request({ url: `/releases/${id}/i18n/${locale}`, method: 'put', data });
 
-export const retranslateRelease = (id: number) => request({ url: `/releases/${id}/retranslate`, method: 'post' });
-
 // Release-list authoring: all cataloged versions including those without notes; write/clear editorial notes.
 
 export const fetchAdminVersions = (params: QueryOf<'listAdminVersions'>) =>

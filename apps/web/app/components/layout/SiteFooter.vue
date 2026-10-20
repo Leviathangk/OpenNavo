@@ -2,9 +2,10 @@
 import { OnIcon, OnLogo } from '@opennavo/ui';
 
 // Footer sits below main content/rail in the shell column, with matching horizontal padding. It
-// repeats the landing footer's link groups so every page links the core entry points (WP7). The
-// sidebar already labels these entries, so each group is one unlabeled row: brand and tagline on
-// the left, link rows on the right at xl+, stacked below that.
+// repeats the landing footer's link groups so every page links the core entry points (WP7), All Apps
+// and the A–Z directory included (T1). The sidebar already labels these entries, so each group is one
+// unlabeled row: brand and tagline on the left, link rows on the right at xl+, stacked below that. The
+// language links (C4) sit above the copyright line.
 const { t } = useI18n();
 const localePath = useLocalePath();
 const year = new Date().getFullYear();
@@ -44,6 +45,8 @@ const consent = useAnalyticsConsent();
         </ul>
       </nav>
     </div>
+    <!-- C4: real links to this page in the other languages it is published in, for crawlers and visitors. -->
+    <SiteLanguageNav />
     <div class="flex flex-wrap items-center gap-x-16px gap-y-6px text-12px text-ink-tertiary xl:justify-between">
       <p class="m-0">{{ t('footer.copyright', { year }) }}</p>
       <button

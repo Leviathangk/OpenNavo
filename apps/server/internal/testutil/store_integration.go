@@ -5,8 +5,15 @@ package testutil
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/netip"
+	"os"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -22,12 +29,20 @@ func NewStore(t *testing.T) *store.Store {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	pg, err := postgres.Run(ctx, "postgres:18", postgres.WithDatabase("opennavo_test"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies())
+	opts := []testcontainers.ContainerCustomizer{postgres.WithDatabase("opennavo_test"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies()}
+	if os.Getenv("OPENNAVO_TEST_EXPLICIT_PORTS") == "1" {
+		opts = append(opts, testcontainers.WithHostConfigModifier(explicitTestPort(t, "5432/tcp")))
+	}
+	pg, err := postgres.Run(ctx, "postgres:18", opts...)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pg.Terminate(context.Background())) })
 	dsn, err := pg.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
-	rdb, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{ContainerRequest: testcontainers.ContainerRequest{Image: "public.ecr.aws/docker/library/redis:8", ExposedPorts: []string{"6379/tcp"}, WaitingFor: wait.ForAll(wait.ForLog("Ready to accept connections"), wait.ForListeningPort("6379/tcp"))}, Started: true})
+	redisRequest := testcontainers.ContainerRequest{Image: "public.ecr.aws/docker/library/redis:8", ExposedPorts: []string{"6379/tcp"}, WaitingFor: wait.ForAll(wait.ForLog("Ready to accept connections"), wait.ForListeningPort("6379/tcp"))}
+	if os.Getenv("OPENNAVO_TEST_EXPLICIT_PORTS") == "1" {
+		redisRequest.HostConfigModifier = explicitTestPort(t, "6379/tcp")
+	}
+	rdb, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{ContainerRequest: redisRequest, Started: true})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, rdb.Terminate(context.Background())) })
 	host, err := rdb.Host(ctx)
@@ -43,4 +58,28 @@ func NewStore(t *testing.T) *store.Store {
 	require.NoError(t, goose.SetDialect("postgres"))
 	require.NoError(t, goose.UpContext(ctx, sqlDB, "."))
 	return st
+}
+
+// Opt-in workaround for Docker Desktop versions that leave ephemeral host ports
+// unassigned. CI retains the normal testcontainers allocation behavior.
+func explicitTestPort(t *testing.T, port string) func(*container.HostConfig) {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	hostPort := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
+	require.NoError(t, listener.Close())
+	containerPort, err := network.ParsePort(port)
+	require.NoError(t, err)
+	return func(c *container.HostConfig) {
+		c.PortBindings = network.PortMap{containerPort: []network.PortBinding{{HostIP: netip.MustParseAddr("127.0.0.1"), HostPort: hostPort}}}
+	}
+}
+
+// PostgresTestPorts applies the same optional Docker Desktop workaround to
+// migration tests, which need to control how far migrations are applied.
+func PostgresTestPorts(t *testing.T) testcontainers.ContainerCustomizer {
+	if os.Getenv("OPENNAVO_TEST_EXPLICIT_PORTS") == "1" {
+		return testcontainers.WithHostConfigModifier(explicitTestPort(t, "5432/tcp"))
+	}
+	return testcontainers.WithHostConfigModifier(func(*container.HostConfig) {})
 }

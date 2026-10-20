@@ -2,7 +2,7 @@
 // API decides which languages are ready; pages in other languages show the source text, stay out
 // of the index and are left out of hreflang.
 import type { PublicComponents } from '@opennavo/api';
-import type { Locale } from '@opennavo/shared';
+import type { SiteLocale as Locale } from '@opennavo/shared';
 import { TITLE_SUFFIX } from './seoTitles';
 import { appEntityId, listItems } from './structuredData';
 

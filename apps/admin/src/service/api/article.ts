@@ -48,3 +48,9 @@ export const createArticleAuthor = (data: BodyOf<'createArticleAuthor'>) =>
 
 export const updateArticleAuthor = (id: number, data: BodyOf<'updateArticleAuthor'>) =>
   request<DataOf<'updateArticleAuthor'>>({ url: `/article-authors/${id}`, method: 'put', data });
+
+export const captureArticleEvidence = (id: number, data: BodyOf<'captureArticleEvidence'>) =>
+  request<DataOf<'captureArticleEvidence'>>({ url: `/articles/${id}/evidence`, method: 'post', data });
+
+export const createArticleTestArtifact = (id: number, data: BodyOf<'createArticleTestArtifact'>) =>
+  request<DataOf<'createArticleTestArtifact'>>({ url: `/articles/${id}/test-artifacts`, method: 'post', data });

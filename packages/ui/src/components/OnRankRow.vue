@@ -70,6 +70,7 @@ const trend = computed(() => {
       :token="pkg.token"
       :name="pkg.displayName"
       :src="pkg.iconUrl"
+      :variants="pkg.iconVariants"
       :accent="pkg.accentColor"
       :size="30"
     />

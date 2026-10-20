@@ -2,7 +2,8 @@
 import { computed, inject, ref } from 'vue';
 import type { App, ComputedRef, InjectionKey, Ref } from 'vue';
 import { sharedMessages } from '@opennavo/shared';
-import type { Locale, SharedMessages } from '@opennavo/shared';
+// Site locales: the website renders shared components in ten languages; apps use a subset.
+import type { SiteLocale as Locale, SharedMessages } from '@opennavo/shared';
 
 export const ON_UI_LOCALE: InjectionKey<Readonly<Ref<Locale>>> = Symbol('on-ui-locale');
 

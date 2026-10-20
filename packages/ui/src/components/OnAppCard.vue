@@ -28,6 +28,8 @@ export interface OnAppCardProps {
   actionTitle?: string;
   /** Link component (NuxtLink/RouterLink), href passed as to; native a by default. */
   linkAs?: string | Component;
+  /** Router history state for the navigation (router links only; href must then be a plain path). */
+  linkState?: Record<string, unknown>;
 }
 
 const props = withDefaults(defineProps<OnAppCardProps>(), { stats: () => ['installs30d', 'version'], linkAs: 'a' });
@@ -48,7 +50,10 @@ defineSlots<{
 
 const messages = useUiMessages();
 
-const linkAttrs = computed(() => (props.linkAs === 'a' ? { href: props.href } : { to: props.href }));
+const linkAttrs = computed(() => {
+  if (props.linkAs === 'a') return { href: props.href };
+  return { to: props.linkState && props.href ? { path: props.href, state: props.linkState } : props.href };
+});
 
 const statItems = computed(() =>
   props.stats.slice(0, 2).map(stat => {
@@ -75,6 +80,7 @@ const statItems = computed(() =>
         :token="pkg.token"
         :name="pkg.displayName"
         :src="pkg.iconUrl"
+        :variants="pkg.iconVariants"
         :accent="pkg.accentColor"
         :size="44"
       />

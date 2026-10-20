@@ -4,15 +4,17 @@ import { unwrap } from '@opennavo/api';
 import type { ReleaseEntry } from '@opennavo/api';
 import { formatDate } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
-import { OnEmpty, OnErrorState, OnPagination, OnSegmented, OnStatTile, OnVersionTimeline } from '@opennavo/ui';
+import { OnEmpty, OnErrorState, OnIcon, OnPagination, OnSegmented, OnStatTile, OnVersionTimeline } from '@opennavo/ui';
 import { pageCount as countPages } from '~/utils/catalogQuery';
+import { decorative } from '~/utils/decorative';
 import { versionsDescription, versionsTitle } from '~/utils/seoTitles';
 
 // Version history (08 §10.6, mockup 04): toolbar (all / with notes, Chinese / original), timeline, stats/sources on right.
 // Filters/original switch live in SSR URL (notes=1, original=1); canonical retains page only. No desktop installation markers or Update to this version.
 const props = defineProps<{ kind: PackageKind }>();
 
-const PAGE_SIZE = 20;
+// The backend decides each versions page at this size (S5); other sizes are never indexed.
+const PAGE_SIZE = 24;
 type Source = ReleaseEntry['source'];
 
 const { t, locale } = useI18n();
@@ -25,6 +27,14 @@ const onlyWithNotes = computed(() => query.value.notes === 'true' || query.value
 const original = computed(() => query.value.original === 'true' || query.value.original === '1');
 
 const { data: pkg, token } = await usePackage(props.kind);
+// F6: each version's macOS and chip compatibility, "Unknown" without data.
+const compatibilityLabels = useVersionCompatibilityLabels();
+// F6: the app's release feed (server/handlers/packageFeed.ts), linked from the head and next to the sources.
+const feedHref = useReleaseFeed(() =>
+  pkg.value
+    ? { section: 'apps', key: pkg.value.token, title: t('feeds.appTitle', { name: pkg.value.displayName }) }
+    : null
+);
 // A cask route can resolve to a link app (usePackage); its releases live under that kind.
 const kind = computed(() => pkg.value?.kind ?? props.kind);
 
@@ -41,31 +51,40 @@ const { data, error, refresh, status } = await useAsyncData(
 );
 
 // Segmented label totals (All 36 / With notes 29) are read per app, not taken from the shown page: while a filter
-// switch loads, Nuxt keeps the previous page on screen, and its total belongs to the other filter.
+// switch loads, Nuxt keeps the previous page on screen, and its total belongs to the other filter. They are
+// decorative (S7): if they fail, the labels show a dash and the timeline still renders.
 const { data: totals } = await useAsyncData(
   () => `releases-count:${kind.value}:${token.value}:${appLocale.value}:${original.value}`,
-  async () => {
-    const [all, withNotes] = await Promise.all([
-      releases({ current: 1, size: 1, onlyWithNotes: false, original: original.value }),
-      releases({ current: 1, size: 1, onlyWithNotes: true, original: original.value })
-    ]);
-    return { all: all.total, withNotes: withNotes.total };
-  }
+  () =>
+    decorative(
+      Promise.all([
+        releases({ current: 1, size: 1, onlyWithNotes: false, original: original.value }),
+        releases({ current: 1, size: 1, onlyWithNotes: true, original: original.value })
+      ]).then(([all, withNotes]) => ({ all: all.total, withNotes: withNotes.total })),
+      null,
+      'release filter counts'
+    )
 );
 
-const counts = computed(() => ({ all: totals.value?.all ?? 0, withNotes: totals.value?.withNotes ?? 0 }));
+const counts = computed(() => ({ all: totals.value?.all ?? null, withNotes: totals.value?.withNotes ?? null }));
 
 assertExists(() => data.value?.total, PAGE_SIZE, status);
+// S5: this page's decision comes with its releases; the layout keeps the state when the tab changes.
+usePageDecision(() => data.value?.indexing);
 const pageCount = computed(() => countPages(data.value?.total ?? 0, PAGE_SIZE));
 
 const filterOptions = computed(() => [
   {
     value: 'all' as const,
-    label: t('package.release.filterAll', { count: counts.value.all }, { plural: counts.value.all })
+    label: t('package.release.filterAll', { count: counts.value.all ?? '—' }, { plural: counts.value.all ?? 0 })
   },
   {
     value: 'notes' as const,
-    label: t('package.release.filterWithNotes', { count: counts.value.withNotes }, { plural: counts.value.withNotes })
+    label: t(
+      'package.release.filterWithNotes',
+      { count: counts.value.withNotes ?? '—' },
+      { plural: counts.value.withNotes ?? 0 }
+    )
   }
 ]);
 const languageOptions = computed(() => [
@@ -154,6 +173,7 @@ usePageSeo({
         :show-original="original"
         :expanded-count="page === 1 ? 3 : 1"
         :heading-level="2"
+        :compatibility-labels="compatibilityLabels"
       >
         <template #markdown="{ source }">
           <MarkdownContent :source="source" :heading-level="3" />
@@ -178,6 +198,13 @@ usePageSeo({
         />
         <OnStatTile v-if="brew" :label="t('package.release.brewLabel')" :value="brew.value" :hint="brew.hint" />
       </div>
+      <a
+        v-if="feedHref"
+        :href="feedHref"
+        type="application/rss+xml"
+        class="inline-flex items-center gap-6px self-start text-13px text-ink-secondary no-underline hover:text-ink-primary hover:underline"
+        ><OnIcon name="rss" :size="14" />{{ t('feeds.subscribe') }}</a
+      >
       <section
         v-if="sources.length"
         class="rounded-big border border-solid border-line-subtle bg-surface-card px-18px py-14px"

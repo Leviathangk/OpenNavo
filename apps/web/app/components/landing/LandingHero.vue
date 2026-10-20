@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PackageSummary } from '@opennavo/api';
-import { formatCount } from '@opennavo/shared';
+import { BRAND, formatCount } from '@opennavo/shared';
 import { OnAppIcon, OnButton, OnHighlightText, OnIcon, parseHighlight } from '@opennavo/ui';
 import type { OnAppIconSize } from '@opennavo/ui';
 
@@ -163,7 +163,7 @@ useLandingParallax(root);
       </p>
       <div class="mt-12px flex flex-col items-center gap-0 sm:flex-row sm:gap-24px">
         <a
-          href="https://github.com/opennavo/OpenNavo"
+          :href="BRAND.repository"
           target="_blank"
           rel="noopener noreferrer"
           class="inline-flex min-h-44px items-center gap-10px whitespace-nowrap rounded-tiny text-14px text-ink-primary no-underline outline-none transition-colors duration-fast ease-standard hover:text-ink-secondary focus-visible:shadow-focus-ring active:text-ink-secondary"

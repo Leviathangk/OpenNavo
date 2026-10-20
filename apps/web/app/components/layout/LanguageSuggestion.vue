@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { LOCALE_METADATA, type Locale } from '@opennavo/shared';
+import { LOCALE_METADATA, type SiteLocale as Locale } from '@opennavo/shared';
+import { languageSuggestionCopy } from '~/utils/languageSuggestionCopy';
 
-const { locale, t, setLocale, loadLocaleMessages } = useI18n();
+const { locale, setLocale } = useI18n();
 const suggestion = ref<Locale | null>(null);
 const chosen = useState('onv-language-choice', () => false);
 const busy = ref(false);
@@ -10,8 +11,10 @@ const showing = useState('onv-language-suggestion', () => false);
 watchEffect(() => {
   showing.value = Boolean(suggestion.value && !chosen.value);
 });
-const suggestedRoute = computed(() => (suggestion.value ? toRouteLocale(suggestion.value) : locale.value));
-const suggestedName = computed(() => (suggestion.value ? LOCALE_METADATA[suggestion.value].name : ''));
+// The banner speaks the suggested language from a small constant (X3), not that language's full messages.
+const copy = computed(() =>
+  suggestion.value ? languageSuggestionCopy(suggestion.value, LOCALE_METADATA[suggestion.value].name) : null
+);
 
 onMounted(async () => {
   const target = suggestedLanguage(
@@ -20,10 +23,7 @@ onMounted(async () => {
     readLanguagePreference(LANGUAGE_CHOICE_KEY),
     readLanguagePreference(LANGUAGE_DISMISSED_KEY)
   );
-  if (target) {
-    await loadLocaleMessages(toRouteLocale(target));
-    suggestion.value = target;
-  }
+  if (target) suggestion.value = target;
 });
 
 async function accept() {
@@ -46,7 +46,7 @@ function dismiss() {
 
 <template>
   <section
-    v-if="suggestion && !chosen"
+    v-if="suggestion && copy && !chosen"
     :lang="suggestion"
     role="status"
     aria-live="polite"
@@ -54,7 +54,7 @@ function dismiss() {
     class="fixed bottom-16px left-16px right-16px z-50 mx-auto flex max-w-560px flex-wrap items-center gap-12px rounded-default border border-line-default bg-surface-raised p-16px shadow-popover"
   >
     <p class="min-w-0 flex-1 basis-200px text-14px text-ink-primary">
-      {{ t('languageSuggestion.message', { language: suggestedName }, { locale: suggestedRoute }) }}
+      {{ copy.message }}
     </p>
     <div class="flex flex-wrap gap-12px">
       <button
@@ -63,14 +63,14 @@ function dismiss() {
         class="rounded-default text-14px text-brand-coral focus-visible:shadow-focus-ring"
         @click="accept"
       >
-        {{ t('languageSuggestion.switch', { language: suggestedName }, { locale: suggestedRoute }) }}
+        {{ copy.switch }}
       </button>
       <button
         type="button"
         class="rounded-default text-14px text-ink-secondary focus-visible:shadow-focus-ring"
         @click="dismiss"
       >
-        {{ t('languageSuggestion.dismiss', {}, { locale: suggestedRoute }) }}
+        {{ copy.dismiss }}
       </button>
     </div>
   </section>

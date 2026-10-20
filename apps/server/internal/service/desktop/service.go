@@ -361,7 +361,7 @@ func (s *Service) Latest(ctx context.Context, channel, locale string) (publicapi
 		return publicapi.DesktopReleaseInfo{}, store.MapAdminError(err)
 	}
 	notes, machine := row.LocalizedNotes(locale)
-	source := publicapi.Locale(row.SourceLocale)
+	source := publicapi.AppLocale(row.SourceLocale)
 	out := publicapi.DesktopReleaseInfo{SourceLocale: &source, MachineTranslated: &machine, Version: row.Version, Channel: publicapi.DesktopReleaseInfoChannel(row.Channel), MinMacos: row.MinMacos, Notes: notes, Downloads: []publicapi.DesktopDownload{}}
 	if row.PubDate != nil {
 		out.PubDate = row.PubDate.UTC()
@@ -380,7 +380,7 @@ func (s *Service) Latest(ctx context.Context, channel, locale string) (publicapi
 	recent := make([]publicapi.DesktopReleaseNotes, 0, len(rows))
 	for _, release := range rows {
 		text, machine := release.LocalizedNotes(locale)
-		source := publicapi.Locale(release.SourceLocale)
+		source := publicapi.AppLocale(release.SourceLocale)
 		if release.PubDate != nil {
 			recent = append(recent, publicapi.DesktopReleaseNotes{SourceLocale: &source, MachineTranslated: &machine, Version: release.Version, PubDate: release.PubDate.UTC(), Notes: text})
 		}

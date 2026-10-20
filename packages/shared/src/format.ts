@@ -1,5 +1,6 @@
 // Shared count/size/time/version formats (08 §12.3); all three clients must use these implementations.
-import type { Locale } from './types';
+// Site locales: the website formats in ten languages; the app locales are a subset.
+import type { SiteLocale as Locale } from './types';
 
 export interface FormatOptions {
   locale?: Locale;

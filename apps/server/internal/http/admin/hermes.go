@@ -41,14 +41,6 @@ func (h *Handler) GetTranslationStatus(ctx context.Context, request adminapi.Get
 	return response[adminapi.GetTranslationStatus200JSONResponse](data, err)
 }
 
-func (h *Handler) RetranslateContent(ctx context.Context, request adminapi.RetranslateContentRequestObject) (adminapi.RetranslateContentResponseObject, error) {
-	if h.Management == nil {
-		return nil, domain.Internal(nil)
-	}
-	data, err := h.manage(ctx, "RetranslateContent", request)
-	return response[adminapi.RetranslateContent200JSONResponse](data, err)
-}
-
 func (h *Handler) FixTranslation(ctx context.Context, request adminapi.FixTranslationRequestObject) (adminapi.FixTranslationResponseObject, error) {
 	if h.Management == nil {
 		return nil, domain.Internal(nil)

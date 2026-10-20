@@ -179,6 +179,7 @@ func (s *Service) indexReport(ctx context.Context, in Input) (any, error) {
 	}
 	return map[string]any{
 		"records": records, "current": current, "size": size, "total": total,
+		"translationImpact": translationImpact(rows, policy, current, size),
 		"counts": map[string]int{
 			"hidden": counts[seo.ReasonHidden], "forcedNoindex": counts[seo.ReasonForcedNoindex], "unavailable": counts[seo.ReasonUnavailable],
 			"missingSummary": counts[seo.ReasonMissingSummary], "thin": counts[seo.ReasonThin], "forcedIndex": counts[reasonForcedIndex],

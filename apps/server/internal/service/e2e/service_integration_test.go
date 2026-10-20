@@ -79,11 +79,16 @@ func TestE2EFixturesIdempotentSearchRolesReleasesAndSnapshot(t *testing.T) {
 			require.Equal(t, digest, rolled[table], table)
 		}
 	}
-	for table, count := range map[string]int64{"packages": 60, "package_i18n": 120, "package_categories": 60, "analytics_snapshots": 60, "categories": 22, "category_i18n": 44, "admin_users": 5, "admin_user_roles": 5, "releases": 12, "release_i18n": 24, "collections": 1, "collection_items": 15, "features": 1, "feedback": 3, "catalog_changes": 60, "catalog_snapshots": 1, "assets": 6, "package_screenshots": 2, "desktop_releases": 5, "llm_usage": 0, "job_outbox": 0} {
+	for table, count := range map[string]int64{"packages": 60, "package_i18n": 120, "package_categories": 60, "analytics_snapshots": 60, "categories": 22, "category_i18n": 44, "admin_users": 5, "admin_user_roles": 5, "releases": 12, "release_i18n": 24, "collections": 1, "collection_items": 15, "features": 1, "feedback": 3, "catalog_changes": 60, "catalog_snapshots": 1, "assets": 6, "package_screenshots": 2, "desktop_releases": 5, "llm_usage": 0} {
 		var actual int64
 		require.NoError(t, st.DB.Table(table).Count(&actual).Error)
 		require.Equal(t, count, actual, table)
 	}
+	// Content writes leave durable cache invalidations for the dispatcher.
+	// Seeding must not schedule external fetches or retired translation jobs.
+	var externalJobs int64
+	require.NoError(t, st.DB.Table("job_outbox").Where("job_type <> 'cache:invalidate'").Count(&externalJobs).Error)
+	require.Zero(t, externalJobs)
 	users, err := st.E2EUsers(ctx)
 	require.NoError(t, err)
 	for _, account := range seeds.E2EAccounts() {

@@ -99,7 +99,7 @@ func (s *Service) trigger(ctx context.Context, op string, in Input) (any, error)
 	if err != nil {
 		return nil, err
 	}
-	if boolean(in.Params, "dryrun") {
+	if boolean(in.Params, "dryrun") || agentTransaction(ctx) {
 		return result, nil
 	}
 	if taskType == "catalog:sync" && op == "ResyncPackage" {
@@ -115,7 +115,7 @@ func (s *Service) trigger(ctx context.Context, op string, in Input) (any, error)
 		}
 		_, err = s.Queue.Enqueue(ctx, typ, p, m)
 		var app *domain.AppError
-		if errors.As(err, &app) && app.Code == domain.CodeInvalidState && typ != "translate:content" {
+		if errors.As(err, &app) && app.Code == domain.CodeInvalidState {
 			duplicate = true
 			return nil
 		}

@@ -6,7 +6,8 @@ import { displayUrl, OnChip, OnCodeText, OnIcon, parseInline } from '@opennavo/u
 type ReleaseEntry = PublicComponents['schemas']['ReleaseEntry'];
 
 // Latest-release card (08 §10.5, .latest): up to three highlights, View all N versions, original link.
-// Render bold/code highlight segments as OnVersionEntry does.
+// Render bold/code highlight segments as OnVersionEntry does. The h2 names only the release (C3): the New
+// chip, the date and the source sit in a paragraph after it, so they never become heading text.
 const props = defineProps<{ release: ReleaseEntry; total: number; versionsHref: string }>();
 
 const { t, locale } = useI18n();
@@ -21,7 +22,6 @@ const rows = computed(() =>
 
 const meta = computed(() =>
   [
-    props.release.publishedAt ? formatDate(props.release.publishedAt, { locale: appLocale.value }) : null,
     t(`package.release.source.${props.release.source}`),
     props.release.translation.status === 'machine' || props.release.translation.status === 'manual'
       ? t('package.release.translated')
@@ -33,12 +33,25 @@ const meta = computed(() =>
 </script>
 
 <template>
-  <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-18px py-16px">
-    <h2 class="m-0 flex flex-wrap items-center gap-8px text-13.5px font-600 text-ink-primary">
-      <OnChip v-if="release.isLatest" tone="accent">{{ t('package.release.new') }}</OnChip>
+  <section
+    id="whats-new"
+    class="rounded-big border border-solid border-line-subtle bg-surface-card px-18px py-16px"
+    aria-labelledby="whats-new-title"
+  >
+    <h2 id="whats-new-title" class="m-0 text-13.5px font-600 text-ink-primary">
       {{ t('package.release.title', { version: formatReleaseVersion(release) }) }}
-      <small class="text-12px font-400 text-ink-tertiary">{{ meta }}</small>
     </h2>
+    <!-- Separators live in the text, so the line also reads well without its layout. -->
+    <p class="m-0 mt-4px flex flex-wrap items-center gap-x-8px gap-y-4px text-12px text-ink-tertiary">
+      <OnChip v-if="release.isLatest" tone="accent">{{ t('package.release.new') }}</OnChip>
+      <span
+        >{{ release.isLatest ? ' ' : ''
+        }}<time v-if="release.publishedAt" :datetime="release.publishedAt">{{
+          formatDate(release.publishedAt, { locale: appLocale })
+        }}</time
+        >{{ release.publishedAt ? ` · ${meta}` : meta }}</span
+      >
+    </p>
     <ul v-if="rows.length" class="m-0 mt-10px flex list-none flex-col gap-8px p-0">
       <li v-for="(row, index) in rows" :key="index" class="flex gap-10px text-13px leading-[1.5] text-ink-secondary">
         <OnChip class="w-58px shrink-0 justify-center">{{ row.area }}</OnChip>

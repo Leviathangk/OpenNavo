@@ -258,7 +258,10 @@ impl CatalogService {
         .await
     }
     async fn prune_cache(&self, metadata: &SnapshotInfo) -> Result<(), AppError> {
-        if metadata.format_version != 2 || metadata.cursor < 0 || metadata.text_packs.len() != 6 {
+        if metadata.format_version != 2
+            || metadata.cursor < 0
+            || metadata.text_packs.len() != crate::locales_gen::LOCALES.len()
+        {
             return Err(protocol("snapshot_metadata"));
         }
         let mut keep = HashSet::new();

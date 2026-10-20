@@ -15,7 +15,9 @@ test('Homepage is introduction with download/browse; Discover navigation points 
   // Playwright text matching skips script elements, so toContainText is always empty; retry reading textContent instead.
   await expect
     .poll(() => page.locator('script[type="application/ld+json"]').first().textContent())
-    .toContain('SearchAction');
+    .toContain('WebSite');
+  // The SEO batch removed SearchAction from the homepage's WebSite schema.
+  expect(await page.locator('script[type="application/ld+json"]').first().textContent()).not.toContain('SearchAction');
 });
 
 test('Security page explains the antivirus and marks its navigation item', async ({ page }) => {

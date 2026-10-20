@@ -65,26 +65,46 @@ onBeforeUnmount(() => clearTimeout(timer));
         <span aria-live="polite">{{ copied ? messages.action.copied : messages.action.copy }}</span>
       </button>
     </div>
+    <!--
+      The command is one text node (C7): the "$ " prompt and a wrap's " \" are drawn by CSS, so copying,
+      crawlers and text extraction read exactly the command that runs.
+    -->
     <pre
       class="m-0 overflow-x-auto rounded-default border border-solid border-line-subtle bg-surface-inset px-14px py-12px font-mono text-11.5px leading-[1.6] text-ink-primary"
-    ><code v-if="split" class="flex flex-wrap" :style="columns"><span class="on-command-head shrink-0 whitespace-pre"><span class="select-none text-brand-salmon">$ </span>{{ split.head }} \</span><span class="on-command-tail shrink-0 whitespace-pre">{{ split.tail }}</span></code><code v-else><span class="block whitespace-pre"><span class="select-none text-brand-salmon">$ </span>{{ command.trim() }}</span></code></pre>
+    ><code class="on-command block" :class="split ? 'on-command-split' : 'whitespace-pre'" :style="columns"><span v-if="split" class="on-command-break" aria-hidden="true"></span>{{ command.trim() }}</code></pre>
   </div>
 </template>
 
 <style scoped>
-/*
- * A long command stays on one line while it fits its row and otherwise wraps after --cask/--formula.
- * Each clamp acts as a switch: (one-line width - row width) * 999 lands far below the minimum when the
- * line fits and far above the maximum when it does not. Fitting rows clip the head's trailing " \"
- * and leave one column before the tail; narrow rows show " \" and indent the wrapped tail six
- * columns, under the command after its "$ " prompt.
- */
-.on-command-head {
-  overflow: hidden;
-  width: clamp(var(--on-command-head), (var(--on-command-line) - 100%) * 999, var(--on-command-head) + 2ch);
+.on-command::before {
+  content: '$ ';
+  color: var(--on-brand-salmon);
+  user-select: none;
 }
 
-.on-command-tail {
-  padding-left: clamp(1ch, (var(--on-command-line) - 100%) * 999, 6ch);
+/*
+ * A long command stays on one line while it fits its row and otherwise wraps after --cask/--formula, still as
+ * one text node. Continuation lines hang six columns in, under the command after its "$ " prompt. A right
+ * float as tall as the first line leaves that line room for the prompt, the head and one spare column, so the
+ * line breaks right after --cask, and draws the continuation backslash where " \" would sit. Its width is a
+ * switch: (one-line width - first-line room) * 999 lands far below zero when the command fits, so the float
+ * takes no room, and far above the maximum when it does not.
+ */
+.on-command-split {
+  white-space: pre-wrap;
+  padding-left: 6ch;
+  text-indent: -6ch;
+}
+
+.on-command-break {
+  float: right;
+  overflow: hidden;
+  white-space: pre;
+  text-indent: 0;
+  width: clamp(0px, (var(--on-command-line) - 100% - 6ch) * 999, 100% + 5ch - var(--on-command-head));
+}
+
+.on-command-break::before {
+  content: '\\';
 }
 </style>

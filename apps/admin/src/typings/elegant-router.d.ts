@@ -54,7 +54,6 @@ declare module "@elegant-router/types" {
     "system_github": "/system/github";
     "system_role": "/system/role";
     "system_seo": "/system/seo";
-    "system_translation": "/system/translation";
     "system_user": "/system/user";
     "user-center": "/user-center";
   };
@@ -148,7 +147,6 @@ declare module "@elegant-router/types" {
     | "system_github"
     | "system_role"
     | "system_seo"
-    | "system_translation"
     | "system_user"
     | "user-center"
   >;

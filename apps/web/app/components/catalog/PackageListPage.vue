@@ -2,7 +2,7 @@
 import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { OnEmpty, OnErrorState, OnPackageListView, OnPagination } from '@opennavo/ui';
-import { CATALOG_SORTS, pageCount as countPages, readEnum, readFlag } from '~/utils/catalogQuery';
+import { CATALOG_SORTS, GRID_PAGE_SIZE, pageCount as countPages, readEnum, readFlag } from '~/utils/catalogQuery';
 import { packagePath } from '~/utils/packageView';
 import { brandlessTitle } from '~/utils/seoTitles';
 
@@ -10,7 +10,7 @@ const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 
 // App list /apps (05 §4, 08 §10.2): shared OnPackageListView (ADR-017), Cask-only (ADR-018).
-const { pageSize, customSize, fitPage } = useGridPageSize();
+const pageSize = GRID_PAGE_SIZE;
 
 const { t, locale } = useI18n();
 const api = useApi();
@@ -18,12 +18,13 @@ const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 const { query, hrefWith, update } = useCatalogQuery({ page: 1, sort: 'popular', disabled: false });
 
-const { page, assertExists } = useListPage({ canonical: ['size', 'disabled'] });
+const { page, assertExists } = useListPage();
+useKnownQueryValue('sort', CATALOG_SORTS);
 const sort = computed(() => readEnum(query.value.sort, CATALOG_SORTS, 'popular'));
 const includeDisabled = computed(() => readFlag(query.value.disabled));
 
 const { data, error, refresh, status } = await useAsyncData(
-  () => `packages:cask:${sort.value}:${page.value}:${pageSize.value}:${includeDisabled.value}:${locale.value}`,
+  () => `packages:cask:${sort.value}:${page.value}:${pageSize}:${includeDisabled.value}:${locale.value}`,
   () =>
     unwrap(
       api.GET('/packages', {
@@ -32,7 +33,7 @@ const { data, error, refresh, status } = await useAsyncData(
             includeFonts: true,
             sort: sort.value,
             current: page.value,
-            size: pageSize.value,
+            size: pageSize,
             includeDisabled: includeDisabled.value
           }
         }
@@ -41,7 +42,7 @@ const { data, error, refresh, status } = await useAsyncData(
 );
 
 assertExists(() => data.value?.total, pageSize, status);
-const pageCount = computed(() => countPages(data.value?.total ?? 0, pageSize.value));
+const pageCount = computed(() => countPages(data.value?.total ?? 0, pageSize));
 const sorts = useCatalogSorts();
 const subtitle = computed(() =>
   data.value
@@ -54,11 +55,11 @@ useItemListSchema(
     error.value
       ? null
       : data.value?.records.map(pkg => ({ name: pkg.displayName, path: localePath(packagePath(pkg.token)) })),
-  () => (page.value - 1) * pageSize.value + 1
+  () => (page.value - 1) * pageSize + 1,
+  () => data.value?.total
 );
 
-// Filtered lists and other page sizes retain their own canonical but stay out of the index.
-useSeoMeta({ robots: () => (includeDisabled.value || customSize.value ? 'noindex, follow' : undefined) });
+// Sorted and filtered variants stay out of the index through the route query contract (S4).
 usePageSeo({
   title: () => t('catalog.appsMetaTitle'),
   page,
@@ -84,7 +85,7 @@ defineOgImage('OgListSatori', {
     :sort-label="t('catalog.sortLabel')"
     :items="error ? [] : (data?.records ?? null)"
     :link-as="NuxtLink"
-    @page-size="fitPage"
+    :fit-to-width="false"
     @update:sort="update({ sort: $event })"
   >
     <template #filters>

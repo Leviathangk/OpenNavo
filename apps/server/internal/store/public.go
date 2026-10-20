@@ -8,6 +8,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
+
+	"github.com/opennavo/opennavo/server/internal/facts"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/domain"
@@ -71,6 +74,7 @@ type PublicCategory struct {
 	Confidence        *float64 `json:"confidence"`
 }
 type PublicPackage struct {
+	IconVariants                           []ImageVariant      `json:"icon_variants"`
 	Link                                   *publicapi.LinkInfo `json:"link"`
 	BundleIDs                              *[]string           `json:"bundle_ids"`
 	SourceLocale                           string              `json:"source_locale"`
@@ -109,6 +113,7 @@ type PublicPackage struct {
 	Popularity                             float64
 	VersionChangedAt                       time.Time `json:"version_changed_at"`
 	UpdatedAt                              time.Time `json:"updated_at"`
+	HomebrewCheckedAt                      time.Time `json:"homebrew_checked_at"`
 	Artifacts, Dependencies, ConflictsWith json.RawMessage
 	Meta                                   PublicMeta
 	I18n                                   PublicI18n
@@ -152,7 +157,7 @@ const publicVisible = `p.kind='cask' AND p.removed_at IS NULL AND NOT COALESCE(m
 // Empty categories may be curated in advance; subtrees containing only Formula entries do not enter the catalog.
 const publicCategoryVisible = `c.visible AND (NOT EXISTS (WITH RECURSIVE subtree AS (SELECT c.id UNION ALL SELECT child.id FROM categories child JOIN subtree parent ON child.parent_id=parent.id) SELECT 1 FROM package_categories pc JOIN subtree ON subtree.id=pc.category_id JOIN packages legacy_package ON legacy_package.id=pc.package_id WHERE legacy_package.kind<>'link') OR EXISTS (WITH RECURSIVE subtree AS (SELECT c.id UNION ALL SELECT child.id FROM categories child JOIN subtree parent ON child.parent_id=parent.id) SELECT 1 FROM package_categories pc JOIN subtree ON subtree.id=pc.category_id JOIN packages cp ON cp.id=pc.package_id WHERE cp.kind='cask')) AND c.applies_to<>'formula'`
 const packageView = `SELECT (to_jsonb(p)-ARRAY['raw','raw_hash','search_text','search_vector']) ||
- jsonb_build_object('link',(SELECT jsonb_build_object('homepage',l.homepage,'downloadUrl',l.download_url,'github',CASE WHEN l.github_repo IS NULL THEN NULL ELSE jsonb_build_object('repo',l.github_repo,'latest',l.latest) END,'teamId',l.team_id,'pricing',l.pricing,'notes',l.notes,'adoptedByCask',NULL) FROM link_apps l WHERE l.package_id=p.id AND p.kind='link'),'bundle_ids',(SELECT l.bundle_ids FROM link_apps l WHERE l.package_id=p.id AND p.kind='link'),'upstream_disabled',p.disabled,'disabled',` + PackageDisabledSQL + `,'meta',COALESCE(to_jsonb(m),'{}'::jsonb),'i18n',COALESCE(to_jsonb(i),jsonb_build_object('source_locale',p.source_locale,'locale',p.source_locale)),'icon_url',a.url,'source_path',COALESCE(p.raw->>'ruby_source_path',''),
+ jsonb_build_object('link',(SELECT jsonb_build_object('homepage',l.homepage,'downloadUrl',l.download_url,'github',CASE WHEN l.github_repo IS NULL THEN NULL ELSE jsonb_build_object('repo',l.github_repo,'latest',l.latest) END,'teamId',l.team_id,'pricing',l.pricing,'notes',l.notes,'adoptedByCask',NULL) FROM link_apps l WHERE l.package_id=p.id AND p.kind='link'),'bundle_ids',(SELECT l.bundle_ids FROM link_apps l WHERE l.package_id=p.id AND p.kind='link'),'upstream_disabled',p.disabled,'disabled',` + PackageDisabledSQL + `,'meta',COALESCE(to_jsonb(m),'{}'::jsonb),'i18n',COALESCE(to_jsonb(i),jsonb_build_object('source_locale',p.source_locale,'locale',p.source_locale)),'icon_url',a.url,'icon_variants',` + assetResponsiveSQL + `,'source_path',COALESCE(p.raw->>'ruby_source_path',''),
  'download_sha256',CASE WHEN COALESCE(p.raw->>'sha256',p.raw#>>'{urls,stable,checksum}') ~ '^[a-fA-F0-9]{64}$' THEN lower(COALESCE(p.raw->>'sha256',p.raw#>>'{urls,stable,checksum}')) ELSE NULL END,
  'categories',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',c.id,'source_locale',c.source_locale,'machine_translated',COALESCE(ci.machine_translated,false),'slug',c.slug,'name',COALESCE(ci.name,c.slug),'icon',c.icon,'is_primary',pc.is_primary,'confidence',pc.confidence) ORDER BY pc.is_primary DESC,c.sort,c.id)
  FROM package_categories pc JOIN categories c ON c.id=pc.category_id LEFT JOIN LATERAL (SELECT t.* FROM category_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE NULLIF(t.name,'') IS NOT NULL AND t.category_id=c.id AND t.locale IN (lang.requested,c.source_locale,'en-US') ORDER BY ` + publicLocaleOrder + ` LIMIT 1) ci ON TRUE
@@ -282,7 +287,7 @@ func (s *Store) PublicStats(ctx context.Context) (map[string]int, error) {
 	return map[string]int{"casks": v.Casks, "formulae": v.Formulae, "updatedLast24h": v.Updated}, err
 }
 func (s *Store) PublicRelated(ctx context.Context, p PublicPackage, locale string, limit int) ([]PublicPackage, error) {
-	return s.publicPage(ctx, locale, publicVisible+` AND NOT (p.disabled OR p.stale_disabled) AND NOT p.is_font AND NOT p.is_library AND p.kind=? AND p.id<>? AND EXISTS(SELECT 1 FROM package_categories pc JOIN package_categories target ON target.category_id=pc.category_id WHERE pc.package_id=p.id AND target.package_id=? AND target.is_primary)`, "ORDER BY abs(p.popularity-?),p.popularity DESC,p.id LIMIT ?", p.Kind, p.ID, p.ID, p.Popularity, limit)
+	return s.publicPage(ctx, locale, publicVisible+` AND NOT (p.disabled OR p.stale_disabled) AND p.is_font=? AND NOT p.is_library AND ((? IN ('cask','link') AND p.kind IN ('cask','link')) OR p.kind=?) AND p.id<>? AND EXISTS(SELECT 1 FROM package_categories pc JOIN package_categories target ON target.category_id=pc.category_id WHERE pc.package_id=p.id AND target.package_id=? AND target.is_primary)`, "ORDER BY abs(p.popularity-?),p.popularity DESC,p.id LIMIT ?", p.IsFont, p.Kind, p.Kind, p.ID, p.ID, p.Popularity, limit)
 }
 func (s *Store) PublicDependents(ctx context.Context, p PublicPackage, locale string) ([]PublicPackage, int, error) {
 	tokens, err := json.Marshal([]string{p.Token})
@@ -318,7 +323,7 @@ func (s *Store) PublicDependents(ctx context.Context, p PublicPackage, locale st
 }
 func (s *Store) PublicScreenshots(ctx context.Context, id int64, locale string) (json.RawMessage, error) {
 	var row struct{ Data json.RawMessage }
-	err := s.DB.WithContext(ctx).Raw(`SELECT COALESCE(jsonb_agg(jsonb_build_object('url',a.url,'thumbUrl',regexp_replace(a.url,'-1280[.]png$','-640.png'),'width',a.width,'height',a.height,'theme',s.theme,'caption',i.caption,'sourceLocale',s.source_locale,'machineTranslated',COALESCE(i.machine_translated,false)) ORDER BY s.sort,s.id),'[]'::jsonb) data FROM package_screenshots s JOIN assets a ON a.id=s.asset_id LEFT JOIN LATERAL (SELECT t.* FROM screenshot_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE t.caption IS NOT NULL AND t.screenshot_id=s.id AND t.locale IN (lang.requested,s.source_locale,'en-US') ORDER BY `+publicLocaleOrder+` LIMIT 1) i ON TRUE WHERE s.package_id=?`, locale, id).Scan(&row).Error
+	err := s.DB.WithContext(ctx).Raw(`SELECT COALESCE(jsonb_agg(jsonb_build_object('variants',`+assetResponsiveSQL+`,'thumbnailVariants',`+assetThumbnailSQL+`,'url',a.url,'thumbUrl',regexp_replace(a.url,'-1280[.]png$','-640.png'),'width',a.width,'height',a.height,'theme',s.theme,'caption',i.caption,'sourceLocale',s.source_locale,'machineTranslated',COALESCE(i.machine_translated,false)) ORDER BY s.sort,s.id),'[]'::jsonb) data FROM package_screenshots s JOIN assets a ON a.id=s.asset_id LEFT JOIN LATERAL (SELECT t.* FROM screenshot_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE t.caption IS NOT NULL AND t.screenshot_id=s.id AND t.locale IN (lang.requested,s.source_locale,'en-US') ORDER BY `+publicLocaleOrder+` LIMIT 1) i ON TRUE WHERE s.package_id=?`, locale, id).Scan(&row).Error
 	return row.Data, err
 }
 func (s *Store) PublicConfig(ctx context.Context) (map[string]json.RawMessage, error) {
@@ -347,13 +352,43 @@ func (s *Store) PublicLatestVersion(ctx context.Context) (string, error) {
 }
 
 type FeedbackInput struct {
-	Type, Content, Platform                   string
-	PackageID                                 *int64
-	Contact, AppVersion, OSVersion, ErrorCode *string
+	Type, Content, Platform                              string
+	PackageID                                            *int64
+	Contact, AppVersion, OSVersion, ErrorCode            *string
+	PackageVersion, MacOSVersion, Symptom, DiagnosticLog *string
+	Links                                                []string
 }
 
 func (s *Store) SaveFeedback(ctx context.Context, in FeedbackInput) (int64, error) {
+	if utf8.RuneCountInString(in.Content) < 5 || utf8.RuneCountInString(in.Content) > 2000 || facts.FeedbackLinks(in.Links) != nil {
+		return 0, facts.ErrInvalid
+	}
+	for _, field := range []*string{in.AppVersion, in.OSVersion, in.ErrorCode, in.PackageVersion, in.MacOSVersion} {
+		if field != nil && utf8.RuneCountInString(*field) > 100 {
+			return 0, facts.ErrInvalid
+		}
+	}
+	if (in.Contact != nil && utf8.RuneCountInString(*in.Contact) > 200) || (in.Symptom != nil && utf8.RuneCountInString(*in.Symptom) > 500) || (in.DiagnosticLog != nil && len(*in.DiagnosticLog) > 16384) {
+		return 0, facts.ErrInvalid
+	}
+	in.Content = facts.CleanFeedback(in.Content)
+	if utf8.RuneCountInString(in.Content) < 5 {
+		return 0, facts.ErrInvalid
+	}
+	for _, field := range []*string{in.AppVersion, in.OSVersion, in.ErrorCode, in.PackageVersion, in.MacOSVersion, in.Symptom, in.DiagnosticLog} {
+		if field != nil {
+			*field = facts.CleanFeedback(*field)
+		}
+	}
+	links := in.Links
+	if links == nil {
+		links = []string{}
+	}
+	raw, err := json.Marshal(links)
+	if err != nil {
+		return 0, err
+	}
 	var id int64
-	err := s.DB.WithContext(ctx).Raw(`INSERT INTO feedback(type,package_id,content,contact,platform,app_version,os_version,error_code) VALUES(?,?,?,?,?,?,?,?) RETURNING id`, in.Type, in.PackageID, strings.TrimSpace(in.Content), in.Contact, in.Platform, in.AppVersion, in.OSVersion, in.ErrorCode).Scan(&id).Error
+	err = s.DB.WithContext(ctx).Raw(`INSERT INTO feedback(type,package_id,content,contact,platform,app_version,os_version,error_code,package_version,macos_version,symptom,diagnostic_log,links,visibility) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,'private') RETURNING id`, in.Type, in.PackageID, in.Content, in.Contact, in.Platform, in.AppVersion, in.OSVersion, in.ErrorCode, in.PackageVersion, in.MacOSVersion, in.Symptom, in.DiagnosticLog, string(raw)).Scan(&id).Error
 	return id, err
 }

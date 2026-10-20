@@ -1,10 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { SITE_LOCALES, formatList, selectPlural } from '@opennavo/shared';
 import {
+  categoryDescription,
   currentReleaseDate,
+  dependenciesDescription,
+  detailsDescription,
   DESCRIPTION_WIDTH,
   fitSummary,
-  overviewDescription,
+  overviewDescription as describeOverview,
+  TITLE_WIDTH,
+  type OverviewFacts,
+  type SeoExperimentAssignment,
   overviewTitle,
   brandlessTitle,
   pagedDescription,
@@ -17,23 +24,62 @@ import {
   versionsTitle,
   type Translate
 } from '../app/utils/seoTitles';
+import { evidence } from './packageFixtures';
+import type { PriceFact } from '../app/utils/packageFacts';
 
-const LOCALES = ['zh-CN', 'en-US', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'] as const;
+const LOCALES = SITE_LOCALES;
 
-// Real messages with vue-i18n style {name} interpolation, so every template is exercised in all six languages.
-function translator(code: (typeof LOCALES)[number]): Translate {
+// Real messages with vue-i18n style {name} interpolation and plural forms, so every template is exercised
+// in every site language.
+function translator(code: (typeof LOCALES)[number]) {
   const messages = JSON.parse(readFileSync(new URL(`../i18n/locales/${code}.json`, import.meta.url), 'utf8'));
-  return (key, named = {}) => {
-    const template = key.split('.').reduce((node, part) => node?.[part], messages);
-    if (typeof template !== 'string') throw new Error(`missing ${code} ${key}`);
+  const fallback = JSON.parse(readFileSync(new URL('../i18n/locales/en-US.json', import.meta.url), 'utf8'));
+  const t: Translate = (key, named = {}, plural) => {
+    const found =
+      key.split('.').reduce((node, part) => node?.[part], messages) ??
+      key.split('.').reduce((node, part) => node?.[part], fallback);
+    if (typeof found !== 'string') throw new Error(`missing ${code} ${key}`);
+    const template = plural === undefined ? found : selectPlural(found, plural, code);
     return template.replace(/\{(\w+)\}/g, (_, name: string) => {
       if (!(name in named)) throw new Error(`unfilled {${name}} in ${code} ${key}`);
       return String(named[name]);
     });
   };
+  return Object.assign(t, { locale: code });
 }
 
-const app = { displayName: 'Visual Studio Code', summary: 'Open-source code editor.', isFont: false, disabled: false };
+function overviewDescription(
+  pkg: OverviewFacts,
+  t: ReturnType<typeof translator>,
+  assignment?: SeoExperimentAssignment | null
+) {
+  return describeOverview(pkg, t, values => formatList(values, { locale: t.locale }), assignment);
+}
+
+const app: OverviewFacts = {
+  kind: 'cask',
+  displayName: 'Visual Studio Code',
+  summary: 'Open-source code editor.',
+  isFont: false,
+  disabled: false,
+  version: '1.95.3',
+  facts: {
+    requirements: [],
+    uninstall: [],
+    alternatives: [],
+    prices: [],
+    overview: {
+      version: '1.95.3',
+      downloadUrl: null,
+      sha256: null,
+      caveats: null,
+      artifacts: { apps: [], pkgs: [], binaries: [], uninstallNotes: [] },
+      aliases: [],
+      dependencyCount: 0,
+      conflictCount: 0
+    }
+  }
+};
 const longName = 'Microsoft Remote Desktop Beta for Enterprise Administrators (Legacy Edition)';
 
 describe('WP1 titles and descriptions', () => {
@@ -94,7 +140,7 @@ describe('WP1 titles and descriptions', () => {
     expect(usableSummary('代码编辑器。', 'VS Code')).toBe('代码编辑器');
     expect(usableSummary(null, 'VS Code')).toBe('');
     expect(overviewDescription({ ...app, summary: 'Visual Studio Code' }, translator('zh-CN'))).toBe(
-      '查看 Visual Studio Code 在 Mac 上的安装方法、系统要求和版本记录。'
+      '查看 Visual Studio Code 在 Mac 上的安装方法和卸载方法。'
     );
   });
 
@@ -181,7 +227,23 @@ describe('App names that already name the platform', () => {
       'WeChat для Mac — скачать и установить · OpenNavo',
       '微信 для Mac — скачать и установить · OpenNavo',
       'WeChat для компьютеров Mac · OpenNavo'
-    ]
+    ],
+    'de-DE': [
+      'WeChat für Mac – Download & Installation · OpenNavo',
+      '微信 für Mac – Download & Installation · OpenNavo',
+      'WeChat für Mac · OpenNavo'
+    ],
+    'fr-FR': [
+      'WeChat pour Mac – Télécharger et installer · OpenNavo',
+      '微信 pour Mac – Télécharger et installer · OpenNavo',
+      'WeChat pour Mac · OpenNavo'
+    ],
+    'it-IT': [
+      'WeChat per Mac – Scarica e installa · OpenNavo',
+      '微信 per Mac – Scarica e installa · OpenNavo',
+      'WeChat per Mac · OpenNavo'
+    ],
+    'zh-Hant': ['WeChat Mac 版下載安裝 · OpenNavo', '微信 Mac 版下載安裝 · OpenNavo', 'WeChat Mac 版 · OpenNavo']
   };
 
   it.each(LOCALES)('%s names the platform once', code => {
@@ -204,6 +266,9 @@ describe('App names that already name the platform', () => {
     expect(titleName('微信Mac版')).toBe('微信');
     expect(titleName('Foo for OS X')).toBe('Foo');
     expect(titleName('Foo для macOS')).toBe('Foo');
+    expect(titleName('Paragon NTFS für Mac')).toBe('Paragon NTFS');
+    expect(titleName('Foo pour Mac')).toBe('Foo');
+    expect(titleName('Foo per macOS')).toBe('Foo');
     expect(titleName('  WeChat for Mac  ')).toBe('WeChat');
     for (const name of ['Mac Mouse Fix', 'iMac版', 'CleanMyMac X', 'Mac 版', 'for Mac', 'Macintosh for Macs'])
       expect(titleName(name), name).toBe(name);
@@ -240,6 +305,23 @@ describe('Descriptions that fit search results', () => {
     'ru-RU': [
       'WeChat for Mac',
       'Мессенджер Tencent для Mac для обмена текстовыми сообщениями и файлами, голосовых и видеозвонков с вашими контактами WeChat.'
+    ],
+    // Written for this test in the style of the catalog translations (no audit data for these languages yet).
+    'de-DE': [
+      'WeChat for Mac',
+      'Messenger von Tencent für den Mac zum Austausch von Textnachrichten und Dateien sowie für Sprach- und Videoanrufe mit Ihren WeChat-Kontakten.'
+    ],
+    'fr-FR': [
+      'WeChat for Mac',
+      'Messagerie de Tencent pour Mac permettant d’échanger des messages texte et des fichiers et de passer des appels vocaux et vidéo avec vos contacts WeChat.'
+    ],
+    'it-IT': [
+      'WeChat for Mac',
+      'Client di messaggistica di Tencent per Mac per scambiare messaggi di testo e file e fare chiamate vocali e video con i tuoi contatti WeChat.'
+    ],
+    'zh-Hant': [
+      '微信 Mac 版',
+      '騰訊的 Mac 即時通訊用戶端，可與 WeChat 聯絡人收發文字訊息和檔案，以及進行語音和視訊通話。'
     ]
   };
 
@@ -263,22 +345,30 @@ describe('Descriptions that fit search results', () => {
   it('Cuts where the summary reads complete, else between words with an ellipsis', () => {
     const t = translator('en-US');
     expect(overviewDescription({ ...app, displayName: 'WeChat for Mac', summary: wechat['en-US'][1] }, t)).toBe(
-      'Tencent’s Mac messaging client for text, files, voice… See how to install WeChat for Mac on your Mac, along with its system requirements and release history.'
+      'Tencent’s Mac messaging client for text, files, voice and video calls with your WeChat… Explore installation and uninstallation for WeChat for Mac on Mac.'
     );
     expect(
       overviewDescription({ ...app, displayName: 'WeChat for Mac', summary: wechat['ja-JP'][1] }, translator('ja-JP'))
     ).toBe(
-      'TencentのMac向けメッセージアプリです。WeChat for Macを Mac にインストールする方法、システム要件、バージョン履歴を確認できます。'
+      'TencentのMac向けメッセージアプリです。WeChatの連絡先とテキストやファイルをや…。Mac 版 WeChat for Mac のインストール方法、アンインストール方法をご確認ください。'
     );
     // Short enough already: unchanged.
     expect(overviewDescription(app, t)).toBe(
-      'Open-source code editor. See how to install Visual Studio Code on your Mac, along with its system requirements and release history.'
+      'Open-source code editor. Explore installation and uninstallation for Visual Studio Code on Mac.'
     );
     const english = 'Tencent’s Mac messaging client for text, files, voice and video calls with your WeChat contacts';
     expect(fitSummary(english, 200)).toBe(english);
     // Latin commas separate list items, so no clause ends at them; a dangling "with" goes too.
     expect(fitSummary(english, 76)).toBe('Tencent’s Mac messaging client for text, files, voice and video calls…');
     expect(fitSummary(english, 57)).toBe('Tencent’s Mac messaging client for text, files, voice…');
+    // German, French and Italian cuts never end on an article or preposition either.
+    expect(fitSummary('Ein schneller Editor für Notizen mit Markdown und Plugins', 34)).toBe(
+      'Ein schneller Editor für Notizen…'
+    );
+    expect(fitSummary('Un éditeur rapide pour les notes avec Markdown et extensions', 38)).toBe(
+      'Un éditeur rapide pour les notes…'
+    );
+    expect(fitSummary('Un editor veloce per le note con Markdown e plugin', 30)).toBe('Un editor veloce per le note…');
     expect(
       fitSummary('Converts documents, e.g. PDF and EPUB files, into plain text for every reader you use', 50)
     ).toBe('Converts documents, e.g. PDF and EPUB files…');
@@ -302,7 +392,7 @@ describe('Descriptions that fit search results', () => {
   it('Joins Chinese names to the Chinese text beside them and spaces Latin ones', () => {
     const zh = translator('zh-CN');
     const chinese = { ...app, displayName: '微信 Mac 版', summary: null };
-    expect(overviewDescription(chinese, zh)).toBe('查看微信 Mac 版在 Mac 上的安装方法、系统要求和版本记录。');
+    expect(overviewDescription(chinese, zh)).toBe('查看微信 Mac 版在 Mac 上的安装方法和卸载方法。');
     expect(overviewDescription({ ...chinese, disabled: true }, zh)).toBe(
       '微信 Mac 版已被 Homebrew 停用，可以查看版本记录和同类软件。'
     );
@@ -316,13 +406,333 @@ describe('Descriptions that fit search results', () => {
     expect(versionsTitle({ displayName: 'Visual Studio Code', version: '1.95.3' }, zh)).toBe(
       'Visual Studio Code 更新日志（最新 1.95.3）· OpenNavo'
     );
-    // Japanese templates already attach the name without a space, for either script.
+    // Japanese joins Chinese names too, and keeps the space before a Latin one.
     const ja = translator('ja-JP');
     expect(overviewDescription({ ...app, displayName: 'WeChat for Mac', summary: null }, ja)).toBe(
-      'WeChat for Macを Mac にインストールする方法、システム要件、バージョン履歴を確認できます。'
+      'Mac 版 WeChat for Mac のインストール方法、アンインストール方法をご確認ください。'
     );
     expect(overviewDescription({ ...app, displayName: '微信', summary: null }, ja)).toBe(
-      '微信を Mac にインストールする方法、システム要件、バージョン履歴を確認できます。'
+      'Mac 版微信のインストール方法、アンインストール方法をご確認ください。'
     );
+  });
+});
+
+describe('C2 page descriptions', () => {
+  const list = (code: string) => (values: string[]) => formatList(values, { locale: code });
+  const browsers = (overrides: Record<string, unknown> = {}) => ({
+    name: 'Browsers',
+    description: 'Web browsers',
+    total: 42,
+    totalLabel: '42',
+    apps: ['Google Chrome', 'Firefox', 'Arc', 'Brave Browser'],
+    ...overrides
+  });
+
+  it('Describes a category by its size and first apps, so pages of one category differ', () => {
+    const t = translator('en-US');
+    expect(categoryDescription(browsers(), t, list('en-US'))).toBe(
+      'Web browsers. 42 Mac apps in Browsers, including Google Chrome, Firefox, and Arc.'
+    );
+    expect(categoryDescription(browsers({ apps: ['Vivaldi', 'Opera'] }), t, list('en-US'))).toBe(
+      'Web browsers. 42 Mac apps in Browsers, including Vivaldi and Opera.'
+    );
+    expect(
+      categoryDescription(browsers({ total: 1, totalLabel: '1', apps: ['Arc'], description: null }), t, list('en-US'))
+    ).toBe('1 Mac app in Browsers: Arc.');
+    // An empty category keeps its own description; without one the page falls back to the generic copy.
+    expect(categoryDescription(browsers({ total: 0, apps: [] }), t, list('en-US'))).toBe('Web browsers');
+    expect(categoryDescription(browsers({ total: 0, apps: [], description: '' }), t, list('en-US'))).toBeUndefined();
+    const zh = translator('zh-CN');
+    expect(categoryDescription(browsers({ name: '浏览器', description: '网页浏览器' }), zh, list('zh-CN'))).toBe(
+      '网页浏览器。「浏览器」分类共有 42 款 Mac App，包括 Google Chrome、Firefox和Arc。'
+    );
+  });
+
+  it.each(LOCALES)('%s fits category descriptions into search-result width', code => {
+    const t = translator(code);
+    const long = browsers({
+      description: 'Browsers for the web, from the big three to privacy-first and keyboard-driven ones. '.repeat(4),
+      apps: ['Microsoft Edge Dev Channel Preview', 'Google Chrome Canary for Developers', 'Firefox Developer Edition']
+    });
+    const text = categoryDescription(long, t, list(code))!;
+    expect(textWidth(text)).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
+    expect(text).not.toMatch(/[{}|]|undefined/);
+    expect(text).toContain('42');
+  });
+
+  it.each(LOCALES)('%s counts what the dependencies page lists and names the details page content', code => {
+    const t = translator(code);
+    const facts = { displayName: 'Example App', runtime: 3, build: 1, other: 0, conflicts: 2, dependents: 12 };
+    const text = dependenciesDescription(facts, t, list(code), String);
+    expect(text).toContain('Example App');
+    expect(text).toContain('12');
+    expect(text).not.toMatch(/[{}|]|undefined/);
+    const none = dependenciesDescription(
+      { ...facts, runtime: 0, build: 0, conflicts: 0, dependents: 0 },
+      t,
+      list(code),
+      String
+    );
+    expect(none).not.toBe(text);
+    expect(none).not.toMatch(/[{}|]/);
+    const details = detailsDescription('Example App', t);
+    expect(details).toContain('Example App');
+    expect(details).not.toBe(text);
+  });
+
+  it('Reads naturally in English and Russian plural forms', () => {
+    const facts = { displayName: 'Example App', runtime: 1, build: 2, other: 0, conflicts: 0, dependents: 5 };
+    expect(dependenciesDescription(facts, translator('en-US'), list('en-US'), String)).toBe(
+      'Dependencies of Example App on Mac: 1 runtime dependency, 2 build dependencies, and 5 packages that depend on it. See what Homebrew installs along with it.'
+    );
+    expect(dependenciesDescription(facts, translator('ru-RU'), list('ru-RU'), String)).toContain(
+      '1 зависимость для работы, 2 зависимости для сборки и 5 зависящих от него пакетов'
+    );
+  });
+
+  it.each(LOCALES)('%s names the brand once in the download title and keeps the article list title short', code => {
+    const messages = JSON.parse(readFileSync(new URL(`../i18n/locales/${code}.json`, import.meta.url), 'utf8'));
+    expect(messages.download.metaTitle.match(/OpenNavo/g)).toHaveLength(1);
+    expect(textWidth(messages.articles.metaTitle)).toBeLessThanOrEqual(60);
+  });
+});
+
+describe('H3 assignments and C2 factual overview descriptions', () => {
+  const assignment = (
+    variant: SeoExperimentAssignment['variant'],
+    overrides: Partial<SeoExperimentAssignment> = {}
+  ): SeoExperimentAssignment => ({
+    experimentId: 1,
+    arm: 'treatment',
+    variant,
+    templateVersion: 'snippet-v1',
+    eligible: true,
+    expiresAt: '2026-12-01T00:00:00Z',
+    ...overrides
+  });
+  const free: PriceFact = {
+    region: 'US',
+    edition: 'Personal',
+    usage: 'free',
+    period: 'free',
+    downloadFree: true,
+    amount: '0',
+    currency: 'USD',
+    channel: 'vendor',
+    purchaseUrl: 'https://vendor.example/pricing',
+    evidence: evidence('https://vendor.example/pricing')
+  };
+  const complete: OverviewFacts = {
+    ...app,
+    displayName: 'Arc for Mac',
+    summary: null,
+    latestRelease: {
+      version: '2.4.1',
+      publishedAt: null,
+      brewCommittedAt: null,
+      hasNotes: true,
+      summary: null,
+      bodyMarkdown: null,
+      sections: [],
+      source: 'github_release',
+      sourceUrl: 'https://vendor.example/releases'
+    },
+    facts: {
+      ...app.facts,
+      overview: { ...app.facts.overview, version: '2.4.1,900' },
+      prices: [free],
+      requirements: [
+        {
+          versions: ['2.4.1,900'],
+          architectures: ['arm64'],
+          platformMacOS: [],
+          minimumMacOS: '13',
+          maximumMacOS: null,
+          appleSilicon: 'yes',
+          downloadUrl: null,
+          sha256: null,
+          evidence: evidence('https://vendor.example/requirements')
+        }
+      ],
+      uninstall: [
+        {
+          phase: 'uninstall',
+          kind: 'launchctl',
+          value: 'com.example.arc.helper',
+          deletesUserData: false,
+          evidence: evidence('https://vendor.example/uninstall')
+        }
+      ],
+      alternatives: [
+        {
+          package: {
+            kind: 'cask',
+            token: 'alternative',
+            name: 'Alternative',
+            displayName: 'Alternative',
+            version: '1.0',
+            isFont: false,
+            disabled: false,
+            installs: { d30: 1, d90: 1, d365: 1 }
+          },
+          reasons: [],
+          limits: [],
+          bestFor: null
+        }
+      ]
+    }
+  };
+  const changeFacts = (facts: Partial<OverviewFacts['facts']>): OverviewFacts => ({
+    ...complete,
+    facts: { ...complete.facts, ...facts }
+  });
+  const partText = (t: ReturnType<typeof translator>, part: string) => t(`package.seo.overviewParts.${part}`);
+  /**
+   * The description names the first sections of `order`, at least `keep` of them, and leaves out the
+   * next one only because naming it would push the closing sentence past the search-result width.
+   */
+  const expectListed = (text: string, t: ReturnType<typeof translator>, order: string[], keep: number) => {
+    const shown = order.filter(part => text.includes(partText(t, part)));
+    expect(shown, text).toEqual(order.slice(0, Math.max(shown.length, keep)));
+    expect(text).toContain(
+      formatList(
+        shown.map(part => partText(t, part)),
+        { locale: t.locale }
+      )
+    );
+    if (shown.length === order.length) return;
+    const parts = formatList(
+      order.slice(0, shown.length + 1).map(part => partText(t, part)),
+      { locale: t.locale }
+    );
+    const closing = t('package.seo.descriptionFactsNoSummary', { name: complete.displayName, parts });
+    expect(textWidth(closing), closing).toBeGreaterThan(DESCRIPTION_WIDTH);
+  };
+
+  it.each(LOCALES)('%s applies only eligible treatment, with one platform and a final brand', code => {
+    const t = translator(code);
+    const controlTitle = overviewTitle(complete, t);
+    const controlDescription = overviewDescription(complete, t);
+    for (const variant of ['verified_free', 'current_version', 'uninstall_alternatives'] as const) {
+      for (const overrides of [{ arm: 'control' as const }, { arm: 'none' as const }, { eligible: false }]) {
+        const group = assignment(variant, overrides);
+        expect(overviewTitle(complete, t, group)).toBe(controlTitle);
+        expect(overviewDescription(complete, t, group)).toBe(controlDescription);
+      }
+    }
+    expect(overviewTitle(complete, t, null)).toBe(controlTitle);
+    for (const [variant, label] of [
+      ['verified_free', t('package.link.pricing.free')],
+      ['current_version', '2.4.1']
+    ] as const) {
+      const title = overviewTitle(complete, t, assignment(variant));
+      expect(title).toContain(`Arc ${label}`);
+      expect(title).not.toBe(controlTitle);
+      expect(title.match(/Mac/g)).toHaveLength(1);
+      expect(title.match(/OpenNavo/g)).toHaveLength(1);
+      expect(title.endsWith(' · OpenNavo')).toBe(true);
+      expect(textWidth(title)).toBeLessThanOrEqual(TITLE_WIDTH);
+      const long = { ...complete, displayName: longName };
+      expect(overviewTitle(long, t, assignment(variant))).toBe(overviewTitle(long, t));
+      expect(overviewTitle(long, t, assignment(variant))).toContain(longName);
+    }
+  });
+
+  it.each(LOCALES)('%s requires verified free usage and a real current version', code => {
+    const t = translator(code);
+    for (const prices of [
+      [],
+      [{ ...free, usage: 'unknown' as const }],
+      [{ ...free, usage: 'free_with_iap' as const }],
+      ...(['stale', 'needs_review', 'unknown'] as const).map(status => [
+        { ...free, evidence: { ...free.evidence, status } }
+      ]),
+      [{ ...free, evidence: { ...free.evidence, checkedAt: null } }]
+    ]) {
+      const pkg = changeFacts({ prices });
+      expect(overviewTitle(pkg, t, assignment('verified_free'))).toBe(overviewTitle(pkg, t));
+    }
+    for (const version of ['latest', 'LATEST', '']) {
+      const pkg = { ...changeFacts({ overview: { ...complete.facts.overview, version } }), version };
+      expect(overviewTitle(pkg, t, assignment('current_version'))).toBe(overviewTitle(pkg, t));
+    }
+    const fallback = changeFacts({ overview: { ...complete.facts.overview, version: '' } });
+    expect(overviewTitle(fallback, t, assignment('current_version'))).toContain(app.version);
+  });
+
+  it.each(LOCALES)('%s lists only visible sections, retaining dated and pending requirements', code => {
+    const t = translator(code);
+    const basic = overviewDescription({ ...app, summary: null }, t);
+    for (const part of ['price', 'requirements', 'alternatives', 'versions'])
+      expect(basic).not.toContain(t(`package.seo.overviewParts.${part}`));
+    expect(basic).toContain(t('package.seo.overviewParts.installation'));
+    // Every cask renders an uninstall command, even without extra removal declarations.
+    expect(basic).toContain(t('package.seo.overviewParts.uninstall'));
+    // Longer languages have no room for all six sections, so the last ones go first.
+    const all = overviewDescription(complete, t);
+    expectListed(all, t, ['installation', 'price', 'requirements', 'uninstall', 'alternatives', 'versions'], 4);
+    expect(textWidth(all)).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
+    const fewer = overviewDescription(changeFacts({ prices: [], requirements: [] }), t);
+    expectListed(fewer, t, ['installation', 'uninstall', 'alternatives', 'versions'], 4);
+    expect(all).not.toMatch(/[{}]|undefined|package\.seo/);
+    for (const status of ['stale', 'needs_review', 'unknown'] as const) {
+      const prices = [{ ...free, evidence: { ...free.evidence, status } }];
+      expect(overviewDescription(changeFacts({ prices }), t)).not.toContain(t('package.seo.overviewParts.price'));
+      const requirements = complete.facts.requirements.map(row => ({ ...row, evidence: { ...row.evidence, status } }));
+      const description = overviewDescription(changeFacts({ requirements }), t);
+      expect(description.includes(t('package.seo.overviewParts.requirements'))).toBe(status !== 'unknown');
+    }
+    expect(overviewDescription({ ...complete, latestRelease: null }, t)).not.toContain(
+      t('package.seo.overviewParts.versions')
+    );
+  });
+
+  it.each(LOCALES)('%s focuses the uninstall experiment only when both modules have content', code => {
+    const t = translator(code);
+    const group = assignment('uninstall_alternatives');
+    const text = overviewDescription(complete, t, group);
+    const uninstall = t('package.seo.overviewParts.uninstall');
+    const alternatives = t('package.seo.overviewParts.alternatives');
+    expect(text).not.toBe(overviewDescription(complete, t));
+    expectListed(text, t, ['uninstall', 'alternatives', 'installation', 'price', 'requirements', 'versions'], 4);
+    expect(text.indexOf(uninstall)).toBeLessThan(text.indexOf(alternatives));
+    expect(text.indexOf(alternatives)).toBeLessThan(text.lastIndexOf(t('package.seo.overviewParts.installation')));
+    for (const pkg of [
+      changeFacts({ uninstall: [] }),
+      changeFacts({ alternatives: [] }),
+      changeFacts({
+        uninstall: complete.facts.uninstall.map(item => ({
+          ...item,
+          evidence: { ...item.evidence, status: 'unknown' as const }
+        }))
+      }),
+      changeFacts({ uninstall: complete.facts.uninstall.map(item => ({ ...item, value: '' })) })
+    ]) {
+      expect(overviewDescription(pkg, t, group)).toBe(overviewDescription(pkg, t));
+    }
+    const zapOnly = changeFacts({
+      uninstall: complete.facts.uninstall.map(item => ({ ...item, phase: 'zap' as const, kind: 'zap' as const }))
+    });
+    expect(overviewDescription(zapOnly, t, group)).toBe(text);
+  });
+
+  it.each(LOCALES)('%s shortens the summary before the list and keeps complete closing sentences', code => {
+    const t = translator(code);
+    for (const group of [undefined, assignment('uninstall_alternatives')]) {
+      const summary = 'A code editor with extensions, themes and useful tools for every project. '.repeat(5);
+      const description = overviewDescription({ ...complete, summary }, t, group);
+      expect(description.endsWith(overviewDescription(complete, t, group))).toBe(true);
+      for (const displayName of [longName, '很长的应用名称'.repeat(30)]) {
+        const long = overviewDescription({ ...complete, displayName, summary }, t, group);
+        expect(textWidth(long), long).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
+        expect(long).toMatch(/[。.]$/);
+        expect(long).not.toMatch(/…\.|[{}]|\p{Co}/u);
+        expect(long).not.toContain(summary.slice(0, 30));
+        if (group) {
+          expect(long).toContain(t('package.seo.overviewParts.uninstall'));
+          expect(long).toContain(t('package.seo.overviewParts.alternatives'));
+        }
+      }
+    }
   });
 });

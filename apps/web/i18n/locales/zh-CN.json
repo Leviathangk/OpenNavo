@@ -21,7 +21,9 @@
     "lists": "清单",
     "brewfile": "我的清单",
     "about": "关于",
-    "feedback": "反馈"
+    "feedback": "反馈",
+    "apps": "全部应用",
+    "az": "A–Z 索引"
   },
   "sidebar": {
     "appLabel": "Mac 客户端",
@@ -55,7 +57,8 @@
   },
   "footer": {
     "tagline": "Mac 上的 Homebrew 应用商店，也是开源的 Homebrew 图形界面，自带病毒扫描、应用防火墙、清理和监控。安装通过 macOS 客户端或 brew 命令完成。",
-    "copyright": "© {year} OpenNavo"
+    "copyright": "© {year} OpenNavo",
+    "languages": "语言"
   },
   "analytics": {
     "label": "统计 Cookie 设置",
@@ -114,8 +117,13 @@
     "count": "{count} 个",
     "itemMetaTitle": "{name}软件推荐 · OpenNavo",
     "seo": {
-      "itemTitle": "Mac {name}软件 · OpenNavo"
-    }
+      "itemTitle": "Mac {name}软件 · OpenNavo",
+      "itemDescription": "「{name}」分类共有 {count} 款 Mac App，包括 {apps}。",
+      "itemDescriptionCount": "「{name}」分类共有 {count} 款 Mac App。"
+    },
+    "allIn": "全部{name}",
+    "subcategories": "子分类",
+    "others": "其他分类"
   },
   "rankings": {
     "title": "排行榜",
@@ -175,7 +183,6 @@
       "allFiles": "在 GitHub 查看全部文件",
       "githubReleases": "前往 GitHub 下载",
       "teamId": "开发者签名",
-      "pricingLabel": "价格",
       "adopted": "Homebrew 已收录这款 App，现在可以一键安装",
       "arch": {
         "arm64": "Apple 芯片",
@@ -294,7 +301,9 @@
           "title": "Homebrew 提交记录",
           "body": "Homebrew 仓库里该包的版本更新提交，得到收录时间"
         }
-      }
+      },
+      "compatibility": "兼容性",
+      "compatibilityUnknown": "未知"
     },
     "monthly": {
       "title": "月均安装量",
@@ -341,7 +350,16 @@
       },
       "conflicts": "冲突",
       "dependents": "被 {count} 个包依赖",
-      "metaTitle": "{name} 依赖与冲突 · OpenNavo"
+      "metaTitle": "{name} 依赖与冲突 · OpenNavo",
+      "metaDescription": "{name} 在 Mac 上的依赖关系：{parts}。查看 Homebrew 安装它时会一起装上哪些包。",
+      "metaDescriptionNone": "{name} 在 Mac 上安装时不需要其他 Homebrew 包。",
+      "meta": {
+        "runtime": "{count} 个运行时依赖",
+        "build": "{count} 个构建依赖",
+        "other": "{count} 个其他依赖",
+        "conflicts": "{count} 个冲突的包",
+        "dependents": "{count} 个依赖它的包"
+      }
     },
     "details": {
       "tap": "来源仓库",
@@ -353,7 +371,9 @@
       "download": "下载地址",
       "source": "Homebrew 定义文件",
       "repo": "源代码",
-      "metaTitle": "{name} 安装细节 · OpenNavo"
+      "metaTitle": "{name} 安装细节 · OpenNavo",
+      "metaDescription": "{name} 的安装细节：装到哪里、下载地址和校验值，以及它来自哪份 Homebrew 定义。",
+      "aliases": "曾用 token"
     },
     "versionsMetaTitle": "{name} 版本记录与更新内容 · OpenNavo",
     "versionsMetaDescription": "{name} 最新版本 {version}（{date}）。查看每个版本更新了什么。",
@@ -363,8 +383,18 @@
       "titleApp": "{name} Mac 版下载安装 · OpenNavo",
       "titleFont": "{name} 字体 Mac 版下载安装 · OpenNavo",
       "titleUnavailable": "{name} Mac 版 · OpenNavo",
-      "description": "{summary}。查看 {name} 在 Mac 上的安装方法、系统要求和版本记录。",
-      "descriptionNoSummary": "查看 {name} 在 Mac 上的安装方法、系统要求和版本记录。",
+      "descriptionFacts": "{summary}。查看 {name} 在 Mac 上的{parts}。",
+      "descriptionFactsNoSummary": "查看 {name} 在 Mac 上的{parts}。",
+      "descriptionOverview": "{summary}。了解 {name} Mac 版。",
+      "descriptionOverviewNoSummary": "了解 {name} Mac 版。",
+      "overviewParts": {
+        "installation": "安装方法",
+        "price": "价格",
+        "requirements": "系统要求",
+        "uninstall": "卸载方法",
+        "alternatives": "替代品",
+        "versions": "版本记录"
+      },
       "descriptionLink": "{summary}。查看 {name} 的官方下载地址和版本记录。",
       "descriptionLinkNoSummary": "查看 {name} 的官方下载地址和版本记录。",
       "descriptionUnavailable": "{summary}。{name} 已被 Homebrew 停用，可以查看版本记录和同类软件。",
@@ -388,17 +418,9 @@
       "softwareCategory": "{name} 是一款{category}类 Mac 软件。",
       "software": "{name} 是一款 Mac 软件。",
       "font": "{name} 是可以安装在 Mac 上的字体。",
-      "price": {
-        "free": "可以免费使用。",
-        "free_with_iap": "可以免费下载，提供应用内购买。",
-        "paid": "需要付费购买。",
-        "subscription": "需要订阅才能使用。",
-        "trial": "提供免费试用。"
-      },
       "requires": "需要 macOS {version} 或更高版本。"
     },
     "guide": {
-      "title": "安装与卸载",
       "installApp": "Homebrew 会把应用安装到“应用程序”文件夹。",
       "installFont": "Homebrew 会把字体安装到 ~/Library/Fonts，之后可以在“字体册”中使用。",
       "installPkg": "Homebrew 会运行安装包 {pkg}，需要输入管理员密码。",
@@ -412,8 +434,7 @@
       "uninstallTitle": "卸载命令",
       "uninstall": "普通卸载会删除应用本身，设置和缓存会保留。",
       "zapTitle": "深度清理（可选）",
-      "zap": "`--zap` 还会删除 Homebrew 定义里列出的设置、缓存等文件，其中可能有其他应用共用的数据，删除后无法恢复；它也不保证没有任何残留。",
-      "zapDetails": "查看会删除哪些文件"
+      "zap": "`--zap` 还会删除 Homebrew 定义里列出的设置、缓存等文件，其中可能有其他应用共用的数据，删除后无法恢复；它也不保证没有任何残留。请先备份需要保留的数据；如要保留设置和缓存，请不要加 `--zap`。"
     },
     "facts": {
       "title": "资料与来源",
@@ -427,12 +448,10 @@
       },
       "perMonth": "每月 {price}",
       "perYear": "每年 {price}",
-      "plan": "{plan} 方案",
       "region": "{region} 地区价格",
       "checkedOn": "核查于 {date}",
       "checked": "来源：{source}，核查于 {date}。",
       "stale": "可能已变化",
-      "macos": "厂商提供的系统要求",
       "support": {
         "native": "原生运行",
         "rosetta": "通过 Rosetta 运行",
@@ -448,13 +467,12 @@
         "arm64": "Apple 芯片",
         "x86_64": "Intel"
       },
-      "homebrewSays": "Homebrew 记录：{value}",
-      "version": "版本 {version}",
-      "recorded": "Homebrew 记录于 {date}",
-      "released": "厂商发布于 {date}"
+      "asOf": "截至 {date}",
+      "yes": "是",
+      "no": "否",
+      "labelled": "{label}："
     },
     "alternatives": {
-      "title": "可以替代的应用",
       "hint": "编辑确认能完成同样工作的应用，按推荐顺序排列。",
       "reasons": {
         "free": "免费",
@@ -491,10 +509,39 @@
         "teams": "团队",
         "beginners": "新手",
         "power_users": "进阶用户"
+      },
+      "titleFor": "{name} 的替代品",
+      "page": {
+        "title": "{name} 的替代应用",
+        "metaTitle": "{name} 的 Mac 替代应用 · OpenNavo",
+        "description": "编辑确认能代替 {name} 的 {count} 款 Mac 应用，附选择理由、已核实的价格和功能对比。",
+        "intro": "这些应用经编辑确认能完成和 {name} 一样的工作，按推荐顺序排列。对比表只列有来源的属性，没有资料的写作「未知」。",
+        "crumb": "替代应用",
+        "current": "当前应用",
+        "compare": "对比",
+        "attribute": "属性",
+        "attributes": {
+          "open_source": "开源",
+          "offline": "可离线使用",
+          "apple_silicon": "Apple 芯片原生",
+          "import_formats": "可导入格式",
+          "export_formats": "可导出格式"
+        },
+        "yes": "是",
+        "no": "否",
+        "unknown": "未知",
+        "migration": "从 {name} 换到 {target}",
+        "actions": {
+          "backup": "备份",
+          "export": "导出",
+          "import": "导入",
+          "verify": "核对"
+        },
+        "migrationNote": "迁移不会删除 {name} 和它的数据。",
+        "back": "返回 {name}"
       }
     },
     "faq": {
-      "title": "常见问题",
       "safetyQ": "{name} 安全吗？",
       "safetyListed": "{name} 收录在 Homebrew 官方软件库中，没有被停用。自 2026 年 9 月起，Homebrew 会停用没有通过 macOS Gatekeeper 检查的应用。",
       "safetyDeprecated": "Homebrew 已把 {name} 标记为弃用（{reason}），之后会停止提供。",
@@ -587,7 +634,8 @@
         "browser": "浏览器插件"
       },
       "alternativesQ": "{name} 有哪些替代品？",
-      "alternativesA": "可以考虑 {list}。"
+      "alternativesA": "可以考虑 {list}。",
+      "titleFor": "关于 {name} 的常见问题"
     },
     "securityPromo": {
       "title": "OpenNavo：病毒扫描与应用防火墙",
@@ -596,6 +644,162 @@
     },
     "articles": {
       "title": "相关文章"
+    },
+    "paused": "暂停更新",
+    "relatedFonts": "相似字体",
+    "lead": {
+      "developer": "开发者是 {developer}。",
+      "source": "安装包从 {source} 下载。"
+    },
+    "quick": {
+      "title": "基本信息",
+      "checked": "以上信息最早核查于 {date}。",
+      "sourcesLink": "查看各项来源",
+      "source": "下载来源",
+      "fontFiles": "字体文件",
+      "chips": "芯片",
+      "macos": "系统版本",
+      "priceDetails": "价格详情",
+      "developer": "开发者",
+      "install": "安装命令",
+      "homebrewDisabled": "已被 Homebrew 停用",
+      "homebrewPaused": "Homebrew 仍提供，OpenNavo 已暂停推荐",
+      "homebrewAuto": "可以安装，应用会自行更新",
+      "homebrewAvailable": "可以安装，由 Homebrew 更新"
+    },
+    "price": {
+      "title": "{name} 的价格与购买方式",
+      "hint": "OpenNavo 按地区、版本和计费周期记录核查过的价格，并注明来源和日期；不记录历史价格，也不判断是否最低。",
+      "edition": "版本",
+      "region": "地区",
+      "where": "购买渠道",
+      "checked": "核查日期",
+      "storeNote": "这是 App Store 版的下载价格，不代表可以免费使用；应用内购买和订阅不在其中。",
+      "downloadFree": "免费下载",
+      "channels": {
+        "vendor": "官网",
+        "app_store": "Mac App Store"
+      }
+    },
+    "compare": {
+      "title": "核实过的对比",
+      "imports": "可导入",
+      "exports": "可导出",
+      "unverified": "“—”表示 OpenNavo 尚未核实当前版本的这一项。",
+      "migrationTitle": "从 {from} 迁移到 {to}",
+      "migrationNote": "迁移不会删除 {name} 和它的数据，确认无误后再自行卸载。",
+      "actions": {
+        "backup": "备份",
+        "export": "导出",
+        "import": "导入",
+        "verify": "检查"
+      },
+      "pageLink": "查看 {name} 替代品的完整对比"
+    },
+    "requirements": {
+      "title": "系统要求",
+      "version": "应用版本",
+      "download": "下载",
+      "source": "来源",
+      "allChips": "所有芯片",
+      "notNative": "不是 Apple 芯片原生",
+      "builtFor": "适用于 macOS {versions} 的版本"
+    },
+    "install": {
+      "title": "如何在 Mac 上安装 {name}",
+      "run": "在“终端”中运行："
+    },
+    "uninstall": {
+      "title": "卸载 {name} 与可选的数据清理",
+      "also": "卸载时还会处理",
+      "kinds": {
+        "launchctl": "后台服务（launchctl）",
+        "login_item": "登录项",
+        "pkgutil": "安装包收据（pkgutil）",
+        "zap": "文件和文件夹"
+      },
+      "files": "{name} 可能留在 Mac 上的文件（{count}）",
+      "checked": "以上条目来自 Homebrew 定义，核查于 {date}；它们只说明定义声明会删除什么，不代表你的 Mac 上都有。",
+      "asOf": "以上条目来自 Homebrew 定义截至 {date} 的版本；它们只说明定义声明会删除什么，不代表你的 Mac 上都有。"
+    },
+    "uninstallPage": {
+      "crumb": "卸载",
+      "title": "在 Mac 上卸载 {name}",
+      "metaTitle": "如何在 Mac 上卸载 {name}：步骤与残留文件 · OpenNavo",
+      "description": "{name} 的卸载方法：Homebrew 卸载命令、它声明的后台项目，以及可选的数据清理会删除的 {count} 个文件和文件夹。",
+      "intro": "下面是 Homebrew 定义里为 {name} 声明的卸载步骤和文件。它们说明这个定义打算删除什么，不能证明你 Mac 上的每个文件都来自它。",
+      "withOpenNavo": "用 OpenNavo 卸载",
+      "withOpenNavoBody": "OpenNavo 客户端会先列出它在这台 Mac 上找到的应用、后台项目和残留文件，你确认后才会删除。",
+      "open": "在 OpenNavo 中预览",
+      "download": "下载 OpenNavo",
+      "back": "返回 {name} 的概览",
+      "guideLink": "查看在 Mac 上卸载 {name} 的完整步骤"
+    },
+    "safety": {
+      "title": "{name} 的安全事实",
+      "hint": "这里只列可以核验的事实，并注明来源和日期，不是安全认证。要检查你下载的文件，可以用 OpenNavo 在本机扫描。",
+      "identity": "开发者身份",
+      "teamId": "Team ID",
+      "channels": "分发渠道",
+      "openSource": "是否开源",
+      "cves": "已知漏洞（CVE）",
+      "cveVersion": "影响 {version} 版",
+      "cveNote": "只列出 NVD 中与本产品和这个版本精确匹配的 CVE。",
+      "scan": "用 OpenNavo 扫描",
+      "scanNote": "会在 OpenNavo 客户端中打开扫描预览，由你决定是否开始。"
+    },
+    "issues": {
+      "title": "{name} 的已知问题",
+      "hint": "由 OpenNavo 根据官方文档和公开报告整理，注明适用版本、来源和核查日期。",
+      "applies": "适用于 {name} {versions}，{macos}",
+      "steps": "解决方法",
+      "community": "社区讨论：",
+      "all": "查看全部 {count} 个已知问题"
+    },
+    "integrations": {
+      "title": "{name} 的 MCP 服务器与 Skill",
+      "hint": "只列出与当前版本匹配、已经核实的连接器，并写明它们需要的权限。",
+      "kinds": {
+        "mcp": "MCP 服务器",
+        "skill": "Skill"
+      },
+      "install": "安装方式",
+      "clients": "支持的客户端",
+      "files": "文件权限",
+      "network": "网络访问",
+      "none": "未声明",
+      "access": {
+        "read": "只读",
+        "write": "写入",
+        "read_write": "读写"
+      },
+      "silicon": {
+        "yes": "支持",
+        "no": "不支持"
+      },
+      "history": "版本记录"
+    },
+    "depsSummary": {
+      "title": "依赖与冲突",
+      "needs": "会一起安装",
+      "more": "查看依赖详情"
+    },
+    "collections": {
+      "title": "所属合集"
+    },
+    "sources": {
+      "title": "来源",
+      "hint": "页面上的每项资料都注明来源和核查日期；过期的资料只写“截至”某日，不再当作当前事实。",
+      "kinds": {
+        "homebrew": "Homebrew 定义",
+        "formulae": "formulae.brew.sh",
+        "price": "价格",
+        "appStore": "Mac App Store",
+        "requirements": "厂商提供的系统要求",
+        "security": "安全事实",
+        "issue": "已知问题",
+        "integration": "MCP 与 Skill"
+      }
     }
   },
   "collections": {
@@ -608,12 +812,109 @@
     "updated": "{date} 更新",
     "addAll": "全部加入 Brewfile 清单",
     "addedAll": "已加入 {count} 个包",
-    "export": "导出 Brewfile"
+    "export": "导出 Brewfile",
+    "setup": {
+      "installAll": "用 OpenNavo 安装全部",
+      "installHint": "在 OpenNavo 客户端中打开这个合集，确认后安装上面的 {count} 个 App，装之前会先扫描病毒。",
+      "notDetected": "没有检测到 OpenNavo 客户端",
+      "notDetectedBody": "下载 OpenNavo 后可以一键安装这个合集；也可以导出 Brewfile，在终端用 brew bundle 安装。",
+      "criteria": "推荐标准",
+      "source": "来源",
+      "installTitle": "安装清单",
+      "installable": "通过 Homebrew 安装（{count}）",
+      "external": "从开发者网站下载（{count}）",
+      "externalHint": "这些 App 不在 Homebrew 中，不会写进 Brewfile，「用 OpenNavo 安装全部」也不会安装它们，请从开发者网站下载。",
+      "priceTitle": "价格汇总",
+      "priceHint": "只合计已核实的价格，按地区、币种和计费周期分开列出：不换算汇率，订阅和一次买断不相加。",
+      "region": "地区",
+      "period": "计费周期",
+      "total": "合计",
+      "covered": "计入的 App",
+      "priceCovered": "{count} 个 App",
+      "priceUnknown": "另有 {count} 个 App 的价格未知或待核实，没有计入。",
+      "priceNone": "这个合集里的 App 还没有已核实的价格。",
+      "periods": {
+        "free": "免费",
+        "one_time": "一次买断",
+        "monthly": "每月",
+        "yearly": "每年",
+        "unknown": "周期未知"
+      },
+      "compatibilityTitle": "兼容性",
+      "compatibilitySummary": "{count} 个 App 中，{native} 个已确认原生支持 Apple 芯片。系统要求来自 Homebrew 和厂商资料，没有资料的标为「未知」。",
+      "app": "App",
+      "macos": "系统要求",
+      "appleSilicon": "Apple 芯片",
+      "unknown": "未知",
+      "silicon": {
+        "yes": "原生支持",
+        "no": "非原生",
+        "unknown": "未知"
+      }
+    }
+  },
+  "browse": {
+    "title": "Mac 应用 A–Z 索引",
+    "metaTitle": "Mac 应用 A–Z 索引 · OpenNavo",
+    "description": "按名称浏览目录里的 Mac 应用，共 {count} 个，每个都有介绍、版本记录和安装方式。",
+    "fontsTitle": "Mac 字体 A–Z 索引",
+    "fontsMetaTitle": "Mac 字体 A–Z 索引 · OpenNavo",
+    "fontsDescription": "按名称浏览目录里的字体，共 {count} 款，都可以用 Homebrew 安装。",
+    "crumb": "A–Z 索引",
+    "apps": "应用",
+    "fonts": "字体",
+    "allFonts": "全部字体 A–Z",
+    "allApps": "应用 A–Z 索引",
+    "more": "更多浏览方式",
+    "empty": "这里还没有可以列出的内容。",
+    "bucket": {
+      "letter": "{letter} 开头的 Mac 应用",
+      "digit": "数字开头的 Mac 应用",
+      "other": "其他文字开头的 Mac 应用"
+    },
+    "fontBucket": {
+      "letter": "{letter} 开头的字体",
+      "digit": "数字开头的字体",
+      "other": "其他文字开头的字体"
+    },
+    "bucketLabel": {
+      "digit": "0–9",
+      "other": "其他"
+    },
+    "appCount": "{count} 个应用",
+    "fontCount": "{count} 款字体",
+    "pageOf": "第 {page} 页，共 {pages} 页",
+    "pageLink": "{title}，第 {page} 页",
+    "bucketsLabel": "按首字母浏览",
+    "leafMetaTitle": "{title}（A–Z 索引）· OpenNavo",
+    "leafDescription": "{title}，按名称排列，共 {count} 个，每个都有介绍、版本记录和安装方式。",
+    "directory": {
+      "kicker": "目录",
+      "title": "按目录找 App",
+      "body": "按用途浏览分类，看编辑整理的合集，或者在全部应用和 A–Z 索引里找到每一个 App。",
+      "category": "{name}类应用"
+    }
+  },
+  "feeds": {
+    "subscribe": "订阅更新（RSS）",
+    "appTitle": "{name} 版本更新 · OpenNavo",
+    "appDescription": "{name} 在 Mac 上的新版本和更新说明，来自 OpenNavo。",
+    "collectionTitle": "{title}：版本更新 · OpenNavo",
+    "collectionDescription": "合集「{title}」里各个 App 的新版本和更新说明，来自 OpenNavo。",
+    "itemTitle": "{name} {version}"
+  },
+  "markdown": {
+    "note": "这是 OpenNavo 上 {name} 页面的 Markdown 版本，内容与网页相同：",
+    "developer": "开发者",
+    "install": "安装",
+    "about": "介绍",
+    "uninstall": "卸载",
+    "latestRelease": "最新版本说明"
   },
   "articles": {
     "title": "文章",
     "subtitle": "Mac 软件推荐、评测、教程和合集",
-    "metaTitle": "Mac 软件文章：推荐、评测、教程和合集 · OpenNavo",
+    "metaTitle": "Mac 软件推荐、评测与教程 · OpenNavo",
     "typeMetaTitle": "{type} · Mac 软件文章 · OpenNavo",
     "description": "OpenNavo 编辑部撰写的 Mac 软件推荐、评测、教程和合集，并注明信息来源。",
     "ogTitle": "Mac 软件文章",
@@ -676,7 +977,7 @@
   },
   "download": {
     "title": "Mac 上的 Homebrew 应用商店，病毒扫描与应用防火墙",
-    "metaTitle": "下载 OpenNavo 客户端 · OpenNavo",
+    "metaTitle": "下载 OpenNavo Mac 客户端：带病毒扫描的 Homebrew 应用商店",
     "description": "一键安装、更新和卸载 App，装之前先扫描病毒；还能清理磁盘、监控硬件。客户端调用你电脑上的 Homebrew，不需要账号。",
     "button": "下载 macOS 版",
     "meta": "版本 {version} · {size} · macOS {macos} 及以上 · {date} 发布",
@@ -764,7 +1065,30 @@
     "doneTitle": "已收到，谢谢！",
     "doneDescription": "我们会尽快处理；如果留了联系方式，处理后会回复你。",
     "backHome": "返回首页",
-    "suggestPrefill": "建议收录：{q}\n\n"
+    "suggestPrefill": "建议收录：{q}\n\n",
+    "private": "你的反馈是私密的：只有 OpenNavo 团队能看到，不会公开。我们核查和整理已知问题时可能会参考它。",
+    "packageVersion": "App 版本（可选）",
+    "packageVersionPlaceholder": "例如 1.2.3",
+    "macosVersion": "macOS 版本（可选）",
+    "macosVersionPlaceholder": "例如 15.1",
+    "symptom": "现象（可选）",
+    "symptomPlaceholder": "例如：打开后马上退出",
+    "symptomHint": "{count} / 500 字",
+    "diagnosticLog": "诊断日志（可选）",
+    "diagnosticLogPlaceholder": "粘贴错误信息或终端输出",
+    "diagnosticLogHint": "保存前会去掉常见的密码、令牌、密钥、邮箱，以及路径里的用户名。提交前也请自己检查一遍，只留下和问题有关的部分。",
+    "diagnosticLogSize": "{size} / 16 KB",
+    "links": "相关链接（可选，最多 3 个）",
+    "linkLabel": "链接 {number}",
+    "linkPlaceholder": "https://…",
+    "addLink": "再加一个链接",
+    "removeLink": "删除链接 {number}",
+    "linksHint": "最多填 3 个链接，每个都要是 https:// 开头的地址，不能带 ? 或 # 后面的部分。",
+    "errors": {
+      "logSize": "日志超过 16 KB 了，请只保留和问题有关的部分。",
+      "link": "请填写 https:// 开头的完整地址，不带 ? 或 # 后面的部分，也不要包含用户名或密码。",
+      "tooManyLinks": "最多 3 个链接，「内容」里的链接也算在内。"
+    }
   },
   "about": {
     "title": "关于 OpenNavo",
@@ -957,6 +1281,416 @@
       "body": "OpenNavo 免费开源，支持 macOS 13 及以上。第一次使用病毒扫描时，按提示下载官方病毒库即可。"
     }
   },
+  "backgroundItems": {
+    "title": "后台项目百科",
+    "metaTitle": "Mac 后台项目与登录项百科：是什么、怎么关 · OpenNavo",
+    "description": "Mac App 声明的后台服务（LaunchAgent、LaunchDaemon）、登录项和安装包记录：哪些 App 声明了它、通常在哪里，以及怎么在系统设置里关掉。",
+    "ogLabel": "后台项目",
+    "total": "共 {total} 个标签",
+    "caution": "标签只是一个名字：多个 App 可能共用同一个标签，恶意软件也可能冒用。这里列出的是 App 在 Homebrew 定义里的声明，不能证明你 Mac 上的某个项目属于它。",
+    "search": {
+      "label": "搜索标签",
+      "placeholder": "按标签搜索，例如 com.microsoft.update.agent",
+      "submit": "搜索",
+      "hint": "可以只输入标签的一部分，例如开发者的域名。"
+    },
+    "results": "包含「{q}」的标签",
+    "clearSearch": "清除搜索",
+    "emptyTitle": "没有找到标签",
+    "emptySearch": "没有包含「{q}」的标签，试试只输入其中一部分。",
+    "emptyAll": "还没有收录后台项目。",
+    "severalDevelopers": "多个开发者",
+    "unknownDeveloper": "未注明开发者",
+    "declaredBy": "声明它的 App：",
+    "listSeparator": "、",
+    "moreApps": "等 {count} 个",
+    "shared": "多个 App 共用",
+    "described": "有说明",
+    "types": {
+      "launch_agent": "LaunchAgent",
+      "launch_daemon": "LaunchDaemon",
+      "login_item": "登录项",
+      "package_receipt": "安装包记录",
+      "launchd": "LaunchAgent 或 LaunchDaemon",
+      "unknown": "类型未知"
+    },
+    "openInApp": {
+      "download": "还没有 OpenNavo？下载 Mac 版"
+    },
+    "item": {
+      "metaTitle": "{label} 是什么？Mac 后台项目说明 · OpenNavo",
+      "metaDescription": "{label} 是 {apps} 在 Homebrew 定义里声明的后台项目。看看它通常在哪里、怎么在系统设置里关掉，以及怎么用 OpenNavo 检查。",
+      "kicker": "后台项目",
+      "lede": "{apps} 的 Homebrew 定义里声明了这个标签。",
+      "source": "来源：",
+      "checkedOn": "{date} 核查",
+      "stale": "可能已过时",
+      "what": {
+        "title": "它是什么",
+        "none": "还没有经过核实的说明。下面列出了在 Homebrew 定义里声明它的 App，以及这类项目通常所在的位置。"
+      },
+      "apps": {
+        "title": "哪些 App 声明了它",
+        "intro": "下面这些 App 的 Homebrew 定义里写到了这个标签。这只说明它们声明过，不能证明你 Mac 上带这个标签的项目就是它们的。",
+        "shared": "{count} 个 App 声明了同一个标签，只看标签分不出项目来自哪一个。",
+        "declaration": {
+          "launchctl": "后台服务（launchctl）",
+          "login_item": "登录项",
+          "pkgutil": "安装包记录（pkgutil）"
+        },
+        "phase": {
+          "uninstall": "卸载时移除",
+          "zap": "zap 时移除（Homebrew 可选的用户数据清理）"
+        },
+        "source": "Homebrew 定义",
+        "uninstallPreview": "在 OpenNavo 中预览卸载",
+        "uninstallHint": "卸载预览会在 OpenNavo 中打开：先列出要移除的内容，你确认之后才会执行。"
+      },
+      "identity": {
+        "title": "先确认它是谁",
+        "intro": "同一个标签可能来自不同的程序。在你的 Mac 上，下面几项都对得上，才能说明它属于声明它的 App：",
+        "signature": "签名：开发者和 Team ID 与这个 App 一致",
+        "path": "位置：它运行的程序在这个 App 里面，或在开发者自己的目录下",
+        "version": "版本：和你装的这个 App 的版本相符"
+      },
+      "where": {
+        "title": "通常在哪里",
+        "verified": "经过核实的常见位置：",
+        "launchd": "LaunchAgent 和 LaunchDaemon 通常由一个以标签命名的属性列表文件（{file}）定义，放在下面的某个文件夹里：",
+        "loginItem": "登录项列在「系统设置」→「通用」→「登录项与扩展」里（macOS 13 和 14 叫「登录项」）。",
+        "receipt": "安装包记录由 macOS 的安装器保存，记的是一个安装包装了哪些文件。可以在「终端」里用 {command} 查看。",
+        "malware": "这几个文件夹也是 Mac 恶意软件最常用来开机自启的位置。这里出现不认识的项目，值得检查一下。"
+      },
+      "turnOff": {
+        "title": "怎么在系统设置里关掉",
+        "open": "打开「系统设置」→「通用」→「登录项与扩展」（macOS 13 和 14 叫「登录项」）。",
+        "find": "在「允许在后台」下面找到对应的 App 或开发者。",
+        "switch": "关掉它旁边的开关。为所有用户运行的项目可能需要输入管理员密码。",
+        "openAtLogin": "列在「登录时打开」里的 App，可以选中后点减号移除。",
+        "note": "关掉只是不让它自动启动，不会删除文件；卸载这个 App 才会移除相关文件。如果你还在用这个 App，它的更新、同步等后台功能可能会因此停止。"
+      },
+      "openNavo": {
+        "title": "用 OpenNavo 管理",
+        "body": "如果你的 Mac 上有这个项目，OpenNavo 的「启动项」会列出它，并显示签名、文件位置，以及 OpenNavo 在本机认出的所属 App。你可以在那里停用或移除它，移除的项目之后可以恢复。",
+        "button": "在 OpenNavo 中查看",
+        "hint": "只会打开预览：OpenNavo 在你的 Mac 上查找这个标签并显示找到的项目，在你确认之前不会停用或删除任何东西。需要 OpenNavo Mac 版。",
+        "more": "了解 OpenNavo 的安全防护"
+      }
+    }
+  },
+  "troubleshooting": {
+    "tab": "故障排查",
+    "metaTitle": "{name} 故障排查：已知问题与解决方法 · OpenNavo",
+    "metaDescription": "{name} 的已知问题，例如{titles}，附适用的 App 与 macOS 版本、解决步骤、来源和核查日期。",
+    "title": "已知问题（{count}）",
+    "intro": "下面是 {name} 的已知问题，每条都写明适用的版本、解决或绕开的步骤，以及核查过的来源。",
+    "fallbackLanguage": "这些问题目前只有英文版本。",
+    "contents": "目录",
+    "appVersions": "{name} 版本",
+    "macosVersions": "macOS 版本",
+    "steps": "解决步骤",
+    "community": "社区讨论",
+    "communityHint": "这些链接指向其他网站上已有的讨论，内容不由 OpenNavo 核实。",
+    "source": "来源：",
+    "checkedOn": "{date} 核查",
+    "english": "英文",
+    "report": {
+      "title": "问题还在？",
+      "body": "告诉我们 {name} 的版本、macOS 版本和你看到的现象。反馈不会公开，只作为我们核查新问题时的线索。",
+      "action": "反馈问题",
+      "back": "返回 {name} 页面"
+    }
+  },
+  "securityTopics": {
+    "label": "Mac 安全专题",
+    "overview": "OpenNavo 怎么保护你的 Mac",
+    "faqTitle": "常见问题",
+    "linksTitle": "更多 Mac 安全话题",
+    "apps": {
+      "title": "目录里的其他 Mac 安全 App",
+      "body": "下面这些 App 也收录在 OpenNavo 的目录里，可以对照着了解。它们由各自的开发者发布，与 OpenNavo 没有合作关系。"
+    },
+    "links": {
+      "firewall": {
+        "title": "Mac 应用防火墙",
+        "body": "App 联网前先问你，按你的规则允许或阻止。"
+      },
+      "clamav": {
+        "title": "在 Mac 上用 ClamAV 查毒",
+        "body": "开源杀毒引擎能查出什么、查不出什么。"
+      },
+      "xprotect": {
+        "title": "XProtect 是什么",
+        "body": "macOS 自带的恶意软件防护，以及它的局限。"
+      },
+      "backgroundItems": {
+        "title": "后台项目百科",
+        "body": "登录项和后台服务是什么、属于哪些 App 的声明、怎么关。"
+      }
+    },
+    "firewall": {
+      "metaTitle": "免费的 Mac 应用防火墙：App 联网前先问你 · OpenNavo",
+      "description": "OpenNavo 的应用防火墙在 Mac 上的 App 第一次联网时先问你，按你的规则允许或阻止。免费开源，改编自 LuLu，判断都在这台 Mac 上完成。",
+      "breadcrumb": "应用防火墙",
+      "hero": {
+        "kicker": "应用防火墙",
+        "title": "App 联网之前，先问你一声。",
+        "lede": "macOS 自带的防火墙只管**别人连进来**的连接。OpenNavo 的应用防火墙管另一个方向：App 第一次连接网络时，问你允许还是阻止，并记住你的选择。免费开源。"
+      },
+      "sections": {
+        "what": {
+          "title": "能做什么",
+          "body": "规则都由你定，判断都在这台 Mac 上完成。",
+          "cards": {
+            "ask": {
+              "title": "联网前先问你",
+              "body": "能看到是哪个 App、要连到哪里、由谁签名，再决定允许还是阻止。"
+            },
+            "rules": {
+              "title": "按 App、网站或端口定规则",
+              "body": "可以放行整个 App，也可以只允许或阻止某个域名、IP 段或端口。越具体的规则越优先，同一级别下阻止优先于允许。"
+            },
+            "blocklists": {
+              "title": "屏蔽列表",
+              "body": "导入 hosts 文件，或广告、跟踪、恶意网站的列表，命中的连接直接阻止，不再询问；来自网址的列表每天自动更新。"
+            },
+            "modes": {
+              "title": "不想被打扰的时候",
+              "body": "没有规则的连接可以询问你、允许并记录，或者阻止并记录。Apple 的程序和已经装好的 App 也可以自动允许。"
+            }
+          }
+        },
+        "how": {
+          "title": "在 Mac 上怎么工作",
+          "body": "应用防火墙是一个网络系统扩展。第一次开启时，macOS 会请你确认两次：先在「系统设置」里允许 OpenNavo 的系统扩展，再允许它过滤网络内容。连接信息只留在你的 Mac 上，不会上传。",
+          "note": "需要 macOS 13 或更高版本，并把 OpenNavo 正式版放在「应用程序」文件夹里。"
+        },
+        "limits": {
+          "title": "它不管什么",
+          "items": {
+            "incoming": "只管这台 Mac 上的 App 发起的连接。别人连进来的连接，由 macOS 自带的防火墙负责（「系统设置」→「网络」→「防火墙」）。",
+            "notRunning": "OpenNavo 没有运行时没法询问，没有规则的连接会先放行，并记在连接记录里；已有的规则照常生效。",
+            "directIp": "有些 App 自己解析地址、直接连接 IP，按域名阻止可能拦不住，只有列表里的 IP 能挡住这类连接。",
+            "release": "应用防火墙只在签名的正式版里提供，开发版和未签名的版本不包含它。"
+          }
+        },
+        "origin": {
+          "title": "改编自 LuLu",
+          "body": "应用防火墙的网络过滤部分改编自 Objective-See（Patrick Wardle）开发的免费开源防火墙 LuLu 4.5.1，遵循 GPL-3.0 许可证。OpenNavo 重写了其中的规则处理、存储和界面，与 Objective-See 没有隶属或合作关系，也未获其背书。OpenNavo 自己的代码同样以 GPL-3.0 开源，公开在 GitHub 上。"
+        }
+      },
+      "faq": {
+        "builtIn": {
+          "q": "Mac 自带防火墙吗？",
+          "a": "自带。macOS 在「系统设置」→「网络」→「防火墙」里提供防火墙，它管的是别人连进来的连接，在公共 Wi-Fi 上尤其有用。App 主动联网时它不会询问你，应用防火墙补的就是这一块。"
+        },
+        "free": {
+          "q": "收费吗？",
+          "a": "免费，也不需要账号。包括应用防火墙在内，OpenNavo 以 GPL-3.0 许可证开源。"
+        },
+        "breakApps": {
+          "q": "会不会影响 App 正常使用？",
+          "a": "被你阻止的 App 连不上网，更新、同步等功能可能会因此失效。不想被频繁询问的话，可以把没有规则的连接设为「允许并记录」，之后在连接记录里查看；也可以让已经装好的 App 自动允许。"
+        },
+        "privacy": {
+          "q": "会把我的连接记录发到别处吗？",
+          "a": "不会。规则和判断都在你的 Mac 上完成，连接信息不会上传。来自网址的屏蔽列表会下载到你的 Mac 上，在本机比对。"
+        },
+        "remove": {
+          "q": "怎么移除？",
+          "a": "在 OpenNavo 里打开「应用防火墙」→「设置」，选择「移除」。这会停止过滤并卸载系统扩展，同时删除规则和连接记录，macOS 可能会要求输入密码。"
+        }
+      },
+      "cta": {
+        "title": "打开应用防火墙。",
+        "body": "OpenNavo 免费开源，支持 macOS 13 及以上。安装后打开「应用防火墙」，按提示在 macOS 里确认两次即可。"
+      }
+    },
+    "clamav": {
+      "metaTitle": "Mac 上用 ClamAV 免费查毒：能查什么、查不出什么 · OpenNavo",
+      "description": "用开源杀毒引擎 ClamAV 和官方病毒库免费扫描你的 Mac。ClamAV 在 Mac 上能查出什么、会漏掉什么，以及 OpenNavo 额外做的检查。",
+      "breadcrumb": "ClamAV 查毒",
+      "hero": {
+        "kicker": "ClamAV 病毒扫描",
+        "title": "在 Mac 上用 ClamAV 查毒，不用开终端。",
+        "lede": "**ClamAV** 是使用广泛的开源杀毒引擎。OpenNavo 用它和官方病毒库扫描你的 Mac，再加上快速、全盘和定时扫描，以及装软件前的检查。免费，文件也不会离开你的 Mac。"
+      },
+      "sections": {
+        "what": {
+          "title": "ClamAV 是什么",
+          "body": "ClamAV 是由 Cisco Talos 维护的开源杀毒引擎，以 GPL-2.0 许可证发布。它把文件和病毒库里的特征逐一比对，认出已知的恶意文件；病毒库会持续更新。单独使用时它是一组命令行工具，例如用 Homebrew 安装（**brew install clamav**）后，用 freshclam 下载病毒库，用 clamscan 扫描文件。"
+        },
+        "how": {
+          "title": "OpenNavo 怎么用它",
+          "cards": {
+            "database": {
+              "title": "官方病毒库",
+              "body": "直接从 ClamAV 官方服务器下载，不经过 OpenNavo。首次约 113 MB，之后只下载变化的部分；默认每 4 小时检查一次更新。"
+            },
+            "scans": {
+              "title": "快速、全盘、自定义和定时扫描",
+              "body": "快速扫描查启动项指向的程序、下载、桌面、临时文件夹和最近 7 天新装的 App；全盘扫描覆盖整台 Mac，不含系统卷、iCloud 里没下载的文件、Time Machine 和网络卷。"
+            },
+            "install": {
+              "title": "装软件前先扫描",
+              "body": "通过 OpenNavo 安装的 App，Homebrew 下载完成后、安装之前会先扫描一遍；发现威胁就停止安装。"
+            },
+            "quarantine": {
+              "title": "能恢复的隔离区",
+              "body": "发现的威胁默认移进隔离区。确认是误报的话，随时可以恢复。"
+            },
+            "resources": {
+              "title": "只在扫描时占用内存",
+              "body": "扫描时引擎约占 1.1 GB 内存，空闲 5 分钟后自动退出。"
+            }
+          }
+        },
+        "limits": {
+          "title": "ClamAV 在 Mac 上的局限",
+          "items": {
+            "coverage": "它的病毒库对 Mac 专用恶意软件的覆盖有限，扫描没有发现威胁，不等于这台 Mac 一定干净。",
+            "signatures": "它靠特征认出已知威胁。新出现或改动过的恶意软件，在病毒库加入对应特征之前可能认不出来。",
+            "realtime": "OpenNavo 目前还不能在程序第一次运行前拦下它，这需要 Apple 的 Endpoint Security 授权；新下载的文件和新出现的启动项会立即检查。",
+            "large": "超过 100 MB 的普通文件，以及超过 1 GB 或展开后超过 2 GB 的安装包，不会完整扫描。"
+          }
+        },
+        "extras": {
+          "title": "ClamAV 之外，OpenNavo 还查什么",
+          "body": "病毒库看不到的地方，由这几项检查来补：",
+          "cards": {
+            "signatures": {
+              "title": "签名与公证",
+              "body": "检查已安装 App 的签名和公证；开发者签名突然变了，会提醒你。"
+            },
+            "startup": {
+              "title": "开机启动项",
+              "body": "从后台服务到浏览器扩展共 20 类启动项，标出签名和所属 App。"
+            },
+            "posture": {
+              "title": "系统安全体检",
+              "body": "Gatekeeper、FileVault、XProtect 状态等 11 项 macOS 设置，哪项没开一眼看清。"
+            },
+            "virusTotal": {
+              "title": "可选的 VirusTotal 查询",
+              "body": "用你自己的 API key，按文件的 SHA-256 查询 VirusTotal；只发送哈希，不上传文件。"
+            }
+          }
+        }
+      },
+      "faq": {
+        "xprotect": {
+          "q": "ClamAV 和 XProtect 是一回事吗？",
+          "a": "不是。XProtect 是 Apple 内置在 macOS 里的恶意软件防护，用的是 Apple 自己的规则；ClamAV 是独立的开源引擎，有自己的病毒库。OpenNavo 用 ClamAV 扫描，同时显示 XProtect 是否保持更新。"
+        },
+        "free": {
+          "q": "收费吗？",
+          "a": "免费。ClamAV 开源，病毒库免费，OpenNavo 也以 GPL-3.0 许可证开源，不需要账号。"
+        },
+        "upload": {
+          "q": "会上传我的文件吗？",
+          "a": "不会。扫描在你的 Mac 上完成，结果只保存在这台 Mac 上。可选的 VirusTotal 查询需要你自己开启，也只发送文件的 SHA-256。"
+        },
+        "terminal": {
+          "q": "不用 OpenNavo，能直接用 ClamAV 吗？",
+          "a": "可以。用 Homebrew 安装（brew install clamav），配置好 freshclam 下载病毒库，再用 clamscan 扫描。OpenNavo 把这些做成了窗口操作，并加上定时扫描和隔离区。"
+        }
+      },
+      "cta": {
+        "title": "用 ClamAV 扫一遍你的 Mac。",
+        "body": "OpenNavo 免费开源，支持 macOS 13 及以上。第一次扫描时，它会先征得你的同意再下载官方病毒库。"
+      }
+    },
+    "xprotect": {
+      "metaTitle": "XProtect 是什么？Mac 自带的恶意软件防护及其局限 · OpenNavo",
+      "description": "XProtect 是 Apple 内置在 macOS 里的恶意软件防护。它怎么工作、会漏掉什么、怎么确认它是最新的，以及 OpenNavo 能补上什么。",
+      "breadcrumb": "XProtect",
+      "hero": {
+        "kicker": "XProtect",
+        "title": "XProtect：你的 Mac 已经自带的杀毒功能。",
+        "lede": "每台 Mac 都带着 **XProtect**，这是 Apple 内置的、针对已知恶意软件的防护。它在后台默默工作，也正因为这样，你很少看到它查了什么。这里说清楚它做什么、管不到什么，以及怎么确认它是最新的。"
+      },
+      "sections": {
+        "what": {
+          "title": "XProtect 做什么",
+          "cards": {
+            "signatures": {
+              "title": "认出已知的恶意软件",
+              "body": "XProtect 使用 Apple 为已发现的恶意软件编写的特征规则（YARA），并按自己的节奏更新，和 macOS 系统更新分开进行。"
+            },
+            "checks": {
+              "title": "在 App 运行时检查",
+              "body": "App 第一次打开、App 被改动过，以及特征规则更新之后，它都会检查。发现已知恶意软件时，macOS 会阻止它运行，并提示你移到废纸篓。"
+            },
+            "remediation": {
+              "title": "清除部分感染",
+              "body": "较新的 macOS 还会在后台查找它认识的恶意软件，并把它清除。"
+            },
+            "gatekeeper": {
+              "title": "和 Gatekeeper、公证一起工作",
+              "body": "Gatekeeper 和公证检查 App 由谁签名、是否经过 Apple 扫描；XProtect 负责找出 Apple 已经知道的恶意软件。"
+            }
+          }
+        },
+        "limits": {
+          "title": "XProtect 管不到的地方",
+          "items": {
+            "known": "它只认识 Apple 知道的东西。新出现的恶意软件，或者改动到能绕过规则的变种，在 Apple 加入对应特征之前都可能正常运行。",
+            "updates": "更新要靠一个设置。XProtect 的规则通过「安全响应和系统文件」下发；如果在软件更新的自动更新选项里关掉了「安装安全响应和系统文件」，它可能就跟不上了。",
+            "visibility": "你看不到它在工作：没有 XProtect 窗口，没有扫描按钮，也没有它检查了什么的报告。"
+          }
+        },
+        "check": {
+          "title": "怎么确认 XProtect 是最新的",
+          "steps": {
+            "systemInformation": "按住 Option 键，点按苹果菜单 →「系统信息」，再打开「软件」→「安装」，查看名称以 XProtect 开头的最近更新记录。",
+            "terminal": "也可以在「终端」里运行 system_profiler SPInstallHistoryDataType，在输出里找 XProtect 的条目。",
+            "settings": "在「系统设置」→「通用」→「软件更新」里，点按「自动更新」旁边的信息按钮，确认「安装安全响应和系统文件」已经打开。"
+          },
+          "note": "OpenNavo 的系统体检会读出 XProtect 的版本和上次更新时间，超过 30 天没有更新时提醒你，并检查安全响应是否会自动安装。"
+        },
+        "extras": {
+          "title": "OpenNavo 能补上什么",
+          "body": "OpenNavo 不能取代 XProtect，它补上的是 XProtect 不会告诉你的那些检查：",
+          "cards": {
+            "scan": {
+              "title": "用 ClamAV 扫描病毒",
+              "body": "用开源引擎 ClamAV 做快速、全盘和定时扫描，通过 OpenNavo 安装的 App 装之前也会先扫描。"
+            },
+            "startup": {
+              "title": "开机启动项",
+              "body": "列出所有会自己启动的程序，标出签名和所属 App；有新的出现会提醒你。"
+            },
+            "signatures": {
+              "title": "签名体检",
+              "body": "检查已安装 App 的签名和公证；开发者签名突然变了，会提醒你。"
+            }
+          }
+        }
+      },
+      "faq": {
+        "enough": {
+          "q": "只靠 XProtect 够吗？",
+          "a": "XProtect 能阻止 Apple 有特征的恶意软件，而且会自己更新，所以请保持它开启并及时更新。但它认不出 Apple 还没收录的东西，也不会告诉你查了什么。再加一个扫描工具，再看看开机启动项，可以补上它不做的检查。"
+        },
+        "off": {
+          "q": "能关掉 XProtect 吗？",
+          "a": "「系统设置」里没有关闭它的选项。它是 macOS 的一部分，和系统的其他部分一起受到保护。"
+        },
+        "where": {
+          "q": "XProtect 在 Mac 的什么位置？",
+          "a": "它的规则放在系统目录 /Library/Apple/System/Library/CoreServices/XProtect.bundle 里，受 macOS 保护，不能随意改动。你不需要打开它，上面的更新记录就能看出它最近一次是什么时候更新的。"
+        },
+        "clamav": {
+          "q": "XProtect 和 ClamAV 有什么不同？",
+          "a": "两者都靠已知恶意软件的特征比对文件，但彼此独立：XProtect 用 Apple 自己的规则，自动运行；ClamAV 是开源引擎，有自己的病毒库，在你扫描时运行。OpenNavo 用 ClamAV 扫描，同时显示 XProtect 的状态。"
+        }
+      },
+      "cta": {
+        "title": "看看 XProtect 没告诉你的。",
+        "body": "OpenNavo 的系统体检免费，会显示 XProtect 是否保持更新，以及另外 10 项 macOS 安全设置。"
+      }
+    }
+  },
   "og": {
     "tagline": "Homebrew 应用商店",
     "platform": "macOS 客户端",
@@ -970,11 +1704,6 @@
     "downloadDescription": "安装、更新、杀毒、清理，\n一个客户端全搞定。",
     "securityTitle": "免费开源的\nMac 杀毒",
     "securityDescription": "病毒扫描、启动项检查、\n签名体检，全部免费。"
-  },
-  "languageSuggestion": {
-    "message": "是否使用{language}浏览？",
-    "switch": "切换到{language}",
-    "dismiss": "不再提示"
   },
   "landing": {
     "footerNav": "页脚导航",
@@ -990,6 +1719,48 @@
       "github": "GitHub 开源",
       "followOnX": "关注 {account}",
       "meta": "免费 · macOS 13 及以上 · Apple 芯片与 Intel"
+    },
+    "about": {
+      "kicker": "简介",
+      "title": "OpenNavo 是什么？",
+      "definition": "OpenNavo 是一款免费、开源的 Mac 版 Homebrew 图形客户端：在你的 Mac 上一键安装和更新 Homebrew 应用；它的网站是一个 Mac App 目录，提供版本记录、系统要求和卸载方法等信息。",
+      "compare": {
+        "caption": "OpenNavo 与 Homebrew 命令行、Mac App Store 的区别",
+        "homebrew": "Homebrew 命令行",
+        "appStore": "Mac App Store",
+        "rows": {
+          "use": "使用方式",
+          "source": "软件来源",
+          "scope": "安装与更新范围"
+        },
+        "cells": {
+          "opennavo": {
+            "use": "网页目录，加上带图形界面的 Mac 客户端。",
+            "source": "Homebrew 应用使用各 cask 声明的下载来源。",
+            "scope": "通过你 Mac 上的 Homebrew 安装和更新 cask；登录 Apple 账户后也能安装和更新 App Store 应用。其他 App 链接到开发者的官方下载。"
+          },
+          "homebrew": {
+            "use": "在终端里输入 brew 命令。",
+            "source": "Homebrew 的软件包定义，以及你自己添加的第三方 tap。",
+            "scope": "用 brew install 和 brew upgrade 管理 formula（命令行工具）和 cask（App）。"
+          },
+          "appStore": {
+            "use": "Mac 上的 App Store 应用。",
+            "source": "Apple 的 App Store 目录。",
+            "scope": "通过 Apple 账户获取的 App；其他来源的 App 由其开发者负责更新。"
+          }
+        },
+        "sources": "来源：",
+        "links": {
+          "readme": "OpenNavo README",
+          "brewManpage": "Homebrew 命令手册",
+          "brewTaps": "Homebrew：第三方 tap",
+          "appleInstall": "Apple 支持：安装和卸载 App Store 购买项目",
+          "appleDownload": "Apple 支持：在 Mac 上下载 App",
+          "appleUpdate": "Apple 支持：用 App Store 更新 App",
+          "appleOther": "Apple 支持：手动更新 App"
+        }
+      }
     },
     "window": {
       "label": "OpenNavo 客户端示意：在发现页安装 App",
@@ -1037,6 +1808,7 @@
       "note": "ClamAV 对 Mac 专用恶意软件的覆盖有限，所以 OpenNavo 同时核对签名、公证和启动项。它是 macOS 自带防护的补充，不能代替它。",
       "demo": {
         "label": "OpenNavo 客户端示意：病毒扫描发现一个威胁，并把它移进隔离区",
+        "caption": "演示动画：文件名和检出的威胁均为虚构。",
         "title": "安全防护",
         "subtitle": "体检、病毒扫描、启动项和实时防护，结果只保存在这台 Mac 上",
         "tabs": {
@@ -1102,7 +1874,7 @@
       "stats": {
         "apps": "收录的 App",
         "updated": "过去 24 小时有新版本",
-        "languages": "界面语言"
+        "languages": "Mac 客户端语言"
       }
     },
     "details": {

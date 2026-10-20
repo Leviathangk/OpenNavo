@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
-	"github.com/opennavo/opennavo/server/internal/service/contenttranslate"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -18,7 +17,7 @@ import (
 
 func TestAnnouncementHistoryPreservesLegacySourceLocale(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewSEOStore(t)
 	require.NoError(t, st.DB.Exec(`INSERT INTO app_config(key,value) VALUES('desktop.announcement','{}')`).Error)
 	svc := &Service{Store: st}
 	ref := content.Ref{Entity: "announcement"}
@@ -59,13 +58,8 @@ func TestAnnouncementHistoryPreservesLegacySourceLocale(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, sourceLocale, source.SourceLocale)
 				require.Equal(t, "这款应用可以管理文件", source.Fields["title"])
-				require.Len(t, source.Targets, 5)
-				if sourceLocale == "zh-CN" {
-					translator := &contenttranslate.Service{Store: st, LLM: historyTranslator{}, Model: "fake", NoRetry: true}
-					stats, err := translator.Run(ctx, ref, source.Hash)
-					require.NoError(t, err)
-					require.Equal(t, 5, stats["translated"])
-				}
+				require.Len(t, source.Targets, targetCount(ref))
+
 				var saved json.RawMessage
 				column := "after_data"
 				if operation != "RestoreRevision" {

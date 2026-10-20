@@ -1,12 +1,12 @@
-// Check all six languages and the lock file offline, without accessing the gateway.
-import { flatten, hash, loadTarget, lockFile, manifest, read, selection, validate } from './interface-i18n.mjs';
+// Check every target's languages and the lock file offline, without accessing the gateway.
+import { flatten, hash, loadTarget, lockFile, read, selection, targetLocales, validate } from './interface-i18n.mjs';
 
 function checkTarget(name, lock) {
   try {
     const target = loadTarget(name),
       source = flatten(target.source),
       english = flatten(target.english);
-    for (const { code } of manifest.locales)
+    for (const { code } of targetLocales(name))
       validate(
         source,
         english,
@@ -31,7 +31,7 @@ try {
   const lock = lockFile();
   let count = 0;
   for (const name of selection(process.argv.slice(2))) count += checkTarget(name, lock);
-  console.log(`Six-language validation passed: ${count} keys.`);
+  console.log(`Interface i18n validation passed: ${count} keys.`);
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

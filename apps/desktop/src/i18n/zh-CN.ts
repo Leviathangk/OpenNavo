@@ -1019,7 +1019,37 @@ export default {
     installTitle: '安装 {name}？',
     installDescription: '网页请求在这台 Mac 上安装它。确认后将执行下面的命令；取消则不做任何操作。',
     installConfirm: '安装',
-    formulaUnsupported: 'OpenNavo 只收录 App（Homebrew Cask），这个链接指向的是命令行工具。'
+    formulaUnsupported: 'OpenNavo 只收录 App（Homebrew Cask），这个链接指向的是命令行工具。',
+    preview: {
+      invalid: '这个链接打不开',
+      invalidBody: '链接里的参数不完整或不符合要求，OpenNavo 没有做任何操作。',
+      startup: {
+        looking: '正在这台 Mac 上查找 {label}…',
+        found: '找到 {count} 个标签为 {label} 的启动项',
+        foundBody:
+          '这是从网页打开的预览，还没有做任何改动。同一个标签可能被多个程序共用，也可能被冒用，请先核对签名、文件位置和所属 App，再决定是否停用或移除。',
+        view: '查看 {name}',
+        notFound: '这台 Mac 上没有标签为 {label} 的启动项',
+        notFoundBody: '它可能没有安装，或者 macOS 没有让 OpenNavo 读取它所在的位置。没有做任何改动。'
+      },
+      scan: {
+        looking: '正在这台 Mac 上查找 {token}…',
+        title: '扫描 {name}',
+        body: '这是从网页打开的预览：OpenNavo 在这台 Mac 上找到了这个 App。点「扫描这个 App」之后才会开始扫描。',
+        action: '扫描这个 App',
+        notFound: '这台 Mac 上没有找到 {token}',
+        notFoundBody: 'OpenNavo 只能扫描已经装在这台 Mac 上的 App。没有做任何操作。'
+      },
+      uninstall: {
+        title: '预览卸载 {name}',
+        body: '这是从网页打开的预览，还没有删除任何东西。点「卸载」后会先列出要移除的内容，你确认之后才会执行。',
+        several: '这台 Mac 上有 {count} 个 App 对应 {token}，选一个查看：',
+        view: '查看 {name}',
+        notFound: '这台 Mac 上没有找到 {token}',
+        notFoundBody: '它可能已经卸载了，或者安装方式让 OpenNavo 认不出来。没有做任何操作。',
+        permission: '开启「完全磁盘访问权限」之后，才能预览卸载 {token}。'
+      }
+    }
   },
   tray: {
     available: '{count} 个可用更新',

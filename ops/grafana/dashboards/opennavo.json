@@ -276,7 +276,7 @@
     {
       "id": 13,
       "type": "timeseries",
-      "title": "Crawlers at origin",
+      "title": "Claimed crawler families at origin",
       "datasource": {
         "type": "prometheus",
         "uid": "opennavo-prometheus"
@@ -290,15 +290,15 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(agent)(rate(opennavo_web_requests_total{agent!~\"browser|unknown\"}[5m]))",
-          "legendFormat": "{{agent}}"
+          "expr": "sum by(agent,verification,verification_basis)(rate(opennavo_web_requests_total{agent!~\"browser|unknown|self_test\"}[5m]))",
+          "legendFormat": "{{agent}} · {{verification}} / {{verification_basis}}"
         }
       ]
     },
     {
       "id": 14,
       "type": "timeseries",
-      "title": "Crawler errors and redirects",
+      "title": "Crawler final errors and redirects at origin",
       "datasource": {
         "type": "prometheus",
         "uid": "opennavo-prometheus"
@@ -312,15 +312,15 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(agent,status)(rate(opennavo_web_requests_total{agent!~\"browser|unknown\",status!~\"200|304\"}[5m]))",
-          "legendFormat": "{{agent}} {{status}}"
+          "expr": "sum by(agent,status,verification,verification_basis)(rate(opennavo_web_requests_total{agent!~\"browser|unknown|self_test\",status!~\"200|304\"}[5m]))",
+          "legendFormat": "{{agent}} {{status}} · {{verification}} / {{verification_basis}}"
         }
       ]
     },
     {
       "id": 15,
       "type": "timeseries",
-      "title": "Crawled page types",
+      "title": "Claimed crawler route types at origin",
       "datasource": {
         "type": "prometheus",
         "uid": "opennavo-prometheus"
@@ -334,8 +334,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(route)(rate(opennavo_web_requests_total{agent!~\"browser|unknown\"}[5m]))",
-          "legendFormat": "{{route}}"
+          "expr": "sum by(route,verification,verification_basis)(rate(opennavo_web_requests_total{agent!~\"browser|unknown|self_test\"}[5m]))",
+          "legendFormat": "{{route}} · {{verification}} / {{verification_basis}}"
         }
       ]
     },
@@ -351,7 +351,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "Counts cover requests that reached the web origin. Pages served from the Cloudflare cache never get here, so use Cloudflare analytics for total crawler traffic. User-agents can be forged: confirm important crawlers against the vendors' published IP ranges or reverse DNS. Visitors are measured in GA4, which does not see crawlers and misses visitors in mainland China and users with ad blockers."
+        "content": "Counts cover only requests that reached Nitro, using the final HTTP status (including origin cache hits). Cloudflare cache hits and edge blocks are absent: edge coverage is unavailable without separate edge data; never add origin and edge totals or infer per-URL coverage. Agent labels are UA claims, not authenticated engine identities. verified / cf_client_bot means a trusted, sanitized ingress forwarded Cloudflare known-good-bot classification; it does not verify Googlebot or any other named vendor. ua_only means a crawler claim without that attestation; unknown means no crawler classification. false is not a malicious verdict. Verification is disabled by default and never grants an access exemption. Meta ExternalAgent mixes training and indexing; Google/Apple Extended are policy tokens, not separate fetchers. self_test (OpenNavo-Probe/Test UA) is excluded from these graphs and remains a UA claim, not evidence of natural discovery or citation. GA4 measures visitors separately."
       }
     }
   ]

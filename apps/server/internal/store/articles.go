@@ -31,6 +31,8 @@ type Article struct {
 
 // ArticleDraft is one revision's content in its source language.
 type ArticleDraft struct {
+	Claims         []articles.Claim
+	Target         *articles.Target
 	SourceLocale   string
 	Type           string
 	AuthorID       *int64
@@ -125,6 +127,7 @@ func (s *Store) ArticleRevisionMeta(ctx context.Context, revisionID int64) (Arti
 // LoadArticleDraft reads a revision's content in its source language.
 func (s *Store) LoadArticleDraft(ctx context.Context, revisionID int64) (ArticleDraft, error) {
 	var row struct {
+		Claims, Target                                    string
 		SourceLocale, Type                                string
 		AuthorID, CoverAssetID                            *int64
 		CoverAlt                                          *string
@@ -132,7 +135,7 @@ func (s *Store) LoadArticleDraft(ctx context.Context, revisionID int64) (Article
 		Title                                             string
 		Summary, BodyMarkdown, TestNote, SeoTitle, SeoDes *string
 	}
-	err := s.DB.WithContext(ctx).Raw(`SELECT r.source_locale,r.type,r.author_id,r.cover_asset_id,r.cover_alt,r.sources::text AS sources,
+	err := s.DB.WithContext(ctx).Raw(`SELECT r.claims::text AS claims,COALESCE(r.seo_target,'null'::jsonb)::text AS target,r.source_locale,r.type,r.author_id,r.cover_asset_id,r.cover_alt,r.sources::text AS sources,
  COALESCE((SELECT json_agg(p.package_id ORDER BY p.sort) FROM article_revision_packages p WHERE p.revision_id=r.id),'[]')::text AS packages,
  COALESCE(i.title,'') AS title,i.summary,i.body_markdown,i.test_note,i.seo_title,i.seo_description AS seo_des
  FROM article_revisions r LEFT JOIN article_revision_i18n i ON i.revision_id=r.id AND i.locale=r.source_locale WHERE r.id=?`, revisionID).Scan(&row).Error
@@ -144,6 +147,12 @@ func (s *Store) LoadArticleDraft(ctx context.Context, revisionID int64) (Article
 	}
 	out := ArticleDraft{SourceLocale: row.SourceLocale, Type: row.Type, AuthorID: row.AuthorID, CoverAssetID: row.CoverAssetID, CoverAlt: row.CoverAlt,
 		Title: row.Title, Summary: row.Summary, BodyMarkdown: row.BodyMarkdown, TestNote: row.TestNote, SeoTitle: row.SeoTitle, SeoDescription: row.SeoDes}
+	if err := json.Unmarshal([]byte(row.Claims), &out.Claims); err != nil {
+		return out, err
+	}
+	if err := json.Unmarshal([]byte(row.Target), &out.Target); err != nil {
+		return out, err
+	}
 	if err := json.Unmarshal([]byte(row.Sources), &out.Sources); err != nil {
 		return out, fmt.Errorf("decode article sources: %w", err)
 	}
@@ -154,11 +163,26 @@ func (s *Store) LoadArticleDraft(ctx context.Context, revisionID int64) (Article
 }
 
 func (s *Store) writeArticleText(ctx context.Context, revisionID int64, d ArticleDraft) error {
+	claims := d.Claims
+	if claims == nil {
+		claims = []articles.Claim{}
+	}
+	raw, err := json.Marshal(claims)
+	if err != nil {
+		return err
+	}
+	target, err := json.Marshal(d.Target)
+	if err != nil {
+		return err
+	}
+	if err := s.DB.WithContext(ctx).Exec("UPDATE article_revisions SET claims=?::jsonb,claim_evidence='[]'::jsonb,seo_target=NULLIF(?::jsonb,'null'::jsonb) WHERE id=? AND published_at IS NULL", string(raw), string(target), revisionID).Error; err != nil {
+		return err
+	}
 	if err := s.DB.WithContext(ctx).Exec("DELETE FROM article_revision_i18n WHERE revision_id=?", revisionID).Error; err != nil {
 		return err
 	}
-	if err := s.DB.WithContext(ctx).Exec(`INSERT INTO article_revision_i18n(revision_id,locale,title,summary,body_markdown,test_note,seo_title,seo_description,status,source_locale)
- VALUES(?,?,?,?,?,?,?,?,'source',?)`, revisionID, d.SourceLocale, d.Title, d.Summary, d.BodyMarkdown, d.TestNote, d.SeoTitle, d.SeoDescription, d.SourceLocale).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Exec(`INSERT INTO article_revision_i18n(revision_id,locale,title,summary,body_markdown,test_note,seo_title,seo_description,cover_alt,status,source_locale)
+ VALUES(?,?,?,?,?,?,?,?,?,'source',?)`, revisionID, d.SourceLocale, d.Title, d.Summary, d.BodyMarkdown, d.TestNote, d.SeoTitle, d.SeoDescription, d.CoverAlt, d.SourceLocale).Error; err != nil {
 		return MapAdminError(err)
 	}
 	if err := s.DB.WithContext(ctx).Exec("DELETE FROM article_revision_packages WHERE revision_id=?", revisionID).Error; err != nil {
@@ -258,7 +282,7 @@ func (s *Store) ImageAssets(ctx context.Context, urls []string) (map[string]Asse
 	return out, nil
 }
 
-// LiveCaskIDs maps tokens of casks in the catalog to their IDs.
+// LiveCaskIDs is the legacy name for article card lookup; it accepts cask and link apps.
 func (s *Store) LiveCaskIDs(ctx context.Context, tokens []string) (map[string]int64, error) {
 	out := map[string]int64{}
 	if len(tokens) == 0 {
@@ -268,7 +292,7 @@ func (s *Store) LiveCaskIDs(ctx context.Context, tokens []string) (map[string]in
 		ID    int64
 		Token string
 	}
-	if err := s.DB.WithContext(ctx).Raw("SELECT id,token FROM packages WHERE kind='cask' AND removed_at IS NULL AND token IN ?", tokens).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw("SELECT id,token FROM packages WHERE kind IN ('cask','link') AND removed_at IS NULL AND token IN ?", tokens).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	for _, row := range rows {

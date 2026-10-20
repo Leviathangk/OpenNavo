@@ -46,6 +46,13 @@ func run() error {
 		return err
 	}
 	defer func() { _ = st.Close() }()
+	if os.Getenv("HERMES_E2E_REPLAY") == "seo" {
+		report, err := replaySEO(ctx, st.DB)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(report)
+	}
 	newToken, updatedToken := strings.ToLower(prefix)+"-new", strings.ToLower(prefix)+"-updated"
 	for _, item := range []struct{ token, version string }{{newToken, "1.0.0"}, {updatedToken, "1.0.0"}, {updatedToken, "1.1.0"}} {
 		raw, _ := json.Marshal(map[string]any{"token": item.token, "version": item.version, "name": []string{prefix}, "homepage": "https://example.com", "url": "https://example.com/g.dmg"})

@@ -2,7 +2,7 @@
 import createClient from 'openapi-fetch';
 import type { Client, Middleware } from 'openapi-fetch';
 import { ErrorCode } from '@opennavo/shared';
-import type { Locale } from '@opennavo/shared';
+import type { SiteLocale } from '@opennavo/shared';
 import { ApiError, NETWORK_ERROR, toApiError } from './errors';
 import type { paths } from './public';
 
@@ -11,8 +11,8 @@ export type PublicClient = Client<paths>;
 export interface PublicClientOptions {
   /** For example https://api.opennavo.example/api/v1, or http://localhost:4010 for Prism. */
   baseUrl: string;
-  /** Request language; a function is reevaluated for every request to follow UI changes. */
-  locale?: Locale | (() => Locale);
+  /** Request language (any site locale); a function is reevaluated for every request to follow UI changes. */
+  locale?: SiteLocale | (() => SiteLocale);
   /** Client identifier (04 §6.2), used only for server statistics/compatibility. */
   platform?: 'web' | 'desktop';
   version?: string;

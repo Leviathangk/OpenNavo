@@ -1,0 +1,14 @@
+{
+  "version": "2026-10-19",
+  "rules": [
+    {"id": "seo.fetch", "severity": "p1"},
+    {"id": "seo.status", "severity": "p0"},
+    {"id": "seo.canonical", "severity": "p0"},
+    {"id": "seo.robots", "severity": "p0"},
+    {"id": "seo.jsonld", "severity": "p0"},
+    {"id": "seo.ssr_content", "severity": "p1"},
+    {"id": "seo.hreflang", "severity": "p1"},
+    {"id": "seo.return_to", "severity": "p1"},
+    {"id": "seo.facts_order", "severity": "p1"}
+  ]
+}

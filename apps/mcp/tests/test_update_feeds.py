@@ -2,7 +2,7 @@
 
 import json
 
-from conftest import Backend
+from conftest import Backend, execution_args
 from fastmcp import Client
 
 
@@ -18,12 +18,15 @@ async def test_update_feed_upsert_and_disable_dry_run(backend: Backend) -> None:
         ]:
             result = await client.call_tool(
                 tool,
-                {
-                    "bundle_id": "org.example.Fixture",
-                    "source": "sparkle",
-                    "dry_run": True,
-                    **fields,
-                },
+                execution_args(
+                    tool,
+                    {
+                        "bundle_id": "org.example.Fixture",
+                        "source": "sparkle",
+                        "dry_run": True,
+                        **fields,
+                    },
+                ),
                 raise_on_error=False,
             )
             assert not result.is_error, result.content
@@ -57,13 +60,16 @@ async def test_github_and_vendor_rules_preserve_constraints_in_dry_run(backend: 
         ]:
             result = await client.call_tool(
                 "update_feed_upsert",
-                {
-                    "bundle_id": "org.example.Fixture",
-                    "source": source,
-                    "team_id": "TESTTEAM01",
-                    "dry_run": True,
-                    **fields,
-                },
+                execution_args(
+                    "update_feed_upsert",
+                    {
+                        "bundle_id": "org.example.Fixture",
+                        "source": source,
+                        "team_id": "TESTTEAM01",
+                        "dry_run": True,
+                        **fields,
+                    },
+                ),
                 raise_on_error=False,
             )
             assert not result.is_error, result.content

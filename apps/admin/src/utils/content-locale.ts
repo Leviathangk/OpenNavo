@@ -1,14 +1,23 @@
-import { AUTHORING_LOCALE, LOCALES, LOCALE_METADATA } from '@opennavo/shared/locales';
+import { AUTHORING_LOCALE, LOCALES, LOCALE_METADATA, SITE_LOCALES } from '@opennavo/shared/locales';
 import type { Schemas } from '@/typings/api/opennavo';
 
-/** Content locales (12 §1): six languages from packages/shared/src/locales.json. */
+/** Content locales (12 §1, L1): every site language from packages/shared/src/locales.json. */
 export type ContentLocale = Schemas['Locale'];
+
+/** Application languages (desktop UI and client release notes); a subset of ContentLocale. */
+export type AppContentLocale = Schemas['AppLocale'];
 
 /** Writes require only source-language text (04 §9.1); new content defaults to English, with other languages translated by AI. */
 export const DEFAULT_SOURCE_LOCALE: ContentLocale = AUTHORING_LOCALE;
 
 /** Admin locale order: default source language first. */
 export const CONTENT_LOCALES: readonly ContentLocale[] = [
+  AUTHORING_LOCALE,
+  ...SITE_LOCALES.filter(code => code !== AUTHORING_LOCALE)
+];
+
+/** Client release notes stay in the six app languages (AGENTS.md); site-only languages are not shipped in the app. */
+export const APP_CONTENT_LOCALES: readonly AppContentLocale[] = [
   AUTHORING_LOCALE,
   ...LOCALES.filter(code => code !== AUTHORING_LOCALE)
 ];
@@ -19,6 +28,8 @@ export function localeName(code: ContentLocale): string {
 }
 
 export const CONTENT_LOCALE_OPTIONS = CONTENT_LOCALES.map(code => ({ label: localeName(code), value: code }));
+
+export const APP_CONTENT_LOCALE_OPTIONS = APP_CONTENT_LOCALES.map(code => ({ label: localeName(code), value: code }));
 
 type LocalizedMap<T> = Partial<Record<ContentLocale, T | null | undefined>> | null | undefined;
 

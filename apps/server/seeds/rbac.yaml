@@ -26,6 +26,25 @@
     }
   ],
   "permissions": [
+    {"code":"seo:automation:tune","name":"Tune SEO automation","roles":["R_ADMIN","R_AGENT"]},
+    {"code":"seo:snippet:propose","name":"Propose SEO templates","roles":["R_ADMIN","R_AGENT"]},
+    {"code":"seo:task:handle","name":"Handle SEO tasks","roles":["R_ADMIN","R_AGENT"]},
+    {
+      "code": "seo:insight:view",
+      "name": "View SEO measurements and keyword ledger",
+      "roles": [
+        "R_ADMIN",
+        "R_AGENT"
+      ]
+    },
+    {
+      "code": "seo:keyword:edit",
+      "name": "Update SEO keyword ledger and targets",
+      "roles": [
+        "R_ADMIN",
+        "R_AGENT"
+      ]
+    },
     {
       "code": "dashboard:view",
       "name": "View dashboard",
@@ -230,13 +249,6 @@
     {
       "code": "system:audit:view",
       "name": "Audit logs",
-      "roles": [
-        "R_ADMIN"
-      ]
-    },
-    {
-      "code": "i18n:settings",
-      "name": "Translation AI settings",
       "roles": [
         "R_ADMIN"
       ]

@@ -64,7 +64,7 @@ func invalidations(t *testing.T, st *store.Store) []string {
 
 func TestSourceFactsJobFindsSchedulesAndPublishes(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	addCask(t, st, `{"token":"alpha","name":["Alpha"],"version":"1","homepage":"https://github.com/acme/alpha","url":"https://github.com/acme/alpha/releases/download/v1/Alpha.dmg",
 		"artifacts":[{"app":["Alpha.app"]},{"uninstall":[{"quit":"com.acme.alpha"}]},{"zap":[{"trash":["~/Library/Preferences/com.acme.alpha.plist"]}]}]}`)
 	addCask(t, st, `{"token":"beta","name":["Beta Pro"],"version":"1","homepage":"https://beta.example","url":"https://beta.example/Beta.dmg",
@@ -95,7 +95,7 @@ func TestSourceFactsJobFindsSchedulesAndPublishes(t *testing.T) {
 	require.Equal(t, []string{"acme/alpha"}, github.calls)
 	require.Equal(t, [][]string{{"com.acme.alpha", "com.beta.pro"}}, appStore.lookups)
 	require.EqualValues(t, 2, stats["changed"])
-	require.Equal(t, []string{"cache:invalidate:source-facts:1", "cache:invalidate:source-facts:2"}, invalidations(t, st))
+	require.Equal(t, []string{"cache:invalidate:seo-content:pkg:1", "cache:invalidate:seo-content:pkg:2"}, invalidations(t, st))
 
 	rows, err := st.SourceFacts(ctx)
 	require.NoError(t, err)
@@ -119,6 +119,12 @@ func TestSourceFactsJobFindsSchedulesAndPublishes(t *testing.T) {
 	require.Equal(t, "Beta Pro - Editor", detail.AppStore.Name)
 	require.Equal(t, []string{"EN", "ZH"}, detail.AppStore.Languages)
 	require.Zero(t, detail.AppStore.Price)
+	var snapshots int64
+	require.NoError(t, st.DB.Table("app_store_price_snapshots").Count(&snapshots).Error)
+	require.EqualValues(t, 1, snapshots)
+	require.Equal(t, now.Add(24*time.Hour), rows[store.SourceFactKey{PackageID: 2, Source: AppStore}].NextCheckAt.UTC())
+	require.NotNil(t, detail.Facts)
+	require.Empty(t, *detail.Facts.Offers)
 
 	// Nothing is due until the schedule says so.
 	stats, err = svc.Run(ctx)
@@ -139,12 +145,12 @@ func TestSourceFactsJobFindsSchedulesAndPublishes(t *testing.T) {
 	stats, err = svc.Run(ctx)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, stats["removed"])
-	require.Equal(t, []string{"cache:invalidate:source-facts:2"}, invalidations(t, st))
+	require.Equal(t, []string{"cache:invalidate:seo-content:pkg:2"}, invalidations(t, st))
 }
 
 func TestSourceFactsJobStopsOnRateLimitsAndBacksOffOnErrors(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	addCask(t, st, `{"token":"alpha","name":["Alpha"],"version":"1","homepage":"https://github.com/acme/alpha","url":"https://github.com/acme/alpha-bin/releases/download/v1/a.dmg","artifacts":[{"app":["Alpha.app"]},{"uninstall":[{"quit":"com.acme.alpha"}]}]}`)
 	addCask(t, st, `{"token":"gamma","name":["Gamma"],"version":"1","homepage":"https://github.com/acme/gamma","url":"https://example.test/g.dmg","artifacts":[{"app":["Gamma.app"]}]}`)
 	now := time.Date(2026, 10, 14, 3, 35, 0, 0, time.UTC)
@@ -188,7 +194,7 @@ func TestSourceFactsJobStopsOnRateLimitsAndBacksOffOnErrors(t *testing.T) {
 
 func TestSourceFactFailurePreservesSuccessfulCheck(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	addCask(t, st, `{"token":"alpha","name":["Alpha"],"version":"1"}`)
 	checked := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	fact := store.SourceFact{PackageID: 1, Source: AppStore, Input: "com.example.alpha", Subject: "com.example.alpha", Status: "found", Data: json.RawMessage(`{"price":9,"languages":["EN"]}`), CheckedAt: checked, NextCheckAt: checked.Add(24 * time.Hour)}
@@ -214,7 +220,7 @@ func TestSourceFactsChangedInputFailureRespectsBackoff(t *testing.T) {
 	for _, source := range []string{GitHub, AppStore} {
 		t.Run(source, func(t *testing.T) {
 			ctx := context.Background()
-			st := testutil.NewStore(t)
+			st := testutil.NewFactsStore(t)
 			raw := `{"token":"alpha","name":["Alpha"],"version":"1","homepage":"https://github.com/example/new"}`
 			input, subject := "example/new", "example/old"
 			if source == AppStore {
@@ -244,7 +250,7 @@ func TestSourceFactsChangedInputFailureRespectsBackoff(t *testing.T) {
 				if failing {
 					return nil, errors.New("connection reset")
 				}
-				return map[string]sources.Listing{input: {Name: "Alpha", BundleID: input, Price: 0, Currency: "USD", Region: "US", Languages: []string{"EN"}}}, nil
+				return map[string]sources.Listing{input: {Name: "Alpha", URL: "https://apps.apple.com/us/app/alpha/id1", BundleID: input, Price: 0, Currency: "USD", Region: "US", Languages: []string{"EN"}}}, nil
 			}}
 			svc := &Service{Store: st, GitHub: github, AppStore: appStore, Now: func() time.Time { return now }}
 			run := func() { t.Helper(); _, err := svc.Run(ctx); require.NoError(t, err) }

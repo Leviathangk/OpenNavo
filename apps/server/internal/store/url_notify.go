@@ -107,24 +107,26 @@ func (s *Store) SaveURLNotifyState(ctx context.Context, state URLNotifyState) er
 
 // ContentURLChange is a batch of changed pages outside the catalog (articles, authors).
 type ContentURLChange struct {
-	Seq      int64
-	Paths    []string
-	Announce bool
+	Seq           int64
+	Paths         []string
+	Announce      bool
+	PurgeSections bool
 }
 
 // PendingContentURLChanges reads page changes after cursor that settled before the given time.
 func (s *Store) PendingContentURLChanges(ctx context.Context, cursor int64, before time.Time, limit int) ([]ContentURLChange, error) {
 	var rows []struct {
-		Seq      int64
-		Paths    string
-		Announce bool
+		Seq           int64
+		Paths         string
+		Announce      bool
+		PurgeSections bool
 	}
-	if err := s.DB.WithContext(ctx).Raw("SELECT seq,to_json(paths)::text AS paths,announce FROM content_url_changes WHERE seq>? AND created_at<=? ORDER BY seq LIMIT ?", cursor, before, limit).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw("SELECT seq,to_json(paths)::text AS paths,announce,purge_sections FROM content_url_changes WHERE seq>? AND created_at<=? ORDER BY seq LIMIT ?", cursor, before, limit).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make([]ContentURLChange, 0, len(rows))
 	for _, row := range rows {
-		change := ContentURLChange{Seq: row.Seq, Announce: row.Announce}
+		change := ContentURLChange{Seq: row.Seq, Announce: row.Announce, PurgeSections: row.PurgeSections}
 		if err := json.Unmarshal([]byte(row.Paths), &change.Paths); err != nil {
 			return nil, err
 		}

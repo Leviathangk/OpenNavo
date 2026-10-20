@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { Component } from 'vue';
 import { detailGlow } from '@opennavo/tokens';
 import OnAppIcon from './OnAppIcon.vue';
 import type { OnAppIconKind } from './OnAppIcon.vue';
+import type { OnImageVariant } from '../utils/image';
 import OnChip from './OnChip.vue';
 import type { OnChipTone } from './OnChip.vue';
 
@@ -14,24 +16,34 @@ export interface OnPackageHeaderChip {
   tone?: OnChipTone;
   outline?: boolean;
   dot?: boolean;
+  /** Chips with an address are links, e.g. the app's categories on the web. */
+  href?: string;
 }
 
 export interface OnPackageHeaderProps {
   kind: OnAppIconKind;
   token: string;
   name: string;
+  /** Appended to the name inside the h1 for subpages, e.g. "Release Notes" on the versions page. */
+  headingSuffix?: string;
   /** Developer and summary. */
   subtitle?: string;
   iconUrl?: string | null;
+  /** Stored WebP renditions of the icon (X3). */
+  iconVariants?: readonly OnImageVariant[] | null;
   accent?: string | null;
   chips?: readonly OnPackageHeaderChip[];
   /** Caption beneath actions, e.g. source homebrew/cask and installation date. */
   meta?: string;
   /** Web: prioritize loading this largest above-the-fold image. */
   priority?: boolean;
+  /** Link component for chips with href (NuxtLink/RouterLink); native a by default. */
+  linkAs?: string | Component;
 }
 
-const props = withDefaults(defineProps<OnPackageHeaderProps>(), { chips: () => [], priority: false });
+const props = withDefaults(defineProps<OnPackageHeaderProps>(), { chips: () => [], priority: false, linkAs: 'a' });
+
+const linkAttrs = (href: string) => (props.linkAs === 'a' ? { href } : { to: href });
 
 defineSlots<{ actions?: () => unknown; default?: () => unknown }>();
 
@@ -49,24 +61,34 @@ const glow = computed(() => ({ background: detailGlow(props.accent ?? undefined)
       :token="token"
       :name="name"
       :src="iconUrl"
+      :variants="iconVariants"
       :accent="accent"
       :size="96"
       :priority="priority"
     />
     <div class="relative min-w-0 flex-1">
-      <h1 class="m-0 text-30px font-600 leading-[1.15] tracking-[-0.025em] text-ink-primary">{{ name }}</h1>
+      <!-- The space lives in the interpolation: template whitespace next to the span would be condensed away. -->
+      <h1 class="m-0 text-30px font-600 leading-[1.15] tracking-[-0.025em] text-ink-primary">
+        {{ name
+        }}<span v-if="headingSuffix" class="text-18px font-500 tracking-normal text-ink-secondary">{{
+          ` ${headingSuffix}`
+        }}</span>
+      </h1>
       <p v-if="subtitle" class="m-0 mt-4px text-14px text-ink-secondary md:truncate">{{ subtitle }}</p>
       <div v-if="chips.length" class="mt-12px flex flex-wrap gap-6px">
-        <OnChip
-          v-for="chip in chips"
-          :key="chip.key"
-          size="md"
-          :tone="chip.tone"
-          :outline="chip.outline"
-          :dot="chip.dot"
-        >
-          {{ chip.label }}
-        </OnChip>
+        <template v-for="chip in chips" :key="chip.key">
+          <component
+            :is="linkAs"
+            v-if="chip.href"
+            v-bind="linkAttrs(chip.href)"
+            class="rounded-small no-underline outline-none transition-opacity duration-fast hover:opacity-80 focus-visible:shadow-focus-ring"
+          >
+            <OnChip size="md" :tone="chip.tone" :outline="chip.outline" :dot="chip.dot">{{ chip.label }}</OnChip>
+          </component>
+          <OnChip v-else size="md" :tone="chip.tone" :outline="chip.outline" :dot="chip.dot">
+            {{ chip.label }}
+          </OnChip>
+        </template>
       </div>
     </div>
     <div class="relative flex shrink-0 flex-col items-start gap-10px md:items-end">

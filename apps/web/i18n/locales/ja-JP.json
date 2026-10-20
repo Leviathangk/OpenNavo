@@ -21,7 +21,9 @@
     "lists": "リスト",
     "brewfile": "マイリスト",
     "about": "概要",
-    "feedback": "フィードバック"
+    "feedback": "フィードバック",
+    "apps": "すべてのアプリ",
+    "az": "A–Z 一覧"
   },
   "sidebar": {
     "appLabel": "Macクライアント",
@@ -55,7 +57,8 @@
   },
   "footer": {
     "tagline": "Mac向けのHomebrewアプリストアで、オープンソースのHomebrew用GUIです。ウイルススキャン、App ファイアウォール、クリーンアップ、監視機能を内蔵しています。インストールはmacOSクライアントまたはbrewコマンドで行います。",
-    "copyright": "© {year} OpenNavo"
+    "copyright": "© {year} OpenNavo",
+    "languages": "言語"
   },
   "analytics": {
     "label": "分析用 Cookie の設定",
@@ -114,8 +117,13 @@
     "count": "{count} 件",
     "itemMetaTitle": "{name} ソフトウェアのおすすめ · OpenNavo",
     "seo": {
-      "itemTitle": "Mac 向け{name}アプリ · OpenNavo"
-    }
+      "itemTitle": "Mac 向け{name}アプリ · OpenNavo",
+      "itemDescription": "「{name}」カテゴリには {count} 本の Mac アプリがあります。{apps} など。",
+      "itemDescriptionCount": "「{name}」カテゴリには {count} 本の Mac アプリがあります。"
+    },
+    "allIn": "すべての{name}",
+    "subcategories": "サブカテゴリ",
+    "others": "その他のカテゴリ"
   },
   "rankings": {
     "title": "ランキング",
@@ -175,7 +183,6 @@
       "allFiles": "GitHub ですべてのファイルを表示",
       "githubReleases": "GitHub からダウンロード",
       "teamId": "開発元の署名",
-      "pricingLabel": "価格",
       "adopted": "この App は Homebrew に収録されたので、ワンクリックでインストールできます",
       "arch": {
         "arm64": "Apple シリコン",
@@ -294,7 +301,9 @@
           "title": "Homebrewのコミット履歴",
           "body": "Homebrewリポジトリにおけるパッケージのバージョン更新コミットと登録日時"
         }
-      }
+      },
+      "compatibility": "互換性",
+      "compatibilityUnknown": "不明"
     },
     "monthly": {
       "title": "月間平均インストール数",
@@ -341,7 +350,16 @@
       },
       "conflicts": "競合",
       "dependents": "{count}個のパッケージが依存",
-      "metaTitle": "{name}の依存関係と競合 · OpenNavo"
+      "metaTitle": "{name}の依存関係と競合 · OpenNavo",
+      "metaDescription": "Mac 版 {name} の依存関係：{parts}。Homebrew が一緒にインストールするパッケージを確認できます。",
+      "metaDescriptionNone": "{name} は Mac でほかの Homebrew パッケージなしでインストールできます。",
+      "meta": {
+        "runtime": "実行時の依存関係 {count} 件",
+        "build": "ビルド時の依存関係 {count} 件",
+        "other": "その他の依存関係 {count} 件",
+        "conflicts": "競合するパッケージ {count} 件",
+        "dependents": "これに依存するパッケージ {count} 件"
+      }
     },
     "details": {
       "tap": "ソースリポジトリ",
@@ -353,7 +371,9 @@
       "download": "ダウンロードURL",
       "source": "Homebrew定義ファイル",
       "repo": "ソースコード",
-      "metaTitle": "{name}のインストール詳細 · OpenNavo"
+      "metaTitle": "{name}のインストール詳細 · OpenNavo",
+      "metaDescription": "{name} のインストールの詳細：インストール先、ダウンロード URL とチェックサム、元になった Homebrew の定義。",
+      "aliases": "以前の token"
     },
     "versionsMetaTitle": "{name}のバージョン履歴と更新内容 · OpenNavo",
     "versionsMetaDescription": "{name}の最新バージョンは{version}（{date}）です。各リリースの変更内容をご覧ください。",
@@ -363,8 +383,18 @@
       "titleApp": "{name} for Mac ダウンロード・インストール · OpenNavo",
       "titleFont": "{name} フォント for Mac ダウンロード・インストール · OpenNavo",
       "titleUnavailable": "{name}の Mac 版 · OpenNavo",
-      "description": "{summary}。{name}を Mac にインストールする方法、システム要件、バージョン履歴を確認できます。",
-      "descriptionNoSummary": "{name}を Mac にインストールする方法、システム要件、バージョン履歴を確認できます。",
+      "descriptionFacts": "{summary}。Mac 版 {name} の{parts}をご確認ください。",
+      "descriptionFactsNoSummary": "Mac 版 {name} の{parts}をご確認ください。",
+      "descriptionOverview": "{summary}。Mac 版 {name} についてご紹介します。",
+      "descriptionOverviewNoSummary": "Mac 版 {name} についてご紹介します。",
+      "overviewParts": {
+        "installation": "インストール方法",
+        "price": "価格",
+        "requirements": "システム要件",
+        "uninstall": "アンインストール方法",
+        "alternatives": "代替アプリ",
+        "versions": "バージョン履歴"
+      },
       "descriptionLink": "{summary}。{name}の公式ダウンロード先とバージョン履歴を確認できます。",
       "descriptionLinkNoSummary": "{name}の公式ダウンロード先とバージョン履歴を確認できます。",
       "descriptionUnavailable": "{summary}。{name}は Homebrew で無効化されています。バージョン履歴や類似アプリを確認できます。",
@@ -388,17 +418,9 @@
       "softwareCategory": "{name} は「{category}」カテゴリの Mac 用ソフトウェアです。",
       "software": "{name} は Mac 用のソフトウェアです。",
       "font": "{name} は Mac にインストールできるフォントです。",
-      "price": {
-        "free": "無料で使えます。",
-        "free_with_iap": "無料でダウンロードでき、アプリ内課金があります。",
-        "paid": "購入が必要な有料ソフトウェアです。",
-        "subscription": "利用にはサブスクリプションが必要です。",
-        "trial": "無料トライアルがあります。"
-      },
       "requires": "macOS {version} 以降が必要です。"
     },
     "guide": {
-      "title": "インストールとアンインストール",
       "installApp": "Homebrew はアプリを「アプリケーション」フォルダにインストールします。",
       "installFont": "Homebrew はフォントを ~/Library/Fonts にインストールし、「Font Book」で使えるようにします。",
       "installPkg": "Homebrew はインストーラ {pkg} を実行するため、管理者パスワードの入力が必要です。",
@@ -412,8 +434,7 @@
       "uninstallTitle": "アンインストールのコマンド",
       "uninstall": "通常のアンインストールではアプリ本体だけを削除し、設定とキャッシュは残ります。",
       "zapTitle": "完全な削除（任意）",
-      "zap": "`--zap` は Homebrew の定義に記載された設定やキャッシュなどのファイルも削除します。ほかのアプリと共有しているデータが含まれる場合があり、元に戻せません。何も残らないことを保証するものでもありません。",
-      "zapDetails": "削除されるファイルを見る"
+      "zap": "`--zap` は Homebrew の定義に記載された設定やキャッシュなどのファイルも削除します。ほかのアプリと共有しているデータが含まれる場合があり、削除すると元に戻せません。何も残らないことを保証するものでもありません。残しておきたいデータは先にバックアップしてください。設定とキャッシュを残す場合は、`--zap` を付けないでください。"
     },
     "facts": {
       "title": "情報と出典",
@@ -427,12 +448,10 @@
       },
       "perMonth": "月額 {price}",
       "perYear": "年額 {price}",
-      "plan": "{plan} プラン",
       "region": "{region} での価格",
       "checkedOn": "{date} に確認",
       "checked": "出典：{source}、{date} に確認。",
       "stale": "変わっている可能性あり",
-      "macos": "ベンダーが示すシステム要件",
       "support": {
         "native": "ネイティブで動作",
         "rosetta": "Rosetta を使って動作",
@@ -448,13 +467,12 @@
         "arm64": "Apple シリコン",
         "x86_64": "Intel プロセッサ"
       },
-      "homebrewSays": "Homebrew の記録：{value}",
-      "version": "バージョン {version}",
-      "recorded": "Homebrew が記録した日：{date}",
-      "released": "ベンダーが公開した日：{date}"
+      "asOf": "{date} 時点",
+      "yes": "はい",
+      "no": "いいえ",
+      "labelled": "{label}："
     },
     "alternatives": {
-      "title": "代わりに使えるアプリ",
       "hint": "同じ用途に使えることを編集部が確認したアプリを、おすすめ順に並べています。",
       "reasons": {
         "free": "無料で使える",
@@ -491,10 +509,39 @@
         "teams": "チーム",
         "beginners": "はじめての人",
         "power_users": "上級ユーザー"
+      },
+      "titleFor": "{name} の代替アプリ",
+      "page": {
+        "title": "{name} の代替アプリ",
+        "metaTitle": "{name} の代替 Mac アプリ · OpenNavo",
+        "description": "{name} の代わりになると編集部が確認した {count} 個の Mac アプリを、選んだ理由、確認済みの価格、機能の比較とあわせて紹介します。",
+        "intro": "これらのアプリは、{name} と同じ用途に使えることを編集部が確認したもので、おすすめ順に並べています。比較表には出典のある項目だけを載せ、情報がないものは「不明」と表記しています。",
+        "crumb": "代替アプリ",
+        "current": "現在のアプリ",
+        "compare": "比較",
+        "attribute": "項目",
+        "attributes": {
+          "open_source": "オープンソース",
+          "offline": "オフラインで使える",
+          "apple_silicon": "Apple シリコンにネイティブ対応",
+          "import_formats": "インポートできる形式",
+          "export_formats": "エクスポートできる形式"
+        },
+        "yes": "はい",
+        "no": "いいえ",
+        "unknown": "不明",
+        "migration": "{name} から {target} への乗り換え",
+        "actions": {
+          "backup": "バックアップ",
+          "export": "エクスポート",
+          "import": "インポート",
+          "verify": "確認"
+        },
+        "migrationNote": "乗り換えても、{name} とそのデータは削除されません。",
+        "back": "{name} に戻る"
       }
     },
     "faq": {
-      "title": "よくある質問",
       "safetyQ": "{name} は安全ですか？",
       "safetyListed": "{name} は Homebrew の公式カタログに収録されており、無効化されていません。2026 年 9 月から、Homebrew は macOS の Gatekeeper チェックに通らないアプリを無効化しています。",
       "safetyDeprecated": "Homebrew は {name} を非推奨にしました（{reason}）。今後は提供されなくなります。",
@@ -587,7 +634,8 @@
         "browser": "ブラウザプラグイン"
       },
       "alternativesQ": "{name} の代わりになるアプリは？",
-      "alternativesA": "{list} などがあります。"
+      "alternativesA": "{list} などがあります。",
+      "titleFor": "{name} についてよくある質問"
     },
     "securityPromo": {
       "title": "OpenNavo：ウイルススキャンとApp ファイアウォール",
@@ -596,6 +644,162 @@
     },
     "articles": {
       "title": "関連記事"
+    },
+    "paused": "一時停止中",
+    "relatedFonts": "類似フォント",
+    "lead": {
+      "developer": "開発元は {developer} です。",
+      "source": "インストーラは {source} からダウンロードします。"
+    },
+    "quick": {
+      "title": "基本情報",
+      "checked": "上記の情報は {date} 以降に確認したものです。",
+      "sourcesLink": "各項目の出典を見る",
+      "source": "ダウンロード元",
+      "fontFiles": "フォントファイル",
+      "chips": "チップ",
+      "macos": "対応 macOS",
+      "priceDetails": "価格の詳細",
+      "developer": "開発元",
+      "install": "インストールコマンド",
+      "homebrewDisabled": "Homebrew により無効化",
+      "homebrewPaused": "Homebrew では提供中、OpenNavo はおすすめを一時停止",
+      "homebrewAuto": "インストール可能、アプリ自身が更新",
+      "homebrewAvailable": "インストール可能、Homebrew で更新"
+    },
+    "price": {
+      "title": "{name} の価格と購入方法",
+      "hint": "OpenNavo は確認した価格を、地域・エディション・支払い周期ごとに出典と日付を添えて記録しています。過去の価格は記録せず、最安値かどうかも判断しません。",
+      "edition": "エディション",
+      "region": "地域",
+      "where": "購入先",
+      "checked": "確認日",
+      "storeNote": "これは App Store 版のダウンロード価格で、無料で使えるという意味ではありません。アプリ内課金とサブスクリプションは含まれていません。",
+      "downloadFree": "無料でダウンロード",
+      "channels": {
+        "vendor": "公式サイト",
+        "app_store": "Mac App Store"
+      }
+    },
+    "compare": {
+      "title": "確認済みの比較",
+      "imports": "インポート対応",
+      "exports": "エクスポート対応",
+      "unverified": "「—」は、現在のバージョンについて OpenNavo がまだ確認していない項目を示します。",
+      "migrationTitle": "{from} から {to} への移行",
+      "migrationNote": "移行しても {name} とそのデータは削除されません。問題がないことを確認してから、ご自身でアンインストールしてください。",
+      "actions": {
+        "backup": "バックアップ",
+        "export": "エクスポート",
+        "import": "インポート",
+        "verify": "確認"
+      },
+      "pageLink": "{name} の代替アプリの比較をすべて見る"
+    },
+    "requirements": {
+      "title": "システム要件",
+      "version": "アプリのバージョン",
+      "download": "ダウンロード",
+      "source": "出典",
+      "allChips": "すべてのチップ",
+      "notNative": "Apple シリコンにネイティブ非対応",
+      "builtFor": "macOS {versions} 向けのビルド"
+    },
+    "install": {
+      "title": "Mac に {name} をインストールする方法",
+      "run": "「ターミナル」で次のコマンドを実行します："
+    },
+    "uninstall": {
+      "title": "{name} のアンインストールと任意のデータ削除",
+      "also": "アンインストール時にあわせて処理されるもの",
+      "kinds": {
+        "launchctl": "バックグラウンドサービス（launchctl）",
+        "login_item": "ログイン項目",
+        "pkgutil": "インストール記録（pkgutil）",
+        "zap": "ファイルとフォルダ"
+      },
+      "files": "{name} が Mac に残す可能性のあるファイル（{count}）",
+      "checked": "以上の項目は Homebrew の定義に基づくもので、{date} に確認しました。定義で削除対象と宣言されている内容を示すだけで、お使いの Mac にすべてがあるとは限りません。",
+      "asOf": "以上の項目は {date} 時点の Homebrew の定義に基づくものです。定義で削除対象と宣言されている内容を示すだけで、お使いの Mac にすべてがあるとは限りません。"
+    },
+    "uninstallPage": {
+      "crumb": "アンインストール",
+      "title": "Mac で {name} をアンインストールする方法",
+      "metaTitle": "Mac で {name} をアンインストールする方法：手順と残存ファイル · OpenNavo",
+      "description": "{name} のアンインストール方法を紹介します。Homebrew のアンインストールコマンド、定義で宣言されているバックグラウンド項目、任意のデータ削除で削除される {count} 個のファイルとフォルダを確認できます。",
+      "intro": "以下は、Homebrew の定義で {name} 用に宣言されているアンインストール手順とファイルです。この定義が削除を予定している対象を示すものであり、お使いの Mac 上の各ファイルがこのアプリに由来することを証明するものではありません。",
+      "withOpenNavo": "OpenNavo でアンインストール",
+      "withOpenNavoBody": "OpenNavo クライアントは、まずこの Mac で見つかったアプリ、バックグラウンド項目、残存ファイルを一覧表示します。削除はユーザーの確認後にのみ行います。",
+      "open": "OpenNavo でプレビュー",
+      "download": "OpenNavo をダウンロード",
+      "back": "{name} の概要に戻る",
+      "guideLink": "Mac で {name} をアンインストールする手順をすべて確認"
+    },
+    "safety": {
+      "title": "{name} のセキュリティ情報",
+      "hint": "ここでは確認できる事実だけを、出典と日付を添えて掲載しています。安全性を認証するものではありません。ダウンロードしたファイルを確かめるには、OpenNavo を使ってお使いの Mac 上でスキャンできます。",
+      "identity": "開発元の身元",
+      "teamId": "Team ID",
+      "channels": "配布経路",
+      "openSource": "オープンソース",
+      "cves": "既知の脆弱性（CVE）",
+      "cveVersion": "バージョン {version} に影響",
+      "cveNote": "NVD でこの製品とこのバージョンに完全に一致する CVE だけを掲載しています。",
+      "scan": "OpenNavo でスキャン",
+      "scanNote": "OpenNavo クライアントでスキャンのプレビューが開きます。開始するかどうかはご自身で決められます。"
+    },
+    "issues": {
+      "title": "{name} の既知の問題",
+      "hint": "OpenNavo が公式ドキュメントと公開されている報告をもとにまとめたもので、対象バージョン、出典、確認日を記載しています。",
+      "applies": "対象：{name} {versions}、{macos}",
+      "steps": "解決方法",
+      "community": "コミュニティでの議論：",
+      "all": "既知の問題をすべて見る（{count} 件）"
+    },
+    "integrations": {
+      "title": "{name} の MCP サーバーと Skill",
+      "hint": "現在のバージョンに対応する確認済みのコネクタだけを、必要な権限とあわせて掲載しています。",
+      "kinds": {
+        "mcp": "MCP サーバー",
+        "skill": "Skill"
+      },
+      "install": "インストール方法",
+      "clients": "対応クライアント",
+      "files": "ファイルのアクセス権",
+      "network": "ネットワークアクセス",
+      "none": "宣言なし",
+      "access": {
+        "read": "読み取りのみ",
+        "write": "書き込み",
+        "read_write": "読み書き"
+      },
+      "silicon": {
+        "yes": "対応",
+        "no": "非対応"
+      },
+      "history": "バージョン履歴"
+    },
+    "depsSummary": {
+      "title": "依存関係と競合",
+      "needs": "一緒にインストールされるもの",
+      "more": "依存関係の詳細を見る"
+    },
+    "collections": {
+      "title": "収録コレクション"
+    },
+    "sources": {
+      "title": "出典",
+      "hint": "このページの情報には、それぞれ出典と確認日を記載しています。有効期限が過ぎた情報は日付に「時点」を付けて示し、現在の事実としては扱いません。",
+      "kinds": {
+        "homebrew": "Homebrew の定義",
+        "formulae": "formulae.brew.sh",
+        "price": "価格",
+        "appStore": "Mac App Store",
+        "requirements": "ベンダーが示すシステム要件",
+        "security": "セキュリティ情報",
+        "issue": "既知の問題",
+        "integration": "MCP と Skill"
+      }
     }
   },
   "collections": {
@@ -608,12 +812,109 @@
     "updated": "{date}更新",
     "addAll": "すべてBrewfileに追加",
     "addedAll": "{count}個のパッケージを追加しました",
-    "export": "Brewfileをエクスポート"
+    "export": "Brewfileをエクスポート",
+    "setup": {
+      "installAll": "OpenNavo ですべてインストール",
+      "installHint": "OpenNavo クライアントでこのコレクションを開き、確認後に上記の {count} 個の App をインストールします。インストール前にはウイルススキャンを行います。",
+      "notDetected": "OpenNavo クライアントが見つかりません",
+      "notDetectedBody": "OpenNavo をダウンロードすると、このコレクションをワンクリックでインストールできます。Brewfile をエクスポートして、ターミナルで brew bundle を使ってインストールすることもできます。",
+      "criteria": "選定基準",
+      "source": "出典",
+      "installTitle": "インストール一覧",
+      "installable": "Homebrew でインストール（{count}）",
+      "external": "開発元のサイトからダウンロード（{count}）",
+      "externalHint": "これらの App は Homebrew にないため、Brewfile には含まれず、「OpenNavo ですべてインストール」でもインストールされません。開発元のサイトからダウンロードしてください。",
+      "priceTitle": "価格の合計",
+      "priceHint": "確認済みの価格だけを合計し、地域・通貨・支払い周期ごとに分けて表示します。為替レートでの換算はせず、サブスクリプションと買い切りは合算しません。",
+      "region": "地域",
+      "period": "支払い周期",
+      "total": "合計",
+      "covered": "集計対象の App",
+      "priceCovered": "{count} 個の App",
+      "priceUnknown": "ほかに、価格が不明または確認待ちの App が {count} 個あり、合計には含めていません。",
+      "priceNone": "このコレクションの App には、確認済みの価格がまだありません。",
+      "periods": {
+        "free": "無料",
+        "one_time": "買い切り",
+        "monthly": "月額",
+        "yearly": "年額",
+        "unknown": "周期不明"
+      },
+      "compatibilityTitle": "互換性",
+      "compatibilitySummary": "{count} 個の App のうち、{native} 個が Apple シリコンへのネイティブ対応を確認済みです。システム要件は Homebrew とベンダーの資料に基づき、資料がないものは「不明」と表示しています。",
+      "app": "App",
+      "macos": "システム要件",
+      "appleSilicon": "Apple シリコン",
+      "unknown": "不明",
+      "silicon": {
+        "yes": "ネイティブ対応",
+        "no": "ネイティブ非対応",
+        "unknown": "不明"
+      }
+    }
+  },
+  "browse": {
+    "title": "Mac アプリ A–Z 一覧",
+    "metaTitle": "Mac アプリ A–Z 一覧 · OpenNavo",
+    "description": "カタログにある {count} 個の Mac アプリを名前順に一覧できます。それぞれに紹介、バージョン履歴、インストール方法を掲載しています。",
+    "fontsTitle": "Mac フォント A–Z 一覧",
+    "fontsMetaTitle": "Mac フォント A–Z 一覧 · OpenNavo",
+    "fontsDescription": "カタログにある {count} 種類のフォントを名前順に一覧できます。どれも Homebrew でインストールできます。",
+    "crumb": "A–Z 一覧",
+    "apps": "アプリ",
+    "fonts": "フォント",
+    "allFonts": "すべてのフォント A–Z",
+    "allApps": "アプリ A–Z 一覧",
+    "more": "ほかの探し方",
+    "empty": "ここに表示できる項目はまだありません。",
+    "bucket": {
+      "letter": "{letter} で始まる Mac アプリ",
+      "digit": "数字で始まる Mac アプリ",
+      "other": "その他の文字で始まる Mac アプリ"
+    },
+    "fontBucket": {
+      "letter": "{letter} で始まるフォント",
+      "digit": "数字で始まるフォント",
+      "other": "その他の文字で始まるフォント"
+    },
+    "bucketLabel": {
+      "digit": "0–9",
+      "other": "その他"
+    },
+    "appCount": "{count} 個のアプリ",
+    "fontCount": "{count} 種類のフォント",
+    "pageOf": "{pages} ページ中 {page} ページ目",
+    "pageLink": "{title}（{page} ページ目）",
+    "bucketsLabel": "頭文字から探す",
+    "leafMetaTitle": "{title}（A–Z 一覧） · OpenNavo",
+    "leafDescription": "{title}を名前順に一覧にしています（全 {count} 件）。それぞれに紹介、バージョン履歴、インストール方法を掲載しています。",
+    "directory": {
+      "kicker": "ディレクトリ",
+      "title": "ディレクトリから App を探す",
+      "body": "用途別のカテゴリや、編集部がまとめたコレクションから探せます。すべてのアプリと A–Z 一覧なら、どの App も見つかります。",
+      "category": "{name}アプリ"
+    }
+  },
+  "feeds": {
+    "subscribe": "更新情報を購読（RSS）",
+    "appTitle": "{name} の更新情報 · OpenNavo",
+    "appDescription": "Mac 版 {name} の新しいバージョンとリリースノート。OpenNavo がお届けします。",
+    "collectionTitle": "{title}：更新情報 · OpenNavo",
+    "collectionDescription": "コレクション「{title}」に含まれる各 App の新しいバージョンとリリースノート。OpenNavo がお届けします。",
+    "itemTitle": "{name} {version}"
+  },
+  "markdown": {
+    "note": "これは OpenNavo の {name} ページの Markdown 版で、内容はウェブページと同じです：",
+    "developer": "開発元",
+    "install": "インストール",
+    "about": "紹介",
+    "uninstall": "アンインストール",
+    "latestRelease": "最新バージョンのリリースノート"
   },
   "articles": {
     "title": "記事",
     "subtitle": "Mac アプリのおすすめ、レビュー、使い方、まとめ",
-    "metaTitle": "Mac アプリの記事：おすすめ・レビュー・使い方・まとめ · OpenNavo",
+    "metaTitle": "Mac アプリのおすすめ・レビュー・使い方 · OpenNavo",
     "typeMetaTitle": "{type} · Mac アプリの記事 · OpenNavo",
     "description": "OpenNavo 編集部による Mac アプリのおすすめ、レビュー、使い方、まとめ。情報源も明記しています。",
     "ogTitle": "Mac アプリの記事",
@@ -676,7 +977,7 @@
   },
   "download": {
     "title": "MacのHomebrewアプリストア、ウイルススキャンとApp ファイアウォールも搭載",
-    "metaTitle": "OpenNavoクライアントをダウンロード · OpenNavo",
+    "metaTitle": "OpenNavo for Mac をダウンロード：ウイルススキャン付きの Homebrew アプリストア",
     "description": "アプリのインストール・更新・削除をワンクリックで。事前にウイルスをチェックし、クリーンアップと監視も可能。MacのHomebrewを使い、アカウントは不要です。",
     "button": "macOS版をダウンロード",
     "meta": "バージョン{version} · {size} · macOS {macos}以降 · 公開日：{date}",
@@ -764,7 +1065,30 @@
     "doneTitle": "受け付けました。ありがとうございます！",
     "doneDescription": "できるだけ早く対応します。連絡先を記入いただいた場合は、対応後に返信します。",
     "backHome": "ホームに戻る",
-    "suggestPrefill": "掲載の提案：{q}\n\n"
+    "suggestPrefill": "掲載の提案：{q}\n\n",
+    "private": "フィードバックは非公開です。OpenNavo チームだけが閲覧し、公開されることはありません。既知の問題を確認してまとめる際に参考にすることがあります。",
+    "packageVersion": "App のバージョン（任意）",
+    "packageVersionPlaceholder": "例：1.2.3",
+    "macosVersion": "macOS のバージョン（任意）",
+    "macosVersionPlaceholder": "例：15.1",
+    "symptom": "症状（任意）",
+    "symptomPlaceholder": "例：起動するとすぐに終了する",
+    "symptomHint": "{count} / 500 文字",
+    "diagnosticLog": "診断ログ（任意）",
+    "diagnosticLogPlaceholder": "エラーメッセージやターミナルの出力を貼り付けてください",
+    "diagnosticLogHint": "保存する前に、よくある形式のパスワード、トークン、キー、メールアドレスと、パスに含まれるユーザー名を取り除きます。送信する前にご自身でも確認し、問題に関係する部分だけを残してください。",
+    "diagnosticLogSize": "{size} / 16 KB",
+    "links": "関連リンク（任意、最大 3 件）",
+    "linkLabel": "リンク {number}",
+    "linkPlaceholder": "https://…",
+    "addLink": "リンクをもうひとつ追加",
+    "removeLink": "リンク {number} を削除",
+    "linksHint": "リンクは最大 3 件まで入力できます。各リンクは https:// で始まるアドレスにし、? や # とそれ以降の部分は含めないでください。",
+    "errors": {
+      "logSize": "ログが 16 KB を超えています。問題に関係する部分だけを残してください。",
+      "link": "https:// で始まる完全なアドレスを入力してください。? や # 以降の部分、ユーザー名、パスワードは含めないでください。",
+      "tooManyLinks": "リンクは最大 3 件までです。「内容」に書いたリンクも含みます。"
+    }
   },
   "about": {
     "title": "OpenNavoについて",
@@ -957,6 +1281,416 @@
       "body": "OpenNavo は無料・オープンソースで、macOS 13 以降に対応しています。初めてウイルススキャンを使うときは、案内に従って公式のウイルス定義をダウンロードするだけです。"
     }
   },
+  "backgroundItems": {
+    "title": "バックグラウンド項目事典",
+    "metaTitle": "Mac のバックグラウンド項目・ログイン項目事典：正体とオフにする方法 · OpenNavo",
+    "description": "Mac の App が宣言しているバックグラウンドサービス（LaunchAgent、LaunchDaemon）、ログイン項目、インストール記録について、どの App が宣言しているか、通常どこにあるか、システム設定でオフにする方法を解説します。",
+    "ogLabel": "バックグラウンド項目",
+    "total": "全 {total} 件のラベル",
+    "caution": "ラベルは名前にすぎません。複数の App が同じラベルを使うこともあれば、マルウェアがなりすますこともあります。ここに載っているのは App が Homebrew の定義で宣言している内容で、お使いの Mac 上の項目がその App のものだと証明するものではありません。",
+    "search": {
+      "label": "ラベルを検索",
+      "placeholder": "ラベルで検索（例：com.microsoft.update.agent）",
+      "submit": "検索",
+      "hint": "開発元のドメインなど、ラベルの一部だけでも検索できます。"
+    },
+    "results": "「{q}」を含むラベル",
+    "clearSearch": "検索をクリア",
+    "emptyTitle": "ラベルが見つかりません",
+    "emptySearch": "「{q}」を含むラベルはありません。一部だけを入力してみてください。",
+    "emptyAll": "バックグラウンド項目はまだ収録されていません。",
+    "severalDevelopers": "複数の開発元",
+    "unknownDeveloper": "開発元の記載なし",
+    "declaredBy": "宣言している App：",
+    "listSeparator": "、",
+    "moreApps": "ほか {count} 個",
+    "shared": "複数の App で共用",
+    "described": "解説あり",
+    "types": {
+      "launch_agent": "LaunchAgent",
+      "launch_daemon": "LaunchDaemon",
+      "login_item": "ログイン項目",
+      "package_receipt": "インストール記録",
+      "launchd": "LaunchAgent または LaunchDaemon",
+      "unknown": "種類不明"
+    },
+    "openInApp": {
+      "download": "OpenNavo をお持ちでない場合は、Mac 版をダウンロード"
+    },
+    "item": {
+      "metaTitle": "{label} とは？Mac のバックグラウンド項目を解説 · OpenNavo",
+      "metaDescription": "{label} は、{apps} が Homebrew の定義で宣言しているバックグラウンド項目です。通常どこにあるか、システム設定でオフにする方法、OpenNavo で確認する方法を紹介します。",
+      "kicker": "バックグラウンド項目",
+      "lede": "{apps} の Homebrew の定義で、このラベルが宣言されています。",
+      "source": "出典：",
+      "checkedOn": "{date} に確認",
+      "stale": "情報が古い可能性あり",
+      "what": {
+        "title": "どんな項目か",
+        "none": "確認済みの解説はまだありません。以下に、Homebrew の定義でこれを宣言している App と、この種類の項目が通常置かれている場所を示します。"
+      },
+      "apps": {
+        "title": "これを宣言している App",
+        "intro": "以下の App の Homebrew の定義に、このラベルが記載されています。これはそれらの App が宣言していることを示すだけで、お使いの Mac にあるこのラベルの項目がそれらの App のものだと証明するものではありません。",
+        "shared": "{count} 個の App が同じラベルを宣言しているため、ラベルだけではどの App の項目かを区別できません。",
+        "declaration": {
+          "launchctl": "バックグラウンドサービス（launchctl）",
+          "login_item": "ログイン項目",
+          "pkgutil": "インストール記録（pkgutil）"
+        },
+        "phase": {
+          "uninstall": "アンインストール時に削除",
+          "zap": "zap 時に削除（Homebrew の任意のユーザーデータ削除）"
+        },
+        "source": "Homebrew の定義",
+        "uninstallPreview": "OpenNavo でアンインストールをプレビュー",
+        "uninstallHint": "アンインストールのプレビューは OpenNavo で開きます。削除される内容が先に一覧表示され、確認するまで何も実行されません。"
+      },
+      "identity": {
+        "title": "まず正体を確かめる",
+        "intro": "同じラベルでも、別のプログラムのものである可能性があります。お使いの Mac で次の項目がすべて一致して初めて、それを宣言している App のものだと言えます：",
+        "signature": "署名：開発元と Team ID がこの App と一致している",
+        "path": "場所：実行するプログラムがこの App の中、または開発元独自のフォルダにある",
+        "version": "バージョン：インストールしているこの App のバージョンと合っている"
+      },
+      "where": {
+        "title": "通常の場所",
+        "verified": "確認済みのよくある場所：",
+        "launchd": "LaunchAgent と LaunchDaemon は通常、ラベルと同じ名前のプロパティリストファイル（{file}）で定義され、次のいずれかのフォルダに置かれています：",
+        "loginItem": "ログイン項目は「システム設定」→「一般」→「ログイン項目と機能拡張」に表示されます（macOS 13 と 14 では「ログイン項目」）。",
+        "receipt": "インストール記録は macOS のインストーラが保存するもので、インストーラパッケージがどのファイルをインストールしたかが記録されています。「ターミナル」で {command} を実行すると確認できます。",
+        "malware": "これらのフォルダは、Mac のマルウェアが自動起動のためによく使う場所でもあります。見覚えのない項目があれば、確認しておくとよいでしょう。"
+      },
+      "turnOff": {
+        "title": "システム設定でオフにする方法",
+        "open": "「システム設定」→「一般」→「ログイン項目と機能拡張」を開きます（macOS 13 と 14 では「ログイン項目」）。",
+        "find": "「バックグラウンドでの実行を許可」の下で、該当する App または開発元を探します。",
+        "switch": "横にあるスイッチをオフにします。すべてのユーザーで実行される項目では、管理者パスワードの入力が必要な場合があります。",
+        "openAtLogin": "「ログイン時に開く」に表示されている App は、選択してマイナスボタンをクリックすると削除できます。",
+        "note": "オフにしても自動で起動しなくなるだけで、ファイルは削除されません。関連ファイルを削除するには、その App をアンインストールします。その App をまだ使っている場合は、アップデートや同期などのバックグラウンド機能が止まる可能性があります。"
+      },
+      "openNavo": {
+        "title": "OpenNavo で管理する",
+        "body": "この項目がお使いの Mac にある場合は、OpenNavo の「起動項目」に表示され、署名、ファイルの場所、OpenNavo がこの Mac 上で特定した所属 App を確認できます。そこから無効にしたり削除したりでき、削除した項目はあとから復元できます。",
+        "button": "OpenNavo で表示",
+        "hint": "プレビューを開くだけです。OpenNavo がお使いの Mac でこのラベルを探し、見つかった項目を表示します。確認するまで、何も無効化・削除されません。OpenNavo の Mac 版が必要です。",
+        "more": "OpenNavo のセキュリティ機能について"
+      }
+    }
+  },
+  "troubleshooting": {
+    "tab": "トラブルシューティング",
+    "metaTitle": "{name} のトラブルシューティング：既知の問題と解決方法 · OpenNavo",
+    "metaDescription": "{name} の既知の問題（{titles} など）について、対象となる App と macOS のバージョン、解決手順、出典、確認日をまとめています。",
+    "title": "既知の問題（{count}）",
+    "intro": "{name} の既知の問題です。それぞれに対象バージョン、解決または回避の手順、確認した出典を記載しています。",
+    "fallbackLanguage": "これらの問題は、現在は英語版のみです。",
+    "contents": "目次",
+    "appVersions": "{name} のバージョン",
+    "macosVersions": "macOS のバージョン",
+    "steps": "解決手順",
+    "community": "コミュニティでの議論",
+    "communityHint": "これらはほかのサイトにある既存の議論へのリンクで、内容は OpenNavo が確認したものではありません。",
+    "source": "出典：",
+    "checkedOn": "{date} に確認",
+    "english": "英語",
+    "report": {
+      "title": "まだ解決しませんか？",
+      "body": "{name} のバージョン、macOS のバージョン、発生している症状をお知らせください。フィードバックは公開されず、新しい問題を確認する際の手がかりとしてのみ使います。",
+      "action": "問題を報告",
+      "back": "{name} のページに戻る"
+    }
+  },
+  "securityTopics": {
+    "label": "Mac セキュリティ特集",
+    "overview": "OpenNavo が Mac を守るしくみ",
+    "faqTitle": "よくある質問",
+    "linksTitle": "そのほかの Mac セキュリティの話題",
+    "apps": {
+      "title": "カタログにあるほかの Mac セキュリティ App",
+      "body": "以下の App も OpenNavo のカタログに収録されているので、比べてみてください。それぞれの開発元が公開しているもので、OpenNavo との提携関係はありません。"
+    },
+    "links": {
+      "firewall": {
+        "title": "Mac の App ファイアウォール",
+        "body": "App が通信する前に確認し、あなたのルールで許可またはブロックします。"
+      },
+      "clamav": {
+        "title": "ClamAV で Mac のウイルスチェック",
+        "body": "オープンソースのウイルス対策エンジンで見つかるもの、見つからないもの。"
+      },
+      "xprotect": {
+        "title": "XProtect とは",
+        "body": "macOS 内蔵のマルウェア対策と、その限界。"
+      },
+      "backgroundItems": {
+        "title": "バックグラウンド項目事典",
+        "body": "ログイン項目とバックグラウンドサービスとは何か、どの App が宣言しているか、オフにする方法。"
+      }
+    },
+    "firewall": {
+      "metaTitle": "無料の Mac ファイアウォール：アプリが通信する前に確認 · OpenNavo",
+      "description": "OpenNavo の App ファイアウォールは、アプリが初めてネットワークに接続するときに確認し、あなたのルールで許可またはブロックする無料の Mac ファイアウォールです。オープンソースで LuLu をもとに開発されており、判断はすべてこの Mac 上で行われます。",
+      "breadcrumb": "App ファイアウォール",
+      "hero": {
+        "kicker": "App ファイアウォール",
+        "title": "アプリが通信する前に、まずあなたに確認する Mac ファイアウォール。",
+        "lede": "macOS 内蔵のファイアウォールが扱うのは、**外部から入ってくる**接続だけです。OpenNavo の App ファイアウォールはその逆方向を担います。アプリが初めてネットワークに接続するとき、許可するかブロックするかをたずね、その選択を記憶します。無料・オープンソースです。"
+      },
+      "sections": {
+        "what": {
+          "title": "できること",
+          "body": "ルールはすべてあなたが決め、判断はすべてこの Mac 上で行われます。",
+          "cards": {
+            "ask": {
+              "title": "接続の前に確認",
+              "body": "どの App が、どこに接続しようとしているか、誰が署名したかを見てから、許可するかブロックするかを決められます。"
+            },
+            "rules": {
+              "title": "App・サイト・ポートごとのルール",
+              "body": "App 全体を許可することも、特定のドメイン、IP の範囲、ポートだけを許可・ブロックすることもできます。より具体的なルールが優先され、同じ具体さならブロックが許可より優先されます。"
+            },
+            "blocklists": {
+              "title": "ブロックリスト",
+              "body": "hosts ファイルや、広告・トラッキング・悪意のあるサイトのリストを読み込むと、該当する接続は確認なしでブロックされます。Web アドレスから読み込んだリストは毎日自動で更新されます。"
+            },
+            "modes": {
+              "title": "確認を減らしたいときは",
+              "body": "ルールのない接続の扱いは、「確認する」「許可して記録」「ブロックして記録」から選べます。Apple のプログラムやインストール済みの App を自動的に許可することもできます。"
+            }
+          }
+        },
+        "how": {
+          "title": "Mac での動作のしくみ",
+          "body": "App ファイアウォールは、ネットワークシステム拡張として動作します。初めてオンにするとき、macOS から二度確認があります。まず「システム設定」で OpenNavo のシステム拡張を許可し、次にネットワークコンテンツのフィルタリングを許可します。接続情報はお使いの Mac にだけ残り、アップロードされることはありません。",
+          "note": "macOS 13 以降が必要です。また、OpenNavo の正式版を「アプリケーション」フォルダに入れておく必要があります。"
+        },
+        "limits": {
+          "title": "対象外のこと",
+          "items": {
+            "incoming": "対象は、この Mac の App が始める接続だけです。外部から入ってくる接続は、macOS 内蔵のファイアウォールが担当します（「システム設定」→「ネットワーク」→「ファイアウォール」）。",
+            "notRunning": "OpenNavo が起動していないときは確認できないため、ルールのない接続はいったん許可され、接続履歴に記録されます。既存のルールは引き続き適用されます。",
+            "directIp": "自分でアドレスを解決して IP に直接接続する App もあり、ドメインによるブロックでは防げないことがあります。そうした接続を止められるのは、リストにある IP だけです。",
+            "release": "App ファイアウォールは署名済みの正式版でのみ提供され、開発版や未署名の版には含まれていません。"
+          }
+        },
+        "origin": {
+          "title": "LuLu をもとに開発",
+          "body": "App ファイアウォールのネットワークフィルタ部分は、Objective-See（Patrick Wardle）が開発した無料・オープンソースのファイアウォール LuLu 4.5.1 を、GPL-3.0 ライセンスに基づいて改変したものです。OpenNavo はルールの処理、保存、インターフェイスを書き直しており、Objective-See とは所属や提携の関係になく、その推奨を受けたものでもありません。OpenNavo 自身のコードも GPL-3.0 のオープンソースとして GitHub で公開しています。"
+        }
+      },
+      "faq": {
+        "builtIn": {
+          "q": "Mac にはファイアウォールが内蔵されていますか？",
+          "a": "内蔵されています。macOS の「システム設定」→「ネットワーク」→「ファイアウォール」にあり、外部から入ってくる接続を管理します。公共の Wi-Fi では特に役立ちます。ただし、App が自分からインターネットに接続するときには確認しません。App ファイアウォールが補うのはこの部分です。"
+        },
+        "free": {
+          "q": "有料ですか？",
+          "a": "無料で、アカウントも不要です。App ファイアウォールを含め、OpenNavo は GPL-3.0 ライセンスのオープンソースです。"
+        },
+        "breakApps": {
+          "q": "App が正常に使えなくなることはありませんか？",
+          "a": "ブロックした App はネットワークに接続できないため、アップデートや同期などの機能が使えなくなることがあります。頻繁に確認されたくない場合は、ルールのない接続を「許可して記録」に設定し、あとで接続履歴を確認できます。インストール済みの App を自動的に許可することもできます。"
+        },
+        "privacy": {
+          "q": "接続履歴がどこかに送信されることはありますか？",
+          "a": "ありません。ルールの適用も判断もお使いの Mac 上で行われ、接続情報はアップロードされません。Web アドレスから追加したブロックリストはお使いの Mac にダウンロードされ、この Mac 上で照合されます。"
+        },
+        "remove": {
+          "q": "削除するには？",
+          "a": "OpenNavo で「App ファイアウォール」→「設定」を開き、「削除」を選びます。フィルタリングが停止してシステム拡張がアンインストールされ、ルールと接続履歴も削除されます。macOS からパスワードを求められることがあります。"
+        }
+      },
+      "cta": {
+        "title": "App ファイアウォールをオンにしましょう。",
+        "body": "OpenNavo は無料・オープンソースで、macOS 13 以降に対応しています。インストール後に「App ファイアウォール」を開き、案内に従って macOS の確認に二度応じるだけです。"
+      }
+    },
+    "clamav": {
+      "metaTitle": "ClamAV で Mac を無料でウイルスチェック：検出できるもの・できないもの · OpenNavo",
+      "description": "オープンソースのウイルス対策エンジン ClamAV と公式のウイルス定義で、Mac のウイルスチェックを無料で行えます。ClamAV が Mac で検出できるもの、見逃すもの、そして OpenNavo が追加で行うチェックを解説します。",
+      "breadcrumb": "ClamAV ウイルスチェック",
+      "hero": {
+        "kicker": "ClamAV ウイルススキャン",
+        "title": "ターミナルを開かずに、ClamAV で Mac のウイルスチェック。",
+        "lede": "**ClamAV** は広く使われているオープンソースのウイルス対策エンジンです。OpenNavo はこのエンジンと公式のウイルス定義で Mac のウイルスチェックを行い、クイック・フル・定期スキャンと、インストール前のチェックも加えています。無料で、ファイルが Mac の外に出ることもありません。"
+      },
+      "sections": {
+        "what": {
+          "title": "ClamAV とは",
+          "body": "ClamAV は Cisco Talos がメンテナンスしているオープンソースのウイルス対策エンジンで、GPL-2.0 ライセンスで公開されています。ファイルをウイルス定義のシグネチャと一つずつ照合し、既知の悪意あるファイルを見分けます。ウイルス定義は継続的に更新されます。単体ではコマンドラインツール群として使います。たとえば Homebrew でインストール（**brew install clamav**）したあと、freshclam でウイルス定義をダウンロードし、clamscan でファイルをスキャンします。"
+        },
+        "how": {
+          "title": "OpenNavo での使われ方",
+          "cards": {
+            "database": {
+              "title": "公式のウイルス定義",
+              "body": "ClamAV の公式サーバーから直接ダウンロードし、OpenNavo は経由しません。初回は約 113 MB で、その後は変更部分だけをダウンロードします。初期設定では 4 時間ごとに更新を確認します。"
+            },
+            "scans": {
+              "title": "クイック・フル・カスタム・定期スキャン",
+              "body": "クイックスキャンは、起動項目が実行するプログラム、ダウンロード、デスクトップ、一時フォルダ、最近 7 日間にインストールした App をチェックします。フルスキャンは Mac 全体が対象で、システムボリューム、未ダウンロードの iCloud ファイル、Time Machine、ネットワークボリュームは除きます。"
+            },
+            "install": {
+              "title": "インストール前にスキャン",
+              "body": "OpenNavo でインストールする App は、Homebrew がダウンロードを終えたあと、インストールの前にスキャンします。脅威が見つかればインストールを中止します。"
+            },
+            "quarantine": {
+              "title": "元に戻せる隔離",
+              "body": "見つかった脅威は、初期設定で隔離されます。誤検出だとわかったときは、いつでも復元できます。"
+            },
+            "resources": {
+              "title": "メモリを使うのはスキャン中だけ",
+              "body": "スキャン中、エンジンは約 1.1 GB のメモリを使い、5 分間何もしないと自動で終了します。"
+            }
+          }
+        },
+        "limits": {
+          "title": "Mac での ClamAV の限界",
+          "items": {
+            "coverage": "ウイルス定義がカバーする Mac 専用マルウェアの範囲は限られています。スキャンで脅威が見つからなくても、この Mac がクリーンだとは限りません。",
+            "signatures": "既知の脅威はシグネチャで見分けます。新しいマルウェアや改変されたマルウェアは、対応するシグネチャがウイルス定義に追加されるまで検出できないことがあります。",
+            "realtime": "OpenNavo は現時点では、プログラムが初めて実行される前に止めることはできません。それには Apple の Endpoint Security の承認が必要です。新しくダウンロードしたファイルや新たに現れた起動項目は、すぐにチェックします。",
+            "large": "100 MB を超える通常のファイルと、1 GB を超えるか展開後に 2 GB を超えるインストーラは、完全にはスキャンされません。"
+          }
+        },
+        "extras": {
+          "title": "ClamAV 以外に OpenNavo がチェックすること",
+          "body": "ウイルス定義では見えない部分は、次のチェックで補います：",
+          "cards": {
+            "signatures": {
+              "title": "署名と公証",
+              "body": "インストール済みの App の署名と公証を確認し、開発元の署名が突然変わったときはお知らせします。"
+            },
+            "startup": {
+              "title": "起動項目",
+              "body": "バックグラウンドサービスからブラウザ機能拡張まで、20 種類の起動項目を署名と所属する App とともに表示します。"
+            },
+            "posture": {
+              "title": "システムのセキュリティチェック",
+              "body": "Gatekeeper、FileVault、XProtect の状態など 11 項目の macOS 設定をチェックし、オフになっている項目がひと目でわかります。"
+            },
+            "virusTotal": {
+              "title": "オプションの VirusTotal 照会",
+              "body": "ご自身の API キーを使い、ファイルの SHA-256 で VirusTotal に照会します。送信するのはハッシュだけで、ファイルはアップロードしません。"
+            }
+          }
+        }
+      },
+      "faq": {
+        "xprotect": {
+          "q": "ClamAV と XProtect は同じものですか？",
+          "a": "いいえ。XProtect は Apple が macOS に組み込んでいるマルウェア対策で、Apple 独自のルールを使います。ClamAV は独立したオープンソースのエンジンで、独自のウイルス定義を持っています。OpenNavo は ClamAV でスキャンし、あわせて XProtect が最新の状態かどうかも表示します。"
+        },
+        "free": {
+          "q": "有料ですか？",
+          "a": "無料です。ClamAV はオープンソースでウイルス定義も無料、OpenNavo も GPL-3.0 ライセンスのオープンソースで、アカウントは不要です。"
+        },
+        "upload": {
+          "q": "ファイルがアップロードされることはありますか？",
+          "a": "ありません。スキャンはお使いの Mac 上で行い、結果もこの Mac にのみ保存されます。オプションの VirusTotal 照会はご自身でオンにした場合にのみ使え、その場合も送信するのはファイルの SHA-256 だけです。"
+        },
+        "terminal": {
+          "q": "OpenNavo を使わずに ClamAV を直接使えますか？",
+          "a": "使えます。Homebrew でインストール（brew install clamav）し、freshclam を設定してウイルス定義をダウンロードしてから、clamscan でスキャンします。OpenNavo はこれらをウインドウで操作できるようにし、定期スキャンと隔離も加えています。"
+        }
+      },
+      "cta": {
+        "title": "ClamAV で Mac をスキャンしましょう。",
+        "body": "OpenNavo は無料・オープンソースで、macOS 13 以降に対応しています。初めてスキャンするときは、あなたの同意を得てから公式のウイルス定義をダウンロードします。"
+      }
+    },
+    "xprotect": {
+      "metaTitle": "XProtect とは？Mac 内蔵のウイルス対策とその限界 · OpenNavo",
+      "description": "XProtect とは、Apple が macOS に組み込んでいる Mac 標準のマルウェア対策（ウイルス対策）です。そのしくみ、見逃すもの、最新かどうかを確かめる方法、OpenNavo で補えることを解説します。",
+      "breadcrumb": "XProtect",
+      "hero": {
+        "kicker": "XProtect",
+        "title": "XProtect：Mac に標準で備わっているウイルス対策。",
+        "lede": "どの Mac にも **XProtect** が入っています。Apple が組み込んだ、既知のマルウェアに対する保護機能です。バックグラウンドで静かに動いているため、何をチェックしたのかを目にすることはほとんどありません。ここでは、その働きと対応できないこと、そして最新かどうかを確かめる方法を説明します。"
+      },
+      "sections": {
+        "what": {
+          "title": "XProtect の働き",
+          "cards": {
+            "signatures": {
+              "title": "既知のマルウェアを見分ける",
+              "body": "XProtect は、Apple が発見済みのマルウェアに対して作成したシグネチャのルール（YARA）を使います。ルールは macOS のアップデートとは別に、独自のタイミングで更新されます。"
+            },
+            "checks": {
+              "title": "App の実行時にチェック",
+              "body": "App を初めて開いたとき、App が変更されたとき、ルールが更新されたときにチェックします。既知のマルウェアが見つかると、macOS はその実行をブロックし、ゴミ箱に移すよう促します。"
+            },
+            "remediation": {
+              "title": "一部の感染を駆除",
+              "body": "比較的新しい macOS では、把握済みのマルウェアをバックグラウンドで探して駆除することもあります。"
+            },
+            "gatekeeper": {
+              "title": "Gatekeeper や公証と連携",
+              "body": "Gatekeeper と公証は、App に誰が署名したか、Apple によるスキャンを受けたかを確認します。XProtect は、Apple がすでに把握しているマルウェアを見つける役割を担います。"
+            }
+          }
+        },
+        "limits": {
+          "title": "XProtect が対応できないこと",
+          "items": {
+            "known": "見分けられるのは、Apple が把握しているものだけです。新しいマルウェアや、ルールをすり抜けるよう改変された亜種は、Apple が対応するシグネチャを追加するまで、そのまま実行される可能性があります。",
+            "updates": "アップデートはある設定に左右されます。XProtect のルールは「セキュリティ対応とシステムファイル」として配信されるため、ソフトウェアアップデートの自動アップデートのオプションで「セキュリティ対応とシステムファイルをインストール」をオフにしていると、更新が遅れる可能性があります。",
+            "visibility": "動いている様子は見えません。XProtect のウインドウもスキャンボタンもなく、何をチェックしたかのレポートもありません。"
+          }
+        },
+        "check": {
+          "title": "XProtect が最新かどうかを確かめる方法",
+          "steps": {
+            "systemInformation": "Option キーを押しながらアップルメニューをクリックして「システム情報」を選び、「ソフトウェア」→「インストール」を開いて、名前が XProtect で始まる最近の更新記録を確認します。",
+            "terminal": "「ターミナル」で system_profiler SPInstallHistoryDataType を実行し、出力の中から XProtect の項目を探す方法もあります。",
+            "settings": "「システム設定」→「一般」→「ソフトウェアアップデート」で、「自動アップデート」の横にある情報ボタンをクリックし、「セキュリティ対応とシステムファイルをインストール」がオンになっていることを確認します。"
+          },
+          "note": "OpenNavo のシステムのセキュリティチェックは、XProtect のバージョンと最終更新日時を読み取り、30 日以上更新されていない場合はお知らせします。セキュリティ対応が自動でインストールされるかどうかも確認します。"
+        },
+        "extras": {
+          "title": "OpenNavo で補えること",
+          "body": "OpenNavo は XProtect の代わりにはなりません。補うのは、XProtect が教えてくれないチェックです：",
+          "cards": {
+            "scan": {
+              "title": "ClamAV でウイルススキャン",
+              "body": "オープンソースのエンジン ClamAV で、クイック・フル・定期スキャンを行います。OpenNavo でインストールする App も、インストール前にスキャンします。"
+            },
+            "startup": {
+              "title": "起動項目",
+              "body": "自動で起動するプログラムをすべて一覧にし、署名と所属する App を表示します。新しい項目が現れたらお知らせします。"
+            },
+            "signatures": {
+              "title": "署名チェック",
+              "body": "インストール済みの App の署名と公証を確認し、開発元の署名が突然変わったときはお知らせします。"
+            }
+          }
+        }
+      },
+      "faq": {
+        "enough": {
+          "q": "XProtect だけで十分ですか？",
+          "a": "XProtect は Apple がシグネチャを持つマルウェアをブロックし、自動で更新されるので、オンのまま最新の状態に保ってください。ただし、Apple がまだ登録していないものは見分けられず、何をチェックしたかも教えてくれません。スキャンツールをもうひとつ加え、起動項目も確認すれば、足りないチェックを補えます。"
+        },
+        "off": {
+          "q": "XProtect はオフにできますか？",
+          "a": "「システム設定」にはオフにする項目がありません。macOS の一部として、システムのほかの部分と一緒に保護されています。"
+        },
+        "where": {
+          "q": "XProtect は Mac のどこにありますか？",
+          "a": "ルールはシステムフォルダ /Library/Apple/System/Library/CoreServices/XProtect.bundle にあり、macOS によって保護されているため、自由に変更することはできません。開く必要はなく、上で紹介した更新記録を見れば、最後にいつ更新されたかがわかります。"
+        },
+        "clamav": {
+          "q": "XProtect と ClamAV の違いは？",
+          "a": "どちらも既知のマルウェアのシグネチャとファイルを照合しますが、互いに独立しています。XProtect は Apple 独自のルールを使って自動で動作します。ClamAV は独自のウイルス定義を持つオープンソースのエンジンで、スキャンしたときに動作します。OpenNavo は ClamAV でスキャンし、あわせて XProtect の状態も表示します。"
+        }
+      },
+      "cta": {
+        "title": "XProtect が教えてくれないことを確かめましょう。",
+        "body": "OpenNavo のシステムのセキュリティチェックは無料で、XProtect が最新の状態かどうかと、ほかに 10 項目の macOS セキュリティ設定を表示します。"
+      }
+    }
+  },
   "og": {
     "tagline": "Homebrew アプリストア",
     "platform": "macOS クライアント",
@@ -970,11 +1704,6 @@
     "downloadDescription": "インストール、更新、ウイルス対策、\nクリーンアップまで、クライアントひとつで。",
     "securityTitle": "無料のオープンソース\nMac 用ウイルス対策",
     "securityDescription": "ウイルススキャン、起動項目のチェック、\n署名チェックまで、すべて無料。"
-  },
-  "languageSuggestion": {
-    "message": "{language}で閲覧しますか？",
-    "switch": "{language}に切り替える",
-    "dismiss": "今後表示しない"
   },
   "landing": {
     "footerNav": "フッターナビゲーション",
@@ -990,6 +1719,48 @@
       "github": "GitHub でソース公開",
       "followOnX": "{account} をフォロー",
       "meta": "無料 · macOS 13以降 · AppleシリコンとIntelに対応"
+    },
+    "about": {
+      "kicker": "概要",
+      "title": "OpenNavo とは？",
+      "definition": "OpenNavo は、Mac 上の Homebrew アプリをワンクリックでインストール・更新できる、無料でオープンソースの Mac 向け Homebrew グラフィカルクライアントであり、そのウェブサイトはバージョン履歴、システム要件、アンインストール方法などの情報を提供する Mac アプリのディレクトリです。",
+      "compare": {
+        "caption": "OpenNavo と Homebrew コマンドライン、Mac App Store の違い",
+        "homebrew": "Homebrew コマンドライン",
+        "appStore": "Mac App Store",
+        "rows": {
+          "use": "使い方",
+          "source": "ソフトウェアの入手元",
+          "scope": "インストール・更新の対象"
+        },
+        "cells": {
+          "opennavo": {
+            "use": "ウェブ上のディレクトリと、グラフィカルインターフェースを備えた Mac クライアント。",
+            "source": "Homebrew アプリは、各 cask に記載された配布元からダウンロードします。",
+            "scope": "Mac 上の Homebrew を通じて cask をインストール・更新します。Apple アカウントにサインインすると、App Store のアプリもインストール・更新できます。その他のアプリは開発者の公式ダウンロードにリンクします。"
+          },
+          "homebrew": {
+            "use": "ターミナルで brew コマンドを入力します。",
+            "source": "Homebrew のパッケージ定義と、自分で追加したサードパーティの tap。",
+            "scope": "brew install と brew upgrade で formula（コマンドラインツール）と cask（アプリ）を管理します。"
+          },
+          "appStore": {
+            "use": "Mac 上の App Store アプリ。",
+            "source": "Apple の App Store カタログ。",
+            "scope": "Apple アカウントで入手したアプリ。その他の配布元のアプリは、それぞれの開発者が更新を提供します。"
+          }
+        },
+        "sources": "出典：",
+        "links": {
+          "readme": "OpenNavo README",
+          "brewManpage": "Homebrew コマンドマニュアル",
+          "brewTaps": "Homebrew：サードパーティの tap",
+          "appleInstall": "Apple サポート：App Store で購入したアプリのインストールとアンインストール",
+          "appleDownload": "Apple サポート：Mac でアプリをダウンロードする",
+          "appleUpdate": "Apple サポート：App Store でアプリを更新する",
+          "appleOther": "Apple サポート：アプリを手動で更新する"
+        }
+      }
     },
     "window": {
       "label": "OpenNavo Macアプリで「見つける」からアプリをインストールする画面",
@@ -1037,6 +1808,7 @@
       "note": "ClamAV は Mac 専用のマルウェアを一部しか検出できないため、OpenNavo は署名・公証・起動項目もあわせて確認します。macOS に内蔵された保護機能を補うもので、置き換えるものではありません。",
       "demo": {
         "label": "OpenNavo クライアントでウイルススキャンが脅威を見つけ、隔離に移す画面",
+        "caption": "デモアニメーション：ファイル名と検出された脅威は架空のものです。",
         "title": "セキュリティ",
         "subtitle": "チェック、ウイルススキャン、起動項目、リアルタイム保護。結果はこの Mac にのみ保存されます",
         "tabs": {
@@ -1102,7 +1874,7 @@
       "stats": {
         "apps": "掲載アプリ数",
         "updated": "過去24時間に更新",
-        "languages": "対応言語数"
+        "languages": "Mac クライアントの言語"
       }
     },
     "details": {

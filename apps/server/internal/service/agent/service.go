@@ -21,7 +21,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var Grantable = []string{"dashboard:view", "catalog:package:view", "catalog:package:edit", "catalog:package:resync", "catalog:asset:upload", "catalog:category:edit", "content:collection:edit", "content:collection:publish", "content:article:edit", "content:article:publish", "content:feature:edit", "content:glossary:edit", "changelog:release:edit", "translation:review", "ops:job:view", "ops:job:trigger", "ops:search:view", "ops:search:edit", "ops:feedback:handle", "agent:log:view", "content:revision:restore", "content:announcement:edit", "release:desktop:notes"}
+var Grantable = []string{"seo:snippet:propose", "seo:automation:tune", "seo:task:handle", "seo:insight:view", "seo:keyword:edit", "dashboard:view", "catalog:package:view", "catalog:package:edit", "catalog:package:resync", "catalog:asset:upload", "catalog:category:edit", "content:collection:edit", "content:collection:publish", "content:article:edit", "content:article:publish", "content:feature:edit", "content:glossary:edit", "changelog:release:edit", "translation:review", "ops:job:view", "ops:job:trigger", "ops:search:view", "ops:search:edit", "ops:feedback:handle", "agent:log:view", "content:revision:restore", "content:announcement:edit", "release:desktop:notes"}
 
 type Limits struct {
 	CallsPerMinute int `json:"callsPerMinute"`
@@ -105,6 +105,9 @@ func (s *Service) identity(ctx context.Context, column string, key any, ip strin
 	if err := json.Unmarshal(row.Permissions, &permissions); err != nil {
 		return out, err
 	}
+	if !ValidPermissionSet(permissions) {
+		return out, Error(domain.CodeForbidden)
+	}
 	if err := json.Unmarshal(row.IPAllowlist, &allowedIPs); err != nil {
 		return out, err
 	}
@@ -144,11 +147,12 @@ const uploadTicketPrefix = "onvu_"
 
 // UploadGrant is what one ticket authorizes. Redis keys it by the ticket hash, never by the ticket itself.
 type UploadGrant struct {
-	TokenID   int64  `json:"tokenId"`
-	Kind      string `json:"kind"`
-	SourceURL string `json:"sourceUrl,omitempty"`
-	Tool      string `json:"tool"`
-	RequestID string `json:"requestId"`
+	Execution *domain.AgentExecution `json:"execution,omitempty"`
+	TokenID   int64                  `json:"tokenId"`
+	Kind      string                 `json:"kind"`
+	SourceURL string                 `json:"sourceUrl,omitempty"`
+	Tool      string                 `json:"tool"`
+	RequestID string                 `json:"requestId"`
 }
 
 func uploadKey(ticket string) string { return "agent:upload:" + Hash(ticket) }
@@ -251,5 +255,5 @@ func (s *Service) Introspect(ctx context.Context, id Identity) (any, error) {
 		}
 		counts[n] = v
 	}
-	return map[string]any{"active": true, "clientId": id.ClientID, "clientName": id.ClientName, "tokenId": id.ID, "tokenPrefix": id.Prefix, "permissions": id.Permissions, "allowDelete": id.AllowDelete, "paused": false, "limits": id.Limits, "quota": map[string]any{"callsRemaining": max(0, id.Limits.CallsPerMinute-counts[0]), "writesRemaining": max(0, id.Limits.WritesPerDay-counts[1]), "llmOpsRemaining": max(0, id.Limits.LLMOpsPerDay-counts[2]), "minuteResetsAt": minute, "dayResetsAt": day}, "locales": i18n.Locales, "expiresAt": id.ExpiresAt}, nil
+	return map[string]any{"active": true, "clientId": id.ClientID, "clientName": id.ClientName, "tokenId": id.ID, "tokenPrefix": id.Prefix, "permissions": id.Permissions, "allowDelete": id.AllowDelete, "paused": false, "limits": id.Limits, "quota": map[string]any{"callsRemaining": max(0, id.Limits.CallsPerMinute-counts[0]), "writesRemaining": max(0, id.Limits.WritesPerDay-counts[1]), "llmOpsRemaining": max(0, id.Limits.LLMOpsPerDay-counts[2]), "minuteResetsAt": minute, "dayResetsAt": day}, "locales": i18n.SiteLocales, "expiresAt": id.ExpiresAt}, nil
 }

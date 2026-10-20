@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -96,6 +97,15 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 			return
 		}
 		op := &domain.Operation{RequestID: c.GetString("requestId"), Name: p.Operation, Tool: c.GetHeader("X-Agent-Tool"), ActorName: id.ClientName, ActorID: &id.UserID, AgentClientID: id.ClientID, AgentTokenID: id.ID, Permissions: id.Permissions, RequiredPermissions: p.Permissions, AllowDelete: id.AllowDelete, DryRun: c.Query("dryRun") == "true"}
+		op.WebBaseURL = h.Management.Config.WebBaseURL
+		if c.Request.Method != http.MethodGet && !p.Introspection && !agentControlOperation(p.Operation) {
+			var err error
+			op.Execution, err = agentExecution(c.Request.Header)
+			if err != nil {
+				respond.Error(c, err, true)
+				return
+			}
+		}
 		if c.GetHeader("X-Request-ID") == "" || len(c.GetHeader("X-Request-ID")) > 128 || (!p.Introspection && !agentToolPattern.MatchString(op.Tool)) {
 			respond.Error(c, domain.Validation(), true)
 			return
@@ -131,14 +141,11 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 				return
 			}
 		}
-		write, llm := 0, 0
+		write := 0
 		if c.Request.Method != "GET" && !p.Introspection && !op.DryRun {
 			write = 1
-			if consumesLLM(p.Operation, body) {
-				llm = 1
-			}
 		}
-		if err := svc.Reserve(c.Request.Context(), id, write, llm); err != nil {
+		if err := svc.Reserve(c.Request.Context(), id, write, 0); err != nil {
 			respond.Error(c, err, true)
 			return
 		}
@@ -147,7 +154,7 @@ func (h *Handler) AgentMiddleware(policies map[string]AgentPolicy) gin.HandlerFu
 			fields = append(fields, k)
 		}
 		summary, _ := json.Marshal(map[string]any{"fields": fields})
-		if err := svc.Store.DB.WithContext(c.Request.Context()).Exec(`UPDATE agent_call_logs SET params_summary=?::jsonb,llm_operation=? WHERE id=?`, string(summary), llm > 0, callID).Error; err != nil {
+		if err := svc.Store.DB.WithContext(c.Request.Context()).Exec(`UPDATE agent_call_logs SET params_summary=?::jsonb,llm_operation=? WHERE id=?`, string(summary), false, callID).Error; err != nil {
 			respond.Error(c, err, true)
 			return
 		}
@@ -176,7 +183,8 @@ func (h *Handler) agentUpload(c *gin.Context) {
 	requestID := rand.Text()
 	c.Set("requestId", requestID)
 	c.Header("X-Request-ID", requestID)
-	op := &domain.Operation{RequestID: requestID, Name: "uploadAssetWithTicket", Tool: grant.Tool, ActorName: id.ClientName, ActorID: &id.UserID, AgentClientID: id.ClientID, AgentTokenID: id.ID, Permissions: id.Permissions, RequiredPermissions: []string{"catalog:asset:upload"}, AllowDelete: id.AllowDelete}
+	op := &domain.Operation{RequestID: requestID, Name: "uploadAssetWithTicket", Tool: grant.Tool, ActorName: id.ClientName, ActorID: &id.UserID, AgentClientID: id.ClientID, AgentTokenID: id.ID, Permissions: id.Permissions, RequiredPermissions: []string{"catalog:asset:upload"}, AllowDelete: id.AllowDelete, Execution: grant.Execution}
+	op.WebBaseURL = h.Management.Config.WebBaseURL
 	callID, finish, ok := beginAgentCall(c, svc, id, op, ip, true)
 	if !ok {
 		return
@@ -236,23 +244,31 @@ func touchAgentToken(c *gin.Context, svc *agent.Service, id agent.Identity, ip s
 	}
 	return true
 }
-func consumesLLM(op string, body map[string]any) bool {
-	// Publishing schedules translation even though its body has no localized fields.
-	if op == "publishArticle" {
-		return true
+
+func agentExecution(headers http.Header) (*domain.AgentExecution, error) {
+	out := &domain.AgentExecution{IdempotencyKey: headers.Get("Idempotency-Key")}
+	for name, dst := range map[string]*int64{"X-SEO-Task-ID": &out.TaskID, "X-SEO-Fencing": &out.Fencing, "X-SEO-Expected-Revision": &out.ExpectedRevision} {
+		value, err := strconv.ParseInt(headers.Get(name), 10, 64)
+		if err != nil || value < 0 {
+			return nil, domain.Validation()
+		}
+		*dst = value
 	}
-	if body["clear"] == true {
-		return false
+	if out.TaskID == 0 || out.Fencing == 0 || len(out.IdempotencyKey) < 8 || len(out.IdempotencyKey) > 200 {
+		return nil, domain.Validation()
 	}
-	if strings.HasPrefix(op, "restore") || op == "revertRequest" || strings.HasPrefix(op, "retranslate") {
-		return true
+	if raw := headers.Get("X-SEO-Evidence-IDs"); raw != "" {
+		seen := map[int64]bool{}
+		for _, part := range strings.Split(raw, ",") {
+			id, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+			if err != nil || id <= 0 || seen[id] || len(out.EvidenceIDs) >= 40 {
+				return nil, domain.Validation()
+			}
+			out.EvidenceIDs = append(out.EvidenceIDs, id)
+			seen[id] = true
+		}
 	}
-	if op == "updatePackageText" || op == "upsertReleaseNotes" || op == "updateAnnouncement" || op == "updateDesktopReleaseNotes" {
-		return true
-	}
-	_, source := body["sourceLocale"]
-	_, localized := body["i18n"]
-	return source || localized || op == "setCollectionItems"
+	return out, nil
 }
 
 // Pass only allowlisted operations to the generated router; system and similar paths are never registered.
@@ -278,4 +294,15 @@ func (r AgentRouter) PUT(p string, h ...gin.HandlerFunc) gin.IRoutes {
 }
 func (r AgentRouter) DELETE(p string, h ...gin.HandlerFunc) gin.IRoutes {
 	return r.register(http.MethodDelete, p, h...)
+}
+
+// These operations verify their own body-bound idempotency and lease metadata.
+// Keep the exemption explicit: new business writes remain fail-closed.
+func agentControlOperation(operation string) bool {
+	switch operation {
+	case "claimSeoTasks", "completeSeoTask", "deferSeoTask", "createSeoEvidence", "updateSeoAutomation", "importSeoTasks", "writeTranslations", "recordSeoGeo":
+		return true
+	default:
+		return false
+	}
 }

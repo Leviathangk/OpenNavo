@@ -58,6 +58,7 @@ const segments = computed(() => {
         :key="segment.key"
         :content="`${segment.label}：${segment.display}（${segment.percent}）`"
         :delay="100"
+        lazy
         class="min-w-2px"
         :style="{ flex: `${segment.value} 1 0` }"
       >

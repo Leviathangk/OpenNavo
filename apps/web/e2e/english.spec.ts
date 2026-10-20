@@ -43,13 +43,19 @@ test('English details have English UI/body and complete SEO/hreflang', async ({ 
   await expect(install).toContainText('brew install --cask');
   await expect(install).toContainText('visual-studio-code');
 
-  // English E2E body content (summary, notes, install stats, similar apps) must not contain Chinese.
-  expect(await page.locator('main').innerText()).not.toMatch(CJK);
+  // Quick facts keep aliases in their original languages; the rest of the English body (summary,
+  // notes, install stats, similar apps) must not contain Chinese.
+  const body = await page.locator('main').evaluate(element => {
+    const copy = element.cloneNode(true) as HTMLElement;
+    copy.querySelector('[data-fact="names"]')?.remove();
+    return copy.textContent ?? '';
+  });
+  expect(body).not.toMatch(CJK);
 
   const head = await headInfo(page);
   expect(head.description).toContain('Visual Studio Code');
-  expect(head.description).toContain(
-    'See how to install Visual Studio Code on your Mac, along with its system requirements and release history.'
+  expect(head.description).toBe(
+    'Deterministic E2E fixture for Visual Studio Code. Explore installation, uninstallation, and release history for Visual Studio Code on Mac.'
   );
   expect(head.description).not.toMatch(CJK);
   expect(head.ogLocale).toBe('en_US');
@@ -74,7 +80,10 @@ test('Every English detail tab has an English title', async ({ page }) => {
   for (const [path, title] of cases) {
     await gotoReady(page, path);
     await expect(page).toHaveTitle(title);
-    expect(new URL((await headInfo(page)).canonical).pathname).toBe(path);
+    // The server's PageDetails decision consolidates install details into the overview.
+    expect(new URL((await headInfo(page)).canonical).pathname).toBe(
+      path.endsWith('/details') ? '/apps/visual-studio-code' : path
+    );
   }
 });
 
@@ -102,7 +111,8 @@ test('Mobile locale menu stays onscreen and preserves search route/query', async
   await page.getByRole('button', { name: /^Choose language:/ }).click();
   const menu = page.getByRole('menu', { name: 'Choose language' });
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole('menuitem')).toHaveCount(6);
+  // Every site language (L1): the six app languages plus German, French, Italian and Traditional Chinese.
+  await expect(menu.getByRole('menuitem')).toHaveCount(10);
   const bounds = await menu.boundingBox();
   expect(bounds).not.toBeNull();
   expect(bounds!.x).toBeGreaterThanOrEqual(0);

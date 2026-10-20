@@ -72,6 +72,12 @@ export const stubRoutes: RouteRecordRaw[] = [
     meta: { nav: 'installed' }
   },
   {
+    path: '/uninstall/:token',
+    name: 'uninstall-preview',
+    components: { default: stub('卸载预览'), rail: stub('存储') },
+    meta: { nav: 'installed' }
+  },
+  {
     path: '/updates',
     name: 'updates',
     components: { default: stub('更新页'), rail: stub('本机 Homebrew 状态') },

@@ -1,7 +1,7 @@
 <script setup lang="tsx">
 import { computed, reactive, ref } from 'vue';
 import { NButton, NDropdown, NTag, NText } from 'naive-ui';
-import { fetchReleaseList, retranslateRelease, updateRelease } from '@/service/api';
+import { fetchReleaseList, updateRelease } from '@/service/api';
 import type { QueryOf, RecordOf, Schemas } from '@/typings/api/opennavo';
 import { useAppStore } from '@/store/modules/app';
 import { useAuth } from '@/hooks/business/auth';
@@ -160,12 +160,9 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
       align: 'center',
       fixed: 'right',
       render: row => {
-        const options = [
-          ...(hasAuth('translation:review') ? [{ key: 'retranslate', label: $t('page.changelog.release.retranslate') }] : []),
-          ...(hasAuth('changelog:release:edit')
-            ? [{ key: row.hidden ? 'show' : 'hide', label: row.hidden ? $t('page.changelog.release.show') : $t('page.changelog.release.hide') }]
-            : [])
-        ];
+        const options = hasAuth('changelog:release:edit')
+          ? [{ key: row.hidden ? 'show' : 'hide', label: row.hidden ? $t('page.changelog.release.show') : $t('page.changelog.release.hide') }]
+          : [];
         return (
           <div class="flex-center gap-8px">
             <NButton size="small" type="primary" ghost onClick={() => openEditor(row)}>
@@ -184,21 +181,6 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
 });
 
 function runMore(key: string, row: Row) {
-  if (key === 'retranslate') {
-    window.$dialog?.warning({
-      title: $t('page.changelog.release.retranslate'),
-      content: $t('page.changelog.release.retranslateConfirm', { name: row.packageName, version: row.version }),
-      positiveText: $t('common.confirm'),
-      negativeText: $t('common.cancel'),
-      onPositiveClick: async () => {
-        const { error } = await retranslateRelease(row.id);
-        if (error) return;
-        window.$message?.success($t('page.changelog.release.retranslateQueued'));
-        await getData();
-      }
-    });
-    return;
-  }
   void (async () => {
     const hide = key === 'hide';
     const { error } = await updateRelease(row.id, { hidden: hide });

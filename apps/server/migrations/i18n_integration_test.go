@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/opennavo/opennavo/server/internal/testutil"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/opennavo/opennavo/server/migrations"
 	"github.com/pressly/goose/v3"
@@ -17,7 +19,7 @@ import (
 
 func TestSixLanguageMigrationPreservesLegacyText(t *testing.T) {
 	ctx := context.Background()
-	pg, err := postgres.Run(ctx, "postgres:18", postgres.WithDatabase("opennavo_migration_test"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies())
+	pg, err := postgres.Run(ctx, "postgres:18", postgres.WithDatabase("opennavo_migration_test"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies(), testutil.PostgresTestPorts(t))
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pg.Terminate(context.Background())) })
 	dsn, err := pg.ConnectionString(ctx, "sslmode=disable")

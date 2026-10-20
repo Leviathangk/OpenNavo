@@ -3,9 +3,12 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
+// Client release notes follow the app locales; site-only languages (de, fr, it, zh-Hant) are not shipped in the app.
 export const RELEASE_NOTE_LOCALES = JSON.parse(
   readFileSync(new URL('../../../packages/shared/src/locales.json', import.meta.url), 'utf8')
-).locales.map(locale => locale.code);
+)
+  .locales.filter(locale => locale.surfaces.includes('app'))
+  .map(locale => locale.code);
 
 export function validateNotes(notes, version, locale) {
   const text = typeof notes === 'string' ? notes.trim() : '';

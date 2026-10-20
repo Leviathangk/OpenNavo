@@ -1,0 +1,99 @@
+//go:build integration
+
+package management
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/opennavo/opennavo/server/internal/content"
+	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/service/seotasks"
+	"github.com/opennavo/opennavo/server/internal/store"
+	"github.com/opennavo/opennavo/server/internal/testutil"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
+)
+
+func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	require.NoError(t, st.DB.Exec("INSERT INTO categories(id,slug,icon,source_locale) VALUES(700,'translation-fixture','lucide:box','en-US')").Error)
+	ref := content.Ref{Entity: "category", ID: 700}
+	writeSource := func(description string) error {
+		return st.WithTx(ctx, func(tx *gorm.DB) error {
+			return (&store.Store{DB: tx}).WriteContentText(ctx, ref, "en-US", map[string]any{"name": "File organizer", "description": description}, true)
+		})
+	}
+	original := "## File management\n\nKeep {count} documents in organized folders."
+	require.NoError(t, writeSource(original))
+	require.NoError(t, writeSource(original))
+	var count int64
+	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='category:700' AND state='open'").Count(&count).Error)
+	require.EqualValues(t, 9, count, "identical source schedules each locale once")
+	require.NoError(t, st.DB.Table("job_outbox").Where("job_type='translate:content'").Count(&count).Error)
+	require.Zero(t, count)
+	svc := &Service{Store: st}
+	leased, err := (&seotasks.Service{DB: st.DB}).Claim(ctx, seotasks.Owner(1, 2), 1, []string{"translate"})
+	require.NoError(t, err)
+	require.Len(t, leased, 1)
+	fix := func(agent bool, model string, fields map[string]any) error {
+		op := &domain.Operation{RequestID: uuid.NewString(), Name: "fixTranslation", Permissions: []string{"*"}, RequiredPermissions: []string{"translation:review"}}
+		if agent {
+			op.AgentClientID = 1
+			op.AgentTokenID = 2
+			revision, err := actionRevision(ctx, st, []content.Ref{ref})
+			if err != nil {
+				return err
+			}
+			op.Execution = &domain.AgentExecution{TaskID: leased[0].ID, Fencing: leased[0].Fencing, IdempotencyKey: uuid.NewString(), ExpectedRevision: revision}
+		}
+		request := domain.WithOperation(ctx, op)
+		_, err := svc.Execute(request, "FixTranslation", Input{Body: map[string]any{"ref": map[string]any{"entity": "category", "id": float64(700)}, "locale": "zh-CN", "model": model, "fields": fields}})
+		return err
+	}
+	translated := map[string]any{"name": "文件管理工具", "description": "## 文件管理\n\n将 {count} 份文档保存在分类整理的文件夹中。"}
+	require.Error(t, fix(true, "", translated))
+	require.NoError(t, fix(true, "fixture-model", translated))
+	var row struct{ Status, Model, SourceHash, Description string }
+	read := func() {
+		row.Status, row.Model, row.SourceHash, row.Description = "", "", "", ""
+		require.NoError(t, st.DB.Table("category_i18n").Where("category_id=700 AND locale='zh-CN'").Take(&row).Error)
+	}
+	read()
+	require.Equal(t, "machine", row.Status)
+	require.Equal(t, "hermes:fixture-model", row.Model)
+	oldHash := row.SourceHash
+	require.Error(t, fix(true, "fixture-model", map[string]any{"description": "## 文件管理\n\n错误地删除了占位符的译文。"}))
+	read()
+	require.Equal(t, translated["description"], row.Description)
+	require.NoError(t, fix(false, "", map[string]any{"name": "文档管理工具"}))
+	read()
+	require.Equal(t, "manual", row.Status)
+	require.Empty(t, row.Model)
+	require.NoError(t, writeSource("## File management\n\nKeep {count} documents in new shared folders."))
+	read()
+	require.Equal(t, oldHash, row.SourceHash)
+	require.Equal(t, "manual", row.Status)
+	require.Equal(t, translated["description"], row.Description)
+	source, err := st.ReadContentSource(ctx, ref)
+	require.NoError(t, err)
+	require.Contains(t, source.Targets, "zh-CN")
+	require.Error(t, fix(true, "fixture-model", map[string]any{"name": "文件管理工具"}), "a partial stale translation cannot stamp a new source hash")
+	injected := errors.New("injected failure after scheduling")
+	require.ErrorIs(t, st.WithTx(ctx, func(tx *gorm.DB) error {
+		if err := (&store.Store{DB: tx}).WriteContentText(ctx, ref, "en-US", map[string]any{"description": "Rollback this source change"}, true); err != nil {
+			return err
+		}
+		return injected
+	}), injected)
+	after, err := st.ReadContentSource(ctx, ref)
+	require.NoError(t, err)
+	require.Equal(t, source.Hash, after.Hash)
+	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='category:700' AND state IN ('open','leased')").Count(&count).Error)
+	require.EqualValues(t, 9, count)
+	require.NoError(t, st.DB.Table("translation_logs").Count(&count).Error)
+	require.Zero(t, count)
+}

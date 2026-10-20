@@ -47,7 +47,7 @@ func TestAuthenticationLockRotationReplayStatusVersionAuditAndProfile(t *testing
 	require.NoError(t, err)
 	actor.ID = &id.ID
 	require.True(t, id.Allowed("system:user:edit"))
-	require.Len(t, id.Permissions.Buttons, 33)
+	require.Len(t, id.Permissions.Buttons, 37)
 	require.Contains(t, id.Permissions.Buttons, "agent:manage")
 	require.NotContains(t, id.Permissions.Buttons, "changelog:source:edit")
 	require.NotContains(t, id.Permissions.Buttons, "changelog:fetch")

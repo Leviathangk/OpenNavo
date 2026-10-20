@@ -32,6 +32,8 @@ export interface ArticleForm {
   coverAlt: string;
   sources: Schemas['ArticleSource'][];
   packages: ArticlePackage[];
+  claims: Schemas['ArticleClaim'][];
+  target: Schemas['ArticleSeoTarget'] | null;
 }
 
 export function formFromView(view: Article): ArticleForm {
@@ -49,6 +51,8 @@ export function formFromView(view: Article): ArticleForm {
     coverAssetId: working.coverAssetId ?? null,
     coverUrl: working.coverUrl ?? null,
     coverAlt: working.coverAlt ?? '',
+    claims: (working.claims ?? []).map(claim => ({ ...claim })),
+    target: working.target ? { ...working.target } : null,
     sources: working.sources.map(source => ({ ...source })),
     packages: working.packages.map(item => ({
       id: item.id,
@@ -80,6 +84,9 @@ export function changedFields(form: ArticleForm, view: Article): Patch {
   }
   const sources = form.sources.map(source => ({ title: source.title.trim(), url: source.url.trim() }));
   if (JSON.stringify(sources) !== JSON.stringify(base.sources)) patch.sources = sources;
+  if (JSON.stringify(form.claims) !== JSON.stringify(base.claims))
+    patch.claims = form.claims.map(claim => ({ ...claim }));
+  if (JSON.stringify(form.target) !== JSON.stringify(base.target)) patch.target = form.target;
   return patch;
 }
 
@@ -93,5 +100,35 @@ export function formProblems(form: ArticleForm): string[] {
   if (form.sources.some(source => !source.title.trim() || !/^https:\/\/\S+$/.test(source.url.trim())))
     out.push('sources');
   if (form.coverAssetId && !form.coverAlt.trim()) out.push('cover_alt');
+  const publication = publicationProblems(form);
+  if (form.claims.length && publication.includes('claims')) out.push('claims');
+  if (form.target && publication.includes('target')) out.push('target');
   return out;
+}
+
+/** Publication requirements are separate so incomplete drafts can still be saved. */
+export function publicationProblems(form: ArticleForm): string[] {
+  const out: string[] = [];
+  if (!form.target || !/^(pkg:[1-9][0-9]*|topic:[a-z0-9][a-z0-9-]*)$/.test(form.target.entityKey)) out.push('target');
+  if (
+    !form.claims.length ||
+    form.claims.some(
+      claim =>
+        !claim.text.trim() ||
+        !claim.excerpt.trim() ||
+        !Number.isSafeInteger(claim.evidenceId) ||
+        claim.evidenceId < 1 ||
+        !/^[A-Z]{2}$/.test(claim.region) ||
+        (claim.packageId != null && !form.packages.some(item => item.id === claim.packageId)) ||
+        ((form.type === 'review' || claim.kind === 'test') &&
+          (!claim.testArtifactId || !claim.packageId || !claim.appVersion.trim()))
+    )
+  )
+    out.push('claims');
+  if (
+    form.target?.entityKey.startsWith('pkg:') &&
+    !form.packages.some(item => `pkg:${item.id}` === form.target?.entityKey)
+  )
+    out.push('target');
+  return [...new Set(out)];
 }

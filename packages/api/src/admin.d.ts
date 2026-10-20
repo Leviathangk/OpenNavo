@@ -4,6 +4,436 @@
  */
 
 export interface paths {
+    "/system/seo-providers/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read provider readiness */
+        get: operations["getSeoProvider"];
+        /** Store encrypted SEO provider credentials */
+        put: operations["updateSeoProvider"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/tasks/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** claimSeoTasks */
+        post: operations["claimSeoTasks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** getSeoTask */
+        get: operations["getSeoTask"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/tasks/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** completeSeoTask */
+        post: operations["completeSeoTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/tasks/{id}/defer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** deferSeoTask */
+        post: operations["deferSeoTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** createSeoEvidence */
+        post: operations["createSeoEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** listSeoActions */
+        get: operations["listSeoActions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/snippet-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** proposeSnippetTemplate */
+        post: operations["proposeSnippetTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/actions/{id}/compensate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** compensateSeoAction */
+        post: operations["compensateSeoAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/automation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * getSeoAutomation
+         * @description Server-owned Hermes control/import/translation operation. Requires seo:automation:tune. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         */
+        get: operations["getSeoAutomation"];
+        /**
+         * updateSeoAutomation
+         * @description Server-owned Hermes control/import/translation operation. Requires seo:automation:tune. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         */
+        put: operations["updateSeoAutomation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/tasks/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * importSeoTasks
+         * @description Server-owned Hermes control/import/translation operation. Requires seo:task:handle. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         */
+        post: operations["importSeoTasks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/translations/source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * getTranslationsSource
+         * @description Server-owned Hermes control/import/translation operation. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         */
+        get: operations["getTranslationsSource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/translations/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * writeTranslations
+         * @description Server-owned Hermes control/import/translation operation. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         */
+        post: operations["writeTranslations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/collections/{id}/setup-criteria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set collection recommendation criteria
+         * @description Shared typed evidence model. Writes are atomic upserts by kind and key; evidence needs_review withdraws public assertions. Dry-run and existing Agent authorization apply.
+         */
+        put: operations["setCollectionSetupCriteria"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/background-items/{label}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set sourced background-item documentation
+         * @description Shared typed evidence model. Writes are atomic upserts by kind and key; evidence needs_review withdraws public assertions. Dry-run and existing Agent authorization apply.
+         */
+        put: operations["setBackgroundItem"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/geo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * listSeoGeo
+         * @description Structured GEO ledger. Requires seo:insight:view. Imports existing observations only; no paid calls or scheduling. Unknown values remain null.
+         */
+        get: operations["listSeoGeo"];
+        put?: never;
+        /**
+         * recordSeoGeo
+         * @description Structured GEO ledger. Requires seo:task:handle. Imports existing observations only; no paid calls or scheduling. Unknown values remain null.
+         */
+        post: operations["recordSeoGeo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/geo/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * getSeoGeo
+         * @description Structured GEO ledger. Requires seo:insight:view. Imports existing observations only; no paid calls or scheduling. Unknown values remain null.
+         */
+        get: operations["getSeoGeo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List SEO audit alerts
+         * @description Read-only dashboard list of audit issues that generate tech_alert tasks. Open issues sort first, followed by lastSeen DESC and ID DESC. Resolution comes from a later successful audit, never from task completion. This list includes audit issues before task generation and excludes non-audit traffic-degradation tasks. Requires seo:insight:view.
+         */
+        get: operations["listSeoAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * get Seo Overview
+         * @description Server-owned SEO ledger and measurements. Requires seo:insight:view. Agent access uses the internal gateway and Agent token.
+         */
+        get: operations["getSeoOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * get Seo Page
+         * @description Server-owned SEO ledger and measurements. Requires seo:insight:view. Agent access uses the internal gateway and Agent token.
+         */
+        get: operations["getSeoPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/keywords": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * list Seo Keywords
+         * @description Server-owned SEO ledger and measurements. Requires seo:insight:view. Agent access uses the internal gateway and Agent token.
+         */
+        get: operations["listSeoKeywords"];
+        put?: never;
+        /**
+         * upsert Seo Keywords
+         * @description Server-owned SEO ledger and measurements. Requires seo:keyword:edit. Agent access uses the internal gateway and Agent token.
+         */
+        post: operations["upsertSeoKeywords"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packages/{id}/fact-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read sourced app fact records
+         * @description Shared typed evidence model. Writes are atomic upserts by kind and key; evidence needs_review withdraws public assertions. Dry-run and existing Agent authorization apply.
+         */
+        get: operations["getPackageFactRecords"];
+        /**
+         * Upsert sourced app fact records
+         * @description Shared typed evidence model. Writes are atomic upserts by kind and key; evidence needs_review withdraws public assertions. Dry-run and existing Agent authorization apply.
+         */
+        put: operations["setPackageFactRecords"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/github-settings": {
         parameters: {
             query?: never;
@@ -65,47 +495,6 @@ export interface paths {
          * @description Saves the full settings document. The IndexNow key and Cloudflare token are write-only, stored with AES-GCM encryption and excluded from responses, audit and logs; empty/omitted values preserve the current credential and clear* flags remove it. Enabling IndexNow or Cloudflare purge requires the matching credential. Search engines and user-requested fetchers cannot be listed in crawler rules. Requires system:seo:edit, not grantable to Agents.
          */
         put: operations["updateSeoSettings"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/system/translation-settings/models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Get available gateway models
-         * @description Requires i18n:settings. Call gateway GET models with the current form URL and new key (empty uses the stored key; clearApiKey falls back to the environment key). Does not save settings, spend translation tokens or follow redirects. Failure returns 1302; missing usable key or invalid URL returns 1001.
-         */
-        post: operations["listTranslationModels"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/system/translation-settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get translation AI configuration without returning secrets */
-        get: operations["getTranslationSettings"];
-        /**
-         * Save translation AI configuration
-         * @description Takes effect on the next content translation call. Empty/omitted apiKey preserves the current value; clearApiKey=true clears the admin key and falls back to the environment key. These cannot be combined. Requires i18n:settings, not grantable to Agents.
-         */
-        put: operations["updateTranslationSettings"];
         post?: never;
         delete?: never;
         options?: never;
@@ -234,26 +623,6 @@ export interface paths {
          * @description This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         get: operations["getDashboardOverview"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/dashboard/llm-usage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Monthly LLM usage
-         * @description This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
-         */
-        get: operations["getLlmUsage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -932,8 +1301,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Restore an older revision as the working draft
-         * @description Copies an earlier revision into the working revision (a new one if the working revision is published), so it can be reviewed and published again. Apps no longer in the catalog are dropped. Requires content:article:edit. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
+         * Restore an earlier article revision
+         * @description Restores a previously published revision directly online, including its published pointer and language state; this requires content:article:publish and fresh evidence/artifacts. An unpublished revision is copied into a working draft and requires content:article:edit. All writes check expectedRevision. Agent writes also require the task lease and evidence envelope.
          */
         post: operations["revertArticle"];
         delete?: never;
@@ -1289,23 +1658,6 @@ export interface paths {
          */
         put: operations["updateReleaseI18n"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/releases/{id}/retranslate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Retranslate */
-        post: operations["retranslateRelease"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2030,26 +2382,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/translations/retranslate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Retranslate a specified object
-         * @description Requires translation:review. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
-         */
-        post: operations["retranslateContent"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/translations/fix": {
         parameters: {
             query?: never;
@@ -2614,10 +2946,5033 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/seo/listings/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * getSeoListingCandidate
+         * @description Isolated software listing. Only publish creates a public package. Downloads use an evidence-backed official page; installer files are never verified.
+         */
+        get: operations["getSeoListingCandidate"];
+        /**
+         * upsertSeoListingCandidate
+         * @description Isolated software listing. Only publish creates a public package. Downloads use an evidence-backed official page; installer files are never verified.
+         */
+        put: operations["upsertSeoListingCandidate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/listing-baselines/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * lockSeoListingBaseline
+         * @description Administrator attestation after independent developer/domain verification. Identity is locked; Agent credentials are forbidden.
+         */
+        put: operations["lockSeoListingBaseline"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Capture an article source
+         * @description Human editors only. Fetch and store a verified source excerpt for this article or a linked app. Does not require an Agent task lease.
+         */
+        post: operations["captureArticleEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/articles/{id}/test-artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * listArticleTestArtifacts
+         * @description Read immutable reports referenced by article claims. Returns the latest 100 reports.
+         */
+        get: operations["listArticleTestArtifacts"];
+        put?: never;
+        /**
+         * createArticleTestArtifact
+         * @description Attest to actual test output using a trusted administrator or runner account. Agent tokens cannot register artifacts. Submitted commands are stored as data and never executed. Retries of an identical payload return the same artifact.
+         */
+        post: operations["createArticleTestArtifact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @example {
+         *       "source": "gsc",
+         *       "enabled": false,
+         *       "configured": false
+         *     }
+         */
+        SeoProviderView: {
+            /** @enum {string} */
+            source: "gsc" | "bing" | "audit";
+            enabled: boolean;
+            configured: boolean;
+        };
+        /**
+         * @example {
+         *       "enabled": false,
+         *       "clearCredentials": true
+         *     }
+         */
+        SeoProviderUpdate: {
+            enabled?: boolean;
+            clearCredentials?: boolean;
+            credentials?: {
+                property?: string;
+                clientId?: string;
+                clientSecret?: string;
+                refreshToken?: string;
+                apiKey?: string;
+                originUrl?: string;
+            };
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "source": "gsc",
+         *         "enabled": false,
+         *         "configured": false
+         *       }
+         *     }
+         */
+        SeoProviderResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["SeoProviderView"];
+        };
+        /**
+         * @description Only fields belonging to the entity are accepted. Limits follow internal/content.Registry: package.summary 200, announcement.title 200/body 2000, collection/feature.title 200, mirror.name 128. fixTranslation cannot rewrite source fields. sections allows at most 8 groups with 6 items each and at most 2400 serialized characters.
+         * @example {}
+         */
+        TranslationReadFields: {
+            /** @example null */
+            displayName?: string | null;
+            /** @example null */
+            summary?: string | null;
+            /** @example null */
+            description?: string | null;
+            /** @example null */
+            title?: string | null;
+            /** @example null */
+            subtitle?: string | null;
+            /** @example null */
+            body?: string | null;
+            /** @example null */
+            badge?: string | null;
+            /** @example null */
+            ctaLabel?: string | null;
+            /** @example null */
+            name?: string | null;
+            /** @example null */
+            caption?: string | null;
+            /** @example null */
+            note?: string | null;
+            /** @example null */
+            notes?: string | null;
+            /** @example null */
+            bodyMarkdown?: string | null;
+            /** @example null */
+            testNote?: string | null;
+            /** @example null */
+            seoTitle?: string | null;
+            /** @example null */
+            seoDescription?: string | null;
+            /** @example null */
+            role?: string | null;
+            /** @example null */
+            bio?: string | null;
+            /** @example [] */
+            sections?: components["schemas"]["ReleaseSection"][];
+            /**
+             * @description Article revision cover alt in this translation locale. Empty falls back to English then source.
+             * @example null
+             */
+            coverAlt?: string | null;
+        };
+        /**
+         * @example {
+         *       "idempotencyKey": "claim-001",
+         *       "limit": 1,
+         *       "kinds": [
+         *         "fill_fact"
+         *       ]
+         *     }
+         */
+        SeoTaskClaim: {
+            idempotencyKey: string;
+            /** @default 1 */
+            limit: number;
+            kinds?: string[];
+        };
+        /**
+         * @example {
+         *       "idempotencyKey": "fixture-complete-001",
+         *       "fencing": 1,
+         *       "outcome": "done"
+         *     }
+         */
+        SeoTaskComplete: {
+            idempotencyKey: string;
+            /** Format: int64 */
+            fencing: number;
+            /** @enum {string} */
+            outcome: "done" | "skipped" | "quarantined";
+            reason?: string;
+        };
+        /**
+         * @example {
+         *       "idempotencyKey": "fixture-defer-001",
+         *       "fencing": 1,
+         *       "reason": "Official source unavailable",
+         *       "retryAt": "2026-10-20T00:00:00Z"
+         *     }
+         */
+        SeoTaskDefer: {
+            idempotencyKey: string;
+            /** Format: int64 */
+            fencing: number;
+            reason: string;
+            /** Format: date-time */
+            retryAt: string;
+        };
+        /**
+         * @example {
+         *       "idempotencyKey": "evidence-001",
+         *       "taskId": 1,
+         *       "fencing": 1,
+         *       "entityKey": "pkg:1",
+         *       "url": "https://example.com/product",
+         *       "excerpt": "Requires macOS 14."
+         *     }
+         */
+        SeoEvidenceCapture: {
+            idempotencyKey: string;
+            /** Format: int64 */
+            taskId: number;
+            /** Format: int64 */
+            fencing: number;
+            entityKey: string;
+            /** Format: uri */
+            url: string;
+            excerpt: string;
+        };
+        /**
+         * @example {
+         *       "pageKind": "overview",
+         *       "locale": "en-US",
+         *       "variant": "current_version",
+         *       "slots": [
+         *         "name",
+         *         "version"
+         *       ],
+         *       "baselineCtr": 0.01,
+         *       "targetCtr": 0.015
+         *     }
+         */
+        SeoSnippetProposal: {
+            /** @enum {string} */
+            pageKind: "overview";
+            locale: components["schemas"]["Locale"];
+            /** @enum {string} */
+            variant: "verified_free" | "current_version" | "uninstall_alternatives";
+            slots: ("name" | "version" | "free" | "uninstall" | "alternatives")[];
+            baselineCtr: number;
+            targetCtr: number;
+        };
+        /**
+         * @example {
+         *       "reason": "implementation_error"
+         *     }
+         */
+        SeoCompensation: {
+            /** @enum {string} */
+            reason: "implementation_error" | "previous_still_valid";
+            fieldPaths?: string[];
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "kind": "fill_fact",
+         *       "entityKey": "pkg:1",
+         *       "locale": "en-US",
+         *       "dedupeKey": "fixture-opportunity",
+         *       "priority": 100,
+         *       "evidence": {},
+         *       "evidenceHash": "fixture",
+         *       "ruleVersion": "opportunities-v1",
+         *       "state": "leased",
+         *       "fencing": 1,
+         *       "attempts": 1,
+         *       "createdAt": "2026-10-19T00:00:00Z",
+         *       "updatedAt": "2026-10-19T00:00:00Z"
+         *     }
+         */
+        SeoTask: {
+            /** Format: int64 */
+            id: number;
+            kind: string;
+            entityKey: string;
+            locale: string | null;
+            dedupeKey: string;
+            priority: number;
+            evidence: unknown;
+            evidenceHash: string;
+            ruleVersion: string;
+            /** @enum {string} */
+            state: "open" | "leased" | "done" | "deferred" | "skipped" | "quarantined" | "expired";
+            /** Format: int64 */
+            fencing: number;
+            /** Format: int64 */
+            attempts: number;
+            createdAt: string;
+            updatedAt: string;
+            result?: unknown;
+            /** Format: date-time */
+            leaseUntil?: string | null;
+            /** Format: date-time */
+            nextRetryAt?: string | null;
+            /** Format: date-time */
+            lastAttemptAt?: string | null;
+            /** Format: date-time */
+            expiresAt?: string | null;
+            leaseOwner?: string | null;
+        };
+        /**
+         * @example {
+         *       "records": [
+         *         {
+         *           "id": 1,
+         *           "kind": "fill_fact",
+         *           "entityKey": "pkg:1",
+         *           "locale": "en-US",
+         *           "dedupeKey": "fixture-opportunity",
+         *           "priority": 100,
+         *           "evidence": {},
+         *           "evidenceHash": "fixture",
+         *           "ruleVersion": "opportunities-v1",
+         *           "state": "leased",
+         *           "fencing": 1,
+         *           "attempts": 1,
+         *           "createdAt": "2026-10-19T00:00:00Z",
+         *           "updatedAt": "2026-10-19T00:00:00Z"
+         *         }
+         *       ]
+         *     }
+         */
+        SeoTaskList: {
+            records: components["schemas"]["SeoTask"][];
+        };
+        /**
+         * @example {
+         *       "task": {
+         *         "id": 1
+         *       },
+         *       "actions": [],
+         *       "evidence": [],
+         *       "experiments": [],
+         *       "gateEvents": []
+         *     }
+         */
+        SeoTaskTrace: {
+            /** Format: int64 */
+            currentRevision?: number;
+            revisions?: {
+                [key: string]: number;
+            };
+            task: {
+                [key: string]: unknown;
+            };
+            actions: {
+                [key: string]: unknown;
+            }[];
+            evidence: {
+                [key: string]: unknown;
+            }[];
+            experiments: {
+                [key: string]: unknown;
+            }[];
+            gateEvents: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "entityKey": "pkg:1",
+         *       "sourceUrl": "https://example.com/product",
+         *       "finalUrl": "https://example.com/product",
+         *       "excerpt": "Requires macOS 14.",
+         *       "bodyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *       "fetchedAt": "2026-10-19T00:00:00Z",
+         *       "validUntil": "2026-11-18T00:00:00Z",
+         *       "authority": "official",
+         *       "fetchStatus": 200,
+         *       "revokedAt": null
+         *     }
+         */
+        SeoEvidence: {
+            /** Format: int64 */
+            id: number;
+            entityKey: string;
+            sourceUrl: string;
+            finalUrl: string;
+            excerpt: string;
+            bodyHash: string;
+            /** Format: date-time */
+            fetchedAt: string;
+            /** Format: date-time */
+            validUntil: string;
+            authority: string;
+            /** Format: int64 */
+            fetchStatus: number;
+            /** Format: date-time */
+            revokedAt: string | null;
+        };
+        /**
+         * @example {
+         *       "records": [],
+         *       "current": 1,
+         *       "size": 20,
+         *       "total": 0,
+         *       "metrics": []
+         *     }
+         */
+        SeoActionPage: {
+            records: {
+                [key: string]: unknown;
+            }[];
+            /** Format: int64 */
+            current: number;
+            /** Format: int64 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+            metrics: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "state": "running",
+         *       "requiredImpressions": 10000,
+         *       "variant": "current_version",
+         *       "templateVersion": "snippet-v1"
+         *     }
+         */
+        SeoSnippetResult: {
+            /** Format: int64 */
+            id: number;
+            state: string;
+            /** Format: int64 */
+            requiredImpressions: number;
+            variant: string;
+            templateVersion: string;
+        };
+        /**
+         * @example {
+         *       "actionId": 1,
+         *       "compensated": true,
+         *       "affectedUrls": []
+         *     }
+         */
+        SeoCompensationResult: {
+            /** Format: int64 */
+            actionId: number;
+            compensated: boolean;
+            affectedUrls: string[];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "id": 1,
+         *             "kind": "fill_fact",
+         *             "entityKey": "pkg:1",
+         *             "locale": "en-US",
+         *             "dedupeKey": "fixture-opportunity",
+         *             "priority": 100,
+         *             "evidence": {},
+         *             "evidenceHash": "fixture",
+         *             "ruleVersion": "opportunities-v1",
+         *             "state": "leased",
+         *             "fencing": 1,
+         *             "attempts": 1,
+         *             "createdAt": "2026-10-19T00:00:00Z",
+         *             "updatedAt": "2026-10-19T00:00:00Z"
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        SeoTaskListResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["SeoTaskList"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "task": {
+         *           "id": 1
+         *         },
+         *         "actions": [],
+         *         "evidence": [],
+         *         "experiments": [],
+         *         "gateEvents": []
+         *       }
+         *     }
+         */
+        SeoTaskTraceResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["SeoTaskTrace"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "kind": "fill_fact",
+         *         "entityKey": "pkg:1",
+         *         "locale": "en-US",
+         *         "dedupeKey": "fixture-opportunity",
+         *         "priority": 100,
+         *         "evidence": {},
+         *         "evidenceHash": "fixture",
+         *         "ruleVersion": "opportunities-v1",
+         *         "state": "leased",
+         *         "fencing": 1,
+         *         "attempts": 1,
+         *         "createdAt": "2026-10-19T00:00:00Z",
+         *         "updatedAt": "2026-10-19T00:00:00Z"
+         *       }
+         *     }
+         */
+        SeoTaskResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["SeoTask"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "entityKey": "pkg:1",
+         *         "sourceUrl": "https://example.com/product",
+         *         "finalUrl": "https://example.com/product",
+         *         "excerpt": "Requires macOS 14.",
+         *         "bodyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *         "fetchedAt": "2026-10-19T00:00:00Z",
+         *         "validUntil": "2026-11-18T00:00:00Z",
+         *         "authority": "official",
+         *         "fetchStatus": 200,
+         *         "revokedAt": null
+         *       }
+         *     }
+         */
+        SeoEvidenceResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["SeoEvidence"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [],
+         *         "current": 1,
+         *         "size": 20,
+         *         "total": 0,
+         *         "metrics": []
+         *       }
+         *     }
+         */
+        SeoActionPageResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["SeoActionPage"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "state": "running",
+         *         "requiredImpressions": 10000,
+         *         "variant": "current_version",
+         *         "templateVersion": "snippet-v1"
+         *       }
+         *     }
+         */
+        SeoSnippetResultResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["SeoSnippetResult"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "actionId": 1,
+         *         "compensated": true,
+         *         "affectedUrls": []
+         *       }
+         *     }
+         */
+        SeoCompensationResultResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["SeoCompensationResult"];
+        };
+        /**
+         * @example {
+         *       "version": 1,
+         *       "actions": {
+         *         "maintenance": {
+         *           "enabled": true,
+         *           "mode": "live"
+         *         },
+         *         "translation": {
+         *           "enabled": true,
+         *           "mode": "live"
+         *         },
+         *         "fact_fix": {
+         *           "enabled": true,
+         *           "mode": "live"
+         *         },
+         *         "withdraw": {
+         *           "enabled": true,
+         *           "mode": "live"
+         *         },
+         *         "compensate": {
+         *           "enabled": true,
+         *           "mode": "live"
+         *         },
+         *         "fact_fill": {
+         *           "enabled": true,
+         *           "mode": "proposal"
+         *         },
+         *         "content": {
+         *           "enabled": true,
+         *           "mode": "proposal"
+         *         },
+         *         "listing": {
+         *           "enabled": true,
+         *           "mode": "proposal"
+         *         },
+         *         "article": {
+         *           "enabled": true,
+         *           "mode": "proposal"
+         *         },
+         *         "snippet": {
+         *           "enabled": true,
+         *           "mode": "proposal"
+         *         },
+         *         "operations": {
+         *           "enabled": true,
+         *           "mode": "proposal"
+         *         },
+         *         "research": {
+         *           "enabled": true,
+         *           "mode": "live"
+         *         }
+         *       },
+         *       "dailyEntities": {
+         *         "maintenance": 100,
+         *         "translation": 100,
+         *         "fact_fix": 100,
+         *         "withdraw": 100,
+         *         "compensate": 100,
+         *         "fact_fill": 100,
+         *         "content": 100,
+         *         "listing": 100,
+         *         "article": 100,
+         *         "snippet": 100,
+         *         "operations": 100,
+         *         "research": 100
+         *       },
+         *       "researchDailyMicros": 15000000,
+         *       "researchMonthlyMicros": 100000000,
+         *       "businessDropRatio": 0.5
+         *     }
+         */
+        SeoAutomation: {
+            /** @enum {integer} */
+            version: 1;
+            actions: {
+                maintenance: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                translation: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                fact_fix: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                withdraw: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                compensate: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                fact_fill: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                content: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                listing: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                article: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                snippet: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                operations: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+                research: {
+                    enabled: boolean;
+                    /** @enum {string} */
+                    mode: "proposal" | "live";
+                };
+            };
+            dailyEntities: {
+                /** Format: int64 */
+                maintenance: number;
+                /** Format: int64 */
+                translation: number;
+                /** Format: int64 */
+                fact_fix: number;
+                /** Format: int64 */
+                withdraw: number;
+                /** Format: int64 */
+                compensate: number;
+                /** Format: int64 */
+                fact_fill: number;
+                /** Format: int64 */
+                content: number;
+                /** Format: int64 */
+                listing: number;
+                /** Format: int64 */
+                article: number;
+                /** Format: int64 */
+                snippet: number;
+                /** Format: int64 */
+                operations: number;
+                /** Format: int64 */
+                research: number;
+            };
+            /** Format: int64 */
+            researchDailyMicros: number;
+            /** Format: int64 */
+            researchMonthlyMicros: number;
+            businessDropRatio: number;
+        };
+        /**
+         * @example {
+         *       "automation": {
+         *         "version": 1,
+         *         "actions": {
+         *           "maintenance": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "translation": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "fact_fix": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "withdraw": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "compensate": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "fact_fill": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "content": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "listing": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "article": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "snippet": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "operations": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "research": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           }
+         *         },
+         *         "dailyEntities": {
+         *           "maintenance": 100,
+         *           "translation": 100,
+         *           "fact_fix": 100,
+         *           "withdraw": 100,
+         *           "compensate": 100,
+         *           "fact_fill": 100,
+         *           "content": 100,
+         *           "listing": 100,
+         *           "article": 100,
+         *           "snippet": 100,
+         *           "operations": 100,
+         *           "research": 100
+         *         },
+         *         "researchDailyMicros": 15000000,
+         *         "researchMonthlyMicros": 100000000,
+         *         "businessDropRatio": 0.5
+         *       },
+         *       "revision": 1
+         *     }
+         */
+        SeoAutomationView: {
+            automation: components["schemas"]["SeoAutomation"];
+            /** Format: int64 */
+            revision: number;
+        };
+        /**
+         * @example {
+         *       "automation": {
+         *         "version": 1,
+         *         "actions": {
+         *           "maintenance": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "translation": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "fact_fix": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "withdraw": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "compensate": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           },
+         *           "fact_fill": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "content": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "listing": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "article": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "snippet": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "operations": {
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           },
+         *           "research": {
+         *             "enabled": true,
+         *             "mode": "live"
+         *           }
+         *         },
+         *         "dailyEntities": {
+         *           "maintenance": 100,
+         *           "translation": 100,
+         *           "fact_fix": 100,
+         *           "withdraw": 100,
+         *           "compensate": 100,
+         *           "fact_fill": 100,
+         *           "content": 100,
+         *           "listing": 100,
+         *           "article": 100,
+         *           "snippet": 100,
+         *           "operations": 100,
+         *           "research": 100
+         *         },
+         *         "researchDailyMicros": 15000000,
+         *         "researchMonthlyMicros": 100000000,
+         *         "businessDropRatio": 0.5
+         *       },
+         *       "expectedRevision": 1,
+         *       "idempotencyKey": "fixture-tune-001",
+         *       "reason": "Fixture evaluation"
+         *     }
+         */
+        SeoAutomationUpdate: {
+            automation: components["schemas"]["SeoAutomation"];
+            /** Format: int64 */
+            expectedRevision: number;
+            idempotencyKey: string;
+            reason: string;
+        };
+        /**
+         * @example {
+         *       "locale": "zh-CN",
+         *       "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+         *       "status": "machine",
+         *       "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *       "model": "hermes:fixture",
+         *       "fields": {
+         *         "name": "文件管理工具"
+         *       }
+         *     }
+         */
+        BatchTranslationValue: {
+            locale: components["schemas"]["Locale"];
+            revision: string;
+            /** @enum {string} */
+            status: "source" | "machine" | "manual" | "pending" | "failed" | "missing" | "skipped";
+            sourceHash: string;
+            model: string | null;
+            fields: components["schemas"]["TranslationReadFields"];
+        };
+        /**
+         * @example {
+         *       "ref": {
+         *         "entity": "category",
+         *         "id": 702
+         *       },
+         *       "sourceLocale": "en-US",
+         *       "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *       "sourceVersion": "0000000000000000000000000000000000000000000000000000000000000000",
+         *       "fields": {
+         *         "name": "File manager"
+         *       },
+         *       "translations": [
+         *         {
+         *           "locale": "zh-CN",
+         *           "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+         *           "status": "machine",
+         *           "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *           "model": "hermes:fixture",
+         *           "fields": {
+         *             "name": "文件管理工具"
+         *           }
+         *         }
+         *       ]
+         *     }
+         */
+        TranslationsSource: {
+            ref: components["schemas"]["ContentRef"];
+            sourceLocale: components["schemas"]["Locale"];
+            sourceHash: string;
+            sourceVersion: string;
+            fields: components["schemas"]["ContentFields"];
+            translations: components["schemas"]["BatchTranslationValue"][];
+        };
+        /**
+         * @example {
+         *       "locale": "zh-CN",
+         *       "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *       "expectedRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+         *       "idempotencyKey": "write-001",
+         *       "fields": {
+         *         "name": "文件管理工具"
+         *       }
+         *     }
+         */
+        BatchTranslationInput: {
+            locale: components["schemas"]["Locale"];
+            sourceHash: string;
+            expectedRevision: string;
+            idempotencyKey: string;
+            fields: components["schemas"]["ContentFields"];
+        };
+        /**
+         * @example {
+         *       "ref": {
+         *         "entity": "category",
+         *         "id": 702
+         *       },
+         *       "model": "fixture",
+         *       "taskId": 1,
+         *       "fencing": 1,
+         *       "translations": [
+         *         {
+         *           "locale": "zh-CN",
+         *           "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *           "expectedRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+         *           "idempotencyKey": "write-001",
+         *           "fields": {
+         *             "name": "文件管理工具"
+         *           }
+         *         }
+         *       ]
+         *     }
+         */
+        TranslationsBatchWrite: {
+            ref: components["schemas"]["ContentRef"];
+            model: string;
+            /** Format: int64 */
+            taskId: number;
+            /** Format: int64 */
+            fencing: number;
+            translations: components["schemas"]["BatchTranslationInput"][];
+        };
+        /**
+         * @example {
+         *       "locale": "zh-CN",
+         *       "status": "written",
+         *       "reason": "validated",
+         *       "value": {
+         *         "locale": "zh-CN",
+         *         "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+         *         "status": "machine",
+         *         "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *         "model": "hermes:fixture",
+         *         "fields": {
+         *           "name": "文件管理工具"
+         *         }
+         *       }
+         *     }
+         */
+        BatchTranslationResult: {
+            locale: string;
+            /** @enum {string} */
+            status: "written" | "preview" | "proposal" | "preserved_manual" | "failed";
+            reason: string;
+            value: components["schemas"]["BatchTranslationValue"] | null;
+        };
+        /**
+         * @example {
+         *       "results": [
+         *         {
+         *           "locale": "zh-CN",
+         *           "status": "written",
+         *           "reason": "validated",
+         *           "value": {
+         *             "locale": "zh-CN",
+         *             "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+         *             "status": "machine",
+         *             "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *             "model": "hermes:fixture",
+         *             "fields": {
+         *               "name": "文件管理工具"
+         *             }
+         *           }
+         *         }
+         *       ],
+         *       "taskId": 1,
+         *       "leaseRetained": true
+         *     }
+         */
+        TranslationsBatchResult: {
+            results: components["schemas"]["BatchTranslationResult"][];
+            /** Format: int64 */
+            taskId: number;
+            leaseRetained: boolean;
+        };
+        /**
+         * @example {
+         *       "ref": {
+         *         "entity": "category",
+         *         "id": 702
+         *       },
+         *       "field": "name",
+         *       "locale": "zh-CN",
+         *       "sourceVersion": "1.0",
+         *       "state": "deferred",
+         *       "reason": "Await official source",
+         *       "evidence": {
+         *         "sourceUrl": "https://example.com"
+         *       },
+         *       "lastAttemptAt": "2026-10-18T10:00:00Z",
+         *       "valueHash": "0000000000000000000000000000000000000000000000000000000000000000"
+         *     }
+         */
+        SeoImportEntry: {
+            ref: components["schemas"]["ContentRef"];
+            field: string;
+            locale: components["schemas"]["Locale"];
+            sourceVersion: string;
+            /** @enum {string} */
+            state: "processed" | "deferred";
+            reason: string;
+            evidence: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            lastAttemptAt: string;
+            valueHash: string;
+        };
+        /**
+         * @example {
+         *       "idempotencyKey": "fixture-import-001",
+         *       "profile": "fixture",
+         *       "cursor": {
+         *         "sequence": 1
+         *       },
+         *       "entries": [
+         *         {
+         *           "ref": {
+         *             "entity": "category",
+         *             "id": 702
+         *           },
+         *           "field": "name",
+         *           "locale": "zh-CN",
+         *           "sourceVersion": "1.0",
+         *           "state": "deferred",
+         *           "reason": "Await official source",
+         *           "evidence": {
+         *             "sourceUrl": "https://example.com"
+         *           },
+         *           "lastAttemptAt": "2026-10-18T10:00:00Z",
+         *           "valueHash": "0000000000000000000000000000000000000000000000000000000000000000"
+         *         }
+         *       ]
+         *     }
+         */
+        SeoTasksImport: {
+            idempotencyKey: string;
+            profile: string;
+            cursor: {
+                [key: string]: unknown;
+            };
+            entries: components["schemas"]["SeoImportEntry"][];
+        };
+        /**
+         * @example {
+         *       "taskId": 1,
+         *       "state": "deferred",
+         *       "reconciliation": "imported_deferred",
+         *       "currentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *       "currentVersion": "1.0"
+         *     }
+         */
+        SeoImportResult: {
+            /** Format: int64 */
+            taskId: number;
+            state: string;
+            reconciliation: string;
+            currentHash: string;
+            currentVersion: string;
+        };
+        /**
+         * @example {
+         *       "results": [
+         *         {
+         *           "taskId": 1,
+         *           "state": "deferred",
+         *           "reconciliation": "imported_deferred",
+         *           "currentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *           "currentVersion": "1.0"
+         *         }
+         *       ],
+         *       "processed": 0,
+         *       "deferred": 1,
+         *       "cursor": {
+         *         "sequence": 1
+         *       }
+         *     }
+         */
+        SeoTasksImportResult: {
+            results: components["schemas"]["SeoImportResult"][];
+            /** Format: int64 */
+            processed: number;
+            /** Format: int64 */
+            deferred: number;
+            cursor: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "automation": {
+         *           "version": 1,
+         *           "actions": {
+         *             "maintenance": {
+         *               "enabled": true,
+         *               "mode": "live"
+         *             },
+         *             "translation": {
+         *               "enabled": true,
+         *               "mode": "live"
+         *             },
+         *             "fact_fix": {
+         *               "enabled": true,
+         *               "mode": "live"
+         *             },
+         *             "withdraw": {
+         *               "enabled": true,
+         *               "mode": "live"
+         *             },
+         *             "compensate": {
+         *               "enabled": true,
+         *               "mode": "live"
+         *             },
+         *             "fact_fill": {
+         *               "enabled": true,
+         *               "mode": "proposal"
+         *             },
+         *             "content": {
+         *               "enabled": true,
+         *               "mode": "proposal"
+         *             },
+         *             "listing": {
+         *               "enabled": true,
+         *               "mode": "proposal"
+         *             },
+         *             "article": {
+         *               "enabled": true,
+         *               "mode": "proposal"
+         *             },
+         *             "snippet": {
+         *               "enabled": true,
+         *               "mode": "proposal"
+         *             },
+         *             "operations": {
+         *               "enabled": true,
+         *               "mode": "proposal"
+         *             },
+         *             "research": {
+         *               "enabled": true,
+         *               "mode": "live"
+         *             }
+         *           },
+         *           "dailyEntities": {
+         *             "maintenance": 100,
+         *             "translation": 100,
+         *             "fact_fix": 100,
+         *             "withdraw": 100,
+         *             "compensate": 100,
+         *             "fact_fill": 100,
+         *             "content": 100,
+         *             "listing": 100,
+         *             "article": 100,
+         *             "snippet": 100,
+         *             "operations": 100,
+         *             "research": 100
+         *           },
+         *           "researchDailyMicros": 15000000,
+         *           "researchMonthlyMicros": 100000000,
+         *           "businessDropRatio": 0.5
+         *         },
+         *         "revision": 1
+         *       }
+         *     }
+         */
+        SeoAutomationViewResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["SeoAutomationView"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "results": [
+         *           {
+         *             "taskId": 1,
+         *             "state": "deferred",
+         *             "reconciliation": "imported_deferred",
+         *             "currentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *             "currentVersion": "1.0"
+         *           }
+         *         ],
+         *         "processed": 0,
+         *         "deferred": 1,
+         *         "cursor": {
+         *           "sequence": 1
+         *         }
+         *       }
+         *     }
+         */
+        SeoTasksImportResultResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["SeoTasksImportResult"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "ref": {
+         *           "entity": "category",
+         *           "id": 702
+         *         },
+         *         "sourceLocale": "en-US",
+         *         "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *         "sourceVersion": "0000000000000000000000000000000000000000000000000000000000000000",
+         *         "fields": {
+         *           "name": "File manager"
+         *         },
+         *         "translations": [
+         *           {
+         *             "locale": "zh-CN",
+         *             "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+         *             "status": "machine",
+         *             "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *             "model": "hermes:fixture",
+         *             "fields": {
+         *               "name": "文件管理工具"
+         *             }
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        TranslationsSourceResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["TranslationsSource"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "results": [
+         *           {
+         *             "locale": "zh-CN",
+         *             "status": "written",
+         *             "reason": "validated",
+         *             "value": {
+         *               "locale": "zh-CN",
+         *               "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+         *               "status": "machine",
+         *               "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+         *               "model": "hermes:fixture",
+         *               "fields": {
+         *                 "name": "文件管理工具"
+         *               }
+         *             }
+         *           }
+         *         ],
+         *         "taskId": 1,
+         *         "leaseRetained": true
+         *       }
+         *     }
+         */
+        TranslationsBatchResultResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["TranslationsBatchResult"];
+        };
+        /**
+         * @description A complete assertion bound to a fresh server-captured evidence snapshot. All visible sentences, title, summary, SEO text and test notes must be covered at publication. Review revisions require an immutable testArtifactId for every claim, including claims labeled factual; other types need an artifact for test or comparison assertions. Artifact references must match article, package, appVersion and region. Missing proof rejects publication without rewriting the draft.
+         * @example {
+         *       "text": "Example App supports macOS.",
+         *       "kind": "factual",
+         *       "evidenceId": 1,
+         *       "excerpt": "Example App supports macOS.",
+         *       "packageId": 1,
+         *       "appVersion": "",
+         *       "region": "ZZ",
+         *       "testArtifactId": null
+         *     }
+         */
+        ArticleClaim: {
+            /** @example Example App supports macOS. */
+            text: string;
+            /**
+             * @example factual
+             * @enum {string}
+             */
+            kind: "factual" | "test";
+            /**
+             * Format: int64
+             * @example 1
+             */
+            evidenceId: number;
+            /** @example Example App supports macOS. */
+            excerpt: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            packageId?: number | null;
+            /** @example  */
+            appVersion: string;
+            /** @example ZZ */
+            region: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            testArtifactId?: number | null;
+        };
+        /**
+         * @description Unique entity, intent and source-language destination in seo_targets. Required for Agent article creation and all publication paths; an existing different destination rejects the write.
+         * @example {
+         *       "entityKey": "topic:mac-editors",
+         *       "intent": "topic"
+         *     }
+         */
+        ArticleSeoTarget: {
+            /** @example topic:mac-editors */
+            entityKey: string;
+            /**
+             * @example topic
+             * @enum {string}
+             */
+            intent: "download" | "install" | "brew" | "uninstall" | "alternative" | "price" | "version" | "requirements" | "compare" | "topic";
+        };
+        /**
+         * @example {
+         *       "evidenceId": 1,
+         *       "sourceUrl": "https://vendor.example.test/guide",
+         *       "bodyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *       "checkedAt": "2026-10-19T00:00:00Z",
+         *       "validUntil": "2026-11-19T00:00:00Z",
+         *       "testArtifactId": null,
+         *       "testArtifactHash": null
+         *     }
+         */
+        ArticleClaimEvidence: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            evidenceId: number;
+            /** @example https://vendor.example.test/guide */
+            sourceUrl: string;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            bodyHash: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-19T00:00:00Z
+             */
+            checkedAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-11-19T00:00:00Z
+             */
+            validUntil: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            testArtifactId: number | null;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            testArtifactHash: string | null;
+        };
+        /**
+         * @example {
+         *       "url": "https://vendor.example.test/guide",
+         *       "excerpt": "Example App supports macOS.",
+         *       "packageId": 1,
+         *       "idempotencyKey": "article-evidence-001"
+         *     }
+         */
+        ArticleEvidenceCapture: {
+            /** Format: uri */
+            url: string;
+            excerpt: string;
+            /** Format: int64 */
+            packageId?: number | null;
+            idempotencyKey: string;
+        };
+        /**
+         * @example {
+         *       "packageId": 1,
+         *       "appVersion": "1.0",
+         *       "macOS": "15.0",
+         *       "architecture": "arm64",
+         *       "region": "US",
+         *       "performedAt": "2026-10-19T00:00:00Z",
+         *       "runner": "trusted-ci-fixture",
+         *       "command": "fixture-benchmark --iterations 10",
+         *       "environment": {
+         *         "machine": "fixture-machine"
+         *       },
+         *       "output": "We tested the export task in 10 seconds.",
+         *       "conclusions": [
+         *         "We tested the export task in 10 seconds."
+         *       ],
+         *       "attested": true
+         *     }
+         */
+        ArticleTestArtifactInput: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            packageId: number;
+            /** @example 1.0 */
+            appVersion: string;
+            /** @example 15.0 */
+            macOS: string;
+            /**
+             * @example arm64
+             * @enum {string}
+             */
+            architecture: "arm64" | "x86_64" | "universal";
+            /** @example US */
+            region: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-19T00:00:00Z
+             */
+            performedAt: string;
+            /** @example trusted-ci-fixture */
+            runner: string;
+            /** @example fixture-benchmark --iterations 10 */
+            command: string;
+            environment: {
+                [key: string]: string;
+            };
+            /** @example We tested the export task in 10 seconds. */
+            output: string;
+            conclusions: string[];
+            /**
+             * @example true
+             * @enum {boolean}
+             */
+            attested: true;
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "articleId": 1,
+         *       "packageId": 1,
+         *       "payload": {
+         *         "packageId": 1,
+         *         "appVersion": "1.0",
+         *         "macOS": "15.0",
+         *         "architecture": "arm64",
+         *         "region": "US",
+         *         "performedAt": "2026-10-19T00:00:00Z",
+         *         "runner": "trusted-ci-fixture",
+         *         "command": "fixture-benchmark --iterations 10",
+         *         "environment": {
+         *           "machine": "fixture-machine"
+         *         },
+         *         "output": "We tested the export task in 10 seconds.",
+         *         "conclusions": [
+         *           "We tested the export task in 10 seconds."
+         *         ],
+         *         "attested": true
+         *       },
+         *       "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *       "registeredBy": 1,
+         *       "createdAt": "2026-10-19T00:00:00Z"
+         *     }
+         */
+        ArticleTestArtifact: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            articleId: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            packageId: number;
+            payload: components["schemas"]["ArticleTestArtifactInput"];
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            sha256: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            registeredBy: number;
+            /**
+             * Format: date-time
+             * @example 2026-10-19T00:00:00Z
+             */
+            createdAt: string;
+        };
+        /**
+         * @example {
+         *       "items": [
+         *         {
+         *           "id": 1,
+         *           "articleId": 1,
+         *           "packageId": 1,
+         *           "payload": {
+         *             "packageId": 1,
+         *             "appVersion": "1.0",
+         *             "macOS": "15.0",
+         *             "architecture": "arm64",
+         *             "region": "US",
+         *             "performedAt": "2026-10-19T00:00:00Z",
+         *             "runner": "trusted-ci-fixture",
+         *             "command": "fixture-benchmark --iterations 10",
+         *             "environment": {
+         *               "machine": "fixture-machine"
+         *             },
+         *             "output": "We tested the export task in 10 seconds.",
+         *             "conclusions": [
+         *               "We tested the export task in 10 seconds."
+         *             ],
+         *             "attested": true
+         *           },
+         *           "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *           "registeredBy": 1,
+         *           "createdAt": "2026-10-19T00:00:00Z"
+         *         }
+         *       ]
+         *     }
+         */
+        ArticleTestArtifactList: {
+            items: components["schemas"]["ArticleTestArtifact"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "items": [
+         *           {
+         *             "id": 1,
+         *             "articleId": 1,
+         *             "packageId": 1,
+         *             "payload": {
+         *               "packageId": 1,
+         *               "appVersion": "1.0",
+         *               "macOS": "15.0",
+         *               "architecture": "arm64",
+         *               "region": "US",
+         *               "performedAt": "2026-10-19T00:00:00Z",
+         *               "runner": "trusted-ci-fixture",
+         *               "command": "fixture-benchmark --iterations 10",
+         *               "environment": {
+         *                 "machine": "fixture-machine"
+         *               },
+         *               "output": "We tested the export task in 10 seconds.",
+         *               "conclusions": [
+         *                 "We tested the export task in 10 seconds."
+         *               ],
+         *               "attested": true
+         *             },
+         *             "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *             "registeredBy": 1,
+         *             "createdAt": "2026-10-19T00:00:00Z"
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        ArticleTestArtifactListResponse: {
+            /**
+             * @example 0000
+             * @enum {string}
+             */
+            code: "0000";
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["ArticleTestArtifactList"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "articleId": 1,
+         *         "packageId": 1,
+         *         "payload": {
+         *           "packageId": 1,
+         *           "appVersion": "1.0",
+         *           "macOS": "15.0",
+         *           "architecture": "arm64",
+         *           "region": "US",
+         *           "performedAt": "2026-10-19T00:00:00Z",
+         *           "runner": "trusted-ci-fixture",
+         *           "command": "fixture-benchmark --iterations 10",
+         *           "environment": {
+         *             "machine": "fixture-machine"
+         *           },
+         *           "output": "We tested the export task in 10 seconds.",
+         *           "conclusions": [
+         *             "We tested the export task in 10 seconds."
+         *           ],
+         *           "attested": true
+         *         },
+         *         "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *         "registeredBy": 1,
+         *         "createdAt": "2026-10-19T00:00:00Z"
+         *       }
+         *     }
+         */
+        ArticleTestArtifactResponse: {
+            /**
+             * @example 0000
+             * @enum {string}
+             */
+            code: "0000";
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["ArticleTestArtifact"];
+        };
+        /**
+         * @example {
+         *       "expectedRevision": 0,
+         *       "action": "save",
+         *       "link": {
+         *         "token": "example-app",
+         *         "name": "Example App",
+         *         "pricing": "unknown",
+         *         "sourceLocale": "en-US",
+         *         "homepage": "https://vendor.example.test",
+         *         "downloadUrl": "https://vendor.example.test/download",
+         *         "teamId": "EXAMPL1234",
+         *         "bundleIds": []
+         *       },
+         *       "summary": "An editor for macOS.",
+         *       "description": "",
+         *       "categoryId": 1,
+         *       "iconAssetId": 1,
+         *       "baselinePackageId": 1,
+         *       "downloadMode": "official_page",
+         *       "evidenceId": 1
+         *     }
+         */
+        SeoListingWrite: {
+            /**
+             * Format: int64
+             * @example 0
+             */
+            expectedRevision: number;
+            /**
+             * @example save
+             * @enum {string}
+             */
+            action: "save" | "publish" | "reject";
+            link: components["schemas"]["LinkPackageAdd"];
+            /** @example An editor for macOS. */
+            summary: string;
+            /** @example  */
+            description: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            categoryId: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            iconAssetId: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            baselinePackageId: number;
+            /**
+             * @example official_page
+             * @enum {string}
+             */
+            downloadMode: "official_page" | "not_applicable";
+            /**
+             * Format: int64
+             * @example 1
+             */
+            evidenceId: number;
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "token": "example-app",
+         *       "state": "candidate",
+         *       "revision": 1,
+         *       "packageId": null,
+         *       "identityVerified": false,
+         *       "canDirectDownload": false,
+         *       "indexing": null,
+         *       "input": {
+         *         "expectedRevision": 0,
+         *         "action": "save",
+         *         "link": {
+         *           "token": "example-app",
+         *           "name": "Example App",
+         *           "pricing": "unknown",
+         *           "sourceLocale": "en-US",
+         *           "homepage": "https://vendor.example.test",
+         *           "downloadUrl": "https://vendor.example.test/download",
+         *           "teamId": "EXAMPL1234",
+         *           "bundleIds": []
+         *         },
+         *         "summary": "An editor for macOS.",
+         *         "description": "",
+         *         "categoryId": 1,
+         *         "iconAssetId": 1,
+         *         "baselinePackageId": 1,
+         *         "downloadMode": "official_page",
+         *         "evidenceId": 1
+         *       }
+         *     }
+         */
+        SeoListingCandidate: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example example-app */
+            token: string;
+            /**
+             * @example candidate
+             * @enum {string}
+             */
+            state: "candidate" | "published" | "rejected";
+            /**
+             * Format: int64
+             * @example 1
+             */
+            revision: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            packageId: number | null;
+            /** @example false */
+            identityVerified: boolean;
+            /**
+             * @example false
+             * @enum {boolean}
+             */
+            canDirectDownload: false;
+            indexing: components["schemas"]["SeoPageDecision"] | null;
+            input: components["schemas"]["SeoListingWrite"];
+        };
+        /**
+         * @example {
+         *       "factId": 1,
+         *       "evidenceId": 1,
+         *       "domainOwnershipConfirmed": true,
+         *       "suspicious": false
+         *     }
+         */
+        SeoListingBaselineWrite: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            factId: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            evidenceId: number;
+            /**
+             * @example true
+             * @enum {boolean}
+             */
+            domainOwnershipConfirmed: true;
+            /** @example false */
+            suspicious: boolean;
+        };
+        /**
+         * @example {
+         *       "packageId": 1,
+         *       "domain": "vendor.example.test",
+         *       "developer": "Example Software",
+         *       "teamId": "EXAMPL1234",
+         *       "factId": 1,
+         *       "evidenceId": 1,
+         *       "evidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *       "verifiedBy": 1,
+         *       "verifiedAt": "2026-10-19T00:00:00Z",
+         *       "validUntil": "2026-11-19T00:00:00Z",
+         *       "suspicious": false
+         *     }
+         */
+        SeoListingBaseline: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            packageId: number;
+            /** @example vendor.example.test */
+            domain: string;
+            /** @example Example Software */
+            developer: string;
+            /** @example EXAMPL1234 */
+            teamId: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            factId: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            evidenceId: number;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            evidenceHash: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            verifiedBy: number;
+            /**
+             * Format: date-time
+             * @example 2026-10-19T00:00:00Z
+             */
+            verifiedAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-11-19T00:00:00Z
+             */
+            validUntil: string;
+            /** @example false */
+            suspicious: boolean;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "token": "example-app",
+         *         "state": "candidate",
+         *         "revision": 1,
+         *         "packageId": null,
+         *         "identityVerified": false,
+         *         "canDirectDownload": false,
+         *         "indexing": null,
+         *         "input": {
+         *           "expectedRevision": 0,
+         *           "action": "save",
+         *           "link": {
+         *             "token": "example-app",
+         *             "name": "Example App",
+         *             "pricing": "unknown",
+         *             "sourceLocale": "en-US",
+         *             "homepage": "https://vendor.example.test",
+         *             "downloadUrl": "https://vendor.example.test/download",
+         *             "teamId": "EXAMPL1234",
+         *             "bundleIds": []
+         *           },
+         *           "summary": "An editor for macOS.",
+         *           "description": "",
+         *           "categoryId": 1,
+         *           "iconAssetId": 1,
+         *           "baselinePackageId": 1,
+         *           "downloadMode": "official_page",
+         *           "evidenceId": 1
+         *         }
+         *       }
+         *     }
+         */
+        SeoListingCandidateResponse: {
+            /**
+             * @example 0000
+             * @enum {string}
+             */
+            code: "0000";
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoListingCandidate"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "packageId": 1,
+         *         "domain": "vendor.example.test",
+         *         "developer": "Example Software",
+         *         "teamId": "EXAMPL1234",
+         *         "factId": 1,
+         *         "evidenceId": 1,
+         *         "evidenceHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *         "verifiedBy": 1,
+         *         "verifiedAt": "2026-10-19T00:00:00Z",
+         *         "validUntil": "2026-11-19T00:00:00Z",
+         *         "suspicious": false
+         *       }
+         *     }
+         */
+        SeoListingBaselineResponse: {
+            /**
+             * @example 0000
+             * @enum {string}
+             */
+            code: "0000";
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoListingBaseline"];
+        };
+        /**
+         * @example {
+         *       "robots": "noindex, follow",
+         *       "canonicalPath": "",
+         *       "hreflang": [],
+         *       "inSitemap": false,
+         *       "announce": false,
+         *       "reason": "locale_not_ready"
+         *     }
+         */
+        SeoPageDecision: {
+            /** @enum {string} */
+            robots: "index, follow" | "noindex, follow";
+            /** @description Empty means self; otherwise a locale-prefixed canonical path. */
+            canonicalPath: string;
+            hreflang: components["schemas"]["Locale"][];
+            inSitemap: boolean;
+            announce: boolean;
+            reason: string;
+        };
+        /**
+         * @example {
+         *       "mode": "shadow",
+         *       "counts": [],
+         *       "records": [],
+         *       "current": 1,
+         *       "size": 24,
+         *       "total": 0
+         *     }
+         */
+        TranslationImpact: {
+            /** @enum {string} */
+            mode: "shadow" | "enforce";
+            counts: {
+                locale: components["schemas"]["Locale"];
+                indexableNow: number;
+                indexableEnforced: number;
+                losing: number;
+            }[];
+            records: {
+                /** Format: int64 */
+                id: number;
+                token: string;
+                locale: components["schemas"]["Locale"];
+                current: components["schemas"]["SeoPageDecision"];
+                enforced: components["schemas"]["SeoPageDecision"];
+            }[];
+            current: number;
+            size: number;
+            total: number;
+        };
+        /**
+         * @example {
+         *       "kind": "mcp",
+         *       "name": "Example App connector",
+         *       "repositoryUrl": "https://github.com/example/example-mcp",
+         *       "version": "1.0.0",
+         *       "installation": {
+         *         "method": "npm",
+         *         "package": "@example/example-mcp"
+         *       },
+         *       "clients": [
+         *         "claude_desktop",
+         *         "codex"
+         *       ],
+         *       "permissions": {
+         *         "files": [
+         *           {
+         *             "path": "~/Documents/Example",
+         *             "access": "read"
+         *           }
+         *         ],
+         *         "network": [
+         *           "https://api.vendor.example"
+         *         ]
+         *       },
+         *       "appleSilicon": "unknown",
+         *       "versions": [
+         *         {
+         *           "version": "1.0.0",
+         *           "releasedAt": "2026-10-01T00:00:00Z",
+         *           "sourceUrl": "https://github.com/example/example-mcp/releases/tag/v1.0.0"
+         *         }
+         *       ]
+         *     }
+         */
+        AppIntegration: {
+            /** @enum {string} */
+            kind: "mcp" | "skill";
+            name: string;
+            appVersion?: string;
+            /** Format: uri */
+            repositoryUrl: string;
+            version: string;
+            installation: {
+                /** @enum {string} */
+                method: "homebrew" | "uv" | "npm";
+                /** @description Package identifier only. Commands, arguments, URLs and version selectors are not accepted. */
+                package: string;
+            };
+            clients: ("claude_desktop" | "cursor" | "codex")[];
+            permissions: {
+                files: {
+                    path: string;
+                    /** @enum {string} */
+                    access: "read" | "write" | "read_write";
+                }[];
+                network: string[];
+            };
+            /** @enum {string} */
+            appleSilicon: "yes" | "no" | "unknown";
+            versions: {
+                version: string;
+                /** Format: date-time */
+                releasedAt: string;
+                /** Format: uri */
+                sourceUrl: string;
+            }[];
+        };
+        /**
+         * @example {
+         *       "locale": "en-US",
+         *       "title": "Import stalls",
+         *       "symptom": "Import stops before completion.",
+         *       "appVersions": [
+         *         "1.2"
+         *       ],
+         *       "macosVersions": [
+         *         "15.0"
+         *       ],
+         *       "steps": [
+         *         "Restart the app and retry importing."
+         *       ],
+         *       "communityLinks": []
+         *     }
+         */
+        KnownIssue: {
+            /** @enum {string} */
+            locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+            title: string;
+            symptom: string;
+            appVersions: string[];
+            macosVersions: string[];
+            steps: string[];
+            communityLinks: string[];
+        };
+        /**
+         * @example {
+         *       "appVersion": "example",
+         *       "minimumMacOS": null,
+         *       "maximumMacOS": null,
+         *       "appleSilicon": "unknown"
+         *     }
+         */
+        CompatibilityObservation: {
+            appVersion: string;
+            minimumMacOS: string | null;
+            maximumMacOS: string | null;
+            /** @enum {string} */
+            appleSilicon: "yes" | "no" | "unknown";
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "locale": "en-US",
+         *         "criteria": "example",
+         *         "evidence": {
+         *           "sourceUrl": "https://vendor.example/docs",
+         *           "checkedAt": "2026-10-19T00:00:00Z",
+         *           "validUntil": "2026-11-18T00:00:00Z",
+         *           "status": "verified"
+         *         }
+         *       }
+         *     }
+         */
+        CollectionCriteriaResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["CollectionCriteria"];
+        };
+        /**
+         * @example {
+         *       "locale": "en-US",
+         *       "criteria": "example",
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": "2026-10-19T00:00:00Z",
+         *         "validUntil": "2026-11-18T00:00:00Z",
+         *         "status": "verified"
+         *       }
+         *     }
+         */
+        CollectionCriteria: {
+            /** @enum {string} */
+            locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+            criteria: string;
+            evidence: components["schemas"]["FactRecordEvidence"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "locale": "en-US",
+         *         "description": "example",
+         *         "itemType": "unknown",
+         *         "commonPaths": [],
+         *         "evidence": {
+         *           "sourceUrl": "https://vendor.example/docs",
+         *           "checkedAt": "2026-10-19T00:00:00Z",
+         *           "validUntil": "2026-11-18T00:00:00Z",
+         *           "status": "verified"
+         *         }
+         *       }
+         *     }
+         */
+        BackgroundContentResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["BackgroundContent"];
+        };
+        /**
+         * @example {
+         *       "locale": "en-US",
+         *       "description": "example",
+         *       "itemType": "unknown",
+         *       "commonPaths": [],
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": "2026-10-19T00:00:00Z",
+         *         "validUntil": "2026-11-18T00:00:00Z",
+         *         "status": "verified"
+         *       }
+         *     }
+         */
+        BackgroundContent: {
+            /** @enum {string} */
+            locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+            description: string;
+            /** @enum {string} */
+            itemType: "launch_agent" | "launch_daemon" | "login_item" | "package_receipt" | "unknown";
+            commonPaths: string[];
+            evidence: components["schemas"]["FactRecordEvidence"];
+        };
+        /**
+         * @example {
+         *       "keyword": "Example Editor mac",
+         *       "source": "gsc",
+         *       "engine": "google",
+         *       "country": "US",
+         *       "language": "en-US",
+         *       "device": "desktop",
+         *       "period": "2026-10",
+         *       "searchVolume": 100,
+         *       "volumeState": "known",
+         *       "observedAt": "2026-10-18T10:00:00Z"
+         *     }
+         */
+        SeoKeywordObservation: {
+            /** @example Example Editor mac */
+            keyword: string;
+            /**
+             * @example gsc
+             * @enum {string}
+             */
+            source: "openseo:dataforseo" | "gsc" | "bing" | "site_search" | "homebrew";
+            /**
+             * @example google
+             * @enum {string}
+             */
+            engine: "google" | "bing" | "site" | "homebrew";
+            /** @example US */
+            country: string;
+            language: components["schemas"]["Locale"];
+            /**
+             * @example desktop
+             * @enum {string}
+             */
+            device: "all" | "desktop" | "mobile" | "tablet";
+            /** @example 2026-10 */
+            period: string;
+            /**
+             * Format: int64
+             * @example 100
+             */
+            searchVolume?: number | null;
+            /**
+             * @example known
+             * @enum {string}
+             */
+            volumeState: "known" | "unsupported" | "unknown";
+            /** @example 10 */
+            difficulty?: number | null;
+            /** @example 4 */
+            ourPosition?: number | null;
+            serpFeatures?: string[];
+            /** @example fixture-task-1 */
+            vendorTaskId?: string | null;
+            /** @example 0.0000 */
+            costUsd?: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            observedAt: string;
+        };
+        /**
+         * @example {
+         *       "entityKey": "pkg:1",
+         *       "intent": "download",
+         *       "locale": "en-US",
+         *       "targetUrl": "https://example.test/apps/example-editor"
+         *     }
+         */
+        SeoTarget: {
+            /** @example pkg:1 */
+            entityKey: string;
+            /**
+             * @example download
+             * @enum {string}
+             */
+            intent: "download" | "install" | "brew" | "uninstall" | "alternative" | "price" | "version" | "requirements" | "compare" | "topic";
+            locale: components["schemas"]["Locale"];
+            /**
+             * Format: uri
+             * @example https://example.test/apps/example-editor
+             */
+            targetUrl: string;
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "keyword": "Example Editor mac",
+         *       "normalized": "example editor mac",
+         *       "source": "openseo:dataforseo",
+         *       "engine": "google",
+         *       "country": "US",
+         *       "language": "en-US",
+         *       "device": "desktop",
+         *       "period": "2026-10",
+         *       "searchVolume": 100,
+         *       "volumeState": "known",
+         *       "difficulty": 10,
+         *       "ourPosition": 4,
+         *       "serpFeatures": [],
+         *       "vendorTaskId": "fixture-task-1",
+         *       "costUsd": "0.0000",
+         *       "observedAt": "2026-10-18T10:00:00Z",
+         *       "anomaly": null,
+         *       "links": []
+         *     }
+         */
+        SeoKeywordRecord: {
+            /** @example Example Editor mac */
+            keyword: string;
+            /**
+             * @example gsc
+             * @enum {string}
+             */
+            source: "openseo:dataforseo" | "gsc" | "bing" | "site_search" | "homebrew";
+            /**
+             * @example google
+             * @enum {string}
+             */
+            engine: "google" | "bing" | "site" | "homebrew";
+            /** @example US */
+            country: string;
+            language: components["schemas"]["Locale"];
+            /**
+             * @example desktop
+             * @enum {string}
+             */
+            device: "all" | "desktop" | "mobile" | "tablet";
+            /** @example 2026-10 */
+            period: string;
+            /**
+             * Format: int64
+             * @example 100
+             */
+            searchVolume: number | null;
+            /**
+             * @example known
+             * @enum {string}
+             */
+            volumeState: "known" | "unsupported" | "unknown";
+            /** @example 10 */
+            difficulty: number | null;
+            /** @example 4 */
+            ourPosition: number | null;
+            serpFeatures: string[];
+            /** @example fixture-task-1 */
+            vendorTaskId: string | null;
+            /** @example 0.0000 */
+            costUsd: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            observedAt: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example example editor mac */
+            normalized: string;
+            /** @example piracy */
+            anomaly: string | null;
+            links: {
+                /**
+                 * Format: int64
+                 * @example 1
+                 */
+                packageId: number;
+                /** @example download */
+                intent: string;
+                /** @example 1 */
+                confidence: number;
+                /**
+                 * @example confirmed
+                 * @enum {string}
+                 */
+                state: "candidate" | "confirmed" | "rejected";
+            }[];
+        };
+        /**
+         * @example {
+         *       "records": [
+         *         {
+         *           "keyword": "Example Editor mac",
+         *           "source": "gsc",
+         *           "engine": "google",
+         *           "country": "US",
+         *           "language": "en-US",
+         *           "device": "desktop",
+         *           "period": "2026-10",
+         *           "searchVolume": 100,
+         *           "volumeState": "known",
+         *           "observedAt": "2026-10-18T10:00:00Z"
+         *         }
+         *       ],
+         *       "targets": []
+         *     }
+         */
+        SeoKeywordsWrite: {
+            records: components["schemas"]["SeoKeywordObservation"][];
+            targets?: components["schemas"]["SeoTarget"][];
+        };
+        /**
+         * @example {
+         *       "records": [
+         *         {
+         *           "keyword": "Example Editor mac",
+         *           "source": "gsc",
+         *           "engine": "google",
+         *           "country": "US",
+         *           "language": "en-US",
+         *           "device": "desktop",
+         *           "period": "2026-10",
+         *           "searchVolume": 100,
+         *           "volumeState": "known",
+         *           "observedAt": "2026-10-18T10:00:00Z",
+         *           "id": 1,
+         *           "normalized": "example editor mac",
+         *           "difficulty": null,
+         *           "ourPosition": null,
+         *           "serpFeatures": [],
+         *           "vendorTaskId": null,
+         *           "costUsd": null,
+         *           "anomaly": null,
+         *           "links": []
+         *         }
+         *       ],
+         *       "targets": []
+         *     }
+         */
+        SeoKeywordsResult: {
+            records: components["schemas"]["SeoKeywordRecord"][];
+            targets: components["schemas"]["SeoTarget"][];
+        };
+        /**
+         * @example {
+         *       "current": 1,
+         *       "size": 10,
+         *       "total": 1,
+         *       "records": [
+         *         {
+         *           "keyword": "Example Editor mac",
+         *           "source": "gsc",
+         *           "engine": "google",
+         *           "country": "US",
+         *           "language": "en-US",
+         *           "device": "desktop",
+         *           "period": "2026-10",
+         *           "searchVolume": 100,
+         *           "volumeState": "known",
+         *           "observedAt": "2026-10-18T10:00:00Z",
+         *           "id": 1,
+         *           "normalized": "example editor mac",
+         *           "difficulty": null,
+         *           "ourPosition": null,
+         *           "serpFeatures": [],
+         *           "vendorTaskId": null,
+         *           "costUsd": null,
+         *           "anomaly": null,
+         *           "links": []
+         *         }
+         *       ]
+         *     }
+         */
+        SeoKeywordPage: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            current: number;
+            /**
+             * Format: int64
+             * @example 10
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            total: number;
+            records: components["schemas"]["SeoKeywordRecord"][];
+        };
+        /**
+         * @example {
+         *       "source": "gsc_page",
+         *       "completeThrough": "2026-10-16",
+         *       "freshThrough": "2026-10-18",
+         *       "updatedAt": "2026-10-18T10:00:00Z"
+         *     }
+         */
+        SeoWatermark: {
+            /**
+             * @example gsc_page
+             * @enum {string}
+             */
+            source: "gsc_page" | "gsc_query" | "inspection" | "bing" | "audit" | "edge_probe";
+            /**
+             * Format: date
+             * @example 2026-10-16
+             */
+            completeThrough: string | null;
+            /**
+             * Format: date
+             * @example 2026-10-18
+             */
+            freshThrough: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            updatedAt: string;
+        };
+        /**
+         * @description Server evidence fields depend on the breaker reason. Daily/Monthly are micro-USD receipt totals; Days and Old/New metrics describe complete GSC windows. Existing capitalized field names are preserved.
+         * @example {
+         *       "unresolved": 2,
+         *       "layers": [
+         *         "origin",
+         *         "edge"
+         *       ]
+         *     }
+         */
+        SeoOverviewBreakerEvidence: {
+            /**
+             * Format: int64
+             * @example 2
+             */
+            unresolved?: number;
+            layers?: ("origin" | "edge")[];
+            /** @example fixture-reservation-001 */
+            receiptId?: string;
+            /**
+             * Format: int64
+             * @example 100
+             */
+            Daily?: number;
+            /**
+             * Format: int64
+             * @example 100
+             */
+            Monthly?: number;
+            /**
+             * Format: int64
+             * @example 56
+             */
+            Days?: number;
+            /**
+             * Format: int64
+             * @example 100
+             */
+            OldClicks?: number;
+            /**
+             * Format: int64
+             * @example 100
+             */
+            NewClicks?: number;
+            /**
+             * Format: int64
+             * @example 100
+             */
+            OldImpressions?: number;
+            /**
+             * Format: int64
+             * @example 100
+             */
+            NewImpressions?: number;
+        } | null;
+        /**
+         * @description Only currently active breakers are returned: closed breakers and elapsed retry windows are excluded. There is no separate state field.
+         * @example {
+         *       "kind": "technical",
+         *       "scope": "*",
+         *       "reason": "audit_p0",
+         *       "openedAt": "2026-10-18T10:00:00Z",
+         *       "retryAt": null,
+         *       "evidence": {
+         *         "unresolved": 2,
+         *         "layers": [
+         *           "origin",
+         *           "edge"
+         *         ]
+         *       }
+         *     }
+         */
+        SeoOverviewBreaker: {
+            /**
+             * @example technical
+             * @enum {string}
+             */
+            kind: "technical" | "business" | "budget";
+            /** @example * */
+            scope: string;
+            /** @example audit_p0 */
+            reason: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            openedAt: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            retryAt: string | null;
+            evidence: components["schemas"]["SeoOverviewBreakerEvidence"];
+        };
+        /**
+         * @description Unique entities per action during the current UTC day, shared by all execution tokens. Remaining is clamped at zero.
+         * @example {
+         *       "action": "listing",
+         *       "period": "day",
+         *       "limit": 20,
+         *       "used": 3,
+         *       "remaining": 17
+         *     }
+         */
+        SeoEntityBudget: {
+            /** @example listing */
+            action: string;
+            /**
+             * @example day
+             * @enum {string}
+             */
+            period: "day";
+            /**
+             * Format: int64
+             * @example 20
+             */
+            limit: number;
+            /**
+             * Format: int64
+             * @example 3
+             */
+            used: number;
+            /**
+             * Format: int64
+             * @example 17
+             */
+            remaining: number;
+        };
+        /**
+         * @description Reconciled paid research receipts in the current UTC day or month. All amounts are integer micro-USD (1 USD = 1000000 micros). This is not a provider billing proxy.
+         * @example {
+         *       "action": "paid_research",
+         *       "period": "day",
+         *       "limitMicros": 15000000,
+         *       "usedMicros": 250000,
+         *       "remainingMicros": 14750000
+         *     }
+         */
+        SeoResearchBudget: {
+            /**
+             * @example paid_research
+             * @enum {string}
+             */
+            action: "paid_research";
+            /**
+             * @example day
+             * @enum {string}
+             */
+            period: "day" | "month";
+            /**
+             * Format: int64
+             * @example 15000000
+             */
+            limitMicros: number;
+            /**
+             * Format: int64
+             * @example 250000
+             */
+            usedMicros: number;
+            /**
+             * Format: int64
+             * @example 14750000
+             */
+            remainingMicros: number;
+        };
+        /**
+         * @description Entity quotas and paid research costs retain their distinct existing fields. Narrow by presence of limitMicros for research costs.
+         * @example {
+         *       "action": "listing",
+         *       "period": "day",
+         *       "limit": 20,
+         *       "used": 3,
+         *       "remaining": 17
+         *     }
+         */
+        SeoOverviewBudget: components["schemas"]["SeoEntityBudget"] | components["schemas"]["SeoResearchBudget"];
+        /**
+         * @example {
+         *       "action": "listing",
+         *       "enabled": true,
+         *       "mode": "proposal"
+         *     }
+         */
+        SeoOverviewActionMode: {
+            /** @example listing */
+            action: string;
+            /** @example true */
+            enabled: boolean;
+            /**
+             * @example proposal
+             * @enum {string}
+             */
+            mode: "proposal" | "live";
+        };
+        /**
+         * @description Actions created during the previous UTC calendar day, grouped by operation and mode. Compensated counts those actions with a compensation timestamp at read time.
+         * @example {
+         *       "operation": "UpdatePackageMeta",
+         *       "mode": "live",
+         *       "count": 12,
+         *       "compensated": 1
+         *     }
+         */
+        SeoYesterdayAction: {
+            /** @example UpdatePackageMeta */
+            operation: string;
+            /**
+             * @example live
+             * @enum {string}
+             */
+            mode: "proposal" | "live";
+            /**
+             * Format: int64
+             * @example 12
+             */
+            count: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            compensated: number;
+        };
+        /**
+         * @description Previous UTC calendar day. No activity returns an empty actions array; no synthetic zero rows or additional counters are returned.
+         * @example {
+         *       "actions": [
+         *         {
+         *           "operation": "UpdatePackageMeta",
+         *           "mode": "live",
+         *           "count": 12,
+         *           "compensated": 1
+         *         }
+         *       ]
+         *     }
+         */
+        SeoYesterday: {
+            actions: components["schemas"]["SeoYesterdayAction"][];
+        };
+        /**
+         * @description An audit issue that generates tech_alert work. ID is the stable audit issue ID. Status reflects audit resolution, not whether an Agent has completed its task.
+         * @example {
+         *       "id": 1,
+         *       "kind": "tech_alert",
+         *       "rule": "canonical",
+         *       "url": "https://fixture.example/apps/example-editor",
+         *       "layer": "edge",
+         *       "severity": "p0",
+         *       "detail": "Canonical URL differs from the page decision.",
+         *       "firstSeen": "2026-10-17T10:00:00Z",
+         *       "lastSeen": "2026-10-18T10:00:00Z",
+         *       "resolvedAt": null,
+         *       "status": "open"
+         *     }
+         */
+        SeoAlert: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /**
+             * @example tech_alert
+             * @enum {string}
+             */
+            kind: "tech_alert";
+            /** @example canonical */
+            rule: string;
+            /**
+             * Format: uri
+             * @example https://fixture.example/apps/example-editor
+             */
+            url: string;
+            /**
+             * @example edge
+             * @enum {string}
+             */
+            layer: "origin" | "edge";
+            /**
+             * @example p0
+             * @enum {string}
+             */
+            severity: "p0" | "p1" | "p2";
+            /** @example Canonical URL differs from the page decision. */
+            detail: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-17T10:00:00Z
+             */
+            firstSeen: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            lastSeen: string;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            resolvedAt: string | null;
+            /**
+             * @example open
+             * @enum {string}
+             */
+            status: "open" | "resolved";
+        };
+        /**
+         * @example {
+         *       "records": [
+         *         {
+         *           "id": 1,
+         *           "kind": "tech_alert",
+         *           "rule": "canonical",
+         *           "url": "https://fixture.example/apps/example-editor",
+         *           "layer": "edge",
+         *           "severity": "p0",
+         *           "detail": "Canonical URL differs from the page decision.",
+         *           "firstSeen": "2026-10-17T10:00:00Z",
+         *           "lastSeen": "2026-10-18T10:00:00Z",
+         *           "resolvedAt": null,
+         *           "status": "open"
+         *         }
+         *       ],
+         *       "current": 1,
+         *       "size": 20,
+         *       "total": 1
+         *     }
+         */
+        SeoAlertPage: {
+            records: components["schemas"]["SeoAlert"][];
+            /** @example 1 */
+            current: number;
+            /** @example 20 */
+            size: number;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            total: number;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "id": 1,
+         *             "kind": "tech_alert",
+         *             "rule": "canonical",
+         *             "url": "https://fixture.example/apps/example-editor",
+         *             "layer": "edge",
+         *             "severity": "p0",
+         *             "detail": "Canonical URL differs from the page decision.",
+         *             "firstSeen": "2026-10-17T10:00:00Z",
+         *             "lastSeen": "2026-10-18T10:00:00Z",
+         *             "resolvedAt": null,
+         *             "status": "open"
+         *           }
+         *         ],
+         *         "current": 1,
+         *         "size": 20,
+         *         "total": 1
+         *       }
+         *     }
+         */
+        SeoAlertPageResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoAlertPage"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "id": 1,
+         *             "kind": "tech_alert",
+         *             "rule": "canonical",
+         *             "url": "https://fixture.example/apps/example-editor",
+         *             "layer": "edge",
+         *             "severity": "p0",
+         *             "detail": "Canonical URL differs from the page decision.",
+         *             "firstSeen": "2026-10-17T10:00:00Z",
+         *             "lastSeen": "2026-10-18T10:00:00Z",
+         *             "resolvedAt": null,
+         *             "status": "open"
+         *           }
+         *         ],
+         *         "current": 1,
+         *         "size": 20,
+         *         "total": 1
+         *       }
+         *     }
+         */
+        SeoAlertPageResponseResult: components["schemas"]["SeoAlertPageResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "id": "p1",
+         *       "text": "best free mac apps",
+         *       "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *       "classification": "neutral"
+         *     }
+         */
+        SeoGeoPrompt: {
+            /** @example fixture-001 */
+            id: string;
+            /** @example best free mac apps */
+            text: string;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            hash: string;
+            /**
+             * @example neutral
+             * @enum {string}
+             */
+            classification: "neutral" | "brand" | "exploration";
+        };
+        /**
+         * @example {
+         *       "key": "chatgpt",
+         *       "name": "ChatGPT",
+         *       "surface": "provider_api",
+         *       "modelVersion": "unknown",
+         *       "toolVersion": "unknown"
+         *     }
+         */
+        SeoGeoEngine: {
+            /** @example fixture-001 */
+            key: string;
+            /** @example unknown */
+            name: string;
+            /** @example unknown */
+            surface: string;
+            /** @example unknown */
+            modelVersion: string;
+            /** @example unknown */
+            toolVersion: string;
+        };
+        /**
+         * @example {
+         *       "market": "unknown",
+         *       "promptLanguage": "en",
+         *       "answerLanguage": "unknown",
+         *       "searchMode": "unknown",
+         *       "windowDays": 7
+         *     }
+         */
+        SeoGeoContext: {
+            /** @example unknown */
+            market: string;
+            /** @example unknown */
+            promptLanguage: string;
+            /** @example unknown */
+            answerLanguage: string;
+            /** @example unknown */
+            searchMode: string;
+            /** @example 7 */
+            windowDays: number;
+        };
+        /**
+         * @example {
+         *       "id": "p1-chatgpt",
+         *       "promptId": "p1",
+         *       "engineKey": "chatgpt",
+         *       "status": "answered",
+         *       "observationId": "observation-fixture-001",
+         *       "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         *       "searchTriggered": null,
+         *       "citationExtraction": "unknown",
+         *       "evidenceAvailability": "unknown",
+         *       "mentioned": null,
+         *       "candidate": null,
+         *       "cited": null,
+         *       "ownUrls": [],
+         *       "thirdPartyDomains": [],
+         *       "domainsTruncated": false
+         *     }
+         */
+        SeoGeoCell: {
+            /** @example fixture-001 */
+            id: string;
+            /** @example fixture-001 */
+            promptId: string;
+            /** @example fixture-001 */
+            engineKey: string;
+            /**
+             * @example answered
+             * @enum {string}
+             */
+            status: "answered" | "not_triggered" | "error" | "unsupported" | "missing";
+            /** @example fixture-001 */
+            observationId: string | null;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            answerHash: string | null;
+            /** @example null */
+            searchTriggered: boolean | null;
+            /**
+             * @example complete
+             * @enum {string}
+             */
+            citationExtraction: "complete" | "incomplete" | "unknown";
+            /**
+             * @example available
+             * @enum {string}
+             */
+            evidenceAvailability: "available" | "unknown" | "evidence_unavailable";
+            /** @example null */
+            mentioned: boolean | null;
+            /** @example null */
+            candidate: boolean | null;
+            /** @example null */
+            cited: boolean | null;
+            /** @example [] */
+            ownUrls: string[];
+            /** @example [] */
+            thirdPartyDomains: string[];
+            /** @example false */
+            domainsTruncated: boolean;
+        };
+        /**
+         * @example {
+         *       "answered": 49,
+         *       "mentioned": 0,
+         *       "candidate": null,
+         *       "cited": 0,
+         *       "missingFields": [
+         *         "observations",
+         *         "citationExtraction"
+         *       ]
+         *     }
+         */
+        SeoGeoReported: {
+            /** @example 49 */
+            answered: number | null;
+            /** @example 0 */
+            mentioned: number | null;
+            /** @example null */
+            candidate: number | null;
+            /** @example 0 */
+            cited: number | null;
+            /**
+             * @example [
+             *       "observations",
+             *       "citationExtraction"
+             *     ]
+             */
+            missingFields: string[];
+        } | null;
+        /**
+         * @example {
+         *       "vendorTaskId": "fixture-charge-001",
+         *       "costUsd": null,
+         *       "credits": null,
+         *       "incurredAt": "2026-10-18T10:00:00Z"
+         *     }
+         */
+        SeoGeoCharge: {
+            /** @example fixture-001 */
+            vendorTaskId: string;
+            /** @example 0.1 */
+            costUsd: string | null;
+            /** @example 1 */
+            credits: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            incurredAt: string;
+        };
+        /**
+         * @example {
+         *       "schemaVersion": 1,
+         *       "provider": "openseo",
+         *       "sourceProject": "fixture-project",
+         *       "providerRunKey": "fixture-run-001",
+         *       "mode": "imported_observation",
+         *       "panelId": "neutral-core",
+         *       "panelVersion": "v1",
+         *       "periodStart": "2026-10-18T09:00:00Z",
+         *       "periodEnd": "2026-10-18T10:00:00Z",
+         *       "context": {
+         *         "market": "unknown",
+         *         "promptLanguage": "en",
+         *         "answerLanguage": "unknown",
+         *         "searchMode": "unknown",
+         *         "windowDays": 7
+         *       },
+         *       "prompts": [
+         *         {
+         *           "id": "p1",
+         *           "text": "best free mac apps",
+         *           "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *           "classification": "neutral"
+         *         }
+         *       ],
+         *       "engines": [
+         *         {
+         *           "key": "chatgpt",
+         *           "name": "ChatGPT",
+         *           "surface": "provider_api",
+         *           "modelVersion": "unknown",
+         *           "toolVersion": "unknown"
+         *         }
+         *       ],
+         *       "plannedCount": 1,
+         *       "cells": [
+         *         {
+         *           "id": "p1-chatgpt",
+         *           "promptId": "p1",
+         *           "engineKey": "chatgpt",
+         *           "status": "answered",
+         *           "observationId": "observation-fixture-001",
+         *           "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         *           "searchTriggered": null,
+         *           "citationExtraction": "unknown",
+         *           "evidenceAvailability": "unknown",
+         *           "mentioned": null,
+         *           "candidate": null,
+         *           "cited": null,
+         *           "ownUrls": [],
+         *           "thirdPartyDomains": [],
+         *           "domainsTruncated": false
+         *         }
+         *       ],
+         *       "reported": null,
+         *       "artifactCompleteness": "unknown",
+         *       "hashAlgorithm": "sha256",
+         *       "hashNormalization": "provider-v1",
+         *       "charges": [
+         *         {
+         *           "vendorTaskId": "fixture-charge-001",
+         *           "costUsd": null,
+         *           "credits": null,
+         *           "incurredAt": "2026-10-18T10:00:00Z"
+         *         }
+         *       ],
+         *       "approvedBatchRef": "fixture-approval-001"
+         *     }
+         */
+        SeoGeoSnapshot: {
+            /**
+             * @example 1
+             * @enum {integer}
+             */
+            schemaVersion: 1;
+            /**
+             * @example openseo
+             * @enum {string}
+             */
+            provider: "openseo";
+            /** @example fixture-001 */
+            sourceProject: string;
+            /** @example fixture-001 */
+            providerRunKey: string;
+            /** @example fixture-001 */
+            panelId: string;
+            /** @example fixture-001 */
+            panelVersion: string;
+            /** @example fixture-001 */
+            approvedBatchRef: string;
+            /** @example fixture-001 */
+            hashNormalization: string;
+            /**
+             * @example imported_observation
+             * @enum {string}
+             */
+            mode: "imported_observation" | "summary_only";
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            periodStart: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            periodEnd: string;
+            context: components["schemas"]["SeoGeoContext"];
+            /**
+             * @example [
+             *       {
+             *         "id": "p1",
+             *         "text": "best free mac apps",
+             *         "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+             *         "classification": "neutral"
+             *       }
+             *     ]
+             */
+            prompts: components["schemas"]["SeoGeoPrompt"][];
+            /**
+             * @example [
+             *       {
+             *         "key": "chatgpt",
+             *         "name": "ChatGPT",
+             *         "surface": "provider_api",
+             *         "modelVersion": "unknown",
+             *         "toolVersion": "unknown"
+             *       }
+             *     ]
+             */
+            engines: components["schemas"]["SeoGeoEngine"][];
+            /** @example 1 */
+            plannedCount: number;
+            /**
+             * @example [
+             *       {
+             *         "id": "p1-chatgpt",
+             *         "promptId": "p1",
+             *         "engineKey": "chatgpt",
+             *         "status": "answered",
+             *         "observationId": "observation-fixture-001",
+             *         "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+             *         "searchTriggered": null,
+             *         "citationExtraction": "unknown",
+             *         "evidenceAvailability": "unknown",
+             *         "mentioned": null,
+             *         "candidate": null,
+             *         "cited": null,
+             *         "ownUrls": [],
+             *         "thirdPartyDomains": [],
+             *         "domainsTruncated": false
+             *       }
+             *     ]
+             */
+            cells: components["schemas"]["SeoGeoCell"][];
+            reported: components["schemas"]["SeoGeoReported"];
+            /**
+             * @example complete
+             * @enum {string}
+             */
+            artifactCompleteness: "complete" | "incomplete" | "unknown";
+            /**
+             * @example sha256
+             * @enum {string}
+             */
+            hashAlgorithm: "sha256";
+            /**
+             * @example [
+             *       {
+             *         "vendorTaskId": "fixture-charge-001",
+             *         "costUsd": null,
+             *         "credits": null,
+             *         "incurredAt": "2026-10-18T10:00:00Z"
+             *       }
+             *     ]
+             */
+            charges: components["schemas"]["SeoGeoCharge"][];
+        };
+        /**
+         * @description Import existing structured observations only; no answer text, excerpts, HTML or raw provider responses. Maximum serialized request 512 KiB. Unknown amounts are null, never estimated charges. Corrections append with supersedes and the same provider run identity; identical retries replay the receipt. No external or paid calls.
+         * @example {
+         *       "idempotencyKey": "fixture-geo-import-001",
+         *       "supersedes": null,
+         *       "snapshot": {
+         *         "schemaVersion": 1,
+         *         "provider": "openseo",
+         *         "sourceProject": "fixture-project",
+         *         "providerRunKey": "fixture-run-001",
+         *         "mode": "imported_observation",
+         *         "panelId": "neutral-core",
+         *         "panelVersion": "v1",
+         *         "periodStart": "2026-10-18T09:00:00Z",
+         *         "periodEnd": "2026-10-18T10:00:00Z",
+         *         "context": {
+         *           "market": "unknown",
+         *           "promptLanguage": "en",
+         *           "answerLanguage": "unknown",
+         *           "searchMode": "unknown",
+         *           "windowDays": 7
+         *         },
+         *         "prompts": [
+         *           {
+         *             "id": "p1",
+         *             "text": "best free mac apps",
+         *             "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *             "classification": "neutral"
+         *           }
+         *         ],
+         *         "engines": [
+         *           {
+         *             "key": "chatgpt",
+         *             "name": "ChatGPT",
+         *             "surface": "provider_api",
+         *             "modelVersion": "unknown",
+         *             "toolVersion": "unknown"
+         *           }
+         *         ],
+         *         "plannedCount": 1,
+         *         "cells": [
+         *           {
+         *             "id": "p1-chatgpt",
+         *             "promptId": "p1",
+         *             "engineKey": "chatgpt",
+         *             "status": "answered",
+         *             "observationId": "observation-fixture-001",
+         *             "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         *             "searchTriggered": null,
+         *             "citationExtraction": "unknown",
+         *             "evidenceAvailability": "unknown",
+         *             "mentioned": null,
+         *             "candidate": null,
+         *             "cited": null,
+         *             "ownUrls": [],
+         *             "thirdPartyDomains": [],
+         *             "domainsTruncated": false
+         *           }
+         *         ],
+         *         "reported": null,
+         *         "artifactCompleteness": "unknown",
+         *         "hashAlgorithm": "sha256",
+         *         "hashNormalization": "provider-v1",
+         *         "charges": [
+         *           {
+         *             "vendorTaskId": "fixture-charge-001",
+         *             "costUsd": null,
+         *             "credits": null,
+         *             "incurredAt": "2026-10-18T10:00:00Z"
+         *           }
+         *         ],
+         *         "approvedBatchRef": "fixture-approval-001"
+         *       }
+         *     }
+         */
+        SeoGeoImport: {
+            /** @example fixture-001 */
+            idempotencyKey: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            supersedes?: number | null;
+            snapshot: components["schemas"]["SeoGeoSnapshot"];
+        };
+        /**
+         * @description n/N among known observations, not a score. known=0 means unavailable. Citation counts use complete extraction only.
+         * @example {
+         *       "positive": 0,
+         *       "known": 0
+         *     }
+         */
+        SeoGeoMetric: {
+            /** @example 0 */
+            positive: number;
+            /** @example 0 */
+            known: number;
+        };
+        /**
+         * @description summary_only keeps measured answered null and measured known counts zero; show reported counts with an unverified completeness label. Never use summary-only data in trends.
+         * @example {
+         *       "planned": 1,
+         *       "answered": 1,
+         *       "searchTriggered": {
+         *         "positive": 0,
+         *         "known": 0
+         *       },
+         *       "mentioned": {
+         *         "positive": 0,
+         *         "known": 0
+         *       },
+         *       "candidate": {
+         *         "positive": 0,
+         *         "known": 0
+         *       },
+         *       "cited": {
+         *         "positive": 0,
+         *         "known": 0
+         *       },
+         *       "citationComplete": 0,
+         *       "reported": null
+         *     }
+         */
+        SeoGeoCounts: {
+            /** @example 1 */
+            planned: number;
+            /** @example 1 */
+            answered: number | null;
+            searchTriggered: components["schemas"]["SeoGeoMetric"];
+            mentioned: components["schemas"]["SeoGeoMetric"];
+            candidate: components["schemas"]["SeoGeoMetric"];
+            cited: components["schemas"]["SeoGeoMetric"];
+            /** @example 0 */
+            citationComplete: number;
+            reported: components["schemas"]["SeoGeoReported"];
+        };
+        /**
+         * @description Only comparable non-overlapping complete samples with all planned answers and known citation outcomes. Observational, never causal or an experiment verdict; otherwise null.
+         * @example {
+         *       "previousId": 1,
+         *       "citedRateDelta": 0.1
+         *     }
+         */
+        SeoGeoTrend: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            previousId: number;
+            /** @example 0.1 */
+            citedRateDelta: number;
+        } | null;
+        /**
+         * @description Latest imported structured observation. Null in overview means no data imported; importedAt is server time. Counts retain unknown denominators.
+         * @example {
+         *       "id": 1,
+         *       "site": "fixture.example",
+         *       "mode": "imported_observation",
+         *       "panelId": "neutral-core",
+         *       "panelVersion": "v1",
+         *       "periodStart": "2026-10-18T09:00:00Z",
+         *       "periodEnd": "2026-10-18T10:00:00Z",
+         *       "importedAt": "2026-10-18T11:00:00Z",
+         *       "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+         *       "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+         *       "supersedes": null,
+         *       "counts": {
+         *         "planned": 1,
+         *         "answered": 1,
+         *         "searchTriggered": {
+         *           "positive": 0,
+         *           "known": 0
+         *         },
+         *         "mentioned": {
+         *           "positive": 0,
+         *           "known": 0
+         *         },
+         *         "candidate": {
+         *           "positive": 0,
+         *           "known": 0
+         *         },
+         *         "cited": {
+         *           "positive": 0,
+         *           "known": 0
+         *         },
+         *         "citationComplete": 0,
+         *         "reported": null
+         *       },
+         *       "trend": null
+         *     }
+         */
+        SeoGeoSummary: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example fixture.example */
+            site: string;
+            /**
+             * @example imported_observation
+             * @enum {string}
+             */
+            mode: "imported_observation" | "summary_only";
+            /** @example fixture-001 */
+            panelId: string;
+            /** @example fixture-001 */
+            panelVersion: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            periodStart: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            periodEnd: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            importedAt: string;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            payloadHash: string;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            comparisonKey: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            supersedes: number | null;
+            counts: components["schemas"]["SeoGeoCounts"];
+            trend: components["schemas"]["SeoGeoTrend"];
+        } | null;
+        /**
+         * @description URL is assembled only from a trusted HTTPS deployment base; null when unconfigured. No caller-supplied evidence URLs, credentials or response previews.
+         * @example {
+         *       "observationId": "observation-fixture-001",
+         *       "url": null
+         *     }
+         */
+        SeoGeoObservationLink: {
+            /** @example fixture-001 */
+            observationId: string;
+            /**
+             * Format: uri
+             * @example https://evidence.example/observations/fixture-001
+             */
+            url: string | null;
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "site": "fixture.example",
+         *       "mode": "imported_observation",
+         *       "panelId": "neutral-core",
+         *       "panelVersion": "v1",
+         *       "periodStart": "2026-10-18T09:00:00Z",
+         *       "periodEnd": "2026-10-18T10:00:00Z",
+         *       "importedAt": "2026-10-18T11:00:00Z",
+         *       "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+         *       "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+         *       "supersedes": null,
+         *       "counts": {
+         *         "planned": 1,
+         *         "answered": 1,
+         *         "searchTriggered": {
+         *           "positive": 0,
+         *           "known": 0
+         *         },
+         *         "mentioned": {
+         *           "positive": 0,
+         *           "known": 0
+         *         },
+         *         "candidate": {
+         *           "positive": 0,
+         *           "known": 0
+         *         },
+         *         "cited": {
+         *           "positive": 0,
+         *           "known": 0
+         *         },
+         *         "citationComplete": 0,
+         *         "reported": null
+         *       },
+         *       "trend": null,
+         *       "importedBy": "agent:1:1",
+         *       "snapshot": {
+         *         "schemaVersion": 1,
+         *         "provider": "openseo",
+         *         "sourceProject": "fixture-project",
+         *         "providerRunKey": "fixture-run-001",
+         *         "mode": "imported_observation",
+         *         "panelId": "neutral-core",
+         *         "panelVersion": "v1",
+         *         "periodStart": "2026-10-18T09:00:00Z",
+         *         "periodEnd": "2026-10-18T10:00:00Z",
+         *         "context": {
+         *           "market": "unknown",
+         *           "promptLanguage": "en",
+         *           "answerLanguage": "unknown",
+         *           "searchMode": "unknown",
+         *           "windowDays": 7
+         *         },
+         *         "prompts": [
+         *           {
+         *             "id": "p1",
+         *             "text": "best free mac apps",
+         *             "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *             "classification": "neutral"
+         *           }
+         *         ],
+         *         "engines": [
+         *           {
+         *             "key": "chatgpt",
+         *             "name": "ChatGPT",
+         *             "surface": "provider_api",
+         *             "modelVersion": "unknown",
+         *             "toolVersion": "unknown"
+         *           }
+         *         ],
+         *         "plannedCount": 1,
+         *         "cells": [
+         *           {
+         *             "id": "p1-chatgpt",
+         *             "promptId": "p1",
+         *             "engineKey": "chatgpt",
+         *             "status": "answered",
+         *             "observationId": "observation-fixture-001",
+         *             "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         *             "searchTriggered": null,
+         *             "citationExtraction": "unknown",
+         *             "evidenceAvailability": "unknown",
+         *             "mentioned": null,
+         *             "candidate": null,
+         *             "cited": null,
+         *             "ownUrls": [],
+         *             "thirdPartyDomains": [],
+         *             "domainsTruncated": false
+         *           }
+         *         ],
+         *         "reported": null,
+         *         "artifactCompleteness": "unknown",
+         *         "hashAlgorithm": "sha256",
+         *         "hashNormalization": "provider-v1",
+         *         "charges": [
+         *           {
+         *             "vendorTaskId": "fixture-charge-001",
+         *             "costUsd": null,
+         *             "credits": null,
+         *             "incurredAt": "2026-10-18T10:00:00Z"
+         *           }
+         *         ],
+         *         "approvedBatchRef": "fixture-approval-001"
+         *       },
+         *       "observationLinks": [
+         *         {
+         *           "observationId": "observation-fixture-001",
+         *           "url": null
+         *         }
+         *       ]
+         *     }
+         */
+        SeoGeoRecord: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example fixture.example */
+            site: string;
+            /**
+             * @example imported_observation
+             * @enum {string}
+             */
+            mode: "imported_observation" | "summary_only";
+            /** @example fixture-001 */
+            panelId: string;
+            /** @example fixture-001 */
+            panelVersion: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            periodStart: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            periodEnd: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-18T10:00:00Z
+             */
+            importedAt: string;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            payloadHash: string;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            comparisonKey: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            supersedes: number | null;
+            counts: components["schemas"]["SeoGeoCounts"];
+            trend: components["schemas"]["SeoGeoTrend"];
+            /** @example agent:1:1 */
+            importedBy: string;
+            snapshot: components["schemas"]["SeoGeoSnapshot"];
+            /**
+             * @example [
+             *       {
+             *         "observationId": "observation-fixture-001",
+             *         "url": null
+             *       }
+             *     ]
+             */
+            observationLinks: components["schemas"]["SeoGeoObservationLink"][];
+        };
+        /**
+         * @example {
+         *       "current": 1,
+         *       "size": 20,
+         *       "total": 1,
+         *       "records": [
+         *         {
+         *           "id": 1,
+         *           "site": "fixture.example",
+         *           "mode": "imported_observation",
+         *           "panelId": "neutral-core",
+         *           "panelVersion": "v1",
+         *           "periodStart": "2026-10-18T09:00:00Z",
+         *           "periodEnd": "2026-10-18T10:00:00Z",
+         *           "importedAt": "2026-10-18T11:00:00Z",
+         *           "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+         *           "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+         *           "supersedes": null,
+         *           "counts": {
+         *             "planned": 1,
+         *             "answered": 1,
+         *             "searchTriggered": {
+         *               "positive": 0,
+         *               "known": 0
+         *             },
+         *             "mentioned": {
+         *               "positive": 0,
+         *               "known": 0
+         *             },
+         *             "candidate": {
+         *               "positive": 0,
+         *               "known": 0
+         *             },
+         *             "cited": {
+         *               "positive": 0,
+         *               "known": 0
+         *             },
+         *             "citationComplete": 0,
+         *             "reported": null
+         *           },
+         *           "trend": null
+         *         }
+         *       ]
+         *     }
+         */
+        SeoGeoPage: {
+            /** @example 1 */
+            current: number;
+            /** @example 20 */
+            size: number;
+            /** @example 1 */
+            total: number;
+            /**
+             * @example [
+             *       {
+             *         "id": 1,
+             *         "site": "fixture.example",
+             *         "mode": "imported_observation",
+             *         "panelId": "neutral-core",
+             *         "panelVersion": "v1",
+             *         "periodStart": "2026-10-18T09:00:00Z",
+             *         "periodEnd": "2026-10-18T10:00:00Z",
+             *         "importedAt": "2026-10-18T11:00:00Z",
+             *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+             *         "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+             *         "supersedes": null,
+             *         "counts": {
+             *           "planned": 1,
+             *           "answered": 1,
+             *           "searchTriggered": {
+             *             "positive": 0,
+             *             "known": 0
+             *           },
+             *           "mentioned": {
+             *             "positive": 0,
+             *             "known": 0
+             *           },
+             *           "candidate": {
+             *             "positive": 0,
+             *             "known": 0
+             *           },
+             *           "cited": {
+             *             "positive": 0,
+             *             "known": 0
+             *           },
+             *           "citationComplete": 0,
+             *           "reported": null
+             *         },
+             *         "trend": null
+             *       }
+             *     ]
+             */
+            records: components["schemas"]["SeoGeoSummary"][];
+        };
+        /**
+         * @example {
+         *       "id": 1,
+         *       "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+         *     }
+         */
+        SeoGeoImportResult: {
+            /**
+             * Format: int64
+             * @example 1
+             */
+            id: number;
+            /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
+            payloadHash: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "current": 1,
+         *         "size": 20,
+         *         "total": 1,
+         *         "records": [
+         *           {
+         *             "id": 1,
+         *             "site": "fixture.example",
+         *             "mode": "imported_observation",
+         *             "panelId": "neutral-core",
+         *             "panelVersion": "v1",
+         *             "periodStart": "2026-10-18T09:00:00Z",
+         *             "periodEnd": "2026-10-18T10:00:00Z",
+         *             "importedAt": "2026-10-18T11:00:00Z",
+         *             "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+         *             "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+         *             "supersedes": null,
+         *             "counts": {
+         *               "planned": 1,
+         *               "answered": 1,
+         *               "searchTriggered": {
+         *                 "positive": 0,
+         *                 "known": 0
+         *               },
+         *               "mentioned": {
+         *                 "positive": 0,
+         *                 "known": 0
+         *               },
+         *               "candidate": {
+         *                 "positive": 0,
+         *                 "known": 0
+         *               },
+         *               "cited": {
+         *                 "positive": 0,
+         *                 "known": 0
+         *               },
+         *               "citationComplete": 0,
+         *               "reported": null
+         *             },
+         *             "trend": null
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        SeoGeoPageResponse: {
+            /** @example 0000 */
+            code: string;
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoGeoPage"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "site": "fixture.example",
+         *         "mode": "imported_observation",
+         *         "panelId": "neutral-core",
+         *         "panelVersion": "v1",
+         *         "periodStart": "2026-10-18T09:00:00Z",
+         *         "periodEnd": "2026-10-18T10:00:00Z",
+         *         "importedAt": "2026-10-18T11:00:00Z",
+         *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+         *         "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+         *         "supersedes": null,
+         *         "counts": {
+         *           "planned": 1,
+         *           "answered": 1,
+         *           "searchTriggered": {
+         *             "positive": 0,
+         *             "known": 0
+         *           },
+         *           "mentioned": {
+         *             "positive": 0,
+         *             "known": 0
+         *           },
+         *           "candidate": {
+         *             "positive": 0,
+         *             "known": 0
+         *           },
+         *           "cited": {
+         *             "positive": 0,
+         *             "known": 0
+         *           },
+         *           "citationComplete": 0,
+         *           "reported": null
+         *         },
+         *         "trend": null,
+         *         "importedBy": "agent:1:1",
+         *         "snapshot": {
+         *           "schemaVersion": 1,
+         *           "provider": "openseo",
+         *           "sourceProject": "fixture-project",
+         *           "providerRunKey": "fixture-run-001",
+         *           "mode": "imported_observation",
+         *           "panelId": "neutral-core",
+         *           "panelVersion": "v1",
+         *           "periodStart": "2026-10-18T09:00:00Z",
+         *           "periodEnd": "2026-10-18T10:00:00Z",
+         *           "context": {
+         *             "market": "unknown",
+         *             "promptLanguage": "en",
+         *             "answerLanguage": "unknown",
+         *             "searchMode": "unknown",
+         *             "windowDays": 7
+         *           },
+         *           "prompts": [
+         *             {
+         *               "id": "p1",
+         *               "text": "best free mac apps",
+         *               "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *               "classification": "neutral"
+         *             }
+         *           ],
+         *           "engines": [
+         *             {
+         *               "key": "chatgpt",
+         *               "name": "ChatGPT",
+         *               "surface": "provider_api",
+         *               "modelVersion": "unknown",
+         *               "toolVersion": "unknown"
+         *             }
+         *           ],
+         *           "plannedCount": 1,
+         *           "cells": [
+         *             {
+         *               "id": "p1-chatgpt",
+         *               "promptId": "p1",
+         *               "engineKey": "chatgpt",
+         *               "status": "answered",
+         *               "observationId": "observation-fixture-001",
+         *               "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         *               "searchTriggered": null,
+         *               "citationExtraction": "unknown",
+         *               "evidenceAvailability": "unknown",
+         *               "mentioned": null,
+         *               "candidate": null,
+         *               "cited": null,
+         *               "ownUrls": [],
+         *               "thirdPartyDomains": [],
+         *               "domainsTruncated": false
+         *             }
+         *           ],
+         *           "reported": null,
+         *           "artifactCompleteness": "unknown",
+         *           "hashAlgorithm": "sha256",
+         *           "hashNormalization": "provider-v1",
+         *           "charges": [
+         *             {
+         *               "vendorTaskId": "fixture-charge-001",
+         *               "costUsd": null,
+         *               "credits": null,
+         *               "incurredAt": "2026-10-18T10:00:00Z"
+         *             }
+         *           ],
+         *           "approvedBatchRef": "fixture-approval-001"
+         *         },
+         *         "observationLinks": [
+         *           {
+         *             "observationId": "observation-fixture-001",
+         *             "url": null
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        SeoGeoRecordResponse: {
+            /** @example 0000 */
+            code: string;
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoGeoRecord"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+         *       }
+         *     }
+         */
+        SeoGeoImportResultResponse: {
+            /** @example 0000 */
+            code: string;
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoGeoImportResult"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+         *       }
+         *     }
+         */
+        SeoGeoImportResultResponseResult: components["schemas"]["SeoGeoImportResultResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "current": 1,
+         *         "size": 20,
+         *         "total": 1,
+         *         "records": [
+         *           {
+         *             "id": 1,
+         *             "site": "fixture.example",
+         *             "mode": "imported_observation",
+         *             "panelId": "neutral-core",
+         *             "panelVersion": "v1",
+         *             "periodStart": "2026-10-18T09:00:00Z",
+         *             "periodEnd": "2026-10-18T10:00:00Z",
+         *             "importedAt": "2026-10-18T11:00:00Z",
+         *             "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+         *             "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+         *             "supersedes": null,
+         *             "counts": {
+         *               "planned": 1,
+         *               "answered": 1,
+         *               "searchTriggered": {
+         *                 "positive": 0,
+         *                 "known": 0
+         *               },
+         *               "mentioned": {
+         *                 "positive": 0,
+         *                 "known": 0
+         *               },
+         *               "candidate": {
+         *                 "positive": 0,
+         *                 "known": 0
+         *               },
+         *               "cited": {
+         *                 "positive": 0,
+         *                 "known": 0
+         *               },
+         *               "citationComplete": 0,
+         *               "reported": null
+         *             },
+         *             "trend": null
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        SeoGeoPageResponseResult: components["schemas"]["SeoGeoPageResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "id": 1,
+         *         "site": "fixture.example",
+         *         "mode": "imported_observation",
+         *         "panelId": "neutral-core",
+         *         "panelVersion": "v1",
+         *         "periodStart": "2026-10-18T09:00:00Z",
+         *         "periodEnd": "2026-10-18T10:00:00Z",
+         *         "importedAt": "2026-10-18T11:00:00Z",
+         *         "payloadHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+         *         "comparisonKey": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+         *         "supersedes": null,
+         *         "counts": {
+         *           "planned": 1,
+         *           "answered": 1,
+         *           "searchTriggered": {
+         *             "positive": 0,
+         *             "known": 0
+         *           },
+         *           "mentioned": {
+         *             "positive": 0,
+         *             "known": 0
+         *           },
+         *           "candidate": {
+         *             "positive": 0,
+         *             "known": 0
+         *           },
+         *           "cited": {
+         *             "positive": 0,
+         *             "known": 0
+         *           },
+         *           "citationComplete": 0,
+         *           "reported": null
+         *         },
+         *         "trend": null,
+         *         "importedBy": "agent:1:1",
+         *         "snapshot": {
+         *           "schemaVersion": 1,
+         *           "provider": "openseo",
+         *           "sourceProject": "fixture-project",
+         *           "providerRunKey": "fixture-run-001",
+         *           "mode": "imported_observation",
+         *           "panelId": "neutral-core",
+         *           "panelVersion": "v1",
+         *           "periodStart": "2026-10-18T09:00:00Z",
+         *           "periodEnd": "2026-10-18T10:00:00Z",
+         *           "context": {
+         *             "market": "unknown",
+         *             "promptLanguage": "en",
+         *             "answerLanguage": "unknown",
+         *             "searchMode": "unknown",
+         *             "windowDays": 7
+         *           },
+         *           "prompts": [
+         *             {
+         *               "id": "p1",
+         *               "text": "best free mac apps",
+         *               "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         *               "classification": "neutral"
+         *             }
+         *           ],
+         *           "engines": [
+         *             {
+         *               "key": "chatgpt",
+         *               "name": "ChatGPT",
+         *               "surface": "provider_api",
+         *               "modelVersion": "unknown",
+         *               "toolVersion": "unknown"
+         *             }
+         *           ],
+         *           "plannedCount": 1,
+         *           "cells": [
+         *             {
+         *               "id": "p1-chatgpt",
+         *               "promptId": "p1",
+         *               "engineKey": "chatgpt",
+         *               "status": "answered",
+         *               "observationId": "observation-fixture-001",
+         *               "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+         *               "searchTriggered": null,
+         *               "citationExtraction": "unknown",
+         *               "evidenceAvailability": "unknown",
+         *               "mentioned": null,
+         *               "candidate": null,
+         *               "cited": null,
+         *               "ownUrls": [],
+         *               "thirdPartyDomains": [],
+         *               "domainsTruncated": false
+         *             }
+         *           ],
+         *           "reported": null,
+         *           "artifactCompleteness": "unknown",
+         *           "hashAlgorithm": "sha256",
+         *           "hashNormalization": "provider-v1",
+         *           "charges": [
+         *             {
+         *               "vendorTaskId": "fixture-charge-001",
+         *               "costUsd": null,
+         *               "credits": null,
+         *               "incurredAt": "2026-10-18T10:00:00Z"
+         *             }
+         *           ],
+         *           "approvedBatchRef": "fixture-approval-001"
+         *         },
+         *         "observationLinks": [
+         *           {
+         *             "observationId": "observation-fixture-001",
+         *             "url": null
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        SeoGeoRecordResponseResult: components["schemas"]["SeoGeoRecordResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "geo": null,
+         *       "watermarks": [],
+         *       "keywordCount": 1,
+         *       "targetCount": 0,
+         *       "automationReady": true,
+         *       "breakers": [
+         *         {
+         *           "kind": "technical",
+         *           "scope": "*",
+         *           "reason": "audit_p0",
+         *           "openedAt": "2026-10-18T10:00:00Z",
+         *           "retryAt": null,
+         *           "evidence": {
+         *             "unresolved": 2,
+         *             "layers": [
+         *               "origin",
+         *               "edge"
+         *             ]
+         *           }
+         *         }
+         *       ],
+         *       "budgets": [
+         *         {
+         *           "action": "listing",
+         *           "period": "day",
+         *           "limit": 20,
+         *           "used": 3,
+         *           "remaining": 17
+         *         },
+         *         {
+         *           "action": "paid_research",
+         *           "period": "day",
+         *           "limitMicros": 15000000,
+         *           "usedMicros": 250000,
+         *           "remainingMicros": 14750000
+         *         }
+         *       ],
+         *       "actionModes": [
+         *         {
+         *           "action": "listing",
+         *           "enabled": true,
+         *           "mode": "proposal"
+         *         }
+         *       ],
+         *       "yesterday": {
+         *         "actions": [
+         *           {
+         *             "operation": "UpdatePackageMeta",
+         *             "mode": "live",
+         *             "count": 12,
+         *             "compensated": 1
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        SeoOverview: {
+            geo: components["schemas"]["SeoGeoSummary"];
+            watermarks: components["schemas"]["SeoWatermark"][];
+            /**
+             * Format: int64
+             * @example 1
+             */
+            keywordCount: number;
+            /**
+             * Format: int64
+             * @example 0
+             */
+            targetCount: number;
+            /** @example true */
+            automationReady: boolean;
+            breakers: components["schemas"]["SeoOverviewBreaker"][];
+            budgets: components["schemas"]["SeoOverviewBudget"][];
+            actionModes: components["schemas"]["SeoOverviewActionMode"][];
+            yesterday: components["schemas"]["SeoYesterday"];
+        };
+        /**
+         * @example {
+         *       "robots": "index, follow",
+         *       "canonicalPath": "/apps/example-editor",
+         *       "hreflang": [
+         *         "en-US"
+         *       ],
+         *       "inSitemap": true,
+         *       "announce": true,
+         *       "reason": "ready"
+         *     }
+         */
+        SeoInsightDecision: {
+            /** @example index, follow */
+            robots: string;
+            /** @example  */
+            canonicalPath: string;
+            hreflang: components["schemas"]["Locale"][];
+            /** @example true */
+            inSitemap: boolean;
+            /** @example true */
+            announce: boolean;
+            /** @example  */
+            reason: string;
+        };
+        /**
+         * @example {
+         *       "url": "https://example.test/apps/example-editor",
+         *       "urlId": 1,
+         *       "entityKey": "pkg:1",
+         *       "locale": "en-US",
+         *       "indexing": {
+         *         "robots": "index, follow",
+         *         "canonicalPath": "",
+         *         "hreflang": [
+         *           "en-US"
+         *         ],
+         *         "inSitemap": true,
+         *         "announce": true,
+         *         "reason": ""
+         *       },
+         *       "languages": [
+         *         {
+         *           "locale": "en-US",
+         *           "ready": true
+         *         }
+         *       ],
+         *       "missingFacts": [
+         *         "price"
+         *       ],
+         *       "inboundLinks": null,
+         *       "outboundLinks": null,
+         *       "auditIssues": [],
+         *       "gsc": {
+         *         "completeThrough": "2026-10-16",
+         *         "clicks": 10,
+         *         "impressions": 100,
+         *         "averagePosition": 3
+         *       }
+         *     }
+         */
+        SeoPageInsight: {
+            /**
+             * Format: uri
+             * @example https://example.test/apps/example-editor
+             */
+            url: string;
+            /**
+             * Format: int64
+             * @example 1
+             */
+            urlId: number;
+            /** @example pkg:1 */
+            entityKey: string;
+            locale: components["schemas"]["Locale"];
+            indexing: components["schemas"]["SeoInsightDecision"];
+            languages: {
+                locale: components["schemas"]["Locale"];
+                /** @example true */
+                ready: boolean;
+            }[];
+            missingFacts: string[];
+            /**
+             * Format: int64
+             * @example 0
+             */
+            inboundLinks: number | null;
+            /**
+             * Format: int64
+             * @example 0
+             */
+            outboundLinks: number | null;
+            /**
+             * @description Counts cover recently observed internal HTML links, not a complete crawl of the site.
+             * @example sampled_html
+             * @enum {string}
+             */
+            linkCoverage?: "unknown" | "sampled_html";
+            /**
+             * Format: date-time
+             * @example null
+             */
+            linksCheckedAt?: string | null;
+            auditIssues: {
+                /** @example seo.canonical */
+                rule: string;
+                /**
+                 * @example origin
+                 * @enum {string}
+                 */
+                layer: "origin" | "edge";
+                /**
+                 * @example p0
+                 * @enum {string}
+                 */
+                severity: "p0" | "p1" | "p2";
+                /** @example Canonical mismatch */
+                detail: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-10-18T10:00:00Z
+                 */
+                firstSeen: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-10-18T10:00:00Z
+                 */
+                lastSeen: string;
+            }[];
+            gsc: {
+                /**
+                 * Format: date
+                 * @example 2026-10-16
+                 */
+                completeThrough: string | null;
+                /**
+                 * Format: int64
+                 * @example 10
+                 */
+                clicks: number;
+                /**
+                 * Format: int64
+                 * @example 100
+                 */
+                impressions: number;
+                /** @example 3 */
+                averagePosition: number | null;
+            } | null;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "keyword": "Example Editor mac",
+         *             "source": "gsc",
+         *             "engine": "google",
+         *             "country": "US",
+         *             "language": "en-US",
+         *             "device": "desktop",
+         *             "period": "2026-10",
+         *             "searchVolume": 100,
+         *             "volumeState": "known",
+         *             "observedAt": "2026-10-18T10:00:00Z",
+         *             "id": 1,
+         *             "normalized": "example editor mac",
+         *             "difficulty": null,
+         *             "ourPosition": null,
+         *             "serpFeatures": [],
+         *             "vendorTaskId": null,
+         *             "costUsd": null,
+         *             "anomaly": null,
+         *             "links": []
+         *           }
+         *         ],
+         *         "targets": []
+         *       }
+         *     }
+         */
+        SeoKeywordsResultResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoKeywordsResult"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "records": [
+         *           {
+         *             "keyword": "Example Editor mac",
+         *             "source": "gsc",
+         *             "engine": "google",
+         *             "country": "US",
+         *             "language": "en-US",
+         *             "device": "desktop",
+         *             "period": "2026-10",
+         *             "searchVolume": 100,
+         *             "volumeState": "known",
+         *             "observedAt": "2026-10-18T10:00:00Z",
+         *             "id": 1,
+         *             "normalized": "example editor mac",
+         *             "difficulty": null,
+         *             "ourPosition": null,
+         *             "serpFeatures": [],
+         *             "vendorTaskId": null,
+         *             "costUsd": null,
+         *             "anomaly": null,
+         *             "links": []
+         *           }
+         *         ],
+         *         "targets": []
+         *       }
+         *     }
+         */
+        SeoKeywordsResultResponseResult: components["schemas"]["SeoKeywordsResultResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "current": 1,
+         *         "size": 10,
+         *         "total": 1,
+         *         "records": [
+         *           {
+         *             "keyword": "Example Editor mac",
+         *             "source": "gsc",
+         *             "engine": "google",
+         *             "country": "US",
+         *             "language": "en-US",
+         *             "device": "desktop",
+         *             "period": "2026-10",
+         *             "searchVolume": 100,
+         *             "volumeState": "known",
+         *             "observedAt": "2026-10-18T10:00:00Z",
+         *             "id": 1,
+         *             "normalized": "example editor mac",
+         *             "difficulty": null,
+         *             "ourPosition": null,
+         *             "serpFeatures": [],
+         *             "vendorTaskId": null,
+         *             "costUsd": null,
+         *             "anomaly": null,
+         *             "links": []
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        SeoKeywordPageResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoKeywordPage"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "current": 1,
+         *         "size": 10,
+         *         "total": 1,
+         *         "records": [
+         *           {
+         *             "keyword": "Example Editor mac",
+         *             "source": "gsc",
+         *             "engine": "google",
+         *             "country": "US",
+         *             "language": "en-US",
+         *             "device": "desktop",
+         *             "period": "2026-10",
+         *             "searchVolume": 100,
+         *             "volumeState": "known",
+         *             "observedAt": "2026-10-18T10:00:00Z",
+         *             "id": 1,
+         *             "normalized": "example editor mac",
+         *             "difficulty": null,
+         *             "ourPosition": null,
+         *             "serpFeatures": [],
+         *             "vendorTaskId": null,
+         *             "costUsd": null,
+         *             "anomaly": null,
+         *             "links": []
+         *           }
+         *         ]
+         *       }
+         *     }
+         */
+        SeoKeywordPageResponseResult: components["schemas"]["SeoKeywordPageResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "watermarks": [],
+         *         "keywordCount": 1,
+         *         "targetCount": 0,
+         *         "automationReady": true,
+         *         "breakers": [
+         *           {
+         *             "kind": "technical",
+         *             "scope": "*",
+         *             "reason": "audit_p0",
+         *             "openedAt": "2026-10-18T10:00:00Z",
+         *             "retryAt": null,
+         *             "evidence": {
+         *               "unresolved": 2,
+         *               "layers": [
+         *                 "origin",
+         *                 "edge"
+         *               ]
+         *             }
+         *           }
+         *         ],
+         *         "budgets": [
+         *           {
+         *             "action": "listing",
+         *             "period": "day",
+         *             "limit": 20,
+         *             "used": 3,
+         *             "remaining": 17
+         *           },
+         *           {
+         *             "action": "paid_research",
+         *             "period": "day",
+         *             "limitMicros": 15000000,
+         *             "usedMicros": 250000,
+         *             "remainingMicros": 14750000
+         *           }
+         *         ],
+         *         "actionModes": [
+         *           {
+         *             "action": "listing",
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           }
+         *         ],
+         *         "yesterday": {
+         *           "actions": [
+         *             {
+         *               "operation": "UpdatePackageMeta",
+         *               "mode": "live",
+         *               "count": 12,
+         *               "compensated": 1
+         *             }
+         *           ]
+         *         },
+         *         "geo": null
+         *       }
+         *     }
+         */
+        SeoOverviewResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoOverview"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "geo": null,
+         *         "watermarks": [],
+         *         "keywordCount": 1,
+         *         "targetCount": 0,
+         *         "automationReady": true,
+         *         "breakers": [
+         *           {
+         *             "kind": "technical",
+         *             "scope": "*",
+         *             "reason": "audit_p0",
+         *             "openedAt": "2026-10-18T10:00:00Z",
+         *             "retryAt": null,
+         *             "evidence": {
+         *               "unresolved": 2,
+         *               "layers": [
+         *                 "origin",
+         *                 "edge"
+         *               ]
+         *             }
+         *           }
+         *         ],
+         *         "budgets": [
+         *           {
+         *             "action": "listing",
+         *             "period": "day",
+         *             "limit": 20,
+         *             "used": 3,
+         *             "remaining": 17
+         *           },
+         *           {
+         *             "action": "paid_research",
+         *             "period": "day",
+         *             "limitMicros": 15000000,
+         *             "usedMicros": 250000,
+         *             "remainingMicros": 14750000
+         *           }
+         *         ],
+         *         "actionModes": [
+         *           {
+         *             "action": "listing",
+         *             "enabled": true,
+         *             "mode": "proposal"
+         *           }
+         *         ],
+         *         "yesterday": {
+         *           "actions": [
+         *             {
+         *               "operation": "UpdatePackageMeta",
+         *               "mode": "live",
+         *               "count": 12,
+         *               "compensated": 1
+         *             }
+         *           ]
+         *         }
+         *       }
+         *     }
+         */
+        SeoOverviewResponseResult: components["schemas"]["SeoOverviewResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "url": "https://example.test/apps/example-editor",
+         *         "urlId": 1,
+         *         "entityKey": "pkg:1",
+         *         "locale": "en-US",
+         *         "indexing": {
+         *           "robots": "index, follow",
+         *           "canonicalPath": "",
+         *           "hreflang": [
+         *             "en-US"
+         *           ],
+         *           "inSitemap": true,
+         *           "announce": true,
+         *           "reason": ""
+         *         },
+         *         "languages": [
+         *           {
+         *             "locale": "en-US",
+         *             "ready": true
+         *           }
+         *         ],
+         *         "missingFacts": [
+         *           "price"
+         *         ],
+         *         "inboundLinks": null,
+         *         "outboundLinks": null,
+         *         "auditIssues": [],
+         *         "gsc": {
+         *           "completeThrough": "2026-10-16",
+         *           "clicks": 10,
+         *           "impressions": 100,
+         *           "averagePosition": 3
+         *         }
+         *       }
+         *     }
+         */
+        SeoPageInsightResponse: {
+            code: components["schemas"]["Code"];
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoPageInsight"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "url": "https://example.test/apps/example-editor",
+         *         "urlId": 1,
+         *         "entityKey": "pkg:1",
+         *         "locale": "en-US",
+         *         "indexing": {
+         *           "robots": "index, follow",
+         *           "canonicalPath": "",
+         *           "hreflang": [
+         *             "en-US"
+         *           ],
+         *           "inSitemap": true,
+         *           "announce": true,
+         *           "reason": ""
+         *         },
+         *         "languages": [
+         *           {
+         *             "locale": "en-US",
+         *             "ready": true
+         *           }
+         *         ],
+         *         "missingFacts": [
+         *           "price"
+         *         ],
+         *         "inboundLinks": null,
+         *         "outboundLinks": null,
+         *         "auditIssues": [],
+         *         "gsc": {
+         *           "completeThrough": "2026-10-16",
+         *           "clicks": 10,
+         *           "impressions": 100,
+         *           "averagePosition": 3
+         *         }
+         *       }
+         *     }
+         */
+        SeoPageInsightResponseResult: components["schemas"]["SeoPageInsightResponse"] | components["schemas"]["BusinessErrorResponse"];
+        /**
+         * @example {
+         *       "name": "open_source"
+         *     }
+         */
+        ComparisonAttribute: {
+            /** @enum {string} */
+            name: "open_source" | "offline" | "apple_silicon" | "import_formats" | "export_formats";
+            appVersion?: string;
+            booleanValue?: boolean;
+            formats?: string[];
+        };
+        /**
+         * @example {
+         *       "targetPackageId": 1,
+         *       "locale": "en-US",
+         *       "steps": []
+         *     }
+         */
+        MigrationGuide: {
+            /** Format: int64 */
+            targetPackageId: number;
+            /** @enum {string} */
+            locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+            sourceVersion?: string;
+            targetVersion?: string;
+            steps: components["schemas"]["MigrationStep"][];
+        };
+        /**
+         * @example {
+         *       "action": "backup",
+         *       "text": "example",
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": "2026-10-19T00:00:00Z",
+         *         "validUntil": "2026-11-18T00:00:00Z",
+         *         "status": "verified"
+         *       }
+         *     }
+         */
+        MigrationStep: {
+            /** @enum {string} */
+            action: "backup" | "export" | "import" | "verify";
+            text: string;
+            evidence: components["schemas"]["FactRecordEvidence"];
+        };
+        /**
+         * @example {
+         *       "channels": [],
+         *       "openSource": "unknown"
+         *     }
+         */
+        SecurityObservation: {
+            appVersion?: string;
+            developer?: string;
+            teamId?: string;
+            channels: ("homebrew" | "vendor" | "app_store")[];
+            /** @enum {string} */
+            openSource: "yes" | "no" | "unknown";
+            /** Format: uri */
+            repositoryUrl?: string;
+            productCpe?: string;
+        };
+        /**
+         * @example {
+         *       "sourceUrl": "https://vendor.example/docs",
+         *       "checkedAt": "2026-10-19T00:00:00Z",
+         *       "validUntil": "2026-11-18T00:00:00Z",
+         *       "status": "verified"
+         *     }
+         */
+        FactRecordEvidence: {
+            sourceUrl: string;
+            /** Format: date-time */
+            checkedAt: string | null;
+            /** Format: date-time */
+            validUntil: string | null;
+            /** @enum {string} */
+            status: "verified" | "stale" | "needs_review" | "unknown";
+        };
+        /**
+         * @example {
+         *       "kind": "price",
+         *       "key": "example",
+         *       "value": {
+         *         "region": "US",
+         *         "edition": "example",
+         *         "period": "unknown",
+         *         "usage": "unknown",
+         *         "downloadFree": false,
+         *         "purchaseUrl": "https://vendor.example/docs",
+         *         "channel": "vendor"
+         *       },
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": "2026-10-19T00:00:00Z",
+         *         "validUntil": "2026-11-18T00:00:00Z",
+         *         "status": "verified"
+         *       }
+         *     }
+         */
+        FactRecord: {
+            /** Format: int64 */
+            readonly id?: number;
+            /** @enum {string} */
+            kind: "price" | "security" | "attribute" | "migration" | "compatibility" | "issue" | "integration";
+            key: string;
+            /** @description Typed by kind; the shared validator enforces the corresponding schema. */
+            value: components["schemas"]["PriceObservation"] | components["schemas"]["SecurityObservation"] | components["schemas"]["ComparisonAttribute"] | components["schemas"]["MigrationGuide"] | components["schemas"]["CompatibilityObservation"] | components["schemas"]["KnownIssue"] | components["schemas"]["AppIntegration"];
+            evidence: components["schemas"]["FactRecordEvidence"];
+        };
+        /**
+         * @example {
+         *       "items": []
+         *     }
+         */
+        FactRecordsUpdate: {
+            items: components["schemas"]["FactRecord"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "items": []
+         *       }
+         *     }
+         */
+        FactRecordsResult: {
+            code: string;
+            msg: string;
+            data: {
+                items: components["schemas"]["FactRecord"][];
+            };
+        };
+        /**
+         * @example {
+         *       "region": "US",
+         *       "edition": "example",
+         *       "period": "unknown",
+         *       "usage": "unknown",
+         *       "downloadFree": false,
+         *       "purchaseUrl": "https://vendor.example/docs",
+         *       "channel": "vendor"
+         *     }
+         */
+        PriceObservation: {
+            region: string;
+            edition: string;
+            /** @enum {string} */
+            period: "free" | "one_time" | "monthly" | "yearly" | "unknown";
+            /** @enum {string} */
+            usage: "free" | "free_with_iap" | "paid" | "subscription" | "trial" | "unknown";
+            downloadFree: boolean;
+            amount?: string;
+            currency?: string;
+            /** Format: uri */
+            purchaseUrl: string;
+            /** @enum {string} */
+            channel: "vendor" | "app_store";
+        };
         /**
          * @description Writes no business data, revisions, audit, trash, queues or caches; stores only the dryRun call log.
          * @example {
@@ -3057,7 +8412,7 @@ export interface components {
             } | null;
             teamId: string | null;
             /** @enum {string} */
-            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source" | "unknown";
             notes: {
                 "en-US"?: string | null;
                 "zh-CN"?: string | null;
@@ -3065,6 +8420,10 @@ export interface components {
                 "es-ES"?: string | null;
                 "pt-BR"?: string | null;
                 "ru-RU"?: string | null;
+                "de-DE"?: string | null;
+                "fr-FR"?: string | null;
+                "it-IT"?: string | null;
+                "zh-Hant"?: string | null;
             } | null;
             adoptedByCask: string | null;
         };
@@ -3097,7 +8456,7 @@ export interface components {
             bundleIds?: string[];
             teamId?: string | null;
             /** @enum {string} */
-            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source" | "unknown";
             sparkleFeed?: string | null;
             assetRules?: {
                 arm64?: string;
@@ -3111,6 +8470,10 @@ export interface components {
                 "es-ES"?: string | null;
                 "pt-BR"?: string | null;
                 "ru-RU"?: string | null;
+                "de-DE"?: string | null;
+                "fr-FR"?: string | null;
+                "it-IT"?: string | null;
+                "zh-Hant"?: string | null;
             } | null;
         };
         /**
@@ -3130,7 +8493,7 @@ export interface components {
             bundleIds?: string[];
             teamId?: string | null;
             /** @enum {string} */
-            pricing?: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            pricing?: "free" | "paid" | "freemium" | "subscription" | "open_source" | "unknown";
             sparkleFeed?: string | null;
             assetRules?: {
                 arm64?: string;
@@ -3144,6 +8507,10 @@ export interface components {
                 "es-ES"?: string | null;
                 "pt-BR"?: string | null;
                 "ru-RU"?: string | null;
+                "de-DE"?: string | null;
+                "fr-FR"?: string | null;
+                "it-IT"?: string | null;
+                "zh-Hant"?: string | null;
             } | null;
         };
         /**
@@ -3198,7 +8565,7 @@ export interface components {
             bundleIds: string[];
             teamId: string | null;
             /** @enum {string} */
-            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source" | "unknown";
             sparkleFeed: string | null;
             assetRules: {
                 arm64?: string;
@@ -3212,6 +8579,10 @@ export interface components {
                 "es-ES"?: string | null;
                 "pt-BR"?: string | null;
                 "ru-RU"?: string | null;
+                "de-DE"?: string | null;
+                "fr-FR"?: string | null;
+                "it-IT"?: string | null;
+                "zh-Hant"?: string | null;
             } | null;
             /** Format: int64 */
             id: number;
@@ -3560,6 +8931,7 @@ export interface components {
             /** @example ok */
             msg: string;
             data: {
+                translationImpact?: components["schemas"]["TranslationImpact"];
                 records: components["schemas"]["IndexReportRow"][];
                 current: number;
                 size: number;
@@ -3780,6 +9152,38 @@ export interface components {
                     /** @description Set by the server when enforcement first covers new apps (RFC 3339); apps first seen after it are the new scope. Empty until then; saved values are kept. */
                     since: string;
                 };
+                /**
+                 * @description Published translation quality rollout; new site-only languages are always enforced.
+                 * @default shadow
+                 * @enum {string}
+                 */
+                translationMode: "shadow" | "enforce";
+                /** @description Locales to enforce; empty means all locales. */
+                translationLocales?: components["schemas"]["Locale"][];
+                /** @default 300 */
+                versionsMinNotesChars: number;
+                /**
+                 * @description Languages open for non-entity pages; defaults to the six application languages. Entity pages use their own PageDecision.
+                 * @default [
+                 *       "en-US",
+                 *       "zh-CN",
+                 *       "ja-JP",
+                 *       "es-ES",
+                 *       "pt-BR",
+                 *       "ru-RU"
+                 *     ]
+                 */
+                openLocales: components["schemas"]["Locale"][];
+                /**
+                 * @description Enable qualified intent pages backed by confirmed search demand and unique targets.
+                 * @default false
+                 */
+                intentPagesEnabled: boolean;
+                /**
+                 * @description Enable details redirects after migrated overview content has been verified.
+                 * @default false
+                 */
+                detailsRedirect: boolean;
                 versionsSitemap: boolean;
             };
         };
@@ -4242,140 +9646,6 @@ export interface components {
          *     }
          */
         SeoSettingsResponseResult: components["schemas"]["SeoSettingsResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "baseUrl": "https://gateway.example/v1"
-         *     }
-         */
-        TranslationModelsRequest: {
-            /** Format: uri */
-            baseUrl: string;
-            apiKey?: string;
-            /** @default false */
-            clearApiKey: boolean;
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "models": [
-         *           "gpt-6-luna"
-         *         ]
-         *       }
-         *     }
-         */
-        TranslationModelsResponse: {
-            code: components["schemas"]["Code"];
-            msg: string;
-            data: {
-                models: string[];
-            };
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "models": [
-         *           "gpt-6-luna"
-         *         ]
-         *       }
-         *     }
-         */
-        TranslationModelsResponseResult: components["schemas"]["TranslationModelsResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "enabled": true,
-         *       "baseUrl": "https://gateway.example/v1",
-         *       "model": "gpt-6-luna",
-         *       "reasoningEffort": "medium",
-         *       "monthlyTokenBudget": 30000000
-         *     }
-         */
-        TranslationSettingsUpdate: {
-            enabled: boolean;
-            /**
-             * Format: uri
-             * @description OpenAI-compatible URL including /v1; production requires HTTPS and rejects userinfo, query strings and fragments.
-             */
-            baseUrl: string;
-            model: string;
-            /** @enum {string} */
-            reasoningEffort: "low" | "medium" | "high";
-            /** Format: int64 */
-            monthlyTokenBudget: number;
-            apiKey?: string;
-            /** @default false */
-            clearApiKey: boolean;
-        };
-        /**
-         * @example {
-         *       "enabled": true,
-         *       "baseUrl": "https://gateway.example/v1",
-         *       "model": "gpt-6-luna",
-         *       "reasoningEffort": "medium",
-         *       "monthlyTokenBudget": 30000000,
-         *       "apiKeyConfigured": true,
-         *       "apiKeySource": "admin",
-         *       "environmentKeyConfigured": true
-         *     }
-         */
-        TranslationSettingsView: {
-            enabled: boolean;
-            /**
-             * Format: uri
-             * @description OpenAI-compatible URL including /v1; production requires HTTPS and rejects userinfo, query strings and fragments.
-             */
-            baseUrl: string;
-            model: string;
-            /** @enum {string} */
-            reasoningEffort: "low" | "medium" | "high";
-            /** Format: int64 */
-            monthlyTokenBudget: number;
-            environmentKeyConfigured: boolean;
-            apiKeyConfigured: boolean;
-            /** @enum {string} */
-            apiKeySource: "admin" | "environment" | "none";
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "enabled": true,
-         *         "baseUrl": "https://gateway.example/v1",
-         *         "model": "gpt-6-luna",
-         *         "reasoningEffort": "medium",
-         *         "monthlyTokenBudget": 30000000,
-         *         "apiKeyConfigured": true,
-         *         "apiKeySource": "admin",
-         *         "environmentKeyConfigured": true
-         *       }
-         *     }
-         */
-        TranslationSettingsResponseResult: components["schemas"]["TranslationSettingsResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": {
-         *         "enabled": true,
-         *         "baseUrl": "https://gateway.example/v1",
-         *         "model": "gpt-6-luna",
-         *         "reasoningEffort": "medium",
-         *         "monthlyTokenBudget": 30000000,
-         *         "apiKeyConfigured": true,
-         *         "apiKeySource": "admin",
-         *         "environmentKeyConfigured": true
-         *       }
-         *     }
-         */
-        TranslationSettingsResponse: {
-            code: components["schemas"]["Code"];
-            msg: string;
-            data: components["schemas"]["TranslationSettingsView"];
-        };
         /**
          * @example {
          *       "code": "0000",
@@ -4963,7 +10233,7 @@ export interface components {
          *             "summary": "支持调试与扩展的代码编辑器",
          *             "description": "编辑代码、调试应用并安装扩展。",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -4978,7 +10248,7 @@ export interface components {
          *             "summary": "デバッグと拡張機能に対応したコードエディター",
          *             "description": "コードを編集し、アプリをデバッグして、拡張機能を追加できます。",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -4993,7 +10263,7 @@ export interface components {
          *             "summary": "Editor de código con depuración y extensiones",
          *             "description": "Edita código, depura aplicaciones y añade extensiones.",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -5008,7 +10278,7 @@ export interface components {
          *             "summary": "Editor de código com depuração e extensões",
          *             "description": "Edite código, depure aplicativos e adicione extensões.",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -5023,7 +10293,7 @@ export interface components {
          *             "summary": "Редактор кода с отладкой и расширениями",
          *             "description": "Редактируйте код, отлаживайте приложения и добавляйте расширения.",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -5605,16 +10875,6 @@ export interface components {
          *             "total": 1
          *           }
          *         },
-         *         "llm": {
-         *           "model": "gpt-6-luna",
-         *           "monthTokens": 1,
-         *           "monthTokenBudget": 30000000,
-         *           "monthSpendUsd": null,
-         *           "monthBudgetUsd": null,
-         *           "pendingPackages": 1,
-         *           "pendingReleases": 1,
-         *           "needsReview": 1
-         *         },
          *         "feedbackOpen": 1,
          *         "jobs": {
          *           "failed24h": 1,
@@ -5923,24 +11183,6 @@ export interface components {
          * @example {
          *       "code": "0000",
          *       "msg": "ok",
-         *       "data": [
-         *         {
-         *           "month": "2026-10",
-         *           "task": "enrich_package",
-         *           "requests": 1,
-         *           "promptTokens": 1,
-         *           "completionTokens": 1,
-         *           "reasoningTokens": 1,
-         *           "costUsd": null
-         *         }
-         *       ]
-         *     }
-         */
-        LlmUsageResponseResult: components["schemas"]["LlmUsageResponse"] | components["schemas"]["BusinessErrorResponse"];
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
          *       "data": {
          *         "token": "opennavo.mock.access-token-local-only",
          *         "refreshToken": "opennavo-mock-refresh-token-local-only"
@@ -6198,12 +11440,6 @@ export interface components {
          *           "agentGrantable": false
          *         },
          *         {
-         *           "code": "i18n:settings",
-         *           "name": "翻译 AI 设置",
-         *           "group": "i18n",
-         *           "agentGrantable": false
-         *         },
-         *         {
          *           "code": "system:github:edit",
          *           "name": "GitHub 设置",
          *           "group": "system",
@@ -6333,7 +11569,6 @@ export interface components {
          *             "system:user:edit",
          *             "system:role:edit",
          *             "system:audit:view",
-         *             "i18n:settings",
          *             "system:github:edit",
          *             "system:seo:edit"
          *           ],
@@ -6514,6 +11749,11 @@ export interface components {
          *           "R_SUPER"
          *         ],
          *         "buttons": [
+         *           "seo:automation:tune",
+         *           "seo:snippet:propose",
+         *           "seo:task:handle",
+         *           "seo:insight:view",
+         *           "seo:keyword:edit",
          *           "dashboard:view",
          *           "catalog:package:view",
          *           "catalog:package:edit",
@@ -6538,7 +11778,6 @@ export interface components {
          *           "system:user:edit",
          *           "system:role:edit",
          *           "system:audit:view",
-         *           "i18n:settings",
          *           "system:github:edit",
          *           "system:seo:edit",
          *           "content:glossary:edit",
@@ -6578,7 +11817,13 @@ export interface components {
          * @example en-US
          * @enum {string}
          */
-        Locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU";
+        Locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+        /**
+         * @description Application UI and client release-note language; content APIs use Locale.
+         * @example en-US
+         * @enum {string}
+         */
+        AppLocale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU";
         /**
          * @description Manages Casks only; formula remains an enum for historical data. Admin lists exclude Formula and details return business code 1002 (HTTP 200); explicit public formula requests return HTTP 404.
          * @example cask
@@ -6801,6 +12046,11 @@ export interface components {
          *         "R_SUPER"
          *       ],
          *       "buttons": [
+         *         "seo:automation:tune",
+         *         "seo:snippet:propose",
+         *         "seo:task:handle",
+         *         "seo:insight:view",
+         *         "seo:keyword:edit",
          *         "dashboard:view",
          *         "catalog:package:view",
          *         "catalog:package:edit",
@@ -6825,7 +12075,6 @@ export interface components {
          *         "system:user:edit",
          *         "system:role:edit",
          *         "system:audit:view",
-         *         "i18n:settings",
          *         "system:github:edit",
          *         "system:seo:edit",
          *         "content:glossary:edit",
@@ -6851,6 +12100,11 @@ export interface components {
             /**
              * @description Permission code
              * @example [
+             *       "seo:automation:tune",
+             *       "seo:snippet:propose",
+             *       "seo:task:handle",
+             *       "seo:insight:view",
+             *       "seo:keyword:edit",
              *       "dashboard:view",
              *       "catalog:package:view",
              *       "catalog:package:edit",
@@ -6875,7 +12129,6 @@ export interface components {
              *       "system:user:edit",
              *       "system:role:edit",
              *       "system:audit:view",
-             *       "i18n:settings",
              *       "system:github:edit",
              *       "system:seo:edit"
              *     ]
@@ -6962,16 +12215,6 @@ export interface components {
          *           "total": 1
          *         }
          *       },
-         *       "llm": {
-         *         "model": "gpt-6-luna",
-         *         "monthTokens": 1,
-         *         "monthTokenBudget": 30000000,
-         *         "monthSpendUsd": null,
-         *         "monthBudgetUsd": null,
-         *         "pendingPackages": 1,
-         *         "pendingReleases": 1,
-         *         "needsReview": 1
-         *       },
          *       "feedbackOpen": 1,
          *       "jobs": {
          *         "failed24h": 1,
@@ -7025,37 +12268,6 @@ export interface components {
                 /** @description Valid apps and fonts with actual nonempty summaries and introductions in all six languages, status source/machine/manual, and source language/hash matching current source text. Excludes fallback, queued, failed and stale content. */
                 sixLocaleContent: components["schemas"]["Ratio"];
             };
-            llm: {
-                /** @example gpt-6-luna */
-                model: string;
-                /**
-                 * Format: int64
-                 * @description This month's input plus output tokens
-                 * @example 1
-                 */
-                monthTokens: number;
-                /**
-                 * Format: int64
-                 * @example 30000000
-                 */
-                monthTokenBudget: number;
-                /**
-                 * @description Present only when unit pricing is configured
-                 * @example null
-                 */
-                monthSpendUsd?: number | null;
-                /** @example null */
-                monthBudgetUsd?: number | null;
-                /** @example 1 */
-                pendingPackages: number;
-                /**
-                 * @description Release notes awaiting content translation, with any non-source language pending.
-                 * @example 1
-                 */
-                pendingReleases: number;
-                /** @example 1 */
-                needsReview: number;
-            };
             /** @example 1 */
             feedbackOpen: number;
             jobs: {
@@ -7089,49 +12301,6 @@ export interface components {
                 url?: string | null;
             };
             hermes?: components["schemas"]["HermesDaily"];
-        };
-        /**
-         * @example {
-         *       "month": "2026-10",
-         *       "task": "enrich_package",
-         *       "requests": 1,
-         *       "promptTokens": 1,
-         *       "completionTokens": 1,
-         *       "reasoningTokens": 1,
-         *       "costUsd": null
-         *     }
-         */
-        LlmMonthlyUsage: {
-            /** @example 2026-10 */
-            month: string;
-            /**
-             * @example enrich_package
-             * @enum {string}
-             */
-            task: "enrich_package" | "translate_release";
-            /** @example 1 */
-            requests: number;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            promptTokens: number;
-            /**
-             * Format: int64
-             * @description Includes reasoning tokens
-             * @example 1
-             */
-            completionTokens: number;
-            /**
-             * Format: int64
-             * @example 1
-             */
-            reasoningTokens: number;
-            /**
-             * @description Present only when unit pricing is configured
-             * @example null
-             */
-            costUsd?: number | null;
         };
         /**
          * @example {
@@ -7509,7 +12678,7 @@ export interface components {
          *           "summary": "支持调试与扩展的代码编辑器",
          *           "description": "编辑代码、调试应用并安装扩展。",
          *           "status": "machine",
-         *           "source": "llm",
+         *           "source": "human",
          *           "model": "gpt-6-luna",
          *           "reviewedBy": null,
          *           "reviewedAt": null,
@@ -7524,7 +12693,7 @@ export interface components {
          *           "summary": "デバッグと拡張機能に対応したコードエディター",
          *           "description": "コードを編集し、アプリをデバッグして、拡張機能を追加できます。",
          *           "status": "machine",
-         *           "source": "llm",
+         *           "source": "human",
          *           "model": "gpt-6-luna",
          *           "reviewedBy": null,
          *           "reviewedAt": null,
@@ -7539,7 +12708,7 @@ export interface components {
          *           "summary": "Editor de código con depuración y extensiones",
          *           "description": "Edita código, depura aplicaciones y añade extensiones.",
          *           "status": "machine",
-         *           "source": "llm",
+         *           "source": "human",
          *           "model": "gpt-6-luna",
          *           "reviewedBy": null,
          *           "reviewedAt": null,
@@ -7554,7 +12723,7 @@ export interface components {
          *           "summary": "Editor de código com depuração e extensões",
          *           "description": "Edite código, depure aplicativos e adicione extensões.",
          *           "status": "machine",
-         *           "source": "llm",
+         *           "source": "human",
          *           "model": "gpt-6-luna",
          *           "reviewedBy": null,
          *           "reviewedAt": null,
@@ -7569,7 +12738,7 @@ export interface components {
          *           "summary": "Редактор кода с отладкой и расширениями",
          *           "description": "Редактируйте код, отлаживайте приложения и добавляйте расширения.",
          *           "status": "machine",
-         *           "source": "llm",
+         *           "source": "human",
          *           "model": "gpt-6-luna",
          *           "reviewedBy": null,
          *           "reviewedAt": null,
@@ -9534,6 +14703,14 @@ export interface components {
              * @example 2026-09-30T08:00:00Z
              */
             createTime: string;
+            packageVersion?: string | null;
+            macosVersion?: string | null;
+            symptom?: string | null;
+            /** @description Private diagnostic text, at most 16 KiB UTF-8; secrets and personal paths are redacted before storage. */
+            diagnosticLog?: string | null;
+            links?: string[];
+            /** @enum {string} */
+            visibility?: "private";
         };
         /**
          * @example {
@@ -9813,7 +14990,7 @@ export interface components {
              */
             createTime: string;
             i18n: components["schemas"]["DesktopReleaseI18nViewMap"];
-            sourceLocale: components["schemas"]["Locale"];
+            sourceLocale: components["schemas"]["AppLocale"];
         };
         /**
          * @description Only source-language text is required: sourceLocale identifies it and i18n must contain that language; the other five need not be prefilled. The server validates paired presence and matching source keys (otherwise 1001). Omitted languages retain old translations, refreshed by translation jobs after source changes; manual non-source corrections affect only that language. i18n and sourceLocale may be omitted when text is unchanged.
@@ -9849,7 +15026,7 @@ export interface components {
             minMacos: string;
             artifacts: components["schemas"]["DesktopArtifact"][];
             i18n?: components["schemas"]["DesktopReleaseI18nMap"];
-            sourceLocale?: components["schemas"]["Locale"];
+            sourceLocale?: components["schemas"]["AppLocale"];
         };
         /**
          * @description Only source-language text is required: sourceLocale identifies it and i18n must contain that language; the other five need not be prefilled. The server validates paired presence and matching source keys (otherwise 1001). Omitted languages retain old translations, refreshed by translation jobs after source changes; manual non-source corrections affect only that language. i18n and sourceLocale may be omitted when text is unchanged.
@@ -9867,7 +15044,7 @@ export interface components {
             /** @example 13.0 */
             minMacos?: string;
             i18n?: components["schemas"]["DesktopReleaseI18nMap"];
-            sourceLocale?: components["schemas"]["Locale"];
+            sourceLocale?: components["schemas"]["AppLocale"];
         };
         /**
          * @example {
@@ -10180,7 +15357,6 @@ export interface components {
          *         "system:user:edit",
          *         "system:role:edit",
          *         "system:audit:view",
-         *         "i18n:settings",
          *         "system:github:edit",
          *         "system:seo:edit"
          *       ],
@@ -10250,7 +15426,6 @@ export interface components {
          *         "system:user:edit",
          *         "system:role:edit",
          *         "system:audit:view",
-         *         "i18n:settings",
          *         "system:github:edit",
          *         "system:seo:edit"
          *       ]
@@ -10350,6 +15525,11 @@ export interface components {
          *           "R_SUPER"
          *         ],
          *         "buttons": [
+         *           "seo:automation:tune",
+         *           "seo:snippet:propose",
+         *           "seo:task:handle",
+         *           "seo:insight:view",
+         *           "seo:keyword:edit",
          *           "dashboard:view",
          *           "catalog:package:view",
          *           "catalog:package:edit",
@@ -10374,7 +15554,6 @@ export interface components {
          *           "system:user:edit",
          *           "system:role:edit",
          *           "system:audit:view",
-         *           "i18n:settings",
          *           "system:github:edit",
          *           "system:seo:edit",
          *           "content:glossary:edit",
@@ -10455,16 +15634,6 @@ export interface components {
          *             "total": 1
          *           }
          *         },
-         *         "llm": {
-         *           "model": "gpt-6-luna",
-         *           "monthTokens": 1,
-         *           "monthTokenBudget": 30000000,
-         *           "monthSpendUsd": null,
-         *           "monthBudgetUsd": null,
-         *           "pendingPackages": 1,
-         *           "pendingReleases": 1,
-         *           "needsReview": 1
-         *         },
          *         "feedbackOpen": 1,
          *         "jobs": {
          *           "failed24h": 1,
@@ -10492,29 +15661,6 @@ export interface components {
             /** @example ok */
             msg: string;
             data?: components["schemas"]["DashboardOverview"] | null;
-        };
-        /**
-         * @example {
-         *       "code": "0000",
-         *       "msg": "ok",
-         *       "data": [
-         *         {
-         *           "month": "2026-10",
-         *           "task": "enrich_package",
-         *           "requests": 1,
-         *           "promptTokens": 1,
-         *           "completionTokens": 1,
-         *           "reasoningTokens": 1,
-         *           "costUsd": null
-         *         }
-         *       ]
-         *     }
-         */
-        LlmUsageResponse: {
-            code: components["schemas"]["Code"];
-            /** @example ok */
-            msg: string;
-            data?: components["schemas"]["LlmMonthlyUsage"][] | null;
         };
         /**
          * @example {
@@ -10661,7 +15807,7 @@ export interface components {
          *             "summary": "支持调试与扩展的代码编辑器",
          *             "description": "编辑代码、调试应用并安装扩展。",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -10676,7 +15822,7 @@ export interface components {
          *             "summary": "デバッグと拡張機能に対応したコードエディター",
          *             "description": "コードを編集し、アプリをデバッグして、拡張機能を追加できます。",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -10691,7 +15837,7 @@ export interface components {
          *             "summary": "Editor de código con depuración y extensiones",
          *             "description": "Edita código, depura aplicaciones y añade extensiones.",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -10706,7 +15852,7 @@ export interface components {
          *             "summary": "Editor de código com depuração e extensões",
          *             "description": "Edite código, depure aplicativos e adicione extensões.",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -10721,7 +15867,7 @@ export interface components {
          *             "summary": "Редактор кода с отладкой и расширениями",
          *             "description": "Редактируйте код, отлаживайте приложения и добавляйте расширения.",
          *             "status": "machine",
-         *             "source": "llm",
+         *             "source": "human",
          *             "model": "gpt-6-luna",
          *             "reviewedBy": null,
          *             "reviewedAt": null,
@@ -12468,7 +17614,6 @@ export interface components {
          *             "system:user:edit",
          *             "system:role:edit",
          *             "system:audit:view",
-         *             "i18n:settings",
          *             "system:github:edit",
          *             "system:seo:edit"
          *           ],
@@ -12667,12 +17812,6 @@ export interface components {
          *           "agentGrantable": false
          *         },
          *         {
-         *           "code": "i18n:settings",
-         *           "name": "翻译 AI 设置",
-         *           "group": "i18n",
-         *           "agentGrantable": false
-         *         },
-         *         {
          *           "code": "system:github:edit",
          *           "name": "GitHub 设置",
          *           "group": "system",
@@ -12797,6 +17936,14 @@ export interface components {
             "pt-BR"?: string | null;
             /** @example null */
             "ru-RU"?: string | null;
+            /** @example null */
+            "de-DE"?: string | null;
+            /** @example null */
+            "fr-FR"?: string | null;
+            /** @example null */
+            "it-IT"?: string | null;
+            /** @example null */
+            "zh-Hant"?: string | null;
         };
         /**
          * @example {
@@ -12844,6 +17991,10 @@ export interface components {
             "es-ES"?: components["schemas"]["CategoryI18n"];
             "pt-BR"?: components["schemas"]["CategoryI18n"];
             "ru-RU"?: components["schemas"]["CategoryI18n"];
+            "de-DE"?: components["schemas"]["CategoryI18n"];
+            "fr-FR"?: components["schemas"]["CategoryI18n"];
+            "it-IT"?: components["schemas"]["CategoryI18n"];
+            "zh-Hant"?: components["schemas"]["CategoryI18n"];
         };
         /**
          * @example {
@@ -12910,6 +18061,10 @@ export interface components {
             "es-ES"?: components["schemas"]["CategoryI18nView"];
             "pt-BR"?: components["schemas"]["CategoryI18nView"];
             "ru-RU"?: components["schemas"]["CategoryI18nView"];
+            "de-DE"?: components["schemas"]["CategoryI18nView"];
+            "fr-FR"?: components["schemas"]["CategoryI18nView"];
+            "it-IT"?: components["schemas"]["CategoryI18nView"];
+            "zh-Hant"?: components["schemas"]["CategoryI18nView"];
         };
         /**
          * @example {
@@ -12962,6 +18117,10 @@ export interface components {
             "es-ES"?: components["schemas"]["CollectionI18n"] | null;
             "pt-BR"?: components["schemas"]["CollectionI18n"] | null;
             "ru-RU"?: components["schemas"]["CollectionI18n"] | null;
+            "de-DE"?: components["schemas"]["CollectionI18n"] | null;
+            "fr-FR"?: components["schemas"]["CollectionI18n"] | null;
+            "it-IT"?: components["schemas"]["CollectionI18n"] | null;
+            "zh-Hant"?: components["schemas"]["CollectionI18n"] | null;
         };
         /**
          * @example {
@@ -13034,6 +18193,10 @@ export interface components {
             "es-ES"?: components["schemas"]["CollectionI18nView"];
             "pt-BR"?: components["schemas"]["CollectionI18nView"];
             "ru-RU"?: components["schemas"]["CollectionI18nView"];
+            "de-DE"?: components["schemas"]["CollectionI18nView"];
+            "fr-FR"?: components["schemas"]["CollectionI18nView"];
+            "it-IT"?: components["schemas"]["CollectionI18nView"];
+            "zh-Hant"?: components["schemas"]["CollectionI18nView"];
         };
         /**
          * @example {
@@ -13097,6 +18260,10 @@ export interface components {
             "es-ES"?: components["schemas"]["FeatureI18n"] | null;
             "pt-BR"?: components["schemas"]["FeatureI18n"] | null;
             "ru-RU"?: components["schemas"]["FeatureI18n"] | null;
+            "de-DE"?: components["schemas"]["FeatureI18n"] | null;
+            "fr-FR"?: components["schemas"]["FeatureI18n"] | null;
+            "it-IT"?: components["schemas"]["FeatureI18n"] | null;
+            "zh-Hant"?: components["schemas"]["FeatureI18n"] | null;
         };
         /**
          * @example {
@@ -13181,6 +18348,10 @@ export interface components {
             "es-ES"?: components["schemas"]["FeatureI18nView"];
             "pt-BR"?: components["schemas"]["FeatureI18nView"];
             "ru-RU"?: components["schemas"]["FeatureI18nView"];
+            "de-DE"?: components["schemas"]["FeatureI18nView"];
+            "fr-FR"?: components["schemas"]["FeatureI18nView"];
+            "it-IT"?: components["schemas"]["FeatureI18nView"];
+            "zh-Hant"?: components["schemas"]["FeatureI18nView"];
         };
         /**
          * @example {
@@ -13233,6 +18404,10 @@ export interface components {
             "es-ES"?: components["schemas"]["ScreenshotI18n"];
             "pt-BR"?: components["schemas"]["ScreenshotI18n"];
             "ru-RU"?: components["schemas"]["ScreenshotI18n"];
+            "de-DE"?: components["schemas"]["ScreenshotI18n"];
+            "fr-FR"?: components["schemas"]["ScreenshotI18n"];
+            "it-IT"?: components["schemas"]["ScreenshotI18n"];
+            "zh-Hant"?: components["schemas"]["ScreenshotI18n"];
         };
         /**
          * @example {
@@ -13293,6 +18468,10 @@ export interface components {
             "es-ES"?: components["schemas"]["ScreenshotI18nView"];
             "pt-BR"?: components["schemas"]["ScreenshotI18nView"];
             "ru-RU"?: components["schemas"]["ScreenshotI18nView"];
+            "de-DE"?: components["schemas"]["ScreenshotI18nView"];
+            "fr-FR"?: components["schemas"]["ScreenshotI18nView"];
+            "it-IT"?: components["schemas"]["ScreenshotI18nView"];
+            "zh-Hant"?: components["schemas"]["ScreenshotI18nView"];
         };
         /**
          * @example {
@@ -13345,6 +18524,10 @@ export interface components {
             "es-ES"?: components["schemas"]["CollectionItemI18n"];
             "pt-BR"?: components["schemas"]["CollectionItemI18n"];
             "ru-RU"?: components["schemas"]["CollectionItemI18n"];
+            "de-DE"?: components["schemas"]["CollectionItemI18n"];
+            "fr-FR"?: components["schemas"]["CollectionItemI18n"];
+            "it-IT"?: components["schemas"]["CollectionItemI18n"];
+            "zh-Hant"?: components["schemas"]["CollectionItemI18n"];
         };
         /**
          * @example {
@@ -13405,6 +18588,10 @@ export interface components {
             "es-ES"?: components["schemas"]["CollectionItemI18nView"];
             "pt-BR"?: components["schemas"]["CollectionItemI18nView"];
             "ru-RU"?: components["schemas"]["CollectionItemI18nView"];
+            "de-DE"?: components["schemas"]["CollectionItemI18nView"];
+            "fr-FR"?: components["schemas"]["CollectionItemI18nView"];
+            "it-IT"?: components["schemas"]["CollectionItemI18nView"];
+            "zh-Hant"?: components["schemas"]["CollectionItemI18nView"];
         };
         /**
          * @example {
@@ -13429,7 +18616,7 @@ export interface components {
             /** @example Improve usability and stability. */
             notes: string;
             status: components["schemas"]["TranslationStatus"];
-            sourceLocale: components["schemas"]["Locale"];
+            sourceLocale: components["schemas"]["AppLocale"];
             /**
              * @description Source hash; a mismatch with the current source indicates an old translation.
              * @example null
@@ -13569,6 +18756,10 @@ export interface components {
             "es-ES"?: components["schemas"]["MirrorI18n"];
             "pt-BR"?: components["schemas"]["MirrorI18n"];
             "ru-RU"?: components["schemas"]["MirrorI18n"];
+            "de-DE"?: components["schemas"]["MirrorI18n"];
+            "fr-FR"?: components["schemas"]["MirrorI18n"];
+            "it-IT"?: components["schemas"]["MirrorI18n"];
+            "zh-Hant"?: components["schemas"]["MirrorI18n"];
         };
         /**
          * @example {
@@ -13629,6 +18820,10 @@ export interface components {
             "es-ES"?: components["schemas"]["MirrorI18nView"];
             "pt-BR"?: components["schemas"]["MirrorI18nView"];
             "ru-RU"?: components["schemas"]["MirrorI18nView"];
+            "de-DE"?: components["schemas"]["MirrorI18nView"];
+            "fr-FR"?: components["schemas"]["MirrorI18nView"];
+            "it-IT"?: components["schemas"]["MirrorI18nView"];
+            "zh-Hant"?: components["schemas"]["MirrorI18nView"];
         };
         /**
          * @example package
@@ -13719,6 +18914,11 @@ export interface components {
             bio?: string | null;
             /** @example [] */
             sections?: components["schemas"]["ReleaseSection"][];
+            /**
+             * @description Article revision cover alt in this translation locale. Empty falls back to English then source.
+             * @example null
+             */
+            coverAlt?: string | null;
         };
         /**
          * @example {
@@ -13790,7 +18990,19 @@ export interface components {
             affectedUrls: string[];
         };
         /**
-         * @description Writes no business data, revisions, audit, trash, queues or caches; stores only the dryRun call log.
+         * @example {
+         *       "entity": "package",
+         *       "objectKey": "pkg:1"
+         *     }
+         */
+        AgentChangeRef: {
+            /** @example package */
+            entity: string;
+            /** @example pkg:1 */
+            objectKey: string;
+        };
+        /**
+         * @description Writes no business data, revisions, audit, trash, queues or caches; stores only execution trace logs; proposal mode additionally stores the proposed action.
          * @example {
          *       "dryRun": true,
          *       "requestId": "demo-preview-001",
@@ -13816,6 +19028,18 @@ export interface components {
          */
         AgentDryRun: {
             /**
+             * @description All server gates passed against the previewed state; live execution revalidates.
+             * @example passed
+             * @enum {string}
+             */
+            validation?: "passed";
+            /**
+             * @description Proposal records the validated change without applying it.
+             * @example preview
+             * @enum {string}
+             */
+            mode?: "preview" | "proposal";
+            /**
              * @example true
              * @enum {boolean}
              */
@@ -13840,7 +19064,7 @@ export interface components {
              *     ]
              */
             changes: {
-                object: components["schemas"]["HistoryRef"];
+                object: components["schemas"]["AgentChangeRef"];
                 /**
                  * @example create
                  * @enum {string}
@@ -14060,7 +19284,7 @@ export interface components {
             model: string | null;
             /** @example null */
             failReason: string | null;
-            fields: components["schemas"]["ContentFields"];
+            fields: components["schemas"]["TranslationReadFields"];
         };
         /**
          * @example {
@@ -14163,6 +19387,10 @@ export interface components {
             "es-ES": components["schemas"]["ContentLocaleState"];
             "pt-BR": components["schemas"]["ContentLocaleState"];
             "ru-RU": components["schemas"]["ContentLocaleState"];
+            "de-DE"?: components["schemas"]["ContentLocaleState"];
+            "fr-FR"?: components["schemas"]["ContentLocaleState"];
+            "it-IT"?: components["schemas"]["ContentLocaleState"];
+            "zh-Hant"?: components["schemas"]["ContentLocaleState"];
         };
         /**
          * @example {
@@ -14900,7 +20128,7 @@ export interface components {
             locales?: components["schemas"]["Locale"][];
         };
         /**
-         * @description Non-source languages only; change submitted fields, mark manual, leave other languages unchanged and do not trigger retranslation. Validate entity field allowlists and lengths; concurrent source changes return 1003.
+         * @description Non-source languages only. Agent writes require model and become machine with the current source hash; human edits become manual. Validate complete snapshots, literals, Markdown, language, glossary and lengths.
          * @example {
          *       "ref": {
          *         "entity": "package",
@@ -14916,6 +20144,11 @@ export interface components {
         TranslationFix: {
             ref: components["schemas"]["ContentRef"];
             locale: components["schemas"]["Locale"];
+            /**
+             * @description Required for Agent writes; the server adds the hermes prefix.
+             * @example example-model
+             */
+            model?: string;
             fields: components["schemas"]["ContentFields"];
         };
         /**
@@ -14941,6 +20174,14 @@ export interface components {
             "pt-BR"?: string | null;
             /** @example null */
             "ru-RU"?: string | null;
+            /** @example null */
+            "de-DE"?: string | null;
+            /** @example null */
+            "fr-FR"?: string | null;
+            /** @example null */
+            "it-IT"?: string | null;
+            /** @example null */
+            "zh-Hant"?: string | null;
         };
         /**
          * @description Idempotent upsert by term; replace translations entirely, with missing/null languages meaning no fixed translation. doNotTranslate=true takes precedence and preserves the term. Applies on the next translation.
@@ -16027,6 +21268,8 @@ export interface components {
          *     }
          */
         ArticleCreate: {
+            claims?: components["schemas"]["ArticleClaim"][];
+            target?: components["schemas"]["ArticleSeoTarget"] | null;
             /** @example choose-a-screenshot-app */
             slug: string;
             sourceLocale: components["schemas"]["Locale"];
@@ -16082,6 +21325,10 @@ export interface components {
          *     }
          */
         ArticleUpdate: {
+            /** @description Replace related apps atomically with the other draft fields. */
+            packageIds?: number[];
+            claims?: components["schemas"]["ArticleClaim"][];
+            target?: components["schemas"]["ArticleSeoTarget"] | null;
             /**
              * Format: int64
              * @description The article revision from the last read; a mismatch means someone else changed it
@@ -16298,6 +21545,9 @@ export interface components {
          *     }
          */
         AdminArticleRevision: {
+            claims?: components["schemas"]["ArticleClaim"][];
+            target?: components["schemas"]["ArticleSeoTarget"] | null;
+            claimEvidence?: components["schemas"]["ArticleClaimEvidence"][];
             /** @example 3 */
             number: number;
             sourceLocale: components["schemas"]["Locale"];
@@ -17082,7 +22332,7 @@ export interface components {
          * @example dashboard:view
          * @enum {string}
          */
-        AgentPermission: "dashboard:view" | "catalog:package:view" | "catalog:package:edit" | "catalog:package:resync" | "catalog:asset:upload" | "catalog:category:edit" | "content:collection:edit" | "content:collection:publish" | "content:article:edit" | "content:article:publish" | "content:feature:edit" | "content:glossary:edit" | "changelog:release:edit" | "translation:review" | "ops:job:view" | "ops:job:trigger" | "ops:search:view" | "ops:search:edit" | "ops:feedback:handle" | "agent:log:view" | "content:revision:restore" | "content:announcement:edit" | "release:desktop:notes";
+        AgentPermission: "seo:automation:tune" | "seo:snippet:propose" | "seo:task:handle" | "dashboard:view" | "catalog:package:view" | "catalog:package:edit" | "catalog:package:resync" | "catalog:asset:upload" | "catalog:category:edit" | "content:collection:edit" | "content:collection:publish" | "content:article:edit" | "content:article:publish" | "content:feature:edit" | "content:glossary:edit" | "changelog:release:edit" | "translation:review" | "ops:job:view" | "ops:job:trigger" | "ops:search:view" | "ops:search:edit" | "ops:feedback:handle" | "agent:log:view" | "content:revision:restore" | "content:announcement:edit" | "release:desktop:notes" | "seo:insight:view" | "seo:keyword:edit";
         /**
          * @example {
          *       "callsPerMinute": 120,
@@ -17141,6 +22391,9 @@ export interface components {
          *       },
          *       "mcpUrl": "https://admin.opennavo.example/mcp",
          *       "grantablePermissions": [
+         *         "seo:automation:tune",
+         *         "seo:snippet:propose",
+         *         "seo:task:handle",
          *         "dashboard:view",
          *         "catalog:package:view",
          *         "catalog:package:edit",
@@ -17163,7 +22416,9 @@ export interface components {
          *         "agent:log:view",
          *         "content:revision:restore",
          *         "content:announcement:edit",
-         *         "release:desktop:notes"
+         *         "release:desktop:notes",
+         *         "seo:insight:view",
+         *         "seo:keyword:edit"
          *       ],
          *       "updatedAt": "2026-10-07T08:00:00Z"
          *     }
@@ -17225,6 +22480,9 @@ export interface components {
          *         },
          *         "mcpUrl": "https://admin.opennavo.example/mcp",
          *         "grantablePermissions": [
+         *           "seo:automation:tune",
+         *           "seo:snippet:propose",
+         *           "seo:task:handle",
          *           "dashboard:view",
          *           "catalog:package:view",
          *           "catalog:package:edit",
@@ -17247,7 +22505,9 @@ export interface components {
          *           "agent:log:view",
          *           "content:revision:restore",
          *           "content:announcement:edit",
-         *           "release:desktop:notes"
+         *           "release:desktop:notes",
+         *           "seo:insight:view",
+         *           "seo:keyword:edit"
          *         ],
          *         "updatedAt": "2026-10-07T08:00:00Z"
          *       }
@@ -17273,6 +22533,9 @@ export interface components {
          *         },
          *         "mcpUrl": "https://admin.opennavo.example/mcp",
          *         "grantablePermissions": [
+         *           "seo:automation:tune",
+         *           "seo:snippet:propose",
+         *           "seo:task:handle",
          *           "dashboard:view",
          *           "catalog:package:view",
          *           "catalog:package:edit",
@@ -17295,7 +22558,9 @@ export interface components {
          *           "agent:log:view",
          *           "content:revision:restore",
          *           "content:announcement:edit",
-         *           "release:desktop:notes"
+         *           "release:desktop:notes",
+         *           "seo:insight:view",
+         *           "seo:keyword:edit"
          *         ],
          *         "updatedAt": "2026-10-07T08:00:00Z"
          *       }
@@ -17517,10 +22782,14 @@ export interface components {
          */
         AgentClientsResponseResult: components["schemas"]["AgentClientsResponse"] | components["schemas"]["BusinessErrorResponse"];
         /**
-         * @description Omitted permissions defaults to all grantable permissions; an empty array grants no business permissions. Omitted expiresAt defaults to 90 days after creation, explicit null never expires, and non-null must be in the future. Plaintext is returned once only.
+         * @description Omitted permissions defaults to all 27 execution permissions, excluding seo:automation:tune; an empty array grants no business permissions. Omitted expiresAt defaults to 90 days after creation, explicit null never expires, and non-null must be in the future. Plaintext is returned once only.
          * @example {
          *       "name": "日常运营",
          *       "permissions": [
+         *         "seo:insight:view",
+         *         "seo:keyword:edit",
+         *         "seo:task:handle",
+         *         "seo:snippet:propose",
          *         "dashboard:view",
          *         "catalog:package:view",
          *         "catalog:package:edit",
@@ -17554,6 +22823,10 @@ export interface components {
             name: string;
             /**
              * @example [
+             *       "seo:insight:view",
+             *       "seo:keyword:edit",
+             *       "seo:task:handle",
+             *       "seo:snippet:propose",
              *       "dashboard:view",
              *       "catalog:package:view",
              *       "catalog:package:edit",
@@ -20729,6 +26002,16 @@ export interface components {
         };
     };
     parameters: {
+        /** @description Required for Agent business writes; omitted for human admin requests. */
+        SeoTaskID: number;
+        /** @description Required for Agent business writes; omitted for human admin requests. */
+        SeoFencing: number;
+        /** @description Required for Agent business writes; omitted for human admin requests. */
+        SeoExpectedRevision: number;
+        /** @description Required for Agent business writes; omitted for human admin requests. */
+        SeoIdempotencyKey: string;
+        /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+        SeoEvidenceIDs: number[];
         IdPath: number;
         LocalePath: components["schemas"]["Locale"];
         Current: number;
@@ -20751,6 +26034,1196 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getSeoProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: "gsc" | "bing" | "audit";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider readiness; credentials never returned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoProviderResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSeoProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: "gsc" | "bing" | "audit";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "enabled": false,
+                 *       "clearCredentials": true
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoProviderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Provider readiness; credentials never returned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoProviderResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    claimSeoTasks: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "idempotencyKey": "claim-001",
+                 *       "limit": 1,
+                 *       "kinds": [
+                 *         "fill_fact"
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoTaskClaim"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoTaskListResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    getSeoTask: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoTaskTraceResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    completeSeoTask: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "idempotencyKey": "fixture-complete-001",
+                 *       "fencing": 1,
+                 *       "outcome": "done"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoTaskComplete"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    deferSeoTask: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "idempotencyKey": "fixture-defer-001",
+                 *       "fencing": 1,
+                 *       "reason": "Official source unavailable",
+                 *       "retryAt": "2026-10-20T00:00:00Z"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoTaskDefer"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    createSeoEvidence: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "idempotencyKey": "evidence-001",
+                 *       "taskId": 1,
+                 *       "fencing": 1,
+                 *       "entityKey": "pkg:1",
+                 *       "url": "https://example.com/product",
+                 *       "excerpt": "Requires macOS 14."
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoEvidenceCapture"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoEvidenceResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    listSeoActions: {
+        parameters: {
+            query?: {
+                current?: components["parameters"]["Current"];
+                size?: components["parameters"]["Size"];
+                operation?: string;
+                mode?: "live" | "proposal";
+                result?: "retained" | "compensated";
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoActionPageResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    proposeSnippetTemplate: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "pageKind": "overview",
+                 *       "locale": "en-US",
+                 *       "variant": "current_version",
+                 *       "slots": [
+                 *         "name",
+                 *         "version"
+                 *       ],
+                 *       "baselineCtr": 0.01,
+                 *       "targetCtr": 0.015
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoSnippetProposal"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoSnippetResultResponse"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    compensateSeoAction: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "reason": "implementation_error"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoCompensation"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoCompensationResultResponse"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    getSeoAutomation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoAutomationViewResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSeoAutomation: {
+        parameters: {
+            query?: {
+                dryRun?: boolean;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "automation": {
+                 *         "version": 1,
+                 *         "actions": {
+                 *           "maintenance": {
+                 *             "enabled": true,
+                 *             "mode": "live"
+                 *           },
+                 *           "translation": {
+                 *             "enabled": true,
+                 *             "mode": "live"
+                 *           },
+                 *           "fact_fix": {
+                 *             "enabled": true,
+                 *             "mode": "live"
+                 *           },
+                 *           "withdraw": {
+                 *             "enabled": true,
+                 *             "mode": "live"
+                 *           },
+                 *           "compensate": {
+                 *             "enabled": true,
+                 *             "mode": "live"
+                 *           },
+                 *           "fact_fill": {
+                 *             "enabled": true,
+                 *             "mode": "proposal"
+                 *           },
+                 *           "content": {
+                 *             "enabled": true,
+                 *             "mode": "proposal"
+                 *           },
+                 *           "listing": {
+                 *             "enabled": true,
+                 *             "mode": "proposal"
+                 *           },
+                 *           "article": {
+                 *             "enabled": true,
+                 *             "mode": "proposal"
+                 *           },
+                 *           "snippet": {
+                 *             "enabled": true,
+                 *             "mode": "proposal"
+                 *           },
+                 *           "operations": {
+                 *             "enabled": true,
+                 *             "mode": "proposal"
+                 *           },
+                 *           "research": {
+                 *             "enabled": true,
+                 *             "mode": "live"
+                 *           }
+                 *         },
+                 *         "dailyEntities": {
+                 *           "maintenance": 100,
+                 *           "translation": 100,
+                 *           "fact_fix": 100,
+                 *           "withdraw": 100,
+                 *           "compensate": 100,
+                 *           "fact_fill": 100,
+                 *           "content": 100,
+                 *           "listing": 100,
+                 *           "article": 100,
+                 *           "snippet": 100,
+                 *           "operations": 100,
+                 *           "research": 100
+                 *         },
+                 *         "researchDailyMicros": 15000000,
+                 *         "researchMonthlyMicros": 100000000,
+                 *         "businessDropRatio": 0.5
+                 *       },
+                 *       "expectedRevision": 1,
+                 *       "idempotencyKey": "fixture-tune-001",
+                 *       "reason": "Fixture evaluation"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoAutomationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoAutomationViewResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    importSeoTasks: {
+        parameters: {
+            query?: {
+                dryRun?: boolean;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "idempotencyKey": "fixture-import-001",
+                 *       "profile": "fixture",
+                 *       "cursor": {
+                 *         "sequence": 1
+                 *       },
+                 *       "entries": [
+                 *         {
+                 *           "ref": {
+                 *             "entity": "category",
+                 *             "id": 702
+                 *           },
+                 *           "field": "name",
+                 *           "locale": "zh-CN",
+                 *           "sourceVersion": "1.0",
+                 *           "state": "deferred",
+                 *           "reason": "Await official source",
+                 *           "evidence": {
+                 *             "sourceUrl": "https://example.com"
+                 *           },
+                 *           "lastAttemptAt": "2026-10-18T10:00:00Z",
+                 *           "valueHash": "0000000000000000000000000000000000000000000000000000000000000000"
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoTasksImport"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoTasksImportResultResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    getTranslationsSource: {
+        parameters: {
+            query: {
+                entity: components["schemas"]["ContentEntity"];
+                id: number;
+                secondaryId?: number;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationsSourceResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    writeTranslations: {
+        parameters: {
+            query?: {
+                dryRun?: boolean;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "ref": {
+                 *         "entity": "category",
+                 *         "id": 702
+                 *       },
+                 *       "model": "fixture",
+                 *       "taskId": 1,
+                 *       "fencing": 1,
+                 *       "translations": [
+                 *         {
+                 *           "locale": "zh-CN",
+                 *           "sourceHash": "0000000000000000000000000000000000000000000000000000000000000000",
+                 *           "expectedRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+                 *           "idempotencyKey": "write-001",
+                 *           "fields": {
+                 *             "name": "文件管理工具"
+                 *           }
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                "application/json": components["schemas"]["TranslationsBatchWrite"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationsBatchResultResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    setCollectionSetupCriteria: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CollectionCriteria"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionCriteriaResponse"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    setBackgroundItem: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                label: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackgroundContent"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackgroundContentResponse"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    listSeoGeo: {
+        parameters: {
+            query?: {
+                current?: components["parameters"]["Current"];
+                size?: number;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoGeoPageResponseResult"];
+                };
+            };
+        };
+    };
+    recordSeoGeo: {
+        parameters: {
+            query?: {
+                dryRun?: boolean;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "idempotencyKey": "fixture-geo-import-001",
+                 *       "supersedes": null,
+                 *       "snapshot": {
+                 *         "schemaVersion": 1,
+                 *         "provider": "openseo",
+                 *         "sourceProject": "fixture-project",
+                 *         "providerRunKey": "fixture-run-001",
+                 *         "mode": "imported_observation",
+                 *         "panelId": "neutral-core",
+                 *         "panelVersion": "v1",
+                 *         "periodStart": "2026-10-18T09:00:00Z",
+                 *         "periodEnd": "2026-10-18T10:00:00Z",
+                 *         "context": {
+                 *           "market": "unknown",
+                 *           "promptLanguage": "en",
+                 *           "answerLanguage": "unknown",
+                 *           "searchMode": "unknown",
+                 *           "windowDays": 7
+                 *         },
+                 *         "prompts": [
+                 *           {
+                 *             "id": "p1",
+                 *             "text": "best free mac apps",
+                 *             "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                 *             "classification": "neutral"
+                 *           }
+                 *         ],
+                 *         "engines": [
+                 *           {
+                 *             "key": "chatgpt",
+                 *             "name": "ChatGPT",
+                 *             "surface": "provider_api",
+                 *             "modelVersion": "unknown",
+                 *             "toolVersion": "unknown"
+                 *           }
+                 *         ],
+                 *         "plannedCount": 1,
+                 *         "cells": [
+                 *           {
+                 *             "id": "p1-chatgpt",
+                 *             "promptId": "p1",
+                 *             "engineKey": "chatgpt",
+                 *             "status": "answered",
+                 *             "observationId": "observation-fixture-001",
+                 *             "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                 *             "searchTriggered": null,
+                 *             "citationExtraction": "unknown",
+                 *             "evidenceAvailability": "unknown",
+                 *             "mentioned": null,
+                 *             "candidate": null,
+                 *             "cited": null,
+                 *             "ownUrls": [],
+                 *             "thirdPartyDomains": [],
+                 *             "domainsTruncated": false
+                 *           }
+                 *         ],
+                 *         "reported": null,
+                 *         "artifactCompleteness": "unknown",
+                 *         "hashAlgorithm": "sha256",
+                 *         "hashNormalization": "provider-v1",
+                 *         "charges": [
+                 *           {
+                 *             "vendorTaskId": "fixture-charge-001",
+                 *             "costUsd": null,
+                 *             "credits": null,
+                 *             "incurredAt": "2026-10-18T10:00:00Z"
+                 *           }
+                 *         ],
+                 *         "approvedBatchRef": "fixture-approval-001"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoGeoImport"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoGeoImportResultResponseResult"];
+                };
+            };
+        };
+    };
+    getSeoGeo: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoGeoRecordResponseResult"];
+                };
+            };
+        };
+    };
+    listSeoAlerts: {
+        parameters: {
+            query?: {
+                current?: components["parameters"]["Current"];
+                size?: number;
+                /** @description Omit to include both open and resolved issues. */
+                status?: "open" | "resolved";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoAlertPageResponseResult"];
+                };
+            };
+        };
+    };
+    getSeoOverview: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoOverviewResponseResult"];
+                };
+            };
+        };
+    };
+    getSeoPage: {
+        parameters: {
+            query: {
+                url: string;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoPageInsightResponseResult"];
+                };
+            };
+        };
+    };
+    listSeoKeywords: {
+        parameters: {
+            query?: {
+                current?: components["parameters"]["Current"];
+                size?: components["parameters"]["Size"];
+                language?: components["schemas"]["Locale"];
+                q?: string;
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoKeywordPageResponseResult"];
+                };
+            };
+        };
+    };
+    upsertSeoKeywords: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "records": [
+                 *         {
+                 *           "keyword": "Example Editor mac",
+                 *           "source": "gsc",
+                 *           "engine": "google",
+                 *           "country": "US",
+                 *           "language": "en-US",
+                 *           "device": "desktop",
+                 *           "period": "2026-10",
+                 *           "searchVolume": 100,
+                 *           "volumeState": "known",
+                 *           "observedAt": "2026-10-18T10:00:00Z"
+                 *         }
+                 *       ],
+                 *       "targets": []
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoKeywordsWrite"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoKeywordsResultResponseResult"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    getPackageFactRecords: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactRecordsResult"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    setPackageFactRecords: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactRecordsUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactRecordsResult"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
     getGitHubSettings: {
         parameters: {
             query?: never;
@@ -20859,74 +27332,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SeoSettingsResponseResult"];
-                };
-            };
-        };
-    };
-    listTranslationModels: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TranslationModelsRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TranslationModelsResponseResult"];
-                };
-            };
-        };
-    };
-    getTranslationSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TranslationSettingsResponseResult"];
-                };
-            };
-        };
-    };
-    updateTranslationSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TranslationSettingsUpdate"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TranslationSettingsResponseResult"];
                 };
             };
         };
@@ -21139,40 +27544,6 @@ export interface operations {
             };
         };
     };
-    getLlmUsage: {
-        parameters: {
-            query?: {
-                months?: number;
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    /**
-                     * @description Includes at least Origin and Accept-Language; preserves existing Vary values.
-                     * @example Origin, Accept-Language
-                     */
-                    Vary?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LlmUsageResponseResult"];
-                };
-            };
-        };
-    };
     listAdminPackages: {
         parameters: {
             query?: {
@@ -21269,6 +27640,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21359,6 +27740,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21414,6 +27805,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21476,6 +27877,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21561,6 +27972,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21612,6 +28033,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21658,6 +28089,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21729,6 +28170,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21782,6 +28233,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21830,6 +28291,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -21883,6 +28354,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22006,6 +28487,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22079,6 +28570,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22134,6 +28635,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22171,6 +28682,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22249,6 +28770,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22293,6 +28824,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22362,6 +28903,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22418,6 +28969,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22468,6 +29029,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22526,6 +29097,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22602,6 +29183,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22695,6 +29286,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22742,6 +29343,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22792,6 +29403,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22838,6 +29459,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22879,6 +29510,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22920,6 +29561,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -22961,6 +29612,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23002,6 +29663,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23043,6 +29714,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23117,6 +29798,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23156,6 +29847,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23236,6 +29937,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23328,6 +30039,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23385,6 +30106,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23422,6 +30153,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23478,6 +30219,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23524,6 +30275,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23600,6 +30361,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23701,6 +30472,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23767,6 +30548,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -23965,6 +30756,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -24034,20 +30835,6 @@ export interface operations {
                 "application/json": components["schemas"]["ReleaseI18nUpdate"];
             };
         };
-        responses: {
-            200: components["responses"]["Empty"];
-        };
-    };
-    retranslateRelease: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["IdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             200: components["responses"]["Empty"];
         };
@@ -24218,6 +31005,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -24363,6 +31160,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -24412,6 +31219,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -24463,6 +31280,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -24571,6 +31398,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -24654,6 +31491,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -24703,6 +31550,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -25362,8 +32219,7 @@ export interface operations {
                  *         "system:config:edit",
                  *         "system:user:edit",
                  *         "system:role:edit",
-                 *         "system:audit:view",
-                 *         "i18n:settings"
+                 *         "system:audit:view"
                  *       ]
                  *     }
                  */
@@ -25440,6 +32296,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -25484,6 +32350,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -25596,52 +32472,6 @@ export interface operations {
             };
         };
     };
-    retranslateContent: {
-        parameters: {
-            query?: {
-                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
-                dryRun?: components["parameters"]["DryRun"];
-            };
-            header?: {
-                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
-                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
-                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
-                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
-                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
-                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                /**
-                 * @example {
-                 *       "ref": {
-                 *         "entity": "package",
-                 *         "id": 1
-                 *       },
-                 *       "locales": [
-                 *         "en-US",
-                 *         "ja-JP"
-                 *       ]
-                 *     }
-                 */
-                "application/json": components["schemas"]["ContentRetranslate"];
-            };
-        };
-        responses: {
-            /** @description Both business success and business errors use HTTP 200 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ContentMutationResponseResult"] | components["schemas"]["AgentDryRunResponse"];
-                };
-            };
-        };
-    };
     fixTranslation: {
         parameters: {
             query?: {
@@ -25649,6 +32479,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -25728,6 +32568,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -25776,6 +32626,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -25840,6 +32700,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -25882,6 +32752,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -26355,6 +33235,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -26461,6 +33351,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -26493,6 +33393,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -26694,6 +33604,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -26743,6 +33663,16 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
                 /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
@@ -26777,6 +33707,270 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpdateFeedResponseResult"] | components["schemas"]["UpdateFeedPreviewResponse"];
+                };
+            };
+        };
+    };
+    getSeoListingCandidate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    /**
+                     * @description Origin and language
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoListingCandidateResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    upsertSeoListingCandidate: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
+                /** @description Required for Agent business writes; omitted for human admin requests. */
+                "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
+                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
+            };
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "expectedRevision": 0,
+                 *       "action": "save",
+                 *       "link": {
+                 *         "token": "example-app",
+                 *         "name": "Example App",
+                 *         "pricing": "unknown",
+                 *         "sourceLocale": "en-US",
+                 *         "homepage": "https://vendor.example.test",
+                 *         "downloadUrl": "https://vendor.example.test/download",
+                 *         "teamId": "EXAMPL1234",
+                 *         "bundleIds": []
+                 *       },
+                 *       "summary": "An editor for macOS.",
+                 *       "description": "",
+                 *       "categoryId": 1,
+                 *       "iconAssetId": 1,
+                 *       "baselinePackageId": 1,
+                 *       "downloadMode": "official_page",
+                 *       "evidenceId": 1
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoListingWrite"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    /**
+                     * @description Origin and language
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoListingCandidateResponse"] | components["schemas"]["BusinessErrorResponse"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    lockSeoListingBaseline: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "factId": 1,
+                 *       "evidenceId": 1,
+                 *       "domainOwnershipConfirmed": true,
+                 *       "suspicious": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoListingBaselineWrite"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    /**
+                     * @description Origin and language
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoListingBaselineResponse"] | components["schemas"]["BusinessErrorResponse"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    captureArticleEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleEvidenceCapture"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoEvidenceResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    listArticleTestArtifacts: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    /**
+                     * @description Origin and language
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleTestArtifactListResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    createArticleTestArtifact: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "packageId": 1,
+                 *       "appVersion": "1.0",
+                 *       "macOS": "15.0",
+                 *       "architecture": "arm64",
+                 *       "region": "US",
+                 *       "performedAt": "2026-10-19T00:00:00Z",
+                 *       "runner": "trusted-ci-fixture",
+                 *       "command": "fixture-benchmark --iterations 10",
+                 *       "environment": {
+                 *         "machine": "fixture-machine"
+                 *       },
+                 *       "output": "We tested the export task in 10 seconds.",
+                 *       "conclusions": [
+                 *         "We tested the export task in 10 seconds."
+                 *       ],
+                 *       "attested": true
+                 *     }
+                 */
+                "application/json": components["schemas"]["ArticleTestArtifactInput"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    /**
+                     * @description Origin and language
+                     * @example Origin, Accept-Language
+                     */
+                    Vary?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArticleTestArtifactResponse"] | components["schemas"]["AgentDryRunResponse"] | components["schemas"]["BusinessErrorResponse"];
                 };
             };
         };

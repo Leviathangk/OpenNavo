@@ -128,3 +128,19 @@ class Backend:
 @pytest.fixture
 def backend() -> Iterator[Backend]:
     yield Backend()
+
+
+def execution_args(name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Supply a fictional acquired lease to existing business-tool fixtures."""
+    from opennavo_mcp.tools.manifest import BY_NAME
+
+    if not any(OPERATIONS[op]["parameters"].get("header") for op in BY_NAME[name].operations):
+        return args
+    return {
+        "task_id": 7,
+        "fencing": 3,
+        "idempotency_key": "fixture-write-001",
+        "expected_revision": 0,
+        "evidence_ids": [11],
+        **args,
+    }

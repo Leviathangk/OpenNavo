@@ -16,17 +16,21 @@ import (
 
 	"github.com/opennavo/opennavo/server/gen/adminapi"
 	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/articles"
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/content"
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 	httpserver "github.com/opennavo/opennavo/server/internal/http"
 	"github.com/opennavo/opennavo/server/internal/http/admin"
 	"github.com/opennavo/opennavo/server/internal/http/public"
+	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/auth"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/seed"
+	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/opennavo/opennavo/server/seeds"
@@ -35,7 +39,7 @@ import (
 
 func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	data, err := seeds.Load()
 	require.NoError(t, err)
 	hash, err := seed.HashPassword("isolated-test-password")
@@ -57,7 +61,7 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	asset := "https://cdn.opennavo.example/screenshots/uploads/cover/capture.png"
 	require.NoError(t, st.DB.Exec(`INSERT INTO assets(kind,storage_key,url,mime,width,height,bytes,sha256) VALUES('cover','articles/capture.png',?,'image/png',1280,800,1,'hash')`, asset).Error)
 
-	cfg := config.Config{AppEnv: "dev", JWTSecret: strings.Repeat("a", 32), JWTAccessTTL: time.Hour, JWTRefreshTTL: 24 * time.Hour, WebBaseURL: "http://localhost:3000"}
+	cfg := config.Config{AppEnv: "dev", JWTSecret: strings.Repeat("a", 32), JWTAccessTTL: time.Hour, JWTRefreshTTL: 24 * time.Hour, WebBaseURL: "https://site.example.test"}
 	authentication, err := auth.New(st, cfg)
 	require.NoError(t, err)
 	pair, err := authentication.Login(ctx, "article_tester", "isolated-test-password", store.AuditActor{})
@@ -127,6 +131,25 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 		return out
 	}
 	revision := func(view map[string]any) int64 { return int64(view["revision"].(float64)) }
+	// Isolated server-captured evidence for this workflow, never a real vendor fetch.
+	const sourceURL = "https://vendor.example.test/screenshot-guide"
+	claimsFor := func(slug string, assertions ...string) []articles.Claim {
+		t.Helper()
+		sentences := make([]string, len(assertions))
+		for i, assertion := range assertions {
+			sentences[i] = strings.TrimRight(assertion, ".!?") + "."
+		}
+		body := strings.Join(sentences, " ")
+		evidence := agentgate.Evidence{EntityKey: "article:new:" + slug, SourceURL: sourceURL, FinalURL: sourceURL,
+			BodyText: body, Excerpt: body, BodyHash: seotasks.Hash([]byte(body)), FetchedAt: time.Now().UTC(), ValidUntil: time.Now().Add(time.Hour),
+			Authority: "official", FetchStatus: 200, CreatedBy: "fixture", CaptureKey: "article-workflow-" + slug, RequestHash: seotasks.Hash([]byte(slug))}
+		require.NoError(t, st.DB.Create(&evidence).Error)
+		claims := make([]articles.Claim, len(assertions))
+		for i, assertion := range assertions {
+			claims[i] = articles.Claim{Text: assertion, Kind: "factual", EvidenceID: evidence.ID, Excerpt: body, Region: "ZZ"}
+		}
+		return claims
+	}
 
 	// Drafts: idempotent creation, unique slugs, problems listed before review.
 	draft := map[string]any{"slug": "choose-a-screenshot-app", "sourceLocale": "en-US", "type": "roundup", "title": "How to choose a screenshot app", "idempotencyKey": "draft-1"}
@@ -143,7 +166,7 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	call("PUT", base, map[string]any{"expectedRevision": revision(created) + 1, "summary": "Lost update"}, "1003")
 	edited := call("PUT", base, map[string]any{"expectedRevision": revision(created), "summary": "What to compare.",
 		"bodyMarkdown": "## Pick by task\n\n![Annotated capture](https://elsewhere.example/a.png)\n\n::app[cleanshot]",
-		"sources":      []any{map[string]any{"title": "Shottr docs", "url": "https://shottr.cc/kb"}}}, "0000")
+		"sources":      []any{map[string]any{"title": "Fixture screenshot guide", "url": sourceURL}}}, "0000")
 	require.Greater(t, revision(edited), revision(created))
 	require.Equal(t, []any{"image_host"}, edited["readiness"], "body images must be OpenNavo assets")
 	call("POST", base+"/submit", map[string]any{"expectedRevision": revision(edited)}, "1001")
@@ -173,7 +196,22 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM content_url_changes").Scan(&queued).Error)
 	require.Zero(t, queued)
 
+	// A source URL alone cannot publish: the persisted revision needs bound claims and a target.
+	call("POST", base+"/publish", map[string]any{"expectedRevision": revision(submitted)}, "1001")
+	rejected := call("GET", base, nil, "0000")
+	require.Equal(t, revision(submitted), revision(rejected))
+	require.Equal(t, "review", rejected["status"])
+	require.Nil(t, rejected["published"])
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM content_url_changes").Scan(&queued).Error)
+	require.Zero(t, queued, "rejected publication cannot refresh public pages")
+	claims := claimsFor("choose-a-screenshot-app", "How to choose a screenshot app", "What to compare.",
+		"What to compare when choosing.", "Pick by task", "Annotated capture", "Screenshot apps compared")
+	edited = call("PUT", base, map[string]any{"expectedRevision": revision(submitted), "claims": claims,
+		"target": articles.Target{EntityKey: "pkg:" + strconv.FormatInt(shottr, 10), Intent: "compare"}}, "0000")
+	submitted = call("POST", base+"/submit", map[string]any{"expectedRevision": revision(edited)}, "0000")
 	published := call("POST", base+"/publish", map[string]any{"expectedRevision": revision(submitted)}, "0000")
+	require.Len(t, published["working"].(map[string]any)["claimEvidence"], len(claims))
+	firstPublishedRevision := publishedRevisionID(t, st, id)
 	require.Equal(t, "published", published["status"])
 	require.NotNil(t, published["firstPublishedAt"])
 	require.Equal(t, published["firstPublishedAt"], published["contentUpdatedAt"])
@@ -204,7 +242,12 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	source, err := st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
 	require.Contains(t, source.Targets, "zh-CN")
-	applied, err := st.ApplyContentTranslation(ctx, source, "zh-CN", map[string]string{"title": "如何选择截图工具", "summary": "比较什么。"}, "fake")
+	// At the store boundary, model attribution comes from the authenticated writer context.
+	translationCtx := domain.WithOperation(ctx, &domain.Operation{AgentClientID: 1, AgentTokenID: 1})
+	applied, err := st.WriteTranslationSnapshot(translationCtx, source, "zh-CN", map[string]string{
+		"title": "如何选择截图工具", "summary": "选择时应比较的事项。",
+		"body_markdown": "## 根据任务选择\n\n![标注截图](" + asset + ")\n\n::app[cleanshot]",
+	}, "fixture-translator")
 	require.NoError(t, err)
 	require.True(t, applied)
 	// The worker dispatches queued cache invalidations; the language's page is queued for the URL feed.
@@ -234,7 +277,7 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	require.Equal(t, published["contentUpdatedAt"], republished["contentUpdatedAt"], "a search snippet change is not a content update")
 
 	// A late translation for the previous revision changes nothing.
-	applied, err = st.ApplyContentTranslation(ctx, source, "ja-JP", map[string]string{"title": "スクリーンショットアプリの選び方"}, "fake")
+	applied, err = st.WriteTranslationSnapshot(ctx, source, "ja-JP", map[string]string{"title": "スクリーンショットアプリの選び方"}, "fake")
 	require.NoError(t, err)
 	require.False(t, applied)
 	require.Eventually(t, func() bool {
@@ -276,10 +319,17 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 		return tokens(lookup("screenshot-apps-for-mac", "en-US").Article.Packages)[0] == "shottr-app"
 	}, 5*time.Second, 50*time.Millisecond)
 
-	// Older revisions can come back as a new draft.
+	// Reverting a published revision restores the live pointer and clears pending changes.
 	reverted := call("POST", base+"/revert", map[string]any{"expectedRevision": revision(restored), "revisionNumber": 1}, "0000")
 	require.Equal(t, "How to choose a screenshot app", reverted["working"].(map[string]any)["title"])
-	require.EqualValues(t, 3, reverted["working"].(map[string]any)["number"].(float64), "revision 2 is live, so the old text forks a draft")
+	require.EqualValues(t, 1, reverted["working"].(map[string]any)["number"].(float64))
+	require.EqualValues(t, 1, reverted["published"].(map[string]any)["number"])
+	require.Equal(t, "published", reverted["status"])
+	require.Equal(t, false, reverted["hasPendingChanges"])
+	require.Equal(t, firstPublishedRevision, publishedRevisionID(t, st, id))
+	require.Eventually(t, func() bool {
+		return lookup("screenshot-apps-for-mac", "en-US").Article.SeoTitle == nil
+	}, 5*time.Second, 50*time.Millisecond, "the restored revision reaches the public cache")
 	require.Equal(t, "revert", reverted["events"].([]any)[0].(map[string]any)["action"])
 
 	// Authors: profile page and byline.
@@ -302,7 +352,9 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	// Related articles: another published article covering the same app.
 	require.Empty(t, lookup("screenshot-apps-for-mac", "en-US").Article.Related)
 	second := call("POST", "/articles", map[string]any{"slug": "annotate-screenshots", "sourceLocale": "en-US", "type": "tutorial", "title": "Annotate screenshots",
-		"summary": "Arrows and blur.", "bodyMarkdown": "## Steps", "sources": []any{map[string]any{"title": "Shottr docs", "url": "https://shottr.cc/kb"}}, "packageIds": []any{shottr}}, "0000")
+		"summary": "Arrows and blur.", "bodyMarkdown": "## Steps", "sources": []any{map[string]any{"title": "Fixture screenshot guide", "url": sourceURL}}, "packageIds": []any{shottr},
+		"claims": claimsFor("annotate-screenshots", "Annotate screenshots", "Arrows and blur.", "Steps"),
+		"target": articles.Target{EntityKey: "pkg:" + strconv.FormatInt(shottr, 10), Intent: "topic"}}, "0000")
 	secondBase := "/articles/" + strconv.FormatInt(int64(second["id"].(float64)), 10)
 	second = call("POST", secondBase+"/submit", map[string]any{"expectedRevision": revision(second)}, "0000")
 	call("POST", secondBase+"/publish", map[string]any{"expectedRevision": revision(second)}, "0000")

@@ -21,9 +21,19 @@ export interface OnPackageListViewProps<V extends string> {
   /** null means loading; show skeletons. */
   items: readonly PackageSummary[] | null;
   linkAs?: string | Component;
+  /**
+   * Fit whole rows to the width and emit pageSize (desktop). The web passes false: it keeps one page
+   * size so a list has a single set of URLs, and the CSS grid alone decides the columns.
+   */
+  fitToWidth?: boolean;
 }
 
-withDefaults(defineProps<OnPackageListViewProps<S>>(), { breadcrumb: () => [], sorts: () => [], linkAs: 'a' });
+const props = withDefaults(defineProps<OnPackageListViewProps<S>>(), {
+  breadcrumb: () => [],
+  sorts: () => [],
+  linkAs: 'a',
+  fitToWidth: true
+});
 
 const emit = defineEmits<{ 'update:sort': [value: S]; pageSize: [value: number] }>();
 
@@ -40,7 +50,7 @@ function fitPage(width: number) {
   emit('pageSize', pageSize.value);
 }
 onMounted(() => {
-  if (!root.value) return;
+  if (!root.value || !props.fitToWidth) return;
   fitPage(root.value.clientWidth);
   if (typeof ResizeObserver === 'undefined') return;
   let previous = root.value.clientWidth;

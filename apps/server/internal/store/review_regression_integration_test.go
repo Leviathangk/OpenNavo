@@ -24,6 +24,7 @@ func TestRegressionDetailSourceFactInvalidation(t *testing.T) {
 	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: remediationCask(t, "cached")}}))
 	row, err := st.CatalogRow(ctx, "cask", "cached")
 	require.NoError(t, err)
+	require.NoError(t, st.DB.Exec("UPDATE job_outbox SET available_at=clock_timestamp()-interval '1 minute' WHERE job_type='cache:invalidate'").Error)
 	require.NoError(t, st.DispatchCacheInvalidations(ctx))
 	stop, err := cache.Subscribe(ctx, st.Redis, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	require.NoError(t, err)
@@ -34,6 +35,7 @@ func TestRegressionDetailSourceFactInvalidation(t *testing.T) {
 	const key = cache.PackageDetailPrefix + "cask:cached:en-US"
 	require.EqualValues(t, 1, st.Redis.Exists(ctx, key).Val())
 	require.NoError(t, st.SaveSourceFact(ctx, store.SourceFact{PackageID: row.ID, Source: "github", Input: "example/cached", Status: "none", CheckedAt: time.Now(), NextCheckAt: time.Now()}, "cached", true))
+	require.NoError(t, st.DB.Exec("UPDATE job_outbox SET available_at=clock_timestamp()-interval '1 minute' WHERE job_type='cache:invalidate'").Error)
 	require.NoError(t, st.DispatchCacheInvalidations(ctx))
 	require.Eventually(t, func() bool { return st.Redis.Exists(ctx, key).Val() == 0 }, 2*time.Second, 10*time.Millisecond, "changed source facts must invalidate the live detail cache")
 }
@@ -61,6 +63,7 @@ func TestRegressionDetailInvalidationProducers(t *testing.T) {
 	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: remediationCask(t, "detail")}}))
 	row, err := st.CatalogRow(ctx, "cask", "detail")
 	require.NoError(t, err)
+	require.NoError(t, st.DB.Exec("UPDATE job_outbox SET available_at=clock_timestamp()-interval '1 minute' WHERE job_type='cache:invalidate'").Error)
 	require.NoError(t, st.DispatchCacheInvalidations(ctx))
 	svc := catalog.PublicService{Store: st, Cache: cache.Redis{Client: st.Redis}}
 	managementService := management.Service{Store: st}
@@ -106,6 +109,7 @@ func TestRegressionDetailInvalidationProducers(t *testing.T) {
 			require.EqualValues(t, len(keys), st.Redis.Exists(ctx, keys...).Val())
 			require.NoError(t, st.Redis.Set(ctx, "session:regression", "keep", time.Minute).Err())
 			require.NoError(t, change.run())
+			require.NoError(t, st.DB.Exec("UPDATE job_outbox SET available_at=clock_timestamp()-interval '1 minute' WHERE job_type='cache:invalidate'").Error)
 			require.NoError(t, st.DispatchCacheInvalidations(ctx))
 			require.Eventually(t, func() bool { return st.Redis.Exists(ctx, keys...).Val() == 0 }, 2*time.Second, 10*time.Millisecond, "producer must invalidate both capabilities and every locale")
 			require.Equal(t, "keep", st.Redis.Get(ctx, "session:regression").Val())
@@ -119,6 +123,7 @@ func TestRegressionRemovedLinkAdoptionWithoutMetadataRollsBack(t *testing.T) {
 	id := remediationLink(t, st, "no-metadata")
 	require.NoError(t, st.RemoveLinkApp(ctx, id))
 	require.NoError(t, st.DB.Exec("DELETE FROM package_meta WHERE package_id=?", id).Error)
+	require.NoError(t, st.DB.Exec("UPDATE job_outbox SET available_at=clock_timestamp()-interval '1 minute' WHERE job_type='cache:invalidate'").Error)
 	require.NoError(t, st.DispatchCacheInvalidations(ctx))
 	require.NoError(t, st.DB.Exec("ALTER TABLE job_outbox ADD CONSTRAINT reject_adoption_cache CHECK (job_type<>'cache:invalidate')").Error)
 	mutation := []store.CatalogMutation{{Package: remediationCask(t, "no-metadata")}}
