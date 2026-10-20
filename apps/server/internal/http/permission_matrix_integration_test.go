@@ -83,6 +83,7 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups["content:article:publish"] = "publishArticle withdrawArticle restoreArticle setArticleSlug setArticleLocale createArticleAuthor updateArticleAuthor"
 	groups["content:article:edit"] += " listArticleTestArtifacts"
 	groups["content:article:publish"] += " createArticleTestArtifact"
+	groups["content:article:edit"] += " captureArticleEvidence"
 	// Upload tickets are issued only to Agents and redeemed only with the ticket itself.
 	groups["catalog:asset:upload"] += " createAssetUploadTicket uploadAssetWithTicket"
 	operations := map[string]string{}

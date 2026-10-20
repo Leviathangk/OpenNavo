@@ -2990,6 +2990,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/articles/{id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Capture an article source
+         * @description Human editors only. Fetch and store a verified source excerpt for this article or a linked app. Does not require an Agent task lease.
+         */
+        post: operations["captureArticleEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/articles/{id}/test-artifacts": {
         parameters: {
             query?: never;
@@ -4439,6 +4459,22 @@ export interface components {
             testArtifactId: number | null;
             /** @example aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa */
             testArtifactHash: string | null;
+        };
+        /**
+         * @example {
+         *       "url": "https://vendor.example.test/guide",
+         *       "excerpt": "Example App supports macOS.",
+         *       "packageId": 1,
+         *       "idempotencyKey": "article-evidence-001"
+         *     }
+         */
+        ArticleEvidenceCapture: {
+            /** Format: uri */
+            url: string;
+            excerpt: string;
+            /** Format: int64 */
+            packageId?: number | null;
+            idempotencyKey: string;
         };
         /**
          * @example {
@@ -21289,6 +21325,8 @@ export interface components {
          *     }
          */
         ArticleUpdate: {
+            /** @description Replace related apps atomically with the other draft fields. */
+            packageIds?: number[];
             claims?: components["schemas"]["ArticleClaim"][];
             target?: components["schemas"]["ArticleSeoTarget"] | null;
             /**
@@ -33819,6 +33857,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SeoListingBaselineResponse"] | components["schemas"]["BusinessErrorResponse"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    captureArticleEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArticleEvidenceCapture"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoEvidenceResponse"] | components["schemas"]["BusinessErrorResponse"];
                 };
             };
         };

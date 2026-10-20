@@ -4,6 +4,8 @@ import {
   NAvatar,
   NButton,
   NCard,
+  NDivider,
+  NInputNumber,
   NForm,
   NFormItem,
   NImage,
@@ -19,16 +21,19 @@ import {
   NUpload
 } from 'naive-ui';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import ClaimEvidence from '../src/views/content/article-detail/modules/claim-evidence.vue';
 import ArticleDetail from '../src/views/content/article-detail/[id].vue';
 import {
   changedFields,
   formFromView,
   formProblems,
-  packagesChanged
+  packagesChanged,
+  publicationProblems
 } from '../src/views/content/article-detail/modules/article';
 import type { Article } from '../src/views/content/article-detail/modules/article';
 
 const api = vi.hoisted(() => ({
+  captureArticleEvidence: vi.fn(),
   fetchArticle: vi.fn(),
   fetchArticleAuthors: vi.fn(),
   updateArticle: vi.fn(),
@@ -58,6 +63,8 @@ const components = {
   NAvatar,
   NButton,
   NCard,
+  NDivider,
+  NInputNumber,
   NForm,
   NFormItem,
   NImage,
@@ -95,6 +102,17 @@ function article(overrides: Partial<Article> = {}, working: Partial<Article['wor
       coverAssetId: null,
       coverUrl: null,
       coverAlt: null,
+      claims: [
+        {
+          text: 'Shottr supports macOS.',
+          kind: 'factual',
+          evidenceId: 1,
+          excerpt: 'Shottr supports macOS.',
+          appVersion: '',
+          region: 'ZZ'
+        }
+      ],
+      target: { entityKey: 'topic:mac-screenshots', intent: 'topic' },
       sources: [{ title: 'Shottr docs', url: 'https://shottr.cc/kb' }],
       packages: [{ id: 7, token: 'shottr', name: 'Shottr', displayName: 'Shottr', iconUrl: null }],
       title: 'How to choose a screenshot app',
@@ -174,7 +192,152 @@ describe('Article form helpers', () => {
   });
 });
 
+describe('Article publication fields', () => {
+  it('round-trips claims and target without mutating the loaded revision', () => {
+    const view = article();
+    const form = formFromView(view);
+    form.claims[0]!.evidenceId = 42;
+    form.target!.intent = 'compare';
+    expect(view.working.claims![0]!.evidenceId).toBe(1);
+    expect(changedFields(form, view)).toMatchObject({ claims: [{ evidenceId: 42 }], target: { intent: 'compare' } });
+    expect(publicationProblems(form)).toEqual([]);
+    form.claims[0]!.kind = 'test';
+    expect(publicationProblems(form)).toContain('claims');
+    form.target!.entityKey = 'pkg:999';
+    expect(publicationProblems(form)).toContain('target');
+  });
+  it('blocks publishing when evidence or target is missing', async () => {
+    permissions.publish = true;
+    api.fetchArticle.mockResolvedValue({
+      data: article(
+        { status: 'review', readiness: [] },
+        { claims: [], target: null, submittedAt: '2026-10-13T09:00:00Z' }
+      ),
+      error: null
+    });
+    const wrapper = mount(ArticleDetail, {
+      global: { components, stubs: { PackagePicker: true, ArticlePreview: true } }
+    });
+    await flushPromises();
+    const publish = wrapper.findAll('button').find(node => node.text() === 'page.content.articleDetail.publish')!;
+    expect(publish.attributes('disabled')).toBeDefined();
+    expect(wrapper.text()).toContain('page.content.articleDetail.problems.claims');
+  });
+});
+
 describe('Article editor', () => {
+  it('preserves unsaved claim and source inputs while staging newly linked apps', async () => {
+    const wrapper = mount(ArticleDetail, {
+      global: { components, stubs: { PackagePicker: true, ArticlePreview: true } }
+    });
+    await flushPromises();
+    wrapper.findComponent({ name: 'PackagePicker' }).vm.$emit('pick', {
+      id: 8,
+      token: 'new-app',
+      name: 'New app',
+      displayName: 'New app',
+      iconUrl: null
+    });
+    const label = (key: string) => `[aria-label="page.content.articleDetail.${key}"]`;
+    await wrapper.find(label('claimText')).setValue('Unsaved factual statement');
+    await wrapper.find(label('sourceUrl')).setValue('https://vendor.example/guide');
+    const evidence = wrapper.findComponent(ClaimEvidence);
+    api.updateArticle.mockResolvedValue({ data: article({ revision: 5 }), error: null });
+    api.captureArticleEvidence.mockResolvedValue({
+      data: { id: 42, excerpt: 'Shottr supports macOS.', finalUrl: 'https://vendor.example/guide' },
+      error: null
+    });
+    await evidence
+      .findAll('button')
+      .find(node => node.text() === 'page.content.articleDetail.captureSource')!
+      .trigger('click');
+    await flushPromises();
+    expect(api.updateArticle).toHaveBeenCalledWith(1, { expectedRevision: 4, packageIds: [7, 8] });
+    expect(wrapper.findComponent(ClaimEvidence).element).toBe(evidence.element);
+    expect((wrapper.find(label('claimText')).element as HTMLTextAreaElement).value).toBe('Unsaved factual statement');
+    expect((wrapper.find(label('sourceUrl')).element as HTMLInputElement).value).toBe('https://vendor.example/guide');
+    expect(evidence.props('claim').evidenceId).toBe(42);
+  });
+
+  it.each(['save', 'capture', 'failed capture preparation'])(
+    'replaces one of 50 apps without an oversized intermediate request: %s',
+    async mode => {
+      const packages = Array.from({ length: 50 }, (_, i) => ({
+        id: i + 1,
+        token: `app-${i + 1}`,
+        name: `App ${i + 1}`,
+        displayName: `App ${i + 1}`,
+        iconUrl: null
+      }));
+      api.fetchArticle.mockResolvedValue({
+        data: article({}, { packages, target: { entityKey: 'pkg:1', intent: 'download' } }),
+        error: null
+      });
+      api.updateArticle.mockImplementation(async (_id, body) => {
+        expect(body.packageIds).toHaveLength(50);
+        expect(body.packageIds).not.toContain(1);
+        expect(body.packageIds).toContain(51);
+        return mode === 'failed capture preparation'
+          ? { data: null, error: new Error('conflict') }
+          : {
+              data: article(
+                { revision: 5 },
+                { packages: [...packages.slice(1), { ...packages[0]!, id: 51 }], target: null }
+              ),
+              error: null
+            };
+      });
+      api.captureArticleEvidence.mockResolvedValue({
+        data: { id: 42, excerpt: 'Shottr supports macOS.' },
+        error: null
+      });
+      const wrapper = mount(ArticleDetail, {
+        global: { components, stubs: { PackagePicker: true, ArticlePreview: true } }
+      });
+      await flushPromises();
+      const appCard = wrapper
+        .findAllComponents(NCard)
+        .find(card => card.findComponent({ name: 'PackagePicker' }).exists())!;
+      const deleteApp = appCard.findAll('button').find(node => node.text() === 'common.delete')!;
+      await deleteApp.trigger('click');
+      wrapper
+        .findComponent({ name: 'PackagePicker' })
+        .vm.$emit('pick', { id: 51, token: 'new-app', name: 'New app', iconUrl: null });
+      await flushPromises();
+      const label = (key: string) => `[aria-label="page.content.articleDetail.${key}"]`;
+      await wrapper.find(label('claimText')).setValue('Unsaved claim');
+      if (mode === 'save') {
+        await wrapper.find(label('targetEntity')).setValue('pkg:51');
+        await wrapper
+          .findAll('button')
+          .find(node => node.text() === 'page.content.articleDetail.save')!
+          .trigger('click');
+      } else {
+        await wrapper.find(label('sourceUrl')).setValue('https://vendor.example/guide');
+        await wrapper
+          .findAll('button')
+          .find(node => node.text() === 'page.content.articleDetail.captureSource')!
+          .trigger('click');
+      }
+      await flushPromises();
+      expect(api.setArticlePackages).not.toHaveBeenCalled();
+      expect(api.updateArticle).toHaveBeenCalledOnce();
+      const body = api.updateArticle.mock.calls[0]![1];
+      expect(body.expectedRevision).toBe(4);
+      if (mode === 'save') {
+        expect(body.claims[0].text).toBe('Unsaved claim');
+      } else {
+        expect(body.target).toBeNull();
+        expect(body.claims).toBeUndefined();
+        expect((wrapper.find(label('claimText')).element as HTMLTextAreaElement).value).toBe('Unsaved claim');
+        expect((wrapper.find(label('sourceUrl')).element as HTMLInputElement).value).toBe(
+          'https://vendor.example/guide'
+        );
+        expect(api.captureArticleEvidence).toHaveBeenCalledTimes(mode === 'capture' ? 1 : 0);
+      }
+    }
+  );
+
   it('lists problems, saves with the article revision and submits', async () => {
     const wrapper = mount(ArticleDetail, {
       global: { components, stubs: { PackagePicker: true, ArticlePreview: true } }
@@ -206,5 +369,18 @@ describe('Article editor', () => {
     const labels = wrapper.findAll('button').map(node => node.text());
     expect(labels).toContain('page.content.articleDetail.publish');
     expect(labels).not.toContain('page.content.articleDetail.submit');
+    window.$dialog = {
+      warning: ({ onPositiveClick }: { onPositiveClick: () => Promise<void> }) => onPositiveClick()
+    } as unknown as Window['$dialog'];
+    api.publishArticle.mockResolvedValue({
+      data: article({ status: 'published', revision: 5, readiness: [] }),
+      error: null
+    });
+    const publish = wrapper.findAll('button').find(node => node.text() === 'page.content.articleDetail.publish')!;
+    expect(publish.attributes('disabled')).toBeUndefined();
+    await publish.trigger('click');
+    await flushPromises();
+    expect(api.publishArticle).toHaveBeenCalledWith(1, 4);
+    delete window.$dialog;
   });
 });

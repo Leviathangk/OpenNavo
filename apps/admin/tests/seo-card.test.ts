@@ -258,7 +258,7 @@ describe('GEO summary and read-only details', () => {
     await flushPromises();
     const section = wrapper.get('[data-testid="geo-section"]');
     for (const value of [
-      'summary_only',
+      'page.dashboard.seo.geo.reported',
       'page.dashboard.seo.geo.reported',
       'page.dashboard.seo.geo.noComparison',
       'observations'

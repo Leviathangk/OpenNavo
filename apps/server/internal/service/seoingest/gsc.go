@@ -13,6 +13,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var errOutsideSite = errors.New("SEO URL outside configured site")
+
 var digitSuffix = regexp.MustCompile(`[[:alpha:]][ _-]*[0-9]{6,}$`)
 
 // fetchDay never represents an API row cap as a fully retrieved day.
@@ -112,8 +114,11 @@ func (s *Service) GSC(ctx context.Context) (map[string]any, error) {
 func (s *Service) registerURL(tx *gorm.DB, raw string) (int64, error) {
 	u, err := url.Parse(raw)
 	base, baseErr := url.Parse(s.WebURL)
-	if err != nil || baseErr != nil || u.Scheme != "https" || u.Host != base.Host || u.User != nil || u.Fragment != "" {
-		return 0, errors.New("SEO URL outside configured site")
+	if err != nil || baseErr != nil || base.Host == "" || u.Host == "" || (u.Scheme != "https" && u.Scheme != "http") || u.User != nil || u.Fragment != "" {
+		return 0, ErrUpstream
+	}
+	if u.Scheme != base.Scheme || !strings.EqualFold(u.Host, base.Host) {
+		return 0, errOutsideSite
 	}
 	route := parseAuditRoute(u.EscapedPath())
 	var packageID *int64
@@ -152,6 +157,11 @@ func (s *Service) saveGSC(ctx context.Context, source, date string, rows []Searc
 		}
 		for _, r := range rows {
 			id, err := s.registerURL(tx, r.Keys[1])
+			// Domain properties include HTTP and other origins. They are outside
+			// this site registry, but do not invalidate the fetched day.
+			if errors.Is(err, errOutsideSite) {
+				continue
+			}
 			if err != nil {
 				return err
 			}

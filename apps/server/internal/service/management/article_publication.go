@@ -204,3 +204,34 @@ func (s *Service) articleTestArtifacts(ctx context.Context, op string, in Input)
 		return result, nil
 	})
 }
+
+// Human editors capture a source directly from an existing article, without an
+// Agent lease. Scope and permission are checked again by the evidence service.
+func (s *Service) captureArticleEvidence(ctx context.Context, in Input) (any, error) {
+	op := domain.CurrentOperation(ctx)
+	if op == nil || op.ActorID == nil || op.AgentClientID > 0 || op.AgentTokenID > 0 || !op.Allowed("content:article:edit") {
+		return nil, fail(domain.CodeForbidden)
+	}
+	var req struct {
+		URL            string `json:"url"`
+		Excerpt        string `json:"excerpt"`
+		PackageID      *int64 `json:"packageId"`
+		IdempotencyKey string `json:"idempotencyKey"`
+	}
+	if decodeStrictBody(in.Body, &req) != nil || in.ID < 1 || req.PackageID != nil && *req.PackageID < 1 {
+		return nil, domain.Validation()
+	}
+	entity := fmt.Sprintf("article:%d", in.ID)
+	if req.PackageID != nil {
+		entity = fmt.Sprintf("pkg:%d", *req.PackageID)
+	}
+	evidence := s.Evidence
+	if evidence == nil {
+		evidence = agentgate.NewEvidenceService(s.Store.DB, s.Config.FetchUserAgent)
+	}
+	result, err := evidence.CaptureArticle(ctx, agentgate.Capture{EntityKey: entity, URL: req.URL, Excerpt: req.Excerpt, IdempotencyKey: req.IdempotencyKey, DryRun: op.DryRun}, in.ID)
+	if agentgate.IsViolation(err) {
+		return nil, domain.Validation()
+	}
+	return result, mapTaskError(err)
+}

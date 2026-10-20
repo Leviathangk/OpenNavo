@@ -6,14 +6,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/api/types/network"
-	"github.com/testcontainers/testcontainers-go"
 	"net"
 	"net/netip"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/opennavo/opennavo/server/migrations"
 	"github.com/pressly/goose/v3"

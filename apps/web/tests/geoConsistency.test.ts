@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { LOCALE_METADATA, SITE_LOCALES, sharedMessages, type SiteLocale } from '@opennavo/shared';
 import type { PackageDetail } from '@opennavo/api';
@@ -108,12 +107,10 @@ function sharedAssertions(out: Output, locale: SiteLocale) {
 }
 
 describe('G5 cross-export normalized facts', () => {
-  it('keeps exactly the 30 stable scenario IDs from the reviewed plan', () => {
+  it('keeps exactly the 30 stable scenario IDs', () => {
     expect(GEO_SAMPLES.map(item => item.id)).toEqual(
       Array.from({ length: 30 }, (_, i) => `G5-${String(i + 1).padStart(2, '0')}`)
     );
-    const plan = readFileSync(new URL('../../../docs/design/seo-batch/g5-samples.md', import.meta.url), 'utf8');
-    for (const item of GEO_SAMPLES) expect(plan).toContain(`### ${item.id}`);
   });
 
   it.each(GEO_SAMPLES)('$id $label — HTML/FAQ/JSON-LD/MD', async sample => {

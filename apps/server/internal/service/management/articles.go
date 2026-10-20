@@ -467,7 +467,7 @@ func (s *Service) updateArticle(ctx context.Context, op string, in Input) (any, 
 	if err != nil {
 		return nil, err
 	}
-	allowed := []string{"sourceLocale", "type", "title", "summary", "bodyMarkdown", "testNote", "seoTitle", "seoDescription", "authorId", "coverAssetId", "coverAlt", "sources", "claims", "target"}
+	allowed := []string{"packageIds", "sourceLocale", "type", "title", "summary", "bodyMarkdown", "testNote", "seoTitle", "seoDescription", "authorId", "coverAssetId", "coverAlt", "sources", "claims", "target"}
 	action := "update"
 	if op == "SetArticlePackages" {
 		allowed = []string{"packageIds"}

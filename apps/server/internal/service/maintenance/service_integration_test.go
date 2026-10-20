@@ -13,7 +13,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/opennavo/opennavo/server/internal/homebrew"
-	"github.com/opennavo/opennavo/server/internal/llm"
 	"github.com/opennavo/opennavo/server/internal/observability"
 	"github.com/opennavo/opennavo/server/internal/service/maintenance"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -71,9 +70,7 @@ func TestCleanupReferencesVariantsRetentionAndMetrics(t *testing.T) {
 	active, err := st.StartJobRun(ctx, "cleanup", "event", nil)
 	require.NoError(t, err)
 	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE sync_runs SET started_at=? WHERE id=?", now.AddDate(0, 0, -91), active).Error)
-	cost := 0.1
-	require.NoError(t, st.SaveLLMUsage(ctx, "enrich_package", row.ID, llm.Attempt{Model: "fake", ReasoningEffort: "high", FinishReason: "stop", PromptTokens: 100, CompletionTokens: 50, ReasoningTokens: 10, CachedTokens: 20, LatencyMS: 1000}, &cost))
-	require.NoError(t, st.SaveLLMUsage(ctx, "enrich_package", row.ID, llm.Attempt{Model: "fake", ReasoningEffort: "high", FinishReason: "stop", Result: "failed", LatencyMS: 10000}, nil))
+	require.NoError(t, st.DB.Exec("INSERT INTO translation_metrics(entity,status,requests,tokens) VALUES('package','succeeded',1,150),('package','failed',1,0)").Error)
 	st.ObserveGitHubQuota(ctx, 321)
 	d := &deletions{}
 	svc := &maintenance.Service{Store: st, Objects: d, Now: func() time.Time { return now }}
@@ -94,12 +91,11 @@ func TestCleanupReferencesVariantsRetentionAndMetrics(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, state.Jobs, 1)
 	require.Equal(t, int64(1), state.Jobs[0].Runs)
-	require.NoError(t, st.DB.Exec("UPDATE i18n_settings SET monthly_token_budget=40000000").Error)
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(observability.NewBusinessMetrics(st))
 	w := httptest.NewRecorder()
 	promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, httptest.NewRequest("GET", "/metrics", nil))
-	for _, name := range []string{"sync_runs_total", "catalog_packages", "changelog_fetch_total", "github_ratelimit_remaining 321", "llm_tokens_total", "llm_request_duration_seconds_count{task=\"enrich_package\"} 2", "llm_requests_total{result=\"failed\",task=\"enrich_package\"} 1", "llm_cost_usd_total 0.1", "llm_month_tokens 150", "llm_month_token_budget 4e+07", "opennavo_metrics_collection_success 1"} {
+	for _, name := range []string{"sync_runs_total", "catalog_packages", "changelog_fetch_total", "github_ratelimit_remaining 321", "content_translation_requests_total{entity=\"package\",status=\"failed\"} 1", "content_translation_tokens_total{entity=\"package\",status=\"succeeded\"} 150", "opennavo_metrics_collection_success 1"} {
 		require.Contains(t, w.Body.String(), name)
 	}
 	expired := asset("retry", "icon", true)

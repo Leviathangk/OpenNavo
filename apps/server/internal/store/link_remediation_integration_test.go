@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/i18n"
+
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
@@ -115,8 +117,8 @@ func TestRemediationLinkContentAndTranslation(t *testing.T) {
 	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error { return (&store.Store{DB: tx}).ScheduleContentTranslation(ctx, ref) }))
 	source, err = st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
-	require.NoError(t, st.DB.Table("job_outbox").Where("unique_key=?", fmt.Sprintf("translate:content:package:%d", id)).Count(&n).Error)
-	require.EqualValues(t, 1, n)
+	require.NoError(t, st.DB.Table("seo_tasks").Where("kind='translate' AND entity_key=? AND state='open'", fmt.Sprintf("package:%d", id)).Count(&n).Error)
+	require.EqualValues(t, len(i18n.SiteLocales)-1, n)
 	applied, err := st.WriteTranslationSnapshot(ctx, source, "zh-CN", map[string]string{"summary": "译文", "description": "正文"}, "fixture")
 	require.NoError(t, err)
 	require.True(t, applied)

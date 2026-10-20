@@ -190,3 +190,40 @@ func TestTaskLeaseFencingAndAtomicActions(t *testing.T) {
 		require.ErrorIs(t, err, seotasks.ErrConflict)
 	})
 }
+
+func TestClaimRefillsPastCanonicalAliases(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &seotasks.Service{DB: st.DB}
+	require.NoError(t, st.DB.Exec(`INSERT INTO seo_entity_leases(entity_key,owner,fencing,lease_until) VALUES('pkg:991','busy',1,now()+interval '1 hour')`).Error)
+	for i := 0; i < 25; i++ {
+		_, err := svc.Enqueue(ctx, seotasks.NewTask{Kind: "alias", EntityKey: "package:991", DedupeKey: uuid.NewString(), Priority: 100, RuleVersion: "test", Evidence: map[string]any{}})
+		require.NoError(t, err)
+	}
+	want, err := svc.Enqueue(ctx, seotasks.NewTask{Kind: "alias", EntityKey: "pkg:992", DedupeKey: uuid.NewString(), RuleVersion: "test", Evidence: map[string]any{}})
+	require.NoError(t, err)
+	got, err := svc.Claim(ctx, "worker", 1, []string{"alias"})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, want.ID, got[0].ID)
+}
+
+func TestClaimRefillsAfterConcurrentEntityReservation(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &seotasks.Service{DB: st.DB}
+	tx := st.DB.Begin()
+	require.NoError(t, tx.Error)
+	defer tx.Rollback()
+	require.NoError(t, tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", "seo-claim:pkg:993").Error)
+	for i := 0; i < 25; i++ {
+		_, err := svc.Enqueue(ctx, seotasks.NewTask{Kind: "contention", EntityKey: "package:993", DedupeKey: uuid.NewString(), Priority: 100, RuleVersion: "test", Evidence: map[string]any{}})
+		require.NoError(t, err)
+	}
+	want, err := svc.Enqueue(ctx, seotasks.NewTask{Kind: "contention", EntityKey: "pkg:994", DedupeKey: uuid.NewString(), RuleVersion: "test", Evidence: map[string]any{}})
+	require.NoError(t, err)
+	got, err := svc.Claim(ctx, "worker", 1, []string{"contention"})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Equal(t, want.ID, got[0].ID)
+}

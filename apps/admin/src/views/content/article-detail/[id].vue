@@ -10,7 +10,6 @@ import {
   restoreArticle,
   revertArticle,
   setArticleLocale,
-  setArticlePackages,
   setArticleSlug,
   submitArticle,
   updateArticle,
@@ -24,6 +23,7 @@ import { formatDateTime, isDryRun } from '@/utils/opennavo';
 import { CONTENT_LOCALE_OPTIONS, localeName } from '@/utils/content-locale';
 import { $t } from '@/locales';
 import ArticlePreview from './modules/article-preview.vue';
+import ClaimEvidence from './modules/claim-evidence.vue';
 import {
   ARTICLE_SLUG,
   ARTICLE_TYPES,
@@ -32,7 +32,8 @@ import {
   changedFields,
   formFromView,
   formProblems,
-  packagesChanged
+  packagesChanged,
+  publicationProblems
 } from './modules/article';
 import type { Article, ArticleForm } from './modules/article';
 
@@ -98,7 +99,10 @@ const dirty = computed(() =>
   )
 );
 const localProblems = computed(() => (form.value ? formProblems(form.value) : []));
-const problems = computed(() => [...new Set([...(detail.value?.readiness ?? []), ...localProblems.value])]);
+const publicationIssues = computed(() => (form.value ? publicationProblems(form.value) : []));
+const problems = computed(() => [
+  ...new Set([...(detail.value?.readiness ?? []), ...localProblems.value, ...publicationIssues.value])
+]);
 const working = computed(() => detail.value?.working);
 const submitted = computed(() => Boolean(working.value?.submittedAt) && !working.value?.publishedAt);
 const isPublishedRevision = computed(() => Boolean(working.value?.publishedAt));
@@ -132,26 +136,15 @@ async function save() {
     return false;
   }
   const patch = changedFields(current, article);
-  const packages = current.packages.map(item => item.id);
-  const changePackages = packagesChanged(current, article);
-  let revision = article.revision;
-  if (Object.keys(patch).length) {
-    const ok = await run('save', () => updateArticle(article.id, { expectedRevision: revision, ...patch }));
-    if (!ok || !detail.value) return false;
-    revision = detail.value.revision;
-  }
-  if (changePackages) {
-    const ok = await run('save', () =>
-      setArticlePackages(article.id, { expectedRevision: revision, packageIds: packages })
-    );
-    if (!ok) return false;
-  }
+  if (packagesChanged(current, article)) patch.packageIds = current.packages.map(item => item.id);
+  const ok = await run('save', () => updateArticle(article.id, { expectedRevision: article.revision, ...patch }));
+  if (!ok) return false;
   window.$message?.success($t('page.shared.saved'));
   return true;
 }
 
 async function submit() {
-  if (!(await save()) || !detail.value) return;
+  if (publicationIssues.value.length || !(await save()) || !detail.value) return;
   const article = detail.value;
   await run('submit', () => submitArticle(article.id, article.revision), text('submitted'));
 }
@@ -257,6 +250,61 @@ async function uploadBodyImage({ file, onFinish, onError }: UploadCustomRequestO
   onFinish();
 }
 
+// Capture and report registration need saved package membership, but incomplete
+// claims must remain editable until those operations return their real IDs.
+async function preparePublicationReferences() {
+  if (!detail.value || !form.value || busy.value) return false;
+  const current = form.value;
+  const article = detail.value;
+  if (!packagesChanged(current, article)) return true;
+  const packages = current.packages.map(item => item.id);
+  // An old package target cannot survive unlinking its app. Keep the local target
+  // untouched so the next save can atomically persist the editor's replacement.
+  const target = article.working.target;
+  const clearTarget = target?.entityKey.startsWith('pkg:') && !packages.includes(Number(target.entityKey.slice(4)));
+  busy.value = 'references';
+  try {
+    const { data, error } = await updateArticle(article.id, {
+      expectedRevision: article.revision,
+      packageIds: packages,
+      ...(clearTarget ? { target: null } : {})
+    });
+    if (error || !data || isDryRun(data)) return false;
+    // Preserve the form and child instances while updating the revision token.
+    detail.value = data;
+    return true;
+  } finally {
+    busy.value = '';
+  }
+}
+const targetIntents: Schemas['ArticleSeoTarget']['intent'][] = [
+  'download',
+  'install',
+  'brew',
+  'uninstall',
+  'alternative',
+  'price',
+  'version',
+  'requirements',
+  'compare',
+  'topic'
+];
+const claimKinds = computed(() => ['factual', 'test'].map(value => ({ value, label: text(value) })));
+const claimPackages = computed(
+  () => form.value?.packages.map(item => ({ value: item.id, label: item.displayName })) ?? []
+);
+function addClaim() {
+  form.value?.claims.push({
+    text: '',
+    kind: 'factual',
+    evidenceId: 0,
+    excerpt: '',
+    appVersion: '',
+    region: 'ZZ',
+    packageId: null,
+    testArtifactId: null
+  });
+}
 const serpTitle = computed(() => form.value?.seoTitle.trim() || form.value?.title.trim() || '—');
 const serpDescription = computed(() => form.value?.seoDescription.trim() || form.value?.summary.trim() || '');
 const articlePath = computed(() => `/articles/${detail.value?.slug ?? ''}`);
@@ -312,7 +360,7 @@ const articlePath = computed(() => `/articles/${detail.value?.slug ?? ''}`);
             <NButton
               v-if="canPublish && submitted"
               type="primary"
-              :disabled="dirty"
+              :disabled="dirty || publicationIssues.length > 0"
               :loading="busy === 'publish'"
               @click="publish"
             >
@@ -407,6 +455,80 @@ const articlePath = computed(() => `/articles/${detail.value?.slug ?? ''}`);
                 </div>
               </div>
             </NFormItem>
+            <NDivider>{{ text('publication') }}</NDivider>
+            <NText depth="3" class="mb-12px block">{{ text('publicationHint') }}</NText>
+            <NButton
+              v-if="!form.target"
+              size="small"
+              @click="form.target = { entityKey: `topic:${detail.slug}`, intent: 'topic' }"
+            >
+              {{ text('addTarget') }}
+            </NButton>
+            <div v-else class="grid grid-cols-1 gap-x-16px md:grid-cols-2">
+              <NFormItem :label="text('targetEntity')">
+                <NInput
+                  v-model:value="form.target.entityKey"
+                  :maxlength="300"
+                  :input-props="{ 'aria-label': text('targetEntity') }"
+                />
+              </NFormItem>
+              <NFormItem :label="text('targetIntent')">
+                <NSelect
+                  v-model:value="form.target.intent"
+                  :options="targetIntents.map(value => ({ value, label: value }))"
+                />
+              </NFormItem>
+            </div>
+            <fieldset v-for="(claim, index) in form.claims" :key="index" class="mb-16px min-w-0 border-0 p-0">
+              <legend class="mb-8px">{{ text('claimNumber', { number: index + 1 }) }}</legend>
+              <NFormItem :label="text('claimText')">
+                <NInput
+                  v-model:value="claim.text"
+                  type="textarea"
+                  :maxlength="20000"
+                  :input-props="{ 'aria-label': text('claimText') }"
+                />
+              </NFormItem>
+              <div class="grid grid-cols-1 gap-x-16px md:grid-cols-2">
+                <NFormItem :label="text('claimKind')">
+                  <NSelect v-model:value="claim.kind" :options="claimKinds" />
+                </NFormItem>
+                <NFormItem :label="text('claimPackage')">
+                  <NSelect v-model:value="claim.packageId" clearable :options="claimPackages" />
+                </NFormItem>
+                <NFormItem :label="text('evidenceId')">
+                  <NInputNumber v-model:value="claim.evidenceId" :min="1" :precision="0" />
+                </NFormItem>
+                <NFormItem :label="text('appVersion')">
+                  <NInput v-model:value="claim.appVersion" :maxlength="100" />
+                </NFormItem>
+                <NFormItem :label="text('region')"><NInput v-model:value="claim.region" :maxlength="2" /></NFormItem>
+                <NFormItem :label="text('testArtifactId')">
+                  <NInputNumber v-model:value="claim.testArtifactId" :min="1" :precision="0" clearable />
+                </NFormItem>
+              </div>
+              <NFormItem :label="text('excerpt')">
+                <NInput
+                  v-model:value="claim.excerpt"
+                  type="textarea"
+                  :maxlength="20000"
+                  :input-props="{ 'aria-label': text('excerpt') }"
+                />
+              </NFormItem>
+              <ClaimEvidence
+                :article-id="detail.id"
+                :claim="claim"
+                :can-publish="canPublish"
+                :prepare="preparePublicationReferences"
+                @change="value => Object.assign(claim, value)"
+              />
+              <NButton size="small" type="error" quaternary @click="form.claims.splice(index, 1)">
+                {{ $t('common.delete') }}
+              </NButton>
+            </fieldset>
+            <NButton class="mb-16px" :disabled="form.claims.length >= 200" @click="addClaim">
+              {{ text('addClaim') }}
+            </NButton>
             <NFormItem :label="text('testNote')">
               <NInput
                 v-model:value="form.testNote"

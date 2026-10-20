@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/fetch"
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"golang.org/x/net/html"
@@ -65,7 +67,61 @@ func NewEvidenceService(db *gorm.DB, userAgent string) *EvidenceService {
 
 func normalizeText(value string) string { return strings.Join(strings.Fields(value), " ") }
 
+// Capture keeps the Agent path fenced by its task lease.
 func (e *EvidenceService) Capture(ctx context.Context, in Capture) (Evidence, error) {
+	return e.capture(ctx, in, func(tx *gorm.DB) error {
+		task, err := seotasks.Verify(ctx, tx, in.TaskID, in.Fencing, in.Owner)
+		if err != nil {
+			return err
+		}
+		key, err := seotasks.CanonicalEntity(ctx, tx, task.EntityKey)
+		if err != nil {
+			return err
+		}
+		wanted, err := seotasks.CanonicalEntity(ctx, tx, in.EntityKey)
+		if err != nil {
+			return err
+		}
+		if key != wanted {
+			return reject("evidence_entity_mismatch")
+		}
+		return nil
+	})
+}
+
+// CaptureArticle is the human editor path. It uses article edit permission and
+// current package membership instead of requiring an unrelated Agent task.
+func (e *EvidenceService) CaptureArticle(ctx context.Context, in Capture, articleID int64) (Evidence, error) {
+	op := domain.CurrentOperation(ctx)
+	if op == nil || op.ActorID == nil || op.AgentClientID > 0 || op.AgentTokenID > 0 || !op.Allowed("content:article:edit") {
+		return Evidence{}, &domain.AppError{Code: domain.CodeForbidden, HTTPStatus: 403}
+	}
+	in.Owner = fmt.Sprintf("admin:%d", *op.ActorID)
+	in.TaskID, in.Fencing = 0, 0
+	return e.capture(ctx, in, func(tx *gorm.DB) error {
+		var revision int64
+		r := tx.Raw("SELECT working_revision_id FROM articles WHERE id=? FOR SHARE", articleID).Scan(&revision)
+		if r.Error != nil {
+			return r.Error
+		}
+		if r.RowsAffected != 1 {
+			return reject("unknown_article")
+		}
+		if in.EntityKey == fmt.Sprintf("article:%d", articleID) {
+			return nil
+		}
+		var linked bool
+		if err := tx.Raw("SELECT EXISTS(SELECT 1 FROM article_revision_packages WHERE revision_id=? AND 'pkg:' || package_id = ?)", revision, in.EntityKey).Scan(&linked).Error; err != nil {
+			return err
+		}
+		if !linked {
+			return reject("evidence_entity_mismatch")
+		}
+		return nil
+	})
+}
+
+func (e *EvidenceService) capture(ctx context.Context, in Capture, verify func(*gorm.DB) error) (Evidence, error) {
 	out := Evidence{}
 	normalized, err := seotasks.CanonicalEntity(ctx, e.DB, in.EntityKey)
 	if err != nil {
@@ -94,23 +150,13 @@ func (e *EvidenceService) Capture(ctx context.Context, in Capture) (Evidence, er
 		if out.RequestHash != requestHash {
 			return Evidence{}, seotasks.ErrConflict
 		}
+		if err := e.DB.WithContext(ctx).Transaction(verify); err != nil {
+			return Evidence{}, err
+		}
 		return out, nil
 	}
-	// Validate ownership before doing I/O and again immediately before storing it.
-	err = e.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		task, err := seotasks.Verify(ctx, tx, in.TaskID, in.Fencing, in.Owner)
-		if err != nil {
-			return err
-		}
-		key, err := seotasks.CanonicalEntity(ctx, tx, task.EntityKey)
-		if err != nil {
-			return err
-		}
-		if key != in.EntityKey {
-			return reject("evidence_entity_mismatch")
-		}
-		return nil
-	})
+	// Recheck authorization before network I/O and immediately before persistence.
+	err = e.DB.WithContext(ctx).Transaction(verify)
 	if err != nil {
 		return out, err
 	}
@@ -165,16 +211,8 @@ func (e *EvidenceService) Capture(ctx context.Context, in Capture) (Evidence, er
 	sum := sha256.Sum256([]byte(text))
 	out = Evidence{EntityKey: canonicalEntity(in.EntityKey), SourceURL: target.String(), FinalURL: final.String(), BodyText: text, Excerpt: excerpt, BodyHash: hex.EncodeToString(sum[:]), Authority: authority, FetchStatus: 200, CreatedBy: in.Owner, CaptureKey: captureKey, RequestHash: requestHash}
 	err = e.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		task, err := seotasks.Verify(ctx, tx, in.TaskID, in.Fencing, in.Owner)
-		if err != nil {
+		if err := verify(tx); err != nil {
 			return err
-		}
-		key, err := seotasks.CanonicalEntity(ctx, tx, task.EntityKey)
-		if err != nil {
-			return err
-		}
-		if key != out.EntityKey {
-			return reject("evidence_entity_mismatch")
 		}
 		if err := tx.Raw("SELECT clock_timestamp()").Scan(&out.FetchedAt).Error; err != nil {
 			return err

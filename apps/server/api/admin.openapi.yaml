@@ -19686,6 +19686,199 @@ paths:
               evidenceId: 1
               domainOwnershipConfirmed: true
               suspicious: false
+  /articles/{id}/evidence:
+    post:
+      tags: [articles]
+      operationId: captureArticleEvidence
+      summary: Capture an article source
+      description: Human editors only. Fetch and store a verified source excerpt for this article or a linked app. Does not require an Agent task lease.
+      x-permissions: [content:article:edit]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArticleEvidenceCapture"
+      responses:
+        "200":
+          description: Business result
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/SeoEvidenceResponse"
+                  - $ref: "#/components/schemas/BusinessErrorResponse"
+              examples:
+                en-US:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
+                zh-CN:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
+                ja-JP:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
+                es-ES:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
+                pt-BR:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
+                ru-RU:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
+                de-DE:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
+                fr-FR:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
+                it-IT:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
+                zh-Hant:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      entityKey: pkg:1
+                      sourceUrl: https://example.com/product
+                      finalUrl: https://example.com/product
+                      excerpt: Requires macOS 14.
+                      bodyHash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                      fetchedAt: '2026-10-19T00:00:00Z'
+                      validUntil: '2026-11-18T00:00:00Z'
+                      authority: official
+                      fetchStatus: 200
+                      revokedAt: null
   /articles/{id}/test-artifacts:
     get:
       tags:
@@ -22640,6 +22833,33 @@ components:
         validUntil: 2026-11-19T00:00:00Z
         testArtifactId: null
         testArtifactHash: null
+    ArticleEvidenceCapture:
+      example:
+        url: https://vendor.example.test/guide
+        excerpt: Example App supports macOS.
+        packageId: 1
+        idempotencyKey: article-evidence-001
+      type: object
+      additionalProperties: false
+      required: [url, excerpt, idempotencyKey]
+      properties:
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+        excerpt:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        packageId:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        idempotencyKey:
+          type: string
+          minLength: 8
+          maxLength: 200
     ArticleTestArtifactInput:
       type: object
       additionalProperties: false
@@ -42019,6 +42239,16 @@ components:
       required: [expectedRevision]
       minProperties: 2
       properties:
+        packageIds:
+          type: array
+          description: Replace related apps atomically with the other draft fields.
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+            example: 1
         claims:
           type: array
           maxItems: 200

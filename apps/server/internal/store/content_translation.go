@@ -151,8 +151,8 @@ func (s *Store) ReadContentSource(ctx context.Context, ref content.Ref) (Content
 }
 
 // ScheduleContentTranslation records a source snapshot and hands work to Hermes.
-// Callers must already be inside the business transaction. Published target rows
-// keep their text, status and original hash until a validated replacement arrives.
+// Callers must already be inside the business transaction. Nonempty source updates keep published target rows until a validated replacement
+// arrives. An empty source removes translations immediately.
 func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref) error {
 	if !ref.Valid() {
 		return domain.Validation()
@@ -182,7 +182,7 @@ func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref)
 		return err
 	}
 	if len(content.Flatten(source.Fields)) == 0 {
-		return nil
+		return s.DB.WithContext(ctx).Table(spec.Table).Where(where+" AND locale<>?", append(args, source.SourceLocale)...).Delete(map[string]any{}).Error
 	}
 	for _, code := range i18n.SiteLocales {
 		locale := string(code)

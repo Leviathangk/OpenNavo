@@ -33,7 +33,7 @@ const rows = computed(() => {
 <template>
   <div class="flex-col gap-8px">
     <template v-if="geo.mode === 'summary_only'">
-      <NTag size="small" type="warning">summary_only</NTag>
+      <NTag size="small" type="warning">{{ $t('page.dashboard.seo.geo.reported') }}</NTag>
       <NText>{{ $t('page.dashboard.seo.geo.reported') }} · {{ $t('page.dashboard.seo.geo.noComparison') }}</NText>
       <NText v-if="geo.counts.reported?.missingFields.length" class="break-words">
         {{ $t('page.dashboard.seo.geo.missingFields') }}: {{ geo.counts.reported.missingFields.join(', ') }}

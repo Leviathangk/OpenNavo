@@ -459,6 +459,8 @@ func (s *Service) execute(ctx context.Context, op string, in Input) (any, error)
 		return s.factRecords(ctx, op, in)
 	case "GetPackageFacts", "SetPackagePrice", "SetPackageMacosSupport", "SetPackageAlternatives":
 		return s.packageFacts(ctx, op, in)
+	case "CaptureArticleEvidence":
+		return s.captureArticleEvidence(ctx, in)
 	case "ListArticleTestArtifacts", "CreateArticleTestArtifact":
 		return s.articleTestArtifacts(ctx, op, in)
 	case "ListAdminArticles", "GetAdminArticle":

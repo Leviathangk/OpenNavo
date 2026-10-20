@@ -45,7 +45,7 @@ func TestSEOMeasurementsAreAtomicIdempotentAndLayered(t *testing.T) {
 	require.Equal(t, "2026-10-18", watermark())
 	// An invalid URL rolls back deletion of the previous good day's metrics.
 	bad := page
-	bad.Keys = []string{page.Keys[0], "https://elsewhere.test/", "usa", "DESKTOP"}
+	bad.Keys = []string{page.Keys[0], "not a URL", "usa", "DESKTOP"}
 	require.Error(t, s.saveGSC(ctx, "gsc_page", "2026-10-16", []SearchRow{bad}, "", true, now.Add(time.Second)))
 	require.NoError(t, st.DB.Raw("SELECT sum(clicks) FROM seo_gsc_page_daily").Scan(&total).Error)
 	require.Equal(t, int64(10), total)
@@ -90,4 +90,31 @@ func TestSEOMeasurementsAreAtomicIdempotentAndLayered(t *testing.T) {
 	var used int
 	require.NoError(t, st.DB.Raw("SELECT used FROM seo_inspection_quota").Scan(&used).Error)
 	require.Equal(t, 1500, used)
+}
+
+func TestGSCSkipsOtherOriginsWithoutLosingSiteRows(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	ctx := context.Background()
+	s := &Service{DB: st.DB, WebURL: "https://example.test"}
+	for _, source := range []string{"gsc_page", "gsc_query"} {
+		rows := []SearchRow{}
+		for _, page := range []string{"http://example.test/apps/sample", "https://other.example.test/", "https://example.test/apps/sample"} {
+			keys := []string{"2026-10-16", page, "sample"}
+			if source == "gsc_page" {
+				keys = []string{"2026-10-16", page, "usa", "DESKTOP"}
+			}
+			rows = append(rows, SearchRow{Keys: keys, Clicks: 2, Impressions: 10, Position: 3})
+		}
+		require.NoError(t, s.saveGSC(ctx, source, "2026-10-16", rows, "", true, time.Now()))
+		var count int64
+		table := "seo_gsc_page_daily"
+		if source == "gsc_query" {
+			table = "seo_gsc_query_daily"
+		}
+		require.NoError(t, st.DB.Table(table).Count(&count).Error)
+		require.EqualValues(t, 1, count)
+		var watermark string
+		require.NoError(t, st.DB.Raw("SELECT complete_through::text FROM seo_data_watermarks WHERE source=?", source).Scan(&watermark).Error)
+		require.Equal(t, "2026-10-16", watermark)
+	}
 }

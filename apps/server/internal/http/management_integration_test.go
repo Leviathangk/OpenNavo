@@ -248,9 +248,15 @@ func TestManagementContractsMutationsAuditAndSafety(t *testing.T) {
 	for _, retired := range []string{"enrich_schedule", "enrich_package", "translate_schedule", "translate_release", "assets_icons"} {
 		call("POST", "/jobs/trigger/"+retired, "", "1001")
 	}
-	require.Equal(t, 2, queue.calls)
-	require.Equal(t, "manual", queue.metadata.Trigger)
-	require.Equal(t, identity.ID, *queue.metadata.TriggeredBy)
+	// Immediate dispatch is best effort; a not-yet-due outbox row is still a
+	// successful durable enqueue. Verify both requests without relying on host/DB clock alignment.
+	var pending int64
+	require.NoError(t, st.DB.Table("job_outbox").Where("unique_key IN ?", []string{"catalog:sync:" + pid, "snapshot:build:0"}).Count(&pending).Error)
+	require.EqualValues(t, 2, int64(queue.calls)+pending)
+	if queue.calls > 0 {
+		require.Equal(t, "manual", queue.metadata.Trigger)
+		require.Equal(t, identity.ID, *queue.metadata.TriggeredBy)
+	}
 	for _, path := range []string{"/packages/" + pid, "/categories/tree", "/assets", "/jobs/runs", "/system/audit-logs", "/system/users", "/system/roles"} {
 		call("GET", path, "", "0000")
 	}

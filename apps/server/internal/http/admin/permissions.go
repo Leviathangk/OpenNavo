@@ -2,6 +2,7 @@ package admin
 
 // Routes must be explicitly registered; reject unregistered new routes even for super administrators.
 var Permissions = map[string]string{
+	"POST /admin-api/articles/:id/evidence":      "content:article:edit",
 	"POST /admin-api/seo/geo":                    "seo:task:handle",
 	"GET /admin-api/seo/geo":                     "seo:insight:view",
 	"GET /admin-api/seo/geo/:id":                 "seo:insight:view",

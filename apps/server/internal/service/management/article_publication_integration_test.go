@@ -6,8 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/articles"
@@ -160,4 +165,129 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	raw, err := json.Marshal(report)
 	require.NoError(t, err)
 	require.NotEmpty(t, raw)
+}
+
+// A human can start with no evidence/report IDs and complete the entire review
+// workflow through management operations, without an Agent task or seeded evidence.
+func TestHumanArticleCaptureRegisterAndPublish(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	actor := int64(1)
+	ctx := domain.WithOperation(context.Background(), &domain.Operation{ActorID: &actor, Permissions: []string{"content:article:edit", "content:article:publish"}, RequestID: uuid.NewString()})
+	require.NoError(t, st.DB.Exec(`INSERT INTO admin_users(id,user_name,password_hash) VALUES(1,'human-editor','test');
+ INSERT INTO packages(id,kind,token,full_token,tap,name,homepage,version,version_base,raw,raw_hash) VALUES(81,'cask','human-app','human-app','','Article App','https://vendor.example.test','1.0','1.0','{}','')`).Error)
+	title := "We tested Article App export."
+	body := title + " Version 1.0 exports the selected local document. The test used a local fixture and verified the exported file against its original contents without requiring a network connection."
+	s := &Service{Store: st, Config: config.Config{WebBaseURL: "https://site.example.test"}}
+	s.Evidence = agentgate.NewEvidenceService(st.DB, "test")
+	s.Evidence.HTTP = &http.Client{Transport: articleEvidenceTransport(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/plain"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+	})}
+	created, err := s.Execute(ctx, "CreateArticle", Input{Body: listingBody(t, map[string]any{"slug": "human-publish", "sourceLocale": "en-US", "type": "review", "title": title, "summary": title, "bodyMarkdown": body, "testNote": title, "packageIds": []int64{81}})})
+	require.NoError(t, err)
+	id := created.(map[string]any)["id"].(int64)
+	capture := Input{ID: id, Body: map[string]any{"url": "https://vendor.example.test/test", "excerpt": body, "packageId": float64(81), "idempotencyKey": uuid.NewString()}}
+	captured, err := s.Execute(ctx, "CaptureArticleEvidence", capture)
+	require.NoError(t, err)
+	evidence := captured.(agentgate.Evidence)
+	require.Positive(t, evidence.ID)
+	again, err := s.Execute(ctx, "CaptureArticleEvidence", capture)
+	require.NoError(t, err)
+	require.Equal(t, evidence.ID, again.(agentgate.Evidence).ID)
+	denied := domain.WithOperation(context.Background(), &domain.Operation{ActorID: &actor, Permissions: []string{"content:article:publish"}})
+	_, err = s.Execute(denied, "CaptureArticleEvidence", capture)
+	require.Error(t, err)
+	agent := domain.WithOperation(context.Background(), &domain.Operation{ActorID: &actor, AgentClientID: 1, AgentTokenID: 1, Permissions: []string{"*"}})
+	_, err = s.Execute(agent, "CaptureArticleEvidence", capture)
+	require.Error(t, err)
+	for _, bad := range []map[string]any{
+		{"url": "https://127.0.0.1/private", "excerpt": body, "idempotencyKey": uuid.NewString()},
+		{"url": "https://vendor.example.test/test", "excerpt": body, "packageId": float64(999), "idempotencyKey": uuid.NewString()},
+		{"url": "https://vendor.example.test/test", "excerpt": "Invented assertion", "idempotencyKey": uuid.NewString()},
+	} {
+		_, err = s.Execute(ctx, "CaptureArticleEvidence", Input{ID: id, Body: bad})
+		require.Error(t, err)
+	}
+	report := articles.TestArtifactInput{PackageID: 81, AppVersion: "1.0", MacOS: "15.0", Architecture: "arm64", Region: "ZZ", PerformedAt: time.Now().Add(-time.Minute).UTC(), Runner: "Human tester", Command: "Export fixture and compare output", Environment: map[string]string{"machine": "test Mac"}, Output: body, Conclusions: []string{title, body}, Attested: true}
+	registered, err := s.Execute(ctx, "CreateArticleTestArtifact", Input{ID: id, Body: listingBody(t, report)})
+	require.NoError(t, err)
+	artifact := registered.(store.ArticleTestArtifact)
+	pkg := int64(81)
+	claims := []articles.Claim{}
+	for _, statement := range []string{title, body} {
+		claims = append(claims, articles.Claim{Text: statement, Kind: "test", EvidenceID: evidence.ID, Excerpt: body, PackageID: &pkg, AppVersion: "1.0", Region: "ZZ", TestArtifactID: &artifact.ID})
+	}
+	mutate := func(op string, fields map[string]any) {
+		a, found, err := st.LoadArticle(ctx, id, false)
+		require.NoError(t, err)
+		require.True(t, found)
+		fields["expectedRevision"] = a.Revision
+		_, err = s.Execute(ctx, op, Input{ID: id, Body: listingBody(t, fields)})
+		require.NoError(t, err)
+	}
+	mutate("UpdateArticle", map[string]any{"claims": claims, "target": articles.Target{EntityKey: "pkg:81", Intent: "topic"}})
+	mutate("SubmitArticleReview", map[string]any{})
+	mutate("PublishArticle", map[string]any{})
+	a, found, err := st.LoadArticle(ctx, id, false)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "published", a.Status)
+	require.NotNil(t, a.PublishedRevisionID)
+}
+
+type articleEvidenceTransport func(*http.Request) (*http.Response, error)
+
+func (f articleEvidenceTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestArticlePackageReplacementIsAtomicAtLimit(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	actor := int64(1)
+	ctx := domain.WithOperation(context.Background(), &domain.Operation{ActorID: &actor, Permissions: []string{"*"}, RequestID: uuid.NewString()})
+	require.NoError(t, st.DB.Exec(`INSERT INTO admin_users(id,user_name,password_hash) VALUES(1,'replace-editor','test');
+ INSERT INTO packages(id,kind,token,full_token,tap,name,homepage,version,version_base,raw,raw_hash)
+ SELECT n,'cask','replace-'||n,'replace-'||n,'','App '||n,'https://vendor.example.test','1','1','{}','' FROM generate_series(1,51) n`).Error)
+	s := &Service{Store: st, Config: config.Config{WebBaseURL: "https://site.example.test"}}
+	oldIDs, newIDs := []int64{}, []int64{}
+	for id := int64(1); id <= 50; id++ {
+		oldIDs = append(oldIDs, id)
+		newIDs = append(newIDs, id+1)
+	}
+	created, err := s.Execute(ctx, "CreateArticle", Input{Body: listingBody(t, map[string]any{
+		"slug": "replace-at-limit", "sourceLocale": "en-US", "type": "roundup", "title": "Apps", "packageIds": oldIDs,
+		"target": map[string]any{"entityKey": "pkg:1", "intent": "download"},
+	})})
+	require.NoError(t, err)
+	id := created.(map[string]any)["id"].(int64)
+	read := func() (store.Article, store.ArticleDraft) {
+		a, found, err := st.LoadArticle(ctx, id, false)
+		require.NoError(t, err)
+		require.True(t, found)
+		d, err := st.LoadArticleDraft(ctx, a.WorkingRevisionID)
+		require.NoError(t, err)
+		return a, d
+	}
+	a, _ := read()
+	update := func(revision int64, ids []int64, target any) error {
+		_, err := s.Execute(ctx, "UpdateArticle", Input{ID: id, Body: listingBody(t, map[string]any{
+			"expectedRevision": revision, "packageIds": ids, "target": target,
+		})})
+		return err
+	}
+	// A failed target check must not partially unlink any apps.
+	require.Error(t, update(a.Revision, newIDs, map[string]any{"entityKey": "pkg:1", "intent": "download"}))
+	after, draft := read()
+	require.Equal(t, a.Revision, after.Revision)
+	require.Equal(t, oldIDs, draft.Packages)
+	// The server still enforces the 50-app ceiling.
+	require.Error(t, update(a.Revision, append(append([]int64{}, oldIDs...), 51), nil))
+	require.NoError(t, update(a.Revision, newIDs, map[string]any{"entityKey": "pkg:51", "intent": "download"}))
+	after, draft = read()
+	require.Equal(t, newIDs, draft.Packages)
+	require.Equal(t, "pkg:51", draft.Target.EntityKey)
+	require.Equal(t, a.Revision+1, after.Revision)
+	require.Error(t, update(a.Revision, oldIDs, nil)) // stale edits cannot overwrite the replacement
+	// Evidence preparation can atomically unlink an old target without saving incomplete claims.
+	require.NoError(t, update(after.Revision, oldIDs, nil))
+	_, draft = read()
+	require.Equal(t, oldIDs, draft.Packages)
+	require.Nil(t, draft.Target)
 }

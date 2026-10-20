@@ -425,6 +425,16 @@ class ArticleClaimEvidence(BaseModel):
     testArtifactHash: Annotated[str | None, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=1000)]
 
 
+class ArticleEvidenceCapture(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    url: AnyUrl
+    excerpt: Annotated[str, Field(max_length=20000, min_length=1)]
+    packageId: Annotated[int | None, Field(ge=1)] = None
+    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
+
+
 
 EnvironmentAdditionalProperty = TypeAliasType("EnvironmentAdditionalProperty", Annotated[str, Field(examples=['fixture-machine'], max_length=2000)])
 
@@ -2952,6 +2962,7 @@ class ArticleUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    packageIds: Annotated[list[PackageId] | None, Field(description='Replace related apps atomically with the other draft fields.', max_length=50)] = None
     claims: Annotated[list[ArticleClaim] | None, Field(max_length=200)] = None
     target: ArticleSeoTarget | None = None
     expectedRevision: Annotated[int, Field(description='The article revision from the last read; a mismatch means someone else changed it', examples=[4], ge=1)]

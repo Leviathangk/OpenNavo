@@ -53,7 +53,7 @@ func TestSEOPageAndAuditUsePageSpecificEligibility(t *testing.T) {
  VALUES(718,'policy fixture uninstall','policy fixture uninstall','site_search','site','US','en-US','all','2026-10',10,'known',now())`).Error)
 	require.NoError(t, st.DB.Exec(`INSERT INTO seo_keyword_links(keyword_id,package_id,intent,confidence,state) VALUES(718,718,'uninstall',1,'confirmed')`).Error)
 	require.NoError(t, st.DB.Exec(`INSERT INTO seo_targets(entity_key,intent,locale,target_url) VALUES('pkg:718','uninstall','en-US',?)`, site+"/apps/policy-fixture/uninstall").Error)
-	check := func(path, kind, robots, reason string, sitemap bool) {
+	check := func(path, kind, robots, reason string, sitemap bool, status int) {
 		t.Helper()
 		value, err := s.seoPage(ctx, Input{Params: map[string]any{"url": site + path}})
 		require.NoError(t, err)
@@ -64,15 +64,20 @@ func TestSEOPageAndAuditUsePageSpecificEligibility(t *testing.T) {
 		packageID := id
 		expected, err := ingest.ExpectedPage(ctx, seoingest.URL{URL: site + path, PackageID: &packageID, Locale: "en-US", PageKind: kind})
 		require.NoError(t, err)
+		require.Equal(t, status, expected.Status, path)
+		if status == 404 {
+			require.Empty(t, expected.Robots, path)
+			require.Empty(t, expected.Canonical, path)
+			return
+		}
 		require.Equal(t, decision.Robots, expected.Robots, path)
-		require.Equal(t, 200, expected.Status, path)
 		if decision.CanonicalPath != "" {
 			require.Equal(t, site+decision.CanonicalPath, expected.Canonical, path)
 		}
 	}
-	check("/apps/policy-fixture/versions", "versions", "index, follow", "", true)
-	check("/apps/policy-fixture/versions?page=2", "versions", "noindex, follow", "thin_notes_page", false)
-	check("/apps/policy-fixture/uninstall", "uninstall", "index, follow", "", true)
+	check("/apps/policy-fixture/versions", "versions", "index, follow", "", true, 200)
+	check("/apps/policy-fixture/versions?page=2", "versions", "noindex, follow", "thin_notes_page", false, 404)
+	check("/apps/policy-fixture/uninstall", "uninstall", "index, follow", "", true, 200)
 	require.NoError(t, st.DB.Exec(`UPDATE seo_keyword_links SET state='candidate' WHERE keyword_id=718`).Error)
-	check("/apps/policy-fixture/uninstall", "uninstall", "noindex, follow", "intent_not_eligible", false)
+	check("/apps/policy-fixture/uninstall", "uninstall", "noindex, follow", "intent_not_eligible", false, 404)
 }
