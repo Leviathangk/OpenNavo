@@ -48,11 +48,18 @@ func (s *Service) measurements(ctx context.Context, tx *gorm.DB) error {
 			return err
 		}
 		observations := []seokeywords.Observation{}
+		now := time.Now().UTC()
 		for _, row := range rows {
 			if !i18n.Valid(row.Locale) || seokeywords.Normalize(row.Keyword) == "" || len(row.Keyword) > 1000 || strings.IndexFunc(row.Keyword, unicode.IsControl) >= 0 {
 				continue
 			}
-			o := seokeywords.Observation{Keyword: row.Keyword, Source: input.source, Engine: input.engine, Country: "ALL", Language: row.Locale, Device: "all", Period: row.Day.Format("2006-01-02"), VolumeState: "unknown", OurPosition: row.Position, ObservedAt: row.Day.UTC()}
+			// Homebrew snapshots are dated in the schedule time zone, which can be a
+			// day ahead of UTC; an observation is never recorded in the future.
+			observed := row.Day.UTC()
+			if observed.After(now) {
+				observed = now
+			}
+			o := seokeywords.Observation{Keyword: row.Keyword, Source: input.source, Engine: input.engine, Country: "ALL", Language: row.Locale, Device: "all", Period: row.Day.Format("2006-01-02"), VolumeState: "unknown", OurPosition: row.Position, ObservedAt: observed}
 			if input.source == "site_search" {
 				o.SearchVolume = row.Volume
 				o.VolumeState = "known"

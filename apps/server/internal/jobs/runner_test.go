@@ -129,7 +129,7 @@ func TestDefinitionsSchedulesAndRetryOptions(t *testing.T) {
 		}
 		require.Equal(t, definition.Queue, values[asynq.QueueOpt])
 		require.Equal(t, definition.Retries, values[asynq.MaxRetryOpt])
-		require.Equal(t, 24*time.Hour, values[asynq.UniqueOpt])
+		require.Equal(t, uniqueTTL(definition), values[asynq.UniqueOpt])
 		if definition.Cron == "" {
 			require.Contains(t, definition.Key(payload), ":7")
 		} else {
