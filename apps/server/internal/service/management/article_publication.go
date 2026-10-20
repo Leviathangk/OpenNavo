@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
@@ -230,8 +231,8 @@ func (s *Service) captureArticleEvidence(ctx context.Context, in Input) (any, er
 		evidence = agentgate.NewEvidenceService(s.Store.DB, s.Config.FetchUserAgent)
 	}
 	result, err := evidence.CaptureArticle(ctx, agentgate.Capture{EntityKey: entity, URL: req.URL, Excerpt: req.Excerpt, IdempotencyKey: req.IdempotencyKey, DryRun: op.DryRun}, in.ID)
-	if agentgate.IsViolation(err) {
-		return nil, domain.Validation()
+	if rejected, _, ok := agentgate.Rejection(err, http.StatusBadRequest); ok {
+		return nil, rejected
 	}
 	return result, mapTaskError(err)
 }

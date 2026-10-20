@@ -101,7 +101,7 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 		}
 		local := *s
 		local.Store = st
-		before, err := local.agentSnapshot(ctx, rule.Object, in, refs)
+		before, err := local.agentSnapshot(ctx, name, rule.Object, in, refs)
 		if err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 		if rule.Object == "history" || rule.Object == "translation" {
 			afterRefs = refs
 		}
-		after, err := local.agentSnapshot(ctx, rule.Object, afterInput, afterRefs)
+		after, err := local.agentSnapshot(ctx, name, rule.Object, afterInput, afterRefs)
 		if err != nil {
 			return err
 		}
@@ -208,7 +208,7 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 			return nil, fail(domain.CodeRateLimited)
 		}
 		if violation != nil {
-			return nil, &domain.AppError{Code: domain.CodeValidation, HTTPStatus: 422}
+			return nil, &domain.AppError{Code: domain.CodeValidation, HTTPStatus: 422, Msg: "rejected: " + violation.Reason}
 		}
 		return nil, store.MapAdminError(mapTaskError(err))
 	}
@@ -324,9 +324,14 @@ func agentScope(ctx context.Context, st *store.Store, name, object string, in In
 	return entity, refs, version, nil
 }
 
-func (s *Service) agentSnapshot(ctx context.Context, object string, in Input, refs []content.Ref) (any, error) {
+func (s *Service) agentSnapshot(ctx context.Context, name, object string, in Input, refs []content.Ref) (any, error) {
 	if nonHistorySEOObject(object) {
 		return s.nonHistorySnapshot(ctx, object, in)
+	}
+	// Release notes are addressed by package and version, so in.ID is the package.
+	// A version without editorial notes yet has an empty state, never release #in.ID.
+	if name == "UpsertReleaseNotes" {
+		return captureHistory(ctx, s.Store, refs)
 	}
 	if object == "experiment" {
 		if in.ID == 0 {
