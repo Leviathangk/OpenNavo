@@ -3,6 +3,7 @@ package management
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"time"
 
@@ -79,8 +80,13 @@ func (s *Service) captureSeoEvidence(ctx context.Context, in Input) (any, error)
 		svc = agentgate.NewEvidenceService(s.Store.DB, s.Config.FetchUserAgent)
 	}
 	result, err := svc.Capture(ctx, agentgate.Capture{TaskID: request.TaskID, Fencing: request.Fencing, Owner: seoOwner(ctx), IdempotencyKey: request.IdempotencyKey, EntityKey: request.EntityKey, URL: request.URL, Excerpt: request.Excerpt, DryRun: domain.CurrentOperation(ctx).DryRun})
-	if agentgate.IsViolation(err) {
-		return nil, domain.Validation()
+	if rejected, reason, ok := agentgate.Rejection(err, http.StatusBadRequest); ok {
+		logctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		if logerr := agentgate.Log(logctx, s.Store.DB, domain.CurrentOperation(ctx).RequestID, seoOwner(ctx), "CreateSeoEvidence", "rejected", reason, request.TaskID, nil); logerr != nil {
+			return nil, logerr
+		}
+		return nil, rejected
 	}
 	return result, mapTaskError(err)
 }

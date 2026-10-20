@@ -377,3 +377,13 @@ func LoadEvidence(ctx context.Context, tx *gorm.DB, ids []int64, entity string, 
 }
 
 func IsViolation(err error) bool { var v *Violation; return errors.As(err, &v) }
+
+// Rejection names the broken rule so an agent can correct its request instead of
+// retrying blind. Reasons are fixed rule codes and never carry fetched content.
+func Rejection(err error, status int) (*domain.AppError, string, bool) {
+	var v *Violation
+	if !errors.As(err, &v) {
+		return nil, "", false
+	}
+	return &domain.AppError{Code: domain.CodeValidation, HTTPStatus: status, Msg: "rejected: " + v.Reason}, v.Reason, true
+}

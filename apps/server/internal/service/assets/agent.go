@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
@@ -92,8 +93,8 @@ func (s *Service) UploadAgent(ctx context.Context, kind string, data []byte, sou
 	if errors.Is(err, seobudget.ErrLimit) || errors.Is(err, seobudget.ErrFrozen) {
 		return nil, &domain.AppError{Code: domain.CodeRateLimited, HTTPStatus: 429}
 	}
-	if agentgate.IsViolation(err) {
-		return nil, domain.Validation()
+	if rejected, _, ok := agentgate.Rejection(err, http.StatusBadRequest); ok {
+		return nil, rejected
 	}
 	if err == seotasks.ErrConflict || err == seotasks.ErrLease {
 		return nil, &domain.AppError{Code: domain.CodeConflict, HTTPStatus: 409}
