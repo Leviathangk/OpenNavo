@@ -76,8 +76,9 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		if err := s.measurements(ctx, tx); err != nil {
 			return err
 		}
-		// Homebrew install observations affect demand priority, never search volume.
-		if err := tx.Exec(`UPDATE seo_tasks t SET priority=greatest(t.priority,10+ln(1+a.installs_30d)) FROM analytics_snapshots a WHERE a.snapshot_date=(SELECT max(snapshot_date) FROM analytics_snapshots) AND t.entity_key IN ('pkg:'||a.package_id,'package:'||a.package_id) AND t.kind IN ('maintenance','translate') AND t.state IN ('open','deferred')`).Error; err != nil {
+		// Homebrew install observations affect demand priority, never search volume. Only
+		// raised priorities are written, so queued work is not rewritten every run.
+		if err := tx.Exec(`UPDATE seo_tasks t SET priority=greatest(t.priority,10+ln(1+a.installs_30d)) FROM analytics_snapshots a WHERE a.snapshot_date=(SELECT max(snapshot_date) FROM analytics_snapshots) AND t.entity_key IN ('pkg:'||a.package_id,'package:'||a.package_id) AND t.kind IN ('maintenance','translate') AND t.state IN ('open','deferred') AND t.priority<10+ln(1+a.installs_30d)`).Error; err != nil {
 			return err
 		}
 		var signature string
@@ -112,7 +113,7 @@ func (s *Service) demand(tx *gorm.DB, emit func(string, ...any) error) error {
   FROM demand d WHERE d.volume>0 AND NOT EXISTS(SELECT 1 FROM package_fact_records f WHERE f.package_id=d.package_id AND f.kind=CASE d.intent WHEN 'requirements' THEN 'compatibility' ELSE d.intent END AND f.evidence->>'status'='verified' AND (f.evidence->>'validUntil')::timestamptz>clock_timestamp()) AND (d.intent!='alternative' OR NOT EXISTS(SELECT 1 FROM package_alternatives a WHERE a.package_id=d.package_id)) ORDER BY d.volume DESC LIMIT 2000`); err != nil {
 		return err
 	}
-	if err := tx.Exec(`WITH metrics AS(SELECT u.package_id,u.locale,sum(p.impressions) impressions FROM seo_gsc_page_daily p JOIN seo_urls u ON u.id=p.url_id CROSS JOIN (` + window + `) w WHERE p.day BETWEEN w.complete_through-27 AND w.complete_through AND u.package_id IS NOT NULL GROUP BY u.package_id,u.locale) UPDATE seo_tasks t SET priority=greatest(t.priority,20+ln(1+m.impressions)) FROM metrics m WHERE t.kind='translate' AND t.entity_key IN ('pkg:'||m.package_id,'package:'||m.package_id) AND t.locale=m.locale AND t.state IN ('open','deferred')`).Error; err != nil {
+	if err := tx.Exec(`WITH metrics AS(SELECT u.package_id,u.locale,sum(p.impressions) impressions FROM seo_gsc_page_daily p JOIN seo_urls u ON u.id=p.url_id CROSS JOIN (` + window + `) w WHERE p.day BETWEEN w.complete_through-27 AND w.complete_through AND u.package_id IS NOT NULL GROUP BY u.package_id,u.locale) UPDATE seo_tasks t SET priority=greatest(t.priority,20+ln(1+m.impressions)) FROM metrics m WHERE t.kind='translate' AND t.entity_key IN ('pkg:'||m.package_id,'package:'||m.package_id) AND t.locale=m.locale AND t.state IN ('open','deferred') AND t.priority<20+ln(1+m.impressions)`).Error; err != nil {
 		return err
 	}
 	if err := emit(`SELECT 'discover_fix' kind,CASE WHEN u.package_id IS NULL THEN 'url:'||u.id ELSE 'pkg:'||u.package_id END entity_key,u.locale,'discover:'||u.id dedupe_key,30 priority,jsonb_build_object('source','inspection','url',u.url,'coverageState',s.coverage_state,'canonical',s.google_canonical) evidence FROM seo_url_status s JOIN seo_urls u ON u.id=s.url_id WHERE s.checked_at>clock_timestamp()-interval '14 days' AND (s.coverage_state ILIKE '%not indexed%' OR s.coverage_state ILIKE '%未编入索引%') ORDER BY u.id LIMIT 1000`); err != nil {
