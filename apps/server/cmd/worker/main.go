@@ -132,6 +132,15 @@ func run(ctx context.Context) error {
 	// Independent delivery polling keeps the 30-second source-save debounce independent of catalog sync intervals.
 	dispatchCtx, cancelDispatch := context.WithCancel(ctx)
 	defer cancelDispatch()
+	// Content written before a site language existed never queued that language.
+	go func() {
+		queued, ran, err := st.BackfillTranslationTasksForLocales(dispatchCtx)
+		if err != nil {
+			logger.Warn("translation backfill failed")
+		} else if ran {
+			logger.Info("translation backfill queued", "tasks", queued)
+		}
+	}()
 	done := make(chan struct{})
 	go func() {
 		defer close(done)

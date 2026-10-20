@@ -133,3 +133,25 @@ func TestMeasurementsAcceptHomebrewSnapshotDatedAheadOfUTC(t *testing.T) {
 	require.EqualValues(t, 1, observed.Keywords)
 	require.False(t, observed.Future)
 }
+
+func TestInstallPriorityIsWrittenOnlyWhenItRises(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &Service{DB: st.DB}
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(704,'cask','fixture-popular','fixture-popular','homebrew/cask','Fixture Popular','1.0','1.0','{}','fixture');
+ INSERT INTO analytics_snapshots(package_id,snapshot_date,installs_30d,installs_90d,installs_365d,on_request_30d,rank_30d) VALUES(704,(now() AT TIME ZONE 'UTC')::date,500,900,2000,400,1);
+ INSERT INTO seo_tasks(kind,entity_key,locale,dedupe_key,priority,evidence,evidence_hash,rule_version) VALUES('translate','package:704','de-DE','translate:fixture-popular:de-DE',10,'{}','fixture','translation-v1')`).Error)
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	var first struct {
+		Priority float64
+		Xmin     string
+	}
+	require.NoError(t, st.DB.Raw("SELECT priority,xmin::text xmin FROM seo_tasks WHERE dedupe_key='translate:fixture-popular:de-DE'").Scan(&first).Error)
+	require.Greater(t, first.Priority, 16.0)
+	_, err = svc.Run(ctx)
+	require.NoError(t, err)
+	var second string
+	require.NoError(t, st.DB.Raw("SELECT xmin::text FROM seo_tasks WHERE dedupe_key='translate:fixture-popular:de-DE'").Scan(&second).Error)
+	require.Equal(t, first.Xmin, second, "an unchanged priority must not rewrite the task")
+}
