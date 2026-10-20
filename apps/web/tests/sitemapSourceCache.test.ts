@@ -114,6 +114,73 @@ describe('sitemap source snapshot cache', () => {
     expect(Math.max(...sizes)).toBeLessThan(MAX_CACHE_ENTRY_BYTES);
   });
 
+  it('stores catalogs with every page decided in every language below the limit and lists what they allow', async () => {
+    // Production records carry a full decision per page and language (about 8.7 KB each), so a page of
+    // 500 is several times the cache's entry limit, which silently drops what is larger.
+    const decision = (inSitemap: boolean, path: string) => ({
+      robots: inSitemap ? 'index, follow' : 'noindex, follow',
+      canonicalPath: inSitemap ? '' : path,
+      hreflang: inSitemap ? [...LOCALES] : [],
+      inSitemap,
+      announce: false,
+      reason: inSitemap ? '' : 'intent_disabled'
+    });
+    const records = Array.from({ length: 1200 }, (_, i) => ({
+      kind: 'cask',
+      token: `app-${i}`,
+      updatedAt: '2026-10-01T00:00:00Z',
+      notesCount: 9,
+      locales: LOCALES.map(locale => ({
+        locale,
+        lastmod: '2026-10-01T00:00:00Z',
+        pageLastmod: {
+          overview: '2026-10-02',
+          versions: '2026-10-03',
+          'versions:2': '2026-10-04',
+          alternatives: '2026-10-05',
+          dependencies: '2026-10-06'
+        },
+        pages: {
+          overview: decision(locale !== 'ru-RU', `/apps/app-${i}`),
+          versions: decision(locale === 'en-US', `/apps/app-${i}/versions`),
+          dependencies: decision(false, `/apps/app-${i}`),
+          details: decision(false, `/apps/app-${i}`),
+          alternatives: decision(locale === 'ja-JP' && i % 2 === 0, `/apps/app-${i}`),
+          uninstall: decision(false, `/apps/app-${i}`)
+        }
+      }))
+    }));
+    expect(Buffer.byteLength(JSON.stringify(records.slice(0, 500)))).toBeGreaterThan(MAX_CACHE_ENTRY_BYTES);
+    const { index, bucket, sizes } = await setup(records);
+    const listed = await index();
+    expect(Math.max(...sizes)).toBeLessThan(MAX_CACHE_ENTRY_BYTES);
+    const urls = (
+      await Promise.all(
+        listed.filter(entry => entry['_sitemapName'].startsWith('apps-')).map(entry => bucket(entry['_sitemapName']))
+      )
+    ).flat();
+    const locs = new Set(urls.map(url => url.loc));
+    expect(locs.has('/apps/app-0')).toBe(true);
+    expect(locs.has('/ru/apps/app-0')).toBe(false);
+    expect(locs.has('/ja/apps/app-0/alternatives')).toBe(true);
+    expect(locs.has('/ja/apps/app-1/alternatives')).toBe(false);
+    expect(locs.has('/apps/app-0/alternatives')).toBe(false);
+    expect([...locs].some(loc => loc.endsWith('/uninstall') || loc.endsWith('/troubleshooting'))).toBe(false);
+    expect(urls).toHaveLength(1200 * (LOCALES.length - 1) + 600);
+    expect(urls.find(url => url.loc === '/apps/app-0')).toMatchObject({ lastmod: '2026-10-02' });
+    expect(urls.find(url => url.loc === '/ja/apps/app-0/alternatives')).toMatchObject({ lastmod: '2026-10-05' });
+    const versions = (
+      await Promise.all(
+        listed
+          .filter(entry => entry['_sitemapName'].startsWith('versions-'))
+          .map(entry => bucket(entry['_sitemapName']))
+      )
+    ).flat();
+    expect(versions).toHaveLength(1200);
+    expect(versions.every(url => /^\/apps\/app-\d+\/versions$/.test(url.loc))).toBe(true);
+    expect(versions[0]).toMatchObject({ lastmod: '2026-10-03' });
+  });
+
   it('restarts the whole catalog after a later page fails and an earlier app is hidden', async () => {
     const records = Array.from({ length: 1000 }, (_, i) => ({
       kind: 'cask',

@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto';
 import type { PublicComponents } from '@opennavo/api';
 import { LOCALES, VERSION_PAGE_MIN_NOTES } from '@opennavo/shared';
 import { packageSitemapName, packageSitemaps, type PackageSitemapGroup } from '../../shared/utils/sitemapBuckets';
-import { PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
+import { MAX_CACHE_ENTRY_BYTES, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
 import { localizedEntries, openLocaleEntries } from '../utils/sitemapEntries';
 import { createStaleCache } from '../utils/staleCache';
 
 type SitemapEntry = PublicComponents['schemas']['SitemapEntry'];
+type SitemapLocale = PublicComponents['schemas']['SitemapLocale'];
 type BackgroundItem = PublicComponents['schemas']['BackgroundItem'];
 type Locale = PublicComponents['schemas']['Locale'];
 
@@ -18,14 +19,19 @@ interface CategoryNode {
   children: CategoryNode[];
 }
 
-// Split completed catalog snapshots below the 512 KiB storage limit.
 const PAGE_SIZE = 500;
 /**
- * Sitemaps may trail the catalog by a few minutes (IndexNow announces changes as they happen): a
- * catalog snapshot, and the index's list of populated buckets, are used as they are for this long
- * and then served stale while one rebuild per process runs behind the response.
+ * Stored snapshot chunks stay well below the cache's entry limit, which silently drops anything larger:
+ * a page of records whose slimmed form is still bigger is split further (slimRecord, chunkRecords).
  */
-export const SNAPSHOT_FRESH_MS = 5 * 60_000;
+const CHUNK_BYTES = Math.floor(MAX_CACHE_ENTRY_BYTES * 0.75);
+/**
+ * Sitemaps may trail the catalog by up to half an hour (IndexNow announces changes as they happen): a
+ * catalog snapshot, and the index's list of populated buckets, are used as they are for this long
+ * and then served stale while one rebuild per process runs behind the response. A rebuild reads every
+ * page of per-language decisions from the API, so it stays rare.
+ */
+export const SNAPSHOT_FRESH_MS = 30 * 60_000;
 /** After a failed background rebuild, the stale snapshot keeps answering this long before a retry. */
 export const SNAPSHOT_RETRY_MS = 30_000;
 /** Snapshots stay readable as long as the cache storage keeps anything, so stale ones answer at once. */
@@ -111,6 +117,21 @@ function apiBase() {
 }
 
 type PackageGroup = 'apps' | 'fonts';
+
+/** What a sitemap reads of one language: whether each page is listed, and the dates (slimRecord). */
+interface ListedLocale {
+  locale: Locale;
+  lastmod: string | null;
+  pageLastmod?: Record<string, string>;
+  pages?: Partial<Record<SitemapPage, { inSitemap?: boolean }>>;
+}
+/** A catalog record as snapshots store it: the API's record without decision details sitemaps never read. */
+interface SitemapRecord {
+  kind: SitemapEntry['kind'];
+  token: string;
+  notesCount?: number;
+  locales?: ListedLocale[];
+}
 interface PackageSnapshot {
   keys: string[];
   /** Until then the snapshot is fresh; afterwards it still answers while a rebuild runs. */
@@ -132,7 +153,7 @@ const populatedPackageSitemaps = createStaleCache(
       getSiteSettings()
     ]);
     const buckets = new Map<string, string | undefined>();
-    const add = (group: PackageSitemapGroup, record: SitemapEntry, page: SitemapPage) => {
+    const add = (group: PackageSitemapGroup, record: SitemapRecord, page: SitemapPage) => {
       const entries = listedLocales(record, page);
       if (entries?.length === 0) return;
       const name = packageSitemapName(group, record.token);
@@ -153,8 +174,8 @@ const populatedPackageSitemaps = createStaleCache(
 
 // Coalesce reads and rebuilds, including callers that observed missing chunks. Each server has
 // its own in-flight maps; shared Redis snapshots remain immutable.
-const packageReads = new Map<PackageGroup, Promise<SitemapEntry[]>>();
-const packageRebuilds = new Map<PackageGroup, Promise<SitemapEntry[]>>();
+const packageReads = new Map<PackageGroup, Promise<SitemapRecord[]>>();
+const packageRebuilds = new Map<PackageGroup, Promise<SitemapRecord[]>>();
 const rebuildFailedAt = new Map<PackageGroup, number>();
 
 /** Settles once no snapshot or index refresh is running (tests). */
@@ -167,7 +188,7 @@ function manifestKey(group: PackageGroup) {
   return `sitemap-package-manifest-v3-${PAGE_SIZE}:${group}`;
 }
 
-function cachedPackages(group: PackageGroup): Promise<SitemapEntry[]> {
+function cachedPackages(group: PackageGroup): Promise<SitemapRecord[]> {
   const pending = packageReads.get(group);
   if (pending) return pending;
   const read = readPackages(group).finally(() => packageReads.delete(group));
@@ -175,7 +196,7 @@ function cachedPackages(group: PackageGroup): Promise<SitemapEntry[]> {
   return read;
 }
 
-async function readPackages(group: PackageGroup): Promise<SitemapEntry[]> {
+async function readPackages(group: PackageGroup): Promise<SitemapRecord[]> {
   const snapshot = await readSnapshot(group);
   // Without a complete snapshot the request waits for the catalog and fails if the API does.
   if (!snapshot) return rebuildPackages(group);
@@ -191,14 +212,14 @@ async function readSnapshot(group: PackageGroup) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const manifest = await storage.getItem<PackageSnapshot>(manifestKey(group));
     if (!manifest || manifest.keys.join() === seen) return undefined;
-    const chunks = await Promise.all(manifest.keys.map(key => storage.getItem<SitemapEntry[]>(key)));
+    const chunks = await Promise.all(manifest.keys.map(key => storage.getItem<SitemapRecord[]>(key)));
     if (chunks.every(chunk => chunk !== null)) return { records: chunks.flat(), expires: manifest.expires };
     seen = manifest.keys.join();
   }
   return undefined;
 }
 
-function rebuildPackages(group: PackageGroup): Promise<SitemapEntry[]> {
+function rebuildPackages(group: PackageGroup): Promise<SitemapRecord[]> {
   const pending = packageRebuilds.get(group);
   if (pending) return pending;
   const rebuild = writeSnapshot(group).finally(() => packageRebuilds.delete(group));
@@ -219,7 +240,7 @@ function refreshPackages(group: PackageGroup) {
   );
 }
 
-async function writeSnapshot(group: PackageGroup): Promise<SitemapEntry[]> {
+async function writeSnapshot(group: PackageGroup): Promise<SitemapRecord[]> {
   const storage = useStorage('cache');
   // Reload every OFFSET page and publish only after all immutable chunks are stored.
   const pages = await loadPackagePages(group);
@@ -252,20 +273,86 @@ async function writeSnapshot(group: PackageGroup): Promise<SitemapEntry[]> {
   return pages.flat();
 }
 
-async function loadPackagePages(group: 'apps' | 'fonts'): Promise<SitemapEntry[][]> {
-  const pages: SitemapEntry[][] = [];
+/** The chunks of a snapshot: each API page, slimmed, and split again if it still exceeds CHUNK_BYTES. */
+async function loadPackagePages(group: 'apps' | 'fonts'): Promise<SitemapRecord[][]> {
+  const chunks: SitemapRecord[][] = [];
   // Rows can be fewer than the page size (the API filters by index policy); total counts candidates.
   for (let current = 1; ; current += 1) {
     const page = await $fetch<{ data: { total: number; records: SitemapEntry[] } }>(`${apiBase()}/sitemap/packages`, {
       query: { current, size: PAGE_SIZE, group }
     });
     // Link apps share /apps with casks (store/security plan §4); command-line tools have no web page.
-    pages.push(page.data.records.filter(record => record.kind === 'cask' || record.kind === 'link'));
-    if (current * PAGE_SIZE >= page.data.total) return pages;
+    const records = page.data.records.filter(record => record.kind === 'cask' || record.kind === 'link');
+    chunks.push(...chunkRecords(records.map(slimRecord)));
+    if (current * PAGE_SIZE >= page.data.total) return chunks;
   }
 }
 
+/**
+ * The record without what sitemaps never read. Each language keeps its dates and, per page, only
+ * whether it is listed: overview and versions keep an explicit verdict (a missing one means listed),
+ * intent pages only a positive one (a missing one means not listed). Language entries and their
+ * order are kept, so listedLocales answers exactly as it would for the full record.
+ */
+export function slimRecord(record: SitemapEntry): SitemapRecord {
+  return {
+    kind: record.kind,
+    token: record.token,
+    ...(record.notesCount === undefined ? {} : { notesCount: record.notesCount }),
+    ...(record.locales ? { locales: record.locales.map(slimLocale) } : {})
+  };
+}
+
+function slimLocale(entry: SitemapLocale): ListedLocale {
+  const decided = entry.pages;
+  // A language without decisions (an older record) keeps every page date, as listedLocales may still list them.
+  const listed = decided ? SITEMAP_PAGES.filter(page => isListed(decided, page)) : SITEMAP_PAGES;
+  const pageLastmod = Object.entries(entry.pageLastmod ?? {}).filter(([key]) =>
+    listed.some(page => key === page || key.startsWith(`${page}:`))
+  );
+  return {
+    locale: entry.locale,
+    lastmod: entry.lastmod,
+    ...(pageLastmod.length ? { pageLastmod: Object.fromEntries(pageLastmod) } : {}),
+    ...(decided
+      ? {
+          pages: Object.fromEntries(
+            SITEMAP_PAGES.flatMap(page =>
+              INTENT_PAGES.has(page)
+                ? listed.includes(page)
+                  ? [[page, { inSitemap: true }]]
+                  : []
+                : [[page, { inSitemap: listed.includes(page) }]]
+            )
+          )
+        }
+      : {})
+  };
+}
+
+/** Splits records into consecutive chunks that each serialize to at most `limit` bytes. */
+export function chunkRecords(records: SitemapRecord[], limit = CHUNK_BYTES): SitemapRecord[][] {
+  const chunks: SitemapRecord[][] = [];
+  let chunk: SitemapRecord[] = [];
+  let bytes = 2;
+  for (const record of records) {
+    const size = Buffer.byteLength(JSON.stringify(record), 'utf8') + 1;
+    if (size + 2 > limit) throw new Error(`Sitemap record ${record.token} alone exceeds the snapshot chunk limit`);
+    if (chunk.length && bytes + size > limit) {
+      chunks.push(chunk);
+      chunk = [];
+      bytes = 2;
+    }
+    chunk.push(record);
+    bytes += size;
+  }
+  // An empty page still takes one chunk, as it did before chunks were split by size.
+  chunks.push(chunk);
+  return chunks;
+}
+
 type SitemapPage = 'overview' | 'versions' | 'alternatives' | 'uninstall' | 'troubleshooting';
+const SITEMAP_PAGES: readonly SitemapPage[] = ['overview', 'versions', 'alternatives', 'uninstall', 'troubleshooting'];
 /**
  * Intent pages (X2) and the troubleshooting page (F7) exist only where a decision opens them; without one
  * there is no page to list.
@@ -277,16 +364,21 @@ const INTENT_PAGES: ReadonlySet<SitemapPage> = new Set(['alternatives', 'uninsta
  * Records without decisions keep their published languages, and versions pages then need enough release
  * notes. Undefined means an older record without languages: every language.
  */
-function listedLocales(record: Pick<SitemapEntry, 'locales' | 'notesCount'>, page: SitemapPage) {
-  if (INTENT_PAGES.has(page)) return record.locales?.filter(entry => entry.pages?.[page]?.inSitemap === true) ?? [];
+function listedLocales<T extends ListedLocale>(record: { locales?: T[]; notesCount?: number }, page: SitemapPage) {
+  if (INTENT_PAGES.has(page)) return record.locales?.filter(entry => entry.pages && isListed(entry.pages, page)) ?? [];
   const decided = record.locales?.some(entry => entry.pages);
   if (page === 'versions' && !decided && (record.notesCount ?? 0) < VERSION_PAGE_MIN_NOTES) return [];
-  return record.locales?.filter(entry => entry.pages?.[page]?.inSitemap ?? true);
+  return record.locales?.filter(entry => !entry.pages || isListed(entry.pages, page));
+}
+
+/** One language's verdict for a page: intent pages need a positive one, other pages are listed unless told not. */
+function isListed(pages: NonNullable<ListedLocale['pages']>, page: SitemapPage) {
+  return INTENT_PAGES.has(page) ? pages[page]?.inSitemap === true : (pages[page]?.inSitemap ?? true);
 }
 
 /** One page in every language listedLocales gives, with the page's own content date (T5: `pageLastmod`). */
 function packageEntries(
-  record: Pick<SitemapEntry, 'locales' | 'notesCount'>,
+  record: { locales?: ListedLocale[]; notesCount?: number },
   path: string,
   sitemap: string,
   page: SitemapPage = 'overview'
