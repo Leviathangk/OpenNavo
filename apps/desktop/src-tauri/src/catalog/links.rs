@@ -514,7 +514,19 @@ pub(crate) mod tests {
         cask.kind = Kind::Cask;
         cask.link = None;
         cask.bundle_ids = None;
+        db.set_meta("links_validator", "W/\"one-gzip\"").unwrap();
         db.with(|c| super::super::upsert(c, &cask)).unwrap();
+        assert!(db.meta("links_etag").unwrap().is_none());
+        assert!(db.meta("links_validator").unwrap().is_none());
+        assert_eq!(
+            db.with(|c| Ok(c.query_row(
+                "SELECT count(*) FROM catalog_fts WHERE kind='link'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )?))
+            .unwrap(),
+            0
+        );
         assert!(
             super::super::get(&db, Kind::Link, &link.token)
                 .unwrap()

@@ -167,15 +167,19 @@ fn upsert_impl(
 ) -> Result<(), AppError> {
     crate::brew::args::validate_token(&item.token)?;
     if item.kind == Kind::Cask {
-        connection.execute(
-            "DELETE FROM catalog_fts WHERE kind='link' AND token=?1",
-            [&item.token],
-        )?;
-        let removed = connection.execute(
-            "DELETE FROM catalog_items WHERE kind='link' AND token=?1",
-            [&item.token],
-        )?;
-        if removed > 0 {
+        // Probe the indexed catalog identity first. Scanning FTS for every cask
+        // makes snapshot imports pay for all retained links, even without a match.
+        let adopted: Option<i64> = connection
+            .prepare_cached("SELECT rowid FROM catalog_items WHERE kind='link' AND token=?1")?
+            .query_row([&item.token], |row| row.get(0))
+            .optional()?;
+        if let Some(rowid) = adopted {
+            connection
+                .prepare_cached("DELETE FROM catalog_fts WHERE rowid=?1")?
+                .execute([rowid])?;
+            connection
+                .prepare_cached("DELETE FROM catalog_items WHERE rowid=?1")?
+                .execute([rowid])?;
             // The cached tags describe rows that no longer exist; the next sync fetches the whole catalog again.
             connection.execute(
                 "DELETE FROM meta WHERE key IN ('links_etag','links_validator')",
