@@ -69,7 +69,7 @@ func (a *httpAuditor) Fetch(ctx context.Context, u URL, layer string) (Document,
 		}
 		return Document{}, ErrUpstream
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	const limit = 4 << 20
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil || len(raw) > limit {

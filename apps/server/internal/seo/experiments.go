@@ -13,7 +13,7 @@ func ImpressionsPerArm(p1, p2 float64) int64 {
 		return 0
 	}
 	pbar := (p1 + p2) / 2
-	n := math.Pow(1.959964*math.Sqrt(2*pbar*(1-pbar))+.841621*math.Sqrt(p1*(1-p1)+p2*(1-p2)), 2) / math.Pow(p2-p1, 2)
+	n := math.Pow(1.959964*math.Sqrt(2*pbar*(1-pbar))+.841621*math.Sqrt(p1*(1-p1)+p2*(1-p2)), 2) / ((p2 - p1) * (p2 - p1))
 	if math.IsInf(n, 0) || n > float64(math.MaxInt64/2) {
 		return 0
 	}

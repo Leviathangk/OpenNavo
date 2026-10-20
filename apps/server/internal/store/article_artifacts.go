@@ -3,8 +3,9 @@ package store
 import (
 	"context"
 	"encoding/json"
-	"github.com/opennavo/opennavo/server/internal/articles"
 	"time"
+
+	"github.com/opennavo/opennavo/server/internal/articles"
 )
 
 type ArticleTestArtifact struct {

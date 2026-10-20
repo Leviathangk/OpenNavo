@@ -1,10 +1,11 @@
 package management
 
 import (
+	"testing"
+
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestTranslationImpactUsesPageDecisions(t *testing.T) {

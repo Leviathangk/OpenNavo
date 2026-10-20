@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/opennavo/opennavo/server/internal/facts"
 	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/opennavo/opennavo/server/internal/facts"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/domain"

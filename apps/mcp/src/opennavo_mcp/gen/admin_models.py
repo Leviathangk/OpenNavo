@@ -3917,7 +3917,7 @@ class CompensateSeoActionInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     body: SeoCompensation
 
@@ -4042,7 +4042,7 @@ class UpdatePackageMetaInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4063,7 +4063,7 @@ class SetPackagePriceInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4077,7 +4077,7 @@ class SetPackageMacosSupportInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4091,7 +4091,7 @@ class SetPackageAlternativesInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4105,7 +4105,7 @@ class SetPackageCategoriesInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4119,7 +4119,7 @@ class SetPackageIconInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4133,7 +4133,7 @@ class DeletePackageIconInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4153,7 +4153,7 @@ class ReorderPackageScreenshotsInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4167,7 +4167,7 @@ class DeletePackageScreenshotInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     screenshotId: Annotated[int, Field(examples=[1])]
@@ -4190,7 +4190,7 @@ class ResyncPackageInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4212,7 +4212,7 @@ class RemoveLinkPackageInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4231,7 +4231,7 @@ class AddTapPackageInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: TapPackageAdd
@@ -4244,7 +4244,7 @@ class RemoveTapPackageInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4263,7 +4263,7 @@ class ReorderCategoriesInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CategoryOrder
@@ -4276,7 +4276,7 @@ class DeleteCategoryInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4300,7 +4300,7 @@ class CreateArticleInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleCreate
@@ -4320,7 +4320,7 @@ class UpdateArticleInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4334,7 +4334,7 @@ class SetArticlePackagesInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4348,7 +4348,7 @@ class SubmitArticleReviewInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4362,7 +4362,7 @@ class PublishArticleInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
@@ -4376,7 +4376,7 @@ class WithdrawArticleInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
@@ -4390,7 +4390,7 @@ class RestoreArticleInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
@@ -4404,7 +4404,7 @@ class RevertArticleInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
@@ -4418,7 +4418,7 @@ class SetArticleSlugInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
@@ -4432,7 +4432,7 @@ class SetArticleLocaleInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
@@ -4453,7 +4453,7 @@ class CreateArticleAuthorInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleAuthorWrite
@@ -4466,7 +4466,7 @@ class UpdateArticleAuthorInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
@@ -4499,7 +4499,7 @@ class DeleteCollectionInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4512,7 +4512,7 @@ class PublishCollectionInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4526,7 +4526,7 @@ class UnpublishCollectionInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4558,7 +4558,7 @@ class DeleteFeatureInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4594,7 +4594,7 @@ class UpdateReleaseInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4631,7 +4631,7 @@ class TriggerJobInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     jobType: TriggerJobType
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4671,7 +4671,7 @@ class CreateSynonymInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: SynonymUpsert
@@ -4684,7 +4684,7 @@ class UpdateSynonymInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4698,7 +4698,7 @@ class DeleteSynonymInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4728,7 +4728,7 @@ class UpdateFeedbackInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4765,7 +4765,7 @@ class UploadAssetInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: Body | Body1
@@ -4778,7 +4778,7 @@ class CreateAssetUploadTicketInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: AssetUploadTicketCreate
@@ -4807,7 +4807,7 @@ class UpdatePackageTextInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4821,7 +4821,7 @@ class UpsertReleaseNotesInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     version: Annotated[str, Field(examples=['1.140.0'], max_length=256, min_length=1)]
@@ -4858,7 +4858,7 @@ class FixTranslationInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: TranslationFix
@@ -4881,7 +4881,7 @@ class UpsertGlossaryTermInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: GlossaryTermUpdate
@@ -4894,7 +4894,7 @@ class DeleteGlossaryTermInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4913,7 +4913,7 @@ class UpdateAnnouncementInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: AnnouncementUpdate
@@ -4926,7 +4926,7 @@ class UpdateDesktopReleaseNotesInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4981,7 +4981,7 @@ class RestoreRevisionInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -5016,7 +5016,7 @@ class RestoreTrashInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -5029,7 +5029,7 @@ class RevertRequestInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     requestId: Annotated[str, Field(examples=['demo-request-001'], max_length=128, min_length=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -5101,7 +5101,7 @@ class UpsertUpdateFeedInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: UpdateFeedInput
@@ -5114,7 +5114,7 @@ class DisableUpdateFeedInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: UpdateFeedKey
@@ -6521,7 +6521,7 @@ class ProposeSnippetTemplateInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     body: SeoSnippetProposal
 
@@ -6549,7 +6549,7 @@ class SetCollectionSetupCriteriaInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6563,7 +6563,7 @@ class SetBackgroundItemInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     label: Annotated[str, Field(max_length=255, min_length=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6577,7 +6577,7 @@ class UpsertSeoKeywordsInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: SeoKeywordsWrite
@@ -6590,7 +6590,7 @@ class AddPackageScreenshotInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6604,7 +6604,7 @@ class UpdatePackageScreenshotInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     screenshotId: Annotated[int, Field(examples=[1])]
@@ -6619,7 +6619,7 @@ class AddLinkPackageInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: LinkPackageAdd
@@ -6632,7 +6632,7 @@ class UpdateLinkPackageInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6646,7 +6646,7 @@ class CreateCategoryInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CategoryUpsert
@@ -6659,7 +6659,7 @@ class UpdateCategoryInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6673,7 +6673,7 @@ class CreateCollectionInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CollectionUpsert
@@ -6686,7 +6686,7 @@ class UpdateCollectionInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6700,7 +6700,7 @@ class SetCollectionItemsInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6714,7 +6714,7 @@ class CreateFeatureInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: FeatureUpsert
@@ -6727,7 +6727,7 @@ class UpdateFeatureInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6901,7 +6901,7 @@ class SetPackageFactRecordsInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -6917,7 +6917,7 @@ class UpsertSeoListingCandidateInput(BaseModel):
     taskId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     fencing: Annotated[int | None, Field(examples=[1], ge=1)] = None
     expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['fixture-idempotency-001'], max_length=200)] = None
+    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
     evidenceIds: Annotated[list[EvidenceId] | None, Field(examples=[[1, 2]], max_length=40)] = None
     body: SeoListingWrite
 

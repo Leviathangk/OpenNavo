@@ -28,11 +28,11 @@ func replaySEO(ctx context.Context, db *gorm.DB) (map[string]any, error) {
 	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		st := &store.Store{DB: tx}
 		svc := &management.Service{Store: st, Config: config.Config{WebBaseURL: "https://example.com"}}
-		request := func(perms ...string) context.Context {
+		request := func(ctx context.Context, perms ...string) context.Context {
 			return domain.WithOperation(ctx, &domain.Operation{RequestID: uuid.NewString(), AgentClientID: 1, AgentTokenID: 2, Permissions: perms, RequiredPermissions: perms, AllowDelete: true})
 		}
-		exec := request("translation:review", "catalog:category:edit")
-		tuner := request("seo:automation:tune")
+		exec := request(ctx, "translation:review", "catalog:category:edit")
+		tuner := request(ctx, "seo:automation:tune")
 		view, err := svc.Execute(tuner, "GetSeoAutomation", management.Input{})
 		if err != nil {
 			return err
@@ -165,7 +165,7 @@ func replaySEO(ctx context.Context, db *gorm.DB) (map[string]any, error) {
 		if err := tx.Raw("SELECT max(id) FROM content_revisions WHERE entity='category' AND object_key=?", ref.Key()).Scan(&revision).Error; err != nil {
 			return err
 		}
-		compctx := request("seo:task:handle", "content:revision:restore", "catalog:category:edit")
+		compctx := request(ctx, "seo:task:handle", "content:revision:restore", "catalog:category:edit")
 		domain.CurrentOperation(compctx).Name = "CompensateSeoAction"
 		domain.CurrentOperation(compctx).Execution = &domain.AgentExecution{TaskID: compensation[0].ID, Fencing: compensation[0].Fencing, IdempotencyKey: uuid.NewString(), ExpectedRevision: revision, EvidenceIDs: []int64{evidenceID}}
 		if _, err := svc.Execute(compctx, "CompensateSeoAction", management.Input{ID: actionID, Body: map[string]any{"reason": "implementation_error"}}); err != nil {

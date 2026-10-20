@@ -2142,6 +2142,13 @@
     },
     {
       "ecosystem": "Go",
+      "name": "github.com/HugoSmits86/nativewebp",
+      "version": "v1.3.0",
+      "license": "MIT",
+      "url": "https://pkg.go.dev/github.com/HugoSmits86/nativewebp@v1.3.0"
+    },
+    {
+      "ecosystem": "Go",
       "name": "github.com/ianlancetaylor/demangle",
       "version": "v0.0.0-20200824232613-28f6c0f3b639",
       "license": "BSD-3-Clause",

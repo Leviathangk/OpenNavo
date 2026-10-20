@@ -33,9 +33,10 @@ func releaseNotesFacts(r TimelineRelease, locale string) seo.NotesFacts {
 	if r.Locale == locale && r.TranslationStatus != nil &&
 		(*r.TranslationStatus == "source" || *r.TranslationStatus == "manual" || *r.TranslationStatus == "machine") &&
 		(locale == r.SourceLocale || r.SourceHash != nil && notesHash.MatchString(*r.SourceHash)) {
-		if r.TranslatedBody != nil && strings.TrimSpace(*r.TranslatedBody) != "" {
+		switch {
+		case r.TranslatedBody != nil && strings.TrimSpace(*r.TranslatedBody) != "":
 			body = *r.TranslatedBody
-		} else if len(r.Sections) > 0 && string(r.Sections) != "[]" {
+		case len(r.Sections) > 0 && string(r.Sections) != "[]":
 			var sections []struct {
 				Items []string `json:"items"`
 			}
@@ -44,7 +45,7 @@ func releaseNotesFacts(r TimelineRelease, locale string) seo.NotesFacts {
 					body += "\n" + strings.Join(section.Items, "\n")
 				}
 			}
-		} else if r.Summary != nil {
+		case r.Summary != nil:
 			body += "\n" + *r.Summary
 		}
 	}

@@ -28,9 +28,10 @@ func (s *PublicService) issueFacts(ctx context.Context, id int64, locale string,
 			continue
 		}
 		item := issueFact{Issue: v, Evidence: r.Evidence.At(now)}
-		if v.Locale == locale {
+		switch v.Locale {
+		case locale:
 			localized = append(localized, item)
-		} else if v.Locale == "en-US" {
+		case "en-US":
 			fallback = append(fallback, item)
 		}
 	}

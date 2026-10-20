@@ -2,10 +2,11 @@
   "formatVersion": 1,
   "lockDigests": {
     "pnpm-lock.yaml": "314b6de9a6acd82e2f839929c89b98e872f958e77e1730cf853535e65d733d9a",
-    "apps/server/go.mod": "6d64638fcd95df0f3512fd647528e7b8d179f2b3eb37c31dc68d498ac2cae756",
-    "apps/server/go.sum": "8e49c990b927c1cd3e3c79e49e534ee4ead68daff3a48274c2cf134e89096b96",
+    "apps/server/go.mod": "dfd089440bff1cbb31b6bcebda13c7ecc4fdf44847e84e0bc9250a544471fb1e",
+    "apps/server/go.sum": "d0383bdc83d8992b2c966db97eabf88db8baa3c886792290cac525e6f5228c5e",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
     "apps/desktop/src-tauri/Cargo.lock": "e68ee8f8254068d4996af4517485dedb8b25ea4c4926e80a2ab00f622e3e3f4c",
+    "apps/desktop/native/firewall/core/Cargo.lock": "22bdb9a96ef3b8a62249637d81060826ff82e3eff3e158125d51e269c35bd798",
     "docs/legal/native/manifest.json": "ecf558c84dd1f56ebe06e9bcc87edc818aca30cba9397ef66e68a78f9dce9a58",
     "apps/desktop/native/store/upstream.json": "c85b3ebf2515718f8b066febf42d4f5ffe609941f2957cc8bd73f348a828e9c8",
     "apps/desktop/native/clamav/sources.lock.json": "f6257ce0e0aa9bfc7dfb7f891bb11bf77655ef1aa54040653d55a673e26385c3",
@@ -229,12 +230,30 @@
     "docs/legal/native/LICENSE.DuoUpdater": "8f7cee0d02b9b8fd00a9074c34ea1c701bc5ac8587b4fa13410d86ef9b2b165f",
     "docs/legal/native/installomator-upstream.json": "91dc8759b8e58b5c1cf6d11352666e1118651f0e209b64b986b248ff6678e162",
     "docs/legal/native/LICENSE.Installomator": "ea938190e03013466f80311ee9b3753b9e476b920d8290b9a90a0864edff522e",
-    "apps/desktop/native/firewall/core/Cargo.lock": "22bdb9a96ef3b8a62249637d81060826ff82e3eff3e158125d51e269c35bd798",
     "apps/desktop/native/firewall/upstream.json": "80bde1e4ff88a4cd151147795bb7944c20e9c728d6a84a330e3c6c25b83268ce",
     "apps/desktop/native/firewall/LICENSE.LuLu": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
   },
   "scopeNote": "runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability",
   "modules": [
+    {
+      "ecosystem": "Go",
+      "name": "github.com/andybalholm/cascadia",
+      "version": "v1.3.4",
+      "license": "BSD-2-Clause",
+      "url": "https://pkg.go.dev/github.com/andybalholm/cascadia@v1.3.4",
+      "scope": "runtime",
+      "evidence": {
+        "source": "Go module download verified by go.sum / checksum database",
+        "sum": "h1:vM2lgh0Vru9Vwyfm4cQqWP2HHMW0u0+2PAW7Q38Qufg="
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/04a8e475337d6b9959a8c47956bf713dd3362d3aadf839e74b376afb07487167.txt",
+          "sha256": "04a8e475337d6b9959a8c47956bf713dd3362d3aadf839e74b376afb07487167"
+        }
+      ]
+    },
     {
       "ecosystem": "Go",
       "name": "github.com/apapsch/go-jsonmerge/v2",
@@ -308,25 +327,6 @@
           "source": "LICENSE.txt",
           "path": "licenses/f566a9f97bacdaf00d9f21dd991e81dc11201c4e016c86b470799429a1c9a79c.txt",
           "sha256": "f566a9f97bacdaf00d9f21dd991e81dc11201c4e016c86b470799429a1c9a79c"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Go",
-      "name": "github.com/coder/websocket",
-      "version": "v1.8.15",
-      "license": "ISC",
-      "url": "https://pkg.go.dev/github.com/coder/websocket@v1.8.15",
-      "scope": "runtime",
-      "evidence": {
-        "source": "Go module download verified by go.sum / checksum database",
-        "sum": "h1:6B2JPeOGlpff2Uz6vOEH1Vzpi0iUz20A+lPVhPHtNUA="
-      },
-      "licenseFiles": [
-        {
-          "source": "LICENSE.txt",
-          "path": "licenses/cc0975a5f6305145bdd7b41ce9479632fdac3870e6ac4281f28017f18c767c4e.txt",
-          "sha256": "cc0975a5f6305145bdd7b41ce9479632fdac3870e6ac4281f28017f18c767c4e"
         }
       ]
     },
@@ -608,6 +608,25 @@
           "source": "LICENSE",
           "path": "licenses/eb4e388868ffc171de2f42cda88885210d65b26f17865f3616b43b1f101a8a3e.txt",
           "sha256": "eb4e388868ffc171de2f42cda88885210d65b26f17865f3616b43b1f101a8a3e"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Go",
+      "name": "github.com/HugoSmits86/nativewebp",
+      "version": "v1.3.0",
+      "license": "MIT",
+      "url": "https://pkg.go.dev/github.com/HugoSmits86/nativewebp@v1.3.0",
+      "scope": "runtime",
+      "evidence": {
+        "source": "Go module download verified by go.sum / checksum database",
+        "sum": "h1:n1egtEzSV4KwFtealr7dzdYq1wI/uj/bOQ/QcTcIyVE="
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/c991f2fb57a8be578efdd78ef403a7ac878982e4d5acfb3695923851e4df2e92.txt",
+          "sha256": "c991f2fb57a8be578efdd78ef403a7ac878982e4d5acfb3695923851e4df2e92"
         }
       ]
     },
@@ -1063,25 +1082,6 @@
     },
     {
       "ecosystem": "Go",
-      "name": "github.com/openai/openai-go/v3",
-      "version": "v3.71.1",
-      "license": "Apache-2.0",
-      "url": "https://pkg.go.dev/github.com/openai/openai-go/v3@v3.71.1",
-      "scope": "runtime",
-      "evidence": {
-        "source": "Go module download verified by go.sum / checksum database",
-        "sum": "h1:s+gWLEUvnV3sZqtZ+mlWZ3ePTtfuIV5EBY+fsnb8Njo="
-      },
-      "licenseFiles": [
-        {
-          "source": "LICENSE",
-          "path": "licenses/636eb7d79da9bb6d515a4b3fd417aa26679eb3cf16396ddab4bc55fa74e616e4.txt",
-          "sha256": "636eb7d79da9bb6d515a4b3fd417aa26679eb3cf16396ddab4bc55fa74e616e4"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Go",
       "name": "github.com/pelletier/go-toml/v2",
       "version": "v2.4.3",
       "license": "MIT",
@@ -1230,6 +1230,25 @@
           "source": "NOTICE",
           "path": "licenses/600244c8052c8c1d307043fafacbc83b429c171dd8e08f5a537c0a54014585ee.txt",
           "sha256": "600244c8052c8c1d307043fafacbc83b429c171dd8e08f5a537c0a54014585ee"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Go",
+      "name": "github.com/PuerkitoBio/goquery",
+      "version": "v1.13.0",
+      "license": "BSD-3-Clause",
+      "url": "https://pkg.go.dev/github.com/PuerkitoBio/goquery@v1.13.0",
+      "scope": "runtime",
+      "evidence": {
+        "source": "Go module download verified by go.sum / checksum database",
+        "sum": "h1:mqHbjD7Jmnul4DTR24LKTjo1uUmHUh072kteGV+xpFM="
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/ab79785bfa235ac1c5e16f75e0f85eb7ce0402fb72f4667fffa0729e694579b8.txt",
+          "sha256": "ab79785bfa235ac1c5e16f75e0f85eb7ce0402fb72f4667fffa0729e694579b8"
         }
       ]
     },
@@ -1406,82 +1425,6 @@
           "source": "LICENSE",
           "path": "licenses/feb6d17a0e7a64e5ab0f7e2b0e0ee3e69c1a6396626fd554dc0cddaa06851b44.txt",
           "sha256": "feb6d17a0e7a64e5ab0f7e2b0e0ee3e69c1a6396626fd554dc0cddaa06851b44"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Go",
-      "name": "github.com/tidwall/gjson",
-      "version": "v1.19.0",
-      "license": "MIT",
-      "url": "https://pkg.go.dev/github.com/tidwall/gjson@v1.19.0",
-      "scope": "runtime",
-      "evidence": {
-        "source": "Go module download verified by go.sum / checksum database",
-        "sum": "h1:xwxm7n691Uf3u5OFjzngavjGTh55KX5q/9w9xHW88JU="
-      },
-      "licenseFiles": [
-        {
-          "source": "LICENSE",
-          "path": "licenses/be83ad53208d03a9fe08c7fac231cabf79422989ef5706bff217bd35104ebf07.txt",
-          "sha256": "be83ad53208d03a9fe08c7fac231cabf79422989ef5706bff217bd35104ebf07"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Go",
-      "name": "github.com/tidwall/match",
-      "version": "v1.2.0",
-      "license": "MIT",
-      "url": "https://pkg.go.dev/github.com/tidwall/match@v1.2.0",
-      "scope": "runtime",
-      "evidence": {
-        "source": "Go module download verified by go.sum / checksum database",
-        "sum": "h1:0pt8FlkOwjN2fPt4bIl4BoNxb98gGHN2ObFEDkrfZnM="
-      },
-      "licenseFiles": [
-        {
-          "source": "LICENSE",
-          "path": "licenses/be83ad53208d03a9fe08c7fac231cabf79422989ef5706bff217bd35104ebf07.txt",
-          "sha256": "be83ad53208d03a9fe08c7fac231cabf79422989ef5706bff217bd35104ebf07"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Go",
-      "name": "github.com/tidwall/pretty",
-      "version": "v1.2.1",
-      "license": "MIT",
-      "url": "https://pkg.go.dev/github.com/tidwall/pretty@v1.2.1",
-      "scope": "runtime",
-      "evidence": {
-        "source": "Go module download verified by go.sum / checksum database",
-        "sum": "h1:qjsOFOWWQl+N3RsoF5/ssm1pHmJJwhjlSbZ51I6wMl4="
-      },
-      "licenseFiles": [
-        {
-          "source": "LICENSE",
-          "path": "licenses/0ca70311227fe097c662dece3f359e3317fa7f9d41f8d29eb45fc5135e216139.txt",
-          "sha256": "0ca70311227fe097c662dece3f359e3317fa7f9d41f8d29eb45fc5135e216139"
-        }
-      ]
-    },
-    {
-      "ecosystem": "Go",
-      "name": "github.com/tidwall/sjson",
-      "version": "v1.2.5",
-      "license": "MIT",
-      "url": "https://pkg.go.dev/github.com/tidwall/sjson@v1.2.5",
-      "scope": "runtime",
-      "evidence": {
-        "source": "Go module download verified by go.sum / checksum database",
-        "sum": "h1:kLy8mja+1c9jlljvWTlSazM7cKDRfJuR/bOJhcY5NcY="
-      },
-      "licenseFiles": [
-        {
-          "source": "LICENSE",
-          "path": "licenses/dbf5e2aa91aee5f19a1ce2cc7891e2ac37204b6461c0adc539426636e27b208e.txt",
-          "sha256": "dbf5e2aa91aee5f19a1ce2cc7891e2ac37204b6461c0adc539426636e27b208e"
         }
       ]
     },

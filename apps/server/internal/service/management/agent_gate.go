@@ -140,7 +140,7 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 			return err
 		}
 		if op.DryRun || d.Policy.Mode == "proposal" {
-			urls, err := local.agentAffectedURLs(ctx, rule.Object, entity, afterInput, afterRefs, before, after, result)
+			urls, err := local.agentAffectedURLs(ctx, rule.Object, afterInput, afterRefs, before, after, result)
 			if err != nil {
 				return err
 			}

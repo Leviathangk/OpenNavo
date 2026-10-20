@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/store"

@@ -2,12 +2,13 @@ package images
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/image/webp"
 	"image"
 	"image/color"
 	"image/png"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"golang.org/x/image/webp"
 )
 
 func TestWebPRenditionsRetainOriginalAndCrop(t *testing.T) {

@@ -1,9 +1,10 @@
 package api_test
 
 import (
+	"testing"
+
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // Keep the shared evidence payloads valid when composed schemas and dry-run envelopes change.

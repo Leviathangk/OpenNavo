@@ -92,7 +92,7 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 			return err
 		}
 		if prior != signature {
-			if err := s.demand(ctx, tx, emit); err != nil {
+			if err := s.demand(tx, emit); err != nil {
 				return err
 			}
 			if err := tx.Exec("UPDATE seo_opportunity_cursors SET signature=?,updated_at=clock_timestamp() WHERE source='demand'", signature).Error; err != nil {
@@ -104,7 +104,7 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	return map[string]any{"signals": count, "ruleVersion": RuleVersion}, err
 }
 
-func (s *Service) demand(ctx context.Context, tx *gorm.DB, emit func(string, ...any) error) error {
+func (s *Service) demand(tx *gorm.DB, emit func(string, ...any) error) error {
 	// Both the window marker and each day must be complete. Query totals never stand in for page totals.
 	const window = `SELECT w.complete_through FROM seo_data_watermarks w WHERE source='gsc_page' AND (SELECT count(*) FROM seo_ingest_days d WHERE d.source=w.source AND d.day BETWEEN w.complete_through-27 AND w.complete_through AND temporal_complete AND retrieval_complete)=28`
 	if err := emit(`WITH demand AS (SELECT l.package_id,k.language locale,l.intent,sum(coalesce(k.search_volume,CASE WHEN k.source IN ('gsc','bing') THEN 1 ELSE 0 END)) volume,jsonb_agg(k.id ORDER BY k.id) keyword_ids FROM seo_keyword_links l JOIN seo_keywords k ON k.id=l.keyword_id WHERE l.state='confirmed' AND k.anomaly IS NULL AND k.observed_at>clock_timestamp()-interval '60 days' AND l.intent IN ('price','requirements','uninstall','alternative') GROUP BY l.package_id,k.language,l.intent)

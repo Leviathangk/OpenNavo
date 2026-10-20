@@ -8,6 +8,7 @@ import (
 )
 
 func TestFeedbackScrubsSecretsAndExecutableHTML(t *testing.T) {
+	// #nosec G101 -- Deliberately fake credentials exercise feedback redaction.
 	raw := `<script>alert('unsafe')</script><p>Crash on startup</p><img src=x onerror=evil()>
 Authorization: Bearer fixture-auth-value
 Cookie: session=fixture-cookie-value

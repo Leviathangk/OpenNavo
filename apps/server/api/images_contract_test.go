@@ -1,10 +1,11 @@
 package api_test
 
 import (
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
+
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/stretchr/testify/require"
 )
 
 func TestImageVariantAndCoverAltContracts(t *testing.T) {

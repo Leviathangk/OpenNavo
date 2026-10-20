@@ -2,9 +2,10 @@ package seotune
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestAutomationRejectsUnknownActionsAndUnsafeThresholds(t *testing.T) {

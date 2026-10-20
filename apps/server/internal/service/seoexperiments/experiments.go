@@ -109,7 +109,7 @@ func (s *Service) Start(ctx context.Context, tx *gorm.DB, p Proposal) (Experimen
 		return out, ErrSample
 	}
 	bar := (baseline + p.TargetCTR) / 2
-	required = int64(math.Ceil(math.Pow(2.241403*math.Sqrt(2*bar*(1-bar))+.841621*math.Sqrt(baseline*(1-baseline)+p.TargetCTR*(1-p.TargetCTR)), 2) / math.Pow(p.TargetCTR-baseline, 2)))
+	required = int64(math.Ceil(math.Pow(2.241403*math.Sqrt(2*bar*(1-bar))+.841621*math.Sqrt(baseline*(1-baseline)+p.TargetCTR*(1-p.TargetCTR)), 2) / ((p.TargetCTR - baseline) * (p.TargetCTR - baseline))))
 	required = max(required, 1000)
 	salt := uuid.NewString()
 	sort.Slice(eligible, func(i, j int) bool {
@@ -251,7 +251,7 @@ func (s *Service) Checkpoints(ctx context.Context) (map[string]any, error) {
 			return err
 		}
 		for _, e := range experiments {
-			if err := s.checkpoint(ctx, tx, e); err != nil {
+			if err := s.checkpoint(tx, e); err != nil {
 				return err
 			}
 			count++
@@ -261,7 +261,7 @@ func (s *Service) Checkpoints(ctx context.Context) (map[string]any, error) {
 	return map[string]any{"checked": count}, err
 }
 
-func (s *Service) checkpoint(ctx context.Context, tx *gorm.DB, e Experiment) error {
+func (s *Service) checkpoint(tx *gorm.DB, e Experiment) error {
 	var now time.Time
 	var watermark struct{ CompleteThrough *time.Time }
 	if err := tx.Raw("SELECT clock_timestamp()").Scan(&now).Error; err != nil {

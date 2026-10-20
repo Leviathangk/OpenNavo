@@ -140,7 +140,7 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 				token, e := n.Store.SEOSecret(ctx, n.Config, "cloudflare")
 				err = e
 				if err == nil && token == "" {
-					err = errors.New("Cloudflare credential unavailable")
+					err = errors.New("cloudflare credential unavailable")
 				}
 				if err == nil {
 					count, status := n.purgePrefixes(ctx, settings, token, prefixes)

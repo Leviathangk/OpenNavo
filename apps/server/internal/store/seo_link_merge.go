@@ -64,20 +64,21 @@ func mergedPackageJSON(raw json.RawMessage, from, to int64) (json.RawMessage, bo
 		case map[string]any:
 			for key, child := range x {
 				isID := key == "packageId" || key == "package_id" || key == "baselinePackageId" || key == "targetPackageId" || key == "alternativeId" || (key == "id" && (x["entity"] == "package" || x["entity"] == "pkg")) || (key == "secondaryId" && x["entity"] == "collection_item")
-				if isID && fmt.Sprint(child) == strconv.FormatInt(from, 10) {
+				switch {
+				case isID && fmt.Sprint(child) == strconv.FormatInt(from, 10):
 					if _, ok := child.(string); ok {
 						x[key] = strconv.FormatInt(to, 10)
 					} else {
 						x[key] = json.Number(strconv.FormatInt(to, 10))
 					}
 					changed = true
-				} else if key == "entityKey" || key == "entity_key" {
+				case key == "entityKey" || key == "entity_key":
 					if s, ok := child.(string); ok {
 						next := mergedEntity(s, from, to)
 						x[key] = next
 						changed = changed || s != next
 					}
-				} else {
+				default:
 					visit(child)
 				}
 			}

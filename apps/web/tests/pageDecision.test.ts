@@ -1,6 +1,21 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { effectScope, ref } from 'vue';
+import type { PublicComponents } from '@opennavo/api';
 import { usePageDecision } from '../app/composables/usePageDecision';
+
+type PageDecision = PublicComponents['schemas']['PageDecision'];
+
+function pageDecision(overrides: Partial<PageDecision>): PageDecision {
+  return {
+    canonicalPath: '',
+    hreflang: [],
+    robots: 'index, follow',
+    inSitemap: false,
+    announce: false,
+    reason: 'test',
+    ...overrides
+  };
+}
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -15,16 +30,20 @@ it('old page unmount cannot clear the new page canonical or alternates', () => {
   vi.stubGlobal('onUnmounted', (fn: () => void) => unmounts.push(fn));
   const scope = effectScope();
   scope.run(() => {
-    usePageDecision({
-      canonicalPath: '/apps/old/troubleshooting',
-      hreflang: ['en-US'],
-      robots: 'noindex,follow'
-    } as any);
-    usePageDecision({
-      canonicalPath: '/apps/new',
-      hreflang: ['en-US', 'ja-JP'],
-      robots: 'index,follow'
-    } as any);
+    usePageDecision(
+      pageDecision({
+        canonicalPath: '/apps/old/troubleshooting',
+        hreflang: ['en-US'],
+        robots: 'noindex, follow'
+      })
+    );
+    usePageDecision(
+      pageDecision({
+        canonicalPath: '/apps/new',
+        hreflang: ['en-US', 'ja-JP'],
+        robots: 'index, follow'
+      })
+    );
   });
   const alternates = state.get('page:hreflangs')!.value;
   unmounts[0]!();
@@ -49,9 +68,21 @@ it.each(['list', 'article', 'same-canonical'])('cleans only owned fields on navi
   scope.run(() => {
     // Layout may have no decision when entering the versions tab directly.
     usePageDecision(undefined);
-    usePageDecision({ canonicalPath: '/apps/old/versions', hreflang: ['en-US'], robots: 'index,follow' } as any);
+    usePageDecision(
+      pageDecision({
+        canonicalPath: '/apps/old/versions',
+        hreflang: ['en-US'],
+        robots: 'index, follow'
+      })
+    );
     if (target === 'same-canonical')
-      usePageDecision({ canonicalPath: '/apps/old/versions', hreflang: ['ja-JP'], robots: 'index,follow' } as any);
+      usePageDecision(
+        pageDecision({
+          canonicalPath: '/apps/old/versions',
+          hreflang: ['ja-JP'],
+          robots: 'index, follow'
+        })
+      );
   });
   if (target === 'article') state.get('page:hreflangs')!.value = ['ja'];
   const nextAlternates = state.get('page:hreflangs')!.value;

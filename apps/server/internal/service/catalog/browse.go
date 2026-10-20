@@ -16,7 +16,7 @@ func (s *PublicService) Browse(ctx context.Context, kind, bucket, locale string,
 	if (kind != "apps" && kind != "fonts") || page < 1 || !i18n.Valid(locale) {
 		return publicapi.BrowsePage{}, domain.Validation()
 	}
-	if bucket != "" && bucket != "0-9" && bucket != "other" && !(len(bucket) == 1 && bucket[0] >= 'a' && bucket[0] <= 'z') {
+	if bucket != "" && bucket != "0-9" && bucket != "other" && (len(bucket) != 1 || bucket[0] < 'a' || bucket[0] > 'z') {
 		return publicapi.BrowsePage{}, &domain.AppError{Code: domain.CodeNotFound, HTTPStatus: 404}
 	}
 	if bucket == "" {

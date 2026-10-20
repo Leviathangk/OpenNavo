@@ -117,7 +117,7 @@ func readJSON(client *http.Client, req *http.Request, out any) error {
 		}
 		return ErrUpstream
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return ErrUpstream
 	}

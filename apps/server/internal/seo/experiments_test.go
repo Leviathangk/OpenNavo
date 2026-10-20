@@ -1,9 +1,10 @@
 package seo
 
 import (
-	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestExperimentSampleAndDecisions(t *testing.T) {

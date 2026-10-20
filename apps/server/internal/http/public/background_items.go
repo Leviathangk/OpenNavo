@@ -2,6 +2,7 @@ package public
 
 import (
 	"context"
+
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/domain"
 )

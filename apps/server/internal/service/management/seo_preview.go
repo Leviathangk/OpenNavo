@@ -10,7 +10,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/store"
 )
 
-func (s *Service) agentAffectedURLs(ctx context.Context, object, entity string, in Input, refs []content.Ref, before, after, result any) ([]string, error) {
+func (s *Service) agentAffectedURLs(ctx context.Context, object string, in Input, refs []content.Ref, before, after, result any) ([]string, error) {
 	urls := []string{}
 	add := func(values []string) {
 		for _, value := range values {

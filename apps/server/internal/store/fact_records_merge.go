@@ -2,8 +2,9 @@ package store
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"strconv"
+
+	"gorm.io/gorm"
 )
 
 var factRelationshipTables = []string{"package_fact_records", "app_store_price_snapshots", "package_cve_checks", "package_version_requirements", "background_item_packages"}
