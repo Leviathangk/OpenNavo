@@ -169,6 +169,11 @@ func Run(ctx context.Context, rdb *redis.Client, ledger Ledger, handlers Handler
 			logger.Error("scheduled enqueue failed")
 		}
 	}})
+	if released, err := ReleaseArchivedSchedules(asynq.NewInspectorFromRedisClient(rdb)); err != nil {
+		logger.Warn("release archived scheduled runs failed")
+	} else if released > 0 {
+		logger.Info("released archived scheduled runs", "count", released)
+	}
 	if err := RegisterSchedules(scheduler); err != nil {
 		return err
 	}
