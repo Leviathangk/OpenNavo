@@ -20,6 +20,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import IndexTab from '../src/views/catalog/package-detail/modules/index-tab.vue';
 import IndexReport from '../src/views/system/seo/modules/index-report.vue';
+import TranslationImpact from '../src/views/system/seo/modules/translation-impact.vue';
 
 const api = vi.hoisted(() => ({ status: vi.fn(), save: vi.fn(), report: vi.fn() }));
 vi.mock('@/service/api', () => ({
@@ -187,6 +188,63 @@ describe('Impact report', () => {
     await wrapper.findAll('[data-testid="index-report-counts"] .n-tag')[0]!.trigger('click');
     await flushPromises();
     expect(api.report).toHaveBeenLastCalledWith({ current: 1, size: 20, reason: 'missing_summary' });
+    wrapper.unmount();
+  });
+});
+
+describe('Translation gate impact', () => {
+  const decision = (robots: string, reason: string) => ({
+    robots,
+    canonicalPath: '',
+    hreflang: [],
+    inSitemap: robots === 'index, follow',
+    announce: false,
+    reason
+  });
+
+  it('Shows indexable counts per language and pages through the apps that would leave the index', async () => {
+    api.report.mockResolvedValue({
+      data: {
+        records: [],
+        current: 1,
+        size: 20,
+        total: 0,
+        counts: { hidden: 0, forcedNoindex: 0, unavailable: 0, missingSummary: 0, thin: 0, forcedIndex: 0 },
+        translationImpact: {
+          mode: 'shadow',
+          counts: [
+            { locale: 'en-US', indexableNow: 120, indexableEnforced: 120, losing: 0 },
+            { locale: 'ja-JP', indexableNow: 90, indexableEnforced: 71, losing: 19 }
+          ],
+          records: [
+            {
+              id: 7,
+              token: 'stale-translation',
+              locale: 'ja-JP',
+              current: decision('index, follow', 'indexable'),
+              enforced: decision('noindex, follow', 'translation_stale')
+            }
+          ],
+          current: 1,
+          size: 20,
+          total: 41
+        }
+      },
+      error: undefined
+    });
+    const wrapper = mount(TranslationImpact, {
+      global: { components, stubs: { RouterLink: { template: '<a><slot /></a>' } } }
+    });
+    await flushPromises();
+    const counts = wrapper.find('[data-testid="translation-impact-counts"]').text();
+    expect(counts).toContain('English');
+    expect(counts).toContain('日本語');
+    expect(counts).toContain('19');
+    expect(wrapper.text()).toContain('stale-translation');
+    expect(wrapper.text()).toContain('translation_stale');
+    await wrapper.findComponent(NPagination).vm.$emit('update:page', 2);
+    await flushPromises();
+    expect(api.report).toHaveBeenLastCalledWith({ current: 2, size: 20 });
     wrapper.unmount();
   });
 });

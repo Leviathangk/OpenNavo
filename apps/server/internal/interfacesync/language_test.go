@@ -72,7 +72,7 @@ func TestRepositoryLanguageReplay(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &plan))
 	count := 0
 	for name, target := range plan.Targets {
-		for _, code := range []string{"zh-CN", "en-US", "ja-JP", "es-ES", "pt-BR", "ru-RU"} {
+		for _, code := range TargetLocales(name) {
 			fields := target.Translations[code]
 			if code == "zh-CN" {
 				fields = target.Source

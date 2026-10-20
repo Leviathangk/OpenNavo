@@ -61,7 +61,7 @@ func languageFailures(batch Batch, code string, fields map[string]string, protec
 			continue
 		}
 		switch {
-		case code == "ja-JP" || code == "ru-RU" || code == "zh-CN" || strings.ContainsFunc(value, func(r rune) bool {
+		case code == "ja-JP" || code == "ru-RU" || code == "zh-CN" || code == "zh-Hant" || strings.ContainsFunc(value, func(r rune) bool {
 			return unicode.In(r, unicode.Han, unicode.Hiragana, unicode.Katakana, unicode.Cyrillic)
 		}):
 			if !llm.MatchesLanguage(value, code) {

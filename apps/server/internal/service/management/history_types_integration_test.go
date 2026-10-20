@@ -9,30 +9,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
-	"github.com/opennavo/opennavo/server/internal/llm"
-	"github.com/opennavo/opennavo/server/internal/service/contenttranslate"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-type historyTranslator struct{}
-
-func (historyTranslator) TranslateContent(_ context.Context, in llm.ContentInput) (llm.ContentOutput, llm.Usage, error) {
-	texts := map[string]string{"en-US": "The application manages your files", "ja-JP": "ファイルを管理するアプリです", "es-ES": "La aplicación permite gestionar tus archivos", "pt-BR": "O aplicativo permite gerenciar seus arquivos", "ru-RU": "Приложение для управления файлами"}
-	out := llm.ContentOutput{}
-	for _, locale := range in.Targets {
-		out[locale] = map[string]string{}
-		for field := range in.Fields {
-			out[locale][field] = texts[locale]
-		}
-	}
-	return out, llm.Usage{}, nil
-}
-
-func TestEveryContentTypeRestoreSchedulesFiveTranslations(t *testing.T) {
+func TestEveryContentTypeRestoreSchedulesHermesTasks(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewSEOStore(t)
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(100,'cask','history-types','history-types','homebrew/cask','History Types','1','1','{}','hash');
 INSERT INTO categories(id,slug,icon,source_locale) VALUES(100,'history-types','lucide:box','zh-CN');
 INSERT INTO collections(id,slug,source_locale) VALUES(100,'history-types','zh-CN');
@@ -48,7 +32,7 @@ INSERT INTO article_authors(id,slug,name,source_locale) VALUES(100,'history-type
 INSERT INTO articles(id,slug,status,working_revision_id,published_revision_id,first_published_at,content_updated_at) VALUES(100,'history-types','published',100,100,now(),now());
 INSERT INTO article_revisions(id,article_id,number,source_locale,type,published_at) VALUES(100,100,1,'zh-CN','tutorial',now());`).Error)
 	svc := &Service{Store: st}
-	translator := &contenttranslate.Service{Store: st, LLM: historyTranslator{}, Model: "fake", NoRetry: true}
+
 	fields := map[string]string{"package": "summary", "release": "summary", "category": "name", "collection": "title", "feature": "title", "screenshot": "caption", "collection_item": "note", "desktop_release": "notes", "mirror": "name", "announcement": "title", "article": "title", "article_author": "bio"}
 	for _, entity := range content.Names() {
 		t.Run(entity, func(t *testing.T) {
@@ -76,13 +60,10 @@ INSERT INTO article_revisions(id,article_id,number,source_locale,type,published_
 			source, err := st.ReadContentSource(ctx, ref)
 			require.NoError(t, err)
 			require.Equal(t, "这款应用可以管理文件", source.Fields[fields[entity]])
-			require.Len(t, source.Targets, 5)
-			stats, err := translator.Run(ctx, ref, source.Hash)
-			require.NoError(t, err)
-			require.Equal(t, 5, stats["translated"])
+			require.Len(t, source.Targets, targetCount(ref))
 			view, err := st.ContentView(ctx, ref)
 			require.NoError(t, err)
-			require.Len(t, view["i18n"], 6)
+			require.Len(t, view["i18n"], targetCount(ref)+1)
 			deleteOps := map[string]string{"category": "DeleteCategory", "collection": "DeleteCollection", "feature": "DeleteFeature", "screenshot": "DeletePackageScreenshot"}
 			if op := deleteOps[entity]; op != "" {
 				_, err := svc.Execute(ctx, op, Input{ID: 100, ScreenshotID: 100})
@@ -94,11 +75,15 @@ INSERT INTO article_revisions(id,article_id,number,source_locale,type,published_
 				require.NoError(t, err)
 				source, err = st.ReadContentSource(ctx, ref)
 				require.NoError(t, err)
-				require.Len(t, source.Targets, 5)
-				stats, err = translator.Run(ctx, ref, source.Hash)
-				require.NoError(t, err)
-				require.Equal(t, 5, stats["translated"])
+				require.Len(t, source.Targets, targetCount(ref))
 			}
 		})
 	}
+}
+
+func targetCount(ref content.Ref) int {
+	if ref.Entity == "desktop_release" {
+		return 5
+	}
+	return 9
 }

@@ -45,7 +45,7 @@ func (q *recordingQueue) Trigger(context.Context, string, int64) (string, error)
 }
 func TestManagementContractsMutationsAuditAndSafety(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	hash, err := seed.HashPassword("test-password-strong")
 	require.NoError(t, err)
 	seedData, err := seeds.Load()
@@ -58,7 +58,7 @@ func TestManagementContractsMutationsAuditAndSafety(t *testing.T) {
 	pkg, err := st.PublicPackage(ctx, "cask", "sample", "zh-CN")
 	require.NoError(t, err)
 	pid := strconv.FormatInt(pkg.ID, 10)
-	cfg := config.Config{JWTSecret: strings.Repeat("a", 32), JWTAccessTTL: 2 * time.Hour, JWTRefreshTTL: 7 * 24 * time.Hour, LLMModel: "gpt-6-luna", LLMMonthlyTokenBudget: 30000000}
+	cfg := config.Config{JWTSecret: strings.Repeat("a", 32), JWTAccessTTL: 2 * time.Hour, JWTRefreshTTL: 7 * 24 * time.Hour}
 	authentication, err := auth.New(st, cfg)
 	require.NoError(t, err)
 	pair, err := authentication.Login(ctx, "tester", "test-password-strong", store.AuditActor{})
@@ -108,9 +108,9 @@ func TestManagementContractsMutationsAuditAndSafety(t *testing.T) {
 	}
 	require.NoError(t, st.DB.WithContext(ctx).Exec("INSERT INTO llm_usage(task,ref_id,model,reasoning_effort,prompt_tokens,completion_tokens,reasoning_tokens,cached_tokens) VALUES('enrich_package',1,'gpt-6-luna','high',100,30,20,0)").Error)
 	overview := call("GET", "/dashboard/overview", "", "0000")
-	require.Contains(t, overview.Body.String(), `"monthSpendUsd":null`)
-	require.Contains(t, overview.Body.String(), `"monthTokens":130`)
-	for _, path := range []string{"/dashboard/overview", "/dashboard/llm-usage", "/packages", "/packages?q=sample&hasIcon=false&translationStatus=none", "/packages/" + pid, "/packages/" + pid + "/screenshots", "/packages/" + pid + "/versions", "/categories/tree", "/assets", "/feedback", "/search/synonyms", "/search/insights/top", "/search/insights/zero", "/jobs/runs", "/jobs/runs/1", "/jobs/queues", "/mirrors", "/app-config", "/system/users", "/system/users?q=test&status=1", "/system/roles", "/system/permissions", "/system/audit-logs", "/packages/" + pid + "/changelog-sources"} {
+	require.NotContains(t, overview.Body.String(), `"llm"`)
+	require.NotContains(t, overview.Body.String(), `"monthTokens"`)
+	for _, path := range []string{"/dashboard/overview", "/packages", "/packages?q=sample&hasIcon=false&translationStatus=none", "/packages/" + pid, "/packages/" + pid + "/screenshots", "/packages/" + pid + "/versions", "/categories/tree", "/assets", "/feedback", "/search/synonyms", "/search/insights/top", "/search/insights/zero", "/jobs/runs", "/jobs/runs/1", "/jobs/queues", "/mirrors", "/app-config", "/system/users", "/system/users?q=test&status=1", "/system/roles", "/system/permissions", "/system/audit-logs", "/packages/" + pid + "/changelog-sources"} {
 		call("GET", path, "", "0000")
 	}
 	assertAudit := func(method, path, body string) {
@@ -267,29 +267,27 @@ func TestManagementContractsMutationsAuditAndSafety(t *testing.T) {
 	require.Equal(t, "manual", stored.I18n.Status)
 	require.Equal(t, "human", stored.I18n.Source)
 	require.Equal(t, "中文编辑器", *stored.I18n.Summary)
-	// Coverage counts only editorial notes for the current version; pending translations are deduplicated by version and exclude the source language.
+	// Coverage still counts editorial notes for the current version; the retired LLM panel is absent, including when translation tasks are pending.
 	var releaseID int64
 	require.NoError(t, st.DB.Raw("INSERT INTO releases(package_id,source,source_key,version,title,source_locale) VALUES(?,'manual','dashboard','1','test','en-US') RETURNING id", pkg.ID).Scan(&releaseID).Error)
-	checkDashboard := func(done, pending int) {
+	checkDashboard := func(done int) {
 		var response struct {
 			Data struct {
 				Coverage struct{ LatestVersionNotes struct{ Done int } }
-				LLM      struct{ PendingReleases int }
 			}
 		}
 		require.NoError(t, json.Unmarshal(call("GET", "/dashboard/overview", "", "0000").Body.Bytes(), &response))
 		require.Equal(t, done, response.Data.Coverage.LatestVersionNotes.Done)
-		require.Equal(t, pending, response.Data.LLM.PendingReleases)
 	}
-	checkDashboard(0, 0)
+	checkDashboard(0)
 	require.NoError(t, st.DB.Exec("UPDATE releases SET source='editorial' WHERE id=?", releaseID).Error)
 	require.NoError(t, st.DB.Exec("INSERT INTO release_i18n(release_id,locale,status) VALUES(?,'en-US','pending')", releaseID).Error)
-	checkDashboard(1, 0)
+	checkDashboard(1)
 	require.NoError(t, st.DB.Exec("INSERT INTO release_i18n(release_id,locale,status) VALUES(?,'ja-JP','pending'),(?,'ru-RU','pending')", releaseID, releaseID).Error)
-	checkDashboard(1, 1)
+	checkDashboard(1)
 	require.NoError(t, st.DB.Exec("UPDATE releases SET version='0.9' WHERE id=?", releaseID).Error)
-	checkDashboard(0, 1)
+	checkDashboard(0)
 	require.NoError(t, st.DB.Exec("UPDATE releases SET hidden=true WHERE id=?", releaseID).Error)
-	checkDashboard(0, 0)
+	checkDashboard(0)
 
 }

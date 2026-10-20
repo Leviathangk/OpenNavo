@@ -15,14 +15,23 @@ export interface OnPaginationProps {
   /** Web: each page has a ?page= URL; render links when supplied. */
   hrefFor?: (page: number) => string;
   linkAs?: string | Component;
+  /**
+   * Extra pages this many steps before and after the current one (T1), so deep pages of a long list are a
+   * few clicks away. Defaults to 10 and 100 for link pagination (web) and none for buttons (desktop).
+   */
+  jumps?: readonly number[];
 }
 
 const props = withDefaults(defineProps<OnPaginationProps>(), { max: 7, linkAs: 'a' });
 
 const emit = defineEmits<{ 'update:page': [page: number] }>();
 
+const LINK_JUMPS: readonly number[] = [10, 100];
+
 const messages = useUiMessages();
-const items = computed(() => paginationRange(props.page, props.pageCount, props.max));
+const items = computed(() =>
+  paginationRange(props.page, props.pageCount, props.max, props.jumps ?? (props.hrefFor ? LINK_JUMPS : []))
+);
 
 const baseClass =
   'm-0 box-border inline-flex h-32px min-w-32px items-center justify-center gap-4px rounded-default border-none px-10px font-sans text-13px no-underline outline-none transition-colors duration-fast ease-standard focus-visible:shadow-focus-ring';

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { PackageDetail } from '@opennavo/api';
+import type { PackagePage } from '~/utils/packageFacts';
 
-// Related articles on an app page (WP17): published articles that cover this app, newest first.
-const props = defineProps<{ pkg: PackageDetail }>();
+// Related articles on an app page (WP17): published articles that cover this app, newest first; casks and
+// link apps alike (T3).
+const props = defineProps<{ pkg: PackagePage }>();
 
 const { t } = useI18n();
 const items = computed(() => props.pkg.articles ?? []);

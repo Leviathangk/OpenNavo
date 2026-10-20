@@ -11,8 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct LocalizedText(pub std::collections::HashMap<Locale, String>);
 impl<'de> Deserialize<'de> for LocalizedText {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let values =
-            std::collections::HashMap::<Locale, Option<String>>::deserialize(deserializer)?;
+        let values = app_locale_map::<_, Option<String>>(deserializer)?;
         Ok(Self(
             values
                 .into_iter()
@@ -20,6 +19,38 @@ impl<'de> Deserialize<'de> for LocalizedText {
                 .collect(),
         ))
     }
+}
+
+// The content API can add website languages independently of the desktop UI. Ignore unsupported
+// map keys before deserializing their values; known app languages still receive full validation.
+pub(crate) fn app_locale_map<'de, D, T>(
+    deserializer: D,
+) -> Result<std::collections::HashMap<Locale, T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::de::DeserializeOwned,
+{
+    let values = std::collections::HashMap::<String, serde_json::Value>::deserialize(deserializer)?;
+    values
+        .into_iter()
+        .filter_map(|(code, value)| {
+            serde_json::from_value::<Locale>(serde_json::Value::String(code))
+                .ok()
+                .map(|locale| {
+                    serde_json::from_value(value)
+                        .map(|value| (locale, value))
+                        .map_err(serde::de::Error::custom)
+                })
+        })
+        .collect()
+}
+
+// Website-only source languages use the existing English fallback on the six-language client.
+pub(crate) fn app_source_locale<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Locale, D::Error> {
+    let code = String::deserialize(deserializer)?;
+    Ok(serde_json::from_value(serde_json::Value::String(code)).unwrap_or(Locale::EnUs))
 }
 impl LocalizedText {
     pub fn get(&self, locale: Locale) -> Option<&String> {
@@ -59,7 +90,11 @@ pub struct CatalogItem {
     pub bundle_ids: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub link: Option<crate::catalog::links::LinkInfo>,
-    #[serde(default = "default_source_locale")]
+    #[serde(
+        default = "default_source_locale",
+        deserialize_with = "app_source_locale"
+    )]
+    #[specta(type = Locale)]
     pub source_locale: Locale,
     pub kind: Kind,
     pub token: String,

@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 import pytest
-from conftest import DOCUMENT, Backend, example, resolve
+from conftest import DOCUMENT, Backend, example, execution_args, resolve
 from fastmcp import Client
 
 from opennavo_mcp.contracts import OPERATIONS, snake
@@ -11,7 +11,9 @@ from opennavo_mcp.tools.manifest import RESOURCE_PERMISSIONS, TOOLS, ToolSpec
 
 def arguments(spec: ToolSpec) -> dict[str, Any]:
     if spec.name == "asset_upload_from_url":
-        return {"url": "https://example.com/icon.png", "kind": "icon", "dry_run": True}
+        return execution_args(
+            spec.name, {"url": "https://example.com/icon.png", "kind": "icon", "dry_run": True}
+        )
     operation = OPERATIONS[spec.operations[0]]
     raw = DOCUMENT["paths"][operation["path"]][operation["method"].lower()]
     args: dict[str, Any] = {}
@@ -32,7 +34,7 @@ def arguments(spec: ToolSpec) -> dict[str, Any]:
         args = {"url": "https://example.com/icon.png", "kind": "icon"}
     if spec.write:
         args["dry_run"] = True
-    return args
+    return execution_args(spec.name, args)
 
 
 @pytest.mark.parametrize("spec", TOOLS, ids=lambda spec: spec.name)

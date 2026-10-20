@@ -16,7 +16,7 @@ pub struct SnapshotCategory {
     pub parent: Option<String>,
     #[serde(default)]
     pub name: LocalizedText,
-    #[serde(default = "category_source")]
+    #[serde(default = "category_source", deserialize_with = "app_source_locale")]
     pub source_locale: Locale,
     pub icon: String,
     pub sort: i32,
@@ -45,7 +45,7 @@ pub struct SnapshotInfo {
     pub sha256: String,
     pub bytes: u64,
     pub created_at: String,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "app_locale_map")]
     pub text_packs: HashMap<Locale, v2::TextPackInfo>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,8 +65,17 @@ pub struct Changes {
     pub has_more: bool,
     #[serde(default)]
     pub categories: Option<Vec<SnapshotCategory>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "optional_category_names")]
     pub category_names: Option<HashMap<Locale, HashMap<String, String>>>,
+}
+type CategoryNames = HashMap<Locale, HashMap<String, String>>;
+
+fn optional_category_names<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<CategoryNames>, D::Error> {
+    #[derive(Deserialize)]
+    struct Names(#[serde(deserialize_with = "app_locale_map")] CategoryNames);
+    Option::<Names>::deserialize(deserializer).map(|value| value.map(|names| names.0))
 }
 #[derive(Deserialize)]
 pub struct Response<T> {

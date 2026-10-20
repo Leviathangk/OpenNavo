@@ -3,7 +3,7 @@ import { ApiError, unwrap } from '@opennavo/api';
 import { formatDate } from '@opennavo/shared';
 import { OnAppRow, OnBreadcrumb, OnErrorState, OnMarkdownView } from '@opennavo/ui';
 import type { RenderedArticle } from '@opennavo/ui/markdown';
-import { hreflangsFor } from '~/utils/indexing';
+import { hreflangsFor } from '~~/shared/utils/hreflang';
 import { packagePath } from '~/utils/packageView';
 import {
   ARTICLE_SLUG,
@@ -114,6 +114,7 @@ const ogPaths = article.value
 const shareImage = useState(`article-og:${slug.value}:${locale.value}`, () => ogPaths[0] ?? '');
 
 type ArticleInput = NonNullable<Parameters<typeof defineArticle>[0]>;
+const canonical = useCanonicalUrl();
 useSchemaOrg(
   computed(() => {
     const value = article.value;
@@ -126,18 +127,29 @@ useSchemaOrg(
     };
     const items = roundupItems(value, cardTokens.value, context);
     return [
-      defineArticle(blogPostingNode(value, context) as ArticleInput),
-      ...(items ? [defineItemList({ itemListElement: items })] : [])
+      defineArticle({
+        ...(blogPostingNode(value, context) as ArticleInput),
+        '@id': `${canonical.value}#article`,
+        mainEntityOfPage: { '@id': `${canonical.value}#webpage` }
+      } as ArticleInput),
+      ...(items ? [defineItemList({ '@id': `${canonical.value}#list`, itemListElement: items })] : [])
     ];
   })
 );
+// T4: the page's WebPage has the article as its main entity.
+usePageSchema(() => ({
+  mainEntity: article.value ? `${canonical.value}#article` : undefined,
+  dateModified: article.value?.updatedAt
+}));
 
 const hreflangs = useState<string[] | null>('page:hreflangs', () => null);
+let ownedHreflangs: string[] | null = null;
 watchEffect(() => {
-  hreflangs.value = article.value ? hreflangsFor(article.value.availableLocales) : withdrawn.value ? [] : null;
+  ownedHreflangs = article.value ? hreflangsFor(article.value.availableLocales) : withdrawn.value ? [] : null;
+  hreflangs.value = ownedHreflangs;
 });
 onUnmounted(() => {
-  hreflangs.value = null;
+  if (toRaw(hreflangs.value) === ownedHreflangs) hreflangs.value = null;
 });
 
 usePageSeo({

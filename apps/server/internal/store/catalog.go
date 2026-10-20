@@ -15,15 +15,17 @@ import (
 )
 
 type CatalogRow struct {
-	ID                                                int64
-	Kind, Token, RawHash, Version, DescEn, I18nStatus string
-	RemovedAt                                         *time.Time
-	NormalizationVersion                              string
+	ID                                                     int64
+	Kind, Token, Tap, RawHash, Version, DescEn, I18nStatus string
+	RemovedAt                                              *time.Time
+	NormalizationVersion                                   string
 }
 type CatalogMutation struct {
 	Package     homebrew.Package
 	Previous    *CatalogRow
 	RenamedFrom string
+	// Local normalization is not a successful observation of upstream data.
+	LocalOnly bool
 }
 
 func (s *Store) WithAdvisoryLock(ctx context.Context, key string, fn func(context.Context) error) (result error) {
@@ -56,7 +58,7 @@ func (s *Store) CatalogRows(ctx context.Context, kind string) (map[string]*Catal
 	var rows []CatalogRow
 	// The kind/token unique index locates the type; read only hashes and change-detection fields instead of loading all raw JSON into memory.
 	// Casks from third-party taps belong to the tap sync, so the official feed never removes or renames them.
-	err := s.DB.WithContext(ctx).Raw("SELECT p.id,p.kind,p.token,p.raw_hash,p.version,coalesce(p.desc_en,'') AS desc_en,p.removed_at,coalesce(i.status,'') AS i18n_status,coalesce(p.dependencies->>'normalizationVersion','') AS normalization_version FROM packages p LEFT JOIN package_i18n i ON i.package_id=p.id AND i.locale='zh-CN' WHERE p.kind=? AND "+OfficialTapSQL, kind).Scan(&rows).Error
+	err := s.DB.WithContext(ctx).Raw("SELECT p.id,p.kind,p.token,p.tap,p.raw_hash,p.version,coalesce(p.desc_en,'') AS desc_en,p.removed_at,coalesce(i.status,'') AS i18n_status,coalesce(p.dependencies->>'normalizationVersion','') AS normalization_version FROM packages p LEFT JOIN package_i18n i ON i.package_id=p.id AND i.locale='zh-CN' WHERE p.kind=? AND "+OfficialTapSQL, kind).Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("load catalog rows: %w", err)
 	}
@@ -70,7 +72,7 @@ func (s *Store) CatalogRows(ctx context.Context, kind string) (map[string]*Catal
 // CatalogRow loads the change-detection fields of one package whatever its tap; nil when the token is unused.
 func (s *Store) CatalogRow(ctx context.Context, kind, token string) (*CatalogRow, error) {
 	var rows []CatalogRow
-	err := s.DB.WithContext(ctx).Raw("SELECT p.id,p.kind,p.token,p.raw_hash,p.version,coalesce(p.desc_en,'') AS desc_en,p.removed_at,'' AS i18n_status,coalesce(p.dependencies->>'normalizationVersion','') AS normalization_version FROM packages p WHERE p.kind=? AND p.token=?", kind, token).Scan(&rows).Error
+	err := s.DB.WithContext(ctx).Raw("SELECT p.id,p.kind,p.token,p.tap,p.raw_hash,p.version,coalesce(p.desc_en,'') AS desc_en,p.removed_at,'' AS i18n_status,coalesce(p.dependencies->>'normalizationVersion','') AS normalization_version FROM packages p WHERE p.kind=? AND p.token=?", kind, token).Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("load catalog row: %w", err)
 	}
@@ -179,12 +181,24 @@ func (s *Store) ApplyCatalogBatchWithLifecycle(ctx context.Context, mutations []
 			arguments = append(arguments, catalogValues(mutation.Package)...)
 		}
 		query := "INSERT INTO packages (" + strings.Join(catalogColumns, ",") + ") VALUES " + strings.Join(groups, ",") + " ON CONFLICT (kind,token) DO UPDATE SET " + strings.Join(updates, ",") + " RETURNING id,token"
+		observed := []HomebrewConfirmation{}
+		for _, mutation := range mutations {
+			if !mutation.LocalOnly && mutation.Package.Kind == "cask" {
+				observed = append(observed, HomebrewConfirmation{mutation.Package.Token, mutation.Package.Tap, mutation.Package.RawHash})
+			}
+		}
+		if err := freezeHomebrewVersionConfirmations(ctx, tx, observed); err != nil {
+			return err
+		}
 		var inserted []struct {
 			ID    int64
 			Token string
 		}
 		if err := tx.WithContext(ctx).Raw(query, arguments...).Scan(&inserted).Error; err != nil {
 			return fmt.Errorf("upsert catalog batch: %w", err)
+		}
+		if err := (&Store{DB: tx}).ConfirmHomebrewDefinitions(ctx, observed, now); err != nil {
+			return err
 		}
 		ids := map[string]int64{}
 		for _, row := range inserted {
@@ -247,7 +261,7 @@ func (s *Store) ApplyCatalogBatchWithLifecycle(ctx context.Context, mutations []
 				}
 			}
 			if item.ChineseName != "" {
-				if err := tx.WithContext(ctx).Exec("INSERT INTO package_i18n (package_id,locale,display_name,status,source) VALUES (?,'zh-CN',?,'machine','homebrew') ON CONFLICT (package_id,locale) DO UPDATE SET display_name=EXCLUDED.display_name,updated_at=now() WHERE package_i18n.source<>'human' AND package_i18n.status<>'manual'", id, item.ChineseName).Error; err != nil {
+				if err := tx.WithContext(ctx).Exec("INSERT INTO package_i18n (package_id,locale,display_name,status,source) VALUES (?,'zh-CN',?,'machine','homebrew') ON CONFLICT (package_id,locale) DO UPDATE SET display_name=EXCLUDED.display_name,updated_at=now() WHERE package_i18n.source<>'human' AND package_i18n.status<>'manual' AND package_i18n.display_name IS DISTINCT FROM EXCLUDED.display_name", id, item.ChineseName).Error; err != nil {
 					return fmt.Errorf("save Homebrew Chinese name: %w", err)
 				}
 			}
@@ -333,7 +347,7 @@ func (s *Store) DispatchOutbox(ctx context.Context, deliver func(context.Context
 				ID               int64
 				JobType, Payload string
 			}
-			if err := tx.WithContext(ctx).Raw("SELECT id,job_type,payload::text FROM job_outbox o WHERE job_type IN ('catalog:sync','analytics:sync','snapshot:build','translate:content','cleanup','assets:download-size','changelog:schedule','changelog:resolve','changelog:fetch','facts:sources','taps:sync','links:sync','update-feeds:verify') AND available_at<=? AND NOT EXISTS (SELECT 1 FROM packages p WHERE p.kind='formula' AND (p.id=(o.payload->>'packageId')::bigint OR p.id=(SELECT cs.package_id FROM changelog_sources cs WHERE cs.id=(o.payload->>'sourceId')::bigint))) ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED", dueBefore).Scan(&rows).Error; err != nil {
+			if err := tx.WithContext(ctx).Raw("SELECT id,job_type,payload::text FROM job_outbox o WHERE job_type IN ('catalog:sync','analytics:sync','snapshot:build','cleanup','assets:download-size','changelog:schedule','changelog:resolve','changelog:fetch','facts:sources','taps:sync','links:sync','update-feeds:verify') AND available_at<=? AND NOT EXISTS (SELECT 1 FROM packages p WHERE p.kind='formula' AND (p.id=(o.payload->>'packageId')::bigint OR p.id=(SELECT cs.package_id FROM changelog_sources cs WHERE cs.id=(o.payload->>'sourceId')::bigint))) ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED", dueBefore).Scan(&rows).Error; err != nil {
 				return fmt.Errorf("load job outbox: %w", err)
 			}
 			if len(rows) == 0 {

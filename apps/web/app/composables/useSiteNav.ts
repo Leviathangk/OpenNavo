@@ -10,13 +10,15 @@ export function useSiteNav() {
   const localePath = useLocalePath();
   const brewfile = useBrewfileList();
 
-  // App lists/details/search belong under Discover, matching desktop detail navigation.
+  // App details/search belong under Discover, matching desktop detail navigation. The full app list and
+  // the A–Z directory (T1) are All Apps; an app's own pages stay under Discover.
   const section = computed(() => {
     const path = route.path;
     const under = (target: string) => {
       const href = localePath(target);
       return path === href || path.startsWith(`${href}/`);
     };
+    if (path === localePath('/apps') || under('/browse')) return 'apps';
     for (const key of [
       'categories',
       'rankings',
@@ -49,6 +51,7 @@ export function useSiteNav() {
       label: t('nav.browse'),
       items: [
         item('discover', '/discover', 'lucide:compass'),
+        item('apps', '/apps', 'lucide:layers'),
         item('categories', '/categories', 'lucide:layout-grid'),
         item('rankings', '/rankings', 'lucide:chart-no-axes-column'),
         item('recent', '/recent', 'lucide:clock'),

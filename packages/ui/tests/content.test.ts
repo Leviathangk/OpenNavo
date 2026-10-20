@@ -199,10 +199,16 @@ describe('OnInstallCommand', () => {
   it('Copies the original wrapped command and restores the label after 1.5 seconds', async () => {
     const copy = vi.fn(async (_text: string) => {});
     const wrapper = mount(OnInstallCommand, { props: { command: 'brew install --cask visual-studio-code', copy } });
-    // Both parts are always rendered; the row width decides in CSS whether the tail wraps.
-    expect(wrapper.get('.on-command-head').text()).toBe('$ brew install --cask \\');
-    expect(wrapper.get('.on-command-tail').text()).toBe('visual-studio-code');
-    expect(wrapper.get('pre code').attributes('style')).toBe('--on-command-head: 21ch; --on-command-line: 40ch;');
+    // C7: the command is one complete text node, so it is extractable exactly as it runs; the "$ " prompt
+    // and the wrap's " \\" are drawn by CSS, and the row width decides there whether the tail wraps.
+    const code = wrapper.get('pre code');
+    const texts = Array.from(code.element.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
+    expect(texts.map(node => node.textContent)).toEqual(['brew install --cask visual-studio-code']);
+    expect(code.text()).toBe('brew install --cask visual-studio-code');
+    expect(code.classes()).toContain('on-command-split');
+    expect(code.get('.on-command-break').attributes('aria-hidden')).toBe('true');
+    expect(code.get('.on-command-break').text()).toBe('');
+    expect(code.attributes('style')).toBe('--on-command-head: 21ch; --on-command-line: 40ch;');
     await wrapper.get('button').trigger('click');
     await Promise.resolve();
     expect(copy).toHaveBeenCalledWith('brew install --cask visual-studio-code');
@@ -223,6 +229,10 @@ describe('OnInstallCommand', () => {
       props: { command: 'brew install --formula wget', title: '安装命令 · OpenNavo 实际执行的命令' }
     });
     expect(wrapper.text()).toContain('安装命令 · OpenNavo 实际执行的命令');
+    // Short commands stay on one unwrapped line with nothing but the command inside.
+    expect(wrapper.get('pre code').classes()).toContain('whitespace-pre');
+    expect(wrapper.find('.on-command-break').exists()).toBe(false);
+    expect(wrapper.get('pre code').element.textContent).toBe('brew install --formula wget');
     await wrapper.get('button').trigger('click');
     await Promise.resolve();
     await Promise.resolve();
@@ -422,10 +432,26 @@ describe('OnCollectionCard', () => {
     });
     expect(wrapper.findAll('.on-collection-icon')).toHaveLength(5);
     expect(wrapper.find('img[src="https://cdn.example.com/icons/raycast.png"]').exists()).toBe(true);
+    // T1: the title is the card's one link; "View all" is decoration only.
+    const links = wrapper.findAll('a');
+    expect(links).toHaveLength(1);
+    expect(wrapper.get('h3 a').attributes('href')).toBe('#/collections/new-mac');
     expect(wrapper.get('h3').text()).toBe('新 Mac 必装');
-    const link = wrapper.get('a');
-    expect(link.attributes('href')).toBe('#/collections/new-mac');
-    expect(link.text()).toBe('查看全部 15 款');
+    const label = wrapper.get('.on-collection-more');
+    expect(label.text()).toBe('查看全部 15 款');
+  });
+
+  it('Uses h2 titles in the collections list and native links without a router', async () => {
+    const { default: OnCollectionsView } = await import('../src/components/OnCollectionsView.vue');
+    const wrapper = mount(OnCollectionsView, {
+      props: {
+        title: '合集',
+        items: [{ key: 'new-mac', title: '新 Mac 必装', count: 3, icons: [], href: '/collections/new-mac' }]
+      }
+    });
+    expect(wrapper.get('h1').text()).toBe('合集');
+    expect(wrapper.get('h2 a').attributes('href')).toBe('/collections/new-mac');
+    expect(wrapper.find('h3').exists()).toBe(false);
   });
 });
 

@@ -1,5 +1,5 @@
 import type { SiteSettings } from '@opennavo/api';
-import { DEFAULT_CRAWLER_POLICY } from '@opennavo/shared';
+import { BRAND, DEFAULT_CRAWLER_POLICY, LOCALES } from '@opennavo/shared';
 
 export const SITE_SETTINGS_TTL_MS = 60_000;
 export const SITE_SETTINGS_RETRY_MS = 10_000;
@@ -12,7 +12,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     name: 'OpenNavo',
     alternateNames: [],
     logoUrl: '',
-    sameAs: ['https://github.com/opennavo/OpenNavo', 'https://x.com/opennavo']
+    sameAs: [BRAND.repository, 'https://x.com/opennavo']
   },
   verification: { google: '', bing: '' },
   analytics: {
@@ -24,7 +24,17 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   },
   edgeCache: { enabled: false },
   crawlers: DEFAULT_CRAWLER_POLICY,
-  pages: { titleTemplate: 'new', indexPolicy: { mode: 'shadow', scope: 'new', since: '' }, versionsSitemap: false }
+  pages: {
+    titleTemplate: 'new',
+    indexPolicy: { mode: 'shadow', scope: 'new', since: '' },
+    translationMode: 'shadow',
+    versionsMinNotesChars: 300,
+    // Non-entity pages open for indexing (L1): the six app languages until the new ones are ready.
+    openLocales: [...LOCALES],
+    intentPagesEnabled: false,
+    detailsRedirect: false,
+    versionsSitemap: false
+  }
 };
 
 // Keeps one copy per process. A stale copy is served while it refreshes in the background, so
@@ -33,13 +43,29 @@ export function createSiteSettingsCache(load: () => Promise<SiteSettings>, now: 
   let value: SiteSettings | undefined;
   let expires = 0;
   let pending: Promise<SiteSettings> | undefined;
+  const accept = (next: SiteSettings) => {
+    if (!value || next.revision >= value.revision) value = next;
+    expires = now() + SITE_SETTINGS_TTL_MS;
+    return value;
+  };
+  /**
+   * Drop the copy and load a fresh one now (S6: the API's settings invalidation). True once the new
+   * settings are in; false when the reload failed, so the caller keeps its notification and retries.
+   */
+  const reload = async (): Promise<boolean> => {
+    expires = 0;
+    try {
+      accept(await load());
+      return true;
+    } catch {
+      return false;
+    }
+  };
   const refresh = () =>
     (pending ??= load()
       .then(
         next => {
-          value = next;
-          expires = now() + SITE_SETTINGS_TTL_MS;
-          return next;
+          return accept(next);
         },
         () => {
           expires = now() + SITE_SETTINGS_RETRY_MS;
@@ -49,23 +75,35 @@ export function createSiteSettingsCache(load: () => Promise<SiteSettings>, now: 
       .finally(() => {
         pending = undefined;
       }));
-  return async (): Promise<SiteSettings> => {
+  const get = async (): Promise<SiteSettings> => {
     if (expires > now()) return value ?? DEFAULT_SITE_SETTINGS;
     if (!value) return refresh();
     void refresh();
     return value;
   };
+  return Object.assign(get, { reload });
 }
 
-let cached: (() => Promise<SiteSettings>) | undefined;
+let cached: ReturnType<typeof createSiteSettingsCache> | undefined;
 
-export function getSiteSettings(): Promise<SiteSettings> {
+function settingsCache() {
   cached ??= createSiteSettingsCache(async () => {
     const config = useRuntimeConfig();
     const base = (config.apiBaseInternal || config.public.apiBase).replace(/\/$/, '');
-    const response = await $fetch<{ data: SiteSettings }>(`${base}/site/settings`, { timeout: 3000 });
+    const response = await $fetch<{ data: SiteSettings }>(`${base}/site/settings`, {
+      timeout: 3000
+    });
     if (!response?.data?.crawlers) throw new Error('invalid site settings response');
     return response.data;
   });
-  return cached();
+  return cached;
+}
+
+export function getSiteSettings(): Promise<SiteSettings> {
+  return settingsCache()();
+}
+
+/** Acknowledges invalidation only after a successful API load, including cold starts. */
+export function reloadSiteSettings(): Promise<boolean> {
+  return settingsCache().reload();
 }

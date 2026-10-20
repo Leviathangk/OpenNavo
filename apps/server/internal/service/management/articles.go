@@ -72,6 +72,16 @@ func patchArticleDraft(d store.ArticleDraft, fields map[string]json.RawMessage, 
 		*target = value
 		return nil
 	}
+	if raw, ok := fields["claims"]; ok {
+		if json.Unmarshal(raw, &d.Claims) != nil || !articles.ValidClaims(d.Claims) {
+			return d, domain.Validation()
+		}
+	}
+	if raw, ok := fields["target"]; ok {
+		if json.Unmarshal(raw, &d.Target) != nil || d.Target != nil && !d.Target.Valid() {
+			return d, domain.Validation()
+		}
+	}
 	if raw, ok := fields["sourceLocale"]; ok {
 		var locale string
 		if json.Unmarshal(raw, &locale) != nil || !i18n.Valid(locale) {
@@ -164,7 +174,7 @@ func checkArticleReferences(ctx context.Context, st *store.Store, d store.Articl
 	}
 	if len(d.Packages) > 0 {
 		var count int64
-		if err := st.DB.WithContext(ctx).Table("packages").Where("id IN ? AND kind='cask' AND removed_at IS NULL", d.Packages).Count(&count).Error; err != nil {
+		if err := st.DB.WithContext(ctx).Table("packages").Where("id IN ? AND kind IN ('cask','link') AND removed_at IS NULL", d.Packages).Count(&count).Error; err != nil {
 			return err
 		}
 		if int(count) != len(d.Packages) {
@@ -285,7 +295,7 @@ func (s *Service) articleWrite(ctx context.Context, in Input, op string, fn func
 	if err != nil {
 		return nil, store.MapAdminError(err)
 	}
-	if s.Store.Redis != nil && len(pages) > 0 {
+	if s.Store.Redis != nil && len(pages) > 0 && !agentTransaction(ctx) {
 		if err := cache.PublishInvalidation(ctx, s.Store.Redis, store.ArticleCachePatterns(pages)...); err != nil {
 			return nil, err
 		}
@@ -293,7 +303,7 @@ func (s *Service) articleWrite(ctx context.Context, in Input, op string, fn func
 	return result, nil
 }
 
-var publicArticleOps = map[string]bool{"PublishArticle": true, "WithdrawArticle": true, "RestoreArticle": true, "SetArticleSlug": true, "SetArticleLocale": true}
+var publicArticleOps = map[string]bool{"PublishArticle": true, "WithdrawArticle": true, "RestoreArticle": true, "SetArticleSlug": true, "SetArticleLocale": true, "RevertArticle": true}
 
 func jsonID(id int64) string {
 	data, _ := json.Marshal(id)
@@ -380,6 +390,9 @@ func (s *Service) saveWorkingDraft(ctx context.Context, st *store.Store, article
 }
 
 func normalizeDraft(d store.ArticleDraft) store.ArticleDraft {
+	if d.Claims == nil {
+		d.Claims = []articles.Claim{}
+	}
 	if d.Sources == nil {
 		d.Sources = []articles.Source{}
 	}
@@ -412,7 +425,7 @@ func (s *Service) createArticle(ctx context.Context, in Input) (any, error) {
 		}
 	}
 	draft, err := patchArticleDraft(store.ArticleDraft{Sources: []articles.Source{}, Packages: []int64{}}, fields,
-		"sourceLocale", "type", "title", "summary", "bodyMarkdown", "testNote", "seoTitle", "seoDescription", "authorId", "coverAssetId", "coverAlt", "sources", "packageIds")
+		"sourceLocale", "type", "title", "summary", "bodyMarkdown", "testNote", "seoTitle", "seoDescription", "authorId", "coverAssetId", "coverAlt", "sources", "packageIds", "claims", "target")
 	if err != nil {
 		return nil, err
 	}
@@ -432,6 +445,11 @@ func (s *Service) createArticle(ctx context.Context, in Input) (any, error) {
 		if err := checkArticleReferences(ctx, st, draft); err != nil {
 			return 0, "", err
 		}
+		if draft.Target != nil || domain.CurrentOperation(ctx).AgentClientID > 0 {
+			if err := s.reserveArticleTarget(ctx, st, slug, draft); err != nil {
+				return 0, "", err
+			}
+		}
 		id, err := st.CreateArticleRecord(ctx, slug, key)
 		if err != nil {
 			return 0, "", err
@@ -449,7 +467,7 @@ func (s *Service) updateArticle(ctx context.Context, op string, in Input) (any, 
 	if err != nil {
 		return nil, err
 	}
-	allowed := []string{"sourceLocale", "type", "title", "summary", "bodyMarkdown", "testNote", "seoTitle", "seoDescription", "authorId", "coverAssetId", "coverAlt", "sources"}
+	allowed := []string{"sourceLocale", "type", "title", "summary", "bodyMarkdown", "testNote", "seoTitle", "seoDescription", "authorId", "coverAssetId", "coverAlt", "sources", "claims", "target"}
 	action := "update"
 	if op == "SetArticlePackages" {
 		allowed = []string{"packageIds"}
@@ -469,6 +487,11 @@ func (s *Service) updateArticle(ctx context.Context, op string, in Input) (any, 
 		next, err := patchArticleDraft(current, fields, allowed...)
 		if err != nil {
 			return 0, "", err
+		}
+		if next.Target != nil {
+			if err := s.reserveArticleTarget(ctx, st, article.Slug, next); err != nil {
+				return 0, "", err
+			}
 		}
 		err = s.saveWorkingDraft(ctx, st, article, next, action, nil)
 		return article.ID, "update", err
@@ -504,11 +527,39 @@ func (s *Service) revertArticle(ctx context.Context, in Input) (any, error) {
 		if err != nil {
 			return 0, "", err
 		}
+		meta, err := st.ArticleRevisionMeta(ctx, revisionID)
+		if err != nil {
+			return 0, "", err
+		}
+		if meta.PublishedAt != nil {
+			if !domain.CurrentOperation(ctx).Allowed("content:article:publish") {
+				return 0, "", fail(domain.CodeForbidden)
+			}
+			if err := s.validateArticlePublication(ctx, st, article, revisionID, old); err != nil {
+				return 0, "", err
+			}
+			// Restore the actual live revision and language state, preserving its original
+			// publication date. The discarded draft never reaches the public pointer.
+			update := map[string]any{"working_revision_id": revisionID, "published_revision_id": revisionID, "status": "published", "archived_at": nil}
+			if article.PublishedRevisionID != nil {
+				current, err := st.ArticleRevisionMeta(ctx, *article.PublishedRevisionID)
+				if err != nil {
+					return 0, "", err
+				}
+				if current.ContentHash != meta.ContentHash {
+					update["content_updated_at"] = time.Now().UTC()
+				}
+			}
+			if err := st.TouchArticle(ctx, article.ID, update); err != nil {
+				return 0, "", err
+			}
+			return article.ID, "update", st.ArticleEvent(ctx, article.ID, number, "revert", map[string]any{"from": number, "published": true})
+		}
 		// Apps removed from the catalog since then cannot come back.
 		live := []int64{}
 		for _, id := range old.Packages {
 			var ok bool
-			if err := st.DB.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM packages WHERE id=? AND kind='cask' AND removed_at IS NULL)", id).Scan(&ok).Error; err != nil {
+			if err := st.DB.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM packages WHERE id=? AND kind IN ('cask','link') AND removed_at IS NULL)", id).Scan(&ok).Error; err != nil {
 				return 0, "", err
 			}
 			if ok {
@@ -611,6 +662,9 @@ func (s *Service) publishArticle(ctx context.Context, in Input) (any, error) {
 		if len(problems) > 0 {
 			return 0, "", domain.Validation()
 		}
+		if err := s.validateArticlePublication(ctx, st, article, working.ID, draft); err != nil {
+			return 0, "", err
+		}
 		substantive := true
 		if article.PublishedRevisionID != nil {
 			previous, err := st.ArticleRevisionMeta(ctx, *article.PublishedRevisionID)
@@ -664,6 +718,18 @@ func (s *Service) withdrawArticle(ctx context.Context, op string, in Input) (any
 		action, from, to, archivedAt := "withdraw", "published", "archived", any(time.Now().UTC())
 		if op == "RestoreArticle" {
 			action, from, to, archivedAt = "restore", "archived", "published", nil
+		}
+		if op == "RestoreArticle" {
+			if article.PublishedRevisionID == nil {
+				return 0, "", fail(domain.CodeInvalidState)
+			}
+			d, err := st.LoadArticleDraft(ctx, *article.PublishedRevisionID)
+			if err != nil {
+				return 0, "", err
+			}
+			if err := s.validateArticlePublication(ctx, st, article, *article.PublishedRevisionID, d); err != nil {
+				return 0, "", err
+			}
 		}
 		if article.Status != from {
 			return 0, "", fail(domain.CodeInvalidState)
@@ -722,6 +788,29 @@ func (s *Service) setArticleSlug(ctx context.Context, in Input) (any, error) {
 		}
 		if err := st.DB.WithContext(ctx).Exec("DELETE FROM article_slug_aliases WHERE slug=? AND article_id=?", slug, article.ID).Error; err != nil {
 			return 0, "", err
+		}
+		for _, rid := range []int64{article.WorkingRevisionID, func() int64 {
+			if article.PublishedRevisionID != nil {
+				return *article.PublishedRevisionID
+			}
+			return 0
+		}()} {
+			if rid == 0 {
+				continue
+			}
+			d, err := st.LoadArticleDraft(ctx, rid)
+			if err != nil {
+				return 0, "", err
+			}
+			if d.Target == nil {
+				continue
+			}
+			if err := st.DB.WithContext(ctx).Exec("UPDATE seo_targets SET target_url=? WHERE entity_key=? AND intent=? AND locale=? AND target_url=?", articleTargetURL(s.Config.WebBaseURL, d.SourceLocale, slug), d.Target.EntityKey, d.Target.Intent, d.SourceLocale, articleTargetURL(s.Config.WebBaseURL, d.SourceLocale, article.Slug)).Error; err != nil {
+				return 0, "", err
+			}
+			if err := s.reserveArticleTarget(ctx, st, slug, d); err != nil {
+				return 0, "", err
+			}
 		}
 		if err := st.TouchArticle(ctx, article.ID, map[string]any{"slug": slug}); err != nil {
 			return 0, "", err
@@ -816,10 +905,11 @@ func (s *Service) articleView(ctx context.Context, st *store.Store, id int64) (m
 			return nil, err
 		}
 		published = map[string]any{"number": meta.Number, "publishedAt": meta.PublishedAt}
+		siteLanguages, _ := json.Marshal(i18n.SiteLocales)
 		rows, err := st.JSONRows(ctx, `SELECT jsonb_build_object('locale',l.code,'status',COALESCE(i.status,'missing'),'withheld',COALESCE(i.withheld,false),'source',l.code=r.source_locale,
  'failReason',i.fail_reason,'translatedAt',i.translated_at) AS data
- FROM article_revisions r CROSS JOIN unnest(ARRAY['en-US','zh-CN','ja-JP','es-ES','pt-BR','ru-RU']) WITH ORDINALITY AS l(code,position)
- LEFT JOIN article_revision_i18n i ON i.revision_id=r.id AND i.locale=l.code WHERE r.id=? ORDER BY l.position`, *article.PublishedRevisionID)
+ FROM article_revisions r CROSS JOIN jsonb_array_elements_text(?::jsonb) WITH ORDINALITY AS l(code,position)
+ LEFT JOIN article_revision_i18n i ON i.revision_id=r.id AND i.locale=l.code WHERE r.id=? ORDER BY l.position`, string(siteLanguages), *article.PublishedRevisionID)
 		if err != nil {
 			return nil, err
 		}
@@ -884,7 +974,7 @@ func articleImages(ctx context.Context, st *store.Store, scan articles.Scan) ([]
 func (s *Service) articleRevisionView(ctx context.Context, st *store.Store, revisionID int64) (map[string]any, error) {
 	rows, err := st.JSONRows(ctx, `SELECT jsonb_build_object('number',r.number,'sourceLocale',r.source_locale,'type',r.type,'authorId',r.author_id,
  'author',(SELECT jsonb_build_object('id',a.id,'slug',a.slug,'name',a.name) FROM article_authors a WHERE a.id=r.author_id),
- 'coverAssetId',r.cover_asset_id,'coverUrl',ca.url,'coverAlt',r.cover_alt,'sources',r.sources,
+ 'claims',r.claims,'claimEvidence',r.claim_evidence,'target',r.seo_target,'coverAssetId',r.cover_asset_id,'coverUrl',ca.url,'coverAlt',r.cover_alt,'sources',r.sources,
  'packages',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'token',p.token,'name',p.name,'displayName',COALESCE(NULLIF(si.display_name,''),p.name),'iconUrl',ia.url) ORDER BY rp.sort)
    FROM article_revision_packages rp JOIN packages p ON p.id=rp.package_id LEFT JOIN package_meta m ON m.package_id=p.id LEFT JOIN assets ia ON ia.id=m.icon_asset_id
    LEFT JOIN package_i18n si ON si.package_id=p.id AND si.locale=p.source_locale WHERE rp.revision_id=r.id),'[]'::jsonb),

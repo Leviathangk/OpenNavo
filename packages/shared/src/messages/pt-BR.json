@@ -172,5 +172,10 @@
     "noResultsDescription": "Tente o nome em inglês ou o pinyin, ou conte para nós o que gostaria de ver no catálogo.",
     "offlineTitle": "Offline",
     "offlineDescription": "Exibindo o catálogo em cache local. Ele será atualizado automaticamente quando houver conexão."
+  },
+  "languageSuggestion": {
+    "message": "Gostaria de navegar em {language}?",
+    "switch": "Mudar para {language}",
+    "dismiss": "Não sugerir novamente"
   }
 }

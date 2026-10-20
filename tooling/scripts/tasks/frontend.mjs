@@ -56,6 +56,7 @@ export function runTask(task) {
     case 'lint':
       run('node', ['tooling/scripts/check-interface-i18n.mjs']);
       run('node', ['tooling/scripts/check-hardcoded-i18n.mjs']);
+      run('node', ['tooling/scripts/sync-brand-readme.mjs', '--check']);
       run('pnpm', ['run', 'format:check']);
       run('pnpm', [...workspace, 'lint']);
       run('pnpm', [...workspace, 'typecheck']);
@@ -63,7 +64,12 @@ export function runTask(task) {
       run('cargo', ['clippy', '--all-targets', '--', '-D', 'warnings'], tauriDirectory);
       return;
     case 'test':
-      run('node', ['--test', 'tooling/scripts/check-hardcoded-i18n.test.mjs', 'apps/web/scripts/og-font.test.mjs']);
+      run('node', [
+        '--test',
+        'tooling/scripts/check-hardcoded-i18n.test.mjs',
+        'tooling/scripts/sync-brand-readme.test.mjs',
+        'apps/web/scripts/og-font.test.mjs'
+      ]);
       run('pnpm', [...workspace, 'test']);
       run('cargo', ['test'], tauriDirectory);
       return;

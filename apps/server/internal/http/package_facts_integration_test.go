@@ -33,7 +33,7 @@ import (
 
 func TestPackageFactsEvidenceRevisionsAndPublicRead(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	data, err := seeds.Load()
 	require.NoError(t, err)
 	hash, err := seed.HashPassword("isolated-test-password")
@@ -217,6 +217,21 @@ func TestPackageFactsEvidenceRevisionsAndPublicRead(t *testing.T) {
 	page, _ = call("GET", "/packages?gaps=price&size=50", nil, "0000")
 	require.False(t, containsToken(page, "editor"))
 	require.True(t, containsToken(page, "lite-editor"))
+
+	// Dimensioned facts use the same strict HTTP, transaction, audit and dry-run paths.
+	checked := time.Now().UTC()
+	observation := map[string]any{"kind": "price", "key": "us-pro", "value": map[string]any{"region": "US", "edition": "Pro", "period": "one_time", "usage": "paid", "downloadFree": true, "amount": "19.99", "currency": "USD", "purchaseUrl": "https://vendor.example/buy", "channel": "vendor"}, "evidence": map[string]any{"sourceUrl": "https://vendor.example/pricing", "checkedAt": checked.Format(time.RFC3339Nano), "validUntil": checked.Add(time.Hour).Format(time.RFC3339Nano), "status": "verified"}}
+	request := map[string]any{"items": []any{observation}}
+	call("PUT", base+"/fact-records?dryRun=true", request, "0000")
+	records, _ := call("GET", base+"/fact-records", nil, "0000")
+	require.Empty(t, records["items"])
+	records, _ = call("PUT", base+"/fact-records", request, "0000")
+	require.Len(t, records["items"], 1)
+	require.Len(t, *detail().Facts.Offers, 1)
+	observation["value"].(map[string]any)["unsafeCommand"] = "fixture-invalid"
+	call("PUT", base+"/fact-records", request, "1001")
+	records, _ = call("GET", base+"/fact-records", nil, "0000")
+	require.Len(t, records["items"], 1)
 }
 
 func containsToken(page map[string]any, token string) bool {

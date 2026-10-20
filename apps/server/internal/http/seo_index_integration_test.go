@@ -17,6 +17,7 @@ import (
 
 	"github.com/opennavo/opennavo/server/gen/adminapi"
 	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 	httpserver "github.com/opennavo/opennavo/server/internal/http"
@@ -34,7 +35,7 @@ import (
 
 func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	data, err := seeds.Load()
 	require.NoError(t, err)
 	hash, err := seed.HashPassword("isolated-test-password")
@@ -195,7 +196,7 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.Equal(t, true, forced["indexable"])
 	require.Equal(t, "Placeholder text is being written", forced["overrideReason"])
 	var queued int
-	require.NoError(t, st.DB.Raw("SELECT count(*) FROM job_outbox WHERE unique_key='cache:invalidate:seo-index:no-summary' AND payload::text LIKE '%c:pkg:c4:cask:no-summary:*%'").Scan(&queued).Error)
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM job_outbox WHERE unique_key='cache:invalidate:seo-index:no-summary' AND payload::text LIKE '%c:pkg:c5:cask:no-summary:*%'").Scan(&queued).Error)
 	require.Equal(t, 1, queued)
 	var changes []store.URLChange
 	require.NoError(t, st.DB.Raw("SELECT * FROM catalog_changes WHERE seq>?", changeCursor).Scan(&changes).Error)
@@ -242,9 +243,16 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.Len(t, apps["paused-app"], 6)
 	adminCall("PUT", path(goodID), map[string]any{"override": "auto"}, "0000")
 	require.Len(t, sitemap("apps")["good-app"], 6, "outside the new scope the long-standing rule applies")
-	var policyQueued int
-	require.NoError(t, st.DB.Raw("SELECT count(*) FROM job_outbox WHERE unique_key='cache:invalidate:seo-policy'").Scan(&policyQueued).Error)
-	require.Equal(t, 1, policyQueued)
+	// All setting changes share one durable invalidation, including policy changes.
+	var settingJobs []struct{ Payload json.RawMessage }
+	require.NoError(t, st.DB.Raw("SELECT payload FROM job_outbox WHERE unique_key='cache:invalidate:seo-settings' AND job_type='cache:invalidate'").Scan(&settingJobs).Error)
+	require.Len(t, settingJobs, 1, "repeated settings writes coalesce without losing the invalidation")
+	var patterns []string
+	require.NoError(t, json.Unmarshal(settingJobs[0].Payload, &patterns))
+	require.ElementsMatch(t, []string{cache.PackageDetailPrefix + "*", "c:rel:*", "c:dep:*", "c:home:*", "c:cat:*", "c:coll:*", "c:article:*", "c:author:*", "c:browse:*", "c:site:*"}, patterns)
+	var settingsRefresh int
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM content_url_changes WHERE '/'=ANY(paths) AND purge_sections AND NOT announce").Scan(&settingsRefresh).Error)
+	require.Equal(t, 2, settingsRefresh, "only the two effective policy changes queue settings/HTML refreshes")
 }
 
 func keys[V any](m map[string]V) []string {

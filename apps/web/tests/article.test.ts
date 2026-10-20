@@ -10,7 +10,7 @@ import {
   showUpdated
 } from '../app/utils/article';
 import type { Article, ArticleCard } from '../app/utils/article';
-import { hreflangsFor } from '../app/utils/indexing';
+import { hreflangsFor } from '../shared/utils/hreflang';
 import { feedLocale, renderFeed } from '../server/utils/articleFeed';
 
 const site = 'https://opennavo.example';

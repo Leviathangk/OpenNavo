@@ -94,12 +94,12 @@ func TestDefinitionsSchedulesAndRetryOptions(t *testing.T) {
 		"links:sync":    time.Date(2026, 10, 5, 3, 40, 0, 0, location),
 		"taps:sync":     time.Date(2026, 10, 5, 3, 20, 0, 0, location),
 	}
-	require.Len(t, Definitions, 13)
+	require.Len(t, Definitions, 20)
 	var types []string
 	for _, definition := range Definitions {
 		types = append(types, definition.Type)
 	}
-	require.ElementsMatch(t, []string{"catalog:sync", "analytics:sync", "snapshot:build", "translate:content", "changelog:schedule", "changelog:resolve", "changelog:fetch", "assets:download-size", "cleanup", "facts:sources", "taps:sync", "links:sync", "update-feeds:verify"}, types)
+	require.ElementsMatch(t, []string{"catalog:sync", "analytics:sync", "snapshot:build", "changelog:schedule", "changelog:resolve", "changelog:fetch", "assets:download-size", "cleanup", "facts:sources", "taps:sync", "links:sync", "update-feeds:verify", "seo:gsc", "seo:inspect", "seo:bing", "seo:audit", "seo:pages", "seo:experiments", "seo:opportunities", "seo:evaluate"}, types)
 	for taskType, want := range expected {
 		next, err := NextSchedule(taskType, now, location)
 		require.NoError(t, err)
@@ -137,7 +137,7 @@ func TestDefinitionsSchedulesAndRetryOptions(t *testing.T) {
 		}
 	}
 	require.Equal(t, 12, MainConfig().Concurrency)
-	require.Equal(t, map[string]int{"critical": 6, "default": 3, "llm": 2}, MainConfig().Queues)
+	require.Equal(t, map[string]int{"critical": 6, "default": 3}, MainConfig().Queues)
 	require.Equal(t, 4, FetchConfig().Concurrency)
 	require.Equal(t, map[string]int{"changelog": 1}, FetchConfig().Queues)
 	for _, example := range []struct {

@@ -1,12 +1,28 @@
 // App-page questions, pure for testing. Questions follow what people search for about a Mac app
 // (is it safe, is it free, how to remove it completely, does it run on Apple silicon, where it
-// keeps its data); answers are fixed sentences filled with facts from the Homebrew definition,
-// OpenNavo's install counts and the facts:sources job (GitHub license, Mac App Store listing). A
-// question without a page-specific fact is left out, so no two apps share a boilerplate answer.
-import type { PackageDetail } from '@opennavo/api';
+// keeps its data); answers are fixed sentences filled from the same facts model the page's blocks
+// show (T2): verified prices, the security facts, Homebrew's requirement rows and uninstall
+// declarations, the declared artifacts and the confirmed alternatives, plus Homebrew's own status,
+// OpenNavo's install counts and the Mac App Store listing. Only verified evidence answers a question;
+// a stale or disputed fact stays in its block with its date and gets no answer here. A question
+// without a page-specific fact is left out, so no two apps share a boilerplate answer. Link apps
+// (T3) never get a Homebrew command.
 import { formatDate, formatVersion } from '@opennavo/shared';
-import type { Locale } from '@opennavo/shared';
-import { evidenceLine, joinSentences, minimumOnly } from './appAnswer';
+import type { SiteLocale as Locale } from '@opennavo/shared';
+import { evidenceLine, joinSentences } from './appAnswer';
+import {
+  capabilities,
+  currentVersion,
+  homebrewRows,
+  isVerified,
+  macosRange,
+  priceAmount,
+  priceEdition,
+  priceRegionName,
+  verifiedIdentities,
+  verifiedPrices
+} from './packageFacts';
+import type { PackagePage } from './packageFacts';
 
 /** vue-i18n's t with an optional plural count. */
 export type FaqTranslate = (key: string, named?: Record<string, unknown>, plural?: number) => string;
@@ -32,7 +48,7 @@ export interface FaqItem {
 /** Collapsed questions take one line each; beyond this the list stops helping. */
 export const FAQ_LIMIT = 8;
 
-type Entry = NonNullable<PackageDetail['artifacts']['entries']>[number];
+type Entry = NonNullable<PackagePage['facts']['overview']['artifacts']['entries']>[number];
 type Stanza = Record<string, unknown>;
 
 const strings = (value: unknown): string[] =>
@@ -50,27 +66,34 @@ function stanzas(entries: Entry[] | undefined, type: 'uninstall' | 'zap'): Stanz
 
 const unique = (values: string[]) => [...new Set(values)];
 
-/** What `brew uninstall` does beyond moving the app to the Trash, read from the uninstall stanza. */
-export function uninstallSteps(pkg: Pick<PackageDetail, 'artifacts'>) {
-  const all = stanzas(pkg.artifacts.entries, 'uninstall');
-  const pick = (key: string) => unique(all.flatMap(stanza => strings(stanza[key])));
+/** Verified uninstall declarations of one phase and kind. */
+function declared(pkg: Pick<PackagePage, 'facts'>, phase: 'uninstall' | 'zap', kind: string): string[] {
+  return unique(
+    pkg.facts.uninstall
+      .filter(item => item.phase === phase && item.kind === kind && isVerified(item.evidence))
+      .map(item => item.value)
+  );
+}
+
+/** What `brew uninstall` does beyond moving the app to the Trash. */
+export function uninstallSteps(pkg: Pick<PackagePage, 'facts'>) {
+  // Quitting and kernel extensions are not part of the uninstall facts; the declaration still says them.
+  const stanza = stanzas(pkg.facts.overview.artifacts.entries, 'uninstall');
+  const pick = (key: string) => unique(stanza.flatMap(item => strings(item[key])));
   return {
     quits: pick('quit').length > 0,
-    services: pick('launchctl').length,
-    loginItems: pick('login_item').length,
-    helpers: pick('delete').filter(path => path.startsWith('/Library/PrivilegedHelperTools/')).length,
-    receipts: pick('pkgutil').length,
+    services: declared(pkg, 'uninstall', 'launchctl').length,
+    loginItems: declared(pkg, 'uninstall', 'login_item').length,
+    helpers: declared(pkg, 'uninstall', 'zap').filter(path => path.startsWith('/Library/PrivilegedHelperTools/'))
+      .length,
+    receipts: declared(pkg, 'uninstall', 'pkgutil').length,
     kexts: pick('kext').length
   };
 }
 
 /** Files and folders `brew uninstall --zap` removes. */
-export function zapPaths(pkg: Pick<PackageDetail, 'artifacts'>): string[] {
-  return unique(
-    stanzas(pkg.artifacts.entries, 'zap').flatMap(stanza =>
-      ['trash', 'delete', 'rmdir'].flatMap(key => strings(stanza[key]))
-    )
-  );
+export function zapPaths(pkg: Pick<PackagePage, 'facts'>): string[] {
+  return declared(pkg, 'zap', 'zap');
 }
 
 // Shared lists, crash reporters, logs and caches say nothing about where an app keeps its data.
@@ -78,12 +101,12 @@ const NOISE =
   /sharedfilelist|bugsnag|crashreporter|KSCrash|\.sfl\d?|\/Logs\/|\/Caches\/|\/Saved Application State\/|\/HTTPStorages\/|\/WebKit\/|\/Cookies\/|\/com\.apple\./i;
 
 /** The settings file and up to three data folders Homebrew lists for clean-up. */
-export function dataLocations(pkg: Pick<PackageDetail, 'artifacts'>): {
+export function dataLocations(pkg: Pick<PackagePage, 'facts'>): {
   settings?: string;
   folders: string[];
 } {
   const paths = zapPaths(pkg).filter(path => !/[*?[{]/.test(path) && !NOISE.test(path));
-  const quit = stanzas(pkg.artifacts.entries, 'uninstall')
+  const quit = stanzas(pkg.facts.overview.artifacts.entries, 'uninstall')
     .flatMap(stanza => strings(stanza.quit))[0]
     ?.toLowerCase();
   const plists = paths.filter(path => /^~\/Library\/Preferences\/[^/]+\.plist$/.test(path));
@@ -98,32 +121,51 @@ export function dataLocations(pkg: Pick<PackageDetail, 'artifacts'>): {
 
 export type ChipSupport = 'separate' | 'shared' | 'rosetta' | 'armOnly' | 'intelOnly';
 
-/** How Homebrew installs the current version on each chip; null when Homebrew does not say. */
-export function chipSupport(pkg: Pick<PackageDetail, 'supports' | 'platforms' | 'version'>): ChipSupport | null {
+/**
+ * How Homebrew installs the current version on each chip, from its verified requirement rows; null
+ * when Homebrew does not say, or when its declared chip support and the rows disagree. Any version
+ * counts for which chips it installs on; only the current version's downloads decide between separate
+ * and shared builds.
+ */
+export function chipSupport(
+  pkg: Pick<PackagePage, 'facts' | 'sourceUrl' | 'version' | 'supports'>
+): ChipSupport | null {
   const { supports } = pkg;
-  if (supports.status !== 'known' || (!supports.arm64 && !supports.x86_64)) return null;
-  if (!supports.arm64) return 'intelOnly';
-  if (supports.requiresRosetta) return 'rosetta';
-  if (!supports.x86_64) return 'armOnly';
-  const current = (pkg.platforms ?? []).filter(platform => platform.version === pkg.version);
-  if (current.some(platform => ['arm64', 'x86_64'].includes(platform.arch) && !platform.downloadUrl)) return null;
+  if (supports.status !== 'known') return null;
+  const rows = homebrewRows(pkg).filter(row => isVerified(row.evidence));
+  const on = (arch: string) => rows.filter(row => row.architectures.includes(arch));
+  const arm = on('arm64').length > 0;
+  const intel = on('x86_64').length > 0;
+  if (arm !== supports.arm64 || intel !== supports.x86_64) return null;
+  if (!arm) return intel ? 'intelOnly' : null;
+  if (on('arm64').some(row => row.appleSilicon === 'no')) return 'rosetta';
+  if (!intel) return 'armOnly';
+  const version = pkg.facts.overview.version || pkg.version;
+  const current = rows.filter(row => row.versions.includes(version));
+  if (current.some(row => !row.downloadUrl)) return null;
   const urls = (arch: string) =>
-    new Set(current.filter(platform => platform.arch === arch).map(platform => platform.downloadUrl));
-  const arm = urls('arm64');
-  const intel = urls('x86_64');
-  if (!arm.size || !intel.size) return null;
-  if ([...arm].every(url => !intel.has(url))) return 'separate';
+    new Set(current.filter(row => row.architectures.includes(arch)).map(row => row.downloadUrl));
+  const armUrls = urls('arm64');
+  const intelUrls = urls('x86_64');
+  if (!armUrls.size || !intelUrls.size) return null;
+  if ([...armUrls].every(url => !intelUrls.has(url))) return 'separate';
   // A missing download or partially overlapping variants do not prove one shared installer.
-  return arm.size === 1 && intel.size === 1 ? 'shared' : null;
+  return armUrls.size === 1 && intelUrls.size === 1 ? 'shared' : null;
 }
 
-// Language each page asks about, as Apple's lookup lists interface languages.
+// Language each page asks about, as Apple's lookup lists interface languages (ISO 639-1). Apple
+// writes one code for Chinese, so Simplified and Traditional pages both ask about ZH, which the
+// question words as "Chinese" in either script.
 const PAGE_LANGUAGE: Partial<Record<Locale, string>> = {
   'zh-CN': 'ZH',
+  'zh-Hant': 'ZH',
   'ja-JP': 'JA',
   'es-ES': 'ES',
   'pt-BR': 'PT',
-  'ru-RU': 'RU'
+  'ru-RU': 'RU',
+  'de-DE': 'DE',
+  'fr-FR': 'FR',
+  'it-IT': 'IT'
 };
 
 // Homebrew's lifecycle reason codes with their own wording; anything else is described generically.
@@ -156,13 +198,16 @@ const PLUGINS: Record<string, string> = {
 
 const MAX_TOOLS = 6;
 
-export function faqItems(pkg: PackageDetail, t: FaqTranslate, locale: Locale): FaqItem[] {
+export function faqItems(pkg: PackagePage, t: FaqTranslate, locale: Locale): FaqItem[] {
   const name = pkg.displayName;
   const token = pkg.token;
+  const facts = pkg.facts;
+  const artifacts = facts.overview.artifacts;
+  const can = capabilities(pkg);
   const code = (value: string) => `\`${value}\``;
   const list = (values: string[]) => new Intl.ListFormat(locale, { type: 'conjunction' }).format(values);
   // Steps read better in Chinese as a plain enumeration than with 和 before the last one.
-  const series = (values: string[]) => (locale === 'zh-CN' ? values.join('、') : list(values));
+  const series = (values: string[]) => (locale === 'zh-CN' || locale === 'zh-Hant' ? values.join('、') : list(values));
   const count = (value: number) => new Intl.NumberFormat(locale).format(value);
   const date = (value: string) => formatDate(value, { locale });
   // Abbreviated dates already end with a period ("14 окт."), so a sentence ending in one keeps one.
@@ -178,14 +223,15 @@ export function faqItems(pkg: PackageDetail, t: FaqTranslate, locale: Locale): F
 
   // Is it safe? Homebrew's own lifecycle, the checksum, where the file comes from and how many install it.
   const status = pkg.homebrewStatus;
-  if (pkg.tap === 'homebrew/cask' && status) {
+  if (can.homebrew && can.safety && pkg.tap === 'homebrew/cask' && status) {
     const reason = () => t(`package.faq.reasons.${REASONS.includes(status.reason ?? '') ? status.reason : 'other'}`);
-    const host = pkg.downloadUrl ? hostOf(pkg.downloadUrl) : '';
+    const download = facts.overview.downloadUrl;
+    const host = download ? hostOf(download) : '';
     const installs =
       pkg.installs.d30 > 0 && t('package.faq.safetyInstalls', { count: count(pkg.installs.d30) }, pkg.installs.d30);
-    const download =
+    const checksum =
       host &&
-      (pkg.downloadSha256 ? t('package.faq.safetyChecksum', { host }) : t('package.faq.safetyNoChecksum', { host }));
+      (facts.overview.sha256 ? t('package.faq.safetyChecksum', { host }) : t('package.faq.safetyNoChecksum', { host }));
     if (status.state === 'disabled')
       add(
         'safety',
@@ -203,48 +249,72 @@ export function faqItems(pkg: PackageDetail, t: FaqTranslate, locale: Locale): F
           status.state === 'deprecated'
             ? t('package.faq.safetyDeprecated', { name, reason: reason() })
             : t('package.faq.safetyListed', { name }),
-          download,
+          checksum,
           installs
         ])
       );
   }
 
-  // Is it free? Verified price evidence first; else the Mac App Store edition, marked as such.
-  if (pkg.price)
+  // Is it free? Verified vendor prices answer when they agree on how it is paid; otherwise the Mac App
+  // Store edition, marked as such. A free download is never read as free to use.
+  const prices = verifiedPrices(pkg);
+  const usages = unique(
+    prices.filter(price => price.channel === 'vendor' && price.usage !== 'unknown').map(price => price.usage)
+  );
+  const vendor =
+    usages.length === 1 ? prices.find(price => price.channel === 'vendor' && price.usage === usages[0]) : null;
+  const store = prices.find(price => price.channel === 'app_store' && price.amount != null && price.currency);
+  if (vendor && vendor.evidence.checkedAt)
     add(
       'price',
       t('package.faq.priceQ', { name }),
-      sentences([t(`package.faq.priceA.${pkg.price.type}`, { name }), evidenceLine(pkg.price, t, locale)])
+      sentences([
+        t(`package.faq.priceA.${vendor.usage}`, { name }),
+        // Keep every verified plan/region beside the general answer, never turn one plan into a global price.
+        ...prices
+          .filter(price => price.channel === 'vendor' && price.usage === vendor.usage)
+          .map(price =>
+            [priceEdition(price), priceRegionName(price.region, locale), priceAmount(price, t, locale)]
+              .filter(Boolean)
+              .join(' · ')
+          ),
+        evidenceLine({ sourceUrl: vendor.evidence.sourceUrl, verifiedAt: vendor.evidence.checkedAt }, t, locale)
+      ])
     );
-  else if (pkg.appStore) {
-    const store = pkg.appStore;
+  else if (!usages.length && store?.evidence.checkedAt) {
+    const listing = pkg.appStore && pkg.appStore.url === store.purchaseUrl ? pkg.appStore.name : name;
+    const amount = Number(store.amount);
     const price =
-      store.price === 0
-        ? t('package.faq.priceStoreFree', { store: store.name })
+      amount === 0
+        ? t('package.faq.priceStoreFree', { store: listing })
         : t('package.faq.priceStorePaid', {
-            store: store.name,
-            price: money(store.price, store.currency, locale),
+            store: listing,
+            price: money(amount, store.currency!, locale),
             region: regionName(store.region, locale)
           });
     add(
       'price',
       t('package.faq.priceQ', { name }),
-      sentences([price, t('package.faq.priceStoreNote'), appStoreSource(store.checkedAt, t, locale)])
+      sentences([
+        price,
+        can.homebrew && t('package.faq.priceStoreNote'),
+        appStoreSource(store.evidence.checkedAt, t, locale)
+      ])
     );
   }
 
-  // Is it open source? Only an OSI license GitHub recognized for a repository with code.
-  if (pkg.openSource)
+  // Is it open source? An OSI license GitHub recognized for a repository with code, still verified.
+  const repository = pkg.openSource;
+  const openIdentity = verifiedIdentities(pkg).some(
+    identity => identity.openSource === 'yes' && identity.repositoryUrl === repository?.url
+  );
+  if (repository && openIdentity)
     add(
       'openSource',
       t('package.faq.openSourceQ', { name }),
       sentences([
-        t('package.faq.openSourceA', {
-          name,
-          repo: pkg.openSource.repo,
-          license: pkg.openSource.license
-        }),
-        pkg.openSource.archived && t('package.faq.openSourceArchived')
+        t('package.faq.openSourceA', { name, repo: repository.repo, license: repository.license }),
+        repository.archived && t('package.faq.openSourceArchived')
       ])
     );
 
@@ -252,39 +322,53 @@ export function faqItems(pkg: PackageDetail, t: FaqTranslate, locale: Locale): F
   const steps = uninstallSteps(pkg);
   const zap = zapPaths(pkg);
   const locations = dataLocations(pkg);
-  const actions = [
-    steps.quits && t('package.faq.actions.quit'),
-    steps.services && t('package.faq.actions.services', { count: steps.services }, steps.services),
-    steps.loginItems && t('package.faq.actions.loginItems', { count: steps.loginItems }, steps.loginItems),
-    steps.helpers && t('package.faq.actions.helpers', { count: steps.helpers }, steps.helpers),
-    steps.receipts && t('package.faq.actions.receipts', { count: steps.receipts }, steps.receipts),
-    steps.kexts && t('package.faq.actions.kexts', { count: steps.kexts }, steps.kexts)
-  ].filter((value): value is string => Boolean(value));
-  const example = locations.folders[0] ?? locations.settings ?? zap.find(path => !/[*?[{]/.test(path));
-  add(
-    'uninstall',
-    t('package.faq.uninstallQ', { name }),
-    sentences([
-      t('package.faq.uninstallRun', { token }),
-      actions.length > 0 && t('package.faq.uninstallDoes', { actions: series(actions) }),
-      zap.length > 0 && t('package.faq.uninstallZap', { token }),
-      zap.length === 1 && example && t('package.faq.uninstallZapOne', { path: code(example) }),
-      zap.length > 1 &&
-        example &&
-        t('package.faq.uninstallZapMany', { count: zap.length, path: code(example) }, zap.length)
-    ])
-  );
+  if (can.homebrew) {
+    const actions = [
+      steps.quits && t('package.faq.actions.quit'),
+      steps.services && t('package.faq.actions.services', { count: steps.services }, steps.services),
+      steps.loginItems && t('package.faq.actions.loginItems', { count: steps.loginItems }, steps.loginItems),
+      steps.helpers && t('package.faq.actions.helpers', { count: steps.helpers }, steps.helpers),
+      steps.receipts && t('package.faq.actions.receipts', { count: steps.receipts }, steps.receipts),
+      steps.kexts && t('package.faq.actions.kexts', { count: steps.kexts }, steps.kexts)
+    ].filter((value): value is string => Boolean(value));
+    const example = locations.folders[0] ?? locations.settings ?? zap.find(path => !/[*?[{]/.test(path));
+    add(
+      'uninstall',
+      t('package.faq.uninstallQ', { name }),
+      sentences([
+        t('package.faq.uninstallRun', { token }),
+        actions.length > 0 && t('package.faq.uninstallDoes', { actions: series(actions) }),
+        zap.length > 0 && t('package.faq.uninstallZap', { token }),
+        zap.length > 0 && t('package.guide.zap'),
+        zap.length === 1 && example && t('package.faq.uninstallZapOne', { path: code(example) }),
+        zap.length > 1 &&
+          example &&
+          t('package.faq.uninstallZapMany', { count: zap.length, path: code(example) }, zap.length)
+      ])
+    );
+  }
 
-  // Apple silicon: Homebrew's builds per chip, or the vendor's statement when one is verified.
-  const supplement = pkg.macosSupplement;
+  // Apple silicon: the vendor's statement while it is verified for this version, else Homebrew's builds per chip.
+  const supplement = facts.macosSupplement;
   const arm = supplement?.ranges.find(range => range.arch === 'arm64');
+  const vendorRow =
+    supplement &&
+    facts.requirements.find(
+      row =>
+        row.evidence.sourceUrl === supplement.sourceUrl &&
+        row.architectures.includes('arm64') &&
+        row.versions.includes(currentVersion(pkg))
+    );
   const chips = chipSupport(pkg);
-  const minimum = minimumOnly(pkg);
-  if (!pkg.isFont && supplement && arm && !supplement.conflicts.includes('arm64'))
+  const minimum = macosRange(pkg).minimum;
+  if (!pkg.isFont && arm && vendorRow && isVerified(vendorRow.evidence) && vendorRow.evidence.checkedAt)
     add(
       'chips',
       t('package.faq.chipsQ', { name }),
-      sentences([t(`package.faq.siliconA.${arm.support}`), evidenceLine(supplement, t, locale)])
+      sentences([
+        t(`package.faq.siliconA.${arm.support}`),
+        evidenceLine({ sourceUrl: vendorRow.evidence.sourceUrl, verifiedAt: vendorRow.evidence.checkedAt }, t, locale)
+      ])
     );
   else if (!pkg.isFont && chips)
     add(
@@ -310,7 +394,7 @@ export function faqItems(pkg: PackageDetail, t: FaqTranslate, locale: Locale): F
   }
 
   // Where it keeps settings and data, from the clean-up list.
-  if (locations.settings || locations.folders.length)
+  if (can.homebrew && (locations.settings || locations.folders.length))
     add(
       'data',
       t('package.faq.dataQ', { name }),
@@ -321,8 +405,9 @@ export function faqItems(pkg: PackageDetail, t: FaqTranslate, locale: Locale): F
       ])
     );
 
-  // Latest version, how it updates, and the beta or nightly casks Homebrew offers beside it.
-  const version = formatVersion(pkg.version);
+  // Latest version, how it updates, and the beta or nightly casks Homebrew offers beside it. Link apps
+  // state only the version: their updates come from the developer.
+  const version = formatVersion(facts.overview.version || pkg.version);
   const conflicts = pkg.conflictsWith.casks;
   const channels = conflicts.filter(other => other.startsWith(`${token}@`));
   if (version && version.toLowerCase() !== 'latest')
@@ -333,19 +418,20 @@ export function faqItems(pkg: PackageDetail, t: FaqTranslate, locale: Locale): F
         pkg.versionCommittedAt
           ? t('package.faq.versionDated', { version, date: date(pkg.versionCommittedAt) })
           : t('package.faq.versionA', { version }),
-        pkg.autoUpdates ? t('package.faq.versionAuto', { name, token }) : t('package.faq.versionBrew', { token }),
-        channels.length > 0 && t('package.faq.versionChannels', { list: list(channels.map(code)) })
+        can.homebrew &&
+          (pkg.autoUpdates ? t('package.faq.versionAuto', { name, token }) : t('package.faq.versionBrew', { token })),
+        can.homebrew && channels.length > 0 && t('package.faq.versionChannels', { list: list(channels.map(code)) })
       ])
     );
 
   // What else it puts on the Mac (command-line tools, a .pkg installer, plug-ins), and the other apps
   // it cannot share a Mac with. A conflict alone does not answer this question.
-  const tools = pkg.artifacts.binaries.map(path => path.split('/').pop() ?? path).filter(Boolean);
+  const tools = artifacts.binaries.map(path => path.split('/').pop() ?? path).filter(Boolean);
   const plugins = unique(
-    (pkg.artifacts.entries ?? []).flatMap(entry => (PLUGINS[entry.type] ? [PLUGINS[entry.type]!] : []))
+    (artifacts.entries ?? []).flatMap(entry => (PLUGINS[entry.type] ? [PLUGINS[entry.type]!] : []))
   ).map(kind => t(`package.faq.plugins.${kind}`));
   const others = conflicts.filter(other => !channels.includes(other));
-  if (!pkg.isFont && (tools.length || pkg.artifacts.pkgs.length || plugins.length))
+  if (can.homebrew && !pkg.isFont && (tools.length || artifacts.pkgs.length || plugins.length))
     add(
       'extras',
       t('package.faq.extrasQ', { name }),
@@ -358,14 +444,14 @@ export function faqItems(pkg: PackageDetail, t: FaqTranslate, locale: Locale): F
                 { count: tools.length, list: list(tools.slice(0, MAX_TOOLS - 1).map(code)) },
                 tools.length
               )),
-        pkg.artifacts.pkgs.length > 0 && t('package.faq.extrasPkg'),
+        artifacts.pkgs.length > 0 && t('package.faq.extrasPkg'),
         plugins.length > 0 && t('package.faq.extrasPlugins', { list: list(plugins) }),
         others.length > 0 && t('package.faq.extrasConflicts', { list: list(others.map(code)) })
       ])
     );
 
-  // Alternatives: only the confirmed ones.
-  const alternatives = (pkg.alternatives ?? []).map(item => item.package.displayName);
+  // Alternatives: only the confirmed ones, as the alternatives block lists them.
+  const alternatives = facts.alternatives.map(item => item.package.displayName);
   if (alternatives.length)
     add(
       'alternatives',

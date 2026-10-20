@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/fetch"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 )
 
 // Links are opt-in on negotiated public lists. Legacy snapshot callers explicitly
@@ -86,8 +87,7 @@ func (v *LinkInput) Validate() error {
 	if v.SourceLocale == "" {
 		v.SourceLocale = "en-US"
 	}
-	locales := []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU"}
-	if !linkToken.MatchString(v.Token) || v.Name == "" || len(v.Name) > 256 || !slices.Contains(locales, v.SourceLocale) {
+	if !linkToken.MatchString(v.Token) || v.Name == "" || len(v.Name) > 256 || !i18n.Valid(v.SourceLocale) {
 		return Validation()
 	}
 	for _, p := range []**string{&v.Homepage, &v.DownloadURL, &v.SparkleFeed, &v.GithubRepo, &v.TeamID} {
@@ -114,7 +114,10 @@ func (v *LinkInput) Validate() error {
 	if v.TeamID != nil && !linkTeam.MatchString(*v.TeamID) {
 		return Validation()
 	}
-	if !slices.Contains([]string{"free", "paid", "freemium", "subscription", "open_source"}, v.Pricing) || len(v.BundleIDs) > 32 {
+	if v.Pricing == "" {
+		v.Pricing = "unknown"
+	}
+	if !slices.Contains([]string{"free", "paid", "freemium", "subscription", "open_source", "unknown"}, v.Pricing) || len(v.BundleIDs) > 32 {
 		return Validation()
 	}
 	if v.BundleIDs == nil {
@@ -128,7 +131,7 @@ func (v *LinkInput) Validate() error {
 		seen[b] = true
 	}
 	for k, s := range v.Notes {
-		if !slices.Contains(locales, k) || (s != nil && len(*s) > 16384) {
+		if !i18n.Valid(k) || (s != nil && len(*s) > 16384) {
 			return Validation()
 		}
 	}

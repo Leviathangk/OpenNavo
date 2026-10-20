@@ -94,6 +94,7 @@ const results = computed<OnSearchResult[] | null>(() => {
           token: hit.package.token,
           name: hit.package.displayName,
           src: hit.package.iconUrl,
+          variants: hit.package.iconVariants,
           accent: hit.package.accentColor,
           meta: formatVersion(hit.package.version),
           description: hit.package.summary,

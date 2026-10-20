@@ -260,7 +260,6 @@ const local: App.I18n.Schema = {
     system: 'System',
     system_user: 'Admins',
     system_role: 'Roles & Permissions',
-    system_translation: 'Translation AI settings',
     system_github: 'GitHub settings',
     system_seo: 'SEO & analytics',
     system_agent: 'Agent access',

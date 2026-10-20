@@ -130,10 +130,6 @@ func (s *Service) releaseWrite(ctx context.Context, op string, in Input) (any, e
 					return nil, err
 				}
 			}
-		case "RetranslateRelease":
-			if err := st.RetranslateRelease(ctx, in.ID, in.Actor.ID); err != nil {
-				return nil, err
-			}
 		}
 		return nil, st.AppendContentChange(ctx, row.PackageID)
 	})
@@ -143,9 +139,7 @@ func (s *Service) releaseWrite(ctx context.Context, op string, in Input) (any, e
 	if boolean(in.Params, "dryrun") {
 		return result, nil
 	}
-	if op == "RetranslateRelease" && s.Queue != nil {
-		return nil, s.dispatch(ctx)
-	}
+
 	return nil, nil
 }
 func (s *Service) approve(ctx context.Context, in Input) (any, error) {

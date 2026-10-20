@@ -26,9 +26,9 @@ func TestGitHubCredentialEncryptionAndPurposeIsolation(t *testing.T) {
 	}
 	_, err = (Config{JWTSecret: strings.Repeat("b", 32)}).DecryptGitHubToken(first)
 	require.Error(t, err)
-	_, err = cfg.DecryptTranslationKey(first)
+	_, err = cfg.DecryptSEOSecret("test", first)
 	require.Error(t, err)
-	translation, err := cfg.EncryptTranslationKey("unit-translation-credential")
+	translation, err := cfg.EncryptSEOSecret("test", "unit-seo-credential")
 	require.NoError(t, err)
 	_, err = cfg.DecryptGitHubToken(translation)
 	require.Error(t, err)

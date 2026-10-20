@@ -4,6 +4,7 @@ import { selectPlural } from '@opennavo/shared';
 import { describe, expect, it } from 'vitest';
 import { chipSupport, dataLocations, FAQ_LIMIT, faqItems, uninstallSteps, zapPaths } from '../app/utils/packageFaq';
 import type { FaqTranslate } from '../app/utils/packageFaq';
+import { evidence, pageOf } from './packageFixtures';
 
 const LOCALES = ['zh-CN', 'en-US', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'] as const;
 type Code = (typeof LOCALES)[number];
@@ -40,6 +41,8 @@ function docker(overrides: Partial<PackageDetail> = {}): PackageDetail {
     displayName: 'Docker Desktop',
     version: '4.95.0,242831',
     tap: 'homebrew/cask',
+    sourceUrl: 'https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/d/docker-desktop.rb',
+    names: ['Docker Desktop'],
     isFont: false,
     autoUpdates: true,
     installs: { d30: 28210, d90: 115223, d365: 527555 },
@@ -48,11 +51,13 @@ function docker(overrides: Partial<PackageDetail> = {}): PackageDetail {
     homebrewStatus: { state: 'active', reason: null, date: null },
     supports: { status: 'known', arm64: true, x86_64: true, requiresRosetta: false },
     platforms: [
+      // Each variant carries the minimum from its own depends_on, as the API's platforms do.
       {
         tag: 'arm64_sonoma',
         macos: '14',
         arch: 'arm64',
         version: '4.95.0,242831',
+        minMacos: '14',
         downloadUrl: 'https://desktop.docker.com/arm64/Docker.dmg'
       },
       {
@@ -60,6 +65,7 @@ function docker(overrides: Partial<PackageDetail> = {}): PackageDetail {
         macos: '14',
         arch: 'x86_64',
         version: '4.95.0,242831',
+        minMacos: '14',
         downloadUrl: 'https://desktop.docker.com/amd64/Docker.dmg'
       }
     ],
@@ -135,7 +141,7 @@ const appStore = {
 
 describe('App questions', () => {
   it('Answers Docker Desktop from its Homebrew record, in search order', () => {
-    const items = faqItems(docker(), translator('en-US'), 'en-US');
+    const items = faqItems(pageOf(docker()), translator('en-US'), 'en-US');
     expect(items.map(item => item.key)).toEqual(['safety', 'uninstall', 'chips', 'data', 'version', 'extras']);
     const answer = (key: string) => items.find(item => item.key === key)!.answer;
     expect(items[0]!.question).toBe('Is Docker Desktop safe?');
@@ -143,7 +149,9 @@ describe('App questions', () => {
       'Docker Desktop is in Homebrew’s official catalog and has not been disabled. Since September 2026, Homebrew disables apps that fail macOS Gatekeeper checks. When installing, Homebrew checks the download from desktop.docker.com against its SHA-256 checksum. It was installed 28,210 times through Homebrew in the last 30 days.'
     );
     expect(answer('uninstall')).toBe(
-      'Run `brew uninstall --cask docker-desktop`. It quits the app, stops 3 background services, and deletes 2 privileged helpers. To delete its settings and caches as well, run `brew uninstall --zap --cask docker-desktop`. That also deletes 11 files and folders, including `~/.docker`.'
+      'Run `brew uninstall --cask docker-desktop`. It quits the app, stops 3 background services, and deletes 2 privileged helpers. To delete its settings and caches as well, run `brew uninstall --zap --cask docker-desktop`. ' +
+        translator('en-US')('package.guide.zap') +
+        ' That also deletes 11 files and folders, including `~/.docker`.'
     );
     expect(answer('chips')).toBe(
       'Yes. Homebrew downloads separate builds for Apple silicon and Intel Macs. It needs macOS 14 or later.'
@@ -186,7 +194,7 @@ describe('App questions', () => {
       },
       alternatives: [{ package: { displayName: 'OrbStack' }, reasons: ['lighter'], limits: [], bestFor: null }]
     } as Partial<PackageDetail>);
-    const items = faqItems(full, translator(code), code);
+    const items = faqItems(pageOf(full), translator(code), code);
     expect(items).toHaveLength(FAQ_LIMIT);
     for (const item of items) {
       expect(item.question).toContain('Docker Desktop');
@@ -196,15 +204,17 @@ describe('App questions', () => {
     expect(items.some(item => item.key === 'language')).toBe(code !== 'en-US');
     // Disabled, deprecated and Rosetta wording, and the one-file clean-up.
     const disabled = faqItems(
-      docker({
-        homebrewStatus: { state: 'disabled', reason: 'fails_gatekeeper_check', date: '2026-09-01' }
-      }),
+      pageOf(
+        docker({
+          homebrewStatus: { state: 'disabled', reason: 'fails_gatekeeper_check', date: '2026-09-01' }
+        })
+      ),
       translator(code),
       code
     );
     expect(disabled[0]!.answer).not.toContain('desktop.docker.com');
     const deprecated = faqItems(
-      docker({ homebrewStatus: { state: 'deprecated', reason: 'something custom', date: null } }),
+      pageOf(docker({ homebrewStatus: { state: 'deprecated', reason: 'something custom', date: null } })),
       translator(code),
       code
     );
@@ -221,16 +231,18 @@ describe('App questions', () => {
         ]
       }
     });
-    expect(faqItems(single, translator(code), code).map(item => item.key)).toContain('uninstall');
+    expect(faqItems(pageOf(single), translator(code), code).map(item => item.key)).toContain('uninstall');
   });
 
   it('Says why Homebrew disabled an app and nothing it no longer checks', () => {
     const t = translator('en-US');
     // A past year, so the formatted date always includes it.
     const [safety] = faqItems(
-      docker({
-        homebrewStatus: { state: 'disabled', reason: 'fails_gatekeeper_check', date: '2025-09-01' }
-      }),
+      pageOf(
+        docker({
+          homebrewStatus: { state: 'disabled', reason: 'fails_gatekeeper_check', date: '2025-09-01' }
+        })
+      ),
       t,
       'en-US'
     );
@@ -238,16 +250,16 @@ describe('App questions', () => {
       'Homebrew has disabled Docker Desktop (it fails macOS Gatekeeper checks), so it can no longer be installed with Homebrew. It was disabled on Sep 1, 2025.'
     );
     const [custom] = faqItems(
-      docker({ homebrewStatus: { state: 'disabled', reason: 'is 32-bit only', date: null } }),
+      pageOf(docker({ homebrewStatus: { state: 'disabled', reason: 'is 32-bit only', date: null } })),
       t,
       'en-US'
     );
     expect(custom!.answer).toContain('(the Homebrew definition explains why)');
     // Third-party taps and records without a status get no safety answer.
-    expect(faqItems(docker({ tap: 'someone/tap' }), t, 'en-US')[0]!.key).toBe('uninstall');
-    expect(faqItems(docker({ homebrewStatus: undefined }), t, 'en-US')[0]!.key).toBe('uninstall');
+    expect(faqItems(pageOf(docker({ tap: 'someone/tap' })), t, 'en-US')[0]!.key).toBe('uninstall');
+    expect(faqItems(pageOf(docker({ homebrewStatus: undefined })), t, 'en-US')[0]!.key).toBe('uninstall');
     const noChecksum = faqItems(
-      docker({ downloadSha256: null, installs: { d30: 0, d90: 0, d365: 0 } }),
+      pageOf(docker({ downloadSha256: null, installs: { d30: 0, d90: 0, d365: 0 } })),
       t,
       'en-US'
     )[0]!;
@@ -259,13 +271,13 @@ describe('App questions', () => {
 
   it('Describes the App Store edition as such and never infers free from it', () => {
     const t = translator('zh-CN');
-    const items = faqItems(docker({ appStore }), t, 'zh-CN');
+    const items = faqItems(pageOf(docker({ appStore })), t, 'zh-CN');
     const price = items.find(item => item.key === 'price')!;
     expect(price.question).toBe('Docker Desktop 免费吗？');
     expect(price.answer).toBe(
       'Mac App Store（美国）上的“Keka”售价 US$6.49。Homebrew 安装的是开发者网站提供的版本，价格和功能可能与 App Store 版不同。来源：apps.apple.com，核查于 2025年12月1日。'
     );
-    const free = faqItems(docker({ appStore: { ...appStore, price: 0 } }), translator('en-US'), 'en-US');
+    const free = faqItems(pageOf(docker({ appStore: { ...appStore, price: 0 } })), translator('en-US'), 'en-US');
     expect(free.find(item => item.key === 'price')!.answer).toMatch(
       /^“Keka” is free to download on the Mac App Store\. Homebrew installs the version/
     );
@@ -273,7 +285,7 @@ describe('App questions', () => {
       'Mac App Store 页面列出的界面语言包括中文。来源：apps.apple.com，核查于 2025年12月1日。'
     );
     const ru = faqItems(
-      docker({ appStore: { ...appStore, languages: ['EN', 'DE', 'FR'] } }),
+      pageOf(docker({ appStore: { ...appStore, languages: ['EN', 'DE', 'FR'] } })),
       translator('ru-RU'),
       'ru-RU'
     );
@@ -295,7 +307,7 @@ describe('App questions', () => {
       stale: false,
       offer: true
     };
-    const priced = faqItems(docker({ appStore, price: verified }), translator('en-US'), 'en-US');
+    const priced = faqItems(pageOf(docker({ appStore, price: verified })), translator('en-US'), 'en-US');
     expect(priced.find(item => item.key === 'price')!.answer).toBe(
       'Yes, Docker Desktop is free to use. Source: vendor.example/pricing, checked Dec 1, 2025.'
     );
@@ -307,13 +319,13 @@ describe('App questions', () => {
       conflictsWith: { casks: ['docker-desktop@beta'], formulae: [] },
       artifacts: { ...docker().artifacts, binaries: [] }
     });
-    const items = faqItems(keka, t, 'en-US');
+    const items = faqItems(pageOf(keka), t, 'en-US');
     expect(items.map(item => item.key)).not.toContain('extras');
     expect(items.find(item => item.key === 'version')!.answer).toBe(
       'The latest version is 4.95.0. Docker Desktop updates itself; to update it with Homebrew, run `brew upgrade --cask --greedy docker-desktop`. Homebrew also offers `docker-desktop@beta`, which cannot be installed alongside it.'
     );
     // Chinese lists the uninstall steps as a plain enumeration.
-    const zh = faqItems(docker(), translator('zh-CN'), 'zh-CN');
+    const zh = faqItems(pageOf(docker()), translator('zh-CN'), 'zh-CN');
     expect(zh.find(item => item.key === 'uninstall')!.answer).toContain(
       '它会退出应用、停止 3 个后台服务、删除 2 个特权辅助程序。'
     );
@@ -322,15 +334,17 @@ describe('App questions', () => {
 
   it('Publishes the license GitHub reports, with archived repositories marked', () => {
     const items = faqItems(
-      docker({
-        openSource: {
-          repo: 'gnachman/iTerm2',
-          url: 'https://github.com/gnachman/iTerm2',
-          license: 'GPL-2.0',
-          archived: false,
-          checkedAt: '2025-12-01T08:00:00Z'
-        }
-      }),
+      pageOf(
+        docker({
+          openSource: {
+            repo: 'gnachman/iTerm2',
+            url: 'https://github.com/gnachman/iTerm2',
+            license: 'GPL-2.0',
+            archived: false,
+            checkedAt: '2025-12-01T08:00:00Z'
+          }
+        })
+      ),
       translator('en-US'),
       'en-US'
     );
@@ -348,11 +362,11 @@ describe('App questions', () => {
       version: 'latest',
       artifacts: { apps: ['Docker.app'], binaries: [], pkgs: [], entries: [] }
     });
-    const items = faqItems(bare, t, 'en-US');
+    const items = faqItems(pageOf(bare), t, 'en-US');
     expect(items.map(item => item.key)).toEqual(['uninstall']);
     expect(items[0]!.answer).toBe('Run `brew uninstall --cask docker-desktop`.');
     const font = docker({ isFont: true });
-    expect(faqItems(font, t, 'en-US').map(item => item.key)).toEqual(['safety', 'uninstall', 'data', 'version']);
+    expect(faqItems(pageOf(font), t, 'en-US').map(item => item.key)).toEqual(['uninstall', 'data', 'version']);
   });
 });
 
@@ -381,28 +395,32 @@ describe('Record readers', () => {
         }
       ]
     });
-    expect(chipSupport(pkg)).toBeNull();
-    expect(faqItems(pkg, translator('zh-CN'), 'zh-CN').find(item => item.key === 'chips')).toBeUndefined();
+    expect(chipSupport(pageOf(pkg))).toBeNull();
+    expect(faqItems(pageOf(pkg), translator('zh-CN'), 'zh-CN').find(item => item.key === 'chips')).toBeUndefined();
   });
 
   it('Requires explicit matching downloads on both chips before claiming a shared installer', () => {
     const [arm, intel] = docker().platforms!;
-    expect(chipSupport(docker({ platforms: [arm!] }))).toBeNull();
-    expect(chipSupport(docker({ platforms: [intel!] }))).toBeNull();
-    expect(chipSupport(docker({ platforms: [{ ...arm!, downloadUrl: null }, intel!] }))).toBeNull();
+    expect(chipSupport(pageOf(docker({ platforms: [arm!] })))).toBeNull();
+    expect(chipSupport(pageOf(docker({ platforms: [intel!] })))).toBeNull();
+    expect(chipSupport(pageOf(docker({ platforms: [{ ...arm!, downloadUrl: null }, intel!] })))).toBeNull();
     // One matching variant does not make every installer shared.
-    expect(chipSupport(docker({ platforms: [arm!, intel!, { ...intel!, downloadUrl: arm!.downloadUrl }] }))).toBeNull();
+    expect(
+      chipSupport(pageOf(docker({ platforms: [arm!, intel!, { ...intel!, downloadUrl: arm!.downloadUrl }] })))
+    ).toBeNull();
     expect(
       chipSupport(
-        docker({
-          platforms: [arm!, { ...intel!, downloadUrl: arm!.downloadUrl }, { ...arm!, downloadUrl: null }]
-        })
+        pageOf(
+          docker({
+            platforms: [arm!, { ...intel!, downloadUrl: arm!.downloadUrl }, { ...arm!, downloadUrl: null }]
+          })
+        )
       )
     ).toBeNull();
   });
 
   it('Reads uninstall steps and clean-up paths', () => {
-    expect(uninstallSteps(docker())).toEqual({
+    expect(uninstallSteps(pageOf(docker()))).toEqual({
       quits: true,
       services: 3,
       loginItems: 0,
@@ -410,32 +428,159 @@ describe('Record readers', () => {
       receipts: 0,
       kexts: 0
     });
-    expect(zapPaths(docker())).toHaveLength(11);
-    expect(dataLocations(docker())).toEqual({
+    expect(zapPaths(pageOf(docker()))).toHaveLength(11);
+    expect(dataLocations(pageOf(docker()))).toEqual({
       settings: '~/Library/Preferences/com.docker.docker.plist',
       folders: ['~/.docker', '~/Library/Application Support/Docker Desktop', '~/Library/Containers/com.docker.docker']
     });
-    expect(dataLocations(docker({ artifacts: { apps: [], binaries: [], pkgs: [] } }))).toEqual({
+    expect(dataLocations(pageOf(docker({ artifacts: { apps: [], binaries: [], pkgs: [] } })))).toEqual({
       settings: undefined,
       folders: []
     });
   });
 
   it('Says “separate builds” only when each chip has its own download', () => {
-    expect(chipSupport(docker())).toBe('separate');
-    expect(chipSupport(docker({ platforms: [] }))).toBeNull();
+    expect(chipSupport(pageOf(docker()))).toBe('separate');
+    expect(chipSupport(pageOf(docker({ platforms: [] })))).toBeNull();
     const same = docker().platforms!.map(platform => ({
       ...platform,
       downloadUrl: 'https://desktop.docker.com/universal/Docker.dmg'
     }));
-    expect(chipSupport(docker({ platforms: same }))).toBe('shared');
+    expect(chipSupport(pageOf(docker({ platforms: same })))).toBe('shared');
     const old = docker().platforms!.map(platform => ({ ...platform, version: '4.0.0' }));
-    expect(chipSupport(docker({ platforms: old }))).toBeNull();
+    expect(chipSupport(pageOf(docker({ platforms: old })))).toBeNull();
     expect(
-      chipSupport(docker({ supports: { status: 'known', arm64: true, x86_64: true, requiresRosetta: true } }))
+      chipSupport(pageOf(docker({ supports: { status: 'known', arm64: true, x86_64: true, requiresRosetta: true } })))
     ).toBe('rosetta');
-    expect(chipSupport(docker({ supports: { status: 'known', arm64: true, x86_64: false } }))).toBe('armOnly');
-    expect(chipSupport(docker({ supports: { status: 'known', arm64: false, x86_64: true } }))).toBe('intelOnly');
-    expect(chipSupport(docker({ supports: { status: 'unknown', arm64: true, x86_64: true } }))).toBeNull();
+    const [arm, intel] = docker().platforms!;
+    expect(
+      chipSupport(pageOf(docker({ supports: { status: 'known', arm64: true, x86_64: false }, platforms: [arm!] })))
+    ).toBe('armOnly');
+    expect(
+      chipSupport(pageOf(docker({ supports: { status: 'known', arm64: false, x86_64: true }, platforms: [intel!] })))
+    ).toBe('intelOnly');
+    // Homebrew's declared support and its rows must agree before a chip answer.
+    expect(chipSupport(pageOf(docker({ supports: { status: 'known', arm64: true, x86_64: false } })))).toBeNull();
+    expect(chipSupport(pageOf(docker({ supports: { status: 'unknown', arm64: true, x86_64: true } })))).toBeNull();
+  });
+});
+
+describe('Answers from the facts model (T2, T3)', () => {
+  const t = translator('en-US');
+  const brew = /\bbrew\b/;
+
+  it('Gives link apps facts and questions without any Homebrew command', () => {
+    const link = pageOf(
+      docker({
+        kind: 'link',
+        tap: '',
+        sourceUrl: '',
+        homebrewStatus: undefined,
+        platforms: [],
+        appStore,
+        openSource: {
+          repo: 'acme/lumen',
+          url: 'https://github.com/acme/lumen',
+          license: 'MIT',
+          archived: false,
+          checkedAt: '2025-12-01T08:00:00Z'
+        },
+        alternatives: [{ package: { displayName: 'OrbStack' }, reasons: [], limits: [], bestFor: null }]
+      } as Partial<PackageDetail>)
+    );
+    const items = faqItems(link, t, 'en-US');
+    expect(items.map(item => item.key)).toEqual(['price', 'openSource', 'version', 'alternatives']);
+    for (const item of items) expect(item.answer).not.toMatch(brew);
+    // The App Store note about Homebrew's edition is for casks only.
+    expect(items[0]!.answer).not.toContain('Homebrew');
+    expect(items.find(item => item.key === 'version')!.answer).toBe('The latest version is 4.95.0.');
+  });
+
+  it('States only verified prices, and only when the vendor prices agree on how it is paid', () => {
+    const verified = {
+      type: 'subscription' as const,
+      amount: 9.99,
+      currency: 'USD',
+      region: 'US',
+      plan: 'Pro',
+      period: 'month' as const,
+      appVersion: null,
+      sourceUrl: 'https://vendor.example/pricing',
+      method: 'vendor_site' as const,
+      verifiedAt: '2025-12-01T08:00:00Z',
+      stale: false,
+      offer: true
+    };
+    const answer = (pkg: ReturnType<typeof pageOf>) => faqItems(pkg, t, 'en-US').find(item => item.key === 'price');
+    expect(answer(pageOf(docker({ price: verified })))!.answer).toBe(
+      'No, Docker Desktop requires a subscription. Pro · United States · $9.99 per month Source: vendor.example/pricing, checked Dec 1, 2025.'
+    );
+    // Stale or disputed evidence keeps its block but answers nothing here.
+    expect(answer(pageOf(docker({ price: { ...verified, stale: true } })))).toBeUndefined();
+    const prices = pageOf(docker({ price: verified })).facts.prices!;
+    expect(
+      answer(
+        pageOf(docker(), { prices: prices.map(p => ({ ...p, evidence: { ...p.evidence, status: 'needs_review' } })) })
+      )
+    ).toBeUndefined();
+    // A free edition beside a subscription is not a yes or a no.
+    const mixed = [...prices, { ...prices[0]!, edition: 'Free', usage: 'free' as const, amount: '0' }];
+    expect(answer(pageOf(docker(), { prices: mixed }))).toBeUndefined();
+  });
+
+  it('Answers chips from Homebrew while the vendor statement is under review', () => {
+    const supplement = {
+      ranges: [{ arch: 'arm64' as const, support: 'native' as const, minimum: '12', maximum: null }],
+      appVersion: '4.95.0,242831',
+      sourceUrl: 'https://vendor.example/requirements',
+      method: 'vendor_docs' as const,
+      verifiedAt: '2025-12-01T08:00:00Z',
+      stale: false,
+      conflicts: [] as ('minimum' | 'maximum' | 'arm64' | 'x86_64')[]
+    };
+    const chips = (pkg: ReturnType<typeof pageOf>) =>
+      faqItems(pkg, t, 'en-US').find(item => item.key === 'chips')!.answer;
+    expect(chips(pageOf(docker({ macosSupplement: supplement })))).toBe(
+      'Yes. The vendor states it runs natively on Apple silicon. Source: vendor.example/requirements, checked Dec 1, 2025.'
+    );
+    // Any disagreement with Homebrew puts the whole statement under review.
+    expect(chips(pageOf(docker({ macosSupplement: { ...supplement, conflicts: ['minimum'] } })))).toBe(
+      'Yes. Homebrew downloads separate builds for Apple silicon and Intel Macs. It needs macOS 14 or later.'
+    );
+    // A statement about another version is not about the one on offer.
+    expect(chips(pageOf(docker({ macosSupplement: { ...supplement, appVersion: '4.0' } })))).toContain('Homebrew');
+  });
+
+  it('Asks about the page language in the new site languages too', () => {
+    const keys: FaqTranslate = key => key;
+    for (const [locale, code] of [
+      ['de-DE', 'DE'],
+      ['fr-FR', 'FR'],
+      ['it-IT', 'IT'],
+      ['zh-Hant', 'ZH']
+    ] as const) {
+      const listed = faqItems(pageOf(docker({ appStore: { ...appStore, languages: ['EN', code] } })), keys, locale);
+      expect(listed.find(item => item.key === 'language')?.answer).toContain('package.faq.languageYes');
+      const missing = faqItems(pageOf(docker({ appStore: { ...appStore, languages: ['EN'] } })), keys, locale);
+      expect(missing.find(item => item.key === 'language')?.answer).toContain('package.faq.languageNo');
+    }
+  });
+
+  it('Reads uninstall facts only while their evidence is verified', () => {
+    const stale = pageOf(docker());
+    const aged = {
+      ...stale,
+      facts: {
+        ...stale.facts,
+        uninstall: stale.facts.uninstall.map(item => ({
+          ...item,
+          evidence: evidence(item.evidence.sourceUrl, { status: 'stale' })
+        }))
+      }
+    };
+    expect(zapPaths(aged)).toEqual([]);
+    expect(faqItems(aged, t, 'en-US').find(item => item.key === 'uninstall')!.answer).toBe(
+      'Run `brew uninstall --cask docker-desktop`. It quits the app.'
+    );
   });
 });

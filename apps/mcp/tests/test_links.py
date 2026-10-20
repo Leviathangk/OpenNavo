@@ -2,7 +2,7 @@
 
 import json
 
-from conftest import Backend
+from conftest import Backend, execution_args
 from fastmcp import Client
 
 
@@ -16,11 +16,14 @@ async def test_link_token_resolution_and_dry_run(backend: Backend) -> None:
     async with Client(backend.server) as client:
         result = await client.call_tool(
             "link_app_update",
-            {
-                "package": "external-example",
-                "download_url": "https://example.com/download",
-                "dry_run": True,
-            },
+            execution_args(
+                "link_app_update",
+                {
+                    "package": "external-example",
+                    "download_url": "https://example.com/download",
+                    "dry_run": True,
+                },
+            ),
             raise_on_error=False,
         )
         assert not result.is_error, result.content
@@ -36,7 +39,9 @@ async def test_link_remove_requires_delete_permission(backend: Backend) -> None:
     backend.allow_delete = False
     async with Client(backend.server) as client:
         result = await client.call_tool(
-            "link_app_remove", {"package": 42, "dry_run": True}, raise_on_error=False
+            "link_app_remove",
+            execution_args("link_app_remove", {"package": 42, "dry_run": True}),
+            raise_on_error=False,
         )
         assert result.is_error
     assert not any(name == "removeLinkPackage" for name, _ in backend.calls)
@@ -55,7 +60,10 @@ async def test_link_content_token_on_second_page_uses_package_text_operation(
     async with Client(backend.server) as client:
         result = await client.call_tool(
             "package_set_text",
-            {"package": "editable-link", "source_locale": "en-US", "summary": "Human summary"},
+            execution_args(
+                "package_set_text",
+                {"package": "editable-link", "source_locale": "en-US", "summary": "Human summary"},
+            ),
             raise_on_error=False,
         )
         assert not result.is_error, result.content

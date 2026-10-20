@@ -1,18 +1,17 @@
-// Structured data (WP10), pure for testing. Nodes only repeat what the page shows: version,
-// requirements, architectures and screenshots match the visible sections. Offers follow the API's
-// offer flag (verified, current, and free or a complete amount), so a price type alone never
-// becomes a price. There are no reviews or ratings, so app pages are not eligible for Google's
-// software rich result; that gap is accepted rather than filled with install counts.
-import type { PackageDetail } from '@opennavo/api';
+// Structured data (WP10, T2), pure for testing. Nodes only repeat what the page shows, read from the
+// same facts model as the page's blocks: the version, the system requirements and chips of the
+// verified requirement rows, the download the install guide links, and offers only from the API's
+// facts.offers (verified, current, with an amount, currency, region and edition), so a price type or
+// a free download alone never becomes an offer. There are no reviews or ratings, so app pages are not
+// eligible for Google's software rich result; that gap is accepted rather than filled with install counts.
+import { formatBytes } from '@opennavo/shared';
+import type { SiteLocale as Locale } from '@opennavo/shared';
 import { applicationCategory } from './packageView';
-import { downloadChoice } from './appAnswer';
 import { httpsUrl, officialDownloadUrl } from './linkApp';
+import { chipsOf, currentVersion, downloadChoice, macosRange, macosText } from './packageFacts';
+import type { PackagePage, PriceFact } from './packageFacts';
 import { reliableVersion } from './seoTitles';
 import type { Translate } from './seoTitles';
-
-const DAY = 24 * 60 * 60 * 1000;
-/** Matches the server's evidence window: older prices stop being offered. */
-const EVIDENCE_DAYS = 365;
 
 /**
  * Stable @id of an app entity: the same in every language and on every page that names the app, so
@@ -22,74 +21,81 @@ export function appEntityId(siteUrl: string, token: string): string {
   return `${siteUrl}/apps/${token}#app`;
 }
 
-/** Offer for a verified price; null when structured data may not state one. */
-export function appOffer(price: PackageDetail['price'], t: Translate): Record<string, unknown> | null {
-  if (!price?.offer) return null;
-  const free = price.type === 'free' || price.type === 'free_with_iap';
-  // The resolver otherwise invents a validity date; ours ends when the evidence goes stale.
-  const validUntil = new Date(Date.parse(price.verifiedAt) + EVIDENCE_DAYS * DAY).toISOString().slice(0, 10);
-  const offer: Record<string, unknown> = {
-    price: free ? 0 : price.amount,
-    url: price.sourceUrl,
-    priceValidUntil: validUntil
-  };
-  if (price.currency) offer.priceCurrency = price.currency;
-  if (price.type === 'free_with_iap') offer.description = t('package.facts.types.free_with_iap');
-  if (!free) {
-    offer.name = price.plan;
-    offer.eligibleRegion = { '@type': 'Country', name: price.region };
-    if (price.type === 'subscription' && (price.period === 'month' || price.period === 'year'))
-      offer.priceSpecification = {
+const UNIT_CODES: Partial<Record<PriceFact['period'], string>> = { monthly: 'MON', yearly: 'ANN' };
+
+/** One Offer per price the API marks offer-ready, as the price block lists it. */
+export function appOffers(offers: readonly PriceFact[] | undefined): Record<string, unknown>[] {
+  return (offers ?? []).flatMap(offer => {
+    const price = Number(offer.amount);
+    if (!offer.currency || !Number.isFinite(price)) return [];
+    const node: Record<string, unknown> = {
+      price,
+      priceCurrency: offer.currency,
+      url: offer.purchaseUrl,
+      name: offer.edition,
+      eligibleRegion: { '@type': 'Country', name: offer.region }
+    };
+    // The resolver otherwise invents a validity date; ours ends with the evidence.
+    if (offer.evidence.validUntil) node.priceValidUntil = offer.evidence.validUntil.slice(0, 10);
+    const unitCode = offer.usage === 'subscription' ? UNIT_CODES[offer.period] : undefined;
+    if (unitCode)
+      node.priceSpecification = {
         '@type': 'UnitPriceSpecification',
-        price: price.amount,
-        priceCurrency: price.currency,
-        referenceQuantity: {
-          '@type': 'QuantitativeValue',
-          value: 1,
-          unitCode: price.period === 'month' ? 'MON' : 'ANN'
-        }
+        price,
+        priceCurrency: offer.currency,
+        referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode }
       };
-  }
-  return offer;
+    return [node];
+  });
 }
 
 /**
  * SoftwareApplication input for an app page, or null for fonts: a typeface is not software, and
  * forcing the type would claim a rich result the page cannot support.
  */
-export function softwareAppNode(pkg: PackageDetail, url: string, t: Translate): Record<string, unknown> | null {
+export function softwareAppNode(
+  pkg: PackagePage,
+  url: string,
+  t: Translate,
+  locale: Locale = 'en-US'
+): Record<string, unknown> | null {
   if (pkg.isFont) return null;
   const node: Record<string, unknown> = {
     name: pkg.displayName,
     operatingSystem: 'macOS',
-    applicationCategory: applicationCategory(pkg.primaryCategory?.slug),
+    applicationCategory: applicationCategory(
+      pkg.primaryCategory?.slug,
+      (pkg.categories ?? []).map(category => category.slug)
+    ),
     url
   };
   const alternateNames = pkg.names.filter(name => name !== pkg.displayName);
   if (alternateNames.length) node.alternateName = alternateNames;
-  const version = reliableVersion(pkg.version);
+  const version = reliableVersion(currentVersion(pkg));
   if (version) node.softwareVersion = version;
   const homepage = pkg.homepage ?? httpsUrl(pkg.link?.homepage);
   if (homepage) node.sameAs = homepage;
   if (pkg.summary) node.description = pkg.summary;
   if (pkg.iconUrl) node.image = pkg.iconUrl;
   if (pkg.screenshots.length) node.screenshot = pkg.screenshots.map(shot => shot.url);
-  // Homebrew's full constraint, as the requirements row shows it.
-  if (pkg.dependsOn?.macos) node.softwareRequirements = `macOS ${pkg.dependsOn.macos}`;
-  if (pkg.supports.status === 'known') {
-    const archs = (['arm64', 'x86_64'] as const).filter(arch => pkg.supports[arch]);
-    if (archs.length) node.processorRequirements = archs.join(', ');
-  }
-  // Link apps (store/security plan §4): only the developer's own site or the app's GitHub repository.
+  // The range the facts table states for the current version, in the page's words.
+  const requirements = macosText(macosRange(pkg), t);
+  if (requirements) node.softwareRequirements = requirements;
+  const chips = chipsOf(pkg);
+  if (chips.length) node.processorRequirements = chips.join(', ');
   if (pkg.kind === 'link') {
+    // Link apps (store/security plan §4): only the developer's own site or the app's GitHub repository.
     const official = pkg.link ? officialDownloadUrl(pkg.link) : undefined;
     if (official) node.downloadUrl = official;
   } else {
     const download = downloadChoice(pkg);
     if (download?.kind === 'direct') node.downloadUrl = download.url;
+    node.identifier = { '@type': 'PropertyValue', propertyID: 'Homebrew cask', value: pkg.token };
+    if (pkg.downloadSize) node.fileSize = formatBytes(pkg.downloadSize, { locale });
   }
-  const offer = appOffer(pkg.price, t);
-  if (offer) node.offers = offer;
+  if (pkg.releaseCount > 0) node.releaseNotes = `${url}/versions`;
+  const offers = appOffers(pkg.facts.offers);
+  if (offers.length) node.offers = offers.length === 1 ? offers[0] : offers;
   return node;
 }
 

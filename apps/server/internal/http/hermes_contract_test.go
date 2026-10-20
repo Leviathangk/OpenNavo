@@ -17,7 +17,7 @@ func TestHermesContractExamplesAndAgentBoundary(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, spec.Validate(context.Background()))
 	locales := []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU"}
-	newOperations := strings.Fields("updatePackageText upsertReleaseNotes listTranslations getTranslationStatus retranslateContent fixTranslation listGlossary upsertGlossaryTerm deleteGlossaryTerm getAnnouncement updateAnnouncement updateDesktopReleaseNotes listAdminCatalogChanges getAgentSettings updateAgentSettings listAgentClients createAgentClient getAgentClient updateAgentClient listAgentTokens createAgentToken updateAgentToken revokeAgentToken introspectAgentToken listContentRevisions getContentRevision restoreRevision listTrash getTrashItem restoreTrash revertRequest listAgentCalls getAgentCall listTranslationLogs getTranslationLog listAdminVersions")
+	newOperations := strings.Fields("updatePackageText upsertReleaseNotes listTranslations getTranslationStatus fixTranslation listGlossary upsertGlossaryTerm deleteGlossaryTerm getAnnouncement updateAnnouncement updateDesktopReleaseNotes listAdminCatalogChanges getAgentSettings updateAgentSettings listAgentClients createAgentClient getAgentClient updateAgentClient listAgentTokens createAgentToken updateAgentToken revokeAgentToken introspectAgentToken listContentRevisions getContentRevision restoreRevision listTrash getTrashItem restoreTrash revertRequest listAgentCalls getAgentCall listTranslationLogs getTranslationLog listAdminVersions")
 	var covered int
 	for path, item := range spec.Paths.Map() {
 		for method, operation := range item.Operations() {
@@ -71,8 +71,8 @@ func TestHermesContractExamplesAndAgentBoundary(t *testing.T) {
 			}
 		}
 	}
-	require.Equal(t, 36, covered)
-	require.Len(t, spec.Components.Schemas["AgentPermission"].Value.Enum, 23)
+	require.Equal(t, len(newOperations), covered)
+	require.Len(t, spec.Components.Schemas["AgentPermission"].Value.Enum, 28)
 	// Reject invalid permissions, mixed clear payloads and oversized batches at the contract layer.
 	for _, tc := range []struct {
 		name  string

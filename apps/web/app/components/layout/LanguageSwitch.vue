@@ -1,11 +1,27 @@
 <script setup lang="ts">
-import { LOCALES, LOCALE_METADATA } from '@opennavo/shared';
+import { SITE_LOCALES, LOCALE_METADATA } from '@opennavo/shared';
+import type { SiteLocale } from '@opennavo/shared';
 import { OnIcon, OnMenu } from '@opennavo/ui';
 
 withDefaults(defineProps<{ align?: 'start' | 'end' }>(), { align: 'end' });
 
 const { t, locale, setLocale } = useI18n();
-const items = LOCALES.map(code => ({ key: toRouteLocale(code), label: LOCALE_METADATA[code].name }));
+// Both Chinese scripts sit together; the rest follow their English names.
+const ORDER: readonly SiteLocale[] = [
+  'en-US',
+  'zh-CN',
+  'zh-Hant',
+  'ja-JP',
+  'de-DE',
+  'es-ES',
+  'fr-FR',
+  'it-IT',
+  'pt-BR',
+  'ru-RU'
+];
+const items = [...SITE_LOCALES]
+  .sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))
+  .map(code => ({ key: toRouteLocale(code), label: LOCALE_METADATA[code].name }));
 const currentName = computed(() => LOCALE_METADATA[toAppLocale(locale.value)].name);
 const chosen = useState('onv-language-choice', () => false);
 

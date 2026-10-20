@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ApiError, unwrap } from '@opennavo/api';
-import { formatBytes, formatDate, formatVersion } from '@opennavo/shared';
+import { APP_LOCALES, LOCALE_METADATA, formatBytes, formatDate, formatVersion } from '@opennavo/shared';
 import { OnButton, OnChip, OnIcon, OnInstallCommand, OnKeyValueList, useUiMessages } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
+import { decorative } from '~/utils/decorative';
 import { DESKTOP_BREW_COMMAND } from '~/utils/download';
+import { BRAND_FACTS } from '~~/shared/utils/brandFacts';
 
 // Download (05 §7.4, 08 §10.14): client icon on glow/orbits, Universal DMG, six feature cards,
 // install steps beside release details, latest notes.
@@ -15,7 +17,8 @@ const messages = useUiMessages();
 const NuxtLink = resolveComponent('NuxtLink');
 const appLocale = computed(() => toAppLocale(locale.value));
 
-// Orbit icons reuse Discover's homepage cache; a failed homepage request only leaves the client icon.
+// Orbit icons come from the homepage data. They are decorative (S7): a failed homepage request only
+// leaves the client icon, and the page keeps its 200.
 const [{ data: release, error }, { data: home }] = await Promise.all([
   useAsyncData(
     () => `desktop-release:${locale.value}`,
@@ -28,7 +31,10 @@ const [{ data: release, error }, { data: home }] = await Promise.all([
         }
       )
   ),
-  useHome()
+  useAsyncData(
+    () => `download:home:${locale.value}`,
+    () => decorative(unwrap(api.GET('/home')), null, 'download orbit icons')
+  )
 ]);
 
 const dmg = computed(() => release.value?.downloads.find(item => item.target === 'dmg-universal'));
@@ -144,10 +150,14 @@ defineOgImage('OgDefaultSatori', {
 });
 
 // WP10: OpenNavo's own app, kept apart from catalog apps by its own @id and published by the site
-// organization. No offer: the resolver would add a validity date nobody stated.
+// organization. No offer: the resolver would add a validity date nobody stated. G3: the description,
+// license and languages are the brand facts the homepage, README and /llms.txt state too.
 type SoftwareAppInput = NonNullable<Parameters<typeof defineSoftwareApp>[0]>;
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
 const settings = useSiteSettings();
+// T4: the download page is about the desktop app, whose node has a stable @id across languages.
+const canonical = useCanonicalUrl();
+usePageSchema(() => ({ mainEntity: release.value && dmg.value ? `${siteUrl}/#desktop-app` : undefined }));
 useSchemaOrg(
   computed(() => {
     const value = release.value;
@@ -155,11 +165,16 @@ useSchemaOrg(
     return [
       defineSoftwareApp({
         '@id': `${siteUrl}/#desktop-app`,
+        mainEntityOfPage: { '@id': `${canonical.value}#webpage` },
         name: settings.value?.identity.name || 'OpenNavo',
         operatingSystem: 'macOS',
         applicationCategory: 'UtilitiesApplication',
         softwareVersion: value.version,
         ...(value.minMacos ? { softwareRequirements: `macOS >= ${value.minMacos}` } : {}),
+        description: t(BRAND_FACTS.definitionKey),
+        license: `https://spdx.org/licenses/${BRAND_FACTS.license}.html`,
+        isAccessibleForFree: true,
+        inLanguage: APP_LOCALES.map(code => LOCALE_METADATA[code].hreflang),
         downloadUrl: dmg.value.url,
         url: `${siteUrl}${localePath('/download')}`,
         image: `${siteUrl}/icon-512.png`,

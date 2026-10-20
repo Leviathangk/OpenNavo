@@ -14,6 +14,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/jobs"
+	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/desktop"
 	"github.com/opennavo/opennavo/server/internal/service/taps"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -25,6 +26,7 @@ type Enqueuer interface {
 	Trigger(context.Context, string, int64) (string, error)
 }
 type Service struct {
+	Evidence   *agentgate.EvidenceService // injectable fetcher for deterministic evidence tests
 	Desktop    *desktop.Service
 	Store      *store.Store
 	Queue      Enqueuer
@@ -60,7 +62,7 @@ func Decode(request any, body []byte, actor store.AuditActor, ci bool) (Input, e
 			err = json.Unmarshal(v, &out.ScreenshotID)
 		case "locale":
 			err = json.Unmarshal(v, &out.Locale)
-		case "key":
+		case "key", "label", "token":
 			err = json.Unmarshal(v, &out.Key)
 		case "version":
 			err = json.Unmarshal(v, &out.Version)
@@ -148,6 +150,12 @@ func mapped(body map[string]any, names map[string]string) map[string]any {
 }
 func snapshotEntity(ctx context.Context, st *store.Store, entity string, in Input) (any, error) {
 	id := in.ID
+	if entity == "listing" {
+		return st.ListingCandidate(ctx, in.Key)
+	}
+	if entity == "listing_baseline" {
+		return st.ListingBaseline(ctx, in.ID)
+	}
 	if entity == "update_feed" {
 		return st.UpdateFeed(ctx, domain.UpdateFeedKey{BundleID: text(in.Body, "bundleId"), Source: text(in.Body, "source")})
 	}
@@ -233,6 +241,14 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 			}
 		}
 		st := &store.Store{DB: tx, Redis: s.Store.Redis}
+		action, err := beginAgentAction(ctx, st, in)
+		if err != nil {
+			return err
+		}
+		if action != nil && action.Replayed {
+			result, err = replayAction(action)
+			return err
+		}
 		if entity == "admin_user" || entity == "role" {
 			if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended('admin:super',0))").Error; err != nil {
 				return err
@@ -240,6 +256,9 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 		}
 		refs, err := historyRefs(ctx, st, op, entity, in, nil)
 		if err != nil {
+			return err
+		}
+		if err := checkActionRevision(ctx, st, action, refs); err != nil {
 			return err
 		}
 		states, err := captureHistory(ctx, st, refs)
@@ -298,7 +317,7 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 			return errPreviewRollback
 		}
 		var after any = mapped(in.Body, map[string]string{"name": "name", "permissions": "permissions", "allowDelete": "allowDelete", "ipAllowlist": "ipAllowlist", "expiresAt": "expiresAt", "limits": "limits", "sourceLocale": "sourceLocale", "title": "title", "body": "body", "sections": "sections", "term": "term", "translations": "translations", "doNotTranslate": "doNotTranslate", "developer": "developer", "repoUrl": "repoUrl", "hidden": "hidden", "editorChoice": "editorChoice", "tags": "tags", "notes": "notes", "downloadSize": "downloadSize", "accentColor": "accentColor", "displayName": "displayName", "summary": "summary", "description": "description", "assetId": "assetId", "captionZh": "captionZh", "captionEn": "captionEn", "theme": "theme", "items": "items", "ids": "ids", "slug": "slug", "icon": "icon", "appliesTo": "appliesTo", "visible": "visible", "hiddenByDefault": "hiddenByDefault", "parentId": "parentId", "i18n": "i18n", "roles": "roles", "status": "status", "nickName": "nickName", "email": "email", "userName": "userName", "roleCode": "roleCode", "roleName": "roleName", "roleDesc": "roleDesc", "permissionCodes": "permissionCodes", "terms": "terms", "enabled": "enabled", "handlerNote": "handlerNote", "manual": "manual", "autoEnabled": "autoEnabled", "value": "value", "key": "key", "nameZh": "nameZh", "nameEn": "nameEn", "probeUrl": "probeUrl", "recommended": "recommended", "sort": "sort", "apiDomain": "apiDomain", "bottleDomain": "bottleDomain", "brewGitRemote": "brewGitRemote", "coreGitRemote": "coreGitRemote", "publishAt": "publishAt", "unpublishAt": "unpublishAt", "coverAssetId": "coverAssetId", "placement": "placement", "targetType": "targetType", "packageId": "packageId", "collectionId": "collectionId", "url": "url", "glowColor": "glowColor", "startsAt": "startsAt", "endsAt": "endsAt", "type": "type", "amount": "amount", "currency": "currency", "region": "region", "plan": "plan", "period": "period", "appVersion": "appVersion", "sourceUrl": "sourceUrl", "method": "method", "verifiedAt": "verifiedAt", "ranges": "ranges", "note": "note"})
-		if op != "UpsertReleaseNotes" && (entity == "release" || entity == "translation" || entity == "changelog_source" || entity == "link_app" || entity == "update_feed") {
+		if op != "UpsertReleaseNotes" && (entity == "release" || entity == "translation" || entity == "changelog_source" || entity == "link_app" || entity == "update_feed" || entity == "listing" || entity == "listing_baseline") {
 			auditInput := in
 			if entity == "link_app" && auditInput.ID == 0 {
 				if created, ok := result.(map[string]any); ok {
@@ -322,7 +341,17 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 		if in.JobType != "" {
 			entityID = in.JobType
 		}
-		return store.Audit(ctx, tx, in.Actor, op, entity, entityID, before, redact(after))
+		if err := store.Audit(ctx, tx, in.Actor, op, entity, entityID, before, redact(after)); err != nil {
+			return err
+		}
+		if action != nil {
+			afterStates, err := captureHistory(ctx, st, refs)
+			if err != nil {
+				return err
+			}
+			return finishAgentAction(ctx, st, action, in, entity, entityID, map[string]any{"history": states, "object": before}, map[string]any{"history": afterStates, "object": after}, result)
+		}
+		return nil
 	})
 	if errors.Is(err, errPreviewRollback) {
 		return result, nil
@@ -330,7 +359,7 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 	if err != nil {
 		return nil, store.MapAdminError(err)
 	}
-	if s.Store.Redis != nil {
+	if s.Store.Redis != nil && !agentTransaction(ctx) {
 		if err := cache.PublishInvalidation(ctx, s.Store.Redis, "c:*"); err != nil {
 			return nil, err
 		}
@@ -340,7 +369,52 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error) {
 	ctx = operationContext(ctx, op, in)
 	domain.CurrentOperation(ctx).WebBaseURL = s.Config.WebBaseURL
+	// Control-plane operations and batch translations have their own permission,
+	// fencing and transaction boundaries; they never bypass the business gate.
 	switch op {
+	case "ClaimSeoTasks", "GetSeoTask", "CompleteSeoTask", "DeferSeoTask":
+		return s.seoTaskControl(ctx, op, in)
+	case "CreateSeoEvidence":
+		return s.captureSeoEvidence(ctx, in)
+	case "ListSeoActions":
+		return s.seoActions(ctx, in)
+	case "GetSeoAutomation", "UpdateSeoAutomation":
+		return s.seoAutomation(ctx, op, in)
+	case "RecordSeoGeo":
+		return s.recordSeoGeo(ctx, in)
+	case "ListSeoGeo", "GetSeoGeo":
+		return s.readSeoGeo(ctx, op, in)
+	case "ImportSeoTasks":
+		return s.importSeoTasks(ctx, in)
+	case "GetTranslationsSource":
+		return s.translationsSource(ctx, in)
+	case "WriteTranslations":
+		return s.writeTranslations(ctx, in)
+	}
+	if current := domain.CurrentOperation(ctx); current.AgentClientID > 0 && !strings.HasPrefix(op, "Get") && !strings.HasPrefix(op, "List") {
+		return s.executeAgent(ctx, op, in)
+	}
+	return s.execute(ctx, op, in)
+}
+
+func (s *Service) execute(ctx context.Context, op string, in Input) (any, error) {
+	switch op {
+	case "ProposeSnippetTemplate":
+		return s.proposeSnippet(ctx, in)
+	case "CompensateSeoAction":
+		return s.compensateAction(ctx, in)
+	case "GetSeoListingCandidate", "UpsertSeoListingCandidate":
+		return s.listingCandidate(ctx, op, in)
+	case "LockSeoListingBaseline":
+		return s.lockListingBaseline(ctx, in)
+	case "GetSeoOverview":
+		return s.seoOverview(ctx)
+	case "ListSeoAlerts":
+		return s.seoAlerts(ctx, in)
+	case "GetSeoPage":
+		return s.seoPage(ctx, in)
+	case "ListSeoKeywords", "UpsertSeoKeywords":
+		return s.seoKeywords(ctx, op, in)
 	case "UpsertUpdateFeed", "DisableUpdateFeed":
 		return s.updateFeedOperation(ctx, op, in)
 	case "ListLinkPackages", "AddLinkPackage", "UpdateLinkPackage", "RemoveLinkPackage":
@@ -363,24 +437,30 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 		return s.glossary(ctx, op, in)
 	case "ListTranslations":
 		return s.translations(ctx, in)
-	case "GetTranslationStatus", "RetranslateContent", "FixTranslation":
+	case "GetTranslationStatus", "FixTranslation":
 		return s.translationManage(ctx, op, in)
 	case "GetAgentSettings", "UpdateAgentSettings", "ListAgentClients", "CreateAgentClient", "GetAgentClient", "UpdateAgentClient", "ListAgentTokens", "CreateAgentToken", "UpdateAgentToken", "RevokeAgentToken":
 		return s.agentOperation(ctx, op, in)
-	case "ListTranslationModels":
-		return s.translationModels(ctx, in)
-	case "GetTranslationSettings", "UpdateTranslationSettings":
-		return s.translationSettings(ctx, op, in)
 	case "GetGitHubSettings", "UpdateGitHubSettings":
 		return s.githubSettings(ctx, op, in)
+	case "GetSeoProvider", "UpdateSeoProvider":
+		return s.seoProvider(ctx, op, in)
 	case "GetSeoSettings", "UpdateSeoSettings":
 		return s.seoSettings(ctx, op, in)
 	case "GetPackageIndexStatus", "SetPackageIndexStatus":
 		return s.packageIndexStatus(ctx, op, in)
 	case "ListIndexReport":
 		return s.indexReport(ctx, in)
+	case "SetCollectionSetupCriteria":
+		return s.saveCollectionCriteria(ctx, op, in)
+	case "SetBackgroundItem":
+		return s.saveBackgroundItem(ctx, op, in)
+	case "GetPackageFactRecords", "SetPackageFactRecords":
+		return s.factRecords(ctx, op, in)
 	case "GetPackageFacts", "SetPackagePrice", "SetPackageMacosSupport", "SetPackageAlternatives":
 		return s.packageFacts(ctx, op, in)
+	case "ListArticleTestArtifacts", "CreateArticleTestArtifact":
+		return s.articleTestArtifacts(ctx, op, in)
 	case "ListAdminArticles", "GetAdminArticle":
 		return s.articleRead(ctx, op, in)
 	case "CreateArticle":
@@ -419,7 +499,7 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 		return s.Desktop.Mutate(ctx, op, in.ID, in.Body, in.Actor)
 	case "ListAdminReleases", "GetAdminRelease", "ListTranslationQueue":
 		return s.releaseRead(ctx, op, in)
-	case "UpdateRelease", "UpdateReleaseI18n", "RetranslateRelease":
+	case "UpdateRelease", "UpdateReleaseI18n":
 		return s.releaseWrite(ctx, op, in)
 	case "ApproveTranslations":
 		return s.approve(ctx, in)
@@ -450,8 +530,6 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 		return s.categoryWrite(ctx, op, in)
 	case "GetDashboardOverview":
 		return s.dashboard(ctx)
-	case "GetLlmUsage":
-		return s.llmUsage(ctx, in)
 	case "ListAssets", "ListFeedback", "GetFeedback", "ListSynonyms", "ListTopQueries", "ListZeroResultQueries", "ListJobRuns", "GetJobRun", "ListMirrors", "ListAppConfig", "ListAdminUsers", "ListRoles", "ListPermissions", "ListAuditLogs":
 		return s.read(ctx, op, in)
 	case "CreateMirror", "UpdateMirror", "DeleteMirror", "UpdateAppConfig", "CreateSynonym", "UpdateSynonym", "DeleteSynonym", "UpdateFeedback", "CreateAdminUser", "UpdateAdminUser", "DeleteAdminUser", "ResetAdminUserPassword", "ForceLogoutAdminUser", "CreateRole", "UpdateRole", "DeleteRole", "SetRolePermissions":

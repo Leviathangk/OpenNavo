@@ -54,6 +54,9 @@ func catalogItems(ctx context.Context, view *store.Store, packages []store.Publi
 		}
 	}
 	for _, text := range texts {
+		if !i18n.ValidApp(text.Locale) {
+			continue
+		}
 		if text.DisplayName != nil {
 			names[text.PackageID][text.Locale] = text.DisplayName
 		}
@@ -64,7 +67,7 @@ func catalogItems(ctx context.Context, view *store.Store, packages []store.Publi
 	result := make([]publicapi.CatalogItem, 0, len(packages))
 	for _, p := range packages {
 		// Read structure from the same view; never copy negotiated English fallback text into other language maps.
-		if p.SourceLocale == "" {
+		if !i18n.ValidApp(p.SourceLocale) {
 			p.SourceLocale = "en-US"
 		}
 		p.I18n.DisplayName = names[p.ID]["zh-CN"]
@@ -100,6 +103,9 @@ func categoryData(categories []store.SnapshotCategory) ([]publicapi.CatalogBaseC
 		var base publicapi.CatalogBaseCategory
 		if err = json.Unmarshal(raw, &base); err != nil {
 			return nil, nil, err
+		}
+		if !i18n.ValidApp(string(base.SourceLocale)) {
+			base.SourceLocale = publicapi.Locale("en-US")
 		}
 		result = append(result, base)
 		for locale, name := range category.Name {
@@ -256,6 +262,7 @@ func (s *Service) BuildLocal(ctx context.Context) (Bundle, error) {
 	return bundle, err
 }
 
+// v2 is the six-language desktop wire contract, independent of website languages.
 func supportedLocales() []string {
 	out := make([]string, 0, len(i18n.Locales))
 	for _, locale := range i18n.Locales {

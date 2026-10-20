@@ -33,51 +33,28 @@ export function parsePage(value: QueryValue): number | undefined {
   return typeof text === 'string' && PAGE_NUMBER.test(text) ? Number(text) : undefined;
 }
 
-/** Items per page of a grid list (apps, a category, recently updated) unless ?size= says otherwise. */
-export const GRID_PAGE_SIZE = 24;
+import { GRID_PAGE_SIZE } from '#shared/utils/gridPage';
+import { canonicalQuery } from '#shared/utils/routeQuery';
 
-/** Grid lists share this parser with canonical URLs so their pagination bounds agree. */
-export function readGridPageSize(value: QueryValue): number {
-  const size = Number(value);
-  return Number.isInteger(size) && size >= 1 && size <= 100 ? size : GRID_PAGE_SIZE;
-}
+export { GRID_PAGE_SIZE };
 
 /** Pages of a list; an empty list still has its first page. */
 export function pageCount(total: number, size: number): number {
   return Math.max(1, Math.ceil(total / size));
 }
 
-/** Query parameters that change which items a list page holds, so its canonical URL keeps them. */
-export type ListQueryParam = 'page' | 'size' | 'disabled';
-
 /**
- * Canonical and alternate URLs. Only a paginated list keeps the parameters in `keep` (useListPage
- * records them for its route); every other page drops page, size and disabled. Page 1 is the list
- * itself, so ?page=1 (or any value that is not a later page) is dropped; page 2 and later keep their
- * own URL. The site root is written with its slash when a query follows (https://host/?…).
+ * Canonical and alternate URLs keep only what the route's query contract lists (shared/utils/routeQuery.ts,
+ * S4): page from page 2 on, and sorts, filters and flags that change the list, without their defaults, in
+ * contract order. Every other parameter (utm_*, ref, an unknown key) is dropped, and routes that are not
+ * lists keep none. The site root is written with its slash when a query follows (https://host/?…).
  */
-export function canonicalPageUrl(url: string, keep: readonly ListQueryParam[] = []): string {
+export function canonicalPageUrl(url: string): string {
   const at = url.indexOf('?');
   if (at < 0) return url;
-  const params = new URLSearchParams(url.slice(at + 1));
-  const pages = params.getAll('page');
-  const page = keep.includes('page') && pages.length === 1 ? parsePage(pages[0]) : undefined;
-  if (page === undefined || page <= 1) params.delete('page');
-  // Including disabled apps can add pages: dropping this filter can point at a 404.
-  if (keep.includes('disabled') && readFlag(params.getAll('disabled'))) {
-    params.set('disabled', '1');
-  } else {
-    params.delete('disabled');
-  }
-  // Fewer items per page means more pages: dropping the size can point at a 404 too.
-  const size = readGridPageSize(params.getAll('size'));
-  if (keep.includes('size') && size !== GRID_PAGE_SIZE) {
-    params.set('size', String(size));
-  } else {
-    params.delete('size');
-  }
-  const rest = params.toString();
   const base = url.slice(0, at);
+  const path = base.replace(/^[a-z][\w+.-]*:\/\/[^/]+/i, '') || '/';
+  const rest = canonicalQuery(path, new URLSearchParams(url.slice(at + 1)));
   if (!rest) return base;
   return /^[a-z][\w+.-]*:\/\/[^/]+$/i.test(base) ? `${base}/?${rest}` : `${base}?${rest}`;
 }

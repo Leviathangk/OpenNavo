@@ -33,7 +33,7 @@ import (
 
 func TestAdminReleaseContractsApprovalStalenessSourcesAndAudit(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	hash, err := seed.HashPassword("test-password-strong")
 	require.NoError(t, err)
 	data, err := seeds.Load()
@@ -90,7 +90,7 @@ func TestAdminReleaseContractsApprovalStalenessSourcesAndAudit(t *testing.T) {
 	require.Contains(t, call("GET", "/translations/queue?type=release", "", "0000").Body.String(), `"total":1`)
 	call("GET", "/translations/queue?type=package&status=failed", "", "0000")
 	call("POST", "/translations/approve", `{"type":"release","ids":[`+id+`]}`, "0000")
-	require.Eventually(t, func() bool { return st.Redis.Exists(ctx, "c:rel:c2:cask:sample:zh-CN").Val() == 0 }, 2*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return st.Redis.Exists(ctx, "c:rel:c3:cask:sample:zh-CN").Val() == 0 }, 2*time.Second, 10*time.Millisecond)
 	r := httptest.NewRequest("GET", "/api/v1/packages/cask/sample/releases?locale=zh-CN", nil)
 	w := httptest.NewRecorder()
 	server.Engine.ServeHTTP(w, r)
@@ -105,16 +105,13 @@ func TestAdminReleaseContractsApprovalStalenessSourcesAndAudit(t *testing.T) {
 	call("PUT", "/releases/"+id, `{"hidden":true,"title":null}`, "0000")
 	require.Contains(t, call("GET", "/releases?hidden=true", "", "0000").Body.String(), `"total":1`)
 	call("PUT", "/releases/"+id, `{"hidden":false}`, "0000")
-	call("POST", "/releases/"+id+"/retranslate", "", "1006")
-	require.NoError(t, st.DB.Exec("INSERT INTO release_i18n(release_id,locale,summary,status,source_locale) VALUES(?,'en-US','The application improves file management','source','en-US')", rid).Error)
-	call("POST", "/releases/"+id+"/retranslate", "", "0000")
-	require.Equal(t, 1, q.calls)
-	require.Equal(t, "manual", q.metadata.Trigger)
+	// S8: manual review never schedules server-side automatic translation.
+	require.Zero(t, q.calls)
 	require.NoError(t, st.DB.WithContext(ctx).Exec(`INSERT INTO package_i18n(package_id,locale,summary,status,source,source_hash) VALUES(?,'zh-CN','编辑器','machine','llm',encode(sha256(convert_to('Editor','UTF8')),'hex')) ON CONFLICT(package_id,locale) DO UPDATE SET status='machine',source_hash=EXCLUDED.source_hash`, pid).Error)
 	call("POST", "/translations/approve", `{"type":"package","ids":[`+pkg+`]}`, "0000")
 	call("GET", "/packages/"+pkg+"/changelog-sources", "", "0000")
 	call("GET", "/releases/999", "", "1002")
 	var count int64
 	require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT count(*) FROM audit_logs WHERE entity_type IN('release','translation','changelog_source') AND after IS NOT NULL").Scan(&count).Error)
-	require.Equal(t, int64(6), count)
+	require.Equal(t, int64(5), count)
 }

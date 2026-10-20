@@ -2,8 +2,12 @@ import jaJP from './messages/ja-JP.json';
 import esES from './messages/es-ES.json';
 import ptBR from './messages/pt-BR.json';
 import ruRU from './messages/ru-RU.json';
+import deDE from './messages/de-DE.json';
+import frFR from './messages/fr-FR.json';
+import itIT from './messages/it-IT.json';
+import zhHant from './messages/zh-Hant.json';
 // Shared base copy (08 §12.2, §12.5), merged into each app's resources; also supplies @opennavo/ui defaults.
-import type { Locale } from './types';
+import type { SiteLocale } from './types';
 import { selectPlural } from './plural';
 
 const zhCN = {
@@ -180,6 +184,12 @@ const zhCN = {
     noResultsDescription: '试试英文名或拼音，或者告诉我们想收录什么。',
     offlineTitle: '已离线',
     offlineDescription: '正在显示本地缓存的目录，联网后自动更新。'
+  },
+  // The website's language suggestion banner, shown in the suggested language before its messages load (X3).
+  languageSuggestion: {
+    message: '是否使用{language}浏览？',
+    switch: '切换到{language}',
+    dismiss: '不再提示'
   }
 };
 
@@ -359,16 +369,26 @@ const enUS: SharedMessages = {
     noResultsDescription: 'Try the English name, or tell us what you’d like to see listed.',
     offlineTitle: 'Offline',
     offlineDescription: 'Showing the cached catalog. It updates automatically when you’re back online.'
+  },
+  languageSuggestion: {
+    message: 'Would you like to browse in {language}?',
+    switch: 'Switch to {language}',
+    dismiss: 'Don’t suggest again'
   }
 };
 
-export const sharedMessages: Record<Locale, SharedMessages> = {
+/** Every site locale: the website renders shared components in all ten, the apps in their six. */
+export const sharedMessages: Record<SiteLocale, SharedMessages> = {
   'zh-CN': zhCN,
   'en-US': enUS,
   'ja-JP': jaJP,
   'es-ES': esES,
   'pt-BR': ptBR,
-  'ru-RU': ruRU
+  'ru-RU': ruRU,
+  'de-DE': deDE,
+  'fr-FR': frFR,
+  'it-IT': itIT,
+  'zh-Hant': zhHant
 };
 
 /** Replace {name} placeholders; retain missing parameters verbatim to expose omissions. */
@@ -383,7 +403,7 @@ export function interpolatePlural(
   template: string,
   params: Record<string, string | number>,
   count: number,
-  locale: Locale
+  locale: SiteLocale
 ): string {
   return interpolate(selectPlural(template, count, locale), params);
 }

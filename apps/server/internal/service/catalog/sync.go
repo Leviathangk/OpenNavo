@@ -143,6 +143,7 @@ func (s *Service) syncKind(ctx context.Context, kind string) (stats Stats, resul
 	}
 	defer func() { _ = spool.close() }()
 	seen := map[string]bool{}
+	observed := []store.HomebrewConfirmation{}
 	result, err := s.Source.Stream(ctx, kind, previous, func(item homebrew.Package) error {
 		if item.Kind != "cask" {
 			return errors.New("catalog source returned unsupported kind")
@@ -151,12 +152,22 @@ func (s *Service) syncKind(ctx context.Context, kind string) (stats Stats, resul
 			return errors.New("duplicate token in catalog")
 		}
 		seen[item.Token] = true
+		observed = append(observed, store.HomebrewConfirmation{Token: item.Token, Tap: item.Tap, RawHash: item.RawHash})
 		return spool.append(item.Raw)
 	})
 	stats.Fetched = result.Fetched
 	stats.NotModified = result.NotModified
-	if err != nil || result.NotModified {
+	if err != nil {
 		return stats, err
+	}
+	if result.NotModified {
+		observed = observed[:0]
+		for _, row := range rows {
+			if row.RemovedAt == nil {
+				observed = append(observed, store.HomebrewConfirmation{Token: row.Token, Tap: row.Tap, RawHash: row.RawHash})
+			}
+		}
+		return stats, s.Store.ConfirmHomebrewDefinitions(ctx, observed, s.now())
 	}
 	// Validate the download and all entries before writing; keep only token sets and lightweight hash maps in memory.
 	if err := spool.rewind(); err != nil {
@@ -247,6 +258,9 @@ func (s *Service) syncKind(ctx context.Context, kind string) (stats Stats, resul
 		return stats, err
 	}
 	stats.Removed += len(removed)
+	if err := s.Store.ConfirmHomebrewDefinitions(ctx, observed, s.now()); err != nil {
+		return stats, err
+	}
 	encoded, err := json.Marshal(result.Conditional)
 	if err != nil {
 		return stats, fmt.Errorf("encode catalog validator: %w", err)
@@ -319,7 +333,7 @@ func (s *Service) renormalize(ctx context.Context, rows map[string]*store.Catalo
 		} else if err != nil {
 			return fmt.Errorf("read normalization spool: %w", err)
 		}
-		batch = append(batch, store.CatalogMutation{Package: item, Previous: rows[item.Token]})
+		batch = append(batch, store.CatalogMutation{Package: item, Previous: rows[item.Token], LocalOnly: true})
 		if len(batch) == 500 {
 			if err := flush(); err != nil {
 				return err

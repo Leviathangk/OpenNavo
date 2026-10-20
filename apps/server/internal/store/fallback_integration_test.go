@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -63,6 +64,9 @@ func TestEveryContentFallbackRequestedEnglishSource(t *testing.T) {
 	}
 	require.NoError(t, st.DB.Exec("INSERT INTO app_config(key,value) VALUES('desktop.announcement','{\"sourceLocale\":\"zh-CN\"}') ON CONFLICT(key) DO NOTHING").Error)
 	require.NoError(t, st.DB.Exec("INSERT INTO announcement_i18n(config_key,locale,title,status,source_locale) SELECT 'desktop.announcement',locale,'text-'||locale,'manual','zh-CN' FROM unnest(ARRAY['ru-RU','en-US','zh-CN']) locale ON CONFLICT(config_key,locale) DO UPDATE SET title=excluded.title,source_locale=excluded.source_locale").Error)
+	source, err := st.ReadContentSource(ctx, content.Ref{Entity: "release", ID: 1})
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Exec("UPDATE release_i18n SET source_hash=?", source.Hash).Error)
 	loaders := map[string]func() (any, error){
 		"package":         func() (any, error) { return st.PublicPackage(ctx, "cask", "fallback", "ru-RU") },
 		"category":        func() (any, error) { return st.PublicCategories(ctx, "ru-RU") },
@@ -71,7 +75,7 @@ func TestEveryContentFallbackRequestedEnglishSource(t *testing.T) {
 		"screenshot":      func() (any, error) { return st.PublicScreenshots(ctx, pid, "ru-RU") },
 		"collection_item": func() (any, error) { return st.CollectionItems(ctx, "fallback", "ru-RU") },
 		"mirror":          func() (any, error) { return st.PublicMirrors(ctx, "ru-RU") },
-		"release":         func() (any, error) { return st.TimelineReleases(ctx, pid, "ru-RU") },
+		"release":         func() (any, error) { return st.TimelineEntries(ctx, pid, "ru-RU") },
 		"announcement":    func() (any, error) { return st.LocalizeAnnouncement(ctx, "ru-RU") },
 		"desktop_release": func() (any, error) {
 			r, err := st.DesktopRelease(ctx, 1)
@@ -86,7 +90,12 @@ func TestEveryContentFallbackRequestedEnglishSource(t *testing.T) {
 				require.NoError(t, err)
 				data, err := json.Marshal(value)
 				require.NoError(t, err)
-				require.Contains(t, string(data), "text-"+expected)
+				if name == "release" && expected != "ru-RU" {
+					require.NotContains(t, string(data), "text-", "editorial notes never fall back to another language")
+					require.Contains(t, string(data), `"status":"pending"`)
+				} else {
+					require.Contains(t, string(data), "text-"+expected)
+				}
 			})
 		}
 		t.Run("suggestions/"+expected, func(t *testing.T) {

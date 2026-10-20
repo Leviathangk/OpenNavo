@@ -1,0 +1,181 @@
+{
+  "getButton": {
+    "get": "Laden",
+    "open": "Öffnen",
+    "installed": "Installiert",
+    "update": "Aktualisieren",
+    "queued": "Wartet",
+    "running": "Läuft",
+    "cancel": "Abbrechen",
+    "unavailable": "Nicht verfügbar",
+    "download": "Download"
+  },
+  "action": {
+    "checkUpdates": "Nach Updates suchen",
+    "updateTo": "Auf {version} aktualisieren",
+    "updateAll": "Alle aktualisieren ({count}) | Alle aktualisieren ({count})",
+    "retry": "Erneut versuchen",
+    "viewLog": "Protokoll anzeigen",
+    "cancel": "Abbrechen",
+    "openInApp": "In OpenNavo öffnen",
+    "copyInstallCommand": "Installationsbefehl kopieren",
+    "addToBrewfile": "Zur Brewfile-Liste hinzufügen",
+    "inBrewfile": "In der Brewfile-Liste",
+    "uninstall": "Deinstallieren",
+    "delete": "Löschen",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "clear": "Eingabe löschen"
+  },
+  "kind": {
+    "cask": "App",
+    "formula": "Befehlszeilentool",
+    "link": "App"
+  },
+  "card": {
+    "installs30d": "Installationen (30 Tage)",
+    "version": "Version",
+    "category": "Kategorie"
+  },
+  "nav": {
+    "breadcrumb": "Navigationspfad",
+    "pagination": "Seitennavigation",
+    "previous": "Vorherige Seite",
+    "next": "Nächste Seite",
+    "page": "Seite {page}",
+    "loadMore": "Mehr laden",
+    "categories": "Kategoriefilter"
+  },
+  "installCommand": {
+    "title": "Installationsbefehl"
+  },
+  "cask": {
+    "version": "Verfügbare Version",
+    "unknown": "Noch nicht bestätigt",
+    "noMac": "Keine macOS-Unterstützung angegeben",
+    "rosetta": "Erfordert Rosetta",
+    "legacy": "Ältere Versionen für einige Plattformen verfügbar",
+    "declarations": "Inhalte bei Installation und Deinstallation",
+    "install": "Installation",
+    "uninstall": "Deinstallation",
+    "cleanup": "Benutzerdaten entfernen",
+    "source": "Quelldatei",
+    "target": "Angegebenes Ziel",
+    "declaration": "Vollständige Deklaration ansehen",
+    "download": "Download-URL"
+  },
+  "hero": {
+    "viewDetails": "Details ansehen"
+  },
+  "about": {
+    "title": "Beschreibung",
+    "machineTranslated": "KI-übersetzt",
+    "viewOriginal": "Original ansehen",
+    "expand": "Mehr anzeigen",
+    "collapse": "Weniger anzeigen"
+  },
+  "gallery": {
+    "label": "Screenshots",
+    "item": "Screenshot {index}",
+    "dialog": "Screenshot-Vorschau",
+    "position": "{index} von {total}",
+    "previous": "Vorheriger Screenshot",
+    "next": "Nächster Screenshot",
+    "close": "Schließen"
+  },
+  "dialog": {
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "cancel": "Abbrechen"
+  },
+  "toast": {
+    "region": "Mitteilungen",
+    "view": "Anzeigen",
+    "close": "Mitteilung schließen"
+  },
+  "menu": {
+    "more": "Weitere Aktionen"
+  },
+  "palette": {
+    "label": "Befehlspalette",
+    "placeholder": "Apps oder Aktionen suchen",
+    "results": "Suchergebnisse",
+    "empty": "Keine passenden Ergebnisse",
+    "loading": "Suche läuft …",
+    "hintSelect": "↑↓ Auswählen",
+    "hintOpen": "↵ Öffnen",
+    "hintInstall": "⌘↵ Installieren / Aktualisieren",
+    "hintCopy": "⌘C brew-Befehl kopieren"
+  },
+  "collection": {
+    "viewAll": "Alle anzeigen ({count}) | Alle anzeigen ({count})"
+  },
+  "rank": {
+    "up": "Um {n} Platz gestiegen | Um {n} Plätze gestiegen",
+    "down": "Um {n} Platz gefallen | Um {n} Plätze gefallen",
+    "same": "Platzierung unverändert"
+  },
+  "progress": {
+    "busy": "In Arbeit"
+  },
+  "task": {
+    "queued": "In Warteschlange:",
+    "expandLog": "Protokoll einblenden",
+    "collapseLog": "Protokoll ausblenden"
+  },
+  "log": {
+    "label": "Protokoll"
+  },
+  "chart": {
+    "other": "Sonstige",
+    "item": "Eintrag",
+    "value": "Wert",
+    "share": "Anteil"
+  },
+  "table": {
+    "sortBy": "Nach {label} sortieren"
+  },
+  "topNav": {
+    "label": "Hauptnavigation",
+    "home": "OpenNavo-Startseite",
+    "search": "Apps suchen",
+    "download": "Download",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen"
+  },
+  "version": {
+    "timeline": "Versionsverlauf",
+    "latest": "Aktuell",
+    "installed": "Installiert",
+    "patch": "Patch",
+    "prerelease": "Vorabversion",
+    "machineTranslation": "KI-übersetzt",
+    "noNotes": "Keine eigenen Versionshinweise für diese Version",
+    "viewOriginal": "Original ansehen",
+    "expand": "Einblenden",
+    "collapse": "Ausblenden",
+    "updateTo": "Auf diese Version aktualisieren",
+    "showEarlier": "{count} ältere Version anzeigen | {count} ältere Versionen anzeigen",
+    "sources": {
+      "webpage": "Offizielle Update-Seite",
+      "sparkle": "Sparkle-Feed",
+      "github_release": "GitHub Release",
+      "manual": "Manuell zusammengestellt",
+      "editorial": "OpenNavo-Redaktion",
+      "homebrew": "In Homebrew aufgenommen"
+    }
+  },
+  "state": {
+    "loadFailedTitle": "Laden fehlgeschlagen",
+    "loadFailedDescription": "Das Netzwerk oder der Dienst ist vorübergehend nicht verfügbar. Versuchen Sie es später erneut.",
+    "noResultsTitle": "Keine Ergebnisse für „{q}“",
+    "noResultsDescription": "Versuchen Sie es mit dem englischen Namen, oder sagen Sie uns, was wir aufnehmen sollen.",
+    "offlineTitle": "Offline",
+    "offlineDescription": "Angezeigt wird der zwischengespeicherte Katalog. Er wird automatisch aktualisiert, sobald Sie wieder online sind."
+  },
+  "languageSuggestion": {
+    "message": "Möchten Sie die Website auf {language} nutzen?",
+    "switch": "Auf {language} umstellen",
+    "dismiss": "Nicht mehr vorschlagen"
+  }
+}

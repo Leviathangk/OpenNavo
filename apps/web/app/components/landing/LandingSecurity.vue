@@ -20,9 +20,13 @@ const NuxtLink = resolveComponent('NuxtLink');
           :body="t('landing.security.body')"
         />
       </div>
-      <div class="mt-48px" data-reveal style="--landing-delay: 80ms">
+      <!-- The scan is staged with made-up files; the caption says so where everyone can read it. -->
+      <figure class="m-0 mt-48px" data-reveal style="--landing-delay: 80ms">
         <LandingSecurityDemo />
-      </div>
+        <figcaption class="mt-12px text-center text-12.5px leading-[1.6] text-ink-tertiary">
+          {{ t('landing.security.demo.caption') }}
+        </figcaption>
+      </figure>
       <LandingSecurityPoints class="mt-48px" />
       <div class="mt-36px flex flex-col items-center gap-16px text-center" data-reveal>
         <OnButton variant="secondary" shape="round" :href="localePath('/security')" :link-as="NuxtLink">

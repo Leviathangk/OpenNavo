@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/opennavo/opennavo/server/internal/i18n"
 )
 
 // Reasons a page is not recommended for indexing.
@@ -24,31 +26,50 @@ const (
 	OverrideNoindex = "noindex"
 )
 
-// Locales are the six published interface languages, in hreflang order.
-var Locales = []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU"}
+// Locales are the generated website/content languages, in hreflang order.
+var Locales = func() []string {
+	out := make([]string, 0, len(i18n.SiteLocales))
+	for _, locale := range i18n.SiteLocales {
+		out = append(out, string(locale))
+	}
+	return out
+}()
 
 // Facts are what the rule needs about one app.
 type Facts struct {
-	Hidden           bool
-	Disabled         bool // disabled by Homebrew
-	Deprecated       bool // deprecated by Homebrew
-	Stale            bool // paused by OpenNavo's 90-day rule; Homebrew may still offer it
-	Name, Token      string
-	Summary          string // source-language summary
-	Version          string
-	HasRequirements  bool
-	Installs30d      int
-	Override         string
-	FirstSeenAt      time.Time
-	SourceLocale     string
-	PublishedLocales []string // locales whose summary is published (source, machine or manual)
+	TroubleshootingIssues map[string]int
+	IntentLocales         map[PageKind][]string
+	Kind                  string
+	Description           string
+	HasSubstantiveContent bool
+	ReadyLocales          []string
+	NotesPages            map[int]map[string]NotesFacts
+	HasDependencyContent  bool
+	Hidden                bool
+	Disabled              bool // disabled by Homebrew
+	Deprecated            bool // deprecated by Homebrew
+	Stale                 bool // paused by OpenNavo's 90-day rule; Homebrew may still offer it
+	Name, Token           string
+	Summary               string // source-language summary
+	Version               string
+	HasRequirements       bool
+	Installs30d           int
+	Override              string
+	FirstSeenAt           time.Time
+	SourceLocale          string
+	PublishedLocales      []string // locales whose summary is published (source, machine or manual)
 }
 
 // Policy mirrors the admin settings pages.indexPolicy.
 type Policy struct {
-	Mode  string // off | shadow | enforce
-	Scope string // new | all
-	Since time.Time
+	IntentPagesEnabled    bool
+	TranslationLocales    []string
+	TranslationMode       string
+	VersionsMinNotesChars int
+	VersionsSitemap       bool
+	Mode                  string // off | shadow | enforce
+	Scope                 string // new | all
+	Since                 time.Time
 }
 
 // Decision is what pages and the sitemap act on.
@@ -89,7 +110,7 @@ func Evaluate(f Facts) (bool, string) {
 		return false, ReasonMissingSummary
 	}
 	version := strings.TrimSpace(strings.SplitN(f.Version, ",", 2)[0])
-	if (version == "" || strings.EqualFold(version, "latest")) && !f.HasRequirements && f.Installs30d <= 0 {
+	if (version == "" || strings.EqualFold(version, "latest")) && !f.HasRequirements && f.Installs30d <= 0 && !f.HasSubstantiveContent && strings.TrimSpace(f.Description) == "" {
 		return false, ReasonThin
 	}
 	return true, ""

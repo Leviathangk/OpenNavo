@@ -10,6 +10,8 @@ export interface OnScreenshot {
   src: string;
   /** Gallery thumbnail, defaulting to original. */
   thumb?: string;
+  /** Width-described candidates for the 318×200 thumbnail box (X3), e.g. from imageSrcset(). */
+  thumbSrcset?: string;
   /** Lower-left caption, also image alt text. */
   caption?: string;
 }
@@ -96,11 +98,17 @@ const navButton =
           aria-haspopup="dialog"
           @click="open(index, $event)"
         >
+          <!-- The first shot is often the largest image in view (X3): load it first, and every shot reserves its box. -->
           <img
             :src="item.thumb ?? item.src"
+            :srcset="item.thumbSrcset"
+            :sizes="item.thumbSrcset ? '318px' : undefined"
             :alt="altFor(item, index)"
-            loading="lazy"
+            :loading="index === 0 ? 'eager' : 'lazy'"
+            :fetchpriority="index === 0 ? 'high' : undefined"
             decoding="async"
+            width="318"
+            height="200"
             class="block h-full w-full object-cover"
           />
           <span

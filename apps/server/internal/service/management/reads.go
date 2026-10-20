@@ -14,7 +14,7 @@ import (
 
 const adminUserJSON = `jsonb_build_object('id',u.id,'userName',u.user_name,'nickName',u.nick_name,'email',u.email,'avatarUrl',u.avatar_url,'status',u.status,'roles',COALESCE((SELECT jsonb_agg(r.role_code ORDER BY r.role_code) FROM admin_user_roles ur JOIN admin_roles r ON r.id=ur.role_id WHERE ur.user_id=u.id),'[]'::jsonb),'locked',COALESCE(u.locked_until>now(),false),'lastLoginAt',u.last_login_at,'lastLoginIp',u.last_login_ip,'createTime',u.created_at,'updateTime',u.updated_at,'createBy',creator.user_name,'updateBy',editor.user_name)`
 const roleJSON = `jsonb_build_object('id',r.id,'roleCode',r.role_code,'roleName',r.role_name,'roleDesc',r.role_desc,'status',r.status,'builtin',r.builtin,'permissionCodes',COALESCE((SELECT jsonb_agg(rp.permission_code ORDER BY rp.permission_code) FROM admin_role_permissions rp WHERE rp.role_id=r.id),'[]'::jsonb),'userCount',(SELECT count(*) FROM admin_user_roles ur WHERE ur.role_id=r.id))`
-const feedbackJSON = `jsonb_build_object('id',f.id,'type',f.type,'packageId',f.package_id,'packageKind',p.kind,'packageToken',p.token,'packageName',p.name,'content',f.content,'contact',f.contact,'platform',f.platform,'appVersion',f.app_version,'osVersion',f.os_version,'errorCode',f.error_code,'status',f.status,'handlerNote',f.handler_note,'handledBy',u.user_name,'handledAt',f.handled_at,'createTime',f.created_at)`
+const feedbackJSON = `jsonb_build_object('id',f.id,'type',f.type,'packageId',f.package_id,'packageKind',p.kind,'packageToken',p.token,'packageName',p.name,'content',f.content,'contact',f.contact,'platform',f.platform,'appVersion',f.app_version,'osVersion',f.os_version,'errorCode',f.error_code,'packageVersion',f.package_version,'macosVersion',f.macos_version,'symptom',f.symptom,'diagnosticLog',f.diagnostic_log,'links',f.links,'visibility',f.visibility,'status',f.status,'handlerNote',f.handler_note,'handledBy',u.user_name,'handledAt',f.handled_at,'createTime',f.created_at)`
 const jobJSON = `jsonb_build_object('id',j.id,'jobType',j.job_type,'trigger',j.trigger,'triggeredBy',u.user_name,'status',j.status,'stats',j.stats,'error',j.error,'startedAt',j.started_at,'finishedAt',j.finished_at,'durationMs',floor(extract(epoch FROM (j.finished_at-j.started_at))*1000)::bigint)`
 
 func (s *Service) read(ctx context.Context, op string, in Input) (any, error) {
@@ -117,10 +117,6 @@ func (s *Service) queryInsights(ctx context.Context, op string, in Input, curren
 	}
 	return map[string]any{"current": current, "size": size, "records": rows, "total": total}, err
 }
-func (s *Service) llmUsage(ctx context.Context, in Input) (any, error) {
-	months := number(in.Params, "months", 6)
-	return s.Store.JSONRows(ctx, `SELECT jsonb_build_object('month',to_char(date_trunc('month',created_at),'YYYY-MM'),'task',task,'promptTokens',sum(prompt_tokens),'completionTokens',sum(completion_tokens),'reasoningTokens',sum(reasoning_tokens),'cachedTokens',sum(cached_tokens),'requests',count(*),'costUsd',sum(cost_usd)) AS data FROM llm_usage WHERE created_at>=date_trunc('month',?::timestamptz)-(?-1)*interval '1 month' GROUP BY date_trunc('month',created_at),task ORDER BY date_trunc('month',created_at) DESC,task`, s.now(), months)
-}
 func (s *Service) dashboard(ctx context.Context) (any, error) {
 	// All four metrics share the valid-app-and-font set; six-language coverage counts actual current-source content, never display fallback.
 	raw, err := s.Store.JSONRow(ctx, `
@@ -170,7 +166,7 @@ SELECT jsonb_build_object(
   'lastSnapshotAt',(SELECT max(created_at) FROM catalog_snapshots)),
  'snapshot',COALESCE((SELECT jsonb_build_object('cursor',seq,'itemCount',item_count,'url',url)
   FROM catalog_snapshots ORDER BY created_at DESC,id DESC LIMIT 1),jsonb_build_object('cursor',0,'itemCount',0))
-) AS data`, i18n.Locales[:], len(i18n.Locales))
+) AS data`, i18n.SiteLocales[:], len(i18n.SiteLocales))
 	if err != nil {
 		return nil, err
 	}
@@ -178,34 +174,11 @@ SELECT jsonb_build_object(
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return nil, err
 	}
-	usage, err := s.Store.LLMMonth(ctx, s.now())
-	if err != nil {
-		return nil, err
-	}
-	var pendingPackages, pendingReleases, needsReview int64
-	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT count(*) FROM packages p LEFT JOIN package_i18n i ON i.package_id=p.id AND i.locale='zh-CN' WHERE p.kind='cask' AND p.removed_at IS NULL AND NOT p.is_font AND (i.summary IS NULL OR i.summary='')`).Scan(&pendingPackages).Error; err != nil {
-		return nil, err
-	}
-	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT count(DISTINCT r.id) FROM releases r JOIN release_i18n i ON i.release_id=r.id JOIN packages p ON p.id=r.package_id WHERE p.kind='cask' AND NOT r.hidden AND i.locale<>r.source_locale AND i.status='pending'`).Scan(&pendingReleases).Error; err != nil {
-		return nil, err
-	}
-	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT (SELECT count(*) FROM package_i18n WHERE status='machine')+(SELECT count(*) FROM release_i18n WHERE status='machine')`).Scan(&needsReview).Error; err != nil {
-		return nil, err
-	}
-	var spend *float64
-	if err := s.Store.DB.WithContext(ctx).Raw("SELECT sum(cost_usd) FROM llm_usage WHERE created_at>=date_trunc('month',?::timestamptz)", s.now()).Scan(&spend).Error; err != nil {
-		return nil, err
-	}
-	settings, err := s.Store.TranslationSettings(ctx)
-	if err != nil {
-		return nil, err
-	}
 	var metrics struct{ Writes, Translations, Failures int64 }
 	day := s.now().Truncate(24 * time.Hour)
-	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT (SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code='0000' AND is_write AND NOT dry_run) writes,(SELECT count(*) FROM translation_logs WHERE created_at>=? AND status='succeeded') translations,(SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code<>'0000')+(SELECT count(*) FROM translation_logs WHERE created_at>=? AND status='failed') failures`, day, day, day, day).Scan(&metrics).Error; err != nil {
+	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT (SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code='0000' AND is_write AND NOT dry_run) writes,(SELECT count(*) FROM content_revisions WHERE created_at>=? AND actor_type='agent' AND operation_id='fixTranslation') translations,(SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code<>'0000') failures`, day, day, day).Scan(&metrics).Error; err != nil {
 		return nil, err
 	}
 	out["hermes"] = map[string]any{"date": day.Format("2006-01-02"), "timeZone": "UTC", "writes": metrics.Writes, "translations": metrics.Translations, "failures": metrics.Failures}
-	out["llm"] = map[string]any{"model": settings.Model, "monthTokens": usage.Tokens, "monthTokenBudget": settings.MonthlyTokenBudget, "monthSpendUsd": spend, "monthBudgetUsd": nil, "pendingPackages": pendingPackages, "pendingReleases": pendingReleases, "needsReview": needsReview}
 	return out, nil
 }

@@ -33,7 +33,8 @@ test('Superadmin dashboard shows scale and coverage', async ({ superPage: page }
   await page.goto('/dashboard');
   await expect(page.getByText('App 总数', { exact: true })).toBeVisible();
   await expect(page.getByText('覆盖率')).toBeVisible();
-  await expect(page.getByText('近 6 个月 LLM token 用量')).toBeVisible();
+  // The dashboard now exposes SEO automation instead of the removed LLM usage chart.
+  await expect(page.getByText('SEO 自动化（Hermes）', { exact: true })).toBeVisible();
 });
 
 test('Editing a package Chinese summary updates the public API', async ({ superPage: page }) => {

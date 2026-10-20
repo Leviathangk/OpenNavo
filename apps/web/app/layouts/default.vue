@@ -6,6 +6,8 @@ import { OnAppShell, OnToastRegion } from '@opennavo/ui';
 const route = useRoute();
 const toasts = useToasts();
 const rail = computed(() => route.meta.rail);
+const palette = useCommandPalette();
+useCommandPaletteShortcut();
 </script>
 
 <template>
@@ -29,7 +31,7 @@ const rail = computed(() => route.meta.rail);
     <template #overlay>
       <ClientOnly><LanguageSuggestion /></ClientOnly>
       <OpenInAppDialog />
-      <CommandPalette />
+      <LazyCommandPalette v-if="palette.open.value" />
       <OnToastRegion :items="toasts.items.value" @dismiss="toasts.dismiss" />
     </template>
   </OnAppShell>

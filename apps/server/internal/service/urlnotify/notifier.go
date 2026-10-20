@@ -88,8 +88,7 @@ func (n *Notifier) defaults() {
 	}
 }
 
-// Run handles one batch. The cursor advances after page caches are refreshed and pending edge
-// purges are persisted. Cloudflare retries do not block later changes or IndexNow announcements.
+// Run persists changes and cursor movement atomically, then drains independently retryable delivery work.
 func (n *Notifier) Run(ctx context.Context) (Result, error) {
 	n.defaults()
 	var result Result
@@ -115,6 +114,15 @@ func (n *Notifier) Run(ctx context.Context) (Result, error) {
 	if err != nil {
 		return result, err
 	}
+	// Drain obligations persisted by the previous worker implementation during rolling upgrades.
+	if len(state.PendingPurgePrefixes) > 0 {
+		status, count := n.drainPurges(ctx, &state)
+		state.LastPurgeStatus = status
+		result.Purged += count
+		if err := n.Store.SaveURLNotifyState(ctx, state); err != nil {
+			return result, err
+		}
+	}
 	// A new web release is purged before this run's changes, and also when there are none.
 	release := n.releasePurge(ctx)
 	if release != "" {
@@ -123,10 +131,7 @@ func (n *Notifier) Run(ctx context.Context) (Result, error) {
 			return result, err
 		}
 	}
-	// A one-time announcement of pages an index rule change made indexable (backfill.go).
-	if err := n.backfill(ctx, &state); err != nil {
-		return result, err
-	}
+
 	before := n.Now().Add(-n.Settle)
 	end, err := n.Store.URLChangeCursorEnd(ctx, state.Cursor, before, n.Batch)
 	if err != nil {
@@ -136,16 +141,7 @@ func (n *Notifier) Run(ctx context.Context) (Result, error) {
 	if err != nil {
 		return result, err
 	}
-	if end == state.Cursor && len(pages) == 0 {
-		if len(state.PendingPurgePrefixes) > 0 {
-			state.LastPurgeStatus, result.Purged = n.drainPurges(ctx, &state)
-			if release != "" {
-				state.LastPurgeStatus = release + "; " + state.LastPurgeStatus
-			}
-			return result, n.Store.SaveURLNotifyState(ctx, state)
-		}
-		return result, nil
-	}
+
 	var plan Plan
 	if end != state.Cursor {
 		if plan, result.Changes, err = n.catalogPlan(ctx, state.Cursor, end, before); err != nil {
@@ -155,46 +151,55 @@ func (n *Notifier) Run(ctx context.Context) (Result, error) {
 	// Articles and authors (WP14) share the same refresh, purge and announcement steps.
 	plan = plan.Merge(ContentPlan(pages, n.Config.WebBaseURL))
 	result.Changes += len(pages)
-	settings, err := n.Store.SEOSettings(ctx)
+	previous := state
+	if state.IndexBackfill != indexBackfill {
+		backfill, err := n.backfillPlan(ctx)
+		if err != nil {
+			return result, err
+		}
+		plan = plan.Merge(backfill)
+		state.IndexBackfill = indexBackfill
+	}
+	notifications, err := n.notifications(ctx, plan)
 	if err != nil {
 		return result, err
 	}
-	result.Paths = len(plan.Paths)
 	now := n.Now().UTC()
-	state.LastRunAt, state.LastURLs = &now, len(plan.Paths)
-	if err := n.invalidate(ctx, plan.Paths); err != nil {
-		state.LastError = "page cache: " + err.Error()
-		_ = n.Store.SaveURLNotifyState(ctx, state)
-		return result, err
-	}
-	state.LastError = ""
-	if purgeEnabled(settings) {
-		pending := Plan{PurgePrefixes: state.PendingPurgePrefixes}.Merge(Plan{PurgePrefixes: plan.PurgePrefixes})
-		state.PendingPurgePrefixes = pending.PurgePrefixes
-		if len(state.PendingPurgePrefixes) > maxPurgePrefixes {
-			state.PendingPurgePrefixes = sectionPrefixes(n.Config.WebBaseURL)
-		}
-	}
-	// Persist work before any external request or cursor advance. A crash can repeat a purge,
-	// but cannot lose one. Failed tasks remain independent of both feed cursors.
-	if err := n.Store.SaveURLNotifyState(ctx, state); err != nil {
-		return result, err
-	}
-	state.LastPurgeStatus, result.Purged = n.drainPurges(ctx, &state)
-	if release != "" {
-		// The release purge stays visible next to the purge of this run's changes.
-		state.LastPurgeStatus = strings.TrimSuffix(release+"; "+state.LastPurgeStatus, "; ")
-	}
-	if problem := n.probe(ctx, plan.IndexNowURLs); problem != "" && settings.Settings.IndexNow.Enabled {
-		state.LastIndexnowStatus = "skipped: " + problem
-	} else {
-		state.LastIndexnowStatus, result.Announced = n.announce(ctx, settings, plan.IndexNowURLs)
-	}
-	state.Cursor = end
+	state.Cursor, state.LastRunAt, state.LastURLs = end, &now, len(plan.Paths)
 	if len(pages) > 0 {
 		state.ContentCursor = pages[len(pages)-1].Seq
 	}
-	return result, n.Store.SaveURLNotifyState(ctx, state)
+	if err := n.Store.QueueURLFeed(ctx, previous, state, notifications); err != nil {
+		return result, err
+	}
+	if err := n.Store.DispatchCacheInvalidations(ctx); err != nil {
+		return result, err
+	}
+	// Allow the API subscribers to finish their bounded invalidation coalescing before SSR.
+	n.Sleep(backfillCacheSettle)
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	result.Paths = len(plan.Paths)
+	purged, announced, err := n.drainOutbox(ctx, owner)
+	result.Purged += purged
+	result.Announced = announced
+	problem := ""
+	if err != nil {
+		problem = err.Error()
+	}
+	statusUpdate := map[string]any{"last_error": problem}
+	if announced > 0 {
+		statusUpdate["last_indexnow_status"] = fmt.Sprintf("outbox: %d announced", announced)
+	}
+	if result.Purged > 0 {
+		statusUpdate["last_purge_status"] = fmt.Sprintf("outbox: %d purged", result.Purged)
+	}
+	statusErr := n.Store.DB.WithContext(ctx).Table("url_notify_state").Where("id=true").Updates(statusUpdate).Error
+	if err == nil {
+		err = statusErr
+	}
+	return result, err
 }
 
 // catalogPlan turns the settled catalog changes up to end into paths and URLs.
@@ -216,6 +221,9 @@ func (n *Notifier) catalogPlan(ctx context.Context, cursor, end int64, before ti
 	if err != nil {
 		return Plan{}, 0, err
 	}
+	if err := n.Store.PopulatePageNotes(ctx, rows, 1); err != nil {
+		return Plan{}, 0, err
+	}
 	index := make(map[int64]store.IndexRow, len(rows))
 	for _, row := range rows {
 		index[row.ID] = row
@@ -223,6 +231,12 @@ func (n *Notifier) catalogPlan(ctx context.Context, cursor, end int64, before ti
 	policy, err := n.Store.IndexPolicy(ctx)
 	if err != nil {
 		return Plan{}, 0, err
+	}
+	if err := n.Store.PopulateIntentEligibility(ctx, rows, policy, n.Config.WebBaseURL); err != nil {
+		return Plan{}, 0, err
+	}
+	for _, row := range rows {
+		index[row.ID] = row
 	}
 	return BuildPlan(changes, current, index, policy, n.Config.WebBaseURL), len(changes), nil
 }
@@ -261,17 +275,29 @@ func (n *Notifier) post(ctx context.Context, endpoint, bearer string, body any) 
 
 // invalidate removes page-cache entries through the web's internal port.
 func (n *Notifier) invalidate(ctx context.Context, paths []string) error {
-	if n.Config.WebInternalURL == "" || n.Config.WebInternalSecret == "" || len(paths) == 0 {
+	if len(paths) == 0 {
 		return nil
+	}
+	if n.Config.WebInternalURL == "" || n.Config.WebInternalSecret == "" {
+		return errors.New("web cache invalidation is not configured")
 	}
 	endpoint := strings.TrimRight(n.Config.WebInternalURL, "/") + "/cache/invalidate"
 	for start := 0; start < len(paths); start += invalidateChunk {
-		status, _, err := n.post(ctx, endpoint, n.Config.WebInternalSecret, map[string]any{"paths": paths[start:min(start+invalidateChunk, len(paths))]})
+		resetSettings := slices.Contains(paths, "/")
+		status, body, err := n.post(ctx, endpoint, n.Config.WebInternalSecret, map[string]any{"paths": paths[start:min(start+invalidateChunk, len(paths))], "settings": resetSettings})
 		if err != nil {
 			return errors.New("web cache endpoint unreachable")
 		}
 		if status != http.StatusOK {
 			return fmt.Errorf("web cache endpoint returned %d", status)
+		}
+		if resetSettings {
+			var reply struct {
+				SettingsCleared bool `json:"settingsCleared"`
+			}
+			if json.Unmarshal([]byte(body), &reply) != nil || !reply.SettingsCleared {
+				return errors.New("web process settings cache was not cleared")
+			}
 		}
 	}
 	return nil

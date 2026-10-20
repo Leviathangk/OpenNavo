@@ -62,7 +62,10 @@ describe('OnVersionEntry', () => {
       props: { entry: entry('5.6.2', { source: 'github_release', brewCommittedAt }), collapsed },
       global: withLocale('zh-CN')
     });
-    const dateText = () => wrapper.find('span.text-12\\.5px').text();
+    const dateText = () => {
+      const date = wrapper.find('time.on-version-entry__date');
+      return date.exists() ? date.text() : '';
+    };
     // Valid publication dates still take precedence over the adoption date.
     expect(dateText()).toBe(formatDate('2026-09-30T08:00:00Z', { locale: 'zh-CN', weekday: !collapsed }));
     for (const publishedAt of [null, '', '0001-01-01T00:00:00Z', 'invalid-date']) {
@@ -94,7 +97,9 @@ describe('OnVersionEntry', () => {
     expect(wrapper.find('p.whitespace-pre-line').text()).toBe(summary);
     expect(wrapper.find('dl').exists()).toBe(false);
     await wrapper.setProps({ collapsed: true });
-    expect(wrapper.text()).not.toContain(summary);
+    // Collapsing only closes the <details>; the notes stay in the HTML for crawlers and find-in-page.
+    expect((wrapper.find('details').element as HTMLDetailsElement).open).toBe(false);
+    expect(wrapper.find('details').text()).toContain(summary);
   });
 
   it('Displays the latest badge, source line, and grouped highlights with bold and code rendered by segment', () => {
@@ -141,15 +146,65 @@ describe('OnVersionEntry', () => {
     expect(wrapper.find('.on-version-entry__local').text()).toContain('你在 9月26日 10:12');
   });
 
-  it('Shows one collapsed line, emits toggle on click, and uses English copy', async () => {
+  it('Shows one collapsed line, emits toggle on a native toggle, and uses English copy', async () => {
     const wrapper = mount(OnVersionEntry, {
       props: { entry: entry('1.138.0'), collapsed: true },
       global: withLocale('en-US')
     });
-    expect(wrapper.find('dl').exists()).toBe(false);
-    expect(wrapper.text()).toContain('Expand');
-    await wrapper.find('button').trigger('click');
+    const details = wrapper.find('details');
+    expect((details.element as HTMLDetailsElement).open).toBe(false);
+    expect(wrapper.find('dl').exists()).toBe(true);
+    expect(wrapper.find('summary').text()).toContain('Expand');
+    (details.element as HTMLDetailsElement).open = true;
+    await details.trigger('toggle');
     expect(wrapper.emitted('toggle')).toHaveLength(1);
+    // The host catching up (as the timeline does) re-sets the attribute; that toggle event is not a user toggle.
+    await wrapper.setProps({ collapsed: false, collapsible: true });
+    await details.trigger('toggle');
+    expect(wrapper.emitted('toggle')).toHaveLength(1);
+    expect(wrapper.find('summary').text()).toContain('Collapse');
+  });
+
+  it('Renders the body, a stable anchor and machine-readable dates inside a closed entry', () => {
+    const wrapper = mount(OnVersionEntry, {
+      props: { entry: entry('1.138.0', { source: 'github_release' }), collapsed: true },
+      global: withLocale('en-US')
+    });
+    expect(wrapper.attributes('id')).toBe('r-1');
+    const summary = wrapper.find('summary');
+    expect(summary.find('h3').text()).toBe('1.138.0');
+    expect(summary.find('dl').exists()).toBe(false);
+    expect(summary.find('time').attributes('datetime')).toBe('2026-09-30T08:00:00Z');
+    expect(wrapper.findAll('time').map(time => time.attributes('datetime'))).toEqual([
+      '2026-09-30T08:00:00Z',
+      '2026-09-30T08:00:00Z',
+      '2026-09-30T14:53:00Z'
+    ]);
+    expect(wrapper.find('dl').text()).toContain('委派给远程 Agent 主机');
+    const noId = mount(OnVersionEntry, {
+      props: { entry: entry('0.1,49', { id: null }), collapsed: true },
+      global: withLocale('en-US')
+    });
+    expect(noId.attributes('id')).toBe('v-0.1-49');
+  });
+
+  it('Keeps entries the timeline expanded by default from collapsing, as before', () => {
+    const wrapper = mount(OnVersionEntry, {
+      props: { entry: entry('1.140.0') },
+      global: withLocale('en-US')
+    });
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    wrapper.find('summary').element.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    expect(wrapper.find('summary').text()).not.toContain('Collapse');
+  });
+
+  it('Marks notes shown in another language with their lang', () => {
+    const wrapper = mount(OnVersionEntry, {
+      props: { entry: entry('1.140.0', { translation: { status: 'source', locale: 'en-US' } }) },
+      global: withLocale('zh-CN')
+    });
+    expect(wrapper.find('[lang]').attributes('lang')).toBe('en-US');
   });
 });
 
@@ -171,10 +226,16 @@ describe('OnVersionTimeline', () => {
     expect(items).toHaveLength(5);
     expect(items[0]?.find('.on-version-timeline__dot--latest').exists()).toBe(true);
     expect(items[1]?.find('.on-version-timeline__dot--installed').exists()).toBe(true);
-    expect(items[3]?.find('dl').exists()).toBe(false);
-    await items[3]?.find('button').trigger('click');
-    expect(wrapper.findAll('li')[3]?.find('dl').exists()).toBe(true);
-    expect(wrapper.findAll('li')[3]?.text()).toContain('收起');
+    const details = items[3]?.find('details');
+    if (!details?.exists()) throw new Error('the fourth entry has no details element');
+    const element = details.element as HTMLDetailsElement;
+    expect(element.open).toBe(false);
+    expect(items[3]?.find('dl').exists()).toBe(true);
+    element.open = true;
+    await details.trigger('toggle');
+    const reopened = wrapper.findAll('li')[3]?.find('details');
+    expect((reopened?.element as HTMLDetailsElement | undefined)?.open).toBe(true);
+    expect(wrapper.findAll('li')[3]?.find('summary').text()).toContain('收起');
     expect(wrapper.text()).toContain('显示更早的 12 个版本');
   });
 

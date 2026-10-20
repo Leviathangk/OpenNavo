@@ -148,14 +148,6 @@ func (h *Handler) UnpublishCollection(ctx context.Context, request adminapi.Unpu
 	return response[adminapi.UnpublishCollection200JSONResponse](data, err)
 }
 
-func (h *Handler) GetLlmUsage(ctx context.Context, request adminapi.GetLlmUsageRequestObject) (adminapi.GetLlmUsageResponseObject, error) {
-	if h.Management == nil {
-		return nil, domain.Internal(nil)
-	}
-	data, err := h.manage(ctx, "GetLlmUsage", request)
-	return response[adminapi.GetLlmUsage200JSONResponse](data, err)
-}
-
 func (h *Handler) GetDashboardOverview(ctx context.Context, request adminapi.GetDashboardOverviewRequestObject) (adminapi.GetDashboardOverviewResponseObject, error) {
 	if h.Management == nil {
 		return nil, domain.Internal(nil)
@@ -514,14 +506,6 @@ func (h *Handler) UpdateReleaseI18n(ctx context.Context, request adminapi.Update
 	}
 	data, err := h.manage(ctx, "UpdateReleaseI18n", request)
 	return response[adminapi.UpdateReleaseI18n200JSONResponse](data, err)
-}
-
-func (h *Handler) RetranslateRelease(ctx context.Context, request adminapi.RetranslateReleaseRequestObject) (adminapi.RetranslateReleaseResponseObject, error) {
-	if h.Management == nil {
-		return nil, domain.Internal(nil)
-	}
-	data, err := h.manage(ctx, "RetranslateRelease", request)
-	return response[adminapi.RetranslateRelease200JSONResponse](data, err)
 }
 
 func (h *Handler) ListTopQueries(ctx context.Context, request adminapi.ListTopQueriesRequestObject) (adminapi.ListTopQueriesResponseObject, error) {

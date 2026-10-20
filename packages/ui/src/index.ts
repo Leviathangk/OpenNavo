@@ -141,6 +141,7 @@ export type { OnTooltipProps } from './components/OnTooltip.vue';
 export type { OnTopNavItem, OnTopNavProps } from './components/OnTopNav.vue';
 export type { OnVersionEntryProps } from './components/OnVersionEntry.vue';
 export type { OnVersionTimelineProps } from './components/OnVersionTimeline.vue';
+export type { OnVersionCompatibilityLabels } from './utils/compatibility';
 export type { OnSegmentedOption, OnTabItem } from './types';
 
 export { ON_UI_LOCALE, createOnUi, useUiLocale, useUiMessages } from './composables/locale';
@@ -157,6 +158,8 @@ export { classifyLogLine } from './utils/log';
 export type { LogLineKind } from './utils/log';
 export type { HighlightPart } from './utils/highlight';
 export { paginationRange } from './utils/pagination';
+export { imageSrcset } from './utils/image';
+export type { OnImageVariant } from './utils/image';
 export { isMachineTranslated, isPatchVersion, parseInline } from './utils/version';
 export type { InlineSegment } from './utils/version';
 export type { PaginationItem } from './utils/pagination';

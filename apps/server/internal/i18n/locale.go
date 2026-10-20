@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,10 +13,24 @@ func Valid(value string) bool {
 	return ok
 }
 
+// ValidApp limits UI/error messages and client release notes to app locales.
+func ValidApp(value string) bool { return slices.Contains(Locales[:], LocaleCode(value)) }
+
+// ContentLocales keeps client release notes on the app language contract.
+func ContentLocales(entity string) []LocaleCode {
+	if entity == "desktop_release" {
+		return Locales[:]
+	}
+	return SiteLocales[:]
+}
+
 // Fold regional variants only for supported languages into product locales; do not guess other languages.
-func canonical(value string) string {
+func canonical(value string, locales []LocaleCode) string {
 	value = strings.ReplaceAll(strings.ToLower(strings.TrimSpace(value)), "_", "-")
-	for _, locale := range Locales {
+	if slices.Contains(locales, LocaleCode("zh-Hant")) && (value == "zh-hant" || strings.HasPrefix(value, "zh-hant-") || value == "zh-tw" || value == "zh-hk" || value == "zh-mo") {
+		return "zh-Hant"
+	}
+	for _, locale := range locales {
 		code := strings.ToLower(string(locale))
 		if value == code || strings.Split(value, "-")[0] == strings.Split(code, "-")[0] {
 			return string(locale)
@@ -24,8 +39,13 @@ func canonical(value string) string {
 	return ""
 }
 
-func Negotiate(query, header string) string {
-	if Valid(query) {
+func Negotiate(query, header string) string { return negotiate(query, header, SiteLocales[:]) }
+
+// NegotiateApp retains the shared six-language UI matching contract.
+func NegotiateApp(query, header string) string { return negotiate(query, header, Locales[:]) }
+
+func negotiate(query, header string, locales []LocaleCode) string {
+	if slices.Contains(locales, LocaleCode(query)) {
 		return query
 	}
 	type preference struct {
@@ -35,7 +55,7 @@ func Negotiate(query, header string) string {
 	var choices []preference
 	for _, item := range strings.Split(header, ",") {
 		parts := strings.Split(item, ";")
-		locale, quality := canonical(parts[0]), 1.0
+		locale, quality := canonical(parts[0], locales), 1.0
 		for _, parameter := range parts[1:] {
 			key, value, found := strings.Cut(strings.TrimSpace(parameter), "=")
 			if found && strings.EqualFold(key, "q") {

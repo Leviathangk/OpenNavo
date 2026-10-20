@@ -42,6 +42,8 @@ func historyPermission(op string) string {
 		return "content:article:edit"
 	case strings.Contains(op, "Screenshot") || strings.Contains(op, "Icon") || op == "UploadAsset":
 		return "catalog:asset:upload"
+	case strings.Contains(op, "BackgroundItem"):
+		return "catalog:package:edit"
 	case strings.Contains(op, "Package"):
 		return "catalog:package:edit"
 	case strings.Contains(op, "Category") || op == "ReorderCategories":
@@ -269,14 +271,6 @@ func mutationResult(ctx context.Context, st *store.Store, ref content.Ref) (any,
 	}
 	if err != nil {
 		status = "not_applicable"
-	}
-	settings, settingErr := st.TranslationSettings(ctx)
-	if settingErr != nil {
-		return nil, settingErr
-	}
-	if !settings.Enabled {
-		status = "disabled"
-		locales = []string{}
 	}
 	requestID := ""
 	if op := domain.CurrentOperation(ctx); op != nil {

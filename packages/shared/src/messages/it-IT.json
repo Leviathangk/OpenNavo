@@ -1,0 +1,181 @@
+{
+  "getButton": {
+    "get": "Ottieni",
+    "open": "Apri",
+    "installed": "Installato",
+    "update": "Aggiorna",
+    "queued": "In coda",
+    "running": "In corso",
+    "cancel": "Annulla",
+    "unavailable": "Non disponibile",
+    "download": "Scarica"
+  },
+  "action": {
+    "checkUpdates": "Verifica aggiornamenti",
+    "updateTo": "Aggiorna a {version}",
+    "updateAll": "Aggiorna tutto ({count}) | Aggiorna tutto ({count})",
+    "retry": "Riprova",
+    "viewLog": "Mostra registro",
+    "cancel": "Annulla",
+    "openInApp": "Apri in OpenNavo",
+    "copyInstallCommand": "Copia comando di installazione",
+    "addToBrewfile": "Aggiungi all’elenco Brewfile",
+    "inBrewfile": "Già nell’elenco",
+    "uninstall": "Disinstalla",
+    "delete": "Elimina",
+    "copy": "Copia",
+    "copied": "Copiato",
+    "clear": "Cancella"
+  },
+  "kind": {
+    "cask": "App",
+    "formula": "Strumento da riga di comando",
+    "link": "App"
+  },
+  "card": {
+    "installs30d": "Installazioni in 30 giorni",
+    "version": "Versione",
+    "category": "Categoria"
+  },
+  "nav": {
+    "breadcrumb": "Percorso di navigazione",
+    "pagination": "Paginazione",
+    "previous": "Pagina precedente",
+    "next": "Pagina successiva",
+    "page": "Pagina {page}",
+    "loadMore": "Carica altro",
+    "categories": "Filtro categorie"
+  },
+  "installCommand": {
+    "title": "Comando di installazione"
+  },
+  "cask": {
+    "version": "Versione disponibile",
+    "unknown": "Da confermare",
+    "noMac": "Nessun supporto dichiarato per macOS",
+    "rosetta": "Richiede Rosetta",
+    "legacy": "Versioni precedenti disponibili su alcune piattaforme",
+    "declarations": "Contenuti di installazione e rimozione",
+    "install": "Installazione",
+    "uninstall": "Disinstallazione",
+    "cleanup": "Rimozione dati utente",
+    "source": "File di origine",
+    "target": "Destinazione dichiarata",
+    "declaration": "Mostra la dichiarazione completa",
+    "download": "URL di download"
+  },
+  "hero": {
+    "viewDetails": "Mostra dettagli"
+  },
+  "about": {
+    "title": "Descrizione",
+    "machineTranslated": "Tradotto con IA",
+    "viewOriginal": "Mostra l’originale",
+    "expand": "Leggi tutto",
+    "collapse": "Mostra meno"
+  },
+  "gallery": {
+    "label": "Screenshot",
+    "item": "Screenshot {index}",
+    "dialog": "Anteprima screenshot",
+    "position": "{index} di {total}",
+    "previous": "Screenshot precedente",
+    "next": "Screenshot successivo",
+    "close": "Chiudi"
+  },
+  "dialog": {
+    "close": "Chiudi",
+    "confirm": "Conferma",
+    "cancel": "Annulla"
+  },
+  "toast": {
+    "region": "Notifiche",
+    "view": "Mostra",
+    "close": "Chiudi notifica"
+  },
+  "menu": {
+    "more": "Altre azioni"
+  },
+  "palette": {
+    "label": "Riquadro comandi",
+    "placeholder": "Cerca app o azioni",
+    "results": "Risultati",
+    "empty": "Nessun risultato corrispondente",
+    "loading": "Ricerca in corso…",
+    "hintSelect": "↑↓ Seleziona",
+    "hintOpen": "↵ Apri",
+    "hintInstall": "⌘↵ Installa / Aggiorna",
+    "hintCopy": "⌘C Copia comando brew"
+  },
+  "collection": {
+    "viewAll": "Mostra tutto ({count}) | Mostra tutto ({count})"
+  },
+  "rank": {
+    "up": "Sale di {n} posizione | Sale di {n} posizioni",
+    "down": "Scende di {n} posizione | Scende di {n} posizioni",
+    "same": "Posizione invariata"
+  },
+  "progress": {
+    "busy": "In corso"
+  },
+  "task": {
+    "queued": "In coda:",
+    "expandLog": "Mostra registro",
+    "collapseLog": "Nascondi registro"
+  },
+  "log": {
+    "label": "Registro"
+  },
+  "chart": {
+    "other": "Altro",
+    "item": "Elemento",
+    "value": "Valore",
+    "share": "Percentuale"
+  },
+  "table": {
+    "sortBy": "Ordina per {label}"
+  },
+  "topNav": {
+    "label": "Menu principale",
+    "home": "Home di OpenNavo",
+    "search": "Cerca app",
+    "download": "Scarica l’app",
+    "openMenu": "Apri menu",
+    "closeMenu": "Chiudi menu"
+  },
+  "version": {
+    "timeline": "Cronologia delle versioni",
+    "latest": "Più recente",
+    "installed": "Installata",
+    "patch": "Patch",
+    "prerelease": "Pre-release",
+    "machineTranslation": "Tradotto con IA",
+    "noNotes": "Nessuna nota di rilascio specifica per questa versione",
+    "viewOriginal": "Mostra l’originale",
+    "expand": "Espandi",
+    "collapse": "Comprimi",
+    "updateTo": "Aggiorna a questa versione",
+    "showEarlier": "Mostra {count} versione precedente | Mostra {count} versioni precedenti",
+    "sources": {
+      "webpage": "Pagina delle note di rilascio",
+      "sparkle": "Feed Sparkle",
+      "github_release": "GitHub Release",
+      "manual": "A cura della redazione",
+      "editorial": "Redazione OpenNavo",
+      "homebrew": "Aggiunta a Homebrew"
+    }
+  },
+  "state": {
+    "loadFailedTitle": "Impossibile caricare",
+    "loadFailedDescription": "La rete o il servizio non sono al momento disponibili. Riprova più tardi.",
+    "noResultsTitle": "Nessun risultato per “{q}”",
+    "noResultsDescription": "Prova con il nome in inglese oppure dicci cosa vorresti vedere nel catalogo.",
+    "offlineTitle": "Offline",
+    "offlineDescription": "Stai vedendo il catalogo salvato nella cache. Si aggiornerà automaticamente quando tornerai online."
+  },
+  "languageSuggestion": {
+    "message": "Vuoi navigare in {language}?",
+    "switch": "Passa a {language}",
+    "dismiss": "Non suggerire più"
+  }
+}

@@ -11,7 +11,6 @@ definePageMeta({ layout: 'landing' });
 
 const { t, locale } = useI18n();
 const api = useApi();
-const localePath = useLocalePath();
 const formattingLocale = computed(() => toAppLocale(locale.value));
 
 // Homepage data shares Discover's cache key; rankings only feed the icon wall and become null on failure.
@@ -77,13 +76,6 @@ defineOgImage('OgDefaultSatori', {
   description: t('og.homeDescription'),
   ...useOgFrame()
 });
-
-// Site search on the WebSite node defined in app.vue, with search terms in q.
-useSchemaOrg([
-  defineWebSite({
-    potentialAction: [defineSearchAction({ target: `${localePath('/search')}?q={search_term_string}` })]
-  })
-]);
 </script>
 
 <template>
@@ -94,6 +86,10 @@ useSchemaOrg([
       :categories="visibleCategories.map(({ slug, name }) => ({ slug, name }))"
     />
     <LandingCatalog v-if="count && wall.length" :apps="wall" :count="count" :updated="updatedToday" />
+    <!-- C5: real entry points into the catalog's directories. -->
+    <DirectoryLinks />
+    <!-- G4: what OpenNavo is and how it differs from the Homebrew command line and the Mac App Store. -->
+    <LandingAbout />
     <!-- Below the fold: server-rendered in full, hydrated only when scrolled into view. -->
     <LazyLandingSecurity hydrate-on-visible />
     <LandingFeature

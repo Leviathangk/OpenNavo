@@ -34,6 +34,10 @@ const items = computed<OnCategoriesItem[] | null>(() =>
           ),
           description: node.description,
           children: node.children.map(child => child.name),
+          // T1: every subcategory is a real link, not only text inside its parent's card.
+          childLinks: node.children
+            .filter(child => !child.hiddenByDefault)
+            .map(child => ({ name: child.name, href: localePath(`/categories/${child.slug}`) })),
           href: localePath(`/categories/${node.slug}`)
         }))
     : null

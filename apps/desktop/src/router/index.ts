@@ -154,6 +154,17 @@ export const routes: RouteRecordRaw[] = [
     meta: { nav: 'installed' }
   },
   {
+    // Uninstall preview links (F1, opennavo://uninstall/{token}?preview=1): the Installed page with that app's
+    // info sheet open. Uninstalling still takes the sheet's button and the dialog's review and confirmation.
+    path: '/uninstall/:token',
+    name: 'uninstall-preview',
+    components: {
+      default: () => import('@/pages/InstalledPage.vue'),
+      rail: LibraryRail
+    },
+    meta: { nav: 'installed' }
+  },
+  {
     path: '/updates',
     name: 'updates',
     components: {

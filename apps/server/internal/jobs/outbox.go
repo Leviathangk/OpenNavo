@@ -13,10 +13,6 @@ var ErrOutboxDeferred = errors.New("outbox delivery deferred")
 func OutboxDeliveryError(kind string, err error) error {
 	var app *domain.AppError
 	if errors.As(err, &app) && app.Code == domain.CodeInvalidState {
-		// Retranslation has refreshed the writeback version; an in-flight job with the same payload no longer guarantees fulfillment of the latest request.
-		if kind == "translate:content" {
-			return ErrOutboxDeferred
-		}
 		return nil
 	}
 	return err

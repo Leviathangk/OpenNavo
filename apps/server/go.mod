@@ -3,6 +3,7 @@ module github.com/opennavo/opennavo/server
 go 1.27.2
 
 require (
+	github.com/HugoSmits86/nativewebp v1.3.0
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
 	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/andybalholm/cascadia v1.3.4

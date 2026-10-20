@@ -1,7 +1,7 @@
 <script setup lang="tsx">
 import { computed, reactive, ref } from 'vue';
-import { NButton, NCheckbox, NCheckboxGroup, NTag, NText, NTooltip } from 'naive-ui';
-import { fetchTranslations, retranslateContent } from '@/service/api';
+import { NButton, NTag, NText, NTooltip } from 'naive-ui';
+import { fetchTranslations } from '@/service/api';
 import type { QueryOf, RecordOf, Schemas } from '@/typings/api/opennavo';
 import { useAppStore } from '@/store/modules/app';
 import { useAuth } from '@/hooks/business/auth';
@@ -11,7 +11,6 @@ import type { ContentLocale } from '@/utils/content-locale';
 import { booleanOptions, compactParams, formatDateTime, toBoolean } from '@/utils/opennavo';
 import { $t } from '@/locales';
 import FixDrawer from './modules/fix-drawer.vue';
-import { defaultRetranslateLocales } from './modules/locales';
 
 defineOptions({ name: 'ChangelogReview' });
 
@@ -99,6 +98,7 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
       width: 96,
       render: (row: Item) => {
         const state = row.i18n[code];
+        if (!state) return '—';
         const tag = (
           <NTag size="small" bordered={false} type={statusType(state.status)}>
             {$t(`page.changelog.translations.statuses.${state.status}`)}
@@ -121,9 +121,6 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
             <NButton size="small" type="primary" ghost onClick={() => openFix(row)}>
               {$t('page.changelog.translations.fix')}
             </NButton>
-            <NButton size="small" onClick={() => retranslate(row)}>
-              {$t('page.changelog.translations.retranslate')}
-            </NButton>
           </div>
         ) : (
           '—'
@@ -135,41 +132,6 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
 function openFix(row: Item) {
   fixing.value = row;
   fixOpen.value = true;
-}
-
-function retranslate(row: Item) {
-  const picked = ref<ContentLocale[]>(defaultRetranslateLocales(row));
-  const targets = CONTENT_LOCALES.filter(code => code !== row.sourceLocale);
-  window.$dialog?.info({
-    title: $t('page.changelog.translations.retranslateTitle', { label: row.label }),
-    content: () => (
-      <div class="flex-col gap-8px">
-        <NText depth={3}>{$t('page.changelog.translations.retranslateHint')}</NText>
-        <NCheckboxGroup
-          value={picked.value}
-          onUpdateValue={(value: (string | number)[]) => {
-            picked.value = value as ContentLocale[];
-          }}
-        >
-          <div class="grid grid-cols-2 gap-6px">
-            {targets.map(code => (
-              <NCheckbox key={code} value={code} label={localeName(code)} />
-            ))}
-          </div>
-        </NCheckboxGroup>
-      </div>
-    ),
-    positiveText: $t('common.confirm'),
-    negativeText: $t('common.cancel'),
-    onPositiveClick: async () => {
-      if (!picked.value.length) return false;
-      const { error } = await retranslateContent({ ref: row.ref, locales: picked.value });
-      if (error) return false;
-      window.$message?.success($t('page.changelog.translations.queued'));
-      await getData();
-      return true;
-    }
-  });
 }
 </script>
 

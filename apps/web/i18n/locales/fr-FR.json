@@ -1,0 +1,2005 @@
+{
+  "site": {
+    "name": "OpenNavo",
+    "title": "OpenNavo — Boutique d’apps Homebrew pour Mac, antivirus et pare-feu",
+    "description": "La boutique d’apps Homebrew pour Mac : installez et mettez à jour {count} app en un clic, avec une analyse antivirus préalable, ainsi que le nettoyage et la surveillance du système. Gratuit et open source. | La boutique d’apps Homebrew pour Mac : installez et mettez à jour {count} apps en un clic, avec une analyse antivirus préalable, ainsi que le nettoyage et la surveillance du système. Gratuit et open source."
+  },
+  "nav": {
+    "label": "Navigation principale",
+    "discover": "Découvrir",
+    "categories": "Catégories",
+    "rankings": "Classements",
+    "recent": "Nouvelles versions",
+    "articles": "Articles",
+    "collections": "Collections",
+    "security": "Sécurité",
+    "download": "Télécharger",
+    "search": "Rechercher des apps",
+    "switchLanguage": "Anglais",
+    "switchLanguageLabel": "Choisir la langue",
+    "browse": "Parcourir",
+    "lists": "Listes",
+    "brewfile": "Ma liste",
+    "about": "À propos",
+    "feedback": "Commentaires",
+    "apps": "Toutes les apps",
+    "az": "Index A–Z"
+  },
+  "sidebar": {
+    "appLabel": "App Mac",
+    "appTitle": "OpenNavo pour Mac",
+    "appHint": "macOS 13+ · Gratuit"
+  },
+  "rail": {
+    "featuredCollection": "Collection à la une",
+    "downloadHint": "macOS 13+ · Apple silicon et Intel · Gratuit",
+    "downloadBody": "Installez et mettez à jour ces apps sur votre Mac en un clic, avec un historique de chaque modification."
+  },
+  "home": {
+    "introTitle": "OpenNavo : la boutique d’apps Homebrew pour Mac",
+    "introBody": "{count} app, avec sa description et ses notes de version. L’app macOS l’installe et la met à jour en un clic, après une analyse antivirus. | {count} apps, chacune avec sa description et ses notes de version. L’app macOS les installe et les met à jour en un clic, après une analyse antivirus.",
+    "introDismiss": "Fermer",
+    "featured": "À la une",
+    "popularApps": "Apps populaires",
+    "recentlyUpdated": "Mises à jour récentes",
+    "viewDetails": "Voir les détails",
+    "allCategories": "Toutes",
+    "categoriesLabel": "Parcourir par catégorie",
+    "popularAppsHint": "Installations Homebrew sur les 30 derniers jours",
+    "recentlyUpdatedHint": "Nouvelles versions",
+    "weeklyTop": "Top de la semaine",
+    "weeklyTopHint": "Classement par installations sur 30 jours",
+    "collections": "Collections",
+    "viewRankings": "Voir les classements",
+    "viewAll": "Tout voir",
+    "metaTitle": "Découvrez des apps Mac · OpenNavo",
+    "discoverHeading": "Découvrez des apps Mac"
+  },
+  "footer": {
+    "tagline": "La boutique d’apps Homebrew pour Mac et une interface graphique open source pour Homebrew, avec analyse antivirus, pare-feu d’apps, nettoyage et surveillance. Les installations passent par l’app macOS ou par la commande brew.",
+    "copyright": "© {year} OpenNavo",
+    "languages": "Langues"
+  },
+  "analytics": {
+    "label": "Réglages des cookies de mesure d’audience",
+    "message": "OpenNavo utilise Google Analytics pour mesurer les visites et les actions clés, ce qui dépose des cookies de mesure d’audience dans votre navigateur. L’autorisez-vous ?",
+    "privacy": "Détails sur la confidentialité",
+    "accept": "Autoriser",
+    "decline": "Ne pas autoriser",
+    "settings": "Réglages de mesure d’audience"
+  },
+  "error": {
+    "notFoundTitle": "Page introuvable",
+    "notFoundBody": "Il n’y a rien à cette adresse. Le contenu a peut-être été déplacé ou retiré de Homebrew.",
+    "serverTitle": "Service temporairement indisponible",
+    "serverBody": "Le réseau ou le service est temporairement indisponible. Réessayez plus tard.",
+    "backHome": "Retour à l’accueil",
+    "search": "Rechercher",
+    "requestId": "ID de requête : {id}"
+  },
+  "get": {
+    "label": "Obtenir {name}",
+    "menuLabel": "Options pour obtenir {name}",
+    "downloadLabel": "Télécharger {name}"
+  },
+  "openInApp": {
+    "title": "Vous n’avez pas encore OpenNavo ?",
+    "body": "L’app OpenNavo n’a pas été détectée. Téléchargez-la pour installer {name} en un clic, avec une analyse antivirus préalable, ou copiez la commande d’installation pour l’exécuter dans Terminal.",
+    "download": "Télécharger l’app",
+    "copyInstead": "Copier la commande d’installation",
+    "dontAsk": "Ne plus demander"
+  },
+  "toast": {
+    "copied": "Commande d’installation copiée",
+    "copyFailed": "Presse-papiers indisponible. Copiez manuellement la commande ci-dessous.",
+    "addedToBrewfile": "{name} ajouté à votre liste Brewfile",
+    "brewfileFull": "La liste peut contenir jusqu’à 200 éléments. Retirez-en d’abord quelques-uns."
+  },
+  "catalog": {
+    "appsTitle": "Apps",
+    "appsMetaTitle": "Apps pour Mac · OpenNavo",
+    "pageTitle": "Page {page}",
+    "appsDescription": "Les apps macOS de Homebrew, avec descriptions et notes de version. Parcourez-les par nombre d’installations, mises à jour récentes ou nom.",
+    "total": "{total} au total | {total} au total",
+    "sortLabel": "Trier",
+    "sortPopular": "Popularité",
+    "sortUpdated": "Dernière mise à jour",
+    "sortName": "Nom",
+    "showDisabled": "Afficher les apps désactivées",
+    "emptyTitle": "Rien pour l’instant",
+    "emptyDescription": "Essayez d’autres filtres, ou dites-nous ce que vous aimeriez voir ajouté."
+  },
+  "categories": {
+    "title": "Catégories",
+    "metaTitle": "Catégories de logiciels Mac · OpenNavo",
+    "description": "Parcourez les apps Homebrew par usage.",
+    "metaDescription": "Parcourez les apps Mac de Homebrew par catégorie, des outils d’IA et de développement aux navigateurs, au design et à la productivité, avec le nombre d’apps et les sous-catégories de chacune.",
+    "count": "{count} app | {count} apps",
+    "itemMetaTitle": "{name} : les meilleures apps pour Mac · OpenNavo",
+    "seo": {
+      "itemTitle": "{name} – apps pour Mac · OpenNavo",
+      "itemDescription": "{count} app Mac dans {name} : {apps}. | {count} apps Mac dans {name}, dont {apps}.",
+      "itemDescriptionCount": "{count} app Mac dans {name}. | {count} apps Mac dans {name}."
+    },
+    "allIn": "Tout dans {name}",
+    "subcategories": "Sous-catégories",
+    "others": "Autres catégories"
+  },
+  "rankings": {
+    "title": "Classements",
+    "metaTitle": "Les logiciels Mac les plus populaires sur Homebrew · OpenNavo",
+    "description": "Classement établi d’après les statistiques d’installation officielles de Homebrew, mis à jour chaque jour. Les évolutions sont comparées à il y a 7 jours.",
+    "periodLabel": "Période",
+    "period": {
+      "30d": "30 jours",
+      "90d": "90 jours",
+      "365d": "365 jours"
+    },
+    "category": "Catégorie",
+    "allCategories": "Toutes les catégories"
+  },
+  "recent": {
+    "title": "Mises à jour récentes",
+    "metaTitle": "Apps Mac récemment mises à jour · OpenNavo",
+    "description": "Les apps Mac de Homebrew qui viennent de publier une nouvelle version, des plus récentes aux plus anciennes, avec descriptions et notes de version."
+  },
+  "search": {
+    "title": "Recherche",
+    "metaTitle": "Recherche « {q} » · OpenNavo",
+    "resultsTitle": "Résultats pour « {q} »",
+    "count": "{total} résultat | {total} résultats",
+    "alsoSearched": "Également recherché : {terms}",
+    "matched": "Correspondance : {name}",
+    "suggest": "Suggérer une app",
+    "emptyQueryTitle": "Saisissez un terme pour lancer la recherche",
+    "emptyQueryDescription": "Recherchez par nom d’app, nom chinois ou pinyin."
+  },
+  "palette": {
+    "packages": "Apps",
+    "jump": "Aller à",
+    "searchAll": "Rechercher « {q} »",
+    "category": "Catégorie : {name}",
+    "pages": {
+      "discover": "Découvrir",
+      "categories": "Catégories",
+      "rankings": "Classements",
+      "recent": "Mises à jour récentes",
+      "collections": "Collections",
+      "download": "Télécharger l’app",
+      "brewfile": "Liste Brewfile"
+    }
+  },
+  "package": {
+    "link": {
+      "chip": "Site officiel",
+      "chipGithub": "GitHub",
+      "meta": "Téléchargements depuis {source} · OpenNavo n’héberge aucun fichier d’installation",
+      "notHosted": "OpenNavo n’héberge aucun fichier d’installation : les téléchargements proviennent directement du développeur.",
+      "downloadTitle": "Téléchargement",
+      "officialDownload": "Télécharger sur le site officiel",
+      "goDownload": "Télécharger",
+      "release": "{version} · publication : {time}",
+      "download": "Télécharger",
+      "allFiles": "Tous les fichiers sur GitHub",
+      "githubReleases": "Télécharger depuis GitHub",
+      "teamId": "Signature du développeur",
+      "adopted": "Homebrew propose désormais cette app : elle s’installe en un clic",
+      "arch": {
+        "arm64": "Apple silicon",
+        "x86_64": "Intel",
+        "universal": "Universel"
+      },
+      "pricing": {
+        "free": "Gratuit",
+        "paid": "Payant",
+        "freemium": "Gratuit avec fonctionnalités payantes",
+        "subscription": "Abonnement",
+        "open_source": "Gratuit et open source"
+      }
+    },
+    "arch": {
+      "arm64": "Apple silicon",
+      "x86_64": "Intel"
+    },
+    "autoUpdates": "Mise à jour intégrée",
+    "disabled": "Désactivé",
+    "deprecated": "Obsolète",
+    "homepage": "Site web",
+    "fromTap": "Source :",
+    "stats": {
+      "label": "Statistiques",
+      "installs30d": "Installations sur 30 jours",
+      "rank": "N° {rank} du classement {kind}",
+      "installs365d": "Installations sur 1 an",
+      "total365": "365 derniers jours",
+      "latest": "Dernière version",
+      "size": "Taille du téléchargement",
+      "cadence": "Rythme des versions",
+      "releases30d": "{count} version en 30 jours | {count} versions en 30 jours"
+    },
+    "cadence": {
+      "daily": "Quotidien",
+      "weekly": "Hebdomadaire",
+      "biweekly": "Toutes les 2 semaines",
+      "monthly": "Mensuel",
+      "irregular": "Irrégulier"
+    },
+    "tabs": {
+      "label": "Onglets du paquet",
+      "overview": "Aperçu",
+      "versions": "Notes de version",
+      "dependencies": "Dépendances",
+      "details": "Détails d’installation"
+    },
+    "disabledNotice": "Homebrew a désactivé ce paquet : {reason}",
+    "deprecatedNotice": "Homebrew a marqué ce paquet comme obsolète : {reason}",
+    "staleNotice": "Aucune nouvelle version depuis plus de 90 jours : OpenNavo a donc suspendu sa recommandation et son installation. Homebrew propose toujours cette app.",
+    "noReason": "aucune raison indiquée",
+    "replacement": "Utilisez plutôt {token}",
+    "release": {
+      "new": "Nouveau",
+      "title": "Nouveautés de la version {version}",
+      "translated": "Traduit par IA",
+      "source": {
+        "github_release": "Depuis GitHub Releases",
+        "sparkle": "Depuis le flux de mise à jour de l’app",
+        "webpage": "Depuis la page des notes de version",
+        "manual": "Rédaction manuelle",
+        "editorial": "Rédaction OpenNavo",
+        "homebrew": "Depuis les commits Homebrew"
+      },
+      "viewAll": "Voir {count} version | Voir les {count} versions",
+      "noNotes": "Cette version n’a pas de notes dédiées.",
+      "emptyTitle": "Aucune note de version pour l’instant",
+      "prerelease": "Préversion",
+      "filterLabel": "Filtrer les versions",
+      "filterAll": "Toutes ({count}) | Toutes ({count})",
+      "filterWithNotes": "Avec notes ({count}) | Avec notes ({count})",
+      "languageLabel": "Langue du texte",
+      "languageTranslated": "Chinois",
+      "languageOriginal": "Original",
+      "count30d": "30 derniers jours",
+      "count30dUnit": "version | versions",
+      "cadenceHint": {
+        "daily": "Nouvelle version presque chaque jour",
+        "weekly": "Nouvelle version environ chaque semaine",
+        "biweekly": "Nouvelle version environ toutes les deux semaines",
+        "monthly": "Nouvelle version environ chaque mois",
+        "irregular": "Pas de rythme régulier"
+      },
+      "brewLabel": "Ajout à Homebrew",
+      "brewSync": "≈ Simultané",
+      "brewLater": "{time} plus tard",
+      "brewEarlier": "{time} plus tôt",
+      "brewHint": "{earlier}/{compared} en avance",
+      "lagMinutes": "{n} min",
+      "lagHours": "{n} h",
+      "lagDays": "{n} jour | {n} jours",
+      "sourcesTitle": "Sources",
+      "sourceInfo": {
+        "webpage": {
+          "title": "Page des notes de version",
+          "body": "Points clés tirés de la page des notes de version du développeur"
+        },
+        "github_release": {
+          "title": "GitHub Releases",
+          "body": "Notes et dates de version publiées sur GitHub"
+        },
+        "sparkle": {
+          "title": "Flux de mise à jour intégré",
+          "body": "L’appcast Sparkle que l’app consulte pour ses mises à jour"
+        },
+        "manual": {
+          "title": "Rédaction manuelle",
+          "body": "Écrit par notre équipe éditoriale à partir des annonces officielles"
+        },
+        "editorial": {
+          "title": "Rédaction OpenNavo",
+          "body": "Notes de version rédigées par OpenNavo à partir de sources officielles"
+        },
+        "homebrew": {
+          "title": "Commits Homebrew",
+          "body": "Les changements de version dans le dépôt Homebrew, qui donnent la date d’ajout"
+        }
+      },
+      "compatibility": "Compatibilité",
+      "compatibilityUnknown": "Inconnue"
+    },
+    "monthly": {
+      "title": "Installations mensuelles",
+      "d30": "30 derniers jours",
+      "avg90": "Moyenne sur 90 jours",
+      "avg365": "Moyenne sur 1 an",
+      "full": "{count} installation | {count} installations",
+      "trend": {
+        "rising": "Les installations augmentent",
+        "slowing": "Les installations ralentissent : la plupart des utilisateurs existants mettent à jour via l’app elle-même",
+        "steady": "Les installations sont stables"
+      }
+    },
+    "related": "Apps similaires",
+    "screenshots": "Captures d’écran",
+    "caveats": "Mises en garde",
+    "info": {
+      "homepage": "Site web",
+      "binaries": "Commandes",
+      "autoUpdates": "Mises à jour",
+      "autoYes": "Intégrées à l’app (auto_updates)",
+      "autoNo": "Gérées par Homebrew",
+      "uninstall": "À la désinstallation",
+      "arch": "Architecture",
+      "license": "Licence"
+    },
+    "deps": {
+      "macos": "Configuration requise",
+      "formulae": "Dépendances en ligne de commande",
+      "casks": "Dépendances d’app",
+      "emptyTitle": "Aucune dépendance",
+      "emptyDescription": "L’installation n’ajoute rien d’autre.",
+      "runtime": "Dépendances d’exécution",
+      "build": "Dépendances de compilation",
+      "other": "Autres :",
+      "type": {
+        "runtime": "exécution",
+        "build": "compilation",
+        "test": "test",
+        "optional": "facultative",
+        "recommended": "recommandée",
+        "usesFromMacos": "fournie par macOS",
+        "cask": "app"
+      },
+      "conflicts": "Conflits",
+      "dependents": "Utilisé par {count} paquet | Utilisé par {count} paquets",
+      "metaTitle": "{name} : dépendances · OpenNavo",
+      "metaDescription": "Dépendances de {name} sur Mac : {parts}. Découvrez ce que Homebrew installe en même temps.",
+      "metaDescriptionNone": "{name} s’installe sur Mac sans aucun autre paquet Homebrew.",
+      "meta": {
+        "runtime": "{count} dépendance d’exécution | {count} dépendances d’exécution",
+        "build": "{count} dépendance de compilation | {count} dépendances de compilation",
+        "other": "{count} autre dépendance | {count} autres dépendances",
+        "conflicts": "{count} paquet en conflit | {count} paquets en conflit",
+        "dependents": "{count} paquet qui en dépend | {count} paquets qui en dépendent"
+      }
+    },
+    "details": {
+      "tap": "Tap",
+      "names": "Autres noms",
+      "location": "Emplacement d’installation",
+      "pkgs": "Paquets d’installation",
+      "kegOnly": "keg-only",
+      "kegOnlyValue": "Non lié dans /opt/homebrew : ajoutez-le vous-même au PATH",
+      "download": "URL de téléchargement",
+      "source": "Définition Homebrew",
+      "repo": "Code source",
+      "metaTitle": "{name} : détails d’installation · OpenNavo",
+      "metaDescription": "Détails d’installation de {name} : emplacement d’installation, URL de téléchargement et somme de contrôle, et définition Homebrew d’origine.",
+      "aliases": "Anciens tokens"
+    },
+    "versionsMetaTitle": "{name} : notes de version · OpenNavo",
+    "versionsMetaDescription": "{name} : dernière version {version} ({date}). Découvrez les nouveautés de chaque version.",
+    "metaTitleCask": "{name} : {summary} — Installer avec Homebrew · OpenNavo",
+    "metaDescription": "{summary}. Installation : {command}. Dernière version : {version}, {installs} installation sur les 30 derniers jours. | {summary}. Installation : {command}. Dernière version : {version}, {installs} installations sur les 30 derniers jours.",
+    "seo": {
+      "titleApp": "{name} pour Mac – Télécharger et installer · OpenNavo",
+      "titleFont": "Police {name} pour Mac – Télécharger et installer · OpenNavo",
+      "titleUnavailable": "{name} pour Mac · OpenNavo",
+      "descriptionFacts": "{summary}. Consultez {parts} de {name} pour Mac.",
+      "descriptionFactsNoSummary": "Consultez {parts} de {name} pour Mac.",
+      "descriptionOverview": "{summary}. Découvrez {name} pour Mac.",
+      "descriptionOverviewNoSummary": "Découvrez {name} pour Mac.",
+      "overviewParts": {
+        "installation": "les méthodes d’installation",
+        "price": "le prix",
+        "requirements": "la configuration requise",
+        "uninstall": "les méthodes de désinstallation",
+        "alternatives": "les alternatives",
+        "versions": "l’historique des versions"
+      },
+      "descriptionLink": "{summary}. Trouvez où télécharger {name} sur le site officiel et consultez son historique des versions.",
+      "descriptionLinkNoSummary": "Trouvez où télécharger {name} sur le site officiel et consultez son historique des versions.",
+      "descriptionUnavailable": "{summary}. Homebrew a désactivé {name} : consultez son historique des versions et des apps similaires.",
+      "descriptionUnavailableNoSummary": "Homebrew a désactivé {name} : consultez son historique des versions et des apps similaires.",
+      "versionsTitle": "{name} : notes de version · OpenNavo",
+      "versionsTitleLatest": "{name} : notes de version (dernière : {version}) · OpenNavo",
+      "versionsDescriptionNoDate": "{name} : dernière version {version}. Découvrez les nouveautés de chaque version.",
+      "versionsDescriptionNoVersion": "{name} : découvrez les nouveautés de chaque version."
+    },
+    "removed": {
+      "metaTitle": "{name} a été retiré de Homebrew · OpenNavo",
+      "title": "{name} a été retiré de Homebrew",
+      "body": "La dernière version référencée était {version}. Homebrew ne le propose plus depuis le {date} : il ne peut donc plus être installé avec Homebrew. Cette page est conservée à titre de référence.",
+      "replacement": "Remplaçant indiqué par Homebrew",
+      "alternatives": "Apps similaires que vous pouvez installer",
+      "categories": "Catégories"
+    },
+    "answer": {
+      "appCategory": "{name} est une app Mac de la catégorie {category}.",
+      "app": "{name} est une app pour Mac.",
+      "softwareCategory": "{name} est un logiciel Mac de la catégorie {category}.",
+      "software": "{name} est un logiciel pour Mac.",
+      "font": "{name} est une police que vous pouvez installer sur un Mac.",
+      "requires": "macOS {version} ou version ultérieure est requis."
+    },
+    "guide": {
+      "installApp": "Homebrew installe l’app dans votre dossier Applications.",
+      "installFont": "Homebrew installe la police dans ~/Library/Fonts, où Livre des polices peut l’utiliser.",
+      "installPkg": "Homebrew lance le programme d’installation {pkg}, qui demande un mot de passe administrateur.",
+      "downloadTitle": "Installer sans Homebrew",
+      "downloadDirect": "Téléchargez le même fichier que Homebrew :",
+      "downloadArch": "Téléchargez le fichier que Homebrew utilise pour votre puce :",
+      "downloadVaries": "Le fichier varie selon la version de macOS ; choisissez le bon sur le site officiel :",
+      "downloadOfficial": "Téléchargez-le sur le site officiel :",
+      "sha": "Le SHA-256 vérifie seulement que le téléchargement est complet ; ce n’est pas une certification de sécurité.",
+      "shaLink": "Voir le SHA-256 et l’adresse de téléchargement",
+      "uninstallTitle": "Commande de désinstallation",
+      "uninstall": "Une désinstallation standard supprime l’app mais conserve ses réglages et ses caches.",
+      "zapTitle": "Nettoyage approfondi (facultatif)",
+      "zap": "`--zap` supprime aussi les réglages, les caches et les autres fichiers listés dans la définition Homebrew. Ils peuvent inclure des données partagées avec d’autres apps et ne peuvent pas être restaurés après suppression ; cette option ne garantit pas non plus qu’il ne reste rien. Sauvegardez d’abord les données à conserver. Pour conserver les réglages et les caches, n’ajoutez pas `--zap`."
+    },
+    "facts": {
+      "title": "Informations et sources",
+      "price": "Prix",
+      "types": {
+        "free": "Gratuit",
+        "free_with_iap": "Gratuit avec achats intégrés",
+        "paid": "Payant",
+        "subscription": "Abonnement",
+        "trial": "Essai gratuit disponible"
+      },
+      "perMonth": "{price} par mois",
+      "perYear": "{price} par an",
+      "region": "Prix ({region})",
+      "checkedOn": "Vérifié le {date}",
+      "checked": "Source : {source}, vérifiée le {date}.",
+      "stale": "Peut avoir changé",
+      "support": {
+        "native": "Fonctionne en natif",
+        "rosetta": "Fonctionne via Rosetta",
+        "unsupported": "Non pris en charge"
+      },
+      "minimum": "macOS {version} ou version ultérieure",
+      "maximum": "jusqu’à macOS {version}",
+      "pending": "En attente de vérification",
+      "conflict": "Diffère des données de Homebrew ({fields}). Les deux informations sont conservées jusqu’à ce que l’une soit vérifiée.",
+      "conflictFields": {
+        "minimum": "version minimale",
+        "maximum": "version maximale",
+        "arm64": "Apple silicon",
+        "x86_64": "Intel"
+      },
+      "asOf": "Au {date}",
+      "yes": "Oui",
+      "no": "Non",
+      "labelled": "{label} :"
+    },
+    "alternatives": {
+      "hint": "Des apps dont notre équipe éditoriale a confirmé qu’elles remplissent la même fonction, par ordre de recommandation.",
+      "reasons": {
+        "free": "Gratuit",
+        "open_source": "Open source",
+        "lighter": "Plus léger et plus rapide",
+        "more_features": "Plus de fonctionnalités",
+        "simpler": "Plus facile à prendre en main",
+        "native_ui": "Interface Mac native",
+        "apple_silicon": "Natif sur Apple silicon",
+        "privacy": "Données conservées sur votre Mac",
+        "offline": "Fonctionne hors ligne",
+        "collaboration": "Conçu pour le travail en équipe",
+        "cross_platform": "Aussi sur Windows et Linux",
+        "one_time_purchase": "Achat unique",
+        "active_development": "Développement actif",
+        "customizable": "Très personnalisable"
+      },
+      "limits": {
+        "paid": "Payant",
+        "subscription": "Abonnement",
+        "fewer_features": "Moins de fonctionnalités",
+        "requires_account": "Compte requis",
+        "learning_curve": "Demande un temps d’apprentissage",
+        "different_workflow": "Fonctionnement différent",
+        "no_apple_silicon": "Pas natif sur Apple silicon",
+        "online_only": "Connexion Internet requise",
+        "limited_languages": "Moins de langues d’interface"
+      },
+      "bestFor": "Idéal pour : {audience}",
+      "audience": {
+        "everyday": "un usage quotidien",
+        "professionals": "un usage professionnel",
+        "developers": "les développeurs",
+        "teams": "les équipes",
+        "beginners": "les débutants",
+        "power_users": "les utilisateurs avancés"
+      },
+      "titleFor": "Alternatives à {name}",
+      "page": {
+        "title": "Apps alternatives à {name}",
+        "metaTitle": "Alternatives à {name} pour Mac · OpenNavo",
+        "description": "{count} app Mac dont notre équipe éditoriale a confirmé qu’elle peut remplacer {name}, avec les raisons du choix, les prix vérifiés et une comparaison des fonctionnalités. | {count} apps Mac dont notre équipe éditoriale a confirmé qu’elles peuvent remplacer {name}, avec les raisons du choix, les prix vérifiés et une comparaison des fonctionnalités.",
+        "intro": "Notre équipe éditoriale a confirmé que ces apps peuvent effectuer les mêmes tâches que {name}. Elles sont classées par ordre de recommandation. Le tableau compare uniquement les caractéristiques accompagnées d’une source ; en l’absence de données, il affiche « Inconnu ».",
+        "crumb": "Alternatives",
+        "current": "App actuelle",
+        "compare": "Comparaison",
+        "attribute": "Caractéristique",
+        "attributes": {
+          "open_source": "Open source",
+          "offline": "Fonctionne hors ligne",
+          "apple_silicon": "Natif sur Apple silicon",
+          "import_formats": "Formats d’importation pris en charge",
+          "export_formats": "Formats d’exportation pris en charge"
+        },
+        "yes": "Oui",
+        "no": "Non",
+        "unknown": "Inconnu",
+        "migration": "Passer de {name} à {target}",
+        "actions": {
+          "backup": "Sauvegarder",
+          "export": "Exporter",
+          "import": "Importer",
+          "verify": "Vérifier"
+        },
+        "migrationNote": "La migration ne supprime ni {name} ni ses données.",
+        "back": "Retour à {name}"
+      }
+    },
+    "faq": {
+      "safetyQ": "{name} est-il sûr ?",
+      "safetyListed": "{name} figure dans le catalogue officiel de Homebrew et n’a pas été désactivé. Depuis septembre 2026, Homebrew désactive les apps qui échouent aux contrôles Gatekeeper de macOS.",
+      "safetyDeprecated": "Homebrew a marqué {name} comme obsolète ({reason}) et cessera de le proposer.",
+      "safetyDisabled": "Homebrew a désactivé {name} ({reason}) : il ne peut donc plus être installé avec Homebrew.",
+      "disabledOn": "Il a été désactivé le {date}.",
+      "safetyChecksum": "Lors de l’installation, Homebrew vérifie le fichier téléchargé depuis {host} à l’aide de sa somme de contrôle SHA-256.",
+      "safetyNoChecksum": "Le fichier est téléchargé depuis {host} ; Homebrew ne vérifie aucune somme de contrôle pour celui-ci.",
+      "safetyInstalls": "Il a été installé {count} fois via Homebrew au cours des 30 derniers jours. | Il a été installé {count} fois via Homebrew au cours des 30 derniers jours.",
+      "reasons": {
+        "fails_gatekeeper_check": "il échoue aux contrôles Gatekeeper de macOS",
+        "unsigned": "il n’est pas signé par son développeur",
+        "discontinued": "son développeur l’a abandonné",
+        "unmaintained": "il n’est plus maintenu",
+        "no_longer_available": "il n’est plus disponible au téléchargement",
+        "no_longer_meets_criteria": "il ne répond plus aux critères de Homebrew",
+        "moved_to_mas": "il n’est plus disponible que sur le Mac App Store",
+        "other": "la définition Homebrew en précise la raison"
+      },
+      "priceQ": "{name} est-il gratuit ?",
+      "priceA": {
+        "free": "Oui, {name} est gratuit.",
+        "free_with_iap": "{name} se télécharge gratuitement et propose des achats intégrés.",
+        "paid": "Non, {name} est un logiciel payant.",
+        "subscription": "Non, {name} nécessite un abonnement.",
+        "trial": "{name} propose un essai gratuit, puis devient payant."
+      },
+      "priceStoreFree": "« {store} » se télécharge gratuitement sur le Mac App Store.",
+      "priceStorePaid": "« {store} » coûte {price} sur le Mac App Store ({region}).",
+      "priceStoreNote": "Homebrew installe la version du site web du développeur, dont le prix et les fonctionnalités peuvent différer de ceux de l’édition App Store.",
+      "openSourceQ": "{name} est-il open source ?",
+      "openSourceA": "{name} publie son code source sur GitHub ({repo}), sous licence {license}.",
+      "openSourceArchived": "Le dépôt est archivé et n’est plus mis à jour.",
+      "uninstallQ": "Comment désinstaller complètement {name} sur Mac ?",
+      "uninstallRun": "Exécutez `brew uninstall --cask {token}`.",
+      "uninstallDoes": "Cette commande {actions}.",
+      "uninstallZap": "Pour supprimer aussi ses réglages et ses caches, exécutez `brew uninstall --zap --cask {token}`.",
+      "uninstallZapOne": "Cela supprime aussi {path}.",
+      "uninstallZapMany": "Cela supprime aussi {count} fichier ou dossier, dont {path}. | Cela supprime aussi {count} fichiers et dossiers, dont {path}.",
+      "actions": {
+        "quit": "quitte l’app",
+        "services": "arrête {count} service d’arrière-plan | arrête {count} services d’arrière-plan",
+        "loginItems": "retire {count} élément de connexion | retire {count} éléments de connexion",
+        "helpers": "supprime {count} outil d’assistance privilégié | supprime {count} outils d’assistance privilégiés",
+        "receipts": "efface {count} reçu d’installation | efface {count} reçus d’installation",
+        "kexts": "décharge {count} extension du noyau | décharge {count} extensions du noyau"
+      },
+      "chipsQ": "{name} fonctionne-t-il sur les Mac avec Apple silicon (M1 ou plus récent) ?",
+      "chips": {
+        "separate": "Oui. Homebrew télécharge des versions distinctes pour les Mac Apple silicon et Intel.",
+        "shared": "Homebrew l’installe sur les Mac Apple silicon comme Intel, à partir du même fichier.",
+        "rosetta": "Il s’installe, mais sur les Mac Apple silicon, il fonctionne via Rosetta 2.",
+        "armOnly": "Oui, et uniquement sur ces Mac : il ne s’installe pas sur les Mac Intel.",
+        "intelOnly": "Non. Homebrew ne l’installe que sur les Mac Intel."
+      },
+      "siliconA": {
+        "native": "Oui. Selon l’éditeur, il fonctionne en natif sur Apple silicon.",
+        "rosetta": "Pas en natif. Selon l’éditeur, il fonctionne sur Apple silicon via Rosetta.",
+        "unsupported": "Selon l’éditeur, il ne prend pas en charge les Mac avec Apple silicon."
+      },
+      "languageQ": "{name} est-il disponible en français ?",
+      "languageYes": "La fiche du Mac App Store inclut le français parmi les langues de l’interface.",
+      "languageNo": "La fiche du Mac App Store indique {count} langue d’interface, et le français n’en fait pas partie. | La fiche du Mac App Store indique {count} langues d’interface, et le français n’en fait pas partie.",
+      "dataQ": "Où {name} enregistre-t-il ses réglages et ses données ?",
+      "dataSettings": "Ses réglages se trouvent dans {path}.",
+      "dataFolders": "Ses données se trouvent dans {paths}.",
+      "dataSource": "Ces emplacements proviennent de la liste de nettoyage de Homebrew.",
+      "versionQ": "{name} : quelle est la dernière version ?",
+      "versionA": "La dernière version est {version}.",
+      "versionDated": "La dernière version est {version}, ajoutée à Homebrew le {date}.",
+      "versionAuto": "{name} se met à jour automatiquement ; pour le mettre à jour avec Homebrew, exécutez `brew upgrade --cask --greedy {token}`.",
+      "versionBrew": "Exécutez `brew upgrade --cask {token}` pour le mettre à jour.",
+      "versionChannels": "Homebrew propose aussi {list}, que vous ne pouvez pas installer en même temps.",
+      "extrasQ": "Qu’est-ce que {name} installe d’autre ?",
+      "extrasTools": "Il ajoute aussi {count} outil en ligne de commande : {list}. | Il ajoute aussi {count} outils en ligne de commande : {list}.",
+      "extrasSomeTools": "Il ajoute aussi {count} outil en ligne de commande, dont {list}. | Il ajoute aussi {count} outils en ligne de commande, dont {list}.",
+      "extrasPkg": "Il s’installe via un programme d’installation .pkg, qui demande un mot de passe administrateur.",
+      "extrasPlugins": "Il installe aussi {list}.",
+      "extrasConflicts": "Il ne peut pas être installé en même temps que {list}.",
+      "plugins": {
+        "quickLook": "un module Coup d’œil",
+        "prefPane": "un panneau des Réglages Système",
+        "screenSaver": "un économiseur d’écran",
+        "inputMethod": "une méthode de saisie",
+        "audio": "des modules audio",
+        "spotlight": "un module d’importation Spotlight",
+        "dictionary": "un dictionnaire",
+        "colorPicker": "un sélecteur de couleur",
+        "keyboardLayout": "une disposition de clavier",
+        "service": "un élément du menu Services",
+        "browser": "un module de navigateur"
+      },
+      "alternativesQ": "Quelles sont les alternatives à {name} ?",
+      "alternativesA": "Parmi les alternatives, on trouve {list}.",
+      "titleFor": "Questions fréquentes sur {name}"
+    },
+    "securityPromo": {
+      "title": "OpenNavo : analyse antivirus et pare-feu d’apps",
+      "body": "L’app OpenNavo analyse vos téléchargements et l’ensemble de votre Mac avec ClamAV, et vérifie les éléments de démarrage et les signatures des apps. Gratuite et open source.",
+      "link": "En savoir plus sur la sécurité"
+    },
+    "articles": {
+      "title": "Articles associés"
+    },
+    "paused": "Suspendue par OpenNavo",
+    "relatedFonts": "Polices similaires",
+    "lead": {
+      "developer": "Développée par {developer}.",
+      "source": "Le paquet d’installation est téléchargé depuis {source}."
+    },
+    "quick": {
+      "title": "Informations clés",
+      "checked": "Ces informations ont été vérifiées au plus tôt le {date}.",
+      "sourcesLink": "Voir les sources de chaque information",
+      "source": "Source de téléchargement",
+      "fontFiles": "Fichiers de police",
+      "chips": "Puce",
+      "macos": "Version du système",
+      "priceDetails": "Détails du prix",
+      "developer": "Développeur",
+      "install": "Commande d’installation",
+      "homebrewDisabled": "Désactivé par Homebrew",
+      "homebrewPaused": "Toujours proposé par Homebrew ; recommandation suspendue par OpenNavo",
+      "homebrewAuto": "Disponible ; l’app se met à jour elle-même",
+      "homebrewAvailable": "Disponible ; mises à jour par Homebrew"
+    },
+    "price": {
+      "title": "Prix et options d’achat de {name}",
+      "hint": "OpenNavo consigne les prix vérifiés par région, version et période de facturation, avec leur source et leur date. Aucun historique des prix n’est conservé et OpenNavo n’indique pas s’il s’agit du prix le plus bas.",
+      "edition": "Version",
+      "region": "Région",
+      "where": "Canal d’achat",
+      "checked": "Date de vérification",
+      "storeNote": "Il s’agit du prix de téléchargement de la version App Store. Cela ne signifie pas que son utilisation est gratuite ; les achats intégrés et les abonnements ne sont pas inclus.",
+      "downloadFree": "Téléchargement gratuit",
+      "channels": {
+        "vendor": "Site officiel",
+        "app_store": "Mac App Store"
+      }
+    },
+    "compare": {
+      "title": "Comparaison vérifiée",
+      "imports": "Importe",
+      "exports": "Exporte",
+      "unverified": "« — » signifie qu’OpenNavo n’a pas vérifié cette caractéristique pour la version actuelle.",
+      "migrationTitle": "Passer de {from} à {to}",
+      "migrationNote": "La migration ne supprime ni {name} ni ses données. Désinstallez-la vous-même une fois le transfert vérifié.",
+      "actions": {
+        "backup": "Sauvegarder",
+        "export": "Exporter",
+        "import": "Importer",
+        "verify": "Vérifier"
+      },
+      "pageLink": "Voir la comparaison complète des alternatives à {name}"
+    },
+    "requirements": {
+      "title": "Configuration requise",
+      "version": "Version",
+      "download": "Téléchargement",
+      "source": "Source",
+      "allChips": "Toutes les puces",
+      "notNative": "Non natif sur Apple silicon",
+      "builtFor": "Version pour macOS {versions}"
+    },
+    "install": {
+      "title": "Comment installer {name} sur Mac",
+      "run": "Dans « Terminal », exécutez :"
+    },
+    "uninstall": {
+      "title": "Désinstaller {name} et nettoyer éventuellement ses données",
+      "also": "La désinstallation traite également",
+      "kinds": {
+        "launchctl": "Service d’arrière-plan (launchctl)",
+        "login_item": "Élément de connexion",
+        "pkgutil": "Reçus d’installation (pkgutil)",
+        "zap": "Fichiers et dossiers"
+      },
+      "files": "Fichiers que {name} peut laisser sur votre Mac ({count})",
+      "checked": "Ces éléments proviennent de la définition Homebrew, vérifiée le {date} ; ils indiquent ce que la définition déclare supprimer, sans confirmer que ces éléments se trouvent sur votre Mac.",
+      "asOf": "Ces éléments proviennent de la version de la définition Homebrew disponible au {date} ; ils indiquent ce que la définition déclare supprimer, sans confirmer que ces éléments se trouvent sur votre Mac."
+    },
+    "uninstallPage": {
+      "crumb": "Désinstaller",
+      "title": "Désinstaller {name} sur Mac",
+      "metaTitle": "Désinstaller {name} sur Mac : étapes et fichiers résiduels · OpenNavo",
+      "description": "Comment désinstaller {name} : la commande de désinstallation Homebrew, les éléments en arrière-plan déclarés dans sa définition et {count} fichier ou dossier supprimé lors du nettoyage facultatif des données. | Comment désinstaller {name} : la commande de désinstallation Homebrew, les éléments en arrière-plan déclarés dans sa définition et {count} fichiers et dossiers supprimés lors du nettoyage facultatif des données.",
+      "intro": "Voici les étapes de désinstallation et les fichiers déclarés pour {name} dans la définition Homebrew. Ils indiquent ce que cette définition prévoit de supprimer, sans prouver que chaque fichier sur votre Mac provient de cette application.",
+      "withOpenNavo": "Désinstaller avec OpenNavo",
+      "withOpenNavoBody": "Le client OpenNavo répertorie d’abord l’application, les éléments en arrière-plan et les fichiers résiduels qu’il trouve sur ce Mac. Il ne les supprime qu’après votre confirmation.",
+      "open": "Afficher un aperçu dans OpenNavo",
+      "download": "Télécharger OpenNavo",
+      "back": "Revenir à la présentation de {name}",
+      "guideLink": "Voir toutes les étapes pour désinstaller {name} sur Mac"
+    },
+    "safety": {
+      "title": "Informations de sécurité sur {name}",
+      "hint": "Cette page présente uniquement des faits vérifiables, avec leur source et leur date. Elle ne constitue pas une certification de sécurité. Pour vérifier les fichiers téléchargés, analysez-les localement avec OpenNavo.",
+      "identity": "Identité du développeur",
+      "teamId": "Team ID",
+      "channels": "Canaux de distribution",
+      "openSource": "Open source",
+      "cves": "Vulnérabilités connues (CVE)",
+      "cveVersion": "concerne la version {version}",
+      "cveNote": "Seules les CVE correspondant exactement à ce produit et à cette version dans la NVD sont répertoriées.",
+      "scan": "Analyser avec OpenNavo",
+      "scanNote": "Un aperçu de l’analyse s’ouvre dans l’app OpenNavo ; vous décidez si vous souhaitez la lancer."
+    },
+    "issues": {
+      "title": "Problèmes connus avec {name}",
+      "hint": "OpenNavo recense ces problèmes à partir de la documentation officielle et de rapports publics, avec les versions concernées, les sources et les dates de vérification.",
+      "applies": "Concerne {name} {versions} sur {macos}",
+      "steps": "Résolution",
+      "community": "Discussions de la communauté :",
+      "all": "Voir {count} problème connu | Voir tous les {count} problèmes connus"
+    },
+    "integrations": {
+      "title": "Serveurs MCP et Skill de {name}",
+      "hint": "Seuls les connecteurs vérifiés correspondant à la version actuelle sont répertoriés, avec les autorisations nécessaires.",
+      "kinds": {
+        "mcp": "Serveur MCP",
+        "skill": "Skill"
+      },
+      "install": "Installation",
+      "clients": "Clients compatibles",
+      "files": "Accès aux fichiers",
+      "network": "Accès au réseau",
+      "none": "Non déclaré",
+      "access": {
+        "read": "lecture seule",
+        "write": "écriture",
+        "read_write": "lecture et écriture"
+      },
+      "silicon": {
+        "yes": "Pris en charge",
+        "no": "Non pris en charge"
+      },
+      "history": "Notes de version"
+    },
+    "depsSummary": {
+      "title": "Dépendances",
+      "needs": "Installé également",
+      "more": "Voir les détails des dépendances"
+    },
+    "collections": {
+      "title": "Collections associées"
+    },
+    "sources": {
+      "title": "Sources",
+      "hint": "Chaque information de cette page indique sa source et sa date de vérification. Les informations dont la validité a expiré sont présentées comme valables « au » jour indiqué et ne sont plus données comme actuelles.",
+      "kinds": {
+        "homebrew": "Définition Homebrew",
+        "formulae": "formulae.brew.sh",
+        "price": "Prix",
+        "appStore": "Mac App Store",
+        "requirements": "Configuration requise indiquée par l’éditeur",
+        "security": "Informations de sécurité",
+        "issue": "Problèmes connus",
+        "integration": "MCP et Skill"
+      }
+    }
+  },
+  "collections": {
+    "title": "Collections",
+    "metaTitle": "Collections d’apps Mac · OpenNavo",
+    "description": "Des apps triées sur le volet pour chaque usage, prêtes à être exportées en Brewfile.",
+    "emptyTitle": "Aucune collection pour l’instant",
+    "itemMetaTitle": "{title} · Collections OpenNavo",
+    "count": "{count} élément | {count} éléments",
+    "updated": "Mise à jour le {date}",
+    "addAll": "Tout ajouter à la liste Brewfile",
+    "addedAll": "{count} paquet ajouté | {count} paquets ajoutés",
+    "export": "Exporter le Brewfile",
+    "setup": {
+      "installAll": "Tout installer avec OpenNavo",
+      "installHint": "Ouvre cette collection dans l’app OpenNavo. Après votre confirmation, {count} app ci-dessus est analysée à la recherche de virus, puis installée. | Ouvre cette collection dans l’app OpenNavo. Après votre confirmation, les {count} apps ci-dessus sont analysées à la recherche de virus, puis installées.",
+      "notDetected": "L’app OpenNavo n’a pas été détectée",
+      "notDetectedBody": "Téléchargez OpenNavo pour installer cette collection en un clic, ou exportez le Brewfile et installez les apps avec brew bundle dans Terminal.",
+      "criteria": "Critères de sélection",
+      "source": "Source",
+      "installTitle": "Liste des installations",
+      "installable": "Installées avec Homebrew ({count})",
+      "external": "À télécharger sur le site des développeurs ({count})",
+      "externalHint": "Ces apps ne figurent pas dans Homebrew : elles ne sont pas incluses dans le Brewfile et « Tout installer avec OpenNavo » ne les installe pas. Téléchargez-les sur le site de leurs développeurs.",
+      "priceTitle": "Récapitulatif des prix",
+      "priceHint": "Seuls les prix vérifiés sont totalisés, séparément pour chaque région, devise et période de facturation : les devises ne sont pas converties et les abonnements ne sont pas additionnés aux achats uniques.",
+      "region": "Région",
+      "period": "Période de facturation",
+      "total": "Total",
+      "covered": "Apps comptabilisées",
+      "priceCovered": "{count} app | {count} apps",
+      "priceUnknown": "{count} autre app a un prix inconnu ou à vérifier et n’est pas comptabilisée. | {count} autres apps ont un prix inconnu ou à vérifier et ne sont pas comptabilisées.",
+      "priceNone": "Aucune app de cette collection n’a encore de prix vérifié.",
+      "periods": {
+        "free": "Gratuit",
+        "one_time": "Achat unique",
+        "monthly": "Mensuel",
+        "yearly": "Annuel",
+        "unknown": "Période inconnue"
+      },
+      "compatibilityTitle": "Compatibilité",
+      "compatibilitySummary": "{count} app au total, dont {native} avec prise en charge native d’Apple silicon confirmée. La configuration requise provient de Homebrew et de la documentation des éditeurs ; sans source, la mention « Inconnu » est affichée. | {count} apps au total, dont {native} avec prise en charge native d’Apple silicon confirmée. La configuration requise provient de Homebrew et de la documentation des éditeurs ; sans source, la mention « Inconnu » est affichée.",
+      "app": "app",
+      "macos": "Configuration requise",
+      "appleSilicon": "Apple silicon",
+      "unknown": "Inconnu",
+      "silicon": {
+        "yes": "Natif",
+        "no": "Non natif",
+        "unknown": "Inconnu"
+      }
+    }
+  },
+  "browse": {
+    "title": "Index A–Z des apps Mac",
+    "metaTitle": "Index A–Z des apps Mac · OpenNavo",
+    "description": "Parcourez les apps Mac du catalogue par nom : {count} app, chacune avec sa présentation, ses notes de version et ses étapes d’installation. | Parcourez les apps Mac du catalogue par nom : {count} apps, chacune avec sa présentation, ses notes de version et ses étapes d’installation.",
+    "fontsTitle": "Index A–Z des polices Mac",
+    "fontsMetaTitle": "Index A–Z des polices Mac · OpenNavo",
+    "fontsDescription": "Parcourez les polices du catalogue par nom : {count} police, installable avec Homebrew. | Parcourez les polices du catalogue par nom : {count} polices, installables avec Homebrew.",
+    "crumb": "Index A–Z",
+    "apps": "Apps",
+    "fonts": "Polices",
+    "allFonts": "Toutes les polices A–Z",
+    "allApps": "Index A–Z des apps",
+    "more": "Autres façons de parcourir",
+    "empty": "Aucun contenu à afficher pour l’instant.",
+    "bucket": {
+      "letter": "Apps Mac commençant par {letter}",
+      "digit": "Apps Mac commençant par un chiffre",
+      "other": "Apps Mac commençant par un autre caractère"
+    },
+    "fontBucket": {
+      "letter": "Polices commençant par {letter}",
+      "digit": "Polices commençant par un chiffre",
+      "other": "Polices commençant par un autre caractère"
+    },
+    "bucketLabel": {
+      "digit": "0–9",
+      "other": "Autre"
+    },
+    "appCount": "{count} app | {count} apps",
+    "fontCount": "{count} police | {count} polices",
+    "pageOf": "Page {page} sur {pages}",
+    "pageLink": "{title}, page {page}",
+    "bucketsLabel": "Parcourir par première lettre",
+    "leafMetaTitle": "{title} (index A–Z) · OpenNavo",
+    "leafDescription": "{title} : {count} apps au total, classées par nom, chacune avec une présentation, des notes de version et les étapes d’installation.",
+    "directory": {
+      "kicker": "Répertoire",
+      "title": "Trouver des apps dans le répertoire",
+      "body": "Parcourez les catégories selon l’usage, consultez les collections préparées par notre équipe éditoriale ou trouvez n’importe quelle app dans la liste complète ou l’index A–Z.",
+      "category": "Apps de catégorie {name}"
+    }
+  },
+  "feeds": {
+    "subscribe": "S’abonner aux mises à jour (RSS)",
+    "appTitle": "Mises à jour de {name} · OpenNavo",
+    "appDescription": "Nouvelles versions de {name} pour Mac et notes de version, par OpenNavo.",
+    "collectionTitle": "{title} : mises à jour · OpenNavo",
+    "collectionDescription": "Nouvelles versions des apps de la collection « {title} » et leurs notes de version, par OpenNavo.",
+    "itemTitle": "{name} {version}"
+  },
+  "markdown": {
+    "note": "Voici la version Markdown de la page {name} sur OpenNavo, avec les mêmes informations que la page web :",
+    "developer": "Développeur",
+    "install": "Installation",
+    "about": "À propos",
+    "uninstall": "Désinstaller",
+    "latestRelease": "Dernières notes de version"
+  },
+  "articles": {
+    "title": "Articles",
+    "subtitle": "Recommandations, tests, tutoriels et sélections d’apps Mac",
+    "metaTitle": "Apps Mac : sélections, tests et tutoriels · OpenNavo",
+    "typeMetaTitle": "{type} · Articles sur les apps Mac · OpenNavo",
+    "description": "Recommandations, tests, tutoriels et sélections d’apps Mac écrits par l’équipe éditoriale d’OpenNavo, avec leurs sources.",
+    "ogTitle": "Articles sur les apps Mac",
+    "all": "Tous",
+    "typesLabel": "Type d’article",
+    "types": {
+      "recommendation": "Recommandation",
+      "review": "Test",
+      "tutorial": "Tutoriel",
+      "roundup": "Sélection",
+      "news": "Actualité"
+    },
+    "rss": "Flux RSS",
+    "feedTitle": "Articles OpenNavo",
+    "emptyTitle": "Aucun article pour l’instant",
+    "emptyDescription": "Les articles publiés apparaîtront ici.",
+    "readingTime": "{minutes} min de lecture",
+    "published": "Publié le {date}",
+    "updated": "Mis à jour le {date}",
+    "editorial": "Rédaction OpenNavo",
+    "machineTranslated": "Traduction IA",
+    "viewOriginal": "Voir l’original",
+    "sourceText": "Cet article n’est pas encore disponible dans votre langue : la version originale s’affiche ci-dessous.",
+    "testNote": "Conditions de test :",
+    "toc": "Sommaire",
+    "sources": "Sources",
+    "appCardNote": "Données actuelles du catalogue : la version et le nombre d’installations suivent le catalogue et peuvent avoir changé depuis la rédaction.",
+    "installs": "Installations sur 30 jours : {count}",
+    "mentionedApps": "Apps citées dans cet article",
+    "related": "Articles associés",
+    "withdrawnTitle": "Cet article a été retiré",
+    "withdrawnBody": "Il est peut-être obsolète ou n’est plus exact : il n’est donc plus disponible. Découvrez nos autres articles.",
+    "withdrawnMetaTitle": "Article retiré · OpenNavo",
+    "backToList": "Parcourir tous les articles"
+  },
+  "authors": {
+    "label": "Auteur",
+    "metaTitle": "{name} · Auteur OpenNavo",
+    "description": "Articles sur les apps Mac signés {name}, sur OpenNavo.",
+    "count": "{count} article | {count} articles",
+    "links": "Liens de l’auteur",
+    "empty": "Aucun article publié pour l’instant"
+  },
+  "brewfile": {
+    "title": "Liste Brewfile",
+    "metaTitle": "Générateur de Brewfile · OpenNavo",
+    "description": "Rassemblez les apps de votre choix, générez un Brewfile et installez-les toutes sur un nouveau Mac en une seule commande.",
+    "count": "{count} élément | {count} éléments",
+    "emptyTitle": "Votre liste est vide",
+    "emptyDescription": "Choisissez « Ajouter à la liste Brewfile » dans le menu « Obtenir » d’une carte d’app ou d’une page de détails.",
+    "browse": "Découvrir des apps",
+    "fileTitle": "Généré par OpenNavo",
+    "copied": "Brewfile copié",
+    "download": "Télécharger le Brewfile",
+    "usage": "Mode d’emploi",
+    "usageHint": "Enregistrez le Brewfile dans votre dossier Téléchargements, puis exécutez la commande ci-dessus dans Terminal. Les paquets déjà installés sont ignorés.",
+    "moveUp": "Déplacer {name} vers le haut",
+    "moveDown": "Déplacer {name} vers le bas",
+    "remove": "Retirer {name} de la liste"
+  },
+  "download": {
+    "title": "La boutique d’apps Homebrew pour Mac, avec analyse antivirus et pare-feu d’apps",
+    "metaTitle": "Télécharger OpenNavo pour Mac – boutique d’apps Homebrew avec antivirus",
+    "description": "Installez, mettez à jour et désinstallez des apps en un clic, avec une analyse antivirus préalable, ainsi que le nettoyage et la surveillance du système. Utilise votre propre Homebrew ; aucun compte requis.",
+    "button": "Télécharger pour macOS",
+    "meta": "Version {version} · {size} · macOS {macos} ou version ultérieure · Publiée le {date}",
+    "copySha": "Copier la somme de contrôle SHA-256",
+    "shaCopied": "SHA-256 copié",
+    "comingTitle": "L’app arrive bientôt",
+    "comingDescription": "Vous pourrez la télécharger ici dès sa sortie. En attendant, copiez les commandes brew de ce site pour installer des logiciels.",
+    "brewTitle": "Ou installer avec Homebrew (pas encore disponible)",
+    "features": {
+      "install": {
+        "title": "Installation en un clic",
+        "body": "Cliquez sur Obtenir sur la page d’une app pour l’installer, avec la commande brew exacte affichée."
+      },
+      "updates": {
+        "title": "Des mises à jour sans y penser",
+        "body": "Les mises à jour de Homebrew, de l’App Store, de Sparkle, de GitHub et d’autres sources sont vérifiées ensemble et installées en un clic."
+      },
+      "security": {
+        "title": "Antivirus gratuit",
+        "body": "Analyses antivirus ClamAV, y compris avant l’installation, et contrôle des éléments de démarrage et des signatures."
+      },
+      "uninstall": {
+        "title": "Désinstallation propre",
+        "body": "Les données, les caches et les éléments d’arrière-plan partent avec l’app ; les fichiers partagés avec d’autres apps sont conservés."
+      },
+      "cleanup": {
+        "title": "Nettoyage du disque",
+        "body": "Une analyse en lecture seule classe les fichiers en trois niveaux de risque, et rien n’est supprimé sans votre confirmation."
+      },
+      "monitor": {
+        "title": "Surveillance du système",
+        "body": "CPU, mémoire, températures et ventilateurs, d’un coup d’œil dans la barre des menus."
+      }
+    },
+    "steps": {
+      "title": "Démarrer en trois étapes",
+      "open": {
+        "title": "Ouvrez l’image disque",
+        "body": "Une fois le téléchargement terminé, double-cliquez sur le fichier .dmg."
+      },
+      "drag": {
+        "title": "Faites glisser l’app dans Applications",
+        "body": "Faites glisser OpenNavo dans votre dossier Applications, puis ouvrez l’app à tout moment avec Spotlight."
+      },
+      "setup": {
+        "title": "Terminez la configuration",
+        "body": "Au premier lancement, OpenNavo vérifie votre Mac et vous laisse choisir une source de téléchargement. Homebrew n’est pas encore installé ? Vous pouvez l’installer directement depuis l’app."
+      }
+    },
+    "details": {
+      "title": "Détails de la version",
+      "version": "Version",
+      "released": "Date de sortie",
+      "size": "Taille",
+      "requires": "Configuration requise",
+      "requiresValue": "macOS {macos} ou version ultérieure",
+      "chip": "Puce",
+      "universal": "Apple silicon et Intel"
+    },
+    "changelog": "Notes de version"
+  },
+  "feedback": {
+    "title": "Commentaires",
+    "metaTitle": "Envoyer des commentaires · OpenNavo",
+    "description": "Signalez une information erronée, une installation qui échoue ou un lien cassé, ou suggérez un logiciel à ajouter.",
+    "type": "Type",
+    "types": {
+      "wrong_info": "Information erronée",
+      "install_failed": "Échec d’installation",
+      "broken_link": "Lien cassé",
+      "suggest_package": "Suggérer un paquet",
+      "translation": "Problème de traduction",
+      "other": "Autre"
+    },
+    "package": "Paquet :",
+    "removePackage": "Sans rapport avec ce paquet",
+    "content": "Détails",
+    "contentPlaceholder": "Décrivez le problème, ou le logiciel que vous aimeriez voir ajouté et pourquoi.",
+    "contentHint": "{count} / 2000 caractères, 5 minimum",
+    "contact": "Contact (facultatif)",
+    "contactPlaceholder": "E-mail ou autre moyen de vous joindre, utilisé uniquement pour vous répondre",
+    "submit": "Envoyer",
+    "rateLimited": "Trop d’envois. Réessayez plus tard.",
+    "failed": "Envoi impossible. Réessayez plus tard.",
+    "doneTitle": "Merci, c’est bien reçu !",
+    "doneDescription": "Nous allons l’examiner rapidement et vous répondrons si vous avez laissé un moyen de vous joindre.",
+    "backHome": "Retour à l’accueil",
+    "suggestPrefill": "Merci d’ajouter : {q}\n\n",
+    "private": "Votre signalement est privé. Seule l’équipe OpenNavo peut le consulter ; il ne sera jamais publié. Nous pouvons nous en servir pour vérifier et documenter les problèmes connus.",
+    "packageVersion": "Version de l’app (facultatif)",
+    "packageVersionPlaceholder": "Par exemple, 1.2.3",
+    "macosVersion": "Version de macOS (facultatif)",
+    "macosVersionPlaceholder": "Par exemple, 15.1",
+    "symptom": "Symptôme (facultatif)",
+    "symptomPlaceholder": "Par exemple : l’app se ferme juste après son ouverture",
+    "symptomHint": "{count} / 500 caractères",
+    "diagnosticLog": "Journal de diagnostic (facultatif)",
+    "diagnosticLogPlaceholder": "Collez un message d’erreur ou une sortie du Terminal",
+    "diagnosticLogHint": "Avant l’enregistrement, les formes courantes de mots de passe, de jetons, de clés et d’adresses e-mail sont supprimées, ainsi que les noms d’utilisateur dans les chemins. Vérifiez aussi le contenu avant l’envoi et ne gardez que les éléments utiles au problème.",
+    "diagnosticLogSize": "{size} / 16 KB",
+    "links": "Liens associés (facultatif, jusqu’à 3)",
+    "linkLabel": "Lien {number}",
+    "linkPlaceholder": "https://…",
+    "addLink": "Ajouter un autre lien",
+    "removeLink": "Supprimer le lien {number}",
+    "linksHint": "Vous pouvez ajouter jusqu’à 3 liens. Chaque adresse doit commencer par https:// et ne doit contenir ni le caractère « ? » ou « # » ni la partie qui le suit.",
+    "errors": {
+      "logSize": "Le journal dépasse 16 KB. Ne conservez que les éléments liés au problème.",
+      "link": "Saisissez une adresse https:// complète, sans partie après ? ou #, ni nom d’utilisateur ni mot de passe.",
+      "tooManyLinks": "3 liens maximum, y compris ceux dans « Détails »."
+    }
+  },
+  "about": {
+    "title": "À propos d’OpenNavo",
+    "metaTitle": "À propos et confidentialité · OpenNavo",
+    "description": "Ce qu’est OpenNavo, d’où viennent ses données et comment nous traitons vos informations.",
+    "draft": "Brouillon"
+  },
+  "security": {
+    "metaTitle": "Antivirus gratuit pour Mac, basé sur ClamAV · OpenNavo",
+    "description": "Analyse antivirus gratuite et open source pour Mac avec ClamAV. Vérifie les programmes d’installation avant l’installation, les nouveaux téléchargements, les éléments de démarrage et les signatures des apps.",
+    "hero": {
+      "kicker": "Sécurité",
+      "title": "Un antivirus gratuit et open source pour Mac,",
+      "titleAccent": "qui analyse vos apps avant leur installation.",
+      "lede": "OpenNavo analyse votre Mac avec le moteur **ClamAV** et sa base de données officielle, puis ajoute l’**analyse avant installation**, le contrôle des téléchargements, l’examen des éléments de démarrage et la vérification des signatures. Tout se passe sur votre Mac : aucun envoi de fichiers, aucun compte.",
+      "source": "Voir le code source"
+    },
+    "layers": {
+      "kicker": "Niveaux de protection",
+      "title": "Six contrôles, chacun avec son rôle.",
+      "body": "La base de virus reconnaît les fichiers malveillants connus. Les contrôles des signatures, de la notarisation et des éléments de démarrage couvrent ce qu’une base de données ne peut pas voir."
+    },
+    "scan": {
+      "kicker": "Analyse antivirus",
+      "title": "Les cachettes habituelles en quelques minutes, ou tout le Mac.",
+      "body": "Le moteur utilise environ 1,1 Go de mémoire pendant l’analyse et se ferme après 5 minutes d’inactivité. Les menaces peuvent être mises en quarantaine, supprimées ou marquées comme fiables, et tout élément en quarantaine peut être restauré.",
+      "modes": {
+        "quick": {
+          "title": "Analyse rapide",
+          "meta": "Quelques minutes en général",
+          "body": "Programmes lancés par les éléments de démarrage, Téléchargements, Bureau, dossiers temporaires et apps installées ces 7 derniers jours"
+        },
+        "full": {
+          "title": "Analyse complète",
+          "meta": "Peut durer plus d’une heure",
+          "body": "Tout le Mac, sauf le volume système, les fichiers iCloud non téléchargés, Time Machine et les volumes réseau"
+        },
+        "custom": {
+          "title": "Analyse personnalisée",
+          "meta": "Selon votre sélection",
+          "body": "Choisissez des dossiers ou un disque externe"
+        },
+        "schedule": {
+          "title": "Analyses planifiées",
+          "meta": "Quotidiennes ou hebdomadaires",
+          "body": "Une analyse rapide à l’heure choisie. Elle ne s’exécute que quand OpenNavo est ouvert, est ignorée sur batterie et ne réveille jamais votre Mac"
+        }
+      }
+    },
+    "startup": {
+      "kicker": "Éléments de démarrage",
+      "title": "Tout ce qui se lance tout seul, dans une seule liste.",
+      "body": "Vingt types d’éléments de démarrage, regroupés par app, avec leur signature, leur notarisation et leur propriétaire. Tout nouvel élément déclenche immédiatement une alerte, et tout ce que vous désactivez ou supprimez peut être restauré.",
+      "points": {
+        "trust": "Apple, les développeurs connus et les programmes non signés sont distingués : les éléments suspects ressortent",
+        "alerts": "Une alerte dès qu’apparaît un nouvel élément de démarrage, élément de connexion ou service d’arrière-plan",
+        "restore": "Les éléments sont sauvegardés avant d’être désactivés ou supprimés : vous pouvez toujours les restaurer"
+      },
+      "categoriesTitle": "Les 20 types d’éléments de démarrage contrôlés",
+      "categories": {
+        "launch_items": "Service d’arrière-plan",
+        "btm": "Élément d’arrière-plan",
+        "login_items": "Élément de connexion",
+        "cron": "Tâche planifiée",
+        "browser_extensions": "Extension de navigateur",
+        "kexts": "Extension du noyau",
+        "system_extensions": "Extension système",
+        "app_extensions": "Extension d’app",
+        "auth_plugins": "Module d’autorisation",
+        "dir_services_plugins": "Module de services d’annuaire",
+        "spotlight": "Module d’importation Spotlight",
+        "quicklook": "Module Coup d’œil",
+        "dock_tiles": "Module du Dock",
+        "library_inserts": "Injection de bibliothèque",
+        "library_proxies": "Proxy de bibliothèque",
+        "login_hooks": "Hook de connexion",
+        "periodic": "Script périodique",
+        "startup_scripts": "Script de démarrage",
+        "shell_config": "Configuration du shell",
+        "event_rules": "Règle d’événement"
+      },
+      "demo": {
+        "summary": "{count} éléments de démarrage tiers",
+        "loginItem": "Élément de connexion",
+        "service": "Service d’arrière-plan",
+        "known": "Développeur connu",
+        "untrusted": "Non signé ou non notarisé",
+        "new": "Nouveau",
+        "disabled": "Désactivé"
+      }
+    },
+    "posture": {
+      "kicker": "Bilan du système",
+      "title": "Les protections de macOS sont-elles activées ?",
+      "body": "Une vérification en lecture seule de 11 réglages système, qui ne modifie rien. Si un point doit être corrigé, OpenNavo ouvre le bon panneau des Réglages Système.",
+      "items": {
+        "sip": "Protection de l’intégrité du système",
+        "ssv": "Volume système signé",
+        "gatekeeper": "Gatekeeper",
+        "filevault": "Chiffrement du disque FileVault",
+        "firewall": "Pare-feu",
+        "xprotect": "XProtect (protection intégrée d’Apple)",
+        "updates": "Mises à jour de sécurité automatiques",
+        "screenlock": "Verrouillage de l’écran",
+        "autologin": "Connexion automatique",
+        "guest": "Utilisateur invité",
+        "sharing": "Services de partage"
+      },
+      "ok": "OK",
+      "warn": "À vérifier",
+      "firewallOff": "Le pare-feu est désactivé",
+      "openSettings": "Ouvrir les Réglages"
+    },
+    "extras": {
+      "kicker": "Options facultatives",
+      "title": "Désactivées par défaut, disponibles quand vous le souhaitez.",
+      "paste": {
+        "title": "Protection du collage",
+        "body": "Quand vous appuyez sur ⌘V pour coller une commande suspecte du type « télécharger et exécuter » dans un terminal, OpenNavo suspend l’opération et vous demande d’abord confirmation. La vérification se fait en local, et rien de ce que vous collez n’est conservé."
+      },
+      "virusTotal": {
+        "title": "Recherche VirusTotal",
+        "body": "Recherchez le SHA-256 d’un fichier sur VirusTotal avec votre propre clé API. Seule l’empreinte est envoyée ; le fichier ne quitte jamais votre Mac."
+      },
+      "pasteDemo": {
+        "title": "Collage dans « Terminal » suspendu",
+        "body": "Cette commande semble télécharger et exécuter un programme. Ignorez-la, sauf si vous comptiez vraiment l’exécuter.",
+        "allow": "Autoriser une fois",
+        "discard": "Ignorer"
+      },
+      "vtDemo": {
+        "clean": "VirusTotal : aucun moteur ne le signale",
+        "engines": "Vérifié par {total} moteurs",
+        "hashOnly": "Seul le SHA-256 du fichier a été envoyé ; le fichier lui-même n’a pas été téléversé",
+        "lookup": "Rechercher sur VirusTotal"
+      }
+    },
+    "privacy": {
+      "title": "Vos fichiers restent sur votre Mac.",
+      "points": {
+        "local": {
+          "title": "Analyse en local",
+          "body": "Les analyses s’exécutent sur votre Mac, et les résultats ne sont stockés que sur celui-ci."
+        },
+        "database": {
+          "title": "Base officielle",
+          "body": "La base provient directement des serveurs officiels de ClamAV, sans passer par OpenNavo."
+        },
+        "hashes": {
+          "title": "Aucun envoi de fichiers",
+          "body": "La recherche VirusTotal facultative n’envoie que le SHA-256 d’un fichier, et seulement si vous l’activez."
+        }
+      }
+    },
+    "faq": {
+      "title": "Questions fréquentes",
+      "items": {
+        "need": {
+          "q": "Un Mac a-t-il besoin d’un antivirus ?",
+          "a": "macOS intègre Gatekeeper, la notarisation et XProtect, qui bloquent de nombreuses menaces connues. Les logiciels piratés, les programmes d’installation provenant de sites inconnus et les commandes collées dans Terminal restent des portes d’entrée courantes. OpenNavo ajoute un contrôle à chacune de ces étapes. Il complète la protection de macOS sans la remplacer."
+        },
+        "database": {
+          "q": "D’où vient la base de virus, et à quelle fréquence est-elle mise à jour ?",
+          "a": "Il s’agit de la base officielle de ClamAV, téléchargée directement depuis les serveurs de ClamAV et non via OpenNavo. Le premier téléchargement pèse environ 113 Mo (environ 170 Mo sur le disque). Ensuite, OpenNavo vérifie toutes les 4 heures par défaut et ne télécharge que les changements."
+        },
+        "performance": {
+          "q": "Va-t-il ralentir mon Mac ?",
+          "a": "Le moteur utilise environ 1,1 Go de mémoire pendant l’analyse et se ferme après 5 minutes d’inactivité : il ne consomme rien le reste du temps. Les analyses planifiées ne s’exécutent que quand OpenNavo est ouvert, sont ignorées sur batterie et ne réveillent jamais votre Mac."
+        },
+        "upload": {
+          "q": "Mes fichiers sont-ils envoyés en ligne ?",
+          "a": "Non. Les analyses s’exécutent sur votre Mac et les résultats y restent. La recherche VirusTotal facultative doit être activée avec votre propre clé API, et même dans ce cas, elle n’envoie que le SHA-256 du fichier."
+        },
+        "realtime": {
+          "q": "Bloque-t-il les logiciels malveillants en temps réel ?",
+          "a": "Les nouveaux téléchargements et les nouveaux éléments de démarrage sont vérifiés dès leur apparition, et vous êtes alerté immédiatement, mais OpenNavo ne peut pas encore bloquer un programme avant sa première exécution. Le blocage en temps réel nécessite l’autorisation Endpoint Security d’Apple et arrivera une fois celle-ci accordée."
+        },
+        "coverage": {
+          "q": "Détecte-t-il tous les logiciels malveillants pour Mac ?",
+          "a": "Aucun antivirus ne peut le promettre. La couverture des logiciels malveillants propres au Mac par ClamAV est limitée : c’est pourquoi OpenNavo vérifie aussi les signatures, la notarisation et les éléments de démarrage, et affiche l’état de XProtect. Les fichiers ordinaires de plus de 100 Mo, et les programmes d’installation de plus de 1 Go ou de plus de 2 Go une fois décompressés, ne sont pas entièrement analysés."
+        },
+        "price": {
+          "q": "Est-ce vraiment gratuit ?",
+          "a": "Oui, et aucun compte n’est nécessaire. OpenNavo est open source sous licence GPL-3.0, et son code est disponible sur GitHub."
+        }
+      }
+    },
+    "cta": {
+      "title": "Offrez à votre Mac un contrôle de plus.",
+      "body": "OpenNavo est gratuit, open source et fonctionne sous macOS 13 ou version ultérieure. Lors de votre première analyse, il vous demande l’autorisation avant de télécharger la base officielle."
+    }
+  },
+  "backgroundItems": {
+    "title": "Répertoire des éléments d’arrière-plan",
+    "metaTitle": "Éléments d’arrière-plan et de connexion sur Mac : rôle et désactivation · OpenNavo",
+    "description": "Services d’arrière-plan déclarés par les apps Mac (LaunchAgent, LaunchDaemon), éléments de connexion et reçus d’installation : quelles apps les déclarent, où ils se trouvent généralement et comment les désactiver dans les Réglages Système.",
+    "ogLabel": "Élément d’arrière-plan",
+    "total": "{total} étiquette | {total} étiquettes",
+    "caution": "Une étiquette n’est qu’un nom : plusieurs apps peuvent partager la même, et un logiciel malveillant peut l’imiter. Cette liste indique ce que les apps déclarent dans leurs définitions Homebrew ; elle ne prouve pas qu’un élément sur votre Mac leur appartient.",
+    "search": {
+      "label": "Rechercher une étiquette",
+      "placeholder": "Rechercher par étiquette, par exemple com.microsoft.update.agent",
+      "submit": "Recherche",
+      "hint": "Vous pouvez aussi saisir une partie de l’étiquette, comme le domaine du développeur."
+    },
+    "results": "Étiquettes contenant « {q} »",
+    "clearSearch": "Effacer la recherche",
+    "emptyTitle": "Aucune étiquette trouvée",
+    "emptySearch": "Aucune étiquette ne contient « {q} ». Essayez d’en saisir une partie plus courte.",
+    "emptyAll": "Aucun élément d’arrière-plan répertorié pour l’instant.",
+    "severalDevelopers": "Plusieurs développeurs",
+    "unknownDeveloper": "Développeur non indiqué",
+    "declaredBy": "Apps qui la déclarent :",
+    "listSeparator": ", ",
+    "moreApps": "et {count} autres",
+    "shared": "Étiquette partagée par plusieurs apps",
+    "described": "Description disponible",
+    "types": {
+      "launch_agent": "LaunchAgent",
+      "launch_daemon": "LaunchDaemon",
+      "login_item": "Élément de connexion",
+      "package_receipt": "Reçu d’installation",
+      "launchd": "LaunchAgent ou LaunchDaemon",
+      "unknown": "Type inconnu"
+    },
+    "openInApp": {
+      "download": "Vous n’avez pas encore OpenNavo ? Téléchargez la version Mac"
+    },
+    "item": {
+      "metaTitle": "Qu’est-ce que {label} sur Mac ? Éléments d’arrière-plan · OpenNavo",
+      "metaDescription": "{label} est un élément d’arrière-plan déclaré par {apps} dans sa définition Homebrew. Découvrez où il se trouve généralement, comment le désactiver dans les Réglages Système et comment le vérifier avec OpenNavo.",
+      "kicker": "Élément d’arrière-plan",
+      "lede": "Cette étiquette est déclarée dans la définition Homebrew de {apps}. | Cette étiquette est déclarée dans les définitions Homebrew de {apps}.",
+      "source": "Source :",
+      "checkedOn": "Vérifié le {date}",
+      "stale": "Peut ne plus être à jour",
+      "what": {
+        "title": "De quoi s’agit-il ?",
+        "none": "Aucune description vérifiée pour l’instant. Vous trouverez ci-dessous les apps dont la définition Homebrew déclare cette étiquette, ainsi que les emplacements habituels de ce type d’élément."
+      },
+      "apps": {
+        "title": "Apps qui la déclarent",
+        "intro": "Les définitions Homebrew des apps ci-dessous mentionnent cette étiquette. Cela indique ce qu’elles déclarent, sans prouver qu’un élément portant cette étiquette sur votre Mac leur appartient.",
+        "shared": "{count} apps déclarent la même étiquette ; elle seule ne permet pas de savoir de laquelle provient un élément.",
+        "declaration": {
+          "launchctl": "Service d’arrière-plan (launchctl)",
+          "login_item": "Élément de connexion",
+          "pkgutil": "Reçu d’installation (pkgutil)"
+        },
+        "phase": {
+          "uninstall": "supprimé à la désinstallation",
+          "zap": "supprimé par zap, le nettoyage facultatif des données utilisateur de Homebrew"
+        },
+        "source": "Définition Homebrew",
+        "uninstallPreview": "Prévisualiser la désinstallation dans OpenNavo",
+        "uninstallHint": "L’aperçu de désinstallation s’ouvre dans OpenNavo : le contenu à supprimer est d’abord listé, et l’opération ne commence qu’après votre confirmation."
+      },
+      "identity": {
+        "title": "Vérifiez d’abord son identité",
+        "intro": "Une même étiquette peut correspondre à différents programmes. Sur votre Mac, vérifiez tous les points suivants avant de considérer qu’un élément appartient à l’app qui déclare cette étiquette :",
+        "signature": "Signature : le développeur et le Team ID correspondent à ceux de l’app",
+        "path": "Emplacement : le programme lancé se trouve dans l’app ou dans un dossier propre au développeur",
+        "version": "Version : elle correspond à celle de l’app installée"
+      },
+      "where": {
+        "title": "Emplacements habituels",
+        "verified": "Emplacements courants vérifiés :",
+        "launchd": "Un LaunchAgent ou LaunchDaemon est généralement défini par un fichier de liste de propriétés portant le nom de son étiquette ({file}), dans l’un des dossiers suivants :",
+        "loginItem": "Les éléments de connexion figurent dans « Réglages Système » → « Général » → « Ouverture et extensions » (« Ouverture » sous macOS 13 et 14).",
+        "receipt": "Les reçus d’installation sont conservés par l’installateur de macOS et indiquent les fichiers installés par un paquet. Vous pouvez en consulter un dans « Terminal » avec {command}.",
+        "malware": "Ces dossiers sont aussi les emplacements les plus couramment utilisés par les logiciels malveillants sur Mac pour se lancer au démarrage. Si vous y trouvez un élément inconnu, vérifiez-le."
+      },
+      "turnOff": {
+        "title": "Le désactiver dans les Réglages Système",
+        "open": "Ouvrez « Réglages Système » → « Général » → « Ouverture et extensions » (« Ouverture » sous macOS 13 et 14).",
+        "find": "Sous « Autoriser en arrière-plan », recherchez l’app ou son développeur.",
+        "switch": "Désactivez l’interrupteur correspondant. Les éléments actifs pour tous les utilisateurs peuvent nécessiter le mot de passe administrateur.",
+        "openAtLogin": "Sélectionnez les apps dans « Ouvrir avec la session », puis cliquez sur le signe moins pour les retirer de la liste.",
+        "note": "La désactivation empêche uniquement le démarrage automatique ; elle ne supprime aucun fichier. La désinstallation de l’app supprime les fichiers associés. Si vous utilisez encore l’app, ses mises à jour, sa synchronisation et d’autres fonctions d’arrière-plan peuvent s’arrêter."
+      },
+      "openNavo": {
+        "title": "Gérer avec OpenNavo",
+        "body": "Si cet élément se trouve sur votre Mac, la section « Éléments de démarrage » d’OpenNavo l’affiche avec sa signature, son emplacement et l’app à laquelle OpenNavo le rattache sur votre Mac. Vous pouvez le désactiver ou le supprimer ; un élément supprimé peut ensuite être restauré.",
+        "button": "Afficher dans OpenNavo",
+        "hint": "Cela ouvre uniquement un aperçu : OpenNavo recherche cette étiquette sur votre Mac et affiche les éléments trouvés. Rien n’est désactivé ni supprimé avant votre confirmation. Nécessite OpenNavo pour Mac.",
+        "more": "En savoir plus sur la protection de votre Mac avec OpenNavo"
+      }
+    }
+  },
+  "troubleshooting": {
+    "tab": "Dépannage",
+    "metaTitle": "Dépannage de {name} : problèmes connus et solutions · OpenNavo",
+    "metaDescription": "Problèmes connus de {name}, comme {titles}, avec les versions de l’app et de macOS concernées, les étapes de résolution, les sources et les dates de vérification.",
+    "title": "Problème connu ({count}) | Problèmes connus ({count})",
+    "intro": "Voici les problèmes connus de {name}, avec pour chacun les versions concernées, les étapes pour le résoudre ou le contourner et la source consultée.",
+    "fallbackLanguage": "Ces problèmes sont pour l’instant uniquement disponibles en anglais.",
+    "contents": "Sommaire",
+    "appVersions": "Versions de {name}",
+    "macosVersions": "Versions de macOS",
+    "steps": "Étapes de résolution",
+    "community": "Discussions de la communauté",
+    "communityHint": "Ces liens renvoient vers des discussions existantes sur d’autres sites, dont le contenu n’a pas été vérifié par OpenNavo.",
+    "source": "Source :",
+    "checkedOn": "Vérifié le {date}",
+    "english": "Anglais",
+    "report": {
+      "title": "Le problème persiste ?",
+      "body": "Indiquez-nous la version de {name}, votre version de macOS et ce que vous observez. Votre signalement reste privé et nous aide uniquement à vérifier de nouveaux problèmes.",
+      "action": "Signaler un problème",
+      "back": "Retour à la page de {name}"
+    }
+  },
+  "securityTopics": {
+    "label": "Sécurité du Mac",
+    "overview": "Comment OpenNavo protège votre Mac",
+    "faqTitle": "Questions fréquentes",
+    "linksTitle": "Autres sujets sur la sécurité du Mac",
+    "apps": {
+      "title": "Autres apps de sécurité pour Mac au catalogue",
+      "body": "Ces apps figurent aussi au catalogue d’OpenNavo pour vous permettre de les comparer. Elles sont publiées par leurs développeurs respectifs et n’ont aucun lien de partenariat avec OpenNavo."
+    },
+    "links": {
+      "firewall": {
+        "title": "Pare-feu pour apps sur Mac",
+        "body": "Vous demande avant qu’une app se connecte, puis autorise ou bloque selon vos règles."
+      },
+      "clamav": {
+        "title": "Analyser votre Mac avec ClamAV",
+        "body": "Ce que l’antivirus open source détecte et ce qui lui échappe."
+      },
+      "xprotect": {
+        "title": "XProtect, c’est quoi ?",
+        "body": "La protection contre les logiciels malveillants intégrée à macOS et ses limites."
+      },
+      "backgroundItems": {
+        "title": "Guide des éléments d’arrière-plan",
+        "body": "Ce que sont les éléments de connexion et les services d’arrière-plan, les apps qui les déclarent et comment les désactiver."
+      }
+    },
+    "firewall": {
+      "metaTitle": "Pare-feu pour Mac gratuit : votre accord avant la connexion des apps · OpenNavo",
+      "description": "Le pare-feu pour Mac d’OpenNavo vous demande la première fois qu’une app se connecte à Internet, puis autorise ou bloque selon vos règles. Gratuit et open source, adapté de LuLu, il prend ses décisions sur votre Mac.",
+      "breadcrumb": "Pare-feu pour apps",
+      "hero": {
+        "kicker": "Pare-feu pour apps",
+        "title": "Avant qu’une app se connecte, il vous demande votre avis.",
+        "lede": "Le pare-feu intégré à macOS ne surveille que les connexions **entrantes**. Le pare-feu pour apps d’OpenNavo surveille l’autre sens : à la première connexion d’une app au réseau, il vous demande de l’autoriser ou de la bloquer, puis mémorise votre choix. Gratuit et open source."
+      },
+      "sections": {
+        "what": {
+          "title": "Ce qu’il permet",
+          "body": "Vous définissez toutes les règles et les décisions sont prises sur ce Mac.",
+          "cards": {
+            "ask": {
+              "title": "Vous demande avant la connexion",
+              "body": "Voyez quelle app se connecte, où elle va et qui l’a signée, puis choisissez de l’autoriser ou de la bloquer."
+            },
+            "rules": {
+              "title": "Règles par app, site ou port",
+              "body": "Autorisez toutes les connexions d’une app, ou autorisez ou bloquez uniquement un domaine, une plage d’adresses IP ou un port. Les règles les plus précises sont prioritaires et, à précision égale, le blocage l’emporte sur l’autorisation."
+            },
+            "blocklists": {
+              "title": "Listes de blocage",
+              "body": "Importez des fichiers hosts ou des listes de publicités, de traqueurs ou de sites malveillants. Les connexions correspondantes sont bloquées sans demande, et les listes provenant d’une adresse web sont mises à jour chaque jour."
+            },
+            "modes": {
+              "title": "Moins de demandes quand vous le souhaitez",
+              "body": "Pour les connexions sans règle, vous pouvez choisir d’être interrogé, de les autoriser et de les consigner, ou de les bloquer et de les consigner. Les programmes Apple et les apps déjà installées peuvent aussi être autorisés automatiquement."
+            }
+          }
+        },
+        "how": {
+          "title": "Fonctionnement sur votre Mac",
+          "body": "Le pare-feu pour apps est une extension système réseau. À sa première activation, macOS vous demande deux confirmations : autoriser l’extension système d’OpenNavo dans « Réglages Système », puis l’autoriser à filtrer le contenu réseau. Les informations de connexion restent sur votre Mac et ne sont pas envoyées ailleurs.",
+          "note": "Il nécessite macOS 13 ou une version ultérieure et la version officielle d’OpenNavo installée dans le dossier « Applications »."
+        },
+        "limits": {
+          "title": "Ce qu’il ne fait pas",
+          "items": {
+            "incoming": "Il ne surveille que les connexions initiées par les apps de ce Mac. Le pare-feu intégré à macOS gère les connexions entrantes (« Réglages Système » → « Réseau » → « Pare-feu »).",
+            "notRunning": "Quand OpenNavo n’est pas lancé, il ne peut pas vous interroger : les connexions sans règle sont alors autorisées et consignées dans l’historique. Les règles existantes continuent de s’appliquer.",
+            "directIp": "Certaines apps résolvent elles-mêmes les adresses et se connectent directement à une IP. Le blocage d’un domaine peut alors être inefficace ; seules les IP figurant dans une liste peuvent bloquer ces connexions.",
+            "release": "Le pare-feu pour apps est disponible uniquement dans la version officielle signée. Les versions de développement et non signées ne l’incluent pas."
+          }
+        },
+        "origin": {
+          "title": "Adapté de LuLu",
+          "body": "Le filtre réseau du pare-feu pour apps est adapté de LuLu 4.5.1, le pare-feu gratuit et open source créé par Objective-See (Patrick Wardle), sous licence GPL-3.0. OpenNavo en a réécrit la gestion des règles, le stockage et l’interface. Le projet n’est ni affilié à Objective-See, ni partenaire de cette organisation, et ne bénéficie pas de son approbation. Le code d’OpenNavo est également publié sous GPL-3.0 sur GitHub."
+        }
+      },
+      "faq": {
+        "builtIn": {
+          "q": "Le Mac n’a-t-il pas déjà un pare-feu ?",
+          "a": "Si. macOS propose un pare-feu dans « Réglages Système » → « Réseau » → « Pare-feu ». Il contrôle les connexions entrantes, ce qui est particulièrement utile sur un réseau Wi-Fi public. Il ne vous demande rien quand une app se connecte à Internet : le pare-feu pour apps complète cette protection en contrôlant les connexions sortantes."
+        },
+        "free": {
+          "q": "Est-ce vraiment gratuit ?",
+          "a": "Oui, il est gratuit et aucun compte n’est nécessaire. OpenNavo, y compris son pare-feu pour apps, est open source sous licence GPL-3.0."
+        },
+        "breakApps": {
+          "q": "Cela risque-t-il de gêner le fonctionnement de mes apps ?",
+          "a": "Les apps que vous bloquez ne peuvent pas se connecter à Internet, ce qui peut interrompre leurs mises à jour ou leur synchronisation. Pour éviter les demandes fréquentes, choisissez « Autoriser et consigner » pour les connexions sans règle, puis consultez l’historique. Vous pouvez aussi autoriser automatiquement les apps déjà installées."
+        },
+        "privacy": {
+          "q": "Mon historique de connexions est-il envoyé ailleurs ?",
+          "a": "Non. Les règles et les décisions sont gérées sur votre Mac, et les informations de connexion ne sont pas envoyées ailleurs. Les listes de blocage ajoutées depuis une adresse web sont téléchargées sur votre Mac et vérifiées localement."
+        },
+        "remove": {
+          "q": "Comment le supprimer ?",
+          "a": "Dans OpenNavo, ouvrez « Pare-feu pour apps » → « Réglages », puis choisissez « Supprimer ». Le filtrage s’arrête, l’extension système est désinstallée et les règles ainsi que l’historique des connexions sont supprimés. macOS peut vous demander votre mot de passe."
+        }
+      },
+      "cta": {
+        "title": "Activez le pare-feu pour apps.",
+        "body": "OpenNavo est gratuit et open source, et fonctionne avec macOS 13 ou une version ultérieure. Après l’installation, ouvrez « Pare-feu pour apps » et confirmez les deux demandes de macOS."
+      }
+    },
+    "clamav": {
+      "metaTitle": "Antivirus Mac gratuit avec ClamAV : capacités et limites · OpenNavo",
+      "description": "Analysez gratuitement votre Mac avec le moteur antivirus open source ClamAV et sa base de virus officielle. Découvrez ce que ClamAV détecte sur Mac, ce qui peut lui échapper et les vérifications supplémentaires d’OpenNavo.",
+      "breadcrumb": "Analyse antivirus avec ClamAV",
+      "hero": {
+        "kicker": "Analyse antivirus ClamAV",
+        "title": "Utilisez ClamAV sur Mac sans ouvrir Terminal.",
+        "lede": "**ClamAV** est un moteur antivirus open source largement utilisé. OpenNavo l’associe à sa base de virus officielle pour analyser votre Mac, avec des analyses rapides, complètes et planifiées, ainsi qu’une vérification avant l’installation d’un logiciel. C’est gratuit et vos fichiers restent sur votre Mac."
+      },
+      "sections": {
+        "what": {
+          "title": "Qu’est-ce que ClamAV ?",
+          "body": "ClamAV est un moteur antivirus open source maintenu par Cisco Talos et distribué sous licence GPL-2.0. Il compare les fichiers aux signatures de sa base de virus pour reconnaître les fichiers malveillants connus ; cette base est régulièrement mise à jour. Utilisé seul, ClamAV se compose d’outils en ligne de commande : après l’installation avec Homebrew (**brew install clamav**), freshclam télécharge la base et clamscan analyse les fichiers."
+        },
+        "how": {
+          "title": "Comment OpenNavo l’utilise",
+          "cards": {
+            "database": {
+              "title": "Base officielle",
+              "body": "Téléchargée directement depuis les serveurs officiels de ClamAV, sans passer par OpenNavo. Environ 113 MB la première fois, puis seules les modifications sont téléchargées ; les mises à jour sont vérifiées toutes les 4 heures par défaut."
+            },
+            "scans": {
+              "title": "Analyses rapides, complètes, personnalisées et planifiées",
+              "body": "L’analyse rapide vérifie les programmes ciblés par les éléments de démarrage, les dossiers Téléchargements et Bureau, les dossiers temporaires et les apps installées au cours des 7 derniers jours ; l’analyse complète couvre tout le Mac, à l’exception du volume système, des fichiers iCloud non téléchargés, de Time Machine et des volumes réseau."
+            },
+            "install": {
+              "title": "Analyse avant installation",
+              "body": "Les apps installées via OpenNavo sont analysées après leur téléchargement par Homebrew et avant leur installation. Si une menace est détectée, l’installation est interrompue."
+            },
+            "quarantine": {
+              "title": "Une quarantaine réversible",
+              "body": "Par défaut, les menaces détectées sont déplacées en quarantaine. Si vous confirmez qu’il s’agit d’un faux positif, vous pouvez les restaurer à tout moment."
+            },
+            "resources": {
+              "title": "De la mémoire utilisée uniquement pendant l’analyse",
+              "body": "Pendant l’analyse, le moteur utilise environ 1.1 GB de mémoire et se ferme automatiquement après 5 minutes d’inactivité."
+            }
+          }
+        },
+        "limits": {
+          "title": "Les limites de ClamAV sur Mac",
+          "items": {
+            "coverage": "Sa base ne couvre que partiellement les logiciels malveillants propres au Mac. Une analyse qui ne détecte aucune menace ne prouve donc pas que votre Mac est propre.",
+            "signatures": "Il reconnaît les menaces connues grâce à leurs signatures. Les logiciels malveillants nouveaux ou modifiés peuvent passer inaperçus tant que leurs signatures n’ont pas été ajoutées à la base.",
+            "realtime": "OpenNavo ne peut pas encore bloquer un programme avant son premier lancement : cela nécessite l’autorisation Endpoint Security d’Apple. Les nouveaux téléchargements et les nouveaux éléments de démarrage sont vérifiés dès leur apparition.",
+            "large": "Les fichiers ordinaires de plus de 100 MB, ainsi que les installateurs de plus de 1 GB ou de plus de 2 GB une fois décompressés, ne sont pas analysés intégralement."
+          }
+        },
+        "extras": {
+          "title": "Ce qu’OpenNavo vérifie en plus de ClamAV",
+          "body": "Ces vérifications complètent ce qu’une base de virus ne peut pas détecter :",
+          "cards": {
+            "signatures": {
+              "title": "Signatures et notarisation",
+              "body": "Les signatures et la notarisation des apps installées sont vérifiées ; vous êtes averti si la signature du développeur change soudainement."
+            },
+            "startup": {
+              "title": "Éléments de démarrage",
+              "body": "20 catégories d’éléments de démarrage, des services d’arrière-plan aux extensions de navigateur, avec leur signature et l’app associée."
+            },
+            "posture": {
+              "title": "Bilan du système",
+              "body": "11 réglages macOS, dont Gatekeeper, FileVault et l’état de XProtect, pour voir d’un coup d’œil lesquels sont désactivés."
+            },
+            "virusTotal": {
+              "title": "Recherche facultative sur VirusTotal",
+              "body": "Avec votre propre clé API, recherchez un fichier sur VirusTotal à partir de son SHA-256 ; seul le hash est envoyé, jamais le fichier."
+            }
+          }
+        }
+      },
+      "faq": {
+        "xprotect": {
+          "q": "ClamAV et XProtect, est-ce la même chose ?",
+          "a": "Non. XProtect est la protection contre les logiciels malveillants intégrée par Apple à macOS et utilise les propres règles d’Apple ; ClamAV est un moteur open source indépendant, avec sa propre base de virus. OpenNavo analyse avec ClamAV et indique aussi si XProtect est à jour."
+        },
+        "free": {
+          "q": "Est-ce vraiment gratuit ?",
+          "a": "Oui. ClamAV est open source, sa base de virus est gratuite et OpenNavo est également open source sous licence GPL-3.0. Aucun compte n’est nécessaire."
+        },
+        "upload": {
+          "q": "Mes fichiers sont-ils envoyés en ligne ?",
+          "a": "Non. L’analyse s’effectue sur votre Mac et les résultats y restent. La recherche facultative sur VirusTotal doit être activée par vos soins et n’envoie que le SHA-256 du fichier."
+        },
+        "terminal": {
+          "q": "Puis-je utiliser ClamAV directement, sans OpenNavo ?",
+          "a": "Oui. Installez-le avec Homebrew (brew install clamav), configurez freshclam pour télécharger la base de virus, puis lancez l’analyse avec clamscan. OpenNavo propose ces fonctions dans une fenêtre, avec des analyses planifiées et une quarantaine."
+        }
+      },
+      "cta": {
+        "title": "Analysez votre Mac avec ClamAV.",
+        "body": "OpenNavo est gratuit et open source, et prend en charge macOS 13 et les versions ultérieures. Lors de la première analyse, il vous demande votre accord avant de télécharger la base de virus officielle."
+      }
+    },
+    "xprotect": {
+      "metaTitle": "XProtect, c’est quoi ? L’antivirus intégré du Mac et ses limites · OpenNavo",
+      "description": "XProtect est l’antivirus intégré du Mac, inclus dans macOS par Apple. Découvrez son fonctionnement, ses limites, comment vérifier qu’il est à jour et ce qu’OpenNavo apporte en complément.",
+      "breadcrumb": "XProtect",
+      "hero": {
+        "kicker": "XProtect",
+        "title": "XProtect : l’antivirus intégré du Mac.",
+        "lede": "Chaque Mac intègre **XProtect**, la protection d’Apple contre les logiciels malveillants connus. Elle fonctionne discrètement en arrière-plan ; vous voyez donc rarement ce qu’elle vérifie. Voici ce qu’elle fait, ses limites et comment vérifier qu’elle est à jour."
+      },
+      "sections": {
+        "what": {
+          "title": "Ce que fait XProtect",
+          "cards": {
+            "signatures": {
+              "title": "Reconnaît les logiciels malveillants connus",
+              "body": "XProtect utilise des règles de détection (YARA) qu’Apple rédige pour les logiciels malveillants découverts. Elles sont mises à jour selon son propre calendrier, indépendamment des mises à jour de macOS."
+            },
+            "checks": {
+              "title": "Vérifie les apps lors de leur lancement",
+              "body": "XProtect vérifie une app lors de sa première ouverture, après une modification et après la mise à jour des règles. S’il détecte un logiciel malveillant connu, macOS en bloque l’exécution et vous propose de le déplacer dans la corbeille."
+            },
+            "remediation": {
+              "title": "Supprime certaines infections",
+              "body": "Les versions récentes de macOS recherchent aussi en arrière-plan les logiciels malveillants connus de XProtect et les suppriment."
+            },
+            "gatekeeper": {
+              "title": "Fonctionne avec Gatekeeper et la notarisation",
+              "body": "Gatekeeper et la notarisation vérifient qui a signé une app et si Apple l’a analysée ; XProtect recherche les logiciels malveillants déjà connus d’Apple."
+            }
+          }
+        },
+        "limits": {
+          "title": "Les limites de XProtect",
+          "items": {
+            "known": "XProtect ne connaît que ce qu’Apple connaît. Un nouveau logiciel malveillant, ou une variante suffisamment modifiée pour contourner les règles, peut s’exécuter normalement jusqu’à l’ajout de sa signature par Apple.",
+            "updates": "Ses mises à jour dépendent d’un réglage. Les règles de XProtect sont distribuées avec les réponses de sécurité et les fichiers système. Si l’option « Installer les réponses de sécurité et les fichiers système » est désactivée dans les mises à jour automatiques, XProtect risque de ne plus être à jour.",
+            "visibility": "Vous ne voyez pas XProtect à l’œuvre : il n’a ni fenêtre, ni bouton d’analyse, ni rapport des éléments vérifiés."
+          }
+        },
+        "check": {
+          "title": "Vérifier que XProtect est à jour",
+          "steps": {
+            "systemInformation": "Maintenez la touche Option enfoncée, cliquez sur le menu Apple → « Informations système », puis ouvrez « Logiciel » → « Installations » et recherchez les mises à jour récentes dont le nom commence par XProtect.",
+            "terminal": "Vous pouvez aussi exécuter system_profiler SPInstallHistoryDataType dans « Terminal », puis rechercher les entrées XProtect dans le résultat.",
+            "settings": "Dans « Réglages Système » → « Général » → « Mise à jour de logiciels », cliquez sur le bouton d’informations à côté de « Mises à jour automatiques » et vérifiez que « Installer les réponses de sécurité et les fichiers système » est activé."
+          },
+          "note": "Le bilan du système d’OpenNavo indique la version de XProtect et la date de sa dernière mise à jour. Il vous avertit si elle remonte à plus de 30 jours et vérifie que les réponses de sécurité s’installent automatiquement."
+        },
+        "extras": {
+          "title": "Ce qu’OpenNavo peut compléter",
+          "body": "OpenNavo ne remplace pas XProtect ; il ajoute les vérifications que XProtect ne vous indique pas :",
+          "cards": {
+            "scan": {
+              "title": "Analyse antivirus avec ClamAV",
+              "body": "Les analyses rapides, complètes et planifiées utilisent le moteur open source ClamAV. Les apps installées via OpenNavo sont aussi analysées avant leur installation."
+            },
+            "startup": {
+              "title": "Éléments de démarrage",
+              "body": "Consultez tous les programmes qui se lancent automatiquement, leur signature et l’app associée ; vous êtes averti lorsqu’un nouvel élément apparaît."
+            },
+            "signatures": {
+              "title": "Bilan des signatures",
+              "body": "Les signatures et la notarisation des apps installées sont vérifiées ; vous êtes averti si la signature du développeur change soudainement."
+            }
+          }
+        }
+      },
+      "faq": {
+        "enough": {
+          "q": "XProtect suffit-il à protéger mon Mac ?",
+          "a": "XProtect bloque les logiciels malveillants pour lesquels Apple dispose de signatures et se met à jour automatiquement. Veillez donc à le laisser activé et à jour. Il ne peut toutefois pas détecter ce qu’Apple n’a pas encore répertorié et ne vous indique pas ce qu’il a vérifié. Un second outil d’analyse et une vérification des éléments de démarrage complètent ses contrôles."
+        },
+        "off": {
+          "q": "Peut-on désactiver XProtect ?",
+          "a": "Aucune option ne permet de le désactiver dans « Réglages Système ». Il fait partie de macOS et est protégé comme le reste du système."
+        },
+        "where": {
+          "q": "Où se trouve XProtect sur mon Mac ?",
+          "a": "Ses règles se trouvent dans le répertoire système /Library/Apple/System/Library/CoreServices/XProtect.bundle, protégé par macOS et qui ne peut pas être modifié librement. Vous n’avez pas besoin de l’ouvrir : l’historique des mises à jour ci-dessus indique quand XProtect a été mis à jour pour la dernière fois."
+        },
+        "clamav": {
+          "q": "Quelle différence entre XProtect et ClamAV ?",
+          "a": "Tous deux comparent les fichiers aux signatures de logiciels malveillants connus, mais ils sont indépendants : XProtect utilise les propres règles d’Apple et fonctionne automatiquement ; ClamAV est un moteur open source doté de sa propre base de virus, qui fonctionne lors d’une analyse. OpenNavo analyse avec ClamAV et affiche l’état de XProtect."
+        }
+      },
+      "cta": {
+        "title": "Découvrez ce que XProtect ne vous indique pas.",
+        "body": "Le bilan du système gratuit d’OpenNavo indique si XProtect est à jour, ainsi que l’état de 10 autres réglages de sécurité macOS."
+      }
+    }
+  },
+  "og": {
+    "tagline": "La boutique d’apps Homebrew",
+    "platform": "App macOS",
+    "homeTitle": "La boutique d’apps\nHomebrew, antivirus\net pare-feu pour Mac.",
+    "homeDescription": "Installez et mettez à jour vos apps\nen un clic, après une analyse antivirus.",
+    "discoverTitle": "Découvrez\ndes apps Mac.",
+    "discoverDescription": "Parcourez les apps et leurs notes de version.\nTrouvez votre prochaine installation.",
+    "category": "Catégorie",
+    "collection": "Collection",
+    "downloadTitle": "Obtenez OpenNavo\npour Mac.",
+    "downloadDescription": "Installez, mettez à jour, analysez\net nettoyez, dans une seule app.",
+    "securityTitle": "Antivirus gratuit\net open source\npour Mac.",
+    "securityDescription": "Analyses antivirus, contrôle du démarrage\net des signatures. Tout est gratuit."
+  },
+  "landing": {
+    "footerNav": "Pied de page",
+    "hero": {
+      "announceTag": "Nouveau",
+      "announce": "L’analyse antivirus gratuite est arrivée",
+      "title": "La boutique d’apps Homebrew pour Mac,",
+      "titleAccent": "avec **analyse antivirus** et pare-feu d’apps.",
+      "lede": "Installez et mettez à jour **{count} app** en un clic, avec une analyse antivirus préalable. Lancez des **analyses antivirus complètes**, gérez les éléments de démarrage, nettoyez votre disque et surveillez votre matériel. | Installez et mettez à jour **{count} apps** en un clic, avec une analyse antivirus préalable. Lancez des **analyses antivirus complètes**, gérez les éléments de démarrage, nettoyez votre disque et surveillez votre matériel.",
+      "ledeFallback": "Installez et mettez à jour vos apps Mac en un clic, avec une analyse antivirus préalable. Lancez des **analyses antivirus complètes**, gérez les éléments de démarrage, nettoyez votre disque et surveillez votre matériel.",
+      "download": "Télécharger pour Mac",
+      "browse": "Parcourir les apps",
+      "github": "Open source sur GitHub",
+      "followOnX": "Suivre {account}",
+      "meta": "Gratuit · macOS 13 ou version ultérieure · Apple silicon et Intel"
+    },
+    "about": {
+      "kicker": "En bref",
+      "title": "Qu’est-ce qu’OpenNavo ?",
+      "definition": "OpenNavo est un client graphique Homebrew pour Mac, gratuit et open source, qui permet d’installer et de mettre à jour les apps Homebrew sur votre Mac en un clic ; son site web est un répertoire d’apps Mac proposant des historiques de versions, la configuration requise et des instructions de désinstallation.",
+      "compare": {
+        "caption": "Différences entre OpenNavo, la ligne de commande Homebrew et le Mac App Store",
+        "homebrew": "Ligne de commande Homebrew",
+        "appStore": "Mac App Store",
+        "rows": {
+          "use": "Mode d’utilisation",
+          "source": "Origine des logiciels",
+          "scope": "Ce qui peut être installé et mis à jour"
+        },
+        "cells": {
+          "opennavo": {
+            "use": "Un répertoire web et un client Mac avec une interface graphique.",
+            "source": "Les apps Homebrew sont téléchargées depuis la source indiquée dans chaque cask.",
+            "scope": "Installe et met à jour les cask via Homebrew sur votre Mac ; après connexion à votre compte Apple, permet aussi d’installer et de mettre à jour les apps de l’App Store. Les autres apps renvoient au téléchargement officiel du développeur."
+          },
+          "homebrew": {
+            "use": "Saisie de commandes brew dans Terminal.",
+            "source": "Les définitions de paquets Homebrew et les tap tiers que vous ajoutez.",
+            "scope": "Utilisez les commandes brew install et brew upgrade pour gérer les paquets formula (outils en ligne de commande) et cask (applications)."
+          },
+          "appStore": {
+            "use": "L’app App Store sur votre Mac.",
+            "source": "Le catalogue App Store d’Apple.",
+            "scope": "Les apps obtenues avec votre compte Apple ; les développeurs assurent les mises à jour des apps provenant d’autres sources."
+          }
+        },
+        "sources": "Sources :",
+        "links": {
+          "readme": "OpenNavo README",
+          "brewManpage": "Manuel des commandes Homebrew",
+          "brewTaps": "Homebrew : tap tiers",
+          "appleInstall": "Assistance Apple : installer et désinstaller des achats de l’App Store",
+          "appleDownload": "Assistance Apple : télécharger des apps sur Mac",
+          "appleUpdate": "Assistance Apple : mettre à jour des apps avec l’App Store",
+          "appleOther": "Assistance Apple : mettre à jour des apps manuellement"
+        }
+      }
+    },
+    "window": {
+      "label": "L’app OpenNavo pour Mac installe une app depuis Découvrir",
+      "mine": "Bibliothèque",
+      "installed": "Installées",
+      "updates": "Mises à jour",
+      "cleanup": "Nettoyage",
+      "monitor": "Surveillance",
+      "security": "Sécurité",
+      "settings": "Réglages",
+      "installing": "Installation en cours : {name}",
+      "scanning": "Analyse du téléchargement : {name}"
+    },
+    "security": {
+      "kicker": "Sécurité",
+      "title": "Analysé avant l’installation. Surveillé ensuite.",
+      "body": "OpenNavo intègre le moteur open source **ClamAV**, dont la base est mise à jour directement depuis les serveurs officiels de ClamAV. Les apps que vous installez avec OpenNavo sont analysées avant leur installation, et les nouveaux téléchargements et éléments de démarrage sont vérifiés dès leur apparition. Les analyses s’exécutent sur votre Mac, et **aucun fichier n’est envoyé**.",
+      "points": {
+        "scan": {
+          "title": "Analyses rapides, complètes et planifiées",
+          "body": "Une analyse rapide vérifie Téléchargements, le Bureau et les éléments de démarrage en quelques minutes, et peut s’exécuter chaque jour ou chaque semaine. Une analyse complète couvre tout le Mac."
+        },
+        "install": {
+          "title": "Analyse avant installation",
+          "body": "Une fois l’app téléchargée par Homebrew et avant son installation, le fichier téléchargé est analysé. En cas de menace, l’installation est interrompue."
+        },
+        "downloads": {
+          "title": "Nouveaux téléchargements vérifiés",
+          "body": "OpenNavo surveille votre dossier Téléchargements et analyse chaque fichier dès la fin du téléchargement. Les programmes d’installation font aussi l’objet d’une vérification de la signature et de la notarisation."
+        },
+        "startup": {
+          "title": "Éléments de démarrage",
+          "body": "Vingt types, des services d’arrière-plan et éléments de connexion aux extensions de navigateur, chacun avec sa signature et l’app à laquelle il appartient. Tout nouvel élément déclenche immédiatement une alerte."
+        },
+        "signatures": {
+          "title": "Bilan des signatures",
+          "body": "Vérifie la signature et la notarisation de chaque app installée, et vous avertit quand la signature du développeur d’une app change soudainement, signe qu’elle a peut-être été remplacée."
+        },
+        "posture": {
+          "title": "Bilan du système",
+          "body": "SIP, Gatekeeper, FileVault, le pare-feu, XProtect et six autres réglages : vous voyez d’un coup d’œil ce qui est désactivé."
+        }
+      },
+      "more": "En savoir plus sur la sécurité",
+      "note": "La couverture des logiciels malveillants propres au Mac par ClamAV est limitée : OpenNavo vérifie donc aussi les signatures, la notarisation et les éléments de démarrage. Il complète la protection intégrée à macOS ; il ne la remplace pas.",
+      "demo": {
+        "label": "L’app OpenNavo pour Mac détecte une menace pendant une analyse et la place en quarantaine",
+        "caption": "Démonstration animée : les noms de fichiers et les menaces détectées sont fictifs.",
+        "title": "Sécurité",
+        "subtitle": "Bilan, analyses antivirus, éléments de démarrage et protection. Les résultats restent sur ce Mac",
+        "tabs": {
+          "overview": "Aperçu",
+          "scan": "Analyse antivirus",
+          "startup": "Démarrage",
+          "protection": "Protection",
+          "quarantine": "Quarantaine"
+        },
+        "quick": {
+          "title": "Analyse rapide",
+          "duration": "Quelques minutes en général",
+          "body": "Programmes lancés par les éléments de démarrage, Téléchargements, Bureau, dossiers temporaires et apps installées ces 7 derniers jours",
+          "action": "Analyse rapide"
+        },
+        "full": {
+          "title": "Analyse complète",
+          "duration": "Peut durer plus d’une heure",
+          "body": "Tout le Mac, sauf le volume système, les fichiers iCloud non téléchargés, Time Machine et les volumes réseau",
+          "action": "Lancer l’analyse complète"
+        },
+        "custom": {
+          "title": "Analyse personnalisée",
+          "duration": "Selon votre sélection",
+          "body": "Choisissez des dossiers ou un disque externe",
+          "action": "Choisir et analyser"
+        },
+        "running": "Analyse rapide en cours · {count} fichiers vérifiés ({size})",
+        "done": "Analyse terminée · {count} fichiers vérifiés",
+        "findings": "Menaces détectées ({count})",
+        "none": "Aucune menace détectée pour l’instant",
+        "quarantine": "Mettre en quarantaine",
+        "quarantined": "En quarantaine",
+        "toast": "Placé en quarantaine : {name}",
+        "engine": "Moteur d’analyse",
+        "database": "Base de virus",
+        "databaseValue": "Mise à jour aujourd’hui",
+        "protection": "Protection",
+        "downloads": "Analyser les nouveaux téléchargements",
+        "startupAlerts": "Alertes des éléments de démarrage",
+        "installScan": "Analyser avant l’installation",
+        "on": "Activé"
+      }
+    },
+    "catalog": {
+      "kicker": "Boutique d’apps",
+      "title": "{count} app Mac réunie au même endroit, installée en un clic. | {count} apps Mac réunies au même endroit, installées en un clic.",
+      "body": "Installez, mettez à jour et désinstallez, le tout au même endroit. Les classements reflètent les **installations réelles des 30 derniers jours**, et les **sélections de la rédaction** et les **collections** vous aident à trouver les meilleures apps.",
+      "sources": {
+        "homebrew": {
+          "title": "Le catalogue Homebrew",
+          "body": "Synchronisé chaque jour avec le catalogue officiel de Homebrew. Homebrew se charge des installations et des mises à jour, et vous voyez chaque commande et chaque ligne du journal."
+        },
+        "appStore": {
+          "title": "Apps du Mac App Store",
+          "body": "Recherchez des apps de l’App Store directement dans l’app, avec des informations provenant d’Apple. Connectez-vous avec votre compte Apple pour les installer et les mettre à jour."
+        },
+        "link": {
+          "title": "Téléchargements des développeurs",
+          "body": "Les apps absentes de Homebrew renvoient vers le téléchargement officiel du développeur. OpenNavo n’héberge aucun fichier d’installation et vérifie la signature une fois le téléchargement terminé."
+        }
+      },
+      "stats": {
+        "apps": "Apps au catalogue",
+        "updated": "Mises à jour ces dernières 24 heures",
+        "languages": "Langues du client Mac"
+      }
+    },
+    "details": {
+      "kicker": "Historique des versions",
+      "title": "Chaque version est consignée.",
+      "body": "Quand Homebrew intègre une nouvelle version, elle apparaît ici avec l’heure exacte du commit. Les **notes de version** que nous rédigeons sont automatiquement traduites dans votre langue, et l’original reste à un clic.",
+      "points": {
+        "about": "Descriptions, captures d’écran et détails d’installation avant d’installer",
+        "deps": "Dépendances, conflits et emplacements d’installation d’un coup d’œil",
+        "languages": "Six langues, avec repli sur l’anglais ou l’original quand une traduction manque"
+      }
+    },
+    "install": {
+      "kicker": "Installation",
+      "title": "Un clic, c’est installé.",
+      "body": "Cliquez sur Obtenir sur la page d’une app : OpenNavo lance Homebrew sur votre Mac pour l’installer. Vous voyez **la commande exacte** et **chaque ligne du journal**. Lorsque des droits d’administrateur sont nécessaires, macOS vous demande votre mot de passe, et OpenNavo ne le conserve jamais.",
+      "points": {
+        "queue": "Les tâches s’exécutent dans une file d’attente, peuvent être annulées et relancées en cas d’échec",
+        "scan": "Les téléchargements sont analysés avant l’installation ; en cas de menace, l’installation est interrompue",
+        "history": "Chaque installation, mise à jour et suppression est consignée sur votre Mac"
+      }
+    },
+    "updates": {
+      "kicker": "Mises à jour",
+      "title": "Les mises à jour, sans y penser.",
+      "body": "Une vérification quotidienne rassemble les mises à jour de Homebrew, de l’App Store, de Sparkle, d’Electron et de GitHub, avec leur nombre dans la **barre des menus**. Un clic sur **Tout mettre à jour** s’occupe du reste.",
+      "points": {
+        "schedule": "Vérification quotidienne à heure fixe, avec notifications facultatives",
+        "verify": "Les mises à jour hors Homebrew doivent porter la même signature de développeur, sinon elles ne sont pas installées",
+        "rollback": "Les apps compatibles reviennent à la version précédente en un clic",
+        "pin": "Épinglez une app ou ignorez une version : « Tout mettre à jour » n’y touchera pas"
+      },
+      "available": "{count} mise à jour disponible | {count} mises à jour disponibles",
+      "upToDate": "Tout est à jour",
+      "open": "Ouvrir OpenNavo"
+    },
+    "toolkit": {
+      "kicker": "Outils Mac",
+      "title": "Il prend aussi soin de votre Mac.",
+      "body": "Désinstallez les apps avec leurs fichiers résiduels, voyez ce qu’un nettoyage libérera avant de le lancer, et gardez CPU, mémoire, températures et ventilateurs dans votre barre des menus.",
+      "uninstall": {
+        "title": "Désinstaller sans résidus",
+        "body": "Désinstallez des apps issues de Homebrew, de l’App Store ou du site d’un développeur. Leurs données, caches, préférences et éléments d’arrière-plan sont aussi repérés, et les fichiers partagés avec d’autres apps sont conservés par défaut."
+      },
+      "cleanup": {
+        "title": "Voir d’abord, nettoyer ensuite",
+        "body": "Une analyse en lecture seule prend environ 30 secondes et classe ce qu’elle trouve en trois niveaux de risque. Les caches sont supprimés ; les fichiers résiduels vont dans la Corbeille, où vous pouvez annuler. Les trousseaux, les VPN et les machines virtuelles sont toujours protégés."
+      },
+      "monitor": {
+        "title": "La surveillance dans la barre des menus",
+        "body": "CPU, GPU, mémoire, disque, réseau, batterie, températures et ventilateurs : affichez ce que vous voulez dans la barre des menus, et réglez même la vitesse des ventilateurs."
+      },
+      "demo": {
+        "uninstallTitle": "Désinstaller {name} ?",
+        "groups": {
+          "app": "App",
+          "app_data": "Données de l’app",
+          "caches": "Caches",
+          "preferences": "Préférences et état des fenêtres",
+          "background": "Éléments d’arrière-plan"
+        },
+        "selection": "{selected} sur {total} sélectionnés · {size}",
+        "uninstall": "Désinstaller",
+        "running": "Désinstallation en cours : {name}",
+        "done": "Désinstallation terminée",
+        "reclaimable": "Récupérable",
+        "categories": {
+          "app_caches": "Caches des apps",
+          "dev_caches": "Caches de développement",
+          "leftovers": "Résidus d’apps supprimées",
+          "installers": "Anciens fichiers d’installation"
+        },
+        "risks": {
+          "rebuildable": "Régénérable",
+          "review": "À vérifier"
+        },
+        "clean": "Nettoyer {size}",
+        "freed": "{size} libérés",
+        "modules": {
+          "cpu": "CPU",
+          "memory": "Mémoire",
+          "sensors": "Capteurs",
+          "fans": "Ventilateurs"
+        },
+        "health": "Tout va bien"
+      }
+    },
+    "more": {
+      "kicker": "Et plus encore",
+      "title": "Les détails qui font la différence.",
+      "handoff": {
+        "title": "Trouvez sur le Web, installez dans l’app",
+        "body": "Cliquez sur « Ouvrir dans OpenNavo » sur le Web. L’app affiche la commande qu’elle va exécuter et n’installe rien sans votre confirmation.",
+        "dialogTitle": "Installer {name} ?",
+        "dialogBody": "Cette demande provient d’une page web. OpenNavo va exécuter :",
+        "install": "Installer"
+      },
+      "mirrors": {
+        "title": "Test de vitesse des miroirs",
+        "body": "OpenNavo teste la source officielle et les miroirs, puis recommande le plus rapide. L’installation de Homebrew et les commandes brew l’utilisent, et vous pouvez en changer à tout moment.",
+        "official": "Source officielle",
+        "tuna": "Miroir TUNA (Tsinghua)",
+        "ustc": "Miroir USTC",
+        "recommended": "Recommandé"
+      },
+      "brewfile": {
+        "title": "Nouveau Mac, mêmes apps",
+        "body": "Ajoutez vos apps à une liste et exportez un Brewfile. Sur un nouveau Mac, une seule commande les installe toutes."
+      },
+      "search": {
+        "title": "Recherche avec ⌘K",
+        "body": "Recherchez par nom anglais, nom chinois, pinyin ou alias courants. Tapez vscode pour trouver Visual Studio Code."
+      },
+      "languages": {
+        "title": "Six langues",
+        "body": "L’interface est disponible en anglais, chinois simplifié, japonais, espagnol, portugais et russe, avec des dates et des nombres adaptés à chaque langue."
+      },
+      "privacy": {
+        "title": "Aucun compte requis",
+        "body": "Aucune connexion, et nous ne collectons pas la liste des apps que vous avez installées. Les analyses antivirus s’exécutent sur votre Mac, et votre liste Brewfile reste dans votre navigateur."
+      }
+    },
+    "cta": {
+      "title": "Commencez par votre prochaine app.",
+      "body": "OpenNavo est gratuit et open source, avec analyse antivirus, nettoyage et surveillance inclus. Il fonctionne sous macOS 13 ou version ultérieure. Vous pouvez aussi parcourir le catalogue sur le Web et copier la commande brew pour installer."
+    }
+  }
+}

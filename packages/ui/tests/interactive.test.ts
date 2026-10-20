@@ -308,3 +308,28 @@ describe('Locale injection', () => {
     expect(wrapper.text()).toBe('Open');
   });
 });
+
+describe('OnTooltip lazy (C7)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('Renders its description only once the trigger is used, without a description link', async () => {
+    const wrapper = mount(OnTooltip, {
+      props: { content: '近 30 天：17,394', lazy: true, delay: 0 },
+      slots: { default: '<span class="bar">bar</span>' },
+      attachTo: document.body
+    });
+    // Nothing reaches the page (or the server HTML, where teleports land first in the body) before a hover.
+    expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
+    expect(wrapper.get('.bar').attributes('aria-describedby')).toBeUndefined();
+    await wrapper.get('span.relative').trigger('mouseenter');
+    vi.advanceTimersByTime(0);
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+    const tooltip = document.body.querySelector<HTMLElement>('[role="tooltip"]');
+    expect(tooltip?.textContent?.trim()).toBe('近 30 天：17,394');
+    await wrapper.get('span.relative').trigger('mouseleave');
+    expect(tooltip?.classList.contains('invisible')).toBe(true);
+    wrapper.unmount();
+  });
+});

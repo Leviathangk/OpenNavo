@@ -31,6 +31,30 @@
     "withdrawnBody": "Puede que esté desactualizado o que ya no sea preciso, por eso ya no está disponible. Echa un vistazo a nuestros otros artículos.",
     "backToList": "Ver todos los artículos"
   },
+  "brewfile": {
+    "installTitle": "Instalar apps de mi lista",
+    "title": "Mi lista",
+    "description": "Guarda apps para instalarlas juntas o exportarlas. La lista se guarda solo en este dispositivo.",
+    "count": "{count} elemento | {count} elementos",
+    "emptyTitle": "La lista está vacía",
+    "emptyDescription": "Selecciona «Añadir a mi lista» en los detalles de una app o en el menú de una app instalada.",
+    "browse": "Explorar",
+    "fileTitle": "Generado por OpenNavo",
+    "download": "Exportar Brewfile",
+    "moveUp": "Subir {name}",
+    "moveDown": "Bajar {name}",
+    "remove": "Eliminar {name} de la lista",
+    "add": "Añadir a mi lista",
+    "inList": "En mi lista",
+    "removeShort": "Quitar de mi lista",
+    "added": "Añadida a mi lista",
+    "full": "Máximo de 200 apps. Quita alguna primero.",
+    "saveFailed": "No se pudo guardar o leer la lista. Revisa el almacenamiento e inténtalo de nuevo.",
+    "install": "Instalar {count} apps",
+    "installHint": "Se omiten las apps instaladas, en cola o no disponibles.",
+    "copy": "Copiar Brewfile",
+    "exported": "Brewfile exportado"
+  },
   "app": {
     "name": "OpenNavo"
   },
@@ -610,7 +634,6 @@
     "patch": "Parche",
     "empty": "Todo el software está actualizado",
     "emptyHint": "Las nuevas versiones aparecerán aquí",
-    "queued": "{count} añadido a la cola | {count} añadidos a la cola",
     "source": {
       "homebrew": "Homebrew",
       "mas": "App Store",
@@ -693,6 +716,7 @@
       "vendor": "Webs de desarrolladores",
       "vendorHint": "Usa reglas que mantiene OpenNavo y comprueba la firma del desarrollador"
     },
+    "queued": "{count} añadido a la cola | {count} añadidos a la cola",
     "history": {
       "recheck": "Revisar de nuevo",
       "title": "Historial de actualizaciones",
@@ -798,6 +822,38 @@
       "deleteMode": "Eliminación",
       "deleteModeHint": "Mover a la Papelera se puede deshacer; eliminar libera espacio al instante"
     },
+    "customMirrors": {
+      "add": "Añadir fuente personalizada",
+      "edit": "Editar fuente personalizada",
+      "delete": "Eliminar fuente personalizada",
+      "actions": "Gestionar {name}",
+      "local": "Solo en este Mac",
+      "localHint": "Las fuentes personalizadas se guardan solo en este Mac, sin subirlas ni sincronizarlas.",
+      "fallback": "Las direcciones vacías usan la fuente oficial.",
+      "officialFallback": "Usar fuente oficial",
+      "name": "Nombre",
+      "apiDomain": "URL de API",
+      "bottleDomain": "URL de Bottle",
+      "brewGitRemote": "URL del repositorio Git de brew",
+      "coreGitRemote": "URL del repositorio Git de core",
+      "advanced": "Ajustes avanzados · Repositorios Git",
+      "check": "Comprobar conexión",
+      "probeHint": "Comprueba el acceso a cada dirección; no garantiza que las descargas se completen.",
+      "untested": "Sin comprobar",
+      "success": "Direcciones accesibles",
+      "failure": "Error de conexión",
+      "checkFailed": "Sin acceso: {fields}",
+      "save": "Guardar cambios",
+      "saveAndUse": "Guardar y usar",
+      "nameRequired": "Introduce un nombre.",
+      "nameInvalid": "Usa un nombre de hasta 120 caracteres sin caracteres de control.",
+      "urlInvalid": "Introduce una URL HTTP o HTTPS sin credenciales ni fragmentos.",
+      "apiQueryInvalid": "La URL de la API no puede incluir parámetros de consulta. Introduce una URL base sin ?.",
+      "addressRequired": "Introduce al menos una dirección personalizada.",
+      "deleteConfirm": "¿Eliminar «{name}» de este Mac?",
+      "deleteActive": "Esta fuente está en uso. Al eliminarla se cambiará a la fuente oficial.",
+      "limit": "Puedes guardar hasta {count} fuentes personalizadas."
+    },
     "mirrors": {
       "title": "Fuente de descarga",
       "description": "También se aplica a los metadatos de la API, los paquetes binarios Bottle y el repositorio Git de brew.",
@@ -841,39 +897,7 @@
       "catalog": "Catálogo local: {count} paquete, sincronizado {time} | Catálogo local: {count} paquetes, sincronizados {time}",
       "sync": "Sincronizar ahora"
     },
-    "saved": "Guardado",
-    "customMirrors": {
-      "add": "Añadir fuente personalizada",
-      "edit": "Editar fuente personalizada",
-      "delete": "Eliminar fuente personalizada",
-      "actions": "Gestionar {name}",
-      "local": "Solo en este Mac",
-      "localHint": "Las fuentes personalizadas se guardan solo en este Mac, sin subirlas ni sincronizarlas.",
-      "fallback": "Las direcciones vacías usan la fuente oficial.",
-      "officialFallback": "Usar fuente oficial",
-      "name": "Nombre",
-      "apiDomain": "URL de API",
-      "bottleDomain": "URL de Bottle",
-      "brewGitRemote": "URL del repositorio Git de brew",
-      "coreGitRemote": "URL del repositorio Git de core",
-      "advanced": "Ajustes avanzados · Repositorios Git",
-      "check": "Comprobar conexión",
-      "probeHint": "Comprueba el acceso a cada dirección; no garantiza que las descargas se completen.",
-      "untested": "Sin comprobar",
-      "success": "Direcciones accesibles",
-      "failure": "Error de conexión",
-      "checkFailed": "Sin acceso: {fields}",
-      "save": "Guardar cambios",
-      "saveAndUse": "Guardar y usar",
-      "nameRequired": "Introduce un nombre.",
-      "nameInvalid": "Usa un nombre de hasta 120 caracteres sin caracteres de control.",
-      "urlInvalid": "Introduce una URL HTTP o HTTPS sin credenciales ni fragmentos.",
-      "apiQueryInvalid": "La URL de la API no puede incluir parámetros de consulta. Introduce una URL base sin ?.",
-      "addressRequired": "Introduce al menos una dirección personalizada.",
-      "deleteConfirm": "¿Eliminar «{name}» de este Mac?",
-      "deleteActive": "Esta fuente está en uso. Al eliminarla se cambiará a la fuente oficial.",
-      "limit": "Puedes guardar hasta {count} fuentes personalizadas."
-    }
+    "saved": "Guardado"
   },
   "mirrors": {
     "official": "Oficial",
@@ -1001,7 +1025,36 @@
     "installTitle": "¿Instalar {name}?",
     "installDescription": "Una página web solicita instalarlo en este Mac. Si confirmas, se ejecutará el comando siguiente; si cancelas, no se hará nada.",
     "installConfirm": "Instalar",
-    "formulaUnsupported": "OpenNavo solo incluye apps (Homebrew Cask). Este enlace lleva a una herramienta de línea de comandos."
+    "formulaUnsupported": "OpenNavo solo incluye apps (Homebrew Cask). Este enlace lleva a una herramienta de línea de comandos.",
+    "preview": {
+      "invalid": "No se puede abrir este enlace",
+      "invalidBody": "Faltan parámetros o no tienen el formato que acepta OpenNavo, así que no se ha hecho nada.",
+      "startup": {
+        "looking": "Buscando {label} en este Mac…",
+        "found": "Se encontró {count} elemento de inicio con la etiqueta {label} | Se encontraron {count} elementos de inicio con la etiqueta {label}",
+        "foundBody": "Es una vista previa abierta desde un enlace y no se ha cambiado nada. Varios programas pueden compartir una etiqueta y el malware puede copiarla, así que revisa la firma, la ubicación del archivo y la app antes de desactivarlo o eliminarlo.",
+        "view": "Ver {name}",
+        "notFound": "En este Mac no hay ningún elemento de inicio con la etiqueta {label}",
+        "notFoundBody": "Puede que no esté instalado o que macOS no permita a OpenNavo leer su ubicación. No se ha cambiado nada."
+      },
+      "scan": {
+        "looking": "Buscando {token} en este Mac…",
+        "title": "Analizar {name}",
+        "body": "Es una vista previa abierta desde un enlace: OpenNavo encontró esta app en tu Mac. No se analiza nada hasta que elijas Analizar esta app.",
+        "action": "Analizar esta app",
+        "notFound": "{token} no está en este Mac",
+        "notFoundBody": "OpenNavo solo puede analizar apps instaladas en este Mac. No se ha hecho nada."
+      },
+      "uninstall": {
+        "title": "Vista previa de la desinstalación de {name}",
+        "body": "Es una vista previa abierta desde un enlace y no se ha eliminado nada. Elige Desinstalar para ver lo que se eliminaría; no ocurre nada hasta que lo confirmes.",
+        "several": "Hay {count} apps en este Mac que coinciden con {token}. Elige una para revisarla:",
+        "view": "Ver {name}",
+        "notFound": "{token} no está en este Mac",
+        "notFoundBody": "Puede que ya esté desinstalada o que se instalara de una forma que OpenNavo no reconoce. No se ha hecho nada.",
+        "permission": "Activa el acceso total al disco para ver la vista previa de la desinstalación de {token}."
+      }
+    }
   },
   "tray": {
     "available": "{count} actualización disponible | {count} actualizaciones disponibles",
@@ -1034,17 +1087,6 @@
     "discard": "Descartar"
   },
   "updater": {
-    "title": "Actualización del cliente",
-    "current": "Versión actual {version}",
-    "check": "Buscar actualizaciones",
-    "latest": "Ya tienes la versión más reciente",
-    "available": "Nueva versión {version}",
-    "install": "Descargar e instalar",
-    "downloading": "Descargando {percent}",
-    "installed": "Instalado. Los cambios se aplicarán al reiniciar",
-    "restart": "Reiniciar",
-    "busy": "Hay tareas en curso. Espera a que terminen antes de reiniciar",
-    "failed": "No se pudo comprobar si hay actualizaciones",
     "autoCheck": "Buscar actualizaciones de OpenNavo automáticamente",
     "autoCheckHint": "Comprobar al iniciar, con una comprobación correcta al día.",
     "foundTitle": "Nueva versión disponible",
@@ -1061,7 +1103,18 @@
     "viewUpdate": "Ver actualización",
     "previewHint": "Vista previa de desarrollo: simula la descarga y la instalación, pero no actualiza nada. Reiniciar solo cierra la vista previa; puedes volver a abrirla.",
     "previewNotes": "- Las colecciones destacadas usan un diseño más compacto para mostrar más apps\n- OpenNavo ahora busca nuevas versiones automáticamente cada día\n- Corrige problemas conocidos y mejora la experiencia",
-    "previewFailure": "Simular fallo de descarga"
+    "previewFailure": "Simular fallo de descarga",
+    "title": "Actualización del cliente",
+    "current": "Versión actual {version}",
+    "check": "Buscar actualizaciones",
+    "latest": "Ya tienes la versión más reciente",
+    "available": "Nueva versión {version}",
+    "install": "Descargar e instalar",
+    "downloading": "Descargando {percent}",
+    "installed": "Instalado. Los cambios se aplicarán al reiniciar",
+    "restart": "Reiniciar",
+    "busy": "Hay tareas en curso. Espera a que terminen antes de reiniciar",
+    "failed": "No se pudo comprobar si hay actualizaciones"
   },
   "palette": {
     "placeholder": "Buscar apps o acciones",
@@ -1150,8 +1203,6 @@
     "E_MAS_OTHER_ACCOUNT": "Esta app se compró con otra cuenta de Apple. Actualízala en el App Store",
     "E_MAS_REGION": "Esta app no está disponible en la región de la tienda actual",
     "E_MAS_RATE_LIMITED": "Demasiadas solicitudes al App Store. Vuelve a intentarlo dentro de un minuto",
-    "E_MAS_ENGINE": "El componente de descarga del App Store ha fallado. Termina la operación en el App Store",
-    "E_MAS_HELPER_MISSING": "A esta copia de OpenNavo le falta el componente de descarga del App Store. Reinstala la aplicación completa de OpenNavo o termina la operación en el App Store",
     "E_UPDATE_INTEGRITY": "La descarga no superó la comprobación de integridad, así que no se instaló la actualización",
     "E_UPDATE_TEAM_MISMATCH": "La nueva versión está firmada por otro desarrollador, así que no se instaló",
     "E_UPDATE_NOT_NOTARIZED": "La nueva versión no está notarizada por Apple, así que no se instaló",
@@ -1163,6 +1214,8 @@
     "E_ADMIN_CANCELED": "Se canceló la autorización de administrador",
     "E_NOT_IMPLEMENTED": "Esto aún no está disponible",
     "E_DOWNLOAD_UNSAFE": "Este instalador no superó la comprobación, así que no se abrió",
+    "E_MAS_ENGINE": "El componente de descarga del App Store ha fallado. Termina la operación en el App Store",
+    "E_MAS_HELPER_MISSING": "A esta copia de OpenNavo le falta el componente de descarga del App Store. Reinstala la aplicación completa de OpenNavo o termina la operación en el App Store",
     "E_NOT_INSTALLABLE": "Esta app se descarga desde su web y no se puede instalar con Homebrew",
     "E_LINK_URL": "Esta dirección de descarga no está registrada para la app, así que no se ha abierto",
     "E_APP_RUNNING": "La aplicación está en ejecución. Se ha aplazado la actualización; cierra la aplicación y vuelve a intentarlo.",
@@ -1258,30 +1311,6 @@
   },
   "page": {
     "comingSoon": "El contenido de la página se añadirá en próximas tareas."
-  },
-  "brewfile": {
-    "title": "Mi lista",
-    "description": "Guarda apps para instalarlas juntas o exportarlas. La lista se guarda solo en este dispositivo.",
-    "count": "{count} elemento | {count} elementos",
-    "emptyTitle": "La lista está vacía",
-    "emptyDescription": "Selecciona «Añadir a mi lista» en los detalles de una app o en el menú de una app instalada.",
-    "browse": "Explorar",
-    "fileTitle": "Generado por OpenNavo",
-    "download": "Exportar Brewfile",
-    "moveUp": "Subir {name}",
-    "moveDown": "Bajar {name}",
-    "remove": "Eliminar {name} de la lista",
-    "add": "Añadir a mi lista",
-    "inList": "En mi lista",
-    "removeShort": "Quitar de mi lista",
-    "added": "Añadida a mi lista",
-    "full": "Máximo de 200 apps. Quita alguna primero.",
-    "saveFailed": "No se pudo guardar o leer la lista. Revisa el almacenamiento e inténtalo de nuevo.",
-    "install": "Instalar {count} apps",
-    "installHint": "Se omiten las apps instaladas, en cola o no disponibles.",
-    "copy": "Copiar Brewfile",
-    "exported": "Brewfile exportado",
-    "installTitle": "Instalar apps de mi lista"
   },
   "appInfo": {
     "title": "Información",
@@ -1410,6 +1439,7 @@
       "appManagement": "Primero permite que OpenNavo gestione apps. Es necesario para eliminar apps no instaladas con Homebrew.",
       "incomplete": "Sin acceso total al disco no se pudo revisar {count} ubicación: {paths}. Actívalo para limpiar a fondo. | Sin acceso total al disco no se pudieron revisar {count} ubicaciones: {paths}. Actívalo para limpiar a fondo.",
       "running": "{names} está abierta y se cerrará antes de desinstalar. | {names} están abiertas y se cerrarán antes de desinstalar.",
+      "siblings": "También se desinstala lo siguiente del mismo paquete de Homebrew ({cask}): {names}.",
       "brewSudo": "Los pasos de desinstalación de Homebrew pueden pedir la contraseña de administrador por separado.",
       "personal": {
         "chat_history": "Los datos de {name} contienen historial de chats, imágenes y archivos (unos {size}). Haz una copia en la app antes si quieres conservarlos.",
@@ -1419,8 +1449,7 @@
         "vm_disk": "Los datos de {name} contienen discos de máquinas virtuales, imágenes y volúmenes (unos {size}). Habrá que descargarlos de nuevo tras eliminarlos.",
         "other": "Los datos de {name} pueden contener contenido personal (unos {size}). Haz una copia antes si quieres conservarlo."
       },
-      "uninstaller": "{name} tiene un desinstalador oficial que también elimina sus licencias y componentes compartidos.",
-      "siblings": "También se desinstala lo siguiente del mismo paquete de Homebrew ({cask}): {names}."
+      "uninstaller": "{name} tiene un desinstalador oficial que también elimina sus licencias y componentes compartidos."
     },
     "mode": {
       "label": "Eliminación",

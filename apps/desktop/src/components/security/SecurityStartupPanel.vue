@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { OnButton, OnConfirm, OnEmpty, OnIcon, OnSkeleton } from '@opennavo/ui';
+import PreviewNotice from '@/components/common/PreviewNotice.vue';
 import type { LocalApp, StartupAction, StartupItem } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { usePermissionsStore } from '@/stores';
 import { useSecurityStore } from '@/stores/security';
+import { matchStartupItems, NO_PREVIEW } from '@/utils/deepLinkPreview';
+import type { Preview } from '@/utils/deepLinkPreview';
 import StartupAddSheet from './StartupAddSheet.vue';
 import StartupAppRow from './StartupAppRow.vue';
 import StartupItemSheet from './StartupItemSheet.vue';
@@ -17,6 +20,9 @@ import { running, startupApps } from './meta';
 // with a switch where OpenNavo can switch it. macOS's own items are never listed; command-line tools, scripts,
 // extensions and plugins wait under "Other" unless they are new or broken. The last list shows at once while a scan
 // runs. Remove first disables, then moves the plist into quarantine, so it can be restored.
+// A preview link (opennavo://startup?label=…, F1) names a label: the panel looks for it, opens the one match's
+// details or lists several, and says so when there is none. Nothing is switched or removed by the link.
+const props = withDefaults(defineProps<{ preview?: Preview }>(), { preview: () => NO_PREVIEW });
 const { t, te } = useI18n();
 const toasts = useToasts();
 const { errorText } = usePackageState();
@@ -40,6 +46,35 @@ onMounted(async () => {
 });
 
 const snapshot = computed(() => store.startup);
+
+const previewLabel = computed(() => (props.preview.state === 'ok' ? props.preview.value : null));
+const matches = computed(() =>
+  previewLabel.value && snapshot.value ? matchStartupItems(snapshot.value.items, previewLabel.value) : []
+);
+// Still looking while the first list loads or a fresh scan may yet find it.
+const previewState = computed(() => {
+  if (props.preview.state === 'none') return null;
+  if (props.preview.state === 'invalid') return 'invalid';
+  if (matches.value.length) return 'found';
+  if (!loadError.value && (!snapshot.value || store.startupRefreshing)) return 'looking';
+  return 'notFound';
+});
+// Preselect once per link: a single match opens its details, where every action keeps its own confirmation.
+let preselected: string | null = null;
+watch(
+  [previewLabel, matches],
+  ([label, found]) => {
+    if (!label) {
+      preselected = null;
+      return;
+    }
+    const only = found.length === 1 ? found[0] : undefined;
+    if (preselected === label || !only) return;
+    preselected = label;
+    selectedId.value = only.id;
+  },
+  { immediate: true }
+);
 // Names sort as on Installed: in the interface language.
 const grouped = computed(() => startupApps(snapshot.value?.items ?? [], new Intl.Collator(appLocale.value)));
 const selected = computed(() => snapshot.value?.items.find(item => item.id === selectedId.value) ?? null);
@@ -129,6 +164,38 @@ async function grant() {
 
 <template>
   <div class="flex flex-col gap-14px">
+    <PreviewNotice
+      v-if="previewState === 'invalid'"
+      tone="warning"
+      :title="t('deeplink.preview.invalid')"
+      :body="t('deeplink.preview.invalidBody')"
+    />
+    <PreviewNotice
+      v-else-if="previewState === 'looking'"
+      :title="t('deeplink.preview.startup.looking', { label: previewLabel ?? '' })"
+    />
+    <PreviewNotice
+      v-else-if="previewState === 'found'"
+      :title="
+        t(
+          'deeplink.preview.startup.found',
+          { count: matches.length, label: previewLabel ?? '' },
+          { plural: matches.length }
+        )
+      "
+      :body="t('deeplink.preview.startup.foundBody')"
+    >
+      <div class="flex flex-wrap gap-6px">
+        <OnButton v-for="item in matches" :key="item.id" size="xs" variant="secondary" @click="selectedId = item.id">{{
+          t('deeplink.preview.startup.view', { name: item.name })
+        }}</OnButton>
+      </div>
+    </PreviewNotice>
+    <PreviewNotice
+      v-else-if="previewState === 'notFound'"
+      :title="t('deeplink.preview.startup.notFound', { label: previewLabel ?? '' })"
+      :body="t('deeplink.preview.startup.notFoundBody')"
+    />
     <div class="flex items-center gap-10px">
       <span v-if="store.startupRefreshing && snapshot" class="flex items-center gap-6px text-12px text-ink-tertiary">
         <OnIcon name="loader-circle" :size="14" class="animate-spin" />{{ t('security.startup.refreshing') }}

@@ -6,6 +6,7 @@ import { OnToastRegion, OnTopNav } from '@opennavo/ui';
 const { t } = useI18n();
 const localePath = useLocalePath();
 const palette = useCommandPalette();
+useCommandPaletteShortcut();
 const toasts = useToasts();
 const NuxtLink = resolveComponent('NuxtLink');
 
@@ -15,7 +16,10 @@ const items = computed(() =>
   (['discover', 'categories', 'rankings', 'collections', 'security'] as const).map(key => ({
     label: t(`nav.${key}`),
     href: localePath(`/${key}`),
-    active: key === 'security' && route.path === localePath('/security')
+    // The security topics (/security/firewall …) belong to it too.
+    active:
+      key === 'security' &&
+      (route.path === localePath('/security') || route.path.startsWith(`${localePath('/security')}/`))
   }))
 );
 </script>
@@ -43,7 +47,7 @@ const items = computed(() =>
     </main>
     <LandingFooter />
     <ClientOnly><LanguageSuggestion /></ClientOnly>
-    <CommandPalette />
+    <LazyCommandPalette v-if="palette.open.value" />
     <OnToastRegion :items="toasts.items.value" @dismiss="toasts.dismiss" />
   </div>
 </template>

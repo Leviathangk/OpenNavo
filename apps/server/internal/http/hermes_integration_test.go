@@ -17,12 +17,14 @@ import (
 	"github.com/opennavo/opennavo/server/gen/adminapi"
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/content"
+	"github.com/opennavo/opennavo/server/internal/domain"
 	httpserver "github.com/opennavo/opennavo/server/internal/http"
 	"github.com/opennavo/opennavo/server/internal/http/admin"
 	"github.com/opennavo/opennavo/server/internal/service/auth"
 	"github.com/opennavo/opennavo/server/internal/service/desktop"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/seed"
+	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/opennavo/opennavo/server/seeds"
@@ -31,7 +33,7 @@ import (
 
 func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	data, err := seeds.Load()
 	require.NoError(t, err)
 	hash, err := seed.HashPassword("hermes-test-only")
@@ -48,6 +50,8 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 	spec, err := adminapi.GetSpec()
 	require.NoError(t, err)
 	token := ""
+	fixture := httpExecutionFixture{t: t, st: st}
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET automation=jsonb_set(jsonb_set(automation,'{actions,content,mode}','"live"'),'{actions,article,mode}','"live"')`).Error)
 	call := func(method, path, body, expected string, agent bool) json.RawMessage {
 		t.Helper()
 		base, bearer := "/admin-api", pair.Token
@@ -64,6 +68,9 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 			r.Header.Set("X-Agent-Client-IP", "127.0.0.1")
 			r.Header.Set("X-Agent-Tool", "test_tool")
 			r.Header.Set("X-Request-ID", uuid.NewString())
+			if method != "GET" && path != "/introspect" && !strings.HasPrefix(path, "/desktop-releases") {
+				fixture.attach(r, fixture.scope(path, body))
+			}
 		}
 		w := httptest.NewRecorder()
 		server.Engine.ServeHTTP(w, r)
@@ -73,7 +80,7 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 			Data json.RawMessage
 		}
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
-		require.Equal(t, expected, out.Code, path)
+		require.Equal(t, expected, out.Code, path+" "+w.Body.String())
 		if expected == "0000" {
 			testutil.ValidateResponse(t, spec, base, r, w)
 		}
@@ -90,6 +97,7 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(raw, &credential))
 	token = credential.Plaintext
+	fixture.owner = seotasks.Owner(client.ID, credential.Token.ID)
 	require.NotEmpty(t, token)
 	call("POST", "/introspect", "", "0000", true)
 	call("POST", "/introspect", "", "1004", false)
@@ -131,7 +139,10 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 			Revision int64
 			Status   string
 		}
-		raw := call("POST", "/articles", `{"slug":"agent-guide","sourceLocale":"en-US","type":"tutorial","title":"Agent guide","summary":"A tutorial","bodyMarkdown":"## Steps\n\nFollow these steps."}`, "0000", true)
+		_, proof := fixture.evidence("article:new:agent-guide")
+		articleBody, err := json.Marshal(map[string]any{"slug": "agent-guide", "sourceLocale": "en-US", "type": "tutorial", "title": "Mac application guide.", "summary": "Mac application guide.", "bodyMarkdown": "Follow these steps on your Mac.", "sources": []any{map[string]any{"title": "Vendor guide", "url": executionFixtureURL}}, "target": map[string]any{"entityKey": "topic:agent-guide", "intent": "topic"}, "claims": []any{map[string]any{"text": "Mac application guide.", "kind": "factual", "evidenceId": proof.ID, "excerpt": executionFixtureText, "appVersion": "", "region": "ZZ"}, map[string]any{"text": "Follow these steps on your Mac.", "kind": "factual", "evidenceId": proof.ID, "excerpt": executionFixtureText, "appVersion": "", "region": "ZZ"}}})
+		require.NoError(t, err)
+		raw := call("POST", "/articles", string(articleBody), "0000", true)
 		require.NoError(t, json.Unmarshal(raw, &article))
 		path := "/articles/" + strconv.FormatInt(article.ID, 10)
 		change := func(method, suffix string, fields map[string]any, expected string) json.RawMessage {
@@ -155,18 +166,18 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 		require.Equal(t, article.Revision, previewState.Revision)
 		require.Equal(t, "review", previewState.Status)
 		var quotaBefore struct {
-			Limits struct{ LLMOpsPerDay int }
+			Limits struct{ LLMOpsPerDay, WritesPerDay int }
 			Quota  struct{ LLMOpsRemaining, WritesRemaining int }
 		}
 		require.NoError(t, json.Unmarshal(call("POST", "/introspect", "", "0000", true), &quotaBefore))
 		require.Positive(t, quotaBefore.Quota.WritesRemaining)
-		llmKey := "agent:quota:" + strconv.FormatInt(credential.Token.ID, 10) + ":llm:" + time.Now().UTC().Format("20060102")
-		require.NoError(t, st.Redis.Set(ctx, llmKey, quotaBefore.Limits.LLMOpsPerDay, time.Hour).Err())
+		writeKey := "agent:quota:" + strconv.FormatInt(credential.Token.ID, 10) + ":write:" + time.Now().UTC().Format("20060102")
+		require.NoError(t, st.Redis.Set(ctx, writeKey, quotaBefore.Limits.WritesPerDay, time.Hour).Err())
 		change("POST", "/publish", map[string]any{}, "1005")
 		require.NoError(t, json.Unmarshal(call("GET", path, "", "0000", true), &previewState))
 		require.Equal(t, "review", previewState.Status)
 		require.Equal(t, article.Revision, previewState.Revision)
-		require.NoError(t, st.Redis.Set(ctx, llmKey, quotaBefore.Limits.LLMOpsPerDay-quotaBefore.Quota.LLMOpsRemaining, time.Hour).Err())
+		require.NoError(t, st.Redis.Set(ctx, writeKey, quotaBefore.Limits.WritesPerDay-quotaBefore.Quota.WritesRemaining, time.Hour).Err())
 		raw = change("POST", "/publish", map[string]any{}, "0000")
 		require.NoError(t, json.Unmarshal(raw, &article))
 		require.Equal(t, "published", article.Status)
@@ -174,8 +185,19 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 			Quota struct{ LLMOpsRemaining, WritesRemaining int }
 		}
 		require.NoError(t, json.Unmarshal(call("POST", "/introspect", "", "0000", true), &quotaAfter))
-		require.Equal(t, quotaBefore.Quota.LLMOpsRemaining-1, quotaAfter.Quota.LLMOpsRemaining)
+		require.Equal(t, quotaBefore.Quota.LLMOpsRemaining, quotaAfter.Quota.LLMOpsRemaining)
 		require.Equal(t, quotaBefore.Quota.WritesRemaining-1, quotaAfter.Quota.WritesRemaining)
+		// S8 no longer creates pending rows at publication. Prepare a real, current
+		// translation before exercising the Agent's locale withholding operation.
+		source, err := st.ReadContentSource(ctx, content.Ref{Entity: "article", ID: publishedRevisionID(t, st, article.ID)})
+		require.NoError(t, err)
+		translationCtx := domain.WithOperation(ctx, &domain.Operation{AgentClientID: client.ID, AgentTokenID: credential.Token.ID})
+		applied, err := st.WriteTranslationSnapshot(translationCtx, source, "zh-CN", map[string]string{
+			"title": "Mac 应用程序指南。", "summary": "Mac 应用程序指南。",
+			"body_markdown": "请在你的 Mac 上按照以下步骤操作。",
+		}, "fixture")
+		require.NoError(t, err)
+		require.True(t, applied)
 
 		call("PUT", path+"/slug", `{"expectedRevision":1,"slug":"stale-guide"}`, "1003", true)
 		raw = change("PUT", "/slug", map[string]any{"slug": "renamed-agent-guide"}, "0000")
@@ -196,12 +218,12 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 		call("PUT", "/article-authors/"+strconv.FormatInt(author.ID, 10), `{"slug":"agent-editor","name":"Updated Editor","sourceLocale":"en-US"}`, "0000", true)
 	})
 	call("PUT", tokenPath, `{"permissions":["catalog:package:edit","translation:review","agent:log:view","content:revision:restore"]}`, "0000", false)
-	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES('cask','revoked-history','revoked-history','homebrew/cask','Revoked History','1','1','{}','hash')`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash,homepage) VALUES('cask','revoked-history','revoked-history','homebrew/cask','Revoked History','1','1','{}','hash','https://vendor.example.test')`).Error)
 	var packageID int64
 	require.NoError(t, st.DB.Raw("SELECT id FROM packages WHERE token='revoked-history'").Scan(&packageID).Error)
 	packagePath := "/packages/" + strconv.FormatInt(packageID, 10) + "/text"
 	call("PUT", packagePath, `{"sourceLocale":"zh-CN","summary":"原文简介"}`, "0000", true)
-	translationBody := `{"ref":{"entity":"package","id":` + strconv.FormatInt(packageID, 10) + `},"locale":"en-US","fields":{"summary":"First manual summary"}}`
+	translationBody := `{"ref":{"entity":"package","id":` + strconv.FormatInt(packageID, 10) + `},"locale":"en-US","model":"fixture","fields":{"summary":"First translated summary"}}`
 	call("PUT", "/translations/fix", translationBody, "0000", true)
 	var firstRevision int64
 	require.NoError(t, st.DB.Raw("SELECT max(id) FROM content_revisions WHERE entity='package' AND operation_id='fixTranslation'").Scan(&firstRevision).Error)
@@ -222,7 +244,7 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 	call("POST", "/content/requests/"+requestID+"/revert", "", "1004", true)
 	var summary string
 	require.NoError(t, st.DB.Raw("SELECT summary FROM package_i18n WHERE package_id=? AND locale='en-US'", packageID).Scan(&summary).Error)
-	require.Equal(t, "Second manual summary", summary)
+	require.Equal(t, "Second translated summary", summary)
 	require.NoError(t, st.DB.Table("content_revisions").Count(&n).Error)
 	require.Equal(t, historyCount, n)
 	require.NoError(t, st.DB.Table("audit_logs").Count(&n).Error)
@@ -232,7 +254,7 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 	call("PUT", tokenPath, `{"permissions":["catalog:package:edit","translation:review","agent:log:view","content:revision:restore"]}`, "0000", false)
 	call("POST", restorePath, "{}", "0000", true)
 	require.NoError(t, st.DB.Raw("SELECT summary FROM package_i18n WHERE package_id=? AND locale='en-US'", packageID).Scan(&summary).Error)
-	require.Equal(t, "First manual summary", summary)
+	require.Equal(t, "First translated summary", summary)
 	// A creation revision restores only original content, without overwriting later administrator publishing or added items.
 	call("PUT", tokenPath, `{"permissions":["content:collection:edit","agent:log:view","content:revision:restore"]}`, "0000", false)
 	raw = call("POST", "/collections", `{"slug":"creation-history","sort":0,"sourceLocale":"zh-CN","i18n":{"zh-CN":{"title":"创建时的标题"}}}`, "0000", true)

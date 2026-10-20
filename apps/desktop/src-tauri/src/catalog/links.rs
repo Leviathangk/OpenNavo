@@ -31,6 +31,7 @@ pub enum LinkPricing {
     Freemium,
     Subscription,
     OpenSource,
+    Unknown,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]

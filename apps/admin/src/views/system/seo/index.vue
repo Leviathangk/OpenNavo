@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui';
-import { LOCKED_CRAWLERS, buildRobotsTxt } from '@opennavo/shared';
+import { LOCALES, LOCKED_CRAWLERS, buildRobotsTxt } from '@opennavo/shared';
 import { fetchSeoSettings, updateSeoSettings } from '@/service/api';
 import type { BodyOf, DataOf } from '@/typings/api/opennavo';
 import { $t } from '@/locales';
 import { formatDateTime } from '@/utils/opennavo';
+import { CONTENT_LOCALES, CONTENT_LOCALE_OPTIONS, DEFAULT_SOURCE_LOCALE, localeName } from '@/utils/content-locale';
 import {
   INDEXNOW_KEY,
   MAX_BOTS,
@@ -20,6 +21,7 @@ import {
   validSecret
 } from './modules/validate';
 import IndexReport from './modules/index-report.vue';
+import TranslationImpact from './modules/translation-impact.vue';
 
 defineOptions({ name: 'SeoSettings' });
 
@@ -41,7 +43,17 @@ function blankSettings(): Settings {
     cloudflare: { zoneId: '', purgeEnabled: false },
     edgeCache: { enabled: false },
     crawlers: { training: { ...rule, bots: [] }, seoTools: { ...rule, bots: [] } },
-    pages: { titleTemplate: 'new', indexPolicy: { mode: 'off', scope: 'new', since: '' }, versionsSitemap: false }
+    pages: {
+      titleTemplate: 'new',
+      indexPolicy: { mode: 'off', scope: 'new', since: '' },
+      translationMode: 'shadow',
+      translationLocales: [],
+      versionsMinNotesChars: 300,
+      openLocales: [...LOCALES],
+      intentPagesEnabled: false,
+      detailsRedirect: false,
+      versionsSitemap: false
+    }
   };
 }
 
@@ -168,7 +180,13 @@ const rules = computed<FormRules>(() => {
     trainingBots: botRule('training'),
     seoToolsBots: botRule('seoTools'),
     trainingDelay: delay('training'),
-    seoToolsDelay: delay('seoTools')
+    seoToolsDelay: delay('seoTools'),
+    // The default language is the x-default of every page, so it can never be closed.
+    openLocales: check(() => s.pages.openLocales.includes(DEFAULT_SOURCE_LOCALE), text('errors.defaultLocaleOpen')),
+    versionsMinNotesChars: check(() => {
+      const value = s.pages.versionsMinNotesChars;
+      return Number.isInteger(value) && value >= 1 && value <= 100000;
+    }, text('errors.invalidMinNotes'))
   };
 });
 
@@ -495,12 +513,56 @@ void load();
         </NFormItem>
 
         <NDivider title-placement="left">{{ text('sections.pages') }}</NDivider>
-        <NFormItem :label="text('versionsSitemap')">
-          <div>
-            <NSwitch v-model:value="draft.pages.versionsSitemap" :aria-label="text('versionsSitemap')" />
-            <NText depth="3" class="mt-8px block">{{ text('versionsSitemapHint') }}</NText>
+        <NFormItem :label="text('openLocales')" path="openLocales">
+          <div class="w-full">
+            <NCheckboxGroup v-model:value="draft.pages.openLocales" :aria-label="text('openLocales')">
+              <div class="flex flex-wrap gap-x-16px gap-y-8px">
+                <NCheckbox
+                  v-for="code in CONTENT_LOCALES"
+                  :key="code"
+                  :value="code"
+                  :label="localeName(code)"
+                  :disabled="code === DEFAULT_SOURCE_LOCALE"
+                />
+              </div>
+            </NCheckboxGroup>
+            <NText depth="3" class="mt-8px block">{{ text('openLocalesHint') }}</NText>
           </div>
         </NFormItem>
+        <div class="grid grid-cols-1 gap-x-20px sm:grid-cols-2">
+          <NFormItem :label="text('versionsSitemap')">
+            <div>
+              <NSwitch v-model:value="draft.pages.versionsSitemap" :aria-label="text('versionsSitemap')" />
+              <NText depth="3" class="mt-8px block">{{ text('versionsSitemapHint') }}</NText>
+            </div>
+          </NFormItem>
+          <NFormItem :label="text('versionsMinNotesChars')" path="versionsMinNotesChars">
+            <div>
+              <NInputNumber
+                :value="draft.pages.versionsMinNotesChars"
+                :min="1"
+                :max="100000"
+                :precision="0"
+                class="w-160px"
+                :input-props="{ 'aria-label': text('versionsMinNotesChars') }"
+                @update:value="value => (draft.pages.versionsMinNotesChars = value ?? 0)"
+              />
+              <NText depth="3" class="mt-8px block">{{ text('versionsMinNotesCharsHint') }}</NText>
+            </div>
+          </NFormItem>
+          <NFormItem :label="text('detailsRedirect')">
+            <div>
+              <NSwitch v-model:value="draft.pages.detailsRedirect" :aria-label="text('detailsRedirect')" />
+              <NText depth="3" class="mt-8px block">{{ text('detailsRedirectHint') }}</NText>
+            </div>
+          </NFormItem>
+          <NFormItem :label="text('intentPages')">
+            <div>
+              <NSwitch v-model:value="draft.pages.intentPagesEnabled" :aria-label="text('intentPages')" />
+              <NText depth="3" class="mt-8px block">{{ text('intentPagesHint') }}</NText>
+            </div>
+          </NFormItem>
+        </div>
         <NAlert type="warning" :title="text('temporaryTitle')" class="mb-20px">{{ text('temporaryHint') }}</NAlert>
         <div class="grid grid-cols-1 gap-x-20px sm:grid-cols-3">
           <NFormItem :label="text('titleTemplate')">
@@ -530,8 +592,31 @@ void load();
           {{ text('indexSince', { date: formatDateTime(draft.pages.indexPolicy.since) }) }}
         </NText>
         <NText depth="3" class="mb-20px block">{{ text('overrideHint') }}</NText>
+        <div class="grid grid-cols-1 gap-x-20px sm:grid-cols-2">
+          <NFormItem :label="text('translationMode')">
+            <NRadioGroup v-model:value="draft.pages.translationMode" :aria-label="text('translationMode')">
+              <NRadioButton v-for="value in ['shadow', 'enforce']" :key="value" :value="value">
+                {{ text(`indexModes.${value}`) }}
+              </NRadioButton>
+            </NRadioGroup>
+          </NFormItem>
+          <NFormItem :label="text('translationLocales')">
+            <NSelect
+              v-model:value="draft.pages.translationLocales"
+              multiple
+              clearable
+              :options="CONTENT_LOCALE_OPTIONS"
+              :placeholder="text('translationLocalesAll')"
+              :aria-label="text('translationLocales')"
+            />
+          </NFormItem>
+        </div>
+        <NText depth="3" class="mb-20px block">{{ text('translationModeHint') }}</NText>
         <NFormItem :label="text('report.title')">
           <IndexReport :revision="reportRevision" />
+        </NFormItem>
+        <NFormItem :label="text('impact.title')">
+          <TranslationImpact :revision="reportRevision" />
         </NFormItem>
 
         <NAlert v-if="saveFailed" type="error" class="mb-20px">{{ text('saveFailed') }}</NAlert>

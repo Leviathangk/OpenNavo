@@ -4,14 +4,14 @@ import { updateDesktopRelease } from '@/service/api';
 import type { RecordOf } from '@/typings/api/opennavo';
 import MarkdownEditor from '@/components/opennavo/markdown-editor.vue';
 import {
-  CONTENT_LOCALES,
-  CONTENT_LOCALE_OPTIONS,
+  APP_CONTENT_LOCALES,
+  APP_CONTENT_LOCALE_OPTIONS,
   DEFAULT_SOURCE_LOCALE,
   fromView,
   localeName,
   localizedBody
 } from '@/utils/content-locale';
-import type { ContentLocale, LocalizedStatuses, LocalizedTexts } from '@/utils/content-locale';
+import type { AppContentLocale, LocalizedStatuses, LocalizedTexts } from '@/utils/content-locale';
 import { $t } from '@/locales';
 
 defineOptions({ name: 'NotesForm' });
@@ -26,14 +26,14 @@ const TEXT_KEYS = ['notes'] as const;
 
 const form = reactive({
   minMacos: '13.0',
-  sourceLocale: DEFAULT_SOURCE_LOCALE as ContentLocale,
-  notes: Object.fromEntries(CONTENT_LOCALES.map(code => [code, ''])) as Record<ContentLocale, string>
+  sourceLocale: DEFAULT_SOURCE_LOCALE as AppContentLocale,
+  notes: Object.fromEntries(APP_CONTENT_LOCALES.map(code => [code, ''])) as Record<AppContentLocale, string>
 });
 // Initial notes/statuses: submit only source and modified languages (04 §9.1).
 const original = ref<LocalizedTexts>({});
 const statuses = ref<LocalizedStatuses>({});
 // Open on the source-language tab.
-const activeLocale = ref<ContentLocale>(DEFAULT_SOURCE_LOCALE);
+const activeLocale = ref<AppContentLocale>(DEFAULT_SOURCE_LOCALE as AppContentLocale);
 const saving = ref(false);
 
 watch(show, open => {
@@ -44,12 +44,12 @@ watch(show, open => {
   Object.assign(form, {
     minMacos: props.release.minMacos,
     sourceLocale: props.release.sourceLocale ?? DEFAULT_SOURCE_LOCALE,
-    notes: Object.fromEntries(CONTENT_LOCALES.map(code => [code, view.texts[code]?.notes ?? '']))
+    notes: Object.fromEntries(APP_CONTENT_LOCALES.map(code => [code, view.texts[code]?.notes ?? '']))
   });
   activeLocale.value = form.sourceLocale;
 });
 
-function tabLabel(code: ContentLocale) {
+function tabLabel(code: AppContentLocale) {
   if (code === form.sourceLocale) return `${localeName(code)} · ${$t('page.shared.translationStatus.source')}`;
   const status = statuses.value[code];
   return status ? `${localeName(code)} · ${$t(`page.shared.translationStatus.${status}`)}` : localeName(code);
@@ -66,7 +66,7 @@ async function save() {
     minMacos: form.minMacos.trim() || '13.0',
     sourceLocale: form.sourceLocale,
     i18n: localizedBody({
-      texts: Object.fromEntries(CONTENT_LOCALES.map(code => [code, { notes: form.notes[code] }])),
+      texts: Object.fromEntries(APP_CONTENT_LOCALES.map(code => [code, { notes: form.notes[code] }])),
       original: original.value,
       sourceLocale: form.sourceLocale,
       keys: TEXT_KEYS,
@@ -94,13 +94,13 @@ async function save() {
       </NFormItem>
       <NFormItem :label="$t('page.shared.i18n.sourceLocale')">
         <div class="w-full flex flex-wrap items-center gap-12px">
-          <NSelect v-model:value="form.sourceLocale" :options="CONTENT_LOCALE_OPTIONS" class="w-200px" />
+          <NSelect v-model:value="form.sourceLocale" :options="APP_CONTENT_LOCALE_OPTIONS" class="w-200px" />
           <NText depth="3" class="text-12px">{{ $t('page.shared.i18n.sourceHint') }}</NText>
         </div>
       </NFormItem>
       <NFormItem :label="$t('page.release.desktop.notes')">
         <NTabs v-model:value="activeLocale" type="line" size="small" class="w-full">
-          <NTabPane v-for="code in CONTENT_LOCALES" :key="code" :name="code" :tab="tabLabel(code)">
+          <NTabPane v-for="code in APP_CONTENT_LOCALES" :key="code" :name="code" :tab="tabLabel(code)">
             <MarkdownEditor v-model="form.notes[code]" :rows="6" />
           </NTabPane>
         </NTabs>

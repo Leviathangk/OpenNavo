@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/facts"
 )
 
 func (s *PublicService) now() time.Time {
@@ -76,10 +75,20 @@ func (s *PublicService) Collection(ctx context.Context, slug, locale string) (pu
 			out.Items = append(out.Items, publicapi.CollectionItem{SourceLocale: localePointer(row.SourceLocale), MachineTranslated: boolPointer(row.MachineTranslated), Package: summary(packages[0]), Note: row.Note})
 		}
 	}
+	setup, err := s.collectionSetup(ctx, slug, locale)
+	if err != nil {
+		return out, err
+	}
+	encoded, err := json.Marshal(setup)
+	if err != nil {
+		return out, err
+	}
+	out.Setup = &publicapi.CollectionSetup{}
+	if err := json.Unmarshal(encoded, out.Setup); err != nil {
+		return out, err
+	}
 	return out, nil
 }
-
-var brewToken = regexp.MustCompile(`^[a-z0-9][a-z0-9+._@-]*$`)
 
 func (s *PublicService) Brewfile(ctx context.Context, slug string) (string, error) {
 	ctx = domain.WithLinks(ctx, false)
@@ -90,22 +99,17 @@ func (s *PublicService) Brewfile(ctx context.Context, slug string) (string, erro
 	if err != nil {
 		return "", err
 	}
-	var b strings.Builder
+	tokens := []string{}
 	for _, raw := range rows {
 		var p struct{ Kind, Token string }
 		if err := json.Unmarshal(raw, &p); err != nil {
 			return "", err
 		}
-		if !brewToken.MatchString(p.Token) {
-			return "", domain.Validation()
+		if facts.ClientCaskToken(p.Kind, p.Token) {
+			tokens = append(tokens, p.Token)
 		}
-		kind := "brew"
-		if p.Kind == "cask" {
-			kind = "cask"
-		}
-		_, _ = fmt.Fprintf(&b, "%s \"%s\"\n", kind, p.Token)
 	}
-	return b.String(), nil
+	return facts.Brewfile(tokens), nil
 }
 func (s *PublicService) Features(ctx context.Context, locale string) ([]publicapi.Feature, error) {
 	out := []publicapi.Feature{}

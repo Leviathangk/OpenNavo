@@ -114,19 +114,8 @@ function onCopy(item: OnCommandItem) {
   void copy(item.app.kind, item.app.token);
 }
 
-// Command-K / Ctrl-K opens the palette, including from inputs.
-function onKeydown(event: KeyboardEvent) {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-    event.preventDefault();
-    open.value = !open.value;
-  }
-}
-
-onMounted(() => document.addEventListener('keydown', onKeydown));
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKeydown);
-  clearTimeout(timer);
-});
+// The Command-K shortcut lives in the layouts (useCommandPaletteShortcut), which mount this lazily.
+onBeforeUnmount(() => clearTimeout(timer));
 
 const hints = computed(() => [
   messages.value.palette.hintSelect,

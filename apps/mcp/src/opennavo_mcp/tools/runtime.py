@@ -41,9 +41,6 @@ SELECTORS: dict[str, dict[str, Any]] = {
     },
     "jobs_runs": {"run_id": {"type": "integer", "minimum": 1}},
     "search_insights": {"kind": {"type": "string", "enum": ["top", "zero"], "default": "top"}},
-    "dashboard_overview": {
-        "view": {"type": "string", "enum": ["overview", "llm_usage"], "default": "overview"}
-    },
 }
 PARTIAL = {"category_update", "collection_update", "feature_upsert"}
 # Image bytes never pass through MCP or model output; clients send local files straight to Go.
@@ -141,8 +138,27 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
             "dry_run": {"type": "boolean", "default": False},
         }
         required = ["url", "kind"]
+    if spec.name in {"seo_automation_set", "translations_write"}:
+        read_schema, _, read_defs = fields(spec.operations[1])
+        definitions.update(read_defs)
+        properties.update(
+            {snake(k): v for k, v in read_schema.get("properties", {}).items() if k != "body"}
+        )
+        properties["mode"] = {"type": "string", "enum": ["read", "write"], "default": "write"}
+        required = []  # The selected OpenAPI operation validates its required fields.
     if spec.write:
         properties["dry_run"] = {"type": "boolean", "default": False}
+    # Every business write exposes the same lease/fencing envelope as its HTTP contract.
+    if spec.write:
+        writes = [op for op in spec.operations if OPERATIONS[op]["method"] != "GET"]
+        metadata = {"task_id", "fencing", "idempotency_key", "expected_revision"}
+        for op in writes:
+            schema, _, _ = fields(op)
+            headers = OPERATIONS[op]["parameters"].get("header", [])
+            properties.update({snake(k): schema["properties"][k] for k in headers})
+            if headers:
+                required.extend(sorted(metadata))
+        required = list(dict.fromkeys(required))
     return {
         "type": "object",
         "properties": properties,
@@ -154,6 +170,8 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
 
 def choose(spec: ToolSpec, args: dict[str, Any]) -> str:
     name = spec.name
+    if name in {"seo_automation_set", "translations_write"}:
+        return spec.operations[1] if args.get("mode") == "read" else spec.operations[0]
     if name == "logs_search":
         pair = {
             "calls": ("listAgentCalls", "getAgentCall"),
@@ -179,7 +197,7 @@ def choose(spec: ToolSpec, args: dict[str, Any]) -> str:
     if name == "search_insights":
         return "listZeroResultQueries" if args.get("kind") == "zero" else "listTopQueries"
     if name == "dashboard_overview":
-        return "getLlmUsage" if args.get("view") == "llm_usage" else "getDashboardOverview"
+        return "getDashboardOverview"
     if name == "jobs_runs" and "run_id" in args:
         args["id"] = args.pop("run_id")
     if name in {
@@ -303,6 +321,9 @@ class AdapterTool(Tool):
             from opennavo_mcp.tools.updates import merge_update
 
             values = await merge_update(self, operation, args, values)
+        for key in OPERATIONS[operation]["parameters"].get("header", []):
+            if snake(key) in args:
+                values[key] = args[snake(key)]
         result = await self.invoke(operation, values)
         if self.name == "package_get":
             includes = args.get("include", [])

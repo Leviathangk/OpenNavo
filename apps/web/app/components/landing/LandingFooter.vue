@@ -42,6 +42,10 @@ const consent = useAnalyticsConsent();
         </div>
       </nav>
     </div>
+    <!-- C4: the same crawlable language links as the site footer. -->
+    <div class="mx-auto box-border max-w-1240px px-24px pb-16px">
+      <SiteLanguageNav />
+    </div>
     <div class="mx-auto box-border flex max-w-1240px flex-wrap items-center gap-x-16px gap-y-6px px-24px pb-32px">
       <p class="m-0 text-12px text-ink-tertiary">{{ t('footer.copyright', { year }) }}</p>
       <button

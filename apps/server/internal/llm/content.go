@@ -1,7 +1,6 @@
 package llm
 
 import (
-	"context"
 	"reflect"
 	"regexp"
 	"sort"
@@ -25,9 +24,6 @@ type ContentInput struct {
 	Strict       bool                         `json:"strict"`
 }
 type ContentOutput map[string]map[string]string
-type ContentTranslator interface {
-	TranslateContent(context.Context, ContentInput) (ContentOutput, Usage, error)
-}
 
 var literals = regexp.MustCompile("(?s)```.*?```|~~~.*?~~~|`[^`\\n]+`|https?://[^\\s<>\\)\\]，。；！？、\\p{Han}\\p{Hiragana}\\p{Katakana}\\x{3000}-\\x{303F}\\x{FF00}-\\x{FFEF}]+|(?:[A-Za-z]:)?/[^\\s<>\\)\\]，。；！？、\\p{Han}\\p{Hiragana}\\p{Katakana}\\x{3000}-\\x{303F}\\x{FF00}-\\x{FFEF}]+|\\b[A-Z][A-Z0-9_]*_[A-Z0-9_]+\\b|\\bv?\\d+\\.\\d+(?:\\.[A-Za-z0-9]+)*(?:[-+][A-Za-z0-9.]+)?\\b|\\$\\{[^}]+\\}|\\{[A-Za-z_][A-Za-z0-9_]*\\}")
 var markdownLinks = regexp.MustCompile(`!?\[[^\]]*\]\(([^\s)]+)(?:\s+"[^"]*")?\)`)
@@ -79,6 +75,15 @@ func ValidateContent(out ContentOutput, in ContentInput) error {
 			if !reflect.DeepEqual(LiteralSpans(source), LiteralSpans(target)) {
 				return contentFailure("changed_literal")
 			}
+			if in.Strict && !reflect.DeepEqual(markdownStructure(source), markdownStructure(target)) {
+				return contentFailure("changed_structure")
+			}
+			if in.Strict {
+				n, m := utf8.RuneCountInString(stripLiterals(source, in.Protected)), utf8.RuneCountInString(stripLiterals(target, in.Protected))
+				if n >= 20 && (m*5 < n || m > n*5) {
+					return contentFailure("length_ratio")
+				}
+			}
 			for _, term := range in.Protected {
 				if term != "" && strings.Count(source, term) != strings.Count(target, term) {
 					return contentFailure("changed_brand")
@@ -123,7 +128,7 @@ func MatchesLanguage(text, locale string) bool {
 		}
 	}
 	switch locale {
-	case "zh-CN":
+	case "zh-CN", "zh-Hant":
 		return han > 0 && kana == 0 && cyrillic == 0
 	case "ja-JP":
 		return (kana > 0 || han > 0) && cyrillic == 0
@@ -134,6 +139,46 @@ func MatchesLanguage(text, locale string) bool {
 		return false
 	}
 	language, confident := latinDetector.DetectLanguageOf(text)
-	expected, ok := map[string]lingua.Language{"en-US": lingua.English, "es-ES": lingua.Spanish, "pt-BR": lingua.Portuguese}[locale]
+	expected, ok := map[string]lingua.Language{"en-US": lingua.English, "es-ES": lingua.Spanish, "pt-BR": lingua.Portuguese, "de-DE": lingua.German, "fr-FR": lingua.French, "it-IT": lingua.Italian}[locale]
 	return ok && confident && language == expected
+}
+
+// Compare structural markers without comparing translated words or line wrapping.
+var markdownMarker = regexp.MustCompile(`^(#{1,6})[ \t]+|^([ \t]*)(?:[-+*]|[0-9]+[.)])[ \t]+|^(>+)[ \t]?|^([ \t]*(?:---+|===+))[ \t]*$`)
+
+func markdownStructure(value string) []string {
+	var out []string
+	fence := ""
+	for _, line := range strings.Split(value, "\n") {
+		trim := strings.TrimSpace(line)
+		if strings.HasPrefix(trim, "```") || strings.HasPrefix(trim, "~~~") {
+			marker := trim[:3]
+			if fence == "" {
+				fence = marker
+			} else if marker == fence {
+				fence = ""
+			}
+			out = append(out, "fence:"+marker)
+			continue
+		}
+		if fence != "" {
+			continue
+		}
+		if match := markdownMarker.FindStringSubmatch(line); match != nil {
+			switch {
+			case match[1] != "":
+				out = append(out, match[1])
+			case match[3] != "":
+				out = append(out, match[3])
+			case match[4] != "":
+				out = append(out, "rule")
+			default:
+				out = append(out, "list:"+match[2])
+			}
+		}
+		if strings.HasPrefix(trim, "|") && strings.HasSuffix(trim, "|") {
+			out = append(out, strings.Repeat("|", strings.Count(trim, "|")))
+		}
+	}
+	return out
 }

@@ -79,6 +79,14 @@ class AgentClient:
             "X-Agent-Tool": tool,
             "X-Request-ID": str(uuid4()),
         }
+        for key in spec["parameters"].get("header", []):
+            if key in data:
+                value = data.pop(key)
+                headers[spec["headerNames"][key]] = (
+                    ",".join(map(str, cast(list[Any], value)))
+                    if isinstance(value, list)
+                    else str(value)
+                )
         kwargs: dict[str, Any] = {"params": query, "headers": headers}
         if operation == "uploadAsset":
             kwargs["files"] = {key: (None, str(value)) for key, value in body.items()}

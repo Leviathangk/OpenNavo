@@ -87,6 +87,53 @@ pub fn parse(input: &str) -> Option<DeepLinkEvent> {
             encoded.query_pairs_mut().append_pair("q", &value);
             format!("/search?{}", encoded.query()?)
         }
+        "startup" if segments.is_empty() && action.is_none() => {
+            if query.len() != 1 || query[0].0 != "label" {
+                return None;
+            }
+            let label = query[0].1.as_ref();
+            if label.is_empty()
+                || label.len() > 255
+                || label.trim() != label
+                || label.chars().any(char::is_control)
+                || label.contains(['/', '\\', '?', '#'])
+            {
+                return None;
+            }
+            let mut route = reqwest::Url::parse("http://localhost/security/startup").ok()?;
+            route
+                .query_pairs_mut()
+                .append_pair("label", label)
+                .append_pair("preview", "1");
+            format!("{}?{}", route.path(), route.query()?)
+        }
+        "uninstall" if segments.len() == 1 && action.is_none() => {
+            if validate_token(segments[0]).is_err()
+                || query.len() != 1
+                || query[0].0 != "preview"
+                || query[0].1 != "1"
+            {
+                return None;
+            }
+            // Only the preview page may ask the user to authorize the existing uninstall flow.
+            format!("/uninstall/{}?preview=1", segments[0])
+        }
+        "scan" if segments.len() == 1 && action.is_none() => {
+            if validate_token(segments[0]).is_err()
+                || query.len() != 1
+                || query[0].0 != "preview"
+                || query[0].1 != "1"
+            {
+                return None;
+            }
+            // Navigation only: resolve the catalog token locally and ask the user to start a scan.
+            let mut route = reqwest::Url::parse("http://localhost/security/scan").ok()?;
+            route
+                .query_pairs_mut()
+                .append_pair("token", segments[0])
+                .append_pair("preview", "1");
+            format!("{}?{}", route.path(), route.query()?)
+        }
         "updates" if segments.is_empty() && query.is_empty() => "/updates".into(),
         _ => return None,
     };
@@ -375,5 +422,49 @@ mod window_fit_tests {
         assert_eq!(fit.minimum, LogicalSize::new(990.0, 630.0));
         assert_eq!(fit.target, fit.minimum);
         assert_eq!(fit.position, LogicalPosition::new(-1000.0, 30.0));
+    }
+}
+
+#[cfg(test)]
+mod safety_preview_tests {
+    #[test]
+    fn startup_and_uninstall_links_never_request_execution() {
+        let startup = super::parse("opennavo://startup?label=com.example.shared").unwrap();
+        assert_eq!(
+            startup.route,
+            "/security/startup?label=com.example.shared&preview=1"
+        );
+        assert!(startup.action.is_none());
+        let uninstall = super::parse("opennavo://uninstall/example?preview=1").unwrap();
+        assert_eq!(uninstall.route, "/uninstall/example?preview=1");
+        assert!(uninstall.action.is_none());
+        for url in [
+            "opennavo://startup?label=x&label=y",
+            "opennavo://startup?label=x&execute=1",
+            "opennavo://startup?label=%0Aroot",
+            "opennavo://uninstall/example",
+            "opennavo://uninstall/example?preview=1&delete=1",
+            "opennavo://uninstall/example?preview=1&action=install",
+        ] {
+            assert!(super::parse(url).is_none(), "{url}");
+        }
+    }
+
+    #[test]
+    fn scan_deep_links_only_navigate_to_preview() {
+        let event = super::parse("opennavo://scan/example+pro?preview=1").unwrap();
+        assert_eq!(event.route, "/security/scan?token=example%2Bpro&preview=1");
+        assert!(event.action.is_none());
+        for url in [
+            "opennavo://scan/example",
+            "opennavo://scan/example?preview=0",
+            "opennavo://scan/example?preview=1&preview=1",
+            "opennavo://scan/example?preview=1&path=/tmp/file",
+            "opennavo://scan/example?preview=1&action=install",
+            "opennavo://scan/../example?preview=1",
+            "opennavo://scan/example%2Fother?preview=1",
+        ] {
+            assert!(super::parse(url).is_none(), "{url}");
+        }
     }
 }

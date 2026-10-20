@@ -172,5 +172,10 @@
     "noResultsDescription": "Prueba con el nombre en inglés o el pinyin, o dinos qué te gustaría que incluyéramos.",
     "offlineTitle": "Sin conexión",
     "offlineDescription": "Se muestra el catálogo de la caché local. Se actualizará automáticamente al conectarse a Internet."
+  },
+  "languageSuggestion": {
+    "message": "¿Quieres navegar en {language}?",
+    "switch": "Cambiar a {language}",
+    "dismiss": "No volver a sugerir"
   }
 }

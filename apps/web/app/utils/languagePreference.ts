@@ -1,4 +1,4 @@
-import { matchLocale, type Locale } from '@opennavo/shared';
+import { matchLocale, SITE_LOCALES, type SiteLocale as Locale } from '@opennavo/shared';
 
 export const LANGUAGE_CHOICE_KEY = 'onv:locale-choice';
 export const LANGUAGE_DISMISSED_KEY = 'onv:locale-suggestion-dismissed';
@@ -11,7 +11,7 @@ export function suggestedLanguage(
   dismissed: string | null
 ): Locale | null {
   if (saved || dismissed === '1') return null;
-  const suggested = matchLocale(languages);
+  const suggested = matchLocale(languages, SITE_LOCALES);
   return suggested === current ? null : suggested;
 }
 

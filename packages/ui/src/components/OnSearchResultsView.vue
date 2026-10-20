@@ -2,6 +2,7 @@
 import type { Component } from 'vue';
 import type { PackageKind } from '@opennavo/shared';
 import OnAppRow from './OnAppRow.vue';
+import type { OnImageVariant } from '../utils/image';
 import OnChip from './OnChip.vue';
 import OnPageHeader from './OnPageHeader.vue';
 import OnSkeleton from './OnSkeleton.vue';
@@ -14,6 +15,8 @@ export interface OnSearchResult {
   token: string;
   name: string;
   src?: string | null;
+  /** Stored WebP renditions of the icon (X3). */
+  variants?: readonly OnImageVariant[] | null;
   accent?: string | null;
   /** Muted suffix after name: desktop token, web version. */
   meta?: string;
@@ -73,6 +76,7 @@ defineSlots<{
           :token="result.token"
           :name="result.name"
           :src="result.src"
+          :variants="result.variants"
           :accent="result.accent"
           :meta="result.meta"
           :description="result.description"

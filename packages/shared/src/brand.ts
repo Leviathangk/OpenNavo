@@ -10,7 +10,11 @@ export const BRAND = {
   bundleId: 'com.opennavo.desktop',
   /** Project Homebrew tap/client cask; confirm at release before listing. */
   tap: 'opennavo/tap',
-  caskToken: 'opennavo'
+  caskToken: 'opennavo',
+  /** SPDX license of this repository; the root package.json is the authority and a test keeps them equal. */
+  license: 'GPL-3.0-only',
+  /** The public source repository. */
+  repository: 'https://github.com/opennavo/OpenNavo'
 } as const;
 
 /**

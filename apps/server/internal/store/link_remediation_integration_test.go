@@ -117,13 +117,13 @@ func TestRemediationLinkContentAndTranslation(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, st.DB.Table("job_outbox").Where("unique_key=?", fmt.Sprintf("translate:content:package:%d", id)).Count(&n).Error)
 	require.EqualValues(t, 1, n)
-	applied, err := st.ApplyContentTranslation(ctx, source, "zh-CN", map[string]string{"summary": "译文", "description": "正文"}, "fixture")
+	applied, err := st.WriteTranslationSnapshot(ctx, source, "zh-CN", map[string]string{"summary": "译文", "description": "正文"}, "fixture")
 	require.NoError(t, err)
 	require.True(t, applied)
 	input.Body["summary"] = "Changed source"
 	_, err = svc.Execute(ctx, "UpdatePackageText", input)
 	require.NoError(t, err)
-	applied, err = st.ApplyContentTranslation(ctx, source, "zh-CN", map[string]string{"summary": "late"}, "fixture")
+	applied, err = st.WriteTranslationSnapshot(ctx, source, "zh-CN", map[string]string{"summary": "late"}, "fixture")
 	require.NoError(t, err)
 	require.False(t, applied)
 
@@ -176,7 +176,7 @@ func TestRemediationLinkContentAndTranslation(t *testing.T) {
 	}
 }
 func TestRemediationRenameMergesAllRelationshipsAndRollsBack(t *testing.T) {
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	ctx := context.Background()
 	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: remediationCask(t, "old")}}))
 	previous, err := st.CatalogRow(ctx, "cask", "old")
@@ -227,6 +227,24 @@ func TestRemediationRenameMergesAllRelationshipsAndRollsBack(t *testing.T) {
 		exec("INSERT INTO package_alternatives(package_id,alternative_id,sort,reasons,source) VALUES(?,?,?,ARRAY['open_source'],'admin')", to, id, index)
 	}
 	exec("INSERT INTO package_alternatives(package_id,alternative_id,sort,reasons,source) VALUES(?,?,0,ARRAY['open_source'],'admin'),(?,?,1,ARRAY['open_source'],'admin'),(?,?,0,ARRAY['open_source'],'admin')", from, others[8], from, to, others[0], from)
+	// Every newly registered FK is represented, so adding one without a policy
+	// continues to fail this end-to-end merge fixture.
+	exec("INSERT INTO package_fact_records(package_id,kind,key,value,evidence) VALUES(?,'attribute','offline','{\"name\":\"offline\",\"booleanValue\":true}','{\"sourceUrl\":\"https://example.org/docs\",\"status\":\"verified\",\"checkedAt\":\"2026-01-01\",\"validUntil\":\"2027-01-01\"}')", from)
+	exec("INSERT INTO app_store_price_snapshots VALUES(?,'2026-10-19','US','org.fixture',1,'USD','https://apps.apple.com/app/id1',now())", from)
+	exec("INSERT INTO package_cve_checks VALUES(?,'fixture','1','[]',now(),now()+interval '1 day')", from)
+	exec("INSERT INTO package_version_requirements VALUES(?,'1','[]','https://example.org/docs',now())", from)
+	exec("INSERT INTO background_items VALUES('org.fixture.agent')")
+	exec("INSERT INTO background_item_packages VALUES('org.fixture.agent',?,'launchctl','uninstall','https://example.org/docs',now())", from)
+	exec("INSERT INTO package_page_state(package_id,locale,page_kind,page_number,content_hash,content_modified_at) VALUES(?,'en-US','overview',1,repeat('a',64),now())", from)
+	exec("INSERT INTO seo_urls(url,page_kind,locale,package_id) VALUES('https://example.org/new','overview','en-US',?)", from)
+	exec("INSERT INTO seo_keywords(id,keyword,normalized,source,engine,country,language,device,period,volume_state,observed_at) VALUES(901,'editor','editor','gsc','google','US','en-US','desktop','2026-10','unknown',now())")
+	exec("INSERT INTO seo_keyword_links VALUES(901,?,'price',0.9,'confirmed')", from)
+	exec("INSERT INTO admin_users(id,user_name,password_hash) VALUES(901,'merge-reviewer','fixture-not-a-password-hash')")
+	exec("INSERT INTO article_test_artifacts(article_id,package_id,payload,sha256,registered_by) VALUES(1001,?,jsonb_build_object('packageId',?::bigint,'appVersion','1'),repeat('c',64),901)", from, from)
+	exec("UPDATE article_revisions SET claims=jsonb_build_array(jsonb_build_object('packageId',?::bigint)),seo_target=jsonb_build_object('entityKey',?::text,'intent','price') WHERE id=1001", from, fmt.Sprintf("pkg:%d", from))
+	exec("INSERT INTO seo_listing_baselines(package_id,domain,developer,team_id,fact_id,evidence_id,evidence_hash,verified_by,valid_until) VALUES(?,'example.org','Fixture','ABCDEFGHIJ',1,1,repeat('a',64),901,now()+interval '1 day')", from)
+	exec("INSERT INTO seo_listing_candidates(token,state,payload,baseline_package_id,package_id) VALUES('new','published',jsonb_build_object('baselinePackageId',?::bigint),?,?)", from, from, from)
+	exec("UPDATE seo_listing_candidates c SET payload=payload||jsonb_build_object('link',jsonb_build_object('homepage',l.homepage,'downloadUrl',l.download_url,'teamId',l.team_id)) FROM link_apps l WHERE c.package_id=l.package_id")
 	var tables []string
 	require.NoError(t, st.DB.Raw("SELECT DISTINCT conrelid::regclass::text FROM pg_constraint WHERE contype='f' AND confrelid='packages'::regclass").Scan(&tables).Error)
 	for _, table := range tables {
@@ -270,8 +288,8 @@ func TestRemediationRenameMergesAllRelationshipsAndRollsBack(t *testing.T) {
 	require.Contains(t, audit, "Source human")
 	require.Contains(t, audit, "Archived summary")
 	require.Contains(t, audit, "source notes")
-	require.Contains(t, audit, "translate:content:collection_item:")
-	require.Contains(t, audit, "translate:content:release:1002")
+	require.Contains(t, audit, "translate:collection_item:")
+	require.Contains(t, audit, "translate:release:1002")
 	require.NoError(t, st.DB.Table("audit_logs").Where("action='link.adopt.rename'").Count(&n).Error)
 	require.EqualValues(t, 1, n)
 	var summary string
@@ -281,7 +299,7 @@ func TestRemediationRenameMergesAllRelationshipsAndRollsBack(t *testing.T) {
 	var description string
 	require.NoError(t, st.DB.Raw("SELECT description FROM package_i18n WHERE package_id=? AND locale='en-US'", to).Scan(&description).Error)
 	require.Equal(t, "Source description", description)
-	applied, err := st.ApplyContentTranslation(ctx, lateSource, "zh-CN", map[string]string{"summary": "late"}, "fixture")
+	applied, err := st.WriteTranslationSnapshot(ctx, lateSource, "zh-CN", map[string]string{"summary": "late"}, "fixture")
 	require.NoError(t, err)
 	require.False(t, applied)
 	require.NoError(t, st.DB.Table("content_translation_sources").Where("entity='package' AND object_key=?", fmt.Sprint(from)).Count(&n).Error)
@@ -315,7 +333,7 @@ func TestRemediationRenameMergesAllRelationshipsAndRollsBack(t *testing.T) {
 }
 
 func TestRemediationRenamePreservesOnlyNonemptySourceDocuments(t *testing.T) {
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	ctx := context.Background()
 	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: remediationCask(t, "empty-old")}}))
 	previous, err := st.CatalogRow(ctx, "cask", "empty-old")
@@ -354,7 +372,7 @@ func TestRemediationRenamePreservesOnlyNonemptySourceDocuments(t *testing.T) {
 		require.Contains(t, source.Targets, "zh-CN")
 	}
 	for _, source := range late {
-		applied, err := st.ApplyContentTranslation(ctx, source, "zh-CN", map[string]string{"summary": "late", "note": "late"}, "fixture")
+		applied, err := st.WriteTranslationSnapshot(ctx, source, "zh-CN", map[string]string{"summary": "late", "note": "late"}, "fixture")
 		require.NoError(t, err)
 		require.False(t, applied)
 		var n int64

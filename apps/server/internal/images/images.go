@@ -12,14 +12,22 @@ import (
 	"image/png"
 	"math"
 
+	"github.com/HugoSmits86/nativewebp"
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
 )
+
+type Rendition struct {
+	Width, Height      int
+	Role, MIME, SHA256 string
+	Data               []byte
+}
 
 type Variant struct {
 	Width, Height int
 	PNG           []byte
 	SHA256        string
+	Files         []Rendition
 }
 
 func Process(data []byte, kind string) ([]Variant, *string, error) {
@@ -69,9 +77,57 @@ func Process(data []byte, kind string) ([]Variant, *string, error) {
 			return nil, nil, err
 		}
 		sum := sha256.Sum256(encoded.Bytes())
-		out = append(out, Variant{width, height, encoded.Bytes(), hex.EncodeToString(sum[:])})
+		out = append(out, Variant{Width: width, Height: height, PNG: encoded.Bytes(), SHA256: hex.EncodeToString(sum[:])})
+	}
+	// Retain the input exactly, including its original format and resolution.
+	originalSum := sha256.Sum256(data)
+	out[0].Files = []Rendition{{Width: cfg.Width, Height: cfg.Height, Role: "original", MIME: "image/" + format, SHA256: hex.EncodeToString(originalSum[:]), Data: data}}
+	if kind == "icon" || kind == "screenshot" {
+		for _, width := range []int{64, 128, 256} {
+			height := width
+			if kind == "screenshot" {
+				height = max(1, int(math.Round(float64(cfg.Height)*float64(width)/float64(cfg.Width))))
+			}
+			file, err := webpRendition(source, source.Bounds(), width, height, "responsive")
+			if err != nil {
+				return nil, nil, err
+			}
+			out[0].Files = append(out[0].Files, file)
+		}
+		if kind == "screenshot" {
+			crop := source.Bounds()
+			if cfg.Width*200 > cfg.Height*318 {
+				w := max(1, cfg.Height*318/200)
+				crop.Min.X += (cfg.Width - w) / 2
+				crop.Max.X = crop.Min.X + w
+			} else {
+				h := max(1, cfg.Width*200/318)
+				crop.Min.Y += (cfg.Height - h) / 2
+				crop.Max.Y = crop.Min.Y + h
+			}
+			// Use the same source rectangle at both densities, including for small
+			// originals: srcset must never change the card's composition.
+			for _, scale := range []int{1, 2} {
+				file, err := webpRendition(source, crop, 318*scale, 200*scale, "thumbnail")
+				if err != nil {
+					return nil, nil, err
+				}
+				out[0].Files = append(out[0].Files, file)
+			}
+		}
 	}
 	return out, Accent(source), nil
+}
+
+func webpRendition(source image.Image, bounds image.Rectangle, width, height int, role string) (Rendition, error) {
+	target := image.NewNRGBA(image.Rect(0, 0, width, height))
+	draw.CatmullRom.Scale(target, target.Bounds(), source, bounds, draw.Src, nil)
+	var encoded bytes.Buffer
+	if err := nativewebp.Encode(&encoded, target, nil); err != nil {
+		return Rendition{}, err
+	}
+	sum := sha256.Sum256(encoded.Bytes())
+	return Rendition{Width: width, Height: height, Role: role, MIME: "image/webp", SHA256: hex.EncodeToString(sum[:]), Data: encoded.Bytes()}, nil
 }
 
 type pixel struct{ r, g, b float64 }

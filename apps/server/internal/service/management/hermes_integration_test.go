@@ -112,10 +112,13 @@ func TestHermesContentHistoryTransactions(t *testing.T) {
 	var summary string
 	require.NoError(t, st.DB.Raw("SELECT summary FROM package_i18n WHERE package_id=? AND locale='zh-CN'", id).Scan(&summary).Error)
 	require.Equal(t, "简介", summary)
-	_, err = call("FixTranslation", Input{Body: map[string]any{"ref": map[string]any{"entity": "package", "id": id}, "locale": "en-US", "fields": map[string]any{"summary": "Manual summary"}}})
+	_, err = call("FixTranslation", Input{Body: map[string]any{"ref": map[string]any{"entity": "package", "id": id}, "locale": "en-US", "fields": map[string]any{"displayName": "Test application", "summary": "A short introduction.", "description": "The complete description of this application."}}})
 	require.NoError(t, err)
-	_, err = call("RetranslateContent", Input{Body: map[string]any{"ref": map[string]any{"entity": "package", "id": id}, "locales": []any{"en-US"}}})
-	require.NoError(t, err)
+	var translationStatus string
+	require.NoError(t, st.DB.Raw("SELECT status FROM package_i18n WHERE package_id=? AND locale='en-US'", id).Scan(&translationStatus).Error)
+	require.Equal(t, "manual", translationStatus)
+	require.NoError(t, st.DB.Table("job_outbox").Where("job_type='translate:content'").Count(&n).Error)
+	require.Zero(t, n)
 	_, err = call("UpsertReleaseNotes", Input{ID: id, Version: "1.0", Body: map[string]any{"sourceLocale": "zh-CN", "title": "第一版", "summary": "更新内容", "sections": []any{map[string]any{"type": "new", "items": []any{"新功能"}}}}})
 	require.NoError(t, err)
 	_, err = call("UpsertReleaseNotes", Input{ID: id, Version: "1.0", Body: map[string]any{"clear": true}})

@@ -21,6 +21,7 @@ type Config struct {
 	MetricsAddr                 string        `env:"METRICS_ADDR" envDefault:":9090"`
 	TrustedProxies              []string      `env:"TRUSTED_PROXIES" envSeparator:","`
 	PublicBaseURL               string        `env:"PUBLIC_BASE_URL,required"`
+	GEOObservationBaseURL       string        `env:"GEO_OBSERVATION_BASE_URL"`
 	WebBaseURL                  string        `env:"WEB_BASE_URL,required"`
 	AdminOrigin                 string        `env:"ADMIN_ORIGIN,required"`
 	PublicCORSOrigins           []string      `env:"PUBLIC_CORS_ORIGINS" envSeparator:","`
@@ -42,19 +43,6 @@ type Config struct {
 	SEOSettingsEncryptionKey    string        `env:"SEO_SETTINGS_ENCRYPTION_KEY"`
 	WebInternalURL              string        `env:"WEB_INTERNAL_URL"`
 	WebInternalSecret           string        `env:"WEB_INTERNAL_SECRET"`
-	LLMEnabled                  bool          `env:"LLM_ENABLED" envDefault:"true"`
-	LLMBaseURL                  string        `env:"LLM_BASE_URL" envDefault:"https://api.openai.com/v1"`
-	LLMSettingsEncryptionKey    string        `env:"LLM_SETTINGS_ENCRYPTION_KEY"`
-	LLMAPIKey                   string        `env:"LLM_API_KEY"`
-	LLMModel                    string        `env:"LLM_MODEL" envDefault:"gpt-6-luna"`
-	LLMModelTranslate           string        `env:"LLM_MODEL_TRANSLATE"`
-	LLMReasoningEffort          string        `env:"LLM_REASONING_EFFORT" envDefault:"high"`
-	LLMReasoningEffortTranslate string        `env:"LLM_REASONING_EFFORT_TRANSLATE"`
-	LLMTimeout                  time.Duration `env:"LLM_TIMEOUT" envDefault:"5m"`
-	LLMConcurrency              int           `env:"LLM_CONCURRENCY" envDefault:"8"`
-	LLMRPM                      int           `env:"LLM_RPM" envDefault:"120"`
-	LLMMonthlyTokenBudget       int64         `env:"LLM_MONTHLY_TOKEN_BUDGET" envDefault:"30000000"`
-	LLMMonthlyBudgetUSD         float64       `env:"LLM_MONTHLY_BUDGET_USD"`
 	CatalogKinds                string        `env:"CATALOG_KINDS" envDefault:"cask"`
 	HomebrewAPIBase             string        `env:"HOMEBREW_API_BASE" envDefault:"https://formulae.brew.sh/api"`
 	FetchUserAgent              string        `env:"FETCH_USER_AGENT" envDefault:"OpenNavoBot/1.0 (+https://opennavo.example/bot)"`
@@ -78,15 +66,7 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, errors.New("missing or invalid environment variables")
 	}
-	if cfg.LLMModelTranslate == "" {
-		cfg.LLMModelTranslate = cfg.LLMModel
-	}
-	if cfg.LLMReasoningEffortTranslate == "" {
-		cfg.LLMReasoningEffortTranslate = "medium"
-	}
-	if cfg.AppEnv == "dev" && cfg.LLMConcurrency > 4 {
-		cfg.LLMConcurrency = 4
-	}
+
 	return cfg, cfg.Validate()
 }
 
@@ -150,7 +130,7 @@ func (c Config) Validate() error {
 			return errors.New("invalid PUBLIC_CORS_ORIGINS")
 		}
 	}
-	for name, value := range map[string]string{"PUBLIC_BASE_URL": c.PublicBaseURL, "WEB_BASE_URL": c.WebBaseURL, "ADMIN_ORIGIN": c.AdminOrigin, "CDN_BASE_URL": c.CDNBaseURL, "LLM_BASE_URL": c.LLMBaseURL, "HOMEBREW_API_BASE": c.HomebrewAPIBase} {
+	for name, value := range map[string]string{"PUBLIC_BASE_URL": c.PublicBaseURL, "WEB_BASE_URL": c.WebBaseURL, "ADMIN_ORIGIN": c.AdminOrigin, "CDN_BASE_URL": c.CDNBaseURL, "HOMEBREW_API_BASE": c.HomebrewAPIBase} {
 		u, err := url.Parse(value)
 		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil {
 			return fmt.Errorf("invalid %s", name)
@@ -170,9 +150,6 @@ func (c Config) Validate() error {
 		if (name == "REDIS_URL" || name == "CACHE_REDIS_URL") && u.Scheme != "redis" && u.Scheme != "rediss" {
 			return fmt.Errorf("invalid %s scheme", name)
 		}
-	}
-	if c.LLMSettingsEncryptionKey != "" && len(c.LLMSettingsEncryptionKey) < 32 {
-		return errors.New("LLM_SETTINGS_ENCRYPTION_KEY must contain at least 32 bytes")
 	}
 	if c.GitHubSettingsEncryptionKey != "" && len(c.GitHubSettingsEncryptionKey) < 32 {
 		return errors.New("GITHUB_SETTINGS_ENCRYPTION_KEY must contain at least 32 bytes")
@@ -198,19 +175,11 @@ func (c Config) Validate() error {
 			}
 		}
 	}
-	if c.LLMEnabled && c.LLMAPIKey == "" {
-		return errors.New("LLM_API_KEY is required when LLM_ENABLED is true")
-	}
 	if c.AppEnv == "prod" && c.CIReleaseToken == "" {
 		return errors.New("CI_RELEASE_TOKEN is required in prod")
 	}
-	if c.DBMaxOpenConns < 1 || c.LLMConcurrency < 1 || c.LLMRPM < 1 || c.LLMMonthlyTokenBudget < 1 || c.LLMMonthlyBudgetUSD < 0 || c.LLMTimeout <= 0 || c.JWTAccessTTL <= 0 || c.JWTRefreshTTL <= c.JWTAccessTTL {
+	if c.DBMaxOpenConns < 1 || c.JWTAccessTTL <= 0 || c.JWTRefreshTTL <= c.JWTAccessTTL {
 		return errors.New("invalid connection, duration or budget limits")
-	}
-	for _, effort := range []string{c.LLMReasoningEffort, c.LLMReasoningEffortTranslate} {
-		if effort != "low" && effort != "medium" && effort != "high" {
-			return errors.New("invalid LLM reasoning effort")
-		}
 	}
 	if _, err := time.LoadLocation(c.TZSchedule); err != nil {
 		return errors.New("invalid TZ_SCHEDULE")

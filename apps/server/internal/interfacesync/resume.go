@@ -113,7 +113,7 @@ func (c ResumeCache) Restore(plan Plan, protected []string, glossary map[string]
 		original := target
 		target.Translations = map[string]map[string]string{}
 		target.LocaleHashes = map[string]map[string]string{}
-		for _, code := range []string{"ja-JP", "es-ES", "pt-BR", "ru-RU"} {
+		for _, code := range translationLocales(name, target) {
 			target.Translations[code] = map[string]string{}
 			target.LocaleHashes[code] = map[string]string{}
 			for key, value := range original.Translations[code] {
@@ -127,7 +127,7 @@ func (c ResumeCache) Restore(plan Plan, protected []string, glossary map[string]
 		if err != nil {
 			return Plan{}, nil, err
 		}
-		for _, code := range []string{"ja-JP", "es-ES", "pt-BR", "ru-RU"} {
+		for _, code := range translationLocales(name, target) {
 			fields := map[string]string{}
 			pending := map[string]bool{}
 			for key, value := range target.Translations[code] {

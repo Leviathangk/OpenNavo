@@ -215,42 +215,14 @@ func (s *Service) translationManage(ctx context.Context, op string, in Input) (a
 		v, err := s.translationView(ctx, ref)
 		return v, store.MapAdminError(err)
 	}
+	ctx = store.WithTranslationModel(ctx, text(in.Body, "model"))
 	return s.write(ctx, in, op, "translation", func(st *store.Store) (any, error) {
-		if op == "FixTranslation" {
-			fields, ok := in.Body["fields"].(map[string]any)
-			if !ok {
-				return nil, domain.Validation()
-			}
-			if err := st.WriteContentText(ctx, ref, text(in.Body, "locale"), fields, false); err != nil {
-				return nil, err
-			}
-		} else {
-			src, err := st.ReadContentSource(ctx, ref)
-			if err != nil {
-				return nil, store.MapAdminError(err)
-			}
-			settings, err := st.TranslationSettings(ctx)
-			if err != nil {
-				return nil, err
-			}
-			if !settings.Enabled {
-				return nil, fail(domain.CodeInvalidState)
-			}
-			var requested []string
-			if value, present := in.Body["locales"]; present {
-				raw, _ := json.Marshal(value)
-				if json.Unmarshal(raw, &requested) != nil {
-					return nil, domain.Validation()
-				}
-				for _, locale := range requested {
-					if locale == src.SourceLocale {
-						return nil, domain.Validation()
-					}
-				}
-			}
-			if err := st.ForceContentTranslationLocales(ctx, ref, requested); err != nil {
-				return nil, err
-			}
+		fields, ok := in.Body["fields"].(map[string]any)
+		if !ok {
+			return nil, domain.Validation()
+		}
+		if err := st.WriteContentText(ctx, ref, text(in.Body, "locale"), fields, false); err != nil {
+			return nil, err
 		}
 		return mutationResult(ctx, st, ref)
 	})
@@ -310,7 +282,7 @@ func (s *Service) translations(ctx context.Context, in Input) (any, error) {
 	if len(clauses) == 0 {
 		return result, nil
 	}
-	// At most six rows per object; filter using text-table conditions rather than filtering after pagination.
+	// Filter missing or stale languages by default; filter using text-table conditions rather than filtering after pagination.
 	where, args := "TRUE", []any{}
 	filters := []string{}
 	for _, entity := range entities {
@@ -321,6 +293,34 @@ func (s *Service) translations(ctx context.Context, in Input) (any, error) {
 		}
 		if entity == "collection_item" {
 			key += " AND i.package_id=o.secondary_id"
+		}
+		if _, explicitStale := in.Params["stale"]; !explicitStale && text(in.Params, "status") == "" {
+			objectKey := "o.id::text"
+			if entity == "announcement" {
+				objectKey = "'desktop.announcement'"
+			}
+			if entity == "collection_item" {
+				objectKey = "o.id::text||':'||o.secondary_id::text"
+			}
+			locales := []string{}
+			for _, code := range i18n.SiteLocales {
+				locale := string(code)
+				if entity == "desktop_release" && !i18n.ValidApp(locale) {
+					continue
+				}
+				if requested := text(in.Params, "locale"); requested == "" || requested == locale {
+					locales = append(locales, locale)
+				}
+			}
+			raw, _ := json.Marshal(locales)
+			condition := "(o.entity='" + entity + "' AND EXISTS(SELECT 1 FROM content_translation_sources src CROSS JOIN jsonb_array_elements_text(?::jsonb) lang(locale) WHERE src.entity=o.entity AND src.object_key=" + objectKey + " AND lang.locale<>src.source_locale AND NOT EXISTS(SELECT 1 FROM " + spec.Table + " i WHERE " + key + " AND i.locale=lang.locale AND i.source_hash=src.source_hash AND i.status IN ('manual','machine'))))"
+			args = append(args, string(raw))
+			if q := text(in.Params, "q"); q != "" {
+				condition += " AND EXISTS(SELECT 1 FROM " + spec.Table + " i WHERE " + key + " AND strpos(lower(to_jsonb(i)::text),lower(?))>0)"
+				args = append(args, q)
+			}
+			filters = append(filters, condition)
+			continue
 		}
 		pred := []string{key}
 		localArgs := []any{}
@@ -347,11 +347,14 @@ func (s *Service) translations(ctx context.Context, in Input) (any, error) {
 				continue
 			}
 			locales := []string{}
-			for _, locale := range i18n.Locales {
+			for _, locale := range i18n.ContentLocales(entity) {
 				locales = append(locales, string(locale))
 			}
 			if locale := text(in.Params, "locale"); locale != "" {
-				locales = []string{locale}
+				locales = []string{}
+				if entity != "desktop_release" || i18n.ValidApp(locale) {
+					locales = []string{locale}
+				}
 			}
 			filters = append(filters, "(o.entity='"+entity+"' AND EXISTS(SELECT 1 FROM unnest(?::text[]) lang WHERE NOT EXISTS(SELECT 1 FROM "+spec.Table+" i WHERE "+key+" AND i.locale=lang)))")
 			// Convert the fixed locale list through JSON to a PostgreSQL array, avoiding driver slice expansion.

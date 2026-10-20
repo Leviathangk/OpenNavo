@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, reactive, ref, type Ref } from 'vue';
-import { useCanonicalQuery, useListPage } from '../app/composables/useListPage';
-import type { ListQueryParam } from '../app/utils/catalogQuery';
+import { useKnownQueryValue, useListPage } from '../app/composables/useListPage';
 
 const scopes: ReturnType<typeof effectScope>[] = [];
 afterEach(() => {
@@ -23,14 +22,16 @@ function stubNuxt(initialPage = '1') {
   });
   vi.stubGlobal('createError', (options: object) => Object.assign(new Error('Page not found'), options));
   vi.stubGlobal('showError', showError);
+  const head = vi.fn();
+  vi.stubGlobal('useHead', head);
   const scope = effectScope();
   scopes.push(scope);
-  return { route, router, states, showError, scope };
+  return { route, router, states, showError, head, scope };
 }
 
-function setup(initialPage = '1', options: { canonical?: Exclude<ListQueryParam, 'page'>[] } = {}) {
+function setup(initialPage = '1') {
   const nuxt = stubNuxt(initialPage);
-  const list = nuxt.scope.run(() => useListPage(options))!;
+  const list = nuxt.scope.run(() => useListPage())!;
   const total = ref<number | undefined>(50);
   const size = ref(24);
   const status = ref('success');
@@ -38,33 +39,29 @@ function setup(initialPage = '1', options: { canonical?: Exclude<ListQueryParam,
   return { ...nuxt, total, size, status, register, list };
 }
 
-describe('canonical parameters of paginated lists', () => {
-  it('keeps page and the list’s own bound parameters on its route only', () => {
-    const state = setup('2', { canonical: ['size', 'disabled'] });
-    const kept = state.scope.run(() => useCanonicalQuery())!;
-    expect(kept.value).toEqual(['page', 'size', 'disabled']);
-    // Client-side navigation to a page that is not a list: the record names another path.
-    state.router.currentRoute.value = { path: '/apps/wechat' };
-    expect(kept.value).toEqual([]);
-    state.router.currentRoute.value = { path: '/apps' };
-    expect(kept.value).toEqual(['page', 'size', 'disabled']);
+describe('empty lists and unknown filter values (S4)', () => {
+  it('keeps an empty list out of the index once its total is known', () => {
+    const state = setup('1');
+    state.total.value = 0;
+    state.register();
+    const head = state.head.mock.calls.at(-1)?.[0] as () => { meta?: { name: string; content: string }[] };
+    expect(head().meta).toEqual([expect.objectContaining({ name: 'robots', content: 'noindex, follow' })]);
+    state.total.value = 3;
+    expect(head().meta).toBeUndefined();
   });
 
-  it('keeps only page by default and follows the path when the list is reused', async () => {
-    const state = setup('2');
-    const kept = state.scope.run(() => useCanonicalQuery())!;
-    expect(kept.value).toEqual(['page']);
-    state.route.path = '/zh/apps';
-    state.router.currentRoute.value = { path: '/zh/apps' };
-    expect(kept.value).toEqual([]);
+  it('answers an unknown sort or filter value with a 404, and accepts it while the known values are unknown', async () => {
+    const state = stubNuxt('1');
+    (state.route.query as Record<string, unknown>).sort = 'bogus';
+    expect(() => state.scope.run(() => useKnownQueryValue('sort', ['popular', 'name']))).toThrow('Page not found');
+    (state.route.query as Record<string, unknown>).sort = 'name';
+    state.scope.run(() => useKnownQueryValue('sort', ['popular', 'name']));
+    const known = ref<string[] | null>(null);
+    (state.route.query as Record<string, unknown>).category = 'browsers';
+    state.scope.run(() => useKnownQueryValue('category', known));
+    known.value = ['developer-tools'];
     await nextTick();
-    expect(kept.value).toEqual(['page']);
-  });
-
-  it('keeps nothing where no list was set up, or where the page number is a 404', () => {
-    const state = stubNuxt('abc');
-    expect(() => state.scope.run(() => useListPage())).toThrow('Page not found');
-    expect(state.scope.run(() => useCanonicalQuery())!.value).toEqual([]);
+    expect(state.showError).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 404, fatal: true }));
   });
 });
 

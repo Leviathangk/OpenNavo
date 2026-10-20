@@ -11,7 +11,7 @@ import (
 )
 
 func validConfig() Config {
-	return Config{AppEnv: "dev", PublicBaseURL: "http://localhost:8080", WebBaseURL: "http://localhost:3000", AdminOrigin: "http://localhost:9527", DatabaseURL: "postgres://localhost:55432/opennavo", RedisURL: "redis://localhost:56379", CDNBaseURL: "http://localhost:9000/opennavo", LLMBaseURL: "https://example.test/v1", HomebrewAPIBase: "https://formulae.brew.sh/api", JWTSecret: strings.Repeat("x", 32), DBMaxOpenConns: 30, JWTAccessTTL: 2 * time.Hour, JWTRefreshTTL: 168 * time.Hour, LLMTimeout: 5 * time.Minute, LLMConcurrency: 4, LLMRPM: 120, LLMMonthlyTokenBudget: 30000000, LLMReasoningEffort: "high", LLMReasoningEffortTranslate: "high", TZSchedule: "Asia/Shanghai", LogLevel: "info"}
+	return Config{AppEnv: "dev", PublicBaseURL: "http://localhost:8080", WebBaseURL: "http://localhost:3000", AdminOrigin: "http://localhost:9527", DatabaseURL: "postgres://localhost:55432/opennavo", RedisURL: "redis://localhost:56379", CDNBaseURL: "http://localhost:9000/opennavo", HomebrewAPIBase: "https://formulae.brew.sh/api", JWTSecret: strings.Repeat("x", 32), DBMaxOpenConns: 30, JWTAccessTTL: 2 * time.Hour, JWTRefreshTTL: 168 * time.Hour, TZSchedule: "Asia/Shanghai", LogLevel: "info"}
 }
 func TestConfigurationValidation(t *testing.T) {
 	cases := []struct {
@@ -20,12 +20,12 @@ func TestConfigurationValidation(t *testing.T) {
 	}{
 		{"CATALOG_KINDS", func(c *Config) { c.CatalogKinds = "cask,formula" }},
 		{"APP_ENV", func(c *Config) { c.AppEnv = "other" }}, {"DATABASE_URL", func(c *Config) { c.DatabaseURL = "mysql://localhost/db" }},
-		{"JWT_SECRET", func(c *Config) { c.JWTSecret = "private-value" }}, {"LLM_API_KEY", func(c *Config) { c.LLMEnabled = true }},
+		{"JWT_SECRET", func(c *Config) { c.JWTSecret = "private-value" }},
 		{"GITHUB_SETTINGS_ENCRYPTION_KEY", func(c *Config) { c.GitHubSettingsEncryptionKey = "short" }},
 		{"SEO_SETTINGS_ENCRYPTION_KEY", func(c *Config) { c.SEOSettingsEncryptionKey = "short" }},
 		{"WEB_INTERNAL_SECRET", func(c *Config) { c.WebInternalSecret = "short" }},
-		{"prod", func(c *Config) { c.AppEnv = "prod" }}, {"duration", func(c *Config) { c.LLMTimeout = 0 }},
-		{"reasoning", func(c *Config) { c.LLMReasoningEffort = "max" }}, {"url", func(c *Config) { c.CDNBaseURL = "file:///tmp" }},
+		{"prod", func(c *Config) { c.AppEnv = "prod" }},
+		{"duration", func(c *Config) { c.JWTAccessTTL = 0 }}, {"url", func(c *Config) { c.CDNBaseURL = "file:///tmp" }},
 		{"timezone", func(c *Config) { c.TZSchedule = "bad-zone" }}, {"log", func(c *Config) { c.LogLevel = "verbose" }},
 	}
 	cfg := validConfig()

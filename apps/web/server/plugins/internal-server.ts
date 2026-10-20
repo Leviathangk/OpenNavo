@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage } from 'node:http';
+import { RequestCounter, countResponse } from '../utils/crawlerMetrics';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const MAX_PATHS = 10000;
@@ -36,14 +37,7 @@ export default defineNitroPlugin(nitroApp => {
   if (import.meta.dev || !Number.isInteger(port) || port <= 0) return;
   const counter = new RequestCounter();
   nitroApp.hooks.hook('afterResponse', event => {
-    // A share-image render fetches its template island and icons in-process with the visitor's
-    // headers; count the visit once, not each internal step.
-    if (event.path.startsWith('/__nuxt_island/') || getHeader(event, 'x-nuxt-og-image')) return;
-    counter.add(
-      agentLabel(getHeader(event, 'user-agent')),
-      routeLabel(event.path),
-      statusLabel(getResponseStatus(event))
-    );
+    countResponse(counter, event);
   });
   const server = createServer(async (request, response) => {
     const reply = (status: number, body?: unknown) => {
@@ -62,11 +56,16 @@ export default defineNitroPlugin(nitroApp => {
     if (request.method === 'POST' && request.url === '/cache/invalidate') {
       if (!authorized(request.headers.authorization, String(config.internalSecret ?? ''))) return reply(401);
       try {
-        const body = (await readJSON(request)) as { paths?: unknown };
+        const body = (await readJSON(request)) as { paths?: unknown; settings?: unknown };
         const paths = Array.isArray(body.paths)
           ? body.paths.filter((path): path is string => typeof path === 'string')
           : [];
         if (!paths.length || paths.length > MAX_PATHS) return reply(400);
+        // S6: a settings change reloads the process copy first, so the pages rebuilt after this purge
+        // render with the new settings; the API keeps its notification until settingsCleared is true.
+        const settings = body.settings === true;
+        const settingsCleared = settings ? await reloadSiteSettings() : undefined;
+        if (settings && !settingsCleared) return reply(503, { removed: 0, settingsCleared: false });
         // getKeys takes a namespace, not a string prefix: list the route caches and filter.
         const storage = useStorage('cache');
         const matches = pageCacheMatcher(paths);
@@ -76,7 +75,7 @@ export default defineNitroPlugin(nitroApp => {
           await storage.removeItem(key);
           removed += 1;
         }
-        return reply(200, { removed });
+        return reply(200, settings ? { removed, settingsCleared: true } : { removed });
       } catch {
         return reply(400);
       }
@@ -93,7 +92,10 @@ export default defineNitroPlugin(nitroApp => {
         if (!paths.length || paths.length > 10) return reply(400);
         const statuses: Record<string, number> = {};
         for (const path of paths) {
-          const result = await nitroApp.localFetch(path, { headers: { accept: 'text/html' }, redirect: 'manual' });
+          const result = await nitroApp.localFetch(path, {
+            headers: { accept: 'text/html', 'user-agent': 'OpenNavo-Probe/1.0' },
+            redirect: 'manual'
+          });
           statuses[path] = result.status;
         }
         return reply(200, { statuses });

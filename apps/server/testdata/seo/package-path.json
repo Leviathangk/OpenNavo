@@ -1,0 +1,9 @@
+[
+  {"path":"/apps/ORDINARY-APP/VERSIONS","token":"ordinary-app","kind":"versions","locale":"en-US","valid":true,"redirect":"/apps/ordinary-app/versions"},
+  {"path":"/JA/apps/ORDINARY-APP/VERSIONS","token":"ordinary-app","kind":"versions","locale":"ja-JP","valid":true,"redirect":"/ja/apps/ordinary-app/versions"},
+  {"path":"/en/apps/ordinary-app/versions","token":"ordinary-app","kind":"versions","locale":"en-US","valid":true,"redirect":"/apps/ordinary-app/versions"},
+  {"path":"/apps/%4Frdinary-app/versions","token":"Ordinary-app","kind":"versions","locale":"en-US","valid":false,"redirect":null},
+  {"path":"/apps/%4frdinary-app/versions","token":"Ordinary-app","kind":"versions","locale":"en-US","valid":false,"redirect":null},
+  {"path":"/apps/%6Frdinary-app/versions","token":"ordinary-app","kind":"versions","locale":"en-US","valid":true,"redirect":"/apps/ordinary-app/versions"},
+  {"path":"/apps/%254Frdinary-app/versions","token":"%4frdinary-app","kind":"versions","locale":"en-US","valid":false,"redirect":null}
+]

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -12,20 +14,27 @@ import (
 )
 
 func localeCodes(t *testing.T) []string {
+	return surfaceLocaleCodes(t, "site")
+}
+
+func surfaceLocaleCodes(t *testing.T, surface string) []string {
 	t.Helper()
 	data, err := os.ReadFile("../../../packages/shared/src/locales.json")
 	require.NoError(t, err)
 	var manifest struct {
 		DefaultLocale string `json:"defaultLocale"`
 		Locales       []struct {
-			Code string `json:"code"`
+			Code     string   `json:"code"`
+			Surfaces []string `json:"surfaces"`
 		} `json:"locales"`
 	}
 	require.NoError(t, json.Unmarshal(data, &manifest))
 	require.Equal(t, "en-US", manifest.DefaultLocale)
-	codes := make([]string, len(manifest.Locales))
-	for index, locale := range manifest.Locales {
-		codes[index] = locale.Code
+	codes := []string{}
+	for _, locale := range manifest.Locales {
+		if slices.Contains(locale.Surfaces, surface) {
+			codes = append(codes, locale.Code)
+		}
 	}
 	return codes
 }
@@ -42,8 +51,8 @@ func loadContract(t *testing.T, name string) *openapi3.T {
 
 func TestLocaleManifestGeneratedConstantsAndBothContractsAgree(t *testing.T) {
 	codes := localeCodes(t)
-	generated := make([]string, len(i18n.Locales))
-	for index, locale := range i18n.Locales {
+	generated := make([]string, len(i18n.SiteLocales))
+	for index, locale := range i18n.SiteLocales {
 		generated[index] = string(locale)
 	}
 	require.Equal(t, codes, generated)
@@ -55,6 +64,11 @@ func TestLocaleManifestGeneratedConstantsAndBothContractsAgree(t *testing.T) {
 			actual[index] = value.(string)
 		}
 		require.Equal(t, codes, actual, name)
+		app := spec.Components.Schemas["AppLocale"].Value.Enum
+		require.Len(t, app, len(i18n.Locales))
+		for index, locale := range i18n.Locales {
+			require.Equal(t, string(locale), app[index])
+		}
 	}
 }
 
@@ -106,7 +120,11 @@ func TestAdminWritesAcceptOnlySourceLanguageAndRejectUnknownLocale(t *testing.T)
 		var body map[string]any
 		require.NoError(t, json.Unmarshal(data, &body))
 		text := body["i18n"].(map[string]any)["zh-CN"]
-		for _, locale := range localeCodes(t) {
+		codes := localeCodes(t)
+		if strings.HasPrefix(name, "DesktopRelease") {
+			codes = surfaceLocaleCodes(t, "app")
+		}
+		for _, locale := range codes {
 			body["sourceLocale"] = locale
 			body["i18n"] = map[string]any{locale: text}
 			require.NoError(t, schema.VisitJSON(body), name+"/"+locale)

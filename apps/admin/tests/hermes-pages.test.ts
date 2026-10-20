@@ -13,7 +13,6 @@ import {
   ownsNotes,
   validateNotes
 } from '../src/views/changelog/release/modules/notes';
-import { defaultRetranslateLocales } from '../src/views/changelog/review/modules/locales';
 
 const api = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn() }));
 vi.mock('@/locales', () => ({ $t: (key: string) => key }));
@@ -197,33 +196,5 @@ describe('Author release notes', () => {
       bodyMarkdown: null,
       publishedAt: null
     });
-  });
-});
-
-describe('Default retranslation selections', () => {
-  const state = (status: string, stale = false) => ({ status, stale, fields: {} });
-  const item = (overrides: Record<string, ReturnType<typeof state>>) =>
-    ({
-      sourceLocale: 'zh-CN',
-      i18n: {
-        'zh-CN': state('source'),
-        'en-US': state('machine'),
-        'ja-JP': state('machine'),
-        'es-ES': state('machine'),
-        'pt-BR': state('machine'),
-        'ru-RU': state('machine'),
-        ...overrides
-      }
-    }) as never;
-
-  it('Select failed, missing, or source-changed locales only', () => {
-    expect(defaultRetranslateLocales(item({ 'ja-JP': state('failed'), 'ru-RU': state('manual', true) }))).toEqual([
-      'ja-JP',
-      'ru-RU'
-    ]);
-  });
-
-  it('Select all non-source locales when none need repair', () => {
-    expect(defaultRetranslateLocales(item({}))).toEqual(['en-US', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU']);
   });
 });

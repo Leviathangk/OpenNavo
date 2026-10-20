@@ -1039,7 +1039,38 @@ const messages: MessageSchema = {
     installDescription:
       'A web page asked to install this on your Mac. Confirm to run the command below; cancel to do nothing.',
     installConfirm: 'Install',
-    formulaUnsupported: 'OpenNavo only lists apps (Homebrew casks). This link points to a command-line tool.'
+    formulaUnsupported: 'OpenNavo only lists apps (Homebrew casks). This link points to a command-line tool.',
+    preview: {
+      invalid: 'This link can’t be opened',
+      invalidBody: 'Its parameters are missing or not in the form OpenNavo accepts, so nothing was done.',
+      startup: {
+        looking: 'Looking for {label} on this Mac…',
+        found: 'Found {count} startup item labeled {label} | Found {count} startup items labeled {label}',
+        foundBody:
+          'Opened from a link as a preview, and nothing has been changed. Several programs can share a label, and malware can copy one, so check the signature, file location and app before you turn it off or remove it.',
+        view: 'View {name}',
+        notFound: 'No startup item labeled {label} is on this Mac',
+        notFoundBody: 'It may not be installed, or macOS may not let OpenNavo read where it lives. Nothing was changed.'
+      },
+      scan: {
+        looking: 'Looking for {token} on this Mac…',
+        title: 'Scan {name}',
+        body: 'Opened from a link as a preview: OpenNavo found this app on your Mac. Nothing is scanned until you choose Scan This App.',
+        action: 'Scan This App',
+        notFound: '{token} isn’t on this Mac',
+        notFoundBody: 'OpenNavo can only scan apps installed on this Mac. Nothing was done.'
+      },
+      uninstall: {
+        title: 'Preview uninstalling {name}',
+        body: 'Opened from a link as a preview, and nothing has been removed. Choose Uninstall to see what would be removed; nothing happens until you confirm.',
+        several: '{count} apps on this Mac match {token}. Choose one to review:',
+        view: 'View {name}',
+        notFound: '{token} isn’t on this Mac',
+        notFoundBody:
+          'It may already be uninstalled, or it was installed in a way OpenNavo can’t match. Nothing was done.',
+        permission: 'Turn on Full Disk Access to preview uninstalling {token}.'
+      }
+    }
   },
   tray: {
     available: '{count} update available | {count} updates available',

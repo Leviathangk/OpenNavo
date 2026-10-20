@@ -32,8 +32,13 @@ import (
 // Expectations are independent of runtime Permissions and database roles, so incorrect configuration cannot also define test expectations.
 func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups := map[string]string{
+		"seo:insight:view":           "getSeoOverview getSeoPage listSeoKeywords listSeoAlerts listSeoGeo getSeoGeo listSeoActions",
+		"seo:keyword:edit":           "upsertSeoKeywords",
+		"seo:task:handle":            "recordSeoGeo claimSeoTasks getSeoTask completeSeoTask deferSeoTask createSeoEvidence compensateSeoAction importSeoTasks",
+		"seo:snippet:propose":        "proposeSnippetTemplate",
+		"seo:automation:tune":        "getSeoAutomation updateSeoAutomation",
 		"":                           "getUserInfo logout getProfile updateProfile changePassword",
-		"dashboard:view":             "getDashboardOverview getLlmUsage",
+		"dashboard:view":             "getDashboardOverview",
 		"catalog:package:view":       "listAdminPackages getAdminPackage listPackageScreenshots listPackageVersions listChangelogSources listAdminReleases getAdminRelease getCategoryTree",
 		"catalog:package:edit":       "updatePackageMeta setPackageCategories",
 		"catalog:asset:upload":       "setPackageIcon deletePackageIcon addPackageScreenshot reorderPackageScreenshots updatePackageScreenshot deletePackageScreenshot listAssets uploadAsset",
@@ -43,7 +48,7 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 		"content:collection:publish": "publishCollection unpublishCollection",
 		"content:feature:edit":       "listFeatures createFeature getFeature updateFeature deleteFeature",
 		"changelog:release:edit":     "updateRelease",
-		"translation:review":         "updatePackageI18n updateReleaseI18n retranslateRelease listTranslationQueue approveTranslations",
+		"translation:review":         "updatePackageI18n updateReleaseI18n listTranslationQueue approveTranslations",
 		"ops:job:view":               "listJobRuns getJobRun listQueues",
 		"ops:job:trigger":            "triggerJob",
 		"ops:search:view":            "listTopQueries listZeroResultQueries listSynonyms",
@@ -55,7 +60,6 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 		"system:user:edit":           "listAdminUsers createAdminUser updateAdminUser deleteAdminUser resetAdminUserPassword forceLogoutAdminUser",
 		"system:role:edit":           "listRoles createRole updateRole deleteRole setRolePermissions listPermissions",
 		"system:audit:view":          "listAuditLogs",
-		"i18n:settings":              "getTranslationSettings updateTranslationSettings listTranslationModels",
 		"system:github:edit":         "getGitHubSettings updateGitHubSettings",
 		"system:seo:edit":            "getSeoSettings updateSeoSettings getPackageIndexStatus setPackageIndexStatus listIndexReport",
 	}
@@ -63,8 +67,12 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups["catalog:package:view"] += " listAdminVersions listAdminCatalogChanges getPackageChangelogSettings getPackageFacts listTapPackages"
 	groups["catalog:package:edit"] += " updatePackageText updatePackageChangelogSettings setPackagePrice setPackageMacosSupport setPackageAlternatives addTapPackage removeTapPackage"
 	groups["catalog:package:edit"] += " listLinkPackages addLinkPackage updateLinkPackage removeLinkPackage upsertUpdateFeed disableUpdateFeed"
+	groups["catalog:package:view"] += " getPackageFactRecords"
+	groups["catalog:package:edit"] += " setPackageFactRecords setBackgroundItem getSeoListingCandidate upsertSeoListingCandidate lockSeoListingBaseline"
+	groups["content:collection:edit"] += " setCollectionSetupCriteria"
+	groups["system:seo:edit"] += " getSeoProvider updateSeoProvider"
 	groups["changelog:release:edit"] += " upsertReleaseNotes"
-	groups["translation:review"] += " listTranslations getTranslationStatus retranslateContent fixTranslation"
+	groups["translation:review"] += " listTranslations getTranslationStatus fixTranslation getTranslationsSource writeTranslations"
 	groups["content:glossary:edit"] = "listGlossary upsertGlossaryTerm deleteGlossaryTerm"
 	groups["content:announcement:edit"] = "getAnnouncement updateAnnouncement"
 	groups["release:desktop:notes"] = "updateDesktopReleaseNotes"
@@ -73,6 +81,8 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups["content:revision:restore"] = "restoreRevision restoreTrash revertRequest"
 	groups["content:article:edit"] = "listAdminArticles createArticle getAdminArticle updateArticle setArticlePackages submitArticleReview revertArticle listArticleAuthors"
 	groups["content:article:publish"] = "publishArticle withdrawArticle restoreArticle setArticleSlug setArticleLocale createArticleAuthor updateArticleAuthor"
+	groups["content:article:edit"] += " listArticleTestArtifacts"
+	groups["content:article:publish"] += " createArticleTestArtifact"
 	// Upload tickets are issued only to Agents and redeemed only with the ticket itself.
 	groups["catalog:asset:upload"] += " createAssetUploadTicket uploadAssetWithTicket"
 	operations := map[string]string{}
@@ -86,7 +96,12 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	ops := []string{"R_ADMIN", "R_OPS"}
 	editorialOps := []string{"R_ADMIN", "R_EDITOR", "R_OPS"}
 	roles := map[string][]string{
-		"": all, "dashboard:view": all, "catalog:package:view": all,
+		"seo:insight:view":    {"R_ADMIN"},
+		"seo:task:handle":     {"R_ADMIN"},
+		"seo:keyword:edit":    {"R_ADMIN"},
+		"seo:snippet:propose": {"R_ADMIN"},
+		"seo:automation:tune": {"R_ADMIN"},
+		"":                    all, "dashboard:view": all, "catalog:package:view": all,
 		"catalog:package:edit": edit, "catalog:asset:upload": edit, "catalog:category:edit": edit,
 		"catalog:package:resync": editorialOps, "content:collection:edit": edit,
 		"content:collection:publish": {"R_ADMIN"}, "content:feature:edit": edit,
@@ -95,7 +110,6 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 		"ops:job:view":           ops, "ops:job:trigger": ops, "ops:search:view": editorialOps,
 		"ops:search:edit": edit, "ops:feedback:handle": editorialOps,
 		"release:desktop:edit": ops, "release:desktop:publish": {"R_ADMIN"}, "system:config:edit": ops,
-		"i18n:settings":        {"R_ADMIN"},
 		"system:github:edit":   {"R_ADMIN"},
 		"system:seo:edit":      {"R_ADMIN"},
 		"content:article:edit": edit, "content:article:publish": {"R_ADMIN"},

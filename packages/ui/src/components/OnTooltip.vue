@@ -7,6 +7,12 @@ export interface OnTooltipProps {
   /** Show delay in milliseconds (08 §8.24: 400). */
   delay?: number;
   disabled?: boolean;
+  /**
+   * Render the description only once the trigger is used, for decorative triggers whose information is on
+   * the page anyway (chart bars with a hidden table). It then never reaches the server-rendered HTML, where
+   * teleports land at the top of the body as the page's first text (C7), and it needs no aria-describedby.
+   */
+  lazy?: boolean;
 }
 
 const props = withDefaults(defineProps<OnTooltipProps>(), { placement: 'top', delay: 400 });
@@ -18,6 +24,8 @@ const id = useId();
 const root = ref<HTMLElement>();
 const tooltip = ref<HTMLElement>();
 const open = ref(false);
+// Lazy tooltips mount their teleport on the first hover or focus; the rest render it with the page.
+const used = ref(!props.lazy);
 const positioned = ref(false);
 const position = ref({ left: '0px', top: '0px' });
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -65,6 +73,7 @@ function listen(active: boolean) {
 
 function show() {
   if (props.disabled || !props.content) return;
+  used.value = true;
   clearTimeout(timer);
   timer = setTimeout(() => {
     positioned.value = false;
@@ -90,7 +99,7 @@ function onKeydown(event: KeyboardEvent) {
 function describeTrigger() {
   const trigger = root.value?.firstElementChild;
   if (!trigger || trigger.id === id) return;
-  if (props.disabled || !props.content) trigger.removeAttribute('aria-describedby');
+  if (props.disabled || !props.content || props.lazy) trigger.removeAttribute('aria-describedby');
   else trigger.setAttribute('aria-describedby', id);
 }
 
@@ -124,7 +133,7 @@ onBeforeUnmount(hide);
   >
     <slot />
   </span>
-  <Teleport to="body">
+  <Teleport v-if="used" to="body">
     <span
       v-show="open"
       :id="id"

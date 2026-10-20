@@ -24,7 +24,6 @@ import (
 	"github.com/opennavo/opennavo/server/internal/http/public"
 	"github.com/opennavo/opennavo/server/internal/service/auth"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
-	"github.com/opennavo/opennavo/server/internal/service/contenttranslate"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/seed"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -109,27 +108,23 @@ func TestContentContractsScheduleWindowBrewfileAndAudit(t *testing.T) {
 	require.Zero(t, residue)
 	callAdmin("PUT", "/collections/"+id+"/items", items, "0000")
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM collection_item_i18n WHERE collection_id=? AND package_id=?", id, appID).Scan(&residue).Error)
-	require.EqualValues(t, 6, residue)
+	require.EqualValues(t, 1, residue)
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM collection_item_i18n WHERE collection_id=? AND package_id=? AND status='pending' AND source_hash IS NOT NULL", id, appID).Scan(&residue).Error)
-	require.EqualValues(t, 5, residue)
+	require.EqualValues(t, 0, residue)
 	collectionID, err := strconv.ParseInt(id, 10, 64)
 	require.NoError(t, err)
 	itemRef := content.Ref{Entity: "collection_item", ID: collectionID, SecondaryID: appID}
 	itemSource, err := st.ReadContentSource(ctx, itemRef)
 	require.NoError(t, err)
-	itemWorker := &contenttranslate.Service{Store: st, LLM: &regenerationGateway{}, Model: "fake"}
-	_, err = itemWorker.Run(ctx, itemRef, itemSource.Hash)
-	require.NoError(t, err)
-	require.NoError(t, st.DB.Raw("SELECT count(*) FROM collection_item_i18n WHERE collection_id=? AND package_id=? AND status='machine'", id, appID).Scan(&residue).Error)
-	require.EqualValues(t, 5, residue)
+	require.Len(t, itemSource.Targets, 9)
 	// Support orphaned hashes left by older implementations: saving identical source text also repairs missing target rows.
 	require.NoError(t, st.DB.Exec("DELETE FROM collection_items WHERE collection_id=? AND package_id=?", id, appID).Error)
 	callAdmin("PUT", "/collections/"+id+"/items", items, "0000")
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM collection_item_i18n WHERE collection_id=? AND package_id=?", id, appID).Scan(&residue).Error)
-	require.EqualValues(t, 6, residue)
+	require.EqualValues(t, 1, residue)
 	// Unchanged saves and reordering must not cascade-delete completed translations or reset translation metadata.
 	for _, locale := range []string{"en-US", "ja-JP", "es-ES", "pt-BR", "ru-RU"} {
-		require.NoError(t, st.DB.Exec(`UPDATE collection_item_i18n SET note=?,status='machine',model='fake',translated_at=now() WHERE collection_id=? AND package_id=? AND locale=?`, "Translated "+locale, id, appID, locale).Error)
+		require.NoError(t, st.DB.Exec(`INSERT INTO collection_item_i18n(note,collection_id,package_id,locale,source_locale,status,model,translated_at) VALUES(?,?,?,?,'zh-CN','machine','fixture',now())`, "Translated "+locale, id, appID, locale).Error)
 	}
 	var translationsBefore, translationsAfter string
 	readTranslations := func(target *string) {

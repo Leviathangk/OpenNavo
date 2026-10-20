@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -11,18 +12,20 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-// lockedCrawlers are search engines and user-requested fetchers. They always use
-// the default robots group, so the settings page cannot limit or block them.
+// lockedCrawlers covers search/index, user-triggered fetchers and existing preview/inspection
+// tools, matching shared/robots.ts. These settings locks do not verify identity or bypass access
+// controls. Training/use tokens stay tunable; only ClaudeBot is limited by default.
 var lockedCrawlers = []string{
 	"googlebot", "googlebot-image", "googlebot-news", "googlebot-video", "storebot-google", "google-inspectiontool", "adsbot-google",
 	"bingbot", "bingpreview", "msnbot", "oai-searchbot", "chatgpt-user", "claude-searchbot", "claude-user",
 	"perplexitybot", "perplexity-user", "duckduckbot", "duckassistbot", "applebot", "yandexbot", "baiduspider",
-	"mistralai-user", "yeti", "*",
+	"meta-webindexer", "meta-externalfetcher", "mistralai-index", "mistralai-user", "yeti", "*",
 }
 
 var (
@@ -104,6 +107,37 @@ func validCrawlerRule(rule *store.SEOCrawlerRule) bool {
 // validateSEOSettings checks the non-secret settings document. Credential presence is
 // checked separately because it depends on stored ciphertexts.
 func validateSEOSettings(s *store.SEOSettings) bool {
+	// Older clients omit additive fields; preserve the safe rollout defaults.
+	if s.Pages.TranslationMode == "" {
+		s.Pages.TranslationMode = "shadow"
+	}
+	if s.Pages.VersionsMinNotesChars == 0 {
+		s.Pages.VersionsMinNotesChars = 300
+	}
+	if s.Pages.TranslationLocales == nil {
+		s.Pages.TranslationLocales = []string{}
+	}
+	if !slices.Contains([]string{"shadow", "enforce"}, s.Pages.TranslationMode) || s.Pages.VersionsMinNotesChars < 1 || s.Pages.VersionsMinNotesChars > 100000 {
+		return false
+	}
+	if s.Pages.OpenLocales == nil {
+		s.Pages.OpenLocales = store.DefaultSEOSettings().Pages.OpenLocales
+	}
+	open := map[string]bool{}
+	for _, locale := range s.Pages.OpenLocales {
+		if !i18n.Valid(locale) || open[locale] {
+			return false
+		}
+		open[locale] = true
+	}
+	languages := map[string]bool{}
+	for _, locale := range s.Pages.TranslationLocales {
+		if !i18n.Valid(locale) || languages[locale] {
+			return false
+		}
+		languages[locale] = true
+	}
+
 	if !validLabel(s.Identity.Name, 60) || len(s.Identity.AlternateNames) > 5 || len(s.Identity.SameAs) > 10 {
 		return false
 	}
@@ -286,13 +320,16 @@ func (s *Service) seoSettings(ctx context.Context, op string, in Input) (any, er
 			return err
 		}
 		// Cached app details carry the index decision; refresh them when the policy changes.
-		if previous.Pages.IndexPolicy != after.Settings.Pages.IndexPolicy {
+		if !reflect.DeepEqual(previous, after.Settings) {
 			// The decision is also embedded in SSR HTML; feed the existing cache-purge worker.
 			if err := tx.WithContext(ctx).Exec(`INSERT INTO catalog_changes(package_id,kind,token,op,reason)
-                SELECT id,kind,token,'upsert','content' FROM packages WHERE kind='cask' AND removed_at IS NULL`).Error; err != nil {
+                SELECT id,kind,token,'upsert','content' FROM packages WHERE kind IN ('cask','link') AND removed_at IS NULL`).Error; err != nil {
 				return err
 			}
-			if err := store.QueueCacheInvalidation(ctx, tx, "seo-policy", cache.PackageDetailPrefix+"*"); err != nil {
+			if err := tx.WithContext(ctx).Exec(`INSERT INTO content_url_changes(paths,announce,purge_sections) VALUES(ARRAY['/','/apps','/browse','/categories','/collections','/articles','/authors','/discover','/rankings','/recent','/about','/download','/security'],false,true)`).Error; err != nil {
+				return err
+			}
+			if err := store.QueueCacheInvalidation(ctx, tx, "seo-settings", cache.PackageDetailPrefix+"*", "c:rel:*", "c:dep:*", "c:home:*", "c:cat:*", "c:coll:*", "c:article:*", "c:author:*", "c:browse:*", "c:site:*"); err != nil {
 				return err
 			}
 		}

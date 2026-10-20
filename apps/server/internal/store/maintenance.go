@@ -63,12 +63,12 @@ func (s *Store) PruneAssets(ctx context.Context, before time.Time, remove func(c
 		count := int64(0)
 		err := s.WithTx(ctx, func(tx *gorm.DB) error {
 			var rows []Asset
-			if err := tx.WithContext(ctx).Raw(`SELECT a.* FROM assets a WHERE a.created_at<? AND NOT EXISTS(SELECT 1 FROM package_meta WHERE icon_asset_id=a.id) AND NOT EXISTS(SELECT 1 FROM package_screenshots WHERE asset_id=a.id) AND NOT EXISTS(SELECT 1 FROM collections WHERE cover_asset_id=a.id) AND NOT EXISTS(SELECT 1 FROM content_revisions WHERE asset_ids @> ARRAY[a.id]) AND NOT EXISTS(SELECT 1 FROM content_trash WHERE expires_at>now() AND asset_ids @> ARRAY[a.id]) ORDER BY a.id LIMIT 50 FOR UPDATE OF a SKIP LOCKED`, before).Scan(&rows).Error; err != nil {
+			if err := tx.WithContext(ctx).Raw(`SELECT a.* FROM assets a WHERE a.created_at<? AND NOT EXISTS(SELECT 1 FROM package_meta WHERE icon_asset_id=a.id) AND NOT EXISTS(SELECT 1 FROM package_screenshots WHERE asset_id=a.id) AND NOT EXISTS(SELECT 1 FROM collections WHERE cover_asset_id=a.id) AND NOT EXISTS(SELECT 1 FROM article_revisions WHERE cover_asset_id=a.id) AND NOT EXISTS(SELECT 1 FROM article_authors WHERE avatar_asset_id=a.id) AND NOT EXISTS(SELECT 1 FROM content_revisions WHERE asset_ids @> ARRAY[a.id]) AND NOT EXISTS(SELECT 1 FROM content_trash WHERE expires_at>now() AND asset_ids @> ARRAY[a.id]) ORDER BY a.id LIMIT 50 FOR UPDATE OF a SKIP LOCKED`, before).Scan(&rows).Error; err != nil {
 				return err
 			}
 			for _, asset := range rows {
 				var referenced bool
-				if err := tx.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM package_meta WHERE icon_asset_id=? UNION ALL SELECT 1 FROM package_screenshots WHERE asset_id=? UNION ALL SELECT 1 FROM collections WHERE cover_asset_id=? UNION ALL SELECT 1 FROM content_revisions WHERE asset_ids @> ARRAY[?::bigint] UNION ALL SELECT 1 FROM content_trash WHERE expires_at>now() AND asset_ids @> ARRAY[?::bigint])`, asset.ID, asset.ID, asset.ID, asset.ID, asset.ID).Scan(&referenced).Error; err != nil {
+				if err := tx.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM package_meta WHERE icon_asset_id=? UNION ALL SELECT 1 FROM package_screenshots WHERE asset_id=? UNION ALL SELECT 1 FROM collections WHERE cover_asset_id=? UNION ALL SELECT 1 FROM article_revisions WHERE cover_asset_id=? UNION ALL SELECT 1 FROM article_authors WHERE avatar_asset_id=? UNION ALL SELECT 1 FROM content_revisions WHERE asset_ids @> ARRAY[?::bigint] UNION ALL SELECT 1 FROM content_trash WHERE expires_at>now() AND asset_ids @> ARRAY[?::bigint])`, asset.ID, asset.ID, asset.ID, asset.ID, asset.ID, asset.ID, asset.ID).Scan(&referenced).Error; err != nil {
 					return err
 				}
 				if referenced {

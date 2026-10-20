@@ -23,13 +23,13 @@ func TestCatalogRetriesInvalidationAfterCommittedSync(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
-			st := testutil.NewStore(t)
+			st := testutil.NewFactsStore(t)
 			redis := st.Redis
 			defer func() { st.Redis = redis }()
 			stop, err := cache.Subscribe(ctx, redis, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			require.NoError(t, err)
 			defer stop()
-			keys := []string{"c:pkg:c4:cask:sample:en-US", "c:rank:sentinel", "c:home:sentinel", "c:cat:sentinel", "c:sug:sentinel", "c:dep:sentinel", "c:related:sentinel"}
+			keys := []string{"c:pkg:c5:cask:sample:en-US", "c:rank:sentinel", "c:home:sentinel", "c:cat:sentinel", "c:sug:sentinel", "c:dep:sentinel", "c:related:sentinel"}
 			for _, key := range keys {
 				require.NoError(t, redis.Set(ctx, key, "old", time.Hour).Err())
 			}
@@ -43,7 +43,9 @@ func TestCatalogRetriesInvalidationAfterCommittedSync(t *testing.T) {
 			require.NoError(t, st.DB.Table("packages").Where("token='sample'").Count(&count).Error)
 			require.EqualValues(t, 1, count, "catalog committed before publication failed")
 			require.NoError(t, st.DB.Table("job_outbox").Where("job_type='cache:invalidate'").Count(&count).Error)
-			require.EqualValues(t, 1, count)
+			var invalidations []struct{ UniqueKey, Payload string }
+			require.NoError(t, st.DB.Raw("SELECT unique_key,payload::text FROM job_outbox WHERE job_type='cache:invalidate' ORDER BY unique_key").Scan(&invalidations).Error)
+			require.EqualValues(t, 1, count, "pending invalidations: %+v", invalidations)
 			require.EqualValues(t, len(keys), redis.Exists(ctx, keys...).Val())
 
 			st.Redis = redis

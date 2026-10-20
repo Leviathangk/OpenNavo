@@ -14,15 +14,16 @@ import (
 	"github.com/opennavo/opennavo/server/internal/config"
 	httpserver "github.com/opennavo/opennavo/server/internal/http"
 	"github.com/opennavo/opennavo/server/internal/http/public"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAnnouncementRepairsNonObjectAndSchedulesBeforeWorker(t *testing.T) {
+func TestAnnouncementRepairsNonObjectWithoutAutomaticTranslation(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
+	st := testutil.NewFactsStore(t)
 	manager := &management.Service{Store: st}
 	pub := &catalog.PublicService{Store: st}
 	app, err := httpserver.New(config.Config{}, slog.New(slog.NewTextHandler(io.Discard, nil)), st, httpserver.Dependencies{Public: &public.Handler{Catalog: pub}})
@@ -96,9 +97,9 @@ func TestAnnouncementRepairsNonObjectAndSchedulesBeforeWorker(t *testing.T) {
 				view := result.(map[string]any)
 				require.Equal(t, enabled, view["enabled"])
 				locales := view["i18n"].(map[string]any)
-				require.Len(t, locales, 6)
+				require.Len(t, locales, len(i18n.SiteLocales))
 				for locale, row := range locales {
-					expected := "pending"
+					expected := "missing"
 					if locale == "zh-CN" {
 						expected = "source"
 					}
@@ -107,7 +108,7 @@ func TestAnnouncementRepairsNonObjectAndSchedulesBeforeWorker(t *testing.T) {
 				var counts struct{ Sources, Jobs int64 }
 				require.NoError(t, st.DB.Raw("SELECT (SELECT count(*) FROM content_translation_sources WHERE entity='announcement') sources,(SELECT count(*) FROM job_outbox WHERE unique_key='translate:content:announcement:desktop.announcement' AND job_type='translate:content') jobs").Scan(&counts).Error)
 				require.EqualValues(t, 1, counts.Sources)
-				require.EqualValues(t, 1, counts.Jobs)
+				require.Zero(t, counts.Jobs)
 				readPublic(t, enabled, title)
 			}
 		})

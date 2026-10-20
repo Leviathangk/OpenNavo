@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import type { PackageDetail } from '@opennavo/api';
 import { OnCodeText, parseInline } from '@opennavo/ui';
+import type { PackagePage } from '~/utils/packageFacts';
 import { faqItems } from '~/utils/packageFaq';
 import type { FaqTranslate } from '~/utils/packageFaq';
 
-// Questions people search for about a Mac app, answered from recorded facts (utils/packageFaq).
+// Questions people search for about a Mac app, answered from the same facts as the page's blocks
+// (utils/packageFaq, T2): only verified facts answer, so no answer contradicts the facts table above it.
 // Each question is a heading and every answer is in the server-rendered HTML even while collapsed.
 // Google no longer shows FAQ rich results, so there is no FAQPage markup.
-const props = defineProps<{ pkg: PackageDetail }>();
+const props = defineProps<{ pkg: PackagePage }>();
 
 const { t, locale } = useI18n();
 const translate: FaqTranslate = (key, named = {}, plural) =>
@@ -20,12 +21,13 @@ const items = computed(() =>
 <template>
   <section
     v-if="items.length"
+    id="faq"
     class="rounded-big border border-solid border-line-subtle bg-surface-card px-18px py-12px"
     aria-labelledby="package-faq-title"
     data-testid="package-faq"
   >
     <h2 id="package-faq-title" class="m-0 py-4px text-13.5px font-600 text-ink-primary">
-      {{ t('package.faq.title') }}
+      {{ t('package.faq.titleFor', { name: pkg.displayName }) }}
     </h2>
     <details
       v-for="item in items"

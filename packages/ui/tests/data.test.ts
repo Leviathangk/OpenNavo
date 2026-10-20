@@ -177,6 +177,18 @@ describe('OnHBarChart', () => {
     expect(wrapper.text()).toContain('1.7万');
   });
 
+  it('Leaves no tooltip text in the page until a bar is hovered (C7)', () => {
+    const wrapper = mount(OnHBarChart, { props: { items, caption: '月均安装量' }, attachTo: document.body });
+    expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
+    wrapper.unmount();
+    const stack = mount(OnStackBar, {
+      props: { caption: '存储', items: [{ key: 'app', label: 'App', value: 1 }] },
+      attachTo: document.body
+    });
+    expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
+    stack.unmount();
+  });
+
   it('Provides a hidden table with complete values and the maximum', () => {
     const wrapper = mount(OnHBarChart, { props: { items, caption: '月均安装量', max: 80000 } });
     const table = wrapper.get('table');

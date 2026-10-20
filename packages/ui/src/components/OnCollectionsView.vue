@@ -5,7 +5,7 @@ import type { OnCollectionIcon } from './OnCollectionCard.vue';
 import OnPageHeader from './OnPageHeader.vue';
 import OnSkeleton from './OnSkeleton.vue';
 
-// Shared collections (ADR-017): title, card grid, footer with web pagination.
+// Shared collections (ADR-017): title, card grid, footer with web pagination. Card titles are h2 under the h1.
 export interface OnCollectionsItem {
   key: string;
   title: string;
@@ -51,6 +51,7 @@ defineSlots<{
         :icons="item.icons"
         :href="item.href"
         :link-as="linkAs"
+        :heading-level="2"
       />
     </div>
     <slot v-else name="empty" />

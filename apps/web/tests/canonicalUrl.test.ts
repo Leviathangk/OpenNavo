@@ -23,6 +23,26 @@ describe('One-hop canonical page URLs', () => {
     for (const [from, to] of cases) expect(canonicalRequestUrl(from), from).toBe(to);
   });
 
+  it('drops returnTo and moves sized grid pages to the default page holding the same first app (S2, S3)', () => {
+    const cases: [string, string | undefined][] = [
+      ['/apps?size=25&page=3', '/apps?page=3'],
+      ['/recent?page=2&size=48', '/recent?page=3'],
+      ['/recent?size=12&page=2', '/recent'],
+      ['/zh/categories/browsers?size=24&page=2', '/zh/categories/browsers?page=2'],
+      ['/apps?size=abc&page=4', '/apps?page=4'],
+      ['/apps?disabled=1&size=30&page=9', '/apps?disabled=1&page=11'],
+      ['/apps/perforce?returnTo=%2Frecent%3Fpage%3D2', '/apps/perforce'],
+      ['/zh/apps/perforce/versions?returnTo=/recent&page=2', '/zh/apps/perforce/versions?page=2'],
+      ['/Apps/Perforce/?returnTo=/recent', '/apps/perforce'],
+      // Other pages and other parameters keep their query exactly.
+      ['/search?q=a%2Bb&size=50', undefined],
+      ['/apps/perforce/versions?size=10', undefined],
+      ['/apps?page=2', undefined],
+      ['/_nuxt/entry.js?returnTo=x', undefined]
+    ];
+    for (const [from, to] of cases) expect(canonicalRequestUrl(from), from).toBe(to);
+  });
+
   it('spells out escaped tokens in the same hop', () => {
     expect(canonicalRequestUrl('/zh/apps/plus-app%2B%2B/versions?source=a%2Bb')).toBe(
       '/zh/apps/plus-app++/versions?source=a%2Bb'
@@ -93,4 +113,10 @@ describe('One-hop canonical page URLs', () => {
       .filter(name => name !== 'index');
     expect([...PAGE_SECTIONS].sort()).toEqual([...new Set(sections)].sort());
   });
+});
+
+it('preserves case-sensitive background item identifiers while normalizing route segments', () => {
+  expect(canonicalRequestUrl('/background-items/com.Vendor.Agent')).toBeUndefined();
+  expect(canonicalRequestUrl('/EN/Background-Items/com.Vendor.Agent/')).toBe('/background-items/com.Vendor.Agent');
+  expect(canonicalRequestUrl('/ZH/Background-Items/com.Vendor.Agent/')).toBe('/zh/background-items/com.Vendor.Agent');
 });

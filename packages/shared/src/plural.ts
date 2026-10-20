@@ -1,8 +1,8 @@
-import { LOCALES, LOCALE_METADATA } from './locales.gen';
-import type { LocaleCode } from './locales.gen';
+import { SITE_LOCALES, LOCALE_METADATA } from './locales.gen';
+import type { SiteLocaleCode } from './locales.gen';
 
 /** Category order comes from the manifest; use other for undeclared CLDR categories. */
-export function pluralIndex(count: number, locale: LocaleCode): number {
+export function pluralIndex(count: number, locale: SiteLocaleCode): number {
   const categories: readonly string[] = LOCALE_METADATA[locale].pluralCategories;
   const category = new Intl.PluralRules(locale).select(count);
   const index = categories.indexOf(category);
@@ -11,7 +11,7 @@ export function pluralIndex(count: number, locale: LocaleCode): number {
 
 /** Map vue-i18n web route codes to the same rules. */
 export const pluralRules = Object.fromEntries(
-  LOCALES.flatMap(locale => {
+  SITE_LOCALES.flatMap(locale => {
     const rule = (count: number, length: number) => (length === 1 ? 0 : pluralIndex(count, locale));
     return [
       [locale, rule],
@@ -21,7 +21,7 @@ export const pluralRules = Object.fromEntries(
 );
 
 /** Shared display components have no vue-i18n instance; select forms using identical categories. */
-export function selectPlural(message: string, count: number, locale: LocaleCode): string {
+export function selectPlural(message: string, count: number, locale: SiteLocaleCode): string {
   const forms = message.split('|');
   return forms.length === 1
     ? message

@@ -1128,7 +1128,7 @@ export type LinkInfo = {
 
 export type LinkOpenTarget = LinkDestination | { asset: string };
 
-export type LinkPricing = "free" | "paid" | "freemium" | "subscription" | "open_source";
+export type LinkPricing = "free" | "paid" | "freemium" | "subscription" | "open_source" | "unknown";
 
 export type ListQuery = {
 	kind: Kind | null,

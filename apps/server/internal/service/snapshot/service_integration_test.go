@@ -207,6 +207,12 @@ func TestV2SparsePacksCategoryChangesAndInterruptedPublication(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, latest.FormatVersion)
 	require.NotNil(t, latest.TextPacks)
+	manifest, err := json.Marshal(latest.TextPacks)
+	require.NoError(t, err)
+	var packs map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(manifest, &packs))
+	require.Len(t, packs, 6)
+	require.NotContains(t, packs, "de-DE")
 	spec, err := publicapi.GetSpec()
 	require.NoError(t, err)
 	for key, data := range objects.memoryObjects {

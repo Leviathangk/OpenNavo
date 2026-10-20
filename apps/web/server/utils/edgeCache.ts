@@ -65,8 +65,8 @@ export function edgeCacheHeader(input: EdgeCacheInput): string | undefined {
     input.status === 200 &&
     !input.setCookie &&
     !input.authorization &&
-    // Only pages the origin already caches as shared (SWR route rules set s-maxage); search and
-    // collections send no-store and stay uncached.
+    // Only pages the origin already caches as shared (SWR route rules set s-maxage); search sends
+    // no-store and stays uncached. Collection pages are origin-cached (X5) but not on this edge list yet.
     /\bs-maxage=\d+/.test(input.cacheControl) &&
     !/\b(no-store|private|no-cache)\b/.test(input.cacheControl) &&
     EDGE_CACHE_ROUTES.has(edgeRouteType(input.path));

@@ -10,6 +10,9 @@ export function isPackageKind(value: unknown): value is PackageKind {
 /** Kinds Homebrew installs; link apps only open their download page. */
 export const isInstallableKind = (kind: PackageKind): kind is 'cask' | 'formula' => kind !== 'link';
 
-/** UI locales generated from the six-language manifest. */
+/** App UI locales (six): desktop, admin UI, native menus, server messages, client release notes. */
 export type { LocaleCode as Locale } from './locales.gen';
-export { LOCALES } from './locales.gen';
+export { LOCALES, APP_LOCALES } from './locales.gen';
+/** Website and content locales (ten): the app locales plus de-DE, fr-FR, it-IT and zh-Hant. */
+export type { SiteLocaleCode as SiteLocale } from './locales.gen';
+export { SITE_LOCALES } from './locales.gen';

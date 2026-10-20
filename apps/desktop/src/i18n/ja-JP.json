@@ -31,6 +31,30 @@
     "withdrawnBody": "内容が古くなったか正確でなくなった可能性があるため、公開を終了しました。ほかの記事もご覧ください。",
     "backToList": "すべての記事を見る"
   },
+  "brewfile": {
+    "installTitle": "リストのアプリをインストール",
+    "title": "マイリスト",
+    "description": "アプリを保存して、まとめてインストールまたは書き出せます。このリストはこの端末にのみ保存されます。",
+    "count": "{count}項目",
+    "emptyTitle": "リストは空です",
+    "emptyDescription": "アプリの詳細ページ、またはインストール済みアプリのメニューで「リストに追加」を選択してください。",
+    "browse": "アプリを探す",
+    "fileTitle": "OpenNavoが生成",
+    "download": "Brewfileを書き出す",
+    "moveUp": "{name}を上へ移動",
+    "moveDown": "{name}を下へ移動",
+    "remove": "リストから{name}を削除",
+    "add": "リストに追加",
+    "inList": "追加済み",
+    "removeShort": "リストから削除",
+    "added": "リストに追加しました",
+    "full": "最大200件です。先にアプリを削除してください。",
+    "saveFailed": "リストを保存または読み込めません。ストレージを確認して再試行してください。",
+    "install": "{count}個をインストール",
+    "installHint": "インストール済み、待機中、利用不可のアプリはスキップします。",
+    "copy": "Brewfileをコピー",
+    "exported": "Brewfileを書き出しました"
+  },
   "app": {
     "name": "OpenNavo"
   },
@@ -610,7 +634,6 @@
     "patch": "パッチ",
     "empty": "すべて最新です",
     "emptyHint": "新しいバージョンがあればここに表示されます",
-    "queued": "キューに追加しました：{count}個",
     "source": {
       "homebrew": "Homebrew",
       "mas": "App Store",
@@ -693,6 +716,7 @@
       "vendor": "開発元のサイト",
       "vendorHint": "OpenNavo が管理するルールに従い、開発元の署名を確認します"
     },
+    "queued": "キューに追加しました：{count}個",
     "history": {
       "recheck": "再確認",
       "title": "更新履歴",
@@ -798,6 +822,38 @@
       "deleteMode": "削除方法",
       "deleteModeHint": "ゴミ箱への移動は取り消せます。すぐに削除すると容量がすぐ空きます"
     },
+    "customMirrors": {
+      "add": "カスタムソースを追加",
+      "edit": "カスタムソースを編集",
+      "delete": "カスタムソースを削除",
+      "actions": "{name} を管理",
+      "local": "この Mac のみ",
+      "localHint": "カスタムソースはこの Mac にのみ保存され、アップロードや同期はされません。",
+      "fallback": "空欄のアドレスには公式ソースを使用します。",
+      "officialFallback": "公式ソースを使用",
+      "name": "名前",
+      "apiDomain": "API URL",
+      "bottleDomain": "ボトル配信先 URL",
+      "brewGitRemote": "brew Git リポジトリ URL",
+      "coreGitRemote": "core Git リポジトリ URL",
+      "advanced": "詳細設定 · Git リポジトリ",
+      "check": "接続を確認",
+      "probeHint": "各アドレスへの接続を確認します。ダウンロードの成功を保証するものではありません。",
+      "untested": "未確認",
+      "success": "接続可能",
+      "failure": "接続失敗",
+      "checkFailed": "接続できません：{fields}",
+      "save": "変更を保存",
+      "saveAndUse": "保存して使用",
+      "nameRequired": "名前を入力してください。",
+      "nameInvalid": "制御文字を含まない 120 文字以内の名前を入力してください。",
+      "urlInvalid": "認証情報やフラグメントを含まない HTTP または HTTPS URL を入力してください。",
+      "apiQueryInvalid": "API アドレスにクエリパラメーターは使用できません。? を含まないベース URL を入力してください。",
+      "addressRequired": "カスタムアドレスを少なくとも 1 つ入力してください。",
+      "deleteConfirm": "この Mac から「{name}」を削除しますか？",
+      "deleteActive": "このソースは使用中です。削除すると公式ソースに切り替わります。",
+      "limit": "カスタムソースは {count} 個まで保存できます。"
+    },
     "mirrors": {
       "title": "ダウンロードソース",
       "description": "APIメタデータ、Bottleバイナリパッケージ、brew自体のGitリポジトリにも適用されます。",
@@ -841,39 +897,7 @@
       "catalog": "ローカルカタログ：{count}個のパッケージ、同期日時 {time}",
       "sync": "今すぐ同期"
     },
-    "saved": "保存しました",
-    "customMirrors": {
-      "add": "カスタムソースを追加",
-      "edit": "カスタムソースを編集",
-      "delete": "カスタムソースを削除",
-      "actions": "{name} を管理",
-      "local": "この Mac のみ",
-      "localHint": "カスタムソースはこの Mac にのみ保存され、アップロードや同期はされません。",
-      "fallback": "空欄のアドレスには公式ソースを使用します。",
-      "officialFallback": "公式ソースを使用",
-      "name": "名前",
-      "apiDomain": "API URL",
-      "bottleDomain": "ボトル配信先 URL",
-      "brewGitRemote": "brew Git リポジトリ URL",
-      "coreGitRemote": "core Git リポジトリ URL",
-      "advanced": "詳細設定 · Git リポジトリ",
-      "check": "接続を確認",
-      "probeHint": "各アドレスへの接続を確認します。ダウンロードの成功を保証するものではありません。",
-      "untested": "未確認",
-      "success": "接続可能",
-      "failure": "接続失敗",
-      "checkFailed": "接続できません：{fields}",
-      "save": "変更を保存",
-      "saveAndUse": "保存して使用",
-      "nameRequired": "名前を入力してください。",
-      "nameInvalid": "制御文字を含まない 120 文字以内の名前を入力してください。",
-      "urlInvalid": "認証情報やフラグメントを含まない HTTP または HTTPS URL を入力してください。",
-      "apiQueryInvalid": "API アドレスにクエリパラメーターは使用できません。? を含まないベース URL を入力してください。",
-      "addressRequired": "カスタムアドレスを少なくとも 1 つ入力してください。",
-      "deleteConfirm": "この Mac から「{name}」を削除しますか？",
-      "deleteActive": "このソースは使用中です。削除すると公式ソースに切り替わります。",
-      "limit": "カスタムソースは {count} 個まで保存できます。"
-    }
+    "saved": "保存しました"
   },
   "mirrors": {
     "official": "公式",
@@ -1001,7 +1025,36 @@
     "installTitle": "{name} をインストールしますか？",
     "installDescription": "Webページから、この Mac へのインストールが要求されました。確認すると以下のコマンドを実行します。キャンセルすると何も行いません。",
     "installConfirm": "インストール",
-    "formulaUnsupported": "OpenNavo で扱うのは App（Homebrew Cask）のみです。このリンク先はコマンドラインツールです。"
+    "formulaUnsupported": "OpenNavo で扱うのは App（Homebrew Cask）のみです。このリンク先はコマンドラインツールです。",
+    "preview": {
+      "invalid": "このリンクは開けません",
+      "invalidBody": "リンクのパラメータが足りないか、OpenNavo が受け付ける形式ではありません。何も実行していません。",
+      "startup": {
+        "looking": "この Mac で {label} を探しています…",
+        "found": "ラベルが {label} の起動項目が {count} 件見つかりました",
+        "foundBody": "Web から開いたプレビューで、まだ何も変更していません。同じラベルを複数のプログラムが共有していることや、マルウェアが偽装していることもあります。停止や削除の前に、署名、ファイルの場所、所属する App を確認してください。",
+        "view": "{name} を表示",
+        "notFound": "この Mac にはラベルが {label} の起動項目はありません",
+        "notFoundBody": "インストールされていないか、macOS がその場所の読み取りを OpenNavo に許可していない可能性があります。何も変更していません。"
+      },
+      "scan": {
+        "looking": "この Mac で {token} を探しています…",
+        "title": "{name} をスキャン",
+        "body": "Web から開いたプレビューです。OpenNavo はこの Mac でこの App を見つけました。「この App をスキャン」を選ぶまでスキャンは始まりません。",
+        "action": "この App をスキャン",
+        "notFound": "この Mac に {token} は見つかりません",
+        "notFoundBody": "OpenNavo がスキャンできるのは、この Mac にインストール済みの App だけです。何も実行していません。"
+      },
+      "uninstall": {
+        "title": "{name} のアンインストールをプレビュー",
+        "body": "Web から開いたプレビューで、まだ何も削除していません。「アンインストール」を選ぶと、まず削除する内容が一覧表示され、確認するまで実行されません。",
+        "several": "この Mac には {token} に当たる App が {count} 個あります。確認するものを選んでください：",
+        "view": "{name} を表示",
+        "notFound": "この Mac に {token} は見つかりません",
+        "notFoundBody": "すでにアンインストールされているか、OpenNavo が判別できない方法でインストールされた可能性があります。何も実行していません。",
+        "permission": "{token} のアンインストールをプレビューするには、フルディスクアクセスをオンにしてください。"
+      }
+    }
   },
   "tray": {
     "available": "利用可能な更新が{count}件あります",
@@ -1034,17 +1087,6 @@
     "discard": "破棄"
   },
   "updater": {
-    "title": "クライアントのアップデート",
-    "current": "現在のバージョン {version}",
-    "check": "更新を確認",
-    "latest": "最新バージョンです",
-    "available": "新しいバージョン {version}",
-    "install": "ダウンロードしてインストール",
-    "downloading": "ダウンロード中 {percent}",
-    "installed": "インストール済みです。再起動後に有効になります",
-    "restart": "再起動",
-    "busy": "タスクの実行中です。完了してから再起動してください",
-    "failed": "アップデートの確認に失敗しました",
     "autoCheck": "OpenNavo の更新を自動確認",
     "autoCheckHint": "起動後に確認します。正常な確認は1日1回です。",
     "foundTitle": "新しいバージョンがあります",
@@ -1061,7 +1103,18 @@
     "viewUpdate": "更新を表示",
     "previewHint": "開発プレビュー：ダウンロードとインストールの進行状況を再現するだけで、実際には更新しません。再起動してもプレビューを閉じるだけで、もう一度表示できます。",
     "previewNotes": "- おすすめコレクションのレイアウトをコンパクトにし、より多くの App を表示\n- OpenNavo の新しいバージョンを毎日自動で確認\n- 既知の問題を修正し、使い勝手を改善",
-    "previewFailure": "ダウンロード失敗をシミュレート"
+    "previewFailure": "ダウンロード失敗をシミュレート",
+    "title": "クライアントのアップデート",
+    "current": "現在のバージョン {version}",
+    "check": "更新を確認",
+    "latest": "最新バージョンです",
+    "available": "新しいバージョン {version}",
+    "install": "ダウンロードしてインストール",
+    "downloading": "ダウンロード中 {percent}",
+    "installed": "インストール済みです。再起動後に有効になります",
+    "restart": "再起動",
+    "busy": "タスクの実行中です。完了してから再起動してください",
+    "failed": "アップデートの確認に失敗しました"
   },
   "palette": {
     "placeholder": "App または操作を検索",
@@ -1150,8 +1203,6 @@
     "E_MAS_OTHER_ACCOUNT": "この App は別の Apple アカウントで購入されています。App Store でアップデートしてください",
     "E_MAS_REGION": "この App は現在のストアの地域では入手できません",
     "E_MAS_RATE_LIMITED": "App Store へのリクエストが多すぎます。1 分ほど待ってからもう一度お試しください",
-    "E_MAS_ENGINE": "App Store のダウンロード機能でエラーが発生しました。App Store で操作を完了してください",
-    "E_MAS_HELPER_MISSING": "この OpenNavo には App Store のダウンロードコンポーネントがありません。完全な OpenNavo アプリを再インストールするか、App Store で操作を完了してください",
     "E_UPDATE_INTEGRITY": "ダウンロードしたアップデートが整合性チェックに失敗したため、インストールしませんでした",
     "E_UPDATE_TEAM_MISMATCH": "新しいバージョンの開発元署名がインストール済みのものと異なるため、インストールしませんでした",
     "E_UPDATE_NOT_NOTARIZED": "新しいバージョンが Apple の公証を受けていないため、インストールしませんでした",
@@ -1163,6 +1214,8 @@
     "E_ADMIN_CANCELED": "管理者の認証がキャンセルされました",
     "E_NOT_IMPLEMENTED": "この機能はまだ利用できません",
     "E_DOWNLOAD_UNSAFE": "このインストーラは確認を通過しなかったため、開けませんでした",
+    "E_MAS_ENGINE": "App Store のダウンロード機能でエラーが発生しました。App Store で操作を完了してください",
+    "E_MAS_HELPER_MISSING": "この OpenNavo には App Store のダウンロードコンポーネントがありません。完全な OpenNavo アプリを再インストールするか、App Store で操作を完了してください",
     "E_NOT_INSTALLABLE": "この App は公式サイトからダウンロードするもので、Homebrew ではインストールできません",
     "E_LINK_URL": "このダウンロード先は登録されていないため、開きませんでした",
     "E_APP_RUNNING": "アプリが実行中です。更新を延期しました。アプリを終了して、もう一度お試しください。",
@@ -1258,30 +1311,6 @@
   },
   "page": {
     "comingSoon": "ページの内容は後続のタスクで追加されます。"
-  },
-  "brewfile": {
-    "title": "マイリスト",
-    "description": "アプリを保存して、まとめてインストールまたは書き出せます。このリストはこの端末にのみ保存されます。",
-    "count": "{count}項目",
-    "emptyTitle": "リストは空です",
-    "emptyDescription": "アプリの詳細ページ、またはインストール済みアプリのメニューで「リストに追加」を選択してください。",
-    "browse": "アプリを探す",
-    "fileTitle": "OpenNavoが生成",
-    "download": "Brewfileを書き出す",
-    "moveUp": "{name}を上へ移動",
-    "moveDown": "{name}を下へ移動",
-    "remove": "リストから{name}を削除",
-    "add": "リストに追加",
-    "inList": "追加済み",
-    "removeShort": "リストから削除",
-    "added": "リストに追加しました",
-    "full": "最大200件です。先にアプリを削除してください。",
-    "saveFailed": "リストを保存または読み込めません。ストレージを確認して再試行してください。",
-    "install": "{count}個をインストール",
-    "installHint": "インストール済み、待機中、利用不可のアプリはスキップします。",
-    "copy": "Brewfileをコピー",
-    "exported": "Brewfileを書き出しました",
-    "installTitle": "リストのアプリをインストール"
   },
   "appInfo": {
     "title": "情報",
@@ -1410,6 +1439,7 @@
       "appManagement": "Homebrew以外でインストールしたAppを削除するには、OpenNavoにAppの管理を許可する必要があります。",
       "incomplete": "フルディスクアクセスがないため、{count}か所を確認できませんでした：{paths}。オンにすると、より徹底的に整理できます。",
       "running": "{names}は実行中のため、アンインストール前に終了します。",
+      "siblings": "同じHomebrewパッケージ（{cask}）の{names}も一緒にアンインストールされます。",
       "brewSudo": "Homebrewのアンインストール手順で、管理者パスワードを別途求められることがあります。",
       "personal": {
         "chat_history": "{name}のAppデータにはチャット履歴、画像、ファイルが含まれています（約 {size}）。残したい場合は、先にAppでバックアップしてください。",
@@ -1419,8 +1449,7 @@
         "vm_disk": "{name}のAppデータには仮想マシンのディスク、イメージ、ボリュームが含まれています（約 {size}）。削除後は再ダウンロードが必要です。",
         "other": "{name}のAppデータに個人的な内容が含まれている可能性があります（約 {size}）。残したい場合は、先にバックアップしてください。"
       },
-      "uninstaller": "{name}には公式のアンインストーラがあり、ライセンスや共有コンポーネントもまとめて処理できます。",
-      "siblings": "同じHomebrewパッケージ（{cask}）の{names}も一緒にアンインストールされます。"
+      "uninstaller": "{name}には公式のアンインストーラがあり、ライセンスや共有コンポーネントもまとめて処理できます。"
     },
     "mode": {
       "label": "削除方法",

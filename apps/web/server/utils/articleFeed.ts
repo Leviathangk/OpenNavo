@@ -1,12 +1,16 @@
 import type { PublicComponents } from '@opennavo/api';
 import type { H3Event } from 'h3';
-import { LOCALES, LOCALE_METADATA, type Locale } from '@opennavo/shared';
+import { SITE_LOCALES, LOCALE_METADATA, type SiteLocale as Locale } from '@opennavo/shared';
 import enUS from '../../i18n/locales/en-US.json';
 import esES from '../../i18n/locales/es-ES.json';
 import jaJP from '../../i18n/locales/ja-JP.json';
 import ptBR from '../../i18n/locales/pt-BR.json';
 import ruRU from '../../i18n/locales/ru-RU.json';
 import zhCN from '../../i18n/locales/zh-CN.json';
+import deDE from '../../i18n/locales/de-DE.json';
+import frFR from '../../i18n/locales/fr-FR.json';
+import itIT from '../../i18n/locales/it-IT.json';
+import zhHant from '../../i18n/locales/zh-Hant.json';
 
 type ArticleCard = PublicComponents['schemas']['ArticleCard'];
 
@@ -14,18 +18,22 @@ type ArticleCard = PublicComponents['schemas']['ArticleCard'];
 // newest articles whose text is in that language. Channel copy comes from the site's i18n files.
 export const FEED_SIZE = 20;
 
-const MESSAGES: Record<Locale, typeof zhCN> = {
+const MESSAGES: Record<Locale, Pick<typeof zhCN, 'articles'>> = {
   'en-US': enUS,
   'zh-CN': zhCN,
   'ja-JP': jaJP,
   'es-ES': esES,
   'pt-BR': ptBR,
-  'ru-RU': ruRU
+  'ru-RU': ruRU,
+  'de-DE': deDE,
+  'fr-FR': frFR,
+  'it-IT': itIT,
+  'zh-Hant': zhHant
 };
 
 /** The language a feed path prefix stands for; the default language has no prefix. */
 export function feedLocale(prefix: string | undefined): Locale | undefined {
-  return LOCALES.find(locale => LOCALE_METADATA[locale].prefix === (prefix ? `/${prefix}` : ''));
+  return SITE_LOCALES.find(locale => LOCALE_METADATA[locale].prefix === (prefix ? `/${prefix}` : ''));
 }
 
 function escape(text: string): string {

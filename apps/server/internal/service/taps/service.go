@@ -471,6 +471,15 @@ func (s *Service) finishRefresh(ctx context.Context, cask store.TapCask, candida
 		if candidate != nil {
 			path = candidate.SourcePath
 		}
+		if !deleted {
+			observed := store.HomebrewConfirmation{Token: cask.Token, Tap: cask.Tap, RawHash: cask.RawHash}
+			if candidate != nil {
+				observed.RawHash = candidate.Package.RawHash
+			}
+			if err := st.ConfirmHomebrewDefinitions(ctx, []store.HomebrewConfirmation{observed}, s.now()); err != nil {
+				return err
+			}
+		}
 		return st.RecordTapCheck(ctx, cask.PackageID, path, head.ETag, head.SHA, message, s.now())
 	})
 	return outcome, versions, err

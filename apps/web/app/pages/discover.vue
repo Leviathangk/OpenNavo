@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { withRecentReturn } from '@opennavo/shared';
 import type { PackageSummary, PublicComponents } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { collectionIcons, OnAppCard, OnButton, OnDiscoverView, OnErrorState, OnIcon } from '@opennavo/ui';
@@ -10,6 +9,7 @@ import type {
   OnDiscoverLabels,
   OnFeatureHeroIcon
 } from '@opennavo/ui';
+import { HOME_SECTION_SIZE } from '~/composables/useHome';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -17,18 +17,15 @@ const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 type Feature = PublicComponents['schemas']['Feature'];
 
 // Discover (05 §4, §11.2, 08 §10.1): shared desktop view at /discover (root is landing); title is screen-reader-only.
-// SiteDiscoverRail contains weekly popular/featured collections. Cask-only (ADR-018).
+// SiteDiscoverRail contains weekly popular/featured collections. Cask-only (ADR-018). T1: every group comes from
+// /home?sectionSize=12 and the server renders all twelve; CSS alone fits whole rows to the width (fixed-count).
 definePageMeta({ rail: 'discover' });
 
 const { t } = useI18n();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
 
-const [{ data: home, error, refresh }, { data: popularApps }, { data: recentApps }] = await Promise.all([
-  useHome(),
-  usePopularApps(),
-  useRecentPreview()
-]);
+const { data: home, error, refresh } = await useHome();
 
 const detailPath = (token: string) => localePath(`/apps/${token}`);
 
@@ -177,9 +174,10 @@ defineOgImage('OgDefaultSatori', {
     :hero="heroView"
     :features="secondaryFeatures"
     :chips="chips"
-    :popular="popularApps ?? home.popularApps"
+    :popular="home.popularApps"
     :popular-rows="3"
-    :recent="recentApps ?? home.recentlyUpdated"
+    :fixed-count="HOME_SECTION_SIZE"
+    :recent="home.recentlyUpdated"
     :collections="collections"
     :labels="labels"
     :rankings-href="localePath('/rankings')"
@@ -214,7 +212,8 @@ defineOgImage('OgDefaultSatori', {
         :pkg="pkg"
         state="get"
         :stats="stats"
-        :href="withRecentReturn(detailPath(pkg.token), section === 'recent' ? '/recent' : undefined)"
+        :href="detailPath(pkg.token)"
+        :link-state="section === 'recent' ? { onvReturn: '/recent' } : undefined"
         :link-as="NuxtLink"
       >
         <template #action>

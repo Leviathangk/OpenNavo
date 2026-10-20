@@ -3,6 +3,8 @@ import {
   NAlert,
   NButton,
   NCard,
+  NCheckbox,
+  NCheckboxGroup,
   NCode,
   NDivider,
   NDynamicInput,
@@ -14,6 +16,7 @@ import {
   NP,
   NRadioButton,
   NRadioGroup,
+  NSelect,
   NSkeleton,
   NSwitch,
   NTag,
@@ -49,7 +52,17 @@ function settings() {
       training: { mode: 'limit', delaySeconds: 10, bots: ['ClaudeBot'] },
       seoTools: { mode: 'block', delaySeconds: 10, bots: ['MJ12bot', 'SerpstatBot'] }
     },
-    pages: { titleTemplate: 'new', indexPolicy: { mode: 'shadow', scope: 'new', since: '' }, versionsSitemap: false }
+    pages: {
+      titleTemplate: 'new',
+      indexPolicy: { mode: 'shadow', scope: 'new', since: '' },
+      translationMode: 'shadow',
+      translationLocales: [] as string[],
+      versionsMinNotesChars: 300,
+      openLocales: ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'],
+      intentPagesEnabled: false,
+      detailsRedirect: false,
+      versionsSitemap: false
+    }
   };
 }
 
@@ -72,12 +85,14 @@ function response(overrides: Record<string, unknown> = {}, value = settings()) {
 function page() {
   return mount(SeoSettings, {
     global: {
-      // The impact report has its own tests (seo-index.test.ts).
-      stubs: { IndexReport: true },
+      // The impact reports have their own tests (seo-index.test.ts).
+      stubs: { IndexReport: true, TranslationImpact: true },
       components: {
         NAlert,
         NButton,
         NCard,
+        NCheckbox,
+        NCheckboxGroup,
         NCode,
         NDivider,
         NDynamicInput,
@@ -89,6 +104,7 @@ function page() {
         NP,
         NRadioButton,
         NRadioGroup,
+        NSelect,
         NSkeleton,
         NSwitch,
         NTag,
@@ -179,6 +195,36 @@ describe('SEO settings page', () => {
     await flushPromises();
     expect(api.save).not.toHaveBeenCalled();
     expect(second.text()).toContain('page.system.seo.errors.keyRequired');
+    second.unmount();
+  });
+
+  it('Opens site languages and the details redirect, keeping the default language open', async () => {
+    const wrapper = page();
+    await flushPromises();
+    const checkbox = (name: string) => wrapper.findAll('.n-checkbox').find(node => node.text() === name)!;
+    expect(checkbox('English').classes()).toContain('n-checkbox--disabled');
+    await checkbox('Deutsch').trigger('click');
+    await wrapper.find('[aria-label="page.system.seo.detailsRedirect"]').trigger('click');
+    await button(wrapper, 'page.system.seo.save').trigger('click');
+    await flushPromises();
+    expect(api.save).toHaveBeenCalledTimes(1);
+    const pages = api.save.mock.calls[0]![0].settings.pages;
+    expect(pages.openLocales).toEqual(['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE']);
+    expect(pages).toMatchObject({ detailsRedirect: true, intentPagesEnabled: false, versionsMinNotesChars: 300 });
+    wrapper.unmount();
+
+    const closed = settings();
+    closed.pages.openLocales = ['zh-CN'];
+    closed.pages.versionsMinNotesChars = 0;
+    api.load.mockResolvedValueOnce(response({}, closed));
+    const second = page();
+    await flushPromises();
+    await second.find('input[aria-label="page.system.seo.siteName"]').setValue('OpenNavo App Store');
+    await button(second, 'page.system.seo.save').trigger('click');
+    await flushPromises();
+    expect(api.save).toHaveBeenCalledTimes(1);
+    expect(second.text()).toContain('page.system.seo.errors.defaultLocaleOpen');
+    expect(second.text()).toContain('page.system.seo.errors.invalidMinNotes');
     second.unmount();
   });
 

@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { BRAND, LOGO, logoInlineShift, logoSvg } from '../src/brand';
@@ -29,6 +30,13 @@ describe('Brand', () => {
   it('Scheme and Bundle ID placeholders', () => {
     expect(BRAND.scheme).toBe('opennavo');
     expect(BRAND.bundleId).toMatch(/^com\.opennavo\./);
+  });
+
+  it('License matches the root package.json', () => {
+    const root = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')) as {
+      license: string;
+    };
+    expect(BRAND.license).toBe(root.license);
   });
 
   it('Logo SVG uses token gradients with prefixed IDs', () => {

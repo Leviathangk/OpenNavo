@@ -41,6 +41,66 @@ const pages: PageMessages = {
     charCount: '{count} / {max}'
   },
   dashboard: {
+    seo: {
+      geo: {
+        title: 'GEO visibility',
+        notImported: 'Not yet imported',
+        unknown: 'Unknown',
+        planned: 'Planned cells',
+        answered: 'Answered / planned cells',
+        searchTriggered: 'Search triggered / known cells',
+        mentioned: 'Mentioned / known cells',
+        candidate: 'Candidate / known cells',
+        cited: 'Cited / known complete-citation cells',
+        citationComplete: 'Complete citation extraction / answered',
+        reported: 'Reported values · completeness unverified',
+        noComparison: 'Do not compare trends with full samples',
+        missingFields: 'Missing fields',
+        details: 'View details',
+        dataTime: 'Data period',
+        engines: 'Sampling status by engine',
+        observations: 'Observation links',
+        noObservations: 'No observation links',
+        loadFailed: 'Failed to load GEO details. Please retry.',
+        retry: 'Retry',
+        status: {
+          answered: 'Answered',
+          not_triggered: 'Not triggered',
+          error: 'Error',
+          unsupported: 'Unsupported',
+          missing: 'Missing'
+        }
+      },
+      title: 'SEO automation (Hermes)',
+      ready: 'Automation ready',
+      notReady: 'Automation not ready',
+      keywords: 'Keywords',
+      targets: 'Target pages',
+      breakers: 'Open circuit breakers',
+      healthy: 'All healthy',
+      technical: 'Technical',
+      business: 'Business',
+      budget: 'Budget',
+      openedAt: 'Opened at',
+      budgets: 'Budget usage (UTC)',
+      day: 'Daily',
+      month: 'Monthly',
+      modes: 'Action modes',
+      disabled: 'Disabled',
+      watermarks: 'Data complete through',
+      yesterday: 'Yesterday (UTC)',
+      count: 'Actions',
+      compensated: 'Compensated',
+      alerts: 'Latest 5 unresolved alerts',
+      noAlerts: 'No unresolved alerts',
+      origin: 'Origin',
+      edge: 'Edge',
+      lastSeen: 'Last seen',
+      noData: 'No data',
+      noActivity: 'No actions yesterday',
+      loadFailed: 'Failed to load SEO summary. Please retry.',
+      retry: 'Retry'
+    },
     scale: 'Catalog',
     total: 'Apps',
     fonts: 'Fonts',
@@ -63,24 +123,9 @@ const pages: PageMessages = {
     failed24h: 'Failed jobs, last 24 h',
     viewJobs: 'Jobs',
     snapshotInfo: 'Cursor {cursor} · {count} package | Cursor {cursor} · {count} packages',
-    llm: 'LLM usage',
-    llmModel: 'Model {model}',
-    llmTokens: 'Tokens this month',
-    llmBudget: 'Budget {budget}',
-    llmSpend: 'About {spend} of {budget}',
-    pendingPackages: 'Missing Chinese summary',
-    pendingReleases: 'Release notes to translate',
-    needsReview: 'AI translations',
-    viewReview: 'Translations',
     todo: 'To do',
     feedbackOpen: 'Open feedback',
     viewFeedback: 'Feedback',
-    usage: 'LLM tokens, last 6 months',
-    usageSeries: {
-      translate_content: 'Content translation',
-      enrich_package: 'Package enrichment (retired)',
-      translate_release: 'Release summaries (retired)'
-    },
     hermes: {
       title: 'Hermes today',
       view: 'View logs',
@@ -624,8 +669,6 @@ const pages: PageMessages = {
       paramsSummary: 'Parameter summary (redacted)',
       resultSummary: 'Result summary',
       tokenDetail: 'Input {prompt} · output {completion} · reasoning {reasoning} · cached {cached}',
-      retry: 'Retranslate',
-      retried: 'Queued for translation again',
       compare: 'Compare',
       restore: 'Restore',
       restoreRevisionConfirm: 'Restore {object} to v{version}? It will be translated again afterwards.',
@@ -850,9 +893,21 @@ const pages: PageMessages = {
       previewHint: 'Matches the production output; non-production sites disallow everything.',
       versionsSitemap: 'Include version pages in the sitemap',
       versionsSitemapHint: 'When on, only version pages with standalone value are added to the sitemap.',
+      openLocales: 'Languages open for indexing',
+      openLocalesHint:
+        'Unchecked languages still render, but their home, list, category and static pages stay out of the index, hreflang and sitemaps. App pages are judged on their own translation quality. English is the default language and always stays open.',
+      versionsMinNotesChars: 'Minimum release-note length',
+      versionsMinNotesCharsHint:
+        'A version page is indexed only when its release notes reach this many characters (CJK characters count as 2) and name a source.',
+      detailsRedirect: 'Redirect details pages to the overview',
+      detailsRedirectHint:
+        'When on, a details page redirects (301) to the overview once the overview carries everything the details page had and is indexable in that language. Link apps have no details page.',
+      intentPages: 'Alternatives and uninstall pages',
+      intentPagesHint:
+        'When on, only pages with confirmed search demand and complete evidence are indexed; the others use the overview as their canonical.',
       temporaryTitle: 'Temporary switches',
       temporaryHint:
-        'The two settings below exist only for the rollout. They will be removed with the old templates and logic once everything has been stable for a month or two.',
+        'The switches below exist only for the rollout. They will be removed with the old templates and logic once everything has been stable for a month or two.',
       titleTemplate: 'Title template',
       titleTemplates: {
         new: 'New',
@@ -873,6 +928,11 @@ const pages: PageMessages = {
       indexScopeHint:
         'New apps covers apps first seen after the start date, which is recorded automatically when enforcement starts.',
       indexSince: 'Start date: {date}',
+      translationMode: 'Translation quality gate',
+      translationLocales: 'Languages to enforce',
+      translationLocalesAll: 'All languages',
+      translationModeHint:
+        'In Observe only, translation quality does not affect indexing; see Translation gate impact below. German, French, Italian and Traditional Chinese always require translations that pass.',
       changeFeed: {
         title: 'Change feed',
         lastRun: 'Last run {time}: refreshed {count} page cache groups',
@@ -907,6 +967,19 @@ const pages: PageMessages = {
         enforcedNo: 'Not applied',
         empty: 'No affected apps'
       },
+      impact: {
+        title: 'Translation gate impact',
+        hint: 'App overviews indexable now in each language, and how many stay indexable once the gate is enforced for every language. The table lists the apps that would leave the index.',
+        loadFailed: 'Could not load the translation gate impact.',
+        locale: 'Language',
+        indexableNow: 'Indexable now',
+        indexableEnforced: 'Indexable when enforced',
+        losing: 'Would leave the index',
+        app: 'App',
+        now: 'Now',
+        enforced: 'When enforced',
+        empty: 'No app would leave the index'
+      },
       errors: {
         invalidName: 'The site name must be 1–60 characters with no control characters.',
         invalidAlternateName: 'Each alternate name must be 1–80 characters, with up to 5 names.',
@@ -926,47 +999,10 @@ const pages: PageMessages = {
         lockedBot: '{bot} is a search or user-requested crawler and cannot be set here.',
         overlapBot: '{bot} cannot appear in both crawler classes.',
         invalidDelay: 'The crawl delay must be a whole number from 1 to 60 seconds.',
-        tooMany: 'Up to {max} crawlers per class.'
+        tooMany: 'Up to {max} crawlers per class.',
+        defaultLocaleOpen: 'English is the default language and must stay open.',
+        invalidMinNotes: 'Enter a whole number from 1 to 100000.'
       }
-    },
-    translation: {
-      title: 'Translation AI settings',
-      scope:
-        'Configure the AI used for automatic content translation. Interface text is still synced with developer tools.',
-      enabled: 'Enable automatic translation',
-      baseUrl: 'Gateway URL',
-      apiKey: 'API Key',
-      keyPlaceholder: 'Leave blank to keep the existing key',
-      keyHint: 'Encrypted storage; the saved key is never shown',
-      keySource: {
-        admin: 'Admin key configured',
-        environment: 'Using environment key',
-        none: 'No key configured'
-      },
-      clearKey: 'Clear admin key',
-      clearHint: 'Fall back to the environment key on save. Disable translation if no environment key is available.',
-      model: 'Translation model',
-      reasoningEffort: 'Reasoning effort',
-      low: 'Low',
-      medium: 'Medium',
-      high: 'High',
-      monthlyTokenBudget: 'Monthly token budget',
-      hardCap: 'Server hard cap: {count} tokens',
-      save: 'Save settings',
-      effect: 'Applies to the next task call without restarting',
-      loadFailed: 'Could not load settings. Select Refresh to retry.',
-      saveFailed: 'Settings were not saved. Check your input or try again later.',
-      invalidUrl:
-        'Enter a complete HTTP(S) gateway URL without credentials, query parameters or a fragment. HTTPS is required in production.',
-      invalidModel: 'Enter a model name without spaces.',
-      invalidBudget: 'Enter a positive integer.',
-      fetchModels: 'Fetch models',
-      modelPlaceholder: 'Select or enter a model name',
-      modelsHint:
-        'Models load automatically with settings. After changing the URL or key, fetch again without saving. You can also enter a model name.',
-      modelsFailed: 'Could not fetch models. Check the gateway URL and key, then retry, or enter a model name.',
-      modelsEmpty: 'The gateway returned no available models. You can enter a model name.',
-      keyRequired: 'Translation requires an API key. Disable translation or keep an environment key before clearing it.'
     },
     user: {
       title: 'Admins',
@@ -1387,9 +1423,6 @@ const pages: PageMessages = {
         fetchedAt: 'Fetched'
       },
       editTranslation: 'Edit translation',
-      retranslate: 'Retranslate',
-      retranslateConfirm: 'Retranslate {name} {version}? This uses LLM quota.',
-      retranslateQueued: 'Queued for translation',
       hide: 'Hide',
       show: 'Show',
       hiddenDone: 'Hidden',
@@ -1514,10 +1547,6 @@ const pages: PageMessages = {
       noTextFields: 'This object has no text that can be fixed here',
       saveFix: 'Save fix',
       fixed: 'Fix saved',
-      retranslate: 'Retranslate',
-      retranslateTitle: 'Retranslate · {label}',
-      retranslateHint: 'Choose the languages to translate again; this uses translation quota',
-      queued: 'Queued for translation',
       fields: {
         displayName: 'Display name',
         summary: 'One-line summary',
@@ -1531,7 +1560,13 @@ const pages: PageMessages = {
         caption: 'Caption',
         note: 'Recommendation',
         notes: 'Release notes',
-        bodyMarkdown: 'Body'
+        bodyMarkdown: 'Body',
+        testNote: 'Test environment and method',
+        seoTitle: 'SEO title',
+        seoDescription: 'SEO description',
+        coverAlt: 'Cover alt text',
+        role: 'Role',
+        bio: 'Bio'
       }
     }
   },

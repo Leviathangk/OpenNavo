@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PackageDetail, PublicComponents } from '@opennavo/api';
+import type { PublicComponents } from '@opennavo/api';
 import {
   formatBytes,
   formatCount,
@@ -11,6 +11,7 @@ import {
 import { architectures, OnPackageStats, useUiMessages } from '@opennavo/ui';
 import type { OnPackageStatsCell } from '@opennavo/ui';
 import { latestVersionDate } from '~/utils/indexing';
+import type { PackagePage } from '~/utils/packageFacts';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -18,7 +19,7 @@ const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
 type ReleaseStats = PublicComponents['schemas']['ReleaseStats'];
 
 // Five stats (08 §10.5): 30-day installs/rank, yearly installs, latest version/date, download size, cadence.
-const props = defineProps<{ pkg: PackageDetail; releaseStats?: ReleaseStats | null }>();
+const props = defineProps<{ pkg: PackagePage; releaseStats?: ReleaseStats | null }>();
 
 const { t, locale } = useI18n();
 const messages = useUiMessages();
@@ -30,7 +31,9 @@ const size = computed(() => {
   return { value: value ?? '—', unit };
 });
 
-const fileType = computed(() => /\.([a-z0-9]{2,5})(?:[?#]|$)/i.exec(props.pkg.downloadUrl ?? '')?.[1]?.toLowerCase());
+const fileType = computed(() =>
+  /\.([a-z0-9]{2,5})(?:[?#]|$)/i.exec(props.pkg.facts.overview.downloadUrl ?? '')?.[1]?.toLowerCase()
+);
 
 const cells = computed<OnPackageStatsCell[]>(() => {
   // WP3: only a reliable release date; versionChangedAt is when OpenNavo noticed the version.

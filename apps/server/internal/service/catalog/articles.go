@@ -11,6 +11,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/articles"
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 )
@@ -224,7 +225,8 @@ func (s *PublicService) ArticleSitemap(ctx context.Context) (publicapi.ArticleSi
 		}
 		for _, row := range rows {
 			entry := publicapi.ArticleSitemapEntry{Slug: row.Slug, Locales: []publicapi.SitemapLocale{}}
-			for _, locale := range []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU"} {
+			for _, code := range i18n.SiteLocales {
+				locale := string(code)
 				if at, ok := row.Locales[locale]; ok {
 					stamp := at.UTC()
 					entry.Locales = append(entry.Locales, publicapi.SitemapLocale{Locale: publicapi.Locale(locale), Lastmod: &stamp})

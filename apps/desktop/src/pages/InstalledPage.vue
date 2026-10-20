@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useToasts } from '@/composables/useToasts';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { formatBytes, formatDate, formatPercent, formatVersion } from '@opennavo/shared';
 import {
@@ -21,6 +21,7 @@ import {
 import type { OnChipTone, OnSegmentedOption, OnTableColumn, OnTableSort } from '@opennavo/ui';
 import FootprintScanProgress from '@/components/installed/FootprintScanProgress.vue';
 import AppInfoSheet from '@/components/installed/AppInfoSheet.vue';
+import PreviewNotice from '@/components/common/PreviewNotice.vue';
 import FullDiskAccessGate from '@/components/permissions/FullDiskAccessGate.vue';
 import RunningTask from '@/components/updates/RunningTask.vue';
 import type { LocalApp } from '@/ipc/bindings';
@@ -31,6 +32,7 @@ import { useLibraryStore, usePermissionsStore, useTasksStore, useUpdatesStore } 
 import { UNUSED_DAYS, isUnused, matchesSource, useLocalAppsStore } from '@/stores/localApps';
 import { useInstalledFilterStore } from '@/stores/installedFilter';
 import { useUninstallStore } from '@/stores/uninstall';
+import { matchLocalApps, NO_PREVIEW, uninstallPreview } from '@/utils/deepLinkPreview';
 
 // Installed (proposal §03, §05): every removable app on this Mac — Homebrew, App Store, drag-installed and .pkg —
 // with source filter, unused filter, multi-select uninstall and an info sheet. System apps are not listed.
@@ -38,6 +40,7 @@ import { useUninstallStore } from '@/stores/uninstall';
 const { t, te } = useI18n();
 const { appLocale } = useAppLocale();
 const router = useRouter();
+const route = useRoute();
 const localApps = useLocalAppsStore();
 const library = useLibraryStore();
 const updates = useUpdatesStore();
@@ -308,6 +311,38 @@ function uninstallFromSheet(app: LocalApp) {
   void uninstall([app.id]);
 }
 
+// Uninstall preview (F1): opennavo://uninstall/{token}?preview=1 opens /uninstall/{token}?preview=1 here. The
+// app on this Mac is found and its info sheet opened; uninstalling still takes the sheet's button and the
+// dialog's review and confirmation. A link for an app that is not here, or a malformed one, is only said so.
+const preview = computed(() =>
+  route.name === 'uninstall-preview' ? uninstallPreview(route.params.token, route.query) : NO_PREVIEW
+);
+const previewToken = computed(() => (preview.value.state === 'ok' ? preview.value.value : null));
+const previewApps = computed(() => (previewToken.value ? matchLocalApps(localApps.items, previewToken.value) : []));
+const previewName = computed(() => (previewApps.value[0] ? nameOf(previewApps.value[0]) : ''));
+const previewState = computed(() => {
+  if (preview.value.state === 'none') return null;
+  if (preview.value.state === 'invalid') return 'invalid';
+  if (permissions.status && !ready.value) return 'permission';
+  if (!localApps.loaded) return null;
+  return previewApps.value.length ? 'found' : 'notFound';
+});
+let previewed: string | null = null;
+watch(
+  [previewToken, previewApps],
+  ([token, apps]) => {
+    if (!token) {
+      previewed = null;
+      return;
+    }
+    const only = apps.length === 1 ? apps[0] : undefined;
+    if (previewed === token || !only) return;
+    previewed = token;
+    sheetId.value = only.id;
+  },
+  { immediate: true }
+);
+
 if (!permissions.status) void permissions.refresh().catch(() => undefined);
 // Measuring starts only once Full Disk Access is on (reading other apps' containers without it would be incomplete).
 watch(
@@ -347,6 +382,42 @@ async function refreshInstalled() {
         </OnButton>
       </template>
     </OnPageHeader>
+
+    <!-- F1: what an uninstall preview link asked for; the info sheet and the uninstall dialog do the rest. -->
+    <PreviewNotice
+      v-if="previewState === 'invalid'"
+      class="mb-16px"
+      tone="warning"
+      :title="t('deeplink.preview.invalid')"
+      :body="t('deeplink.preview.invalidBody')"
+    />
+    <PreviewNotice
+      v-else-if="previewState === 'permission'"
+      class="mb-16px"
+      :title="t('deeplink.preview.uninstall.permission', { token: previewToken ?? '' })"
+    />
+    <PreviewNotice
+      v-else-if="previewState === 'found'"
+      class="mb-16px"
+      :title="t('deeplink.preview.uninstall.title', { name: previewName })"
+      :body="
+        previewApps.length > 1
+          ? t('deeplink.preview.uninstall.several', { count: previewApps.length, token: previewToken ?? '' })
+          : t('deeplink.preview.uninstall.body')
+      "
+    >
+      <div v-if="previewApps.length > 1" class="flex flex-wrap gap-6px">
+        <OnButton v-for="app in previewApps" :key="app.id" size="xs" variant="secondary" @click="sheetId = app.id">{{
+          t('deeplink.preview.uninstall.view', { name: `${nameOf(app)} (${app.path})` })
+        }}</OnButton>
+      </div>
+    </PreviewNotice>
+    <PreviewNotice
+      v-else-if="previewState === 'notFound'"
+      class="mb-16px"
+      :title="t('deeplink.preview.uninstall.notFound', { token: previewToken ?? '' })"
+      :body="t('deeplink.preview.uninstall.notFoundBody')"
+    />
 
     <!-- Homebrew's cache cleanup reports here whatever the permission. -->
     <RunningTask v-if="tasks.running?.op === 'cleanup'" :task="tasks.running" class="mb-20px" />

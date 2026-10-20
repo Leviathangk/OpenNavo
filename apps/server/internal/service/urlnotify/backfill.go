@@ -48,7 +48,7 @@ func (n *Notifier) backfill(ctx context.Context, state *store.URLNotifyState) er
 	for _, row := range rows {
 		// The sitemap's rule: Homebrew must still offer the app, whatever the policy mode.
 		facts := row.Facts()
-		if row.Hidden || facts.Unavailable() || !seo.Decide(facts, policy).Indexable {
+		if row.Hidden || !seo.DecidePage(facts, seo.PageRef{Kind: seo.PageOverview, Locale: row.SourceLocale, Page: 1}, policy).Announce {
 			continue
 		}
 		changes = append(changes, store.URLChange{PackageID: row.ID, Kind: row.Kind, Token: row.Token, Op: "upsert", Reason: "index"})

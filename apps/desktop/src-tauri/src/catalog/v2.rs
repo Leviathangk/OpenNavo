@@ -2,6 +2,65 @@ use super::*;
 use sha2::{Digest, Sha256};
 use std::io::Read;
 use std::path::PathBuf;
+
+#[cfg(test)]
+mod site_locale_compatibility {
+    use super::*;
+
+    #[test]
+    fn site_languages_do_not_expand_desktop_downloads() {
+        let mut packs = serde_json::Map::new();
+        for code in [
+            "en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU", "de-DE", "fr-FR", "it-IT",
+            "zh-Hant",
+        ] {
+            packs.insert(
+                code.into(),
+                serde_json::json!({
+                    "locale": code, "version": 1, "cursor": 1,
+                    "url": format!("https://example.com/{code}.json.gz"),
+                    "sha256": "a".repeat(64), "bytes": 100
+                }),
+            );
+        }
+        let info: SnapshotInfo = serde_json::from_value(serde_json::json!({
+            "formatVersion": 2, "cursor": 1, "itemCount": 0,
+            "url": "https://example.com/base.json.gz", "sha256": "b".repeat(64),
+            "bytes": 100, "createdAt": "2026-10-19T00:00:00Z", "textPacks": packs
+        }))
+        .unwrap();
+        assert_eq!(info.text_packs.len(), crate::locales_gen::LOCALES.len());
+        for locale in crate::locales_gen::LOCALES {
+            assert_eq!(info.text_packs[&locale].locale, locale);
+        }
+        let category: SnapshotCategory = serde_json::from_value(serde_json::json!({
+            "slug": "tools", "parent": null, "sourceLocale": "de-DE",
+            "name": {"en-US": "Tools", "de-DE": "Werkzeuge", "zh-Hant": "工具"},
+            "icon": "lucide:box", "sort": 0, "hiddenByDefault": false, "appliesTo": "cask"
+        }))
+        .unwrap();
+        assert_eq!(category.source_locale, Locale::EnUs);
+        assert_eq!(category.name.0.len(), 1);
+        let base = Snapshot {
+            format_version: 2,
+            cursor: 1,
+            generated_at: "2026-10-19T00:00:00Z".into(),
+            items: vec![],
+            categories: vec![category],
+        };
+        assert_eq!(
+            needed(&base, Locale::JaJp),
+            HashSet::from([Locale::JaJp, Locale::EnUs])
+        );
+        let changes: Changes = serde_json::from_value(serde_json::json!({
+            "changes": [], "nextCursor": 1, "hasMore": false,
+            "categoryNames": {"en-US": {"tools": "Tools"}, "de-DE": {"tools": "Werkzeuge"}}
+        }))
+        .unwrap();
+        assert_eq!(changes.category_names.unwrap().len(), 1);
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextPackInfo {
@@ -78,7 +137,10 @@ pub fn read_gzip<T: serde::de::DeserializeOwned>(
     serde_json::from_slice(&raw).map_err(|e| protocol("snapshot_json").with_detail(e.to_string()))
 }
 pub fn read_base(path: &Path, info: &SnapshotInfo) -> Result<Snapshot, AppError> {
-    if info.format_version != 2 || info.cursor < 0 || info.text_packs.len() != 6 {
+    if info.format_version != 2
+        || info.cursor < 0
+        || info.text_packs.len() != crate::locales_gen::LOCALES.len()
+    {
         return Err(protocol("snapshot_metadata"));
     }
     for locale in crate::locales_gen::LOCALES {

@@ -15,6 +15,7 @@ import (
 )
 
 type Target struct {
+	Locales      []string                     `json:"locales,omitempty"`
 	Source       map[string]string            `json:"source"`
 	English      map[string]string            `json:"english"`
 	Translations map[string]map[string]string `json:"translations"`
@@ -56,6 +57,30 @@ func PendingReason(target Target, key, code string) string {
 	}
 	return ""
 }
+
+// TargetLocales is the interface language contract shared with the Node exporter.
+func TargetLocales(name string) []string {
+	codes := i18n.Locales[:]
+	if name == "web" || name == "shared" {
+		codes = i18n.SiteLocales[:]
+	}
+	out := make([]string, 0, len(codes))
+	for _, code := range codes {
+		out = append(out, string(code))
+	}
+	return out
+}
+
+func translationLocales(name string, target Target) []string {
+	out := []string{}
+	for _, code := range TargetLocales(name) {
+		if code != "en-US" && code != "zh-CN" && (len(target.Locales) == 0 || contains(target.Locales, code)) {
+			out = append(out, code)
+		}
+	}
+	return out
+}
+
 func Batches(plan Plan) []Batch {
 	var out []Batch
 	names := make([]string, 0, len(plan.Targets))
@@ -63,9 +88,12 @@ func Batches(plan Plan) []Batch {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	locales := []string{"ja-JP", "es-ES", "pt-BR", "ru-RU"}
 	for _, name := range names {
 		target := plan.Targets[name]
+		locales := translationLocales(name, target)
+		if len(locales) == 0 {
+			continue
+		}
 		pending := map[string][]string{}
 		for _, code := range locales {
 			for key := range target.Source {
@@ -127,7 +155,7 @@ func Run(ctx context.Context, plan Plan, translate Translator, protected []strin
 	result := Result{}
 	for name, target := range plan.Targets {
 		result[name] = map[string]map[string]string{}
-		for _, code := range []string{"ja-JP", "es-ES", "pt-BR", "ru-RU"} {
+		for _, code := range translationLocales(name, target) {
 			result[name][code] = map[string]string{}
 			for key := range target.Source {
 				if PendingReason(target, key, code) == "" {

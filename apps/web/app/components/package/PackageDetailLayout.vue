@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { disabledByHomebrew, recentReturnPath, withRecentReturn } from '@opennavo/shared';
+import { disabledByHomebrew, recentReturnPath } from '@opennavo/shared';
 import { unwrap } from '@opennavo/api';
 import type { PackageKind } from '@opennavo/shared';
-import { OnBreadcrumb, OnErrorState, OnPackageNotice, OnTabs } from '@opennavo/ui';
-import { allowedHreflangs, consolidatesToOverview, packageRobots } from '~/utils/indexing';
+import { OnBreadcrumb, OnErrorState, OnIcon, OnPackageNotice, OnTabs } from '@opennavo/ui';
 import { packageLink, packagePath } from '~/utils/packageView';
+import { appEntityId } from '~/utils/structuredData';
+import { hasTroubleshootingPage, troubleshootingPath } from '~/utils/troubleshooting';
 
 // Detail shell (05 §3): notice/header/stats shared with desktop (ADR-017), tabs with separate URLs, child-route content.
 const props = defineProps<{ kind: PackageKind }>();
@@ -60,74 +61,104 @@ const { data: fallbackStats } = await useAsyncData(
 );
 const releaseStats = computed(() => pkg.value?.releaseStats ?? fallbackStats.value);
 
-type Tab = 'overview' | 'versions' | 'dependencies' | 'details';
+type Tab = 'overview' | 'versions' | 'dependencies' | 'details' | 'troubleshooting';
 
 const tab = computed<Tab>(() => {
   const last = route.path.split('/').at(-1);
-  return last === 'versions' || last === 'dependencies' || last === 'details' ? last : 'overview';
+  return last === 'versions' || last === 'dependencies' || last === 'details' || last === 'troubleshooting'
+    ? last
+    : 'overview';
 });
+// F7: the troubleshooting page exists (and gets a tab) only with enough verified known issues.
+const troubleshooting = computed(() => hasTroubleshootingPage(pkg.value));
+const tabLabel = (value: Exclude<Tab, 'overview'>) =>
+  value === 'troubleshooting' ? t('troubleshooting.tab') : t(`package.tabs.${value}`);
 
-const returnTo = computed(() => recentReturnPath(route.query.returnTo));
 const allTabs = computed(() => [
-  {
-    value: 'overview' as const,
-    label: t('package.tabs.overview'),
-    href: withRecentReturn(localePath(packagePath(token.value)), returnTo.value)
-  },
+  { value: 'overview' as const, label: t('package.tabs.overview'), href: localePath(packagePath(token.value)) },
   {
     value: 'versions' as const,
     label: t('package.tabs.versions'),
     count: pkg.value?.releaseCount || undefined,
-    href: withRecentReturn(localePath(packagePath(token.value, 'versions')), returnTo.value)
+    href: localePath(packagePath(token.value, 'versions'))
   },
   {
     value: 'dependencies' as const,
     label: t('package.tabs.dependencies'),
-    href: withRecentReturn(localePath(packagePath(token.value, 'dependencies')), returnTo.value)
+    href: localePath(packagePath(token.value, 'dependencies'))
   },
   {
     value: 'details' as const,
     label: t('package.tabs.details'),
-    href: withRecentReturn(localePath(packagePath(token.value, 'details')), returnTo.value)
-  }
+    href: localePath(packagePath(token.value, 'details'))
+  },
+  ...(troubleshooting.value
+    ? [
+        {
+          value: 'troubleshooting' as const,
+          label: t('troubleshooting.tab'),
+          href: localePath(troubleshootingPath(token.value))
+        }
+      ]
+    : [])
 ]);
 // Link apps have no Homebrew definition, so there are no dependencies or install details to show.
+// H9: once the overview carries what install details showed and the server turns the redirect on (per
+// language, so a target that is not ready never receives it), the details tab answers one 301 to the
+// overview and drops out of the tabs, so no page links it.
+const detailsRedirect = computed(() => Boolean(pkg.value?.indexing?.detailsRedirect));
+if (tab.value === 'details' && detailsRedirect.value)
+  await navigateTo(localePath(packagePath(token.value)), { redirectCode: 301, replace: true });
 const tabs = computed(() =>
-  isLink.value ? allTabs.value.filter(item => item.value === 'overview' || item.value === 'versions') : allTabs.value
+  isLink.value
+    ? allTabs.value.filter(
+        item => item.value === 'overview' || item.value === 'versions' || item.value === 'troubleshooting'
+      )
+    : allTabs.value.filter(item => item.value !== 'details' || !detailsRedirect.value)
 );
 
-// Breadcrumbs match desktop: Discover › primary category › app. Structured data uses the same list.
+// Breadcrumbs are always Discover › primary category › app (› tab on subpages), the same in SSR and on the
+// client. Structured data uses the same list, so a subpage's last item names that page.
 const breadcrumb = computed(() => {
-  if (returnTo.value)
-    return [
-      { label: t('recent.title'), href: localePath(returnTo.value) },
-      { label: pkg.value?.displayName ?? token.value }
-    ];
   const category = pkg.value?.primaryCategory;
+  const name = pkg.value?.displayName ?? token.value;
   return [
     { label: t('nav.discover'), href: localePath('/discover') },
     ...(category ? [{ label: category.name, href: localePath(`/categories/${category.slug}`) }] : []),
-    { label: pkg.value?.displayName ?? token.value }
+    ...(tab.value === 'overview'
+      ? [{ label: name }]
+      : [{ label: name, href: localePath(packagePath(token.value)) }, { label: tabLabel(tab.value) }])
   ];
 });
 useBreadcrumbSchema(breadcrumb);
+// Subpages are about the app; its full SoftwareApplication lives on the overview only (T4).
+const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
+usePageSchema(() =>
+  tab.value === 'overview' || !pkg.value
+    ? {}
+    : { about: { '@id': appEntityId(siteUrl, pkg.value.token), name: pkg.value.displayName } }
+);
+// The versions and troubleshooting pages' h1 names the page (S1, F7); the other subpages keep the app name.
+const headingSuffix = computed(() =>
+  tab.value === 'versions' || tab.value === 'troubleshooting' ? tabLabel(tab.value) : undefined
+);
 
-// WP11: the API decides indexability and languages; each tab adds its own value check. Alternates
-// for languages that are not indexed are dropped from hreflang (app.vue reads this state).
-useSeoMeta({ robots: () => (pkg.value ? packageRobots(pkg.value, tab.value, toAppLocale(locale.value)) : undefined) });
-const hreflangs = useState<string[] | null>('page:hreflangs', () => null);
-// Install details hand their ranking to the overview through the canonical (app.vue reads this
-// state) and keep no alternates, so hreflang cannot pull them back into a cluster of their own.
-const canonicalPath = useState<string | null>('page:canonicalPath', () => null);
-watchEffect(() => {
-  const toOverview = pkg.value ? consolidatesToOverview(pkg.value, tab.value, toAppLocale(locale.value)) : false;
-  canonicalPath.value = toOverview ? localePath(packagePath(token.value)) : null;
-  hreflangs.value = toOverview ? [] : allowedHreflangs(pkg.value?.indexing);
-});
-onUnmounted(() => {
-  hreflangs.value = null;
-  canonicalPath.value = null;
-});
+// Opened from Recently updated: the list position travels in history.state (S3), never in the URL, so
+// crawlers see one URL per page. The link is client-only: it is set after mount and so never hydrates.
+const back = ref<string>();
+const readBack = () => {
+  back.value = recentReturnPath((window.history.state as { onvReturn?: unknown } | null)?.onvReturn);
+};
+onMounted(readBack);
+// Tabs keep the layout mounted; only a different app re-reads the state of its own history entry.
+watch(token, () => nextTick(readBack));
+
+// S5: the API decides each page (robots, canonical, hreflang) and the web applies it. The versions tab
+// applies its own page's decision from the releases endpoint (PackageVersions), and the troubleshooting
+// page its own (PackageTroubleshooting, F7), so both are skipped here.
+usePageDecision(() =>
+  tab.value === 'versions' || tab.value === 'troubleshooting' ? undefined : pkg.value?.indexing?.pages[tab.value]
+);
 
 const notice = computed(() => {
   const value = pkg.value;
@@ -163,7 +194,17 @@ const notice = computed(() => {
     <PackageRemoved v-if="removed" :info="removed" />
     <OnErrorState v-else-if="error && !pkg" @retry="refresh()" />
     <template v-else-if="pkg">
-      <OnBreadcrumb :items="breadcrumb" :link-as="NuxtLink" />
+      <div class="flex flex-wrap items-center justify-between gap-x-12px gap-y-4px">
+        <OnBreadcrumb :items="breadcrumb" :link-as="NuxtLink" />
+        <NuxtLink
+          v-if="back"
+          :to="localePath(back)"
+          class="flex items-center gap-4px text-13px text-ink-secondary no-underline hover:text-ink-primary"
+        >
+          <OnIcon name="lucide:arrow-left" :size="14" />
+          {{ t('recent.title') }}
+        </NuxtLink>
+      </div>
       <OnPackageNotice
         v-if="notice"
         :tone="notice.tone"
@@ -178,7 +219,7 @@ const notice = computed(() => {
         "
         :link-as="NuxtLink"
       />
-      <PackageHeader :pkg="pkg" />
+      <PackageHeader :pkg="pkg" :heading-suffix="headingSuffix" />
       <PackageStats v-if="!isLink" :pkg="pkg" :release-stats="releaseStats" />
       <OnTabs
         class="mt-2px"

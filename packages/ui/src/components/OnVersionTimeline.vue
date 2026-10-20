@@ -5,6 +5,7 @@ import { interpolatePlural } from '@opennavo/shared';
 import OnButton from './OnButton.vue';
 import OnVersionEntry from './OnVersionEntry.vue';
 import { useUiLocale, useUiMessages } from '../composables/locale';
+import type { OnVersionCompatibilityLabels } from '../utils/compatibility';
 
 export interface OnVersionTimelineProps {
   entries: readonly ReleaseEntry[];
@@ -20,6 +21,8 @@ export interface OnVersionTimelineProps {
   /** Entries with local annotations receive the local slot; if omitted, render whenever slot exists. */
   hasLocal?: (entry: ReleaseEntry) => boolean;
   headingLevel?: 2 | 3 | 4;
+  /** Web (F6): passed to every entry for its macOS compatibility row. */
+  compatibilityLabels?: OnVersionCompatibilityLabels;
 }
 
 const props = withDefaults(defineProps<OnVersionTimelineProps>(), {
@@ -96,6 +99,7 @@ function marker(entry: ReleaseEntry, index: number) {
           :show-original="showOriginal"
           :can-update="canUpdate?.(entry) ?? false"
           :heading-level="headingLevel"
+          :compatibility-labels="compatibilityLabels"
           @toggle="toggle(entry.version)"
           @update="emit('update', entry)"
           @open-source="event => emit('openSource', entry, event)"

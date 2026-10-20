@@ -22,18 +22,29 @@ test('Version navigation expands three entries initially with correct title/desc
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/apps\/visual-studio-code\/versions$/);
 });
 
-test('Notes/original filters enter URL but not canonical; collapsed entries expand', async ({ page }) => {
+test('Notes/original filters retain self-canonical URLs with noindex; collapsed entries expand', async ({ page }) => {
   await gotoReady(page, '/zh/apps/visual-studio-code/versions');
   await page.getByRole('radio', { name: '原文' }).click();
   await page.waitForURL(/original=1/);
   await expect(page.locator(`${timeline} > li`).first()).not.toContainText('AI 翻译');
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/apps\/visual-studio-code\/versions$/);
+  // S4 keeps filters in the canonical and prevents filtered views from being indexed.
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    /\/apps\/visual-studio-code\/versions\?original=1$/
+  );
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
 
   await page.getByRole('radio', { name: /^有更新说明/ }).click();
   await page.waitForURL(/notes=1/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    /\/apps\/visual-studio-code\/versions\?notes=1&original=1$/
+  );
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
   await expect(page.locator(`${timeline} > li`).first()).toBeVisible();
 
   const collapsed = page.locator(`${timeline} > li`).nth(3);
-  await collapsed.getByRole('button', { name: /展开/ }).click();
+  // Release entries now keep their body in native details/summary for SSR and no-JS access.
+  await collapsed.locator('summary').filter({ hasText: '展开' }).click();
   await expect(collapsed.locator('dl')).toBeVisible();
 });

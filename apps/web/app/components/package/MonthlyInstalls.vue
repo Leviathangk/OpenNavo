@@ -29,13 +29,15 @@ const items = computed(() =>
 </script>
 
 <template>
-  <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px pb-12px pt-14px">
-    <h2 class="m-0 text-13px font-600 text-ink-primary">
+  <section
+    class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px pb-12px pt-14px"
+    aria-labelledby="monthly-installs-title"
+  >
+    <!-- The trend is a paragraph after the heading, not part of it (C3). -->
+    <h2 id="monthly-installs-title" class="m-0 text-13px font-600 text-ink-primary">
       {{ t('package.monthly.title') }}
-      <small class="mt-2px block text-11.5px font-400 text-ink-tertiary">{{
-        t(`package.monthly.trend.${installTrend(installs)}`)
-      }}</small>
     </h2>
+    <p class="m-0 mt-2px text-11.5px text-ink-tertiary">{{ t(`package.monthly.trend.${installTrend(installs)}`) }}</p>
     <OnHBarChart class="mt-12px" :caption="t('package.monthly.title')" :items="items" />
   </section>
 </template>

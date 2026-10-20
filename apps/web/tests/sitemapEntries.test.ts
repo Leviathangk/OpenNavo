@@ -8,8 +8,10 @@ describe('Sitemap entries', () => {
       expect(entries.map(entry => entry.loc)).toEqual([`/apps/${token}`, `/zh/apps/${token}`]);
       // Marked as encoded, so @nuxtjs/sitemap does not run encodePath (+ → %2B) over the loc.
       expect(entries.every(entry => entry['_encoded'] === true)).toBe(true);
+      // en, zh-Hans, its zh catch-all (the same values the page head writes), and x-default.
       expect(entries[0]!.alternatives.map(alternative => alternative.href)).toEqual([
         `/apps/${token}`,
+        `/zh/apps/${token}`,
         `/zh/apps/${token}`,
         `/apps/${token}`
       ]);

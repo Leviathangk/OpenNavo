@@ -12,23 +12,22 @@ import (
 	"github.com/hibiken/asynq"
 
 	"encoding/json"
-	"errors"
 
 	pipeline "github.com/opennavo/opennavo/server/internal/changelog"
 	"github.com/opennavo/opennavo/server/internal/config"
-	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/fetch"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 	"github.com/opennavo/opennavo/server/internal/jobs"
-	"github.com/opennavo/opennavo/server/internal/llm/control"
-	llmopenai "github.com/opennavo/opennavo/server/internal/llm/openai"
 	"github.com/opennavo/opennavo/server/internal/observability"
 	"github.com/opennavo/opennavo/server/internal/service/assets"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/changelog"
-	"github.com/opennavo/opennavo/server/internal/service/contenttranslate"
 	"github.com/opennavo/opennavo/server/internal/service/links"
 	"github.com/opennavo/opennavo/server/internal/service/maintenance"
+	"github.com/opennavo/opennavo/server/internal/service/management"
+	"github.com/opennavo/opennavo/server/internal/service/seoexperiments"
+	"github.com/opennavo/opennavo/server/internal/service/seoingest"
+	"github.com/opennavo/opennavo/server/internal/service/seoopportunities"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
 	"github.com/opennavo/opennavo/server/internal/service/sourcefacts"
 	"github.com/opennavo/opennavo/server/internal/service/taps"
@@ -69,20 +68,23 @@ func run(ctx context.Context) error {
 	analytics := &catalog.AnalyticsService{Store: st, Source: homebrew.NewClient(cfg.HomebrewAPIBase, cfg.FetchUserAgent), Queue: queue, Location: location}
 	handlers := jobs.Handlers{"catalog:sync": func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return service.Run(ctx) }}
 	handlers["analytics:sync"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return analytics.Run(ctx) }
-	gateway := llmopenai.New(cfg)
-	language := &control.Client{Content: gateway, Store: st, Redis: st.Redis, Config: cfg, TranslationConfig: st.TranslationConfig}
-	if err := language.ConfigureQueue(ctx); err != nil {
-		return err
+	handlers["seo:pages"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) {
+		count, err := st.RefreshPackagePageStates(ctx, 100)
+		return map[string]any{"packages": count}, err
 	}
-	contentTranslation := &contenttranslate.Service{Store: st, LLM: language, Model: cfg.LLMModelTranslate}
-	handlers["translate:content"] = func(ctx context.Context, p jobs.Payload) (map[string]any, error) {
-		if p.Content == nil {
-			return nil, errors.New("missing content reference")
-		}
-		if p.Origin != nil {
-			ctx = domain.WithOperation(ctx, p.Origin)
-		}
-		return contentTranslation.Run(ctx, *p.Content, p.SourceHash)
+	seoData := seoingest.New(st, cfg)
+	handlers["seo:gsc"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return seoData.GSC(ctx) }
+	handlers["seo:inspect"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return seoData.Inspect(ctx) }
+	handlers["seo:bing"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return seoData.BingStats(ctx) }
+	handlers["seo:audit"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return seoData.AuditPages(ctx) }
+	handlers["seo:opportunities"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) {
+		return (&seoopportunities.Service{DB: st.DB}).Run(ctx)
+	}
+	handlers["seo:evaluate"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) {
+		return (&management.Service{Store: st, Config: cfg}).EvaluateSEO(ctx)
+	}
+	handlers["seo:experiments"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) {
+		return (&seoexperiments.Service{DB: st.DB, WebURL: cfg.WebBaseURL}).Checkpoints(ctx)
 	}
 	objects, err := storage.New(cfg)
 	if err != nil {
@@ -113,7 +115,7 @@ func run(ctx context.Context) error {
 	githubFacts := pipeline.NewResolver(cfg.FetchUserAgent)
 	githubFacts.ObserveQuota = st.ObserveGitHubQuota
 	githubFacts.TokenProvider = releaseService.Fetcher.HTTP.TokenProvider
-	factSources := &sourcefacts.Service{Store: st, GitHub: &sources.GitHub{HTTP: githubFacts},
+	factSources := &sourcefacts.Service{Store: st, NVD: &sources.NVD{Client: fetch.NewClient(20 * time.Second), UserAgent: cfg.FetchUserAgent}, GitHub: &sources.GitHub{HTTP: githubFacts},
 		AppStore:    &sources.AppStore{Client: fetch.NewClient(15 * time.Second), UserAgent: cfg.FetchUserAgent},
 		GitHubPause: 200 * time.Millisecond, AppStorePause: 3500 * time.Millisecond}
 	handlers["facts:sources"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return factSources.Run(ctx) }
@@ -176,5 +178,5 @@ func run(ctx context.Context) error {
 		}
 	}()
 	defer func() { cancelDispatch(); <-notifyDone }()
-	return jobs.Run(ctx, st.Redis, st, jobs.WithLLMLimit(handlers, cfg.LLMConcurrency), location, logger)
+	return jobs.Run(ctx, st.Redis, st, handlers, location, logger)
 }

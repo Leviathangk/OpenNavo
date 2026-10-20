@@ -54,7 +54,7 @@ func TestCatalogV2DownloadSchemasAndExamples(t *testing.T) {
 	text := schemas["CatalogTextPack"].Value
 	require.NoError(t, text.VisitJSON(text.Example))
 	badText := exampleObject(t, text.Example)
-	badText["locale"] = "fr-FR"
+	badText["locale"] = "unknown"
 	require.Error(t, text.VisitJSON(badText))
 	badInfo := exampleObject(t, schemas["CatalogTextPackInfo"].Value.Example)
 	badInfo["sha256"] = "broken"
@@ -68,7 +68,7 @@ func TestCatalogV2DownloadSchemasAndExamples(t *testing.T) {
 	require.NoError(t, localized.VisitJSON(map[string]any{"zh-CN": nil}), "Legacy HTTP nulls remain compatible; IPC normalizes them")
 	for _, path := range []string{"/catalog/snapshot", "/catalog/changes"} {
 		media := spec.Paths.Find(path).Get.Responses.Status(200).Value.Content["application/json"]
-		require.Len(t, media.Examples, len(i18n.Locales))
+		require.Len(t, media.Examples, len(i18n.SiteLocales))
 		for _, locale := range i18n.Locales {
 			require.Contains(t, media.Examples, string(locale))
 		}

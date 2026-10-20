@@ -1,9 +1,8 @@
 <script setup lang="tsx">
 import { computed, reactive } from 'vue';
 import { NButton, NTag, NText, NTooltip } from 'naive-ui';
-import { fetchTranslationLogs, retranslateContent } from '@/service/api';
+import { fetchTranslationLogs } from '@/service/api';
 import type { QueryOf, RecordOf, Schemas } from '@/typings/api/opennavo';
-import { useAuth } from '@/hooks/business/auth';
 import { defaultTransform, useNaivePaginatedTable } from '@/hooks/common/table';
 import { CONTENT_LOCALE_OPTIONS } from '@/utils/content-locale';
 import { compactParams, formatDateTime } from '@/utils/opennavo';
@@ -14,9 +13,9 @@ defineOptions({ name: 'AgentTranslationTab' });
 
 type Row = RecordOf<'listTranslationLogs'>;
 
-// AI translations (90 days): language pair, model, tokens, duration, failure; translation:review allows retry.
+// AI translations (90 days, read-only history): language pair, model, tokens, duration, failure. Hermes
+// writes translations now (S8), so there is no retry here.
 const STATUS_TAG = { succeeded: 'success', failed: 'error', stale: 'default' } as const;
-const { hasAuth } = useAuth();
 const filters = reactive<{ status: Row['status'] | null; locale: Schemas['Locale'] | null; range: [number, number] | null }>({
   status: null,
   locale: null,
@@ -99,30 +98,8 @@ const { columns, data, loading, getData, getDataByPage, mobilePagination } = use
       }
     },
     { key: 'actor', title: $t('page.ops.agentLog.columns.actor'), width: 220, ellipsis: { tooltip: true }, render: row => actorLabel(row.actor) },
-    {
-      key: 'operate',
-      title: $t('common.operate'),
-      width: 100,
-      align: 'center',
-      fixed: 'right',
-      render: row =>
-        row.status === 'failed' && hasAuth('translation:review') ? (
-          <NButton size="small" type="primary" ghost onClick={() => retry(row)}>
-            {$t('page.ops.agentLog.retry')}
-          </NButton>
-        ) : (
-          '—'
-        )
-    }
   ]
 });
-
-async function retry(row: Row) {
-  const { error } = await retranslateContent({ ref: row.ref, locales: row.targetLocales.slice(0, 5) });
-  if (error) return;
-  window.$message?.success($t('page.ops.agentLog.retried'));
-  await getData();
-}
 
 defineExpose({ refresh: getData });
 </script>

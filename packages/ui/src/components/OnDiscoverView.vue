@@ -64,6 +64,12 @@ export interface OnDiscoverViewProps {
   popular: readonly PackageSummary[] | null;
   /** Fit both app sections to the available width, leaving two final-row slots empty when at least three columns fit. */
   popularRows?: number;
+  /**
+   * Web (T1): render this many cards per app section on the server, the same set on every screen. CSS alone
+   * hides the last ones where the desktop rule (popularRows) would show fewer, so nothing changes after
+   * hydration and every card stays in the HTML. Desktop leaves it unset and fits the measured width.
+   */
+  fixedCount?: number;
   recent: readonly PackageSummary[] | null;
   collections?: readonly OnDiscoverCollection[];
   labels: OnDiscoverLabels;
@@ -88,7 +94,10 @@ defineSlots<{
 }>();
 
 const RECENT_STATS: readonly OnAppCardStat[] = ['version', 'installs30d'];
-const appGrid = 'grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-12px';
+const appGrid = computed(() => [
+  'grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-12px',
+  { 'on-discover-fixed': Boolean(props.fixedCount) }
+]);
 const root = ref<HTMLElement>();
 const contentWidth = ref(0);
 const popularLimit = computed(() => {
@@ -100,8 +109,12 @@ const popularLimit = computed(() => {
 let observer: ResizeObserver | undefined;
 let resizeFrame = 0;
 
+// Cards each app section renders: a fixed set on the web, else what fits the width.
+const popularCount = computed(() => props.fixedCount ?? popularLimit.value);
+const recentCount = computed(() => props.fixedCount ?? (props.popularRows ? popularLimit.value : 8));
+
 onMounted(() => {
-  if (!props.popularRows || !root.value) return;
+  if (props.fixedCount || !props.popularRows || !root.value) return;
   contentWidth.value = root.value.clientWidth;
   if (typeof ResizeObserver !== 'undefined') {
     observer = new ResizeObserver(([entry]) => {
@@ -263,7 +276,7 @@ function featureLinkAttrs(feature: OnDiscoverFeature) {
           :link-as="linkAs"
         />
         <div :class="appGrid">
-          <template v-for="pkg in popular.slice(0, popularLimit)" :key="`${pkg.kind}/${pkg.token}`">
+          <template v-for="pkg in popular.slice(0, popularCount)" :key="`${pkg.kind}/${pkg.token}`">
             <slot name="card" :pkg="pkg" section="popular" :stats="RECENT_STATS" />
           </template>
         </div>
@@ -278,14 +291,14 @@ function featureLinkAttrs(feature: OnDiscoverFeature) {
           :link-as="linkAs"
         />
         <div :class="appGrid">
-          <template v-for="pkg in recent.slice(0, popularRows ? popularLimit : 8)" :key="`${pkg.kind}/${pkg.token}`">
+          <template v-for="pkg in recent.slice(0, recentCount)" :key="`${pkg.kind}/${pkg.token}`">
             <slot name="card" :pkg="pkg" section="recent" :stats="RECENT_STATS" />
           </template>
         </div>
       </section>
     </template>
     <div v-else :class="appGrid" aria-hidden="true">
-      <OnSkeleton v-for="index in popularLimit" :key="index" height="148px" radius="big" />
+      <OnSkeleton v-for="index in popularCount" :key="index" height="148px" radius="big" />
     </div>
 
     <section v-if="collections.length">
@@ -328,6 +341,37 @@ function featureLinkAttrs(feature: OnDiscoverFeature) {
 @container (min-width: 640px) {
   .on-discover-picks-split {
     grid-template-columns: minmax(0, 1.65fr) minmax(240px, 1fr);
+  }
+}
+</style>
+
+<style>
+/*
+ * Fixed sets (web, fixedCount): the same whole rows the desktop fits to the width (three rows, two empty
+ * final slots), chosen by container width instead of script. 220 px cards and 12 px gaps give one column
+ * below 452 px, two below 684, three below 916 and four below 1148; wider layouts show the whole set.
+ */
+@container (max-width: 451.98px) {
+  .on-discover-fixed > :nth-child(n + 4) {
+    display: none;
+  }
+}
+
+@container (min-width: 452px) and (max-width: 683.98px) {
+  .on-discover-fixed > :nth-child(n + 6) {
+    display: none;
+  }
+}
+
+@container (min-width: 684px) and (max-width: 915.98px) {
+  .on-discover-fixed > :nth-child(n + 8) {
+    display: none;
+  }
+}
+
+@container (min-width: 916px) and (max-width: 1147.98px) {
+  .on-discover-fixed > :nth-child(n + 11) {
+    display: none;
   }
 }
 </style>

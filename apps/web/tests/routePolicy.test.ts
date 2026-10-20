@@ -6,7 +6,8 @@ vi.stubGlobal('defineNuxtConfig', (config: unknown) => config);
 const { default: config } = await import('../nuxt.config');
 vi.unstubAllGlobals();
 
-const prefixes = ['', '/zh', '/ja', '/es', '/pt', '/ru'];
+// Every site language (L1), the four site-only ones included.
+const prefixes = ['', '/zh', '/ja', '/es', '/pt', '/ru', '/de', '/fr', '/it', '/zh-hant'];
 const ttls: Record<string, number> = {
   '/': 300,
   '/discover': 300,
@@ -20,9 +21,18 @@ const ttls: Record<string, number> = {
   '/recent': 300,
   '/download': 600,
   '/security': 900,
+  // F8 security topics, T1 A–Z directory and F1 background-items encyclopedia.
+  '/security/**': 900,
+  '/browse': 900,
+  '/browse/**': 900,
+  '/background-items': 900,
+  '/background-items/**': 900,
   '/articles': 600,
   '/articles/**': 600,
-  '/authors/**': 600
+  '/authors/**': 600,
+  // X5: collections are cached like other lists; editing one purges its pages by prefix.
+  '/collections': 300,
+  '/collections/**': 300
 };
 
 describe('link prefetching', () => {
@@ -77,13 +87,10 @@ describe('localized route policies', () => {
     expect(sitemap.sitemaps.authors).toEqual({ includeAppSources: false });
   });
 
-  it.each(prefixes)('does not cache %s collection HTML or extracted payloads', prefix => {
+  it.each(prefixes)('caches %s collection pages like other lists (X5)', prefix => {
     for (const path of ['/collections', '/collections/**']) {
-      expect(config.routeRules?.[`${prefix}${path}`]).toEqual({
-        cache: false,
-        headers: { 'cache-control': 'no-store' }
-      });
-      expect(config.$production?.routeRules?.[`${prefix}${path}`]).toBeUndefined();
+      expect(config.routeRules?.[`${prefix}${path}`]).toBeUndefined();
+      expect(config.$production?.routeRules?.[`${prefix}${path}`]).toEqual({ swr: 300 });
     }
   });
 
@@ -92,7 +99,16 @@ describe('localized route policies', () => {
     expect(Object.keys(production)).toHaveLength(prefixes.length * Object.keys(ttls).length);
     for (const path of [...Object.keys(production), ...Object.keys(config.routeRules ?? {})]) {
       expect(path).not.toMatch(/^\/en(?:\/|$)/);
-      expect(path).not.toMatch(/^(?:\/zh|\/ja|\/es|\/pt|\/ru)?\/\*\*$/);
+      expect(path).not.toMatch(/^(?:\/zh|\/ja|\/es|\/pt|\/ru|\/de|\/fr|\/it|\/zh-hant)?\/\*\*$/);
     }
+  });
+});
+
+describe('G1 deployment-only bot verification', () => {
+  it('defaults to disabled even though the ingress header name is configured', () => {
+    expect(config.runtimeConfig?.cfVerifiedBotEnabled).toBe(false);
+    expect(config.runtimeConfig?.verifiedBotHeader).toBe('X-OpenNavo-Verified-Bot');
+    expect(config.runtimeConfig?.trustedProxies).toBe('');
+    expect(config.runtimeConfig?.public).not.toHaveProperty('cfVerifiedBotEnabled');
   });
 });

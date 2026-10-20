@@ -15,6 +15,7 @@ const NuxtLink = resolveComponent('NuxtLink');
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
 const { hrefWith } = useCatalogQuery({ page: 1 });
 const { page, assertExists } = useListPage();
+useKnownQueryValue('type', ARTICLE_TYPES);
 const type = computed(() => (isArticleType(route.query.type) ? route.query.type : undefined));
 
 const { data, error, refresh, status } = await useAsyncData(
@@ -43,7 +44,8 @@ const feedPath = useArticleFeed();
 
 useItemListSchema(
   () => records.value.map(card => ({ name: card.title, path: localePath(`/articles/${card.slug}`) })),
-  () => (page.value - 1) * ARTICLE_PAGE_SIZE + 1
+  () => (page.value - 1) * ARTICLE_PAGE_SIZE + 1,
+  () => data.value?.total
 );
 usePageSeo({
   title: () =>

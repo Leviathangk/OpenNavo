@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import type { Component } from 'vue';
 import OnIcon from './OnIcon.vue';
 
-// Shared section header (mockup 02, ADR-017): title, muted description, right View rankings link.
+// Shared section header (mockup 02, ADR-017): title, muted description, right View rankings link. The h2 holds
+// only the title (C3): the description sits beside it in its own paragraph, so it never becomes heading text.
 export interface OnSectionHeaderProps {
   title: string;
   hint?: string;
@@ -20,10 +21,10 @@ const linkAttrs = computed(() => (props.linkAs === 'a' ? { href: props.moreHref 
 
 <template>
   <div class="mb-12px flex flex-wrap items-baseline justify-between gap-12px">
-    <h2 class="m-0 flex min-w-0 flex-1 flex-wrap items-baseline gap-x-10px gap-y-4px text-headline text-ink-primary">
-      <span class="max-w-full break-words">{{ title }}</span>
-      <span v-if="hint" class="max-w-full break-words text-13px font-400 text-ink-tertiary">{{ hint }}</span>
-    </h2>
+    <div class="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-10px gap-y-4px">
+      <h2 class="m-0 max-w-full break-words text-headline text-ink-primary">{{ title }}</h2>
+      <p v-if="hint" class="m-0 max-w-full break-words text-13px font-400 text-ink-tertiary">{{ hint }}</p>
+    </div>
     <component
       :is="linkAs"
       v-if="moreLabel && moreHref"

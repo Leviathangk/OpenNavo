@@ -1,10 +1,21 @@
 // Page titles and descriptions (WP1), pure for testing. Titles keep the full software name and state
-// the intent the page serves; they never add "best", years or "free", and only claim a download
+// the intent the page serves; they never add "best" or years, and only claim a download
 // when Homebrew can still install the package. Descriptions say what the page answers instead of
-// stacking summary, command, version and install counts.
+// stacking summary, command, version and install counts. H3 alone may add "free", with verified evidence.
+import type { PublicComponents } from '@opennavo/api';
 import { disabledByHomebrew, formatVersion, type HomebrewLifecycle } from '@opennavo/shared';
+import {
+  capabilities,
+  currentVersion,
+  shownRequirements,
+  uninstallFacts,
+  verifiedAlternatives,
+  verifiedPrices,
+  type PackagePage
+} from './packageFacts';
 
-export type Translate = (key: string, named?: Record<string, unknown>) => string;
+/** vue-i18n's t; the third argument picks the plural form, as in packageFaq.ts. */
+export type Translate = (key: string, named?: Record<string, unknown>, plural?: number) => string;
 
 /** Every page title ends with the brand; paginated titles put the page label before it. */
 export const TITLE_SUFFIX = ' · OpenNavo';
@@ -69,7 +80,7 @@ function withName(t: Translate, key: string, name: string, named: Record<string,
  * its own: iMac版 and Mac Mouse Fix are names, not platform phrases.
  */
 const PLATFORM_SUFFIX =
-  /(?:\s+(?:for|para|для)\s+(?:mac(?:\s?os(?:\s?x)?)?|os\s?x)|(?<![a-z\d])\s*mac(?:\s?os)?\s*版)$/iu;
+  /(?:\s+(?:for|para|для|für|pour|per)\s+(?:mac(?:\s?os(?:\s?x)?)?|os\s?x)|(?<![a-z\d])\s*mac(?:\s?os)?\s*版)$/iu;
 
 /**
  * The name a title puts before its own platform phrase, so the platform is named once: "WeChat for
@@ -102,7 +113,7 @@ const SENTENCE_END = /(?<!\b\p{L})[.!?](?=\s)|[。！？]/gu;
 const CLAUSE_END = /[;:](?=\s)|\s[–—]\s|[，；：]/gu;
 /** Punctuation, and English, Spanish, Portuguese or Russian words that only lead into what was cut off. */
 const DANGLING_END =
-  /(?:[\s,.;:、，。；：–—-]+|\s+(?:a|an|and|as|at|by|for|from|in|into|its|of|on|or|than|that|the|their|to|via|with|your|al|ao|aos|com|con|da|das|de|del|do|dos|e|el|em|en|la|las|los|na|no|o|para|pela|pelo|por|que|seu|seus|su|sua|suas|sus|tu|tus|u|um|uma|y|а|в|во|ваш|ваши|для|его|и|из|или|их|к|на|о|об|от|по|с|со|что))$/iu;
+  /(?:[\s,.;:、，。；：–—-]+|\s+(?:a|an|and|as|at|by|for|from|in|into|its|of|on|or|than|that|the|their|to|via|with|your|al|ao|aos|com|con|da|das|de|del|do|dos|e|el|em|en|la|las|los|na|no|o|para|pela|pelo|por|que|seu|seus|su|sua|suas|sus|tu|tus|u|um|uma|y|а|в|во|ваш|ваши|для|его|и|из|или|их|к|на|о|об|от|по|с|со|что|aux|au|avec|dans|des|du|et|les|leur|leurs|ou|par|pour|qui|sans|ses|son|sur|une|un|vos|votre|à|l[’']|d[’']|qu[’']|als|auf|aus|bei|dem|den|der|des|die|das|ein|eine|einem|einen|einer|für|ihr|ihre|im|mit|nach|oder|und|von|vom|zu|zum|zur|über|alla|alle|ai|agli|che|degli|dei|del|della|delle|di|gli|il|lo|nel|nella|per|sul|sulla|tra|fra|tuo|tua|tuoi|tue|suo|sue|una|uno|all[’']|dell[’']|nell[’']|un[’']))$/iu;
 
 /**
  * The start of a summary that fits `room` columns. A whole sentence or clause wins when it fills at
@@ -137,42 +148,117 @@ export function fitSummary(summary: string, room: number): string {
 }
 
 export interface OverviewFacts {
-  kind?: string;
+  kind: PackagePage['kind'];
   displayName: string;
   summary?: string | null;
   isFont: boolean;
   /** The catalog flag, which also covers apps paused by the 90-day rule that Homebrew still installs. */
   disabled: boolean;
   homebrewStatus?: HomebrewLifecycle | null;
+  facts: PackagePage['facts'];
+  version: string;
+  latestRelease?: PackagePage['latestRelease'];
 }
 
-export function overviewTitle(pkg: OverviewFacts, t: Translate): string {
+export type SeoExperimentAssignment = PublicComponents['schemas']['SeoExperimentAssignment'];
+
+/** Optional experiment labels yield to the full name and the original title when space is tight. */
+export const TITLE_WIDTH = 60;
+
+function hasUninstallFacts(pkg: OverviewFacts): boolean {
+  return [...uninstallFacts(pkg, 'uninstall'), ...uninstallFacts(pkg, 'zap')].some(item => item.value.trim());
+}
+
+/** The server assigns pages, and the renderer verifies that this page can still support the wording. */
+function overviewVariant(pkg: OverviewFacts, assignment?: SeoExperimentAssignment | null) {
+  if (assignment?.arm !== 'treatment' || !assignment.eligible) return null;
+  switch (assignment.variant) {
+    case 'verified_free':
+      return verifiedPrices(pkg).some(price => price.usage === 'free') ? assignment.variant : null;
+    case 'current_version':
+      return reliableVersion(currentVersion(pkg)) ? assignment.variant : null;
+    case 'uninstall_alternatives':
+      return capabilities(pkg).uninstall && hasUninstallFacts(pkg) && verifiedAlternatives(pkg).length
+        ? assignment.variant
+        : null;
+    default:
+      return null;
+  }
+}
+
+export function overviewTitle(pkg: OverviewFacts, t: Translate, assignment?: SeoExperimentAssignment | null): string {
   const name = titleName(pkg.displayName);
-  if (disabledByHomebrew(pkg)) return withName(t, 'package.seo.titleUnavailable', name);
   // Names such as "FiraCode Nerd Font" already say they are fonts.
-  if (pkg.isFont && !/\bfonts?\b|字体/iu.test(pkg.displayName)) return withName(t, 'package.seo.titleFont', name);
-  return withName(t, 'package.seo.titleApp', name);
+  const key = disabledByHomebrew(pkg)
+    ? 'package.seo.titleUnavailable'
+    : pkg.isFont && !/\bfonts?\b|字体/iu.test(pkg.displayName)
+      ? 'package.seo.titleFont'
+      : 'package.seo.titleApp';
+  const control = withName(t, key, name);
+  const variant = overviewVariant(pkg, assignment);
+  const label =
+    variant === 'verified_free'
+      ? t('package.link.pricing.free')
+      : variant === 'current_version'
+        ? reliableVersion(currentVersion(pkg))
+        : '';
+  if (!label) return control;
+  const treatment = withName(t, key, `${name} ${label}`);
+  return textWidth(treatment) <= TITLE_WIDTH ? treatment : control;
 }
 
 /**
- * The summary, then a sentence on what the page answers. When both do not fit the columns search
- * results show, the summary is shortened (fitSummary), so the closing sentence is not cut off.
+ * Fits the summary around a complete closing sentence. An ellipsis replaces a Latin full stop;
+ * CJK punctuation stays to separate the two sentences.
  */
-export function overviewDescription(pkg: OverviewFacts, t: Translate): string {
-  const name = pkg.displayName;
-  const summary = usableSummary(pkg.summary, name);
-  // Link apps have no install method on the page, only the developer's download (store/security plan §4).
-  const key = disabledByHomebrew(pkg)
-    ? 'package.seo.descriptionUnavailable'
-    : pkg.kind === 'link'
-      ? 'package.seo.descriptionLink'
-      : 'package.seo.description';
-  const fitted = summary && fitSummary(summary, DESCRIPTION_WIDTH - textWidth(withName(t, key, name, { summary: '' })));
-  if (!fitted) return withName(t, `${key}NoSummary`, name);
-  const text = withName(t, key, name, { summary: `${fitted}${SUMMARY_END}` });
-  // An ellipsis ends a shortened summary in place of a Latin full stop ("voice… See how"); CJK text
-  // keeps its 。 to separate the sentences.
+function overviewSentence(pkg: OverviewFacts, t: Translate, key: string, named: Record<string, unknown> = {}): string {
+  let name = pkg.displayName;
+  const room = DESCRIPTION_WIDTH - textWidth(withName(t, `${key}NoSummary`, '', named));
+  if (textWidth(name) > room) name = fitSummary(name, room);
+  const summary = usableSummary(pkg.summary, pkg.displayName);
+  const fitted =
+    summary && fitSummary(summary, DESCRIPTION_WIDTH - textWidth(withName(t, key, name, { ...named, summary: '' })));
+  if (!fitted) return withName(t, `${key}NoSummary`, name, named);
+  const text = withName(t, key, name, { ...named, summary: `${fitted}${SUMMARY_END}` });
   return text.replace(fitted.endsWith('…') ? /\ue001\.?/u : SUMMARY_END, '');
+}
+
+/**
+ * C2: name only sections the overview renders, using the same facts helpers as those sections.
+ * First shorten/drop the summary; only if the closing sentence alone is too long, drop whole list
+ * items from the end. H3 puts uninstall and alternatives first and keeps both together.
+ */
+export function overviewDescription(
+  pkg: OverviewFacts,
+  t: Translate,
+  list: ListFormat,
+  assignment?: SeoExperimentAssignment | null
+): string {
+  // Preserve the existing distribution/lifecycle branches.
+  if (disabledByHomebrew(pkg)) return overviewSentence(pkg, t, 'package.seo.descriptionUnavailable');
+  if (pkg.kind === 'link') return overviewSentence(pkg, t, 'package.seo.descriptionLink');
+  const can = capabilities(pkg);
+  const available = {
+    installation: can.homebrew,
+    price: verifiedPrices(pkg).length > 0,
+    requirements: shownRequirements(pkg).length > 0,
+    uninstall: can.uninstall && (can.homebrew || hasUninstallFacts(pkg)),
+    alternatives: verifiedAlternatives(pkg).length > 0,
+    versions: Boolean(pkg.latestRelease)
+  };
+  type Part = keyof typeof available;
+  const treatment = overviewVariant(pkg, assignment) === 'uninstall_alternatives';
+  const priority: Part[] = treatment
+    ? ['uninstall', 'alternatives', 'installation', 'price', 'requirements', 'versions']
+    : ['installation', 'price', 'requirements', 'uninstall', 'alternatives', 'versions'];
+  const parts = priority.filter(part => available[part]).map(part => t(`package.seo.overviewParts.${part}`));
+  if (!parts.length) return overviewSentence(pkg, t, 'package.seo.descriptionOverview');
+  while (parts.length > (treatment ? 2 : 1)) {
+    const closing = withName(t, 'package.seo.descriptionFactsNoSummary', pkg.displayName, { parts: list(parts) });
+    if (textWidth(closing) <= DESCRIPTION_WIDTH) break;
+    parts.pop();
+  }
+  return overviewSentence(pkg, t, 'package.seo.descriptionFacts', { parts: list(parts) });
 }
 
 export interface VersionFacts {
@@ -207,4 +293,78 @@ export function versionsDescription(pkg: VersionFacts, t: Translate, formatDate:
   return date
     ? withName(t, 'package.versionsMetaDescription', name, { version, date: formatDate(date) })
     : withName(t, 'package.seo.versionsDescriptionNoDate', name, { version });
+}
+
+/** Joins phrases the way the page's language lists them ("a, b and c", "a、b和c"). */
+export type ListFormat = (values: string[]) => string;
+
+export interface CategoryFacts {
+  name: string;
+  /** The category's own description from the catalog; often only a few words. */
+  description?: string | null;
+  /** Apps the category lists in its default view, and that number formatted for the page's language. */
+  total: number;
+  totalLabel: string;
+  /** Names of the first apps on this page, in list order. */
+  apps: readonly string[];
+}
+
+const SENTENCE_CLOSE = /[.!?。！？…]$/u;
+
+/**
+ * The category's own description, then how many Mac apps it lists and the first three of them (C2).
+ * The app names make every category, and every page of one, read differently; when the whole does not
+ * fit the columns search results show, the list shrinks first and the catalog description is shortened.
+ */
+export function categoryDescription(category: CategoryFacts, t: Translate, list: ListFormat): string | undefined {
+  const intro = (category.description ?? '').trim();
+  if (!category.total) return intro || undefined;
+  let sentence = '';
+  for (let size = Math.min(3, category.apps.length); size >= 0; size--) {
+    const named = { name: category.name, count: category.totalLabel, apps: list(category.apps.slice(0, size)) };
+    const key = size ? 'categories.seo.itemDescription' : 'categories.seo.itemDescriptionCount';
+    sentence = t(key, named, category.total);
+    if (textWidth(sentence) <= DESCRIPTION_WIDTH) break;
+  }
+  const fitted = intro && fitSummary(intro, DESCRIPTION_WIDTH - textWidth(sentence) - 1);
+  if (!fitted) return sentence;
+  // A catalog description without closing punctuation gets the full stop of its own script.
+  const closed = SENTENCE_CLOSE.test(fitted)
+    ? fitted
+    : `${fitted}${isCjkLetter(Array.from(fitted).at(-1)) ? '。' : '.'}`;
+  return WIDE.test(Array.from(closed).at(-1) ?? '') ? `${closed}${sentence}` : `${closed} ${sentence}`;
+}
+
+export interface DependencyFacts {
+  displayName: string;
+  runtime: number;
+  build: number;
+  other: number;
+  conflicts: number;
+  dependents: number;
+}
+
+const DEPENDENCY_PARTS = ['runtime', 'build', 'other', 'conflicts', 'dependents'] as const;
+
+/**
+ * What the dependencies page lists, counted (C2): the page used to repeat the overview summary, so its
+ * description matched the details page word for word.
+ */
+export function dependenciesDescription(
+  facts: DependencyFacts,
+  t: Translate,
+  list: ListFormat,
+  count: (value: number) => string
+): string {
+  const parts = DEPENDENCY_PARTS.filter(part => facts[part] > 0).map(part =>
+    t(`package.deps.meta.${part}`, { count: count(facts[part]) }, facts[part])
+  );
+  return parts.length
+    ? withName(t, 'package.deps.metaDescription', facts.displayName, { parts: list(parts) })
+    : withName(t, 'package.deps.metaDescriptionNone', facts.displayName);
+}
+
+/** The details page says what it holds instead of repeating the overview summary (C2). */
+export function detailsDescription(displayName: string, t: Translate): string {
+  return withName(t, 'package.details.metaDescription', displayName);
 }

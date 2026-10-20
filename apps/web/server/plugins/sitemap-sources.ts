@@ -3,14 +3,18 @@ import type { PublicComponents } from '@opennavo/api';
 import { LOCALES, VERSION_PAGE_MIN_NOTES } from '@opennavo/shared';
 import { packageSitemapName, packageSitemaps, type PackageSitemapGroup } from '../../shared/utils/sitemapBuckets';
 import { PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
-import { localizedEntries } from '../utils/sitemapEntries';
+import { localizedEntries, openLocaleEntries } from '../utils/sitemapEntries';
 import { createStaleCache } from '../utils/staleCache';
 
 type SitemapEntry = PublicComponents['schemas']['SitemapEntry'];
+type BackgroundItem = PublicComponents['schemas']['BackgroundItem'];
+type Locale = PublicComponents['schemas']['Locale'];
 
 interface CategoryNode {
   slug: string;
   hiddenByDefault: boolean;
+  /** Apps the category page lists by default; older APIs omit it. */
+  packageCount?: number;
   children: CategoryNode[];
 }
 
@@ -38,12 +42,36 @@ export default defineNitroPlugin(nitroApp => {
     // content. The article check is one small request and follows publishing at once; the
     // populated buckets come from the cached catalog (populatedPackageSitemaps).
     const [{ articles, authors }, populated] = await Promise.all([articleSitemap(), populatedPackageSitemaps()]);
-    ctx.sitemaps = ctx.sitemaps.filter(({ _sitemapName: sitemapName }) => {
-      if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) return populated.has(sitemapName);
-      if (sitemapName === 'articles') return articles.length > 0;
-      if (sitemapName === 'authors') return authors.length > 0;
-      return true;
-    });
+    // T5: each package bucket and the article groups carry the date their newest page last changed in
+    // content; groups without such a date (static pages, categories, collections) carry none.
+    const newest = (dates: (string | null | undefined)[]) =>
+      dates
+        .filter((date): date is string => Boolean(date))
+        .sort()
+        .at(-1);
+    const lastmods: Record<string, string | undefined> = {
+      articles: newest(articles.flatMap(item => item.locales.map(entry => entry.lastmod))),
+      authors: newest(authors.map(author => author.lastmod))
+    };
+    ctx.sitemaps = ctx.sitemaps
+      .filter(({ _sitemapName: sitemapName }) => {
+        if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) return populated.has(sitemapName);
+        if (sitemapName === 'articles') return articles.length > 0;
+        if (sitemapName === 'authors') return authors.length > 0;
+        return true;
+      })
+      .map(entry => {
+        const { _sitemapName: sitemapName } = entry;
+        const name = sitemapName ?? '';
+        const lastmod = Object.hasOwn(packageSitemaps, name) ? populated.get(name) : lastmods[name];
+        return lastmod ? { ...entry, lastmod } : entry;
+      });
+  });
+  // L1: the module builds the static group from the app's pages in every site language; only the
+  // languages open for indexing (site settings, pages.openLocales) stay in it.
+  nitroApp.hooks.hook('sitemap:resolved', async ctx => {
+    if (ctx.sitemapName !== 'static') return;
+    ctx.urls = openLocaleEntries(ctx.urls, (await getSiteSettings()).pages.openLocales);
   });
   nitroApp.hooks.hook('sitemap:input', async ctx => {
     if (Object.hasOwn(packageSitemaps, ctx.sitemapName)) {
@@ -53,11 +81,19 @@ export default defineNitroPlugin(nitroApp => {
         group === 'versions'
           ? (await Promise.all([cachedPackages('apps'), cachedPackages('fonts')])).flat()
           : await cachedPackages(group);
+      const page = group === 'versions' ? 'versions' : 'overview';
       const urls = records
         .filter(record => packageSitemapName(group, record.token) === ctx.sitemapName)
-        .filter(record => group !== 'versions' || (record.notesCount ?? 0) >= VERSION_PAGE_MIN_NOTES)
         .flatMap(record =>
-          packageEntries(record, `/apps/${record.token}${group === 'versions' ? '/versions' : ''}`, ctx.sitemapName)
+          page === 'versions'
+            ? packageEntries(record, `/apps/${record.token}/versions`, ctx.sitemapName, page)
+            : [
+                ...packageEntries(record, `/apps/${record.token}`, ctx.sitemapName, page),
+                // X2 intent pages sit beside their app, only in languages whose decision lists them.
+                ...packageEntries(record, `/apps/${record.token}/alternatives`, ctx.sitemapName, 'alternatives'),
+                ...packageEntries(record, `/apps/${record.token}/uninstall`, ctx.sitemapName, 'uninstall'),
+                ...packageEntries(record, `/apps/${record.token}/troubleshooting`, ctx.sitemapName, 'troubleshooting')
+              ]
         );
       // Never silently truncate a bucket if the catalog outgrows this partition.
       if (urls.length > 50000) throw new Error(`Sitemap bucket exceeds URL limit: ${ctx.sitemapName}`);
@@ -82,9 +118,11 @@ interface PackageSnapshot {
 }
 
 /**
- * Package buckets that have URLs, for the index. Working this out reads the whole catalog snapshot
- * (megabytes from Redis on every index request), so each process keeps the answer
- * (createStaleCache): after the first request the index answers at once, even when cold.
+ * Package buckets that have URLs, for the index, with the newest content date of the pages each one
+ * lists (undefined when none is known). Working this out reads the whole catalog snapshot (megabytes
+ * from Redis on every index request), so each process keeps the answer (createStaleCache): after the
+ * first request the index answers at once, even when cold. It uses the same rule as the buckets
+ * themselves (listedLocales), so the index never lists an empty one.
  */
 const populatedPackageSitemaps = createStaleCache(
   async () => {
@@ -93,15 +131,18 @@ const populatedPackageSitemaps = createStaleCache(
       cachedPackages('fonts'),
       getSiteSettings()
     ]);
-    return new Set([
-      ...apps.filter(record => record.locales?.length !== 0).map(record => packageSitemapName('apps', record.token)),
-      ...fonts.filter(record => record.locales?.length !== 0).map(record => packageSitemapName('fonts', record.token)),
-      ...(settings.pages.versionsSitemap
-        ? [...apps, ...fonts]
-            .filter(record => record.locales?.length !== 0 && (record.notesCount ?? 0) >= VERSION_PAGE_MIN_NOTES)
-            .map(record => packageSitemapName('versions', record.token))
-        : [])
-    ]);
+    const buckets = new Map<string, string | undefined>();
+    const add = (group: PackageSitemapGroup, record: SitemapEntry, page: SitemapPage) => {
+      const entries = listedLocales(record, page);
+      if (entries?.length === 0) return;
+      const name = packageSitemapName(group, record.token);
+      const dates = (entries ?? []).map(entry => entry.pageLastmod?.[page] ?? entry.lastmod);
+      buckets.set(name, [buckets.get(name), ...dates].filter(Boolean).sort().at(-1) as string | undefined);
+    };
+    for (const record of apps) add('apps', record, 'overview');
+    for (const record of fonts) add('fonts', record, 'overview');
+    if (settings.pages.versionsSitemap) for (const record of [...apps, ...fonts]) add('versions', record, 'versions');
+    return buckets;
   },
   {
     freshMs: SNAPSHOT_FRESH_MS,
@@ -224,9 +265,35 @@ async function loadPackagePages(group: 'apps' | 'fonts'): Promise<SitemapEntry[]
   }
 }
 
-function packageEntries(record: Pick<SitemapEntry, 'locales'>, path: string, sitemap: string) {
-  const locales = record.locales?.map(entry => entry.locale) ?? LOCALES;
-  const lastmods = new Map(record.locales?.map(entry => [entry.locale, entry.lastmod]));
+type SitemapPage = 'overview' | 'versions' | 'alternatives' | 'uninstall' | 'troubleshooting';
+/**
+ * Intent pages (X2) and the troubleshooting page (F7) exist only where a decision opens them; without one
+ * there is no page to list.
+ */
+const INTENT_PAGES: ReadonlySet<SitemapPage> = new Set(['alternatives', 'uninstall', 'troubleshooting']);
+
+/**
+ * The languages a sitemap lists one page in: those whose decision says so (S5: `pages.<page>.inSitemap`).
+ * Records without decisions keep their published languages, and versions pages then need enough release
+ * notes. Undefined means an older record without languages: every language.
+ */
+function listedLocales(record: Pick<SitemapEntry, 'locales' | 'notesCount'>, page: SitemapPage) {
+  if (INTENT_PAGES.has(page)) return record.locales?.filter(entry => entry.pages?.[page]?.inSitemap === true) ?? [];
+  const decided = record.locales?.some(entry => entry.pages);
+  if (page === 'versions' && !decided && (record.notesCount ?? 0) < VERSION_PAGE_MIN_NOTES) return [];
+  return record.locales?.filter(entry => entry.pages?.[page]?.inSitemap ?? true);
+}
+
+/** One page in every language listedLocales gives, with the page's own content date (T5: `pageLastmod`). */
+function packageEntries(
+  record: Pick<SitemapEntry, 'locales' | 'notesCount'>,
+  path: string,
+  sitemap: string,
+  page: SitemapPage = 'overview'
+) {
+  const entries = listedLocales(record, page);
+  const locales = entries?.map(entry => entry.locale) ?? LOCALES;
+  const lastmods = new Map(entries?.map(entry => [entry.locale, entry.pageLastmod?.[page] ?? entry.lastmod]));
   return localizedEntries(path, sitemap, locales, locale => lastmods.get(locale));
 }
 
@@ -236,16 +303,28 @@ async function articleSitemap(): Promise<ArticleSitemap> {
   return (await $fetch<{ data: ArticleSitemap }>(`${apiBase()}/sitemap/articles`)).data;
 }
 
+async function openLocales() {
+  return (await getSiteSettings()).pages.openLocales;
+}
+
 function flatten(nodes: CategoryNode[]): CategoryNode[] {
   return nodes.flatMap(node => [node, ...flatten(node.children)]);
 }
 
 const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>> = {
+  // Lists and other pages that are not about one app or article use the languages open for indexing (L1).
   categories: async () => {
-    const tree = await $fetch<{ data: CategoryNode[] }>(`${apiBase()}/categories`);
-    return flatten(tree.data)
-      .filter(node => !node.hiddenByDefault)
-      .flatMap(node => localizedEntries(`/categories/${node.slug}`, 'categories'));
+    const [tree, open] = await Promise.all([
+      $fetch<{ data: CategoryNode[] }>(`${apiBase()}/categories`),
+      openLocales()
+    ]);
+    return (
+      flatten(tree.data)
+        .filter(node => !node.hiddenByDefault)
+        // An empty category is a noindex list (S4), so it stays out of the sitemap too.
+        .filter(node => (node.packageCount ?? 1) > 0)
+        .flatMap(node => localizedEntries(`/categories/${node.slug}`, 'categories', open))
+    );
   },
   // Articles in the languages whose text is ready, and the list once there is something to list.
   articles: async () => {
@@ -256,24 +335,71 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
       .sort()
       .at(-1);
     return [
-      ...localizedEntries('/articles', 'articles', LOCALES, () => newest),
+      ...localizedEntries('/articles', 'articles', await openLocales(), () => newest),
       ...articles.flatMap(item => packageEntries(item, `/articles/${item.slug}`, 'articles'))
     ];
   },
-  authors: async () =>
-    (await articleSitemap()).authors.flatMap(author =>
-      localizedEntries(`/authors/${author.slug}`, 'authors', LOCALES, () => author.lastmod)
-    ),
+  // T1: every page of every A–Z leaf in each language open for indexing. Names sort into buckets by the
+  // language they are shown in, so a leaf's alternates are the languages that have the same leaf page.
+  browse: async () => {
+    const languages = new Map<string, Locale[]>();
+    for (const locale of await openLocales())
+      for (const kind of ['apps', 'fonts'] as const) {
+        const root = await $fetch<{ data: { buckets: { key: string; pages: number }[] } }>(`${apiBase()}/browse`, {
+          query: { kind, locale }
+        });
+        for (const bucket of root.data.buckets)
+          for (let page = 1; page <= bucket.pages; page += 1) {
+            const path = `/browse/${kind === 'fonts' ? 'fonts/' : ''}${bucket.key}${page > 1 ? `?page=${page}` : ''}`;
+            languages.set(path, [...(languages.get(path) ?? []), locale]);
+          }
+      }
+    return [...languages].flatMap(([path, locales]) => localizedEntries(path, 'browse', locales));
+  },
+  // F1: the label pages the API marks indexable in each open language, dated by their checked content.
+  'background-items': async () => {
+    const labels = new Map<string, { locales: Locale[]; lastmod: Map<Locale, string | undefined> }>();
+    for (const locale of await openLocales())
+      for (let current = 1; ; current += 1) {
+        const page = await $fetch<{ data: { total: number; records: BackgroundItem[] } }>(
+          `${apiBase()}/background-items`,
+          { query: { locale, current, size: 100 } }
+        );
+        for (const item of page.data.records.filter(record => record.indexable)) {
+          const entry = labels.get(item.label) ?? {
+            locales: [] as Locale[],
+            lastmod: new Map<Locale, string | undefined>()
+          };
+          entry.locales.push(locale);
+          entry.lastmod.set(locale, item.content?.evidence.checkedAt ?? undefined);
+          labels.set(item.label, entry);
+        }
+        if (page.data.records.length < 100 || current * 100 >= page.data.total) break;
+      }
+    return [...labels].flatMap(([label, entry]) =>
+      localizedEntries(`/background-items/${encodeURIComponent(label)}`, 'background-items', entry.locales, locale =>
+        entry.lastmod.get(locale)
+      )
+    );
+  },
+  authors: async () => {
+    const [{ authors }, open] = await Promise.all([articleSitemap(), openLocales()]);
+    return authors.flatMap(author =>
+      localizedEntries(`/authors/${author.slug}`, 'authors', open, () => author.lastmod)
+    );
+  },
   collections: async () => {
+    const open = await openLocales();
     const urls: ReturnType<typeof localizedEntries> = [];
     for (let current = 1; ; current += 1) {
       const page = await $fetch<{
-        data: { total: number; records: { slug: string; updatedAt: string }[] };
+        data: { total: number; records: { slug: string; updatedAt: string; itemCount: number }[] };
       }>(`${apiBase()}/collections`, { query: { current, size: 100 } });
+      // An empty collection is a noindex page (S4), so it stays out of the sitemap too.
       urls.push(
-        ...page.data.records.flatMap(item =>
-          localizedEntries(`/collections/${item.slug}`, 'collections', LOCALES, () => item.updatedAt)
-        )
+        ...page.data.records
+          .filter(item => item.itemCount > 0)
+          .flatMap(item => localizedEntries(`/collections/${item.slug}`, 'collections', open, () => item.updatedAt))
       );
       if (page.data.records.length < 100 || current * 100 >= page.data.total) return urls;
     }

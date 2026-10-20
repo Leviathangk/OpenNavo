@@ -32,15 +32,18 @@ import (
 
 func TestSixLanguageHTTPNegotiationFallbackSearchAndCache(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewStore(t)
-	data, err := seeds.Load()
+	st := testutil.NewFactsStore(t)
+	// Start at the old schema before inserting provenance-bearing data. Modern
+	// Down migrations intentionally refuse to discard confirmations or evidence.
+	sqlDB, err := st.DB.DB()
 	require.NoError(t, err)
-	require.NoError(t, st.Seed(ctx, data, "", ""))
+	require.NoError(t, goose.DownToContext(ctx, sqlDB, ".", 12))
 	p, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"six-language","name":["Sample"],"version":"1","desc":"Original English"}`))
 	require.NoError(t, err)
-	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
 	var id int64
-	require.NoError(t, st.DB.Raw("SELECT id FROM packages WHERE token='six-language'").Scan(&id).Error)
+	// Only columns present in v12: current catalog writes require newer schema.
+	require.NoError(t, st.DB.Raw(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,desc_en,raw,raw_hash,artifacts,dependencies,conflicts_with)
+ VALUES(?,?,?,?,?,?,?,?,?::jsonb,?,?::jsonb,?::jsonb,?::jsonb) RETURNING id`, p.Kind, p.Token, p.FullToken, p.Tap, p.Name, p.Version, p.VersionBase, p.Desc, string(p.Raw), p.RawHash, string(p.Artifacts), string(p.Dependencies), string(p.ConflictsWith)).Scan(&id).Error)
 	names := map[string]string{"en-US": "English name", "zh-CN": "中文名称", "ja-JP": "日本語アプリ", "es-ES": "Nombre español", "pt-BR": "Nome brasileiro", "ru-RU": "Русское название"}
 	summaries := map[string]string{"en-US": "Unique sketching", "zh-CN": "独特绘图工具", "ja-JP": "独自の描画ツール", "es-ES": "Dibujo exclusivo", "pt-BR": "Desenho exclusivo", "ru-RU": "Уникальное рисование"}
 	descriptions := map[string]string{"en-US": "Collaborative workflow", "zh-CN": "支持团队协作", "ja-JP": "共同作業に対応", "es-ES": "Colaboración simultánea", "pt-BR": "Colaboração simultânea", "ru-RU": "Совместная работа"}
@@ -53,9 +56,6 @@ func TestSixLanguageHTTPNegotiationFallbackSearchAndCache(t *testing.T) {
 	}
 	// Exercise upgrade backfill with translations already present, before the
 	// application gets a chance to rebuild their search index.
-	sqlDB, err := st.DB.DB()
-	require.NoError(t, err)
-	require.NoError(t, goose.DownToContext(ctx, sqlDB, ".", 12))
 	require.NoError(t, goose.UpContext(ctx, sqlDB, "."))
 	var indexed string
 	require.NoError(t, st.DB.Raw("SELECT search_content FROM packages WHERE id=?", id).Scan(&indexed).Error)
@@ -63,6 +63,9 @@ func TestSixLanguageHTTPNegotiationFallbackSearchAndCache(t *testing.T) {
 		require.Contains(t, indexed, strings.ToLower(summaries[code]))
 		require.Contains(t, indexed, strings.ToLower(descriptions[code]))
 	}
+	data, err := seeds.Load()
+	require.NoError(t, err)
+	require.NoError(t, st.Seed(ctx, data, "", ""))
 	require.NoError(t, store.UpdateSearchIndex(ctx, st.DB, []int64{id}))
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	backend := cache.Redis{Client: st.Redis}
@@ -138,17 +141,21 @@ func TestSixLanguageHTTPNegotiationFallbackSearchAndCache(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, names["en-US"], *row.I18n.DisplayName)
 	require.NoError(t, st.DB.Exec("INSERT INTO releases(package_id,source,source_key,version,body_markdown) VALUES(?,'manual','upstream','1','Upstream'),(?,'editorial','edited','1','Editorial')", id, id).Error)
-	require.NoError(t, st.Redis.Del(ctx, "c:rel:c2:cask:six-language:en-US").Err())
+	require.NoError(t, st.Redis.Del(ctx, "c:rel:c3:cask:six-language:en-US").Err())
 	timeline, err := svc.ReleasePage(ctx, "cask", "six-language", "en-US", 1, 10, false)
 	require.NoError(t, err)
 	require.Len(t, timeline.Records, 1)
 	require.Equal(t, publicapi.ReleaseEntrySource("editorial"), timeline.Records[0].Source)
 	require.Equal(t, "Editorial", *timeline.Records[0].BodyMarkdown)
-	for _, code := range i18n.Locales {
+	for _, code := range i18n.SiteLocales {
 		var categoryID int64
 		slug := "source-" + strings.ToLower(string(code))
 		require.NoError(t, st.DB.Raw("INSERT INTO categories(slug,icon) VALUES(?,'lucide:box') RETURNING id", slug).Scan(&categoryID).Error)
-		body := map[string]any{"sourceLocale": string(code), "i18n": map[string]any{string(code): map[string]any{"name": names[string(code)]}}}
+		name := names[string(code)]
+		if name == "" {
+			name = "Fixture " + string(code)
+		}
+		body := map[string]any{"sourceLocale": string(code), "i18n": map[string]any{string(code): map[string]any{"name": name}}}
 		require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
 			return (&store.Store{DB: tx}).WriteLocalized(ctx, "category", categoryID, 0, body, true)
 		}))
@@ -158,7 +165,7 @@ func TestSixLanguageHTTPNegotiationFallbackSearchAndCache(t *testing.T) {
 		for _, v := range categories {
 			if v.Slug == slug {
 				found = true
-				require.Equal(t, names[string(code)], v.Name)
+				require.Equal(t, name, v.Name)
 			}
 		}
 		require.True(t, found)

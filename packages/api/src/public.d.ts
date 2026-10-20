@@ -4,6 +4,77 @@
  */
 
 export interface paths {
+    "/seo/experiment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the stable template experiment assignment for a canonical page
+         * @description Render a variant only when eligible is true and arm is treatment. The web layer renders titles; this response never overrides factual page eligibility.
+         */
+        get: operations["getSeoExperimentAssignment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/background-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List declared background items and candidate apps */
+        get: operations["listBackgroundItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/background-items/{label}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read declared ownership; labels alone never prove local identity */
+        get: operations["getBackgroundItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/browse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Indexable apps or fonts grouped by localized display name */
+        get: operations["getBrowse"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/home": {
         parameters: {
             query?: never;
@@ -119,7 +190,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Similar packages with the same primary category and similar popularity */
+        /** Similar packages with the same content type and primary category */
         get: operations["listRelatedPackages"];
         put?: never;
         post?: never;
@@ -556,6 +627,1001 @@ export interface components {
     schemas: {
         /**
          * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "experimentId": null,
+         *         "arm": "none",
+         *         "variant": null,
+         *         "templateVersion": "snippet-v1",
+         *         "eligible": false,
+         *         "expiresAt": null
+         *       }
+         *     }
+         */
+        SeoExperimentAssignmentResponse: {
+            /** @example 0000 */
+            code: string;
+            /** @example ok */
+            msg: string;
+            data: components["schemas"]["SeoExperimentAssignment"];
+        };
+        /**
+         * @example {
+         *       "experimentId": null,
+         *       "arm": "none",
+         *       "variant": null,
+         *       "templateVersion": "snippet-v1",
+         *       "eligible": false,
+         *       "expiresAt": null
+         *     }
+         */
+        SeoExperimentAssignment: {
+            /**
+             * Format: int64
+             * @example null
+             */
+            experimentId: number | null;
+            /**
+             * @example none
+             * @enum {string}
+             */
+            arm: "none" | "control" | "treatment";
+            /**
+             * @example null
+             * @enum {string|null}
+             */
+            variant: "verified_free" | "current_version" | "uninstall_alternatives" | null;
+            /** @example snippet-v1 */
+            templateVersion: string;
+            /** @example false */
+            eligible: boolean;
+            /**
+             * Format: date-time
+             * @example null
+             */
+            expiresAt: string | null;
+        };
+        /**
+         * @example {
+         *       "width": 64,
+         *       "height": 64,
+         *       "url": "https://cdn.example.test/icon-64.webp",
+         *       "type": "image/webp"
+         *     }
+         */
+        ImageVariant: {
+            width: number;
+            height: number;
+            /** Format: uri */
+            url: string;
+            /** @enum {string} */
+            type: "image/webp";
+        };
+        /**
+         * @example {
+         *       "kind": "mcp",
+         *       "name": "Example App connector",
+         *       "repositoryUrl": "https://github.com/example/example-mcp",
+         *       "version": "1.0.0",
+         *       "installation": {
+         *         "method": "npm",
+         *         "package": "@example/example-mcp"
+         *       },
+         *       "clients": [
+         *         "claude_desktop",
+         *         "codex"
+         *       ],
+         *       "permissions": {
+         *         "files": [
+         *           {
+         *             "path": "~/Documents/Example",
+         *             "access": "read"
+         *           }
+         *         ],
+         *         "network": [
+         *           "https://api.vendor.example"
+         *         ]
+         *       },
+         *       "appleSilicon": "unknown",
+         *       "versions": [
+         *         {
+         *           "version": "1.0.0",
+         *           "releasedAt": "2026-10-01T00:00:00Z",
+         *           "sourceUrl": "https://github.com/example/example-mcp/releases/tag/v1.0.0"
+         *         }
+         *       ],
+         *       "evidence": {
+         *         "sourceUrl": "https://github.com/example/example-mcp",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        AppIntegrationFact: {
+            /** @enum {string} */
+            kind: "mcp" | "skill";
+            name: string;
+            appVersion?: string;
+            /** Format: uri */
+            repositoryUrl: string;
+            version: string;
+            installation: {
+                /** @enum {string} */
+                method: "homebrew" | "uv" | "npm";
+                /** @description Package identifier only. Commands, arguments, URLs and version selectors are not accepted. */
+                package: string;
+            };
+            clients: ("claude_desktop" | "cursor" | "codex")[];
+            permissions: {
+                files: {
+                    path: string;
+                    /** @enum {string} */
+                    access: "read" | "write" | "read_write";
+                }[];
+                network: string[];
+            };
+            /** @enum {string} */
+            appleSilicon: "yes" | "no" | "unknown";
+            versions: {
+                version: string;
+                /** Format: date-time */
+                releasedAt: string;
+                /** Format: uri */
+                sourceUrl: string;
+            }[];
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "kind": "mcp",
+         *       "name": "Example App connector",
+         *       "repositoryUrl": "https://github.com/example/example-mcp",
+         *       "version": "1.0.0",
+         *       "installation": {
+         *         "method": "npm",
+         *         "package": "@example/example-mcp"
+         *       },
+         *       "clients": [
+         *         "claude_desktop",
+         *         "codex"
+         *       ],
+         *       "permissions": {
+         *         "files": [
+         *           {
+         *             "path": "~/Documents/Example",
+         *             "access": "read"
+         *           }
+         *         ],
+         *         "network": [
+         *           "https://api.vendor.example"
+         *         ]
+         *       },
+         *       "appleSilicon": "unknown",
+         *       "versions": [
+         *         {
+         *           "version": "1.0.0",
+         *           "releasedAt": "2026-10-01T00:00:00Z",
+         *           "sourceUrl": "https://github.com/example/example-mcp/releases/tag/v1.0.0"
+         *         }
+         *       ]
+         *     }
+         */
+        AppIntegration: {
+            /** @enum {string} */
+            kind: "mcp" | "skill";
+            name: string;
+            appVersion?: string;
+            /** Format: uri */
+            repositoryUrl: string;
+            version: string;
+            installation: {
+                /** @enum {string} */
+                method: "homebrew" | "uv" | "npm";
+                /** @description Package identifier only. Commands, arguments, URLs and version selectors are not accepted. */
+                package: string;
+            };
+            clients: ("claude_desktop" | "cursor" | "codex")[];
+            permissions: {
+                files: {
+                    path: string;
+                    /** @enum {string} */
+                    access: "read" | "write" | "read_write";
+                }[];
+                network: string[];
+            };
+            /** @enum {string} */
+            appleSilicon: "yes" | "no" | "unknown";
+            versions: {
+                version: string;
+                /** Format: date-time */
+                releasedAt: string;
+                /** Format: uri */
+                sourceUrl: string;
+            }[];
+        };
+        /**
+         * @example {
+         *       "key": "a",
+         *       "count": 320,
+         *       "pages": 2
+         *     }
+         */
+        BrowseBucket: {
+            key: string;
+            count: number;
+            pages: number;
+        };
+        /**
+         * @example {
+         *       "token": "example",
+         *       "displayName": "Example"
+         *     }
+         */
+        BrowseItem: {
+            token: string;
+            displayName: string;
+        };
+        /**
+         * @example {
+         *       "buckets": [],
+         *       "items": []
+         *     }
+         */
+        BrowsePage: {
+            buckets: components["schemas"]["BrowseBucket"][];
+            items: components["schemas"]["BrowseItem"][];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "buckets": [],
+         *         "items": []
+         *       }
+         *     }
+         */
+        BrowseResponse: {
+            code: components["schemas"]["Code"];
+            msg: string;
+            data: components["schemas"]["BrowsePage"];
+        };
+        /**
+         * @example {
+         *       "slug": "developer-tools",
+         *       "title": "Developer tools"
+         *     }
+         */
+        PackageCollectionRef: {
+            slug: string;
+            title: string;
+        };
+        /**
+         * @example {
+         *       "locale": "en-US",
+         *       "title": "Import stalls",
+         *       "symptom": "Import stops before completion.",
+         *       "appVersions": [
+         *         "1.2"
+         *       ],
+         *       "macosVersions": [
+         *         "15.0"
+         *       ],
+         *       "steps": [
+         *         "Restart the app and retry importing."
+         *       ],
+         *       "communityLinks": [],
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/support",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        KnownIssueFact: {
+            /** @enum {string} */
+            locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+            title: string;
+            symptom: string;
+            appVersions: string[];
+            macosVersions: string[];
+            steps: string[];
+            communityLinks: string[];
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "locale": "en-US",
+         *       "title": "Import stalls",
+         *       "symptom": "Import stops before completion.",
+         *       "appVersions": [
+         *         "1.2"
+         *       ],
+         *       "macosVersions": [
+         *         "15.0"
+         *       ],
+         *       "steps": [
+         *         "Restart the app and retry importing."
+         *       ],
+         *       "communityLinks": []
+         *     }
+         */
+        KnownIssue: {
+            /** @enum {string} */
+            locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+            title: string;
+            symptom: string;
+            appVersions: string[];
+            macosVersions: string[];
+            steps: string[];
+            communityLinks: string[];
+        };
+        /**
+         * @example {
+         *       "appVersion": "example",
+         *       "minimumMacOS": null,
+         *       "maximumMacOS": null,
+         *       "appleSilicon": "unknown",
+         *       "requirements": []
+         *     }
+         */
+        VersionCompatibility: {
+            appVersion: string;
+            minimumMacOS: string | null;
+            maximumMacOS: string | null;
+            /** @enum {string} */
+            appleSilicon: "yes" | "no" | "unknown";
+            requirements: components["schemas"]["RequirementFact"][];
+        };
+        /**
+         * @example {
+         *       "appVersion": "example",
+         *       "minimumMacOS": null,
+         *       "maximumMacOS": null,
+         *       "appleSilicon": "unknown"
+         *     }
+         */
+        CompatibilityObservation: {
+            appVersion: string;
+            minimumMacOS: string | null;
+            maximumMacOS: string | null;
+            /** @enum {string} */
+            appleSilicon: "yes" | "no" | "unknown";
+        };
+        /**
+         * @example {
+         *       "region": "US",
+         *       "currency": "USD",
+         *       "period": "example",
+         *       "amount": "9.99",
+         *       "coveredApps": 0
+         *     }
+         */
+        CollectionPriceTotal: {
+            region: string;
+            currency: string;
+            period: string;
+            amount: string;
+            coveredApps: number;
+        };
+        /**
+         * @example {
+         *       "token": "example",
+         *       "requirements": []
+         *     }
+         */
+        CollectionCompatibility: {
+            token: string;
+            requirements: components["schemas"]["RequirementFact"][];
+        };
+        /**
+         * @example {
+         *       "token": "example",
+         *       "url": "https://vendor.example/docs"
+         *     }
+         */
+        CollectionExternalApp: {
+            token: string;
+            /** Format: uri */
+            url: string;
+        };
+        /**
+         * @example {
+         *       "criteria": {
+         *         "locale": "en-US",
+         *         "criteria": "example",
+         *         "evidence": {
+         *           "sourceUrl": "https://vendor.example/docs",
+         *           "checkedAt": null,
+         *           "validUntil": null,
+         *           "status": "unknown"
+         *         }
+         *       },
+         *       "installableTokens": [],
+         *       "externalApps": [],
+         *       "brewfile": "example",
+         *       "priceTotals": [],
+         *       "priceUnknownCount": 0,
+         *       "compatibility": []
+         *     }
+         */
+        CollectionSetup: {
+            criteria: components["schemas"]["CollectionCriteria"] | null;
+            installableTokens: string[];
+            externalApps: components["schemas"]["CollectionExternalApp"][];
+            brewfile: string;
+            priceTotals: components["schemas"]["CollectionPriceTotal"][];
+            priceUnknownCount: number;
+            compatibility: components["schemas"]["CollectionCompatibility"][];
+        };
+        /**
+         * @example {
+         *       "locale": "en-US",
+         *       "criteria": "example",
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        CollectionCriteria: {
+            /** @enum {string} */
+            locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+            criteria: string;
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "package": {
+         *         "kind": "cask",
+         *         "token": "visual-studio-code",
+         *         "name": "Microsoft Visual Studio Code",
+         *         "displayName": "Visual Studio Code",
+         *         "summary": "Code editor with debugging and extensions",
+         *         "iconUrl": null,
+         *         "accentColor": null,
+         *         "version": "1.140.0",
+         *         "primaryCategory": {
+         *           "slug": "developer-tools",
+         *           "name": "Developer Tools",
+         *           "icon": "lucide:code-xml",
+         *           "sourceLocale": "en-US",
+         *           "machineTranslated": false
+         *         },
+         *         "installs30d": 17392,
+         *         "rank30d": 9,
+         *         "autoUpdates": true,
+         *         "deprecated": false,
+         *         "disabled": false,
+         *         "isFont": false,
+         *         "isLibrary": false,
+         *         "editorChoice": true,
+         *         "versionChangedAt": "2026-09-30T08:00:00Z",
+         *         "sourceLocale": "en-US",
+         *         "machineTranslated": false
+         *       },
+         *       "kind": "launchctl",
+         *       "phase": "uninstall",
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       },
+         *       "uninstallUrl": "https://vendor.example/docs"
+         *     }
+         */
+        BackgroundOwner: {
+            package: components["schemas"]["PackageSummary"];
+            /** @enum {string} */
+            kind: "launchctl" | "login_item" | "pkgutil";
+            /** @enum {string} */
+            phase: "uninstall" | "zap";
+            evidence: components["schemas"]["FactEvidence"];
+            uninstallUrl: string;
+        };
+        /**
+         * @example {
+         *       "label": "example",
+         *       "apps": [],
+         *       "developers": [],
+         *       "locales": [],
+         *       "shared": false,
+         *       "ownership": "declared_candidates",
+         *       "identityChecks": [],
+         *       "content": {
+         *         "locale": "en-US",
+         *         "description": "example",
+         *         "itemType": "unknown",
+         *         "commonPaths": [],
+         *         "evidence": {
+         *           "sourceUrl": "https://vendor.example/docs",
+         *           "checkedAt": null,
+         *           "validUntil": null,
+         *           "status": "unknown"
+         *         }
+         *       },
+         *       "indexable": false,
+         *       "startupUrl": "https://vendor.example/docs"
+         *     }
+         */
+        BackgroundItem: {
+            label: string;
+            apps: components["schemas"]["BackgroundOwner"][];
+            developers: string[];
+            /** @description Languages with currently verified body content and a visible app with fresh ownership evidence; empty when none are ready. */
+            locales: components["schemas"]["Locale"][];
+            shared: boolean;
+            /** @enum {string} */
+            ownership: "declared_candidates";
+            identityChecks: ("signature" | "path" | "version")[];
+            content: components["schemas"]["BackgroundContent"] | null;
+            indexable: boolean;
+            startupUrl: string;
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "label": "example",
+         *         "apps": [],
+         *         "developers": [],
+         *         "locales": [],
+         *         "shared": false,
+         *         "ownership": "declared_candidates",
+         *         "identityChecks": [],
+         *         "content": {
+         *           "locale": "en-US",
+         *           "description": "example",
+         *           "itemType": "unknown",
+         *           "commonPaths": [],
+         *           "evidence": {
+         *             "sourceUrl": "https://vendor.example/docs",
+         *             "checkedAt": null,
+         *             "validUntil": null,
+         *             "status": "unknown"
+         *           }
+         *         },
+         *         "indexable": false,
+         *         "startupUrl": "https://vendor.example/docs"
+         *       }
+         *     }
+         */
+        BackgroundItemResponse: {
+            code: string;
+            msg: string;
+            data: components["schemas"]["BackgroundItem"];
+        };
+        /**
+         * @example {
+         *       "code": "0000",
+         *       "msg": "ok",
+         *       "data": {
+         *         "current": 0,
+         *         "size": 0,
+         *         "total": 0,
+         *         "records": []
+         *       }
+         *     }
+         */
+        BackgroundItemsResponse: {
+            code: string;
+            msg: string;
+            data: {
+                current: number;
+                size: number;
+                total: number;
+                records: components["schemas"]["BackgroundItem"][];
+            };
+        };
+        /**
+         * @example {
+         *       "locale": "en-US",
+         *       "description": "example",
+         *       "itemType": "unknown",
+         *       "commonPaths": [],
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        BackgroundContent: {
+            /** @enum {string} */
+            locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+            description: string;
+            /** @enum {string} */
+            itemType: "launch_agent" | "launch_daemon" | "login_item" | "package_receipt" | "unknown";
+            commonPaths: string[];
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "name": "open_source",
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        ComparisonAttributeFact: {
+            /** @enum {string} */
+            name: "open_source" | "offline" | "apple_silicon" | "import_formats" | "export_formats";
+            appVersion?: string;
+            booleanValue?: boolean;
+            formats?: string[];
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "name": "open_source"
+         *     }
+         */
+        ComparisonAttribute: {
+            /** @enum {string} */
+            name: "open_source" | "offline" | "apple_silicon" | "import_formats" | "export_formats";
+            appVersion?: string;
+            booleanValue?: boolean;
+            formats?: string[];
+        };
+        /**
+         * @example {
+         *       "targetPackageId": 1,
+         *       "locale": "en-US",
+         *       "steps": [],
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        MigrationGuide: {
+            /** Format: int64 */
+            targetPackageId: number;
+            /** @enum {string} */
+            locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+            sourceVersion?: string;
+            targetVersion?: string;
+            steps: components["schemas"]["MigrationStep"][];
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "action": "backup",
+         *       "text": "example",
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        MigrationStep: {
+            /** @enum {string} */
+            action: "backup" | "export" | "import" | "verify";
+            text: string;
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "channels": [],
+         *       "openSource": "unknown"
+         *     }
+         */
+        SecurityObservation: {
+            appVersion?: string;
+            developer?: string;
+            teamId?: string;
+            channels: ("homebrew" | "vendor" | "app_store")[];
+            /** @enum {string} */
+            openSource: "yes" | "no" | "unknown";
+            /** Format: uri */
+            repositoryUrl?: string;
+            productCpe?: string;
+        };
+        /**
+         * @example {
+         *       "channels": [],
+         *       "openSource": "unknown",
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        SecurityIdentityFact: {
+            appVersion?: string;
+            developer?: string;
+            teamId?: string;
+            channels: ("homebrew" | "vendor" | "app_store")[];
+            /** @enum {string} */
+            openSource: "yes" | "no" | "unknown";
+            /** Format: uri */
+            repositoryUrl?: string;
+            productCpe?: string;
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "id": "CVE-2026-12345",
+         *       "productCpe": "example",
+         *       "appVersion": "example",
+         *       "sourceUrl": "https://vendor.example/docs",
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        VulnerabilityFact: {
+            id: string;
+            productCpe: string;
+            appVersion: string;
+            /** Format: uri */
+            sourceUrl: string;
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "identities": [],
+         *       "vulnerabilities": [],
+         *       "scanUrl": "https://vendor.example/docs"
+         *     }
+         */
+        SecurityFacts: {
+            identities: components["schemas"]["SecurityIdentityFact"][];
+            vulnerabilities: components["schemas"]["VulnerabilityFact"][];
+            scanUrl: string;
+        };
+        /**
+         * @example {
+         *       "region": "US",
+         *       "edition": "example",
+         *       "period": "unknown",
+         *       "usage": "unknown",
+         *       "downloadFree": false,
+         *       "purchaseUrl": "https://vendor.example/docs",
+         *       "channel": "vendor"
+         *     }
+         */
+        PriceObservation: {
+            region: string;
+            edition: string;
+            /** @enum {string} */
+            period: "free" | "one_time" | "monthly" | "yearly" | "unknown";
+            /** @enum {string} */
+            usage: "free" | "free_with_iap" | "paid" | "subscription" | "trial" | "unknown";
+            downloadFree: boolean;
+            amount?: string;
+            currency?: string;
+            /** Format: uri */
+            purchaseUrl: string;
+            /** @enum {string} */
+            channel: "vendor" | "app_store";
+        };
+        /**
+         * @example {
+         *       "region": "US",
+         *       "edition": "example",
+         *       "period": "unknown",
+         *       "usage": "unknown",
+         *       "downloadFree": false,
+         *       "purchaseUrl": "https://vendor.example/docs",
+         *       "channel": "vendor",
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        PriceFact: {
+            region: string;
+            edition: string;
+            /** @enum {string} */
+            period: "free" | "one_time" | "monthly" | "yearly" | "unknown";
+            /** @enum {string} */
+            usage: "free" | "free_with_iap" | "paid" | "subscription" | "trial" | "unknown";
+            downloadFree: boolean;
+            amount?: string;
+            currency?: string;
+            /** Format: uri */
+            purchaseUrl: string;
+            /** @enum {string} */
+            channel: "vendor" | "app_store";
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "sourceUrl": "https://vendor.example/docs",
+         *       "checkedAt": null,
+         *       "validUntil": null,
+         *       "status": "unknown"
+         *     }
+         */
+        FactEvidence: {
+            sourceUrl: string;
+            /** Format: date-time */
+            checkedAt: string | null;
+            /** Format: date-time */
+            validUntil: string | null;
+            /** @enum {string} */
+            status: "verified" | "stale" | "needs_review" | "unknown";
+        };
+        /**
+         * @example {
+         *       "versions": [],
+         *       "architectures": [],
+         *       "platformMacOS": [],
+         *       "minimumMacOS": null,
+         *       "maximumMacOS": null,
+         *       "appleSilicon": "unknown",
+         *       "downloadUrl": null,
+         *       "sha256": null,
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        RequirementFact: {
+            versions: string[];
+            architectures: string[];
+            platformMacOS: string[];
+            minimumMacOS: string | null;
+            maximumMacOS: string | null;
+            /** @enum {string} */
+            appleSilicon: "yes" | "no" | "unknown";
+            downloadUrl: string | null;
+            sha256: string | null;
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "kind": "zap",
+         *       "value": "example",
+         *       "phase": "uninstall",
+         *       "deletesUserData": false,
+         *       "evidence": {
+         *         "sourceUrl": "https://vendor.example/docs",
+         *         "checkedAt": null,
+         *         "validUntil": null,
+         *         "status": "unknown"
+         *       }
+         *     }
+         */
+        UninstallFact: {
+            /** @enum {string} */
+            kind: "zap" | "launchctl" | "pkgutil" | "login_item";
+            value: string;
+            /** @enum {string} */
+            phase: "uninstall" | "zap";
+            deletesUserData: boolean;
+            evidence: components["schemas"]["FactEvidence"];
+        };
+        /**
+         * @example {
+         *       "version": "example",
+         *       "downloadUrl": null,
+         *       "sha256": null,
+         *       "artifacts": {
+         *         "apps": [
+         *           "Visual Studio Code.app"
+         *         ],
+         *         "binaries": [
+         *           "code"
+         *         ],
+         *         "pkgs": [],
+         *         "uninstallNotes": [],
+         *         "entries": [
+         *           {
+         *             "type": "app",
+         *             "phase": "install",
+         *             "sources": [
+         *               "Visual Studio Code.app"
+         *             ],
+         *             "target": null,
+         *             "declaration": {
+         *               "app": [
+         *                 "Visual Studio Code.app"
+         *               ]
+         *             }
+         *           }
+         *         ]
+         *       },
+         *       "caveats": null,
+         *       "aliases": [],
+         *       "dependencyCount": 0,
+         *       "conflictCount": 0
+         *     }
+         */
+        OverviewFacts: {
+            version: string;
+            downloadUrl: string | null;
+            sha256: string | null;
+            artifacts: components["schemas"]["Artifacts"];
+            caveats: string | null;
+            aliases: string[];
+            dependencyCount: number;
+            conflictCount: number;
+        };
+        /**
+         * @example {
+         *       "requirements": [],
+         *       "uninstall": [],
+         *       "overview": {
+         *         "version": "example",
+         *         "downloadUrl": null,
+         *         "sha256": null,
+         *         "artifacts": {
+         *           "apps": [
+         *             "Visual Studio Code.app"
+         *           ],
+         *           "binaries": [
+         *             "code"
+         *           ],
+         *           "pkgs": [],
+         *           "uninstallNotes": [],
+         *           "entries": [
+         *             {
+         *               "type": "app",
+         *               "phase": "install",
+         *               "sources": [
+         *                 "Visual Studio Code.app"
+         *               ],
+         *               "target": null,
+         *               "declaration": {
+         *                 "app": [
+         *                   "Visual Studio Code.app"
+         *                 ]
+         *               }
+         *             }
+         *           ]
+         *         },
+         *         "caveats": null,
+         *         "aliases": [],
+         *         "dependencyCount": 0,
+         *         "conflictCount": 0
+         *       },
+         *       "alternatives": []
+         *     }
+         */
+        AppFacts: {
+            security?: components["schemas"]["SecurityFacts"];
+            prices?: components["schemas"]["PriceFact"][];
+            offers?: components["schemas"]["PriceFact"][];
+            requirements: components["schemas"]["RequirementFact"][];
+            uninstall: components["schemas"]["UninstallFact"][];
+            overview: components["schemas"]["OverviewFacts"];
+            alternatives: components["schemas"]["PackageAlternative"][];
+            price?: components["schemas"]["AppPrice"];
+            macosSupplement?: components["schemas"]["MacosSupplement"];
+            issues?: components["schemas"]["KnownIssueFact"][];
+            /** @description Verified current integrations. Empty while web.appIntegrationsEnabled is false (default). */
+            integrations?: components["schemas"]["AppIntegrationFact"][];
+        };
+        /**
+         * @example {
          *       "version": "2.0",
          *       "versionKey": "CFBundleShortVersionString",
          *       "notes": null,
@@ -769,7 +1835,7 @@ export interface components {
             } | null;
             teamId: string | null;
             /** @enum {string} */
-            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source";
+            pricing: "free" | "paid" | "freemium" | "subscription" | "open_source" | "unknown";
             notes: {
                 "en-US"?: string | null;
                 "zh-CN"?: string | null;
@@ -777,6 +1843,10 @@ export interface components {
                 "es-ES"?: string | null;
                 "pt-BR"?: string | null;
                 "ru-RU"?: string | null;
+                "de-DE"?: string | null;
+                "fr-FR"?: string | null;
+                "it-IT"?: string | null;
+                "zh-Hant"?: string | null;
             } | null;
             adoptedByCask: string | null;
         };
@@ -989,7 +2059,13 @@ export interface components {
          * @example en-US
          * @enum {string}
          */
-        Locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU";
+        Locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
+        /**
+         * @description Application UI and client release-note language; content APIs use Locale.
+         * @example en-US
+         * @enum {string}
+         */
+        AppLocale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU";
         /**
          * @description Casks only. The formula enum remains for old-request compatibility; explicit requests return 404. Historical data is not deleted.
          * @example cask
@@ -1097,6 +2173,8 @@ export interface components {
          *     }
          */
         PackageSummary: {
+            /** @description OpenNavo paused recommendations because upstream version data is stale; separate from Homebrew disabled status. */
+            recommendationPaused?: boolean;
             bundleIds?: string[];
             link?: components["schemas"]["LinkInfo"] | null;
             kind: components["schemas"]["PackageKind"];
@@ -1148,6 +2226,8 @@ export interface components {
              * @example false
              */
             machineTranslated?: boolean;
+            /** @description Stored 64/128/256 pixel WebP icons. Empty or absent for legacy assets; fall back to iconUrl. */
+            iconVariants?: components["schemas"]["ImageVariant"][];
         };
         /**
          * @example {
@@ -1458,6 +2538,10 @@ export interface components {
              * @example false
              */
             machineTranslated?: boolean;
+            /** @description Proportional 64/128/256 pixel WebP images. Empty or absent for legacy assets. */
+            variants?: components["schemas"]["ImageVariant"][];
+            /** @description Stored WebP card crops in ascending width order. New screenshots contain 318 by 200 and 636 by 400 renditions of the same centered crop, upscaled when the source is smaller. Legacy assets may have only 318 by 200 or no crops; use separately from proportional variants. */
+            thumbnailVariants?: components["schemas"]["ImageVariant"][];
         };
         /**
          * @example {
@@ -1469,7 +2553,7 @@ export interface components {
          */
         TranslationInfo: {
             /**
-             * @description source is original text, machine is machine translation and manual is a correction; pending/failed may display old translations, while none/skipped preserve legacy no-translation semantics.
+             * @description source is original text, machine is machine translation and manual is a correction. Editorial release notes never expose pending/failed or stale translated text; pending also represents a missing translation. Other content may retain old translations while pending/failed. none/skipped preserve legacy no-translation semantics.
              * @example manual
              * @enum {string}
              */
@@ -1631,7 +2715,41 @@ export interface components {
          *           "ru-RU"
          *         ],
          *         "enforced": false,
-         *         "notesCount": 12
+         *         "notesCount": 12,
+         *         "pages": {
+         *           "overview": {
+         *             "robots": "noindex, follow",
+         *             "canonicalPath": "",
+         *             "hreflang": [],
+         *             "inSitemap": false,
+         *             "announce": false,
+         *             "reason": "locale_not_ready"
+         *           },
+         *           "versions": {
+         *             "robots": "noindex, follow",
+         *             "canonicalPath": "",
+         *             "hreflang": [],
+         *             "inSitemap": false,
+         *             "announce": false,
+         *             "reason": "locale_not_ready"
+         *           },
+         *           "dependencies": {
+         *             "robots": "noindex, follow",
+         *             "canonicalPath": "",
+         *             "hreflang": [],
+         *             "inSitemap": false,
+         *             "announce": false,
+         *             "reason": "locale_not_ready"
+         *           },
+         *           "details": {
+         *             "robots": "noindex, follow",
+         *             "canonicalPath": "",
+         *             "hreflang": [],
+         *             "inSitemap": false,
+         *             "announce": false,
+         *             "reason": "consolidated"
+         *           }
+         *         }
          *       },
          *       "versionCommittedAt": "2026-09-30T09:00:00Z",
          *       "releaseStats": {
@@ -1648,6 +2766,7 @@ export interface components {
          *     }
          */
         PackageDetail: components["schemas"]["PackageSummary"] & {
+            collections?: components["schemas"]["PackageCollectionRef"][];
             names: string[];
             /** @example Open-source code editor with debugging and extensions */
             descriptionEn?: string | null;
@@ -1738,6 +2857,7 @@ export interface components {
              */
             versionCommittedAt?: string | null;
             releaseStats?: components["schemas"]["ReleaseStats"];
+            facts?: components["schemas"]["AppFacts"];
             /** @description Apps only; null when the price is unknown or under review */
             price?: components["schemas"]["AppPrice"] | null;
             /** @description Apps only; null without a verified supplement */
@@ -1771,6 +2891,7 @@ export interface components {
             items: string[];
         };
         /**
+         * @description Editorial notes are shown only in the requested locale: source text for the source locale, otherwise manual/machine text matching the current source hash. Unavailable editorial translations fall back to original upstream notes for the same version using source priority; without upstream notes, hasNotes is false and translation reports pending/failed/skipped. The selected note supplies id/source/sourceLocale. Version and build grouping are preserved.
          * @example {
          *       "id": 101,
          *       "version": "1.140.0",
@@ -1809,6 +2930,7 @@ export interface components {
          *     }
          */
         ReleaseEntry: {
+            compatibility?: components["schemas"]["VersionCompatibility"];
             /**
              * Format: int64
              * @description releases.id; null for entries derived only from Homebrew version records
@@ -1997,6 +3119,14 @@ export interface components {
          *           "earlierCount": 0,
          *           "medianMinutes": 60
          *         }
+         *       },
+         *       "indexing": {
+         *         "robots": "noindex, follow",
+         *         "canonicalPath": "",
+         *         "hreflang": [],
+         *         "inSitemap": false,
+         *         "announce": false,
+         *         "reason": "locale_not_ready"
          *       }
          *     }
          */
@@ -2009,6 +3139,7 @@ export interface components {
             total: number;
             records: components["schemas"]["ReleaseEntry"][];
             stats: components["schemas"]["ReleaseStats"];
+            indexing: components["schemas"]["PageDecision"];
         };
         /**
          * @example {
@@ -2494,6 +3625,7 @@ export interface components {
          *     }
          */
         CollectionDetail: components["schemas"]["CollectionSummary"] & {
+            setup?: components["schemas"]["CollectionSetup"];
             /**
              * @example ## 新 Mac 必装
              *
@@ -3150,7 +4282,7 @@ export interface components {
             bytes: number;
         };
         /**
-         * @description Complete six-language text-pack manifest; keys match pack locales. Contains only text actually present in each language, never English or source text copied as translations.
+         * @description Text-pack manifest for site languages (six app languages required for backward compatibility); keys match pack locales. Contains only text actually present in each language, never English or source text copied as translations.
          * @example {
          *       "en-US": {
          *         "locale": "en-US",
@@ -3209,6 +4341,10 @@ export interface components {
             "es-ES": components["schemas"]["CatalogTextPackInfo"];
             "pt-BR": components["schemas"]["CatalogTextPackInfo"];
             "ru-RU": components["schemas"]["CatalogTextPackInfo"];
+            "de-DE"?: components["schemas"]["CatalogTextPackInfo"];
+            "fr-FR"?: components["schemas"]["CatalogTextPackInfo"];
+            "it-IT"?: components["schemas"]["CatalogTextPackInfo"];
+            "zh-Hant"?: components["schemas"]["CatalogTextPackInfo"];
         };
         /**
          * @description v2 base snapshot Cask entry: official names and structure only, without displayName, summary or other localized text; sourceLocale is required.
@@ -3701,6 +4837,14 @@ export interface components {
             "pt-BR"?: string | null;
             /** @example null */
             "ru-RU"?: string | null;
+            /** @example null */
+            "de-DE"?: string | null;
+            /** @example null */
+            "fr-FR"?: string | null;
+            /** @example null */
+            "it-IT"?: string | null;
+            /** @example null */
+            "zh-Hant"?: string | null;
         };
         /**
          * @description Snapshot v2 metadata: url/sha256/bytes/itemCount describe the base file without localized text; textPacks provides six-language text packs. formatVersion=2; v1 is read only from old caches and is no longer published.
@@ -4443,7 +5587,7 @@ export interface components {
              *     ]
              */
             recentReleases?: components["schemas"]["DesktopReleaseNotes"][];
-            sourceLocale?: components["schemas"]["Locale"];
+            sourceLocale?: components["schemas"]["AppLocale"];
             /**
              * @description Whether the returned text is machine-translated; false for source fallback or manual translations.
              * @example false
@@ -4473,7 +5617,10 @@ export interface components {
             packageKind?: (string & components["schemas"]["PackageKind"]) | null;
             /** @example visual-studio-code */
             packageToken?: string | null;
-            /** @example 希望补充该应用的中文使用说明。 */
+            /**
+             * @description Private plain text; URLs remain text and do not count toward the explicit links limit. HTML and sensitive data are sanitized.
+             * @example 希望补充该应用的中文使用说明。
+             */
             content: string;
             /** @example local-user@opennavo.example */
             contact?: string | null;
@@ -4493,6 +5640,14 @@ export interface components {
              * @example
              */
             website?: string;
+            packageVersion?: string | null;
+            macosVersion?: string | null;
+            symptom?: string | null;
+            /** @description Private diagnostic text, at most 16 KiB UTF-8; secrets and personal paths are redacted before storage. */
+            diagnosticLog?: string | null;
+            links?: string[];
+            /** @description Attachments are not accepted. */
+            attachments?: string[];
         };
         /**
          * @description Rule for one tunable crawler class. Search engines and user-requested fetchers always use the default group.
@@ -4635,6 +5790,38 @@ export interface components {
                     scope: "new" | "all";
                     since: string;
                 };
+                /**
+                 * @description Published translation quality rollout; new site-only languages are always enforced.
+                 * @default shadow
+                 * @enum {string}
+                 */
+                translationMode: "shadow" | "enforce";
+                /** @description Locales to enforce; empty means all locales. */
+                translationLocales?: components["schemas"]["Locale"][];
+                /** @default 300 */
+                versionsMinNotesChars: number;
+                /**
+                 * @description Languages open for non-entity pages; defaults to the six application languages. Entity pages use their own PageDecision.
+                 * @default [
+                 *       "en-US",
+                 *       "zh-CN",
+                 *       "ja-JP",
+                 *       "es-ES",
+                 *       "pt-BR",
+                 *       "ru-RU"
+                 *     ]
+                 */
+                openLocales: components["schemas"]["Locale"][];
+                /**
+                 * @description Enable qualified intent pages backed by confirmed search demand and unique targets.
+                 * @default false
+                 */
+                intentPagesEnabled: boolean;
+                /**
+                 * @description Enable details redirects after migrated overview content has been verified.
+                 * @default false
+                 */
+                detailsRedirect: boolean;
                 versionsSitemap: boolean;
             };
         };
@@ -4847,10 +6034,48 @@ export interface components {
          *         "ru-RU"
          *       ],
          *       "enforced": false,
-         *       "notesCount": 12
+         *       "notesCount": 12,
+         *       "pages": {
+         *         "overview": {
+         *           "robots": "noindex, follow",
+         *           "canonicalPath": "",
+         *           "hreflang": [],
+         *           "inSitemap": false,
+         *           "announce": false,
+         *           "reason": "locale_not_ready"
+         *         },
+         *         "versions": {
+         *           "robots": "noindex, follow",
+         *           "canonicalPath": "",
+         *           "hreflang": [],
+         *           "inSitemap": false,
+         *           "announce": false,
+         *           "reason": "locale_not_ready"
+         *         },
+         *         "dependencies": {
+         *           "robots": "noindex, follow",
+         *           "canonicalPath": "",
+         *           "hreflang": [],
+         *           "inSitemap": false,
+         *           "announce": false,
+         *           "reason": "locale_not_ready"
+         *         },
+         *         "details": {
+         *           "robots": "noindex, follow",
+         *           "canonicalPath": "",
+         *           "hreflang": [],
+         *           "inSitemap": false,
+         *           "announce": false,
+         *           "reason": "consolidated"
+         *         }
+         *       }
          *     }
          */
         PackageIndexing: {
+            /** @description Overview facts include the original details fields. */
+            detailsMerged?: boolean;
+            /** @description Rollout enabled and this locale has an indexable overview; false for link apps. */
+            detailsRedirect?: boolean;
             indexable: boolean;
             /** @description hidden, forced_noindex, unavailable, missing_summary or thin when not indexable. */
             reason: string | null;
@@ -4859,6 +6084,7 @@ export interface components {
             enforced: boolean;
             /** @description Visible releases with their own notes; the versions page needs several to be indexed on its own. */
             notesCount: number;
+            pages: components["schemas"]["PackagePageDecisions"];
         };
         /**
          * @description Verified price type with its evidence (WP12). Absent when unknown or marked for review; a free download never implies free.
@@ -5126,6 +6352,9 @@ export interface components {
          *     }
          */
         PackageAlternative: {
+            attributes?: components["schemas"]["ComparisonAttributeFact"][];
+            prices?: components["schemas"]["PriceFact"][];
+            migration?: components["schemas"]["MigrationGuide"];
             package: components["schemas"]["PackageSummary"];
             /** @description Why someone would pick it; translate the codes */
             reasons: ("free" | "open_source" | "lighter" | "more_features" | "simpler" | "native_ui" | "apple_silicon" | "privacy" | "offline" | "collaboration" | "cross_platform" | "one_time_purchase" | "active_development" | "customizable")[];
@@ -5196,7 +6425,10 @@ export interface components {
             width: number | null;
             /** @example 720 */
             height: number | null;
-            /** @example Four screenshot apps side by side */
+            /**
+             * @description Ready requested-language alt, falling back to ready English then revision source alt.
+             * @example Four screenshot apps side by side
+             */
             alt: string;
         };
         /**
@@ -5534,9 +6766,14 @@ export interface components {
             locale: components["schemas"]["Locale"];
             /**
              * Format: date-time
-             * @description Latest reliable content change for this language: Homebrew commit of the current version, published text or screenshots. Null when no reliable time exists.
+             * @description Persistent overview content hash date; reliable source date until initialized. Null when no reliable time exists.
              */
             lastmod: string | null;
+            /** @description Content hash dates by page kind; versions:N identifies later pages. */
+            pageLastmod?: {
+                [key: string]: string;
+            };
+            pages?: components["schemas"]["PackagePageDecisions"];
         };
         /**
          * @example {
@@ -6343,6 +7580,14 @@ export interface components {
          *             "earlierCount": 0,
          *             "medianMinutes": 60
          *           }
+         *         },
+         *         "indexing": {
+         *           "robots": "noindex, follow",
+         *           "canonicalPath": "",
+         *           "hreflang": [],
+         *           "inSitemap": false,
+         *           "announce": false,
+         *           "reason": "locale_not_ready"
          *         }
          *       }
          *     }
@@ -7084,6 +8329,11 @@ export interface components {
             /** @example ok */
             msg: string;
             data: {
+                /**
+                 * Format: date-time
+                 * @description Latest content date within this sitemap shard, for sitemap index lastmod.
+                 */
+                lastmod?: string | null;
                 /** @example 1 */
                 current: number;
                 /** @example 24 */
@@ -7115,12 +8365,78 @@ export interface components {
              * @example 改善浏览、搜索与更新体验。
              */
             notes: string;
-            sourceLocale?: components["schemas"]["Locale"];
+            sourceLocale?: components["schemas"]["AppLocale"];
             /**
              * @description Whether the returned text is machine-translated; false for source fallback or manual translations.
              * @example false
              */
             machineTranslated?: boolean;
+        };
+        /**
+         * @example {
+         *       "robots": "noindex, follow",
+         *       "canonicalPath": "",
+         *       "hreflang": [],
+         *       "inSitemap": false,
+         *       "announce": false,
+         *       "reason": "locale_not_ready"
+         *     }
+         */
+        PageDecision: {
+            /** @enum {string} */
+            robots: "index, follow" | "noindex, follow";
+            /** @description Empty means self; otherwise a locale-prefixed canonical path. */
+            canonicalPath: string;
+            hreflang: components["schemas"]["Locale"][];
+            inSitemap: boolean;
+            announce: boolean;
+            reason: string;
+        };
+        /**
+         * @example {
+         *       "overview": {
+         *         "robots": "noindex, follow",
+         *         "canonicalPath": "",
+         *         "hreflang": [],
+         *         "inSitemap": false,
+         *         "announce": false,
+         *         "reason": "locale_not_ready"
+         *       },
+         *       "versions": {
+         *         "robots": "noindex, follow",
+         *         "canonicalPath": "",
+         *         "hreflang": [],
+         *         "inSitemap": false,
+         *         "announce": false,
+         *         "reason": "locale_not_ready"
+         *       },
+         *       "dependencies": {
+         *         "robots": "noindex, follow",
+         *         "canonicalPath": "",
+         *         "hreflang": [],
+         *         "inSitemap": false,
+         *         "announce": false,
+         *         "reason": "locale_not_ready"
+         *       },
+         *       "details": {
+         *         "robots": "noindex, follow",
+         *         "canonicalPath": "",
+         *         "hreflang": [],
+         *         "inSitemap": false,
+         *         "announce": false,
+         *         "reason": "consolidated"
+         *       }
+         *     }
+         */
+        PackagePageDecisions: {
+            /** @description Indexable only when the locale's overview is indexable and at least three verified, unexpired issues have complete content in that exact locale. Otherwise noindex with overview canonical, excluded from sitemap and announcements. */
+            troubleshooting?: components["schemas"]["PageDecision"];
+            alternatives?: components["schemas"]["PageDecision"];
+            uninstall?: components["schemas"]["PageDecision"];
+            overview: components["schemas"]["PageDecision"];
+            versions: components["schemas"]["PageDecision"];
+            dependencies: components["schemas"]["PageDecision"];
+            details: components["schemas"]["PageDecision"];
         };
     };
     responses: {
@@ -7153,9 +8469,115 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getSeoExperimentAssignment: {
+        parameters: {
+            query: {
+                url: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoExperimentAssignmentResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listBackgroundItems: {
+        parameters: {
+            query?: {
+                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                locale?: components["parameters"]["Locale"];
+                q?: string;
+                current?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackgroundItemsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getBackgroundItem: {
+        parameters: {
+            query?: {
+                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                locale?: components["parameters"]["Locale"];
+            };
+            header?: never;
+            path: {
+                label: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackgroundItemResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getBrowse: {
+        parameters: {
+            query?: {
+                kind?: "apps" | "fonts";
+                bucket?: string;
+                page?: number;
+                /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
+                locale?: components["parameters"]["Locale"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Directory buckets and at most 300 leaf links */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowseResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
     getHome: {
         parameters: {
             query?: {
+                /** @description Number of apps or collections per Discover group. */
+                sectionSize?: number;
                 /** @description locale > Accept-Language (six languages matched by q value) > en-US. Missing translations fall back to en-US, then the source language. */
                 locale?: components["parameters"]["Locale"];
             };

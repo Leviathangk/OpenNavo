@@ -176,7 +176,7 @@ func (h *Handler) GetHome(ctx context.Context, request publicapi.GetHomeRequestO
 	if err := h.contentCache(ctx); err != nil {
 		return nil, err
 	}
-	data, err := h.Catalog.Home(requestContext(ctx), locale(ctx, request.Params.Locale))
+	data, err := h.Catalog.Home(requestContext(ctx), locale(ctx, request.Params.Locale), fallback(request.Params.SectionSize, 12))
 	return response[publicapi.GetHome200JSONResponse](data, err)
 }
 
@@ -220,7 +220,7 @@ func (h *Handler) ListRelatedPackages(ctx context.Context, request publicapi.Lis
 	if h.Catalog == nil {
 		return nil, domain.Internal(nil)
 	}
-	data, err := h.Catalog.Related(requestContext(ctx), string(request.Kind), request.Token, locale(ctx, request.Params.Locale), fallback(request.Params.Limit, 6))
+	data, err := h.Catalog.Related(requestContext(ctx), string(request.Kind), request.Token, locale(ctx, request.Params.Locale), fallback(request.Params.Limit, 8))
 	return response[publicapi.ListRelatedPackages200JSONResponse](data, err)
 }
 

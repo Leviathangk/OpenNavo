@@ -569,4 +569,54 @@ describe('Responsive app-list pagination', () => {
       width.mockRestore();
     }
   });
+  it('Keeps one page size when the host turns width fitting off (web)', () => {
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1892);
+    try {
+      const items = Array.from({ length: 24 }, (_, i) => packageSummary({ token: `app-${i}` }));
+      const wrapper = mount(OnPackageListView, {
+        props: { title: 'Apps', items, fitToWidth: false },
+        slots: { card: ({ pkg }: { pkg: { token: string } }) => h('div', { 'data-app': pkg.token }) }
+      });
+      expect(wrapper.emitted('pageSize')).toBeUndefined();
+      expect(wrapper.findAll('[data-app]')).toHaveLength(24);
+      wrapper.unmount();
+    } finally {
+      width.mockRestore();
+    }
+  });
+});
+
+describe('Headings hold only their titles (C3)', () => {
+  it('Puts a section header’s hint beside its h2, not inside it', async () => {
+    const { default: OnSectionHeader } = await import('../src/components/OnSectionHeader.vue');
+    const wrapper = mount(OnSectionHeader, { props: { title: '热门 App', hint: '近 30 天安装量' } });
+    expect(wrapper.get('h2').text()).toBe('热门 App');
+    expect(wrapper.get('p').text()).toBe('近 30 天安装量');
+  });
+
+  it('Reads the stats strip as a description list', () => {
+    const wrapper = mount(OnPackageStats, {
+      props: { label: '数据', cells: [{ key: 'size', label: '下载大小', value: '318', unit: 'MB', hint: 'dmg' }] }
+    });
+    expect(wrapper.get('dt').text()).toBe('下载大小');
+    expect(wrapper.findAll('dd').map(item => item.text())).toEqual(['318MB', 'dmg']);
+  });
+
+  it('Links header chips that carry an address', () => {
+    const wrapper = mount(OnPackageHeader, {
+      props: {
+        kind: 'cask',
+        token: 'iterm2',
+        name: 'iTerm2',
+        chips: [
+          { key: 'kind', label: 'Cask' },
+          { key: 'category:terminal', label: '终端', href: '/categories/terminal' }
+        ],
+        linkAs: RouterLinkStub
+      }
+    });
+    expect(wrapper.findAll('a').map(link => [link.text(), link.attributes('href')])).toEqual([
+      ['终端', '#/categories/terminal']
+    ]);
+  });
 });

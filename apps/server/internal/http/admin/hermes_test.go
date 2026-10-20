@@ -76,7 +76,7 @@ func TestHermesAgentSeedExactlyMatchesGrantableContract(t *testing.T) {
 			}
 		}
 	}
-	require.Len(t, granted, 23)
+	require.Len(t, granted, 28)
 	require.ElementsMatch(t, spec.Components.Schemas["AgentPermission"].Value.Enum, granted)
 	require.ElementsMatch(t, granted, agent.Grantable, "runtime grants must match the contract and seed")
 }
@@ -105,9 +105,10 @@ func TestAgentRouteWhitelistCountAndForbiddenSurfaces(t *testing.T) {
 	spec, err := adminapi.GetSpec()
 	require.NoError(t, err)
 	policies := AgentPolicies(spec)
-	require.Len(t, policies, 108)
+	require.Len(t, policies, 133)
 	require.Contains(t, policies, "POST /introspect")
-	require.Equal(t, []string{"dashboard:view"}, policies["GET /dashboard/llm-usage"].Permissions)
+	require.NotContains(t, policies, "GET /dashboard/llm-usage")
+	require.NotContains(t, policies, "POST /translations/retranslate")
 	require.Equal(t, []string{"catalog:asset:upload"}, policies["POST /assets/upload-tickets"].Permissions)
 	// Tickets are redeemed only through the public admin path; the internal entry point never accepts uploads by ticket.
 	require.NotContains(t, policies, "POST /assets/upload-tickets/:ticket")

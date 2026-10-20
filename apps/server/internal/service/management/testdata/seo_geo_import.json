@@ -1,0 +1,72 @@
+{
+  "idempotencyKey": "fixture-geo-import-001",
+  "supersedes": null,
+  "snapshot": {
+    "schemaVersion": 1,
+    "provider": "openseo",
+    "sourceProject": "fixture-project",
+    "providerRunKey": "fixture-run-001",
+    "mode": "imported_observation",
+    "panelId": "neutral-core",
+    "panelVersion": "v1",
+    "periodStart": "2026-10-18T09:00:00Z",
+    "periodEnd": "2026-10-18T10:00:00Z",
+    "context": {
+      "market": "unknown",
+      "promptLanguage": "en",
+      "answerLanguage": "unknown",
+      "searchMode": "unknown",
+      "windowDays": 7
+    },
+    "prompts": [
+      {
+        "id": "p1",
+        "text": "best free mac apps",
+        "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "classification": "neutral"
+      }
+    ],
+    "engines": [
+      {
+        "key": "chatgpt",
+        "name": "ChatGPT",
+        "surface": "provider_api",
+        "modelVersion": "unknown",
+        "toolVersion": "unknown"
+      }
+    ],
+    "plannedCount": 1,
+    "cells": [
+      {
+        "id": "p1-chatgpt",
+        "promptId": "p1",
+        "engineKey": "chatgpt",
+        "status": "answered",
+        "observationId": "observation-fixture-001",
+        "answerHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "searchTriggered": null,
+        "citationExtraction": "unknown",
+        "evidenceAvailability": "unknown",
+        "mentioned": null,
+        "candidate": null,
+        "cited": null,
+        "ownUrls": [],
+        "thirdPartyDomains": [],
+        "domainsTruncated": false
+      }
+    ],
+    "reported": null,
+    "artifactCompleteness": "unknown",
+    "hashAlgorithm": "sha256",
+    "hashNormalization": "provider-v1",
+    "charges": [
+      {
+        "vendorTaskId": "fixture-charge-001",
+        "costUsd": null,
+        "credits": null,
+        "incurredAt": "2026-10-18T10:00:00Z"
+      }
+    ],
+    "approvedBatchRef": "fixture-approval-001"
+  }
+}

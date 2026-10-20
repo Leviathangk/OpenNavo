@@ -10,6 +10,17 @@ type Operation struct {
 	Permissions                                          []string
 	RequiredPermissions                                  []string
 	AllowDelete, DryRun                                  bool
+	Execution                                            *AgentExecution
+}
+
+// AgentExecution is transport-neutral. Lease ownership always comes from the
+// authenticated token in Operation, never from this request envelope.
+type AgentExecution struct {
+	TaskID           int64   `json:"taskId"`
+	Fencing          int64   `json:"fencing"`
+	IdempotencyKey   string  `json:"idempotencyKey"`
+	ExpectedRevision int64   `json:"expectedRevision"`
+	EvidenceIDs      []int64 `json:"evidenceIds"`
 }
 type operationKey struct{}
 

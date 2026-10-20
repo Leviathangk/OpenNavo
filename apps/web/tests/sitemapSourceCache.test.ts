@@ -3,7 +3,7 @@ import { createStorage } from 'unstorage';
 import memoryDriver from 'unstorage/drivers/memory';
 import { LOCALES } from '@opennavo/shared';
 import { boundedCache, MAX_CACHE_ENTRY_BYTES } from '../server/utils/boundedCache';
-import { packageSitemaps } from '../shared/utils/sitemapBuckets';
+import { packageSitemapName, packageSitemaps } from '../shared/utils/sitemapBuckets';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 type HookContext = {
-  sitemaps: { _sitemapName: string }[];
+  sitemaps: { _sitemapName: string; lastmod?: string }[];
   sitemapName: string;
   urls: { loc: string }[];
 };
@@ -308,5 +308,36 @@ describe('sitemap source snapshot cache', () => {
     const locs = (await Promise.all(apps.map(entry => bucket(entry['_sitemapName'])))).flat().map(entry => entry.loc);
     expect(locs).toEqual(expect.arrayContaining(['/apps/zed', '/apps/lumen-notes']));
     expect(locs).not.toContain('/apps/wget');
+  });
+
+  it('lists a bucket only when a decision puts one of its pages in a sitemap, dated by its newest page', async () => {
+    const decision = (inSitemap: boolean) => ({ overview: { inSitemap }, versions: { inSitemap } });
+    const { index, bucket } = await setup([
+      {
+        kind: 'cask',
+        token: 'dated-app',
+        locales: [
+          { locale: 'en-US', lastmod: '2026-01-01', pageLastmod: { overview: '2026-03-02' }, pages: decision(true) },
+          { locale: 'ja-JP', lastmod: '2026-05-05', pageLastmod: { overview: '2026-05-05' }, pages: decision(false) }
+        ]
+      },
+      {
+        kind: 'cask',
+        token: 'hidden-app',
+        locales: [{ locale: 'en-US', lastmod: '2026-09-09', pages: decision(false) }]
+      }
+    ]);
+    const entries = await index();
+    const listed = entries.filter(({ _sitemapName: name }) => name.startsWith('apps-'));
+    const urls = (await Promise.all(listed.map(({ _sitemapName: name }) => bucket(name))))
+      .flat()
+      .map(entry => entry.loc);
+    expect(urls).toEqual(['/apps/dated-app']);
+    // The date of the page the bucket lists, not the unlisted Japanese page or the hidden app.
+    expect(listed).toEqual([{ _sitemapName: packageSitemapName('apps', 'dated-app'), lastmod: '2026-03-02' }]);
+    // A versions bucket follows its own decisions instead of the release-note count.
+    const versions = entries.filter(({ _sitemapName: name }) => name.startsWith('versions-'));
+    const versionUrls = (await Promise.all(versions.map(({ _sitemapName: name }) => bucket(name)))).flat();
+    expect(versionUrls.map(entry => entry.loc)).toEqual(['/apps/dated-app/versions']);
   });
 });
