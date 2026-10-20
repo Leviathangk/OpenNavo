@@ -114,3 +114,22 @@ func TestLeasedOpportunityRetainsCatalogEvent(t *testing.T) {
 	require.Equal(t, "open", task.State)
 	require.Contains(t, string(task.Evidence), "2.0")
 }
+
+func TestMeasurementsAcceptHomebrewSnapshotDatedAheadOfUTC(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &Service{DB: st.DB}
+	// The 03:00 Asia/Shanghai analytics sync dates its snapshot one day ahead of UTC.
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(703,'cask','fixture-player','fixture-player','homebrew/cask','Fixture Player','1.0','1.0','{}','fixture');
+ INSERT INTO analytics_snapshots(package_id,snapshot_date,installs_30d,installs_90d,installs_365d,on_request_30d,rank_30d) VALUES(703,(now() AT TIME ZONE 'UTC')::date+1,120,300,900,100,1)`).Error)
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	var observed struct {
+		Period   string
+		Future   bool
+		Keywords int64
+	}
+	require.NoError(t, st.DB.Raw(`SELECT max(period) period,bool_or(observed_at>now()) future,count(*) keywords FROM seo_keywords WHERE source='homebrew'`).Scan(&observed).Error)
+	require.EqualValues(t, 1, observed.Keywords)
+	require.False(t, observed.Future)
+}

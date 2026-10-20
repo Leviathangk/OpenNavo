@@ -38,3 +38,26 @@ func TestKeywordRevisionDetectsHumanWriteAndTaskTraceExposesRevision(t *testing.
 	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpsertSeoKeywords", Input{Body: body})
 	require.NoError(t, err)
 }
+
+func TestTaskTraceForPackageTaskListsPackageRevisions(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &Service{Store: st}
+	tasks := &seotasks.Service{DB: st.DB}
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(834,'cask','trace-app','trace-app','homebrew/cask','Trace App','1','1','{}','hash');
+ INSERT INTO content_revision_requests(request_id) VALUES('fixture-trace');
+ INSERT INTO content_revisions(entity,object_key,version,locale,action,operation_id,required_permissions,actor_type,request_id,before_data,after_data)
+ VALUES('package','834',1,'en-US','update','UpdatePackage',ARRAY['catalog:package:edit'],'agent','fixture-trace','{}','{}')`).Error)
+	var revision int64
+	require.NoError(t, st.DB.Raw(`SELECT max(id) FROM content_revisions WHERE entity='package' AND object_key='834'`).Scan(&revision).Error)
+	_, err := tasks.Enqueue(ctx, seotasks.NewTask{Kind: "maintenance", EntityKey: "pkg:834", DedupeKey: "catalog:pkg:834", RuleVersion: "fixture", Evidence: map[string]any{"token": "trace-app"}})
+	require.NoError(t, err)
+	leased, err := tasks.Claim(ctx, seotasks.Owner(1, 2), 1, nil)
+	require.NoError(t, err)
+	require.Len(t, leased, 1)
+	op := &domain.Operation{RequestID: uuid.NewString(), Name: "getSeoTask", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"seo:task:handle"}, RequiredPermissions: []string{"seo:task:handle"}}
+	trace, err := svc.Execute(domain.WithOperation(ctx, op), "GetSeoTask", Input{ID: leased[0].ID})
+	require.NoError(t, err)
+	require.Equal(t, revision, trace.(map[string]any)["currentRevision"])
+	require.Equal(t, map[string]int64{"package:834": revision}, trace.(map[string]any)["revisions"])
+}

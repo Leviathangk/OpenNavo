@@ -9,6 +9,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/robfig/cron/v3"
 )
 
 type Definition struct {
@@ -106,8 +107,25 @@ func NewTask(taskType string, payload Payload) (*asynq.Task, []asynq.Option, err
 	if err != nil {
 		return nil, nil, fmt.Errorf("encode job payload: %w", err)
 	}
-	options := []asynq.Option{asynq.Queue(definition.Queue), asynq.MaxRetry(definition.Retries), asynq.Unique(24 * time.Hour), asynq.Timeout(20 * time.Minute)}
+	options := []asynq.Option{asynq.Queue(definition.Queue), asynq.MaxRetry(definition.Retries), asynq.Unique(uniqueTTL(definition)), asynq.Timeout(20 * time.Minute)}
 	return asynq.NewTask(taskType, encoded), options, nil
+}
+
+// Asynq archives a failed task with its uniqueness lock still held. A day-long
+// lock would silence a five-minute schedule for a day after one failure, so a
+// scheduled job holds it for about one period: at least the run timeout and
+// never a full day.
+func uniqueTTL(definition Definition) time.Duration {
+	const shortest, longest = 20 * time.Minute, 23 * time.Hour
+	if definition.Cron == "" {
+		return 24 * time.Hour
+	}
+	schedule, err := cron.ParseStandard(definition.Cron)
+	if err != nil {
+		return longest
+	}
+	first := schedule.Next(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
+	return min(max(schedule.Next(first).Sub(first)-time.Minute, shortest), longest)
 }
 
 var MainQueues = map[string]int{"critical": 6, "default": 3}
