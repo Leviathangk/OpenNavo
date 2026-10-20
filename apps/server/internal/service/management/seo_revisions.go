@@ -78,7 +78,7 @@ func (s *Service) seoTaskTrace(ctx context.Context, id int64) (any, error) {
 			Entity, ObjectKey string
 			Revision          int64
 		}
-		if err := s.Store.DB.WithContext(ctx).Raw(`SELECT entity,object_key,max(id) revision FROM content_revisions WHERE (entity='package' AND object_key=?::text) OR (entity='release' AND object_key IN(SELECT id::text FROM releases WHERE package_id=?)) OR (entity='screenshot' AND object_key IN(SELECT id::text FROM package_screenshots WHERE package_id=?)) GROUP BY entity,object_key`, id, id, id).Scan(&rows).Error; err != nil {
+		if err := s.Store.DB.WithContext(ctx).Raw(`SELECT entity,object_key,max(id) revision FROM content_revisions WHERE (entity='package' AND object_key=?) OR (entity='release' AND object_key IN(SELECT id::text FROM releases WHERE package_id=?)) OR (entity='screenshot' AND object_key IN(SELECT id::text FROM package_screenshots WHERE package_id=?)) GROUP BY entity,object_key`, strconv.FormatInt(id, 10), id, id).Scan(&rows).Error; err != nil {
 			return nil, err
 		}
 		for _, row := range rows {
