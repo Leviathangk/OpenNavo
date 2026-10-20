@@ -153,4 +153,72 @@ fn six_language_menu_labels_and_askpass_env() {
     assert!(!script.contains("ja-JP"));
     assert!(script.contains("with title (item 2 of argv)"));
     assert!(script.contains("with hidden answer"));
+    // OpenNavo's own icon from the bundle, and a dialog nobody answers must give up like Cancel.
+    assert!(script.contains("icon.icns"));
+    assert!(script.contains("giving up after"));
+    assert!(script.contains("error \"User canceled.\" number -128"));
+}
+
+#[test]
+fn askpass_sentences_exist_in_every_language_with_a_name_only_where_expected() {
+    use opennavo_desktop_lib::brew::env::Reason;
+    for locale in opennavo_desktop_lib::locales_gen::LOCALES {
+        for reason in Reason::ALL {
+            let text = native_i18n::text(locale, reason.key()).unwrap();
+            assert!(!text.trim().is_empty(), "{locale:?}/{reason:?}");
+            assert_eq!(
+                text.matches("{name}").count(),
+                usize::from(reason.names_app()),
+                "{locale:?}/{reason:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn bundle_ships_a_localized_usage_description_for_every_declared_language() {
+    let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let plist = plist::Value::from_file(manifest.join("Info.plist")).unwrap();
+    let info = plist.as_dictionary().unwrap();
+    let base = info["NSAppleEventsUsageDescription"].as_string().unwrap();
+    let config: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest.join("tauri.conf.json")).unwrap())
+            .unwrap();
+    let files = config["bundle"]["macOS"]["files"].as_object().unwrap();
+    let mut seen = std::collections::HashSet::new();
+    for code in info["CFBundleLocalizations"].as_array().unwrap() {
+        let code = code.as_string().unwrap();
+        // Declared in Info.plist, so macOS looks for it: it must really be in the bundle.
+        let folder = format!("{code}.lproj");
+        assert_eq!(
+            files[&format!("Resources/{folder}")],
+            format!("resources/lproj/{folder}"),
+            "{code} is not copied into the bundle"
+        );
+        let strings = std::fs::read_to_string(
+            manifest
+                .join("resources/lproj")
+                .join(&folder)
+                .join("InfoPlist.strings"),
+        )
+        .unwrap();
+        let line = strings
+            .lines()
+            .find(|line| line.starts_with("\"NSAppleEventsUsageDescription\" = \""))
+            .unwrap_or_else(|| panic!("{code} has no usage description"));
+        let text = line
+            .trim_end_matches(';')
+            .trim_end_matches('"')
+            .strip_prefix("\"NSAppleEventsUsageDescription\" = \"")
+            .unwrap();
+        assert!(!text.is_empty() && text.contains("System Events"), "{code}");
+        assert!(
+            seen.insert(text.to_owned()),
+            "{code} repeats another language"
+        );
+        if code == "en" {
+            assert_eq!(text, base);
+        }
+    }
+    assert_eq!(seen.len(), 6);
 }

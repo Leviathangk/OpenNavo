@@ -21,8 +21,13 @@ export const useCatalogStore = defineStore('catalog', () => {
   }
 
   async function sync(force = false) {
-    await unwrap(commands.catalogSync(force));
-    await Promise.all([loadStatus(), loadCategories()]);
+    try {
+      await unwrap(commands.catalogSync(force));
+    } finally {
+      // A source can commit useful data even when another source fails.
+      await Promise.all([loadStatus(), loadCategories()]);
+      revision.value += 1;
+    }
   }
 
   return { status, categories, revision, loadStatus, loadCategories, sync };

@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type {
+  HistoryCleared,
   RunningApp,
   Task,
   TaskKind,
@@ -31,6 +32,8 @@ export const useTasksStore = defineStore('tasks', () => {
   const finished = ref<Task[]>([]);
   /** The first task list arrived; startup reads it in the background (stores/index.ts). */
   const loaded = ref(false);
+  /** Counts clears of the stored history: lists and totals built from it reread when it changes. */
+  const historyEpoch = ref(0);
 
   const running = computed(() => active.value.find(task => task.state === 'running'));
   const queued = computed(() => active.value.filter(task => task.state === 'queued'));
@@ -49,6 +52,16 @@ export const useTasksStore = defineStore('tasks', () => {
     active.value = await unwrap(commands.taskListActive());
     loaded.value = true;
     pruneLogs();
+  }
+
+  /**
+   * Deletes the finished records, except those that can still be undone or rolled back. Active tasks stay, and so do
+   * the tasks held in memory for the screens that are showing them.
+   */
+  async function clearHistory(): Promise<HistoryCleared> {
+    const result = await unwrap(commands.historyClear());
+    historyEpoch.value += 1;
+    return result;
   }
 
   function pruneLogs() {
@@ -232,6 +245,7 @@ export const useTasksStore = defineStore('tasks', () => {
     logs,
     finished,
     loaded,
+    historyEpoch,
     running,
     queued,
     forPackage,
@@ -242,6 +256,7 @@ export const useTasksStore = defineStore('tasks', () => {
     appendLog,
     enqueue,
     enqueueMany,
-    cancel
+    cancel,
+    clearHistory
   };
 });

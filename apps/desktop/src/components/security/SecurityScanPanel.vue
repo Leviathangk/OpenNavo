@@ -38,6 +38,7 @@ const engine = computed(() => store.overview?.engine ?? null);
 const ready = computed(() => Boolean(engine.value?.db));
 const consented = computed(() => store.securitySettings.avConsent);
 const downloading = ref(false);
+const forceScan = ref(false);
 const scan = computed(() => store.scan);
 const kinds: AvScanKind[] = ['quick', 'full', 'custom'];
 
@@ -77,7 +78,7 @@ async function scanPreviewed() {
   const paths = previewApps.value.map(app => app.path);
   if (!paths.length) return;
   try {
-    await store.startScan('custom', paths);
+    await store.startScan('custom', paths, forceScan.value);
   } catch (error) {
     toasts.push({ tone: 'danger', title: t('security.scan.failed'), description: errorText(error) });
   }
@@ -108,7 +109,7 @@ async function start(kind: AvScanKind) {
       if (!folder) return;
       paths = [folder];
     }
-    await store.startScan(kind, paths);
+    await store.startScan(kind, paths, forceScan.value);
   } catch (error) {
     toasts.push({
       tone: 'danger',
@@ -288,6 +289,15 @@ const skippedText = computed(() => {
       </OnCard>
     </div>
 
+    <div class="flex flex-col gap-6px text-12.5px text-ink-secondary">
+      <label class="flex items-center gap-8px">
+        <input v-model="forceScan" type="checkbox" :disabled="store.scanning" aria-describedby="scan-force-hint" />
+        {{ t('security.scan.forceLabel') }}
+      </label>
+      <p id="scan-force-hint" class="m-0 text-ink-tertiary">{{ t('security.scan.forceHint') }}</p>
+      <p class="m-0 text-ink-tertiary">{{ t('security.scan.performanceHint') }}</p>
+    </div>
+
     <OnCard v-if="scan" padding="md" as="section" aria-labelledby="scan-status" aria-live="polite">
       <div class="flex items-center gap-10px">
         <h2 id="scan-status" class="m-0 flex-1 text-14px font-600 text-ink-primary">
@@ -338,6 +348,12 @@ const skippedText = computed(() => {
         class="m-0 mt-6px truncate font-mono text-11.5px text-ink-tertiary"
       >
         {{ shortPath(store.progress.currentPath, 90) }}
+      </p>
+      <p
+        v-if="(store.progress?.cachedFiles ?? scan.metrics?.cachedFiles ?? 0) > 0"
+        class="m-0 mt-6px text-12px text-ink-tertiary"
+      >
+        {{ t('security.scan.cacheSummary', { count: store.progress?.cachedFiles ?? scan.metrics?.cachedFiles ?? 0 }) }}
       </p>
       <p v-if="skippedText" class="m-0 mt-6px text-12px text-ink-tertiary">{{ skippedText }}</p>
     </OnCard>

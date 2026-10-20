@@ -57,14 +57,6 @@ export function officialDownloadUrl(link: Pick<LinkInfo, 'downloadUrl' | 'github
   return githubReleaseUrl(link);
 }
 
-const ARCH_ORDER = { universal: 0, arm64: 1, x86_64: 2 } as const;
-
-/** Installers before other files; universal, then Apple silicon, then Intel, since a visitor's chip is unknown. */
-export function sortedAssets(assets: readonly ReleaseAsset[]): ReleaseAsset[] {
-  const rank = (asset: ReleaseAsset) => (asset.format === 'other' ? 4 : 0) + (asset.arch ? ARCH_ORDER[asset.arch] : 3);
-  return [...assets].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
-}
-
 /** Notes in the page language, else English, else whichever language has text. */
 export function linkNotes(notes: LinkInfo['notes'], locale: string): string {
   if (!notes) return '';

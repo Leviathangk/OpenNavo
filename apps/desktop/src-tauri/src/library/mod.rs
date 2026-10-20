@@ -33,15 +33,22 @@ pub(crate) fn app_paths(cask: &crate::brew::json::Cask) -> Vec<String> {
                     app.iter()
                         .find_map(|v| v.get("target").and_then(serde_json::Value::as_str))
                 });
-            let path = target.map(PathBuf::from).or_else(|| {
-                app.first().and_then(serde_json::Value::as_str).map(|s| {
+            // Source paths are relative to the unpacked download. Homebrew installs
+            // their basename into appdir; a relative target is a rename in appdir.
+            let path = target
+                .map(|s| {
                     if Path::new(s).is_absolute() {
-                        s.into()
+                        PathBuf::from(s)
                     } else {
                         Path::new("/Applications").join(s)
                     }
                 })
-            });
+                .or_else(|| {
+                    app.first()
+                        .and_then(serde_json::Value::as_str)
+                        .and_then(|s| Path::new(s).file_name())
+                        .map(|name| Path::new("/Applications").join(name))
+                });
             if let Some(path) = path
                 && path.is_absolute()
                 && path.extension().is_some_and(|s| s == "app")
@@ -55,6 +62,7 @@ pub(crate) fn app_paths(cask: &crate::brew::json::Cask) -> Vec<String> {
     paths.dedup();
     paths
 }
+
 pub fn scan(
     database: &Database,
     info: &Info,
@@ -260,5 +268,44 @@ pub fn storage(items: &[InstalledItem], cache_bytes: u64, complete: bool) -> Sto
         cache_bytes,
         complete,
         measured_at: chrono::Utc::now().timestamp_millis(),
+    }
+}
+
+#[cfg(test)]
+mod app_path_tests {
+    use super::*;
+
+    #[test]
+    fn app_artifacts_resolve_install_destinations_not_archive_paths() {
+        for (artifact, expected) in [
+            (
+                serde_json::json!({"app":["Bundle/Example.app"]}),
+                "/Applications/Example.app",
+            ),
+            (
+                serde_json::json!({"app":["Example.app", {"target":"Renamed.app"}]}),
+                "/Applications/Renamed.app",
+            ),
+            (
+                serde_json::json!({"app":["Example.app", {"target":"/custom/Example.app"}]}),
+                "/custom/Example.app",
+            ),
+        ] {
+            let cask = serde_json::from_value(serde_json::json!({
+                "token": "example", "version": "1", "artifacts": [artifact]
+            }))
+            .unwrap();
+            assert_eq!(app_paths(&cask), vec![expected.to_owned()]);
+        }
+    }
+
+    #[test]
+    fn unsafe_target_is_not_an_app_destination() {
+        let cask = serde_json::from_value(serde_json::json!({
+            "token": "example", "version": "1",
+            "artifacts": [{"app": ["Example.app", {"target": "../Example.app"}]}]
+        }))
+        .unwrap();
+        assert!(app_paths(&cask).is_empty());
     }
 }

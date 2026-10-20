@@ -1,6 +1,6 @@
 //! Closed privileged action protocol. Every object is revalidated immediately before use.
 use super::{Commands, NativeCommands, files};
-use crate::{AppError, uninstall::rules::Snapshot};
+use crate::{AppError, brew::env::Reason, uninstall::rules::Snapshot};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -45,6 +45,22 @@ pub struct Request {
 pub struct ResultItem {
     pub id: String,
     pub error: Option<AppError>,
+}
+/// What the password dialog says about a batch: changing system startup items, or only moving files into or out
+/// of the quarantine.
+pub fn password_reason(requests: &[Request]) -> Reason {
+    if requests.iter().any(|r| {
+        matches!(
+            r.action,
+            Action::LaunchdDisableSystem { .. }
+                | Action::LaunchdEnableSystem { .. }
+                | Action::LaunchdService { .. }
+        )
+    }) {
+        Reason::Startup
+    } else {
+        Reason::Quarantine
+    }
 }
 pub trait Actions: Send + Sync {
     fn run(&self, requests: &[Request]) -> Result<Vec<ResultItem>, AppError>;

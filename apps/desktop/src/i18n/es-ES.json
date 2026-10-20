@@ -192,7 +192,8 @@
       "label": "Origen de los resultados",
       "all": "Todo",
       "catalog": "Catálogo"
-    }
+    },
+    "catalogIncomplete": "No se pudieron sincronizar las apps de terceros. Los resultados pueden estar incompletos."
   },
   "appStore": {
     "title": "App Store",
@@ -268,6 +269,8 @@
       "recommended": "Recomendado",
       "download": "Descargar",
       "allFiles": "Todos los archivos en GitHub",
+      "filtered": "Filtrado para este Mac ({chip})",
+      "others": "Otros instaladores ({count})",
       "githubReleases": "Descargar desde GitHub",
       "teamId": "Firma del desarrollador",
       "pricingLabel": "Precio",
@@ -679,7 +682,7 @@
       "title": "Novedades de {name} {version}"
     },
     "masSignedOut": "En la última actualización del App Store no se pudo confirmar el estado de la cuenta. Vuelve a intentarlo o completa la actualización en el App Store.",
-    "failedSources": "Esta vez no se pudo comprobar {sources}. Los resultados de las demás fuentes se muestran como siempre y la próxima comprobación lo reintentará",
+    "failedSources": "No se pudieron completar algunas comprobaciones de {sources}. Los resultados disponibles siguen visibles.",
     "openAppStore": "Abrir App Store",
     "major": {
       "titleOne": "{name} tiene una actualización mayor",
@@ -775,12 +778,23 @@
       "skip": "No se volverá a ofrecer {version} hasta que salga una versión más reciente.",
       "confirm": "Revertir",
       "notQuit": "{name} no se cerró, así que no se revirtió. Ciérrala y vuelve a intentarlo."
+    },
+    "checkFailures": {
+      "summary": "No se pudieron comprobar algunas aplicaciones o fuentes de actualización. Los resultados disponibles siguen visibles.",
+      "details": "Ver detalles de la comprobación",
+      "rulesUnavailable": "No se pudieron renovar las reglas de actualización. Se usaron las reglas en caché disponibles; las comprobaciones sin reglas no pudieron completarse.",
+      "rateLimited": "El servidor de actualizaciones recibe demasiadas solicitudes. Inténtalo más tarde.",
+      "invalidUrl": "La dirección de actualización no es válida. El desarrollador debe corregir la configuración de actualización de la aplicación.",
+      "network": "No se pudo conectar con el servidor de actualizaciones. Inténtalo más tarde.",
+      "failed": "No se pudo completar la comprobación de actualizaciones."
     }
   },
   "history": {
     "clear": "Borrar historial",
     "clearDescription": "¿Seguro que quieres borrar todo el historial de actualizaciones? Esta acción no se puede deshacer y no afectará a las App instaladas ni a las tareas en curso.",
+    "clearNote": "Se conservan las desinstalaciones y limpiezas que aún se pueden deshacer y las actualizaciones que aún se pueden revertir.",
     "cleared": "Historial de actualizaciones borrado",
+    "clearedKept": "Historial borrado. Se conserva {count} registro que aún se puede deshacer o revertir. | Historial borrado. Se conservan {count} registros que aún se pueden deshacer o revertir.",
     "title": "Historial de actualizaciones",
     "subtitle": "Todas las instalaciones, actualizaciones y desinstalaciones en este Mac",
     "search": "Filtrar por nombre",
@@ -1983,7 +1997,24 @@
       "activityValue": "Monitor de Actividad muestra {value}",
       "topDisk": "Procesos que más usan el disco",
       "topNetwork": "Procesos que más usan la red",
-      "diskSplit": "Lectura {read} · Escritura {write}"
+      "diskSplit": "Lectura {read} · Escritura {write}",
+      "scaleCpu": "Porcentaje del Mac completo · 1 núcleo ≈ {percent}",
+      "cores": "≈{value} núcleos",
+      "self": "Esta app",
+      "view": "Agrupar por",
+      "viewProcess": "Proceso",
+      "viewApp": "App",
+      "breakdown": {
+        "title": "Adónde fue la CPU",
+        "rest": "Otros procesos ({count})",
+        "restAny": "Otros procesos",
+        "finished": "Procesos breves ya terminados",
+        "finishedFrom": "sobre todo de {names}",
+        "other": "Procesos del sistema y de root",
+        "hintRest": "Siguen en marcha, pero no están entre las filas de arriba.",
+        "hintFinished": "Estos procesos terminaron entre dos lecturas, así que no se pueden listar uno a uno. Es el tiempo de CPU que sus procesos padre recogieron de ellos.",
+        "hintOther": "OpenNavo no puede leer la CPU del kernel, de root ni de procesos de otros usuarios. Es lo que queda del total tras las filas de arriba."
+      }
     },
     "detail": {
       "open": "Ver detalles de {name}",
@@ -2224,7 +2255,11 @@
         "tooLarge": "{count} archivo supera el límite de análisis y no se analizó por completo | {count} archivos superan el límite de análisis y no se analizaron por completo",
         "unreadable": "No se ha podido leer {count} archivo (sin permiso, cifrado o en un formato no compatible) | No se han podido leer {count} archivos (sin permiso, cifrados o en un formato no compatible)",
         "excluded": "{count} archivo está excluido | {count} archivos están excluidos"
-      }
+      },
+      "forceLabel": "Volver a comprobar todos los archivos",
+      "forceHint": "No reutiliza resultados limpios anteriores. En este modo, el análisis completo permite hasta 5 minutos por archivo.",
+      "performanceHint": "El análisis completo usa hasta dos procesos y puede consumir más memoria. Normalmente cada archivo tiene un límite de 60 segundos; si lo supera, se informa que la comprobación quedó incompleta.",
+      "cacheSummary": "Se reutilizaron resultados limpios de {count} archivos tras verificar su contenido y la versión de la base de firmas."
     },
     "findings": {
       "title": "Amenazas encontradas ({count}) | Amenazas encontradas ({count})",
@@ -2526,7 +2561,24 @@
         "modified": "Cambiada tras firmar"
       },
       "check": "Revisar firmas",
-      "recheck": "Volver a revisar"
+      "recheck": "Volver a revisar",
+      "viewAll": "Ver todas ({count})",
+      "dialog": {
+        "title": "Apps con problemas de firma",
+        "hint": "Un problema de firma no siempre es un riesgo: algunas apps lo provocan al actualizarse solas o al escribir cachés. Si no estás seguro, mira la app en Finder o vuelve a descargarla desde su web; si ya no la usas, desinstálala desde aquí.",
+        "uninstallSelected": "Desinstalar seleccionadas ({count})",
+        "empty": "Ya no hay problemas de firma",
+        "missing": "No se encuentra esta app. Puede que ya esté desinstalada."
+      },
+      "hint": {
+        "invalid": "La firma no superó la verificación: se cambiaron, añadieron o quitaron archivos de la app después de firmarla, o la firma está dañada.",
+        "modified": "La firma en sí está bien, pero se cambiaron algunos componentes internos después de firmarla.",
+        "unsigned": "No tiene firma, así que macOS no puede saber quién la creó.",
+        "adhoc": "Solo tiene una firma ad hoc, sin identidad de desarrollador, así que macOS no puede saber quién la creó.",
+        "not_notarized": "Está firmada por un desarrollador, pero Apple no la ha notarizado.",
+        "team_changed": "El desarrollador que la firmó es distinto al de la última revisión. Si no la has reinstalado, ten cuidado.",
+        "unreadable": "Esta vez no se pudo leer su firma. Vuelve a revisar más tarde."
+      }
     },
     "paste": {
       "title": "Se ha pausado el pegado en {app}",

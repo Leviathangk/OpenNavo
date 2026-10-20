@@ -349,6 +349,21 @@ pub struct AvSkipped {
     pub excluded: u64,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AvScanMetrics {
+    pub cached_files: u64,
+    pub workers: u32,
+    pub preparation_ms: u64,
+    pub hash_ms: u64,
+    pub engine_ms: u64,
+    pub queue_ms: u64,
+    pub inspection_ms: u64,
+    pub cleanup_ms: u64,
+    pub persistence_ms: u64,
+    pub slow_files: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AvScanResult {
@@ -361,6 +376,7 @@ pub struct AvScanResult {
     pub files_scanned: u64,
     pub bytes_scanned: u64,
     pub skipped: AvSkipped,
+    pub metrics: AvScanMetrics,
     pub denied_roots: Vec<String>,
     pub findings: Vec<AvFinding>,
 }
@@ -382,6 +398,8 @@ impl<'de> Deserialize<'de> for AvScanResult {
             bytes_scanned: u64,
             skipped: AvSkipped,
             #[serde(default)]
+            metrics: AvScanMetrics,
+            #[serde(default)]
             denied_roots: Vec<String>,
             findings: Vec<AvFinding>,
         }
@@ -396,6 +414,7 @@ impl<'de> Deserialize<'de> for AvScanResult {
             files_scanned: v.files_scanned,
             bytes_scanned: v.bytes_scanned,
             skipped: v.skipped,
+            metrics: v.metrics,
             denied_roots: v.denied_roots,
             findings: v.findings,
         })
@@ -568,6 +587,8 @@ pub struct AvProgress {
     pub bytes_scanned: u64,
     pub current_path: String,
     pub findings: u64,
+    #[serde(default)]
+    pub cached_files: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]

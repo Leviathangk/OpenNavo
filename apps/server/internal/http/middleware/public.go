@@ -126,6 +126,10 @@ func cachePolicy(path string) string {
 		return "public, max-age=30"
 	case "/api/v1/catalog/snapshot", "/api/v1/catalog/changes":
 		return "public, max-age=60"
+	case "/api/v1/catalog/links":
+		// The body carries its own etag. Compressing at the edge makes Caddy suffix the ETag header and Cloudflare weaken
+		// it, so the header stops matching the body; `no-transform` keeps both layers from touching this response.
+		return "public, max-age=60, s-maxage=300, stale-while-revalidate=600, no-transform"
 	case "/api/v1/config/client":
 		return "public, max-age=300"
 	case "/api/v1/site/settings":

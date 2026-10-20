@@ -158,6 +158,95 @@ describe('Link download panel', () => {
   });
 });
 
+describe('Link download panel: the installers that suit this Mac', () => {
+  const file = (
+    name: string,
+    arch: 'arm64' | 'x86_64' | 'universal' | null,
+    format: 'dmg' | 'zip' | 'pkg' | 'other'
+  ) => ({
+    name,
+    arch,
+    format,
+    size: 1_000_000,
+    url: `https://example.org/${name}`,
+    sha256: null
+  });
+  // A suite released for Mac, Linux and Windows: two apps per chip, plus packages that no Mac can use.
+  const assets = [
+    file('ElyDoc-0.1.9-arm64.dmg', 'arm64', 'dmg'),
+    file('ElyMark-0.1.9-arm64.dmg', 'arm64', 'dmg'),
+    file('ElyDoc-0.1.9-x64.dmg', 'x86_64', 'dmg'),
+    file('ely-doc_0.1.9-1_amd64.deb', 'x86_64', 'other'),
+    file('ely-doc-0.1.9-1.x86_64.rpm', 'x86_64', 'other'),
+    file('latest-mac.yml', null, 'other')
+  ];
+  async function panel(arch: 'arm64' | 'x86_64', list = assets) {
+    const { pinia, router } = await setup('/package/link/lumen-notes');
+    const { useEnvStore } = await import('@/stores');
+    const env = useEnvStore();
+    await env.detect();
+    env.info!.arch = arch;
+    const item = await unwrap(commands.catalogGet('link', 'lumen-notes'));
+    const link = item!.link!;
+    link.github!.latest!.assets = list;
+    const wrapper = mount(LinkDownloadPanel, {
+      props: { token: 'lumen-notes', link },
+      global: { plugins: [pinia, router, i18n, ui] }
+    });
+    wrappers.push(wrapper);
+    await flushPromises();
+    return wrapper;
+  }
+  const names = (wrapper: VueWrapper, list: number) => {
+    const lists = wrapper.findAll('ul');
+    return lists[list]!.findAll('li').map(item => item.find('p').text());
+  };
+
+  it('Lists only the Mac installers for an Apple silicon Mac, and puts the rest behind "other installers"', async () => {
+    const wrapper = await panel('arm64');
+    expect(names(wrapper, 0)).toEqual(['ElyDoc-0.1.9-arm64.dmg', 'ElyMark-0.1.9-arm64.dmg']);
+    expect(wrapper.text()).toContain('已按这台 Mac（Apple 芯片）筛选');
+    // Two apps fit: neither is "the" recommendation.
+    expect(wrapper.text()).not.toContain('推荐');
+    const summary = wrapper.find('details summary');
+    expect(summary.text()).toBe('其他安装包（4）');
+    expect(wrapper.find('details').attributes('open')).toBeUndefined();
+    expect(names(wrapper, 1)).toEqual([
+      'ElyDoc-0.1.9-x64.dmg',
+      'ely-doc_0.1.9-1_amd64.deb',
+      'ely-doc-0.1.9-1.x86_64.rpm',
+      'latest-mac.yml'
+    ]);
+    // A Linux package is not an "Intel" installer.
+    expect(row(wrapper, 'ely-doc_0.1.9-1_amd64.deb')?.text()).not.toContain('Intel');
+    expect(row(wrapper, 'ElyDoc-0.1.9-x64.dmg')?.text()).toContain('Intel');
+  });
+
+  it('Lists the Intel installer on an Intel Mac, and recommends it as the only one that fits', async () => {
+    const wrapper = await panel('x86_64');
+    expect(names(wrapper, 0)).toEqual(['ElyDoc-0.1.9-x64.dmg']);
+    expect(wrapper.text()).toContain('已按这台 Mac（Intel）筛选');
+    expect(wrapper.findAll('li')[0]?.text()).toContain('推荐');
+    expect(wrapper.find('details summary').text()).toBe('其他安装包（5）');
+  });
+
+  it('Hides nothing when no file can be taken for a Mac installer that fits', async () => {
+    const odd = [file('Lumen.tar.gz', null, 'other'), file('Lumen-linux.zip', null, 'zip')];
+    const wrapper = await panel('arm64', odd);
+    expect(names(wrapper, 0)).toEqual(['Lumen-linux.zip', 'Lumen.tar.gz']);
+    expect(wrapper.find('details').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('已按这台 Mac');
+  });
+
+  it('Downloads a file from the collapsed list as well', async () => {
+    const open = vi.spyOn(commands, 'linkOpen');
+    const wrapper = await panel('arm64');
+    await row(wrapper, 'ElyDoc-0.1.9-x64.dmg')?.find('button')?.trigger('click');
+    await flushPromises();
+    expect(open).toHaveBeenCalledWith('lumen-notes', { asset: 'ElyDoc-0.1.9-x64.dmg' });
+  });
+});
+
 describe('Download check', () => {
   async function download(flags = '') {
     history.replaceState(null, '', flags ? `/?mock=${flags}` : '/');

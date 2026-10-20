@@ -62,9 +62,9 @@ pub async fn history_list(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn history_clear(state: State<'_, Arc<DesktopCore>>) -> Result<u32, AppError> {
-    let database = state.database.clone();
-    crate::blocking(move || database.clear_history()).await
+pub async fn history_clear(state: State<'_, Arc<DesktopCore>>) -> Result<HistoryCleared, AppError> {
+    let queue = state.queue.clone();
+    crate::blocking(move || queue.clear_history()).await
 }
 
 fn cell(value: &str) -> String {

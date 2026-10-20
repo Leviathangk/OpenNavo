@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { formatBytes, formatRelativeTime } from '@opennavo/shared';
+import { formatRelativeTime, selectAssets } from '@opennavo/shared';
 import { OnButton } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
-import { githubReleaseUrl, httpsUrl, linkNotes, sortedAssets } from '~/utils/linkApp';
-import type { LinkInfo, ReleaseAsset } from '~/utils/linkApp';
+import { githubReleaseUrl, httpsUrl, linkNotes } from '~/utils/linkApp';
+import type { LinkInfo } from '~/utils/linkApp';
 
 // Download panel for link apps (store/security plan §4, mockup A): OpenNavo hosts nothing. It lists the official
 // download page and, for GitHub projects, the latest release's files; every button opens the developer's address.
+// Only the Mac installers that suit the visitor's Mac are listed; the other chip's and the files for other systems
+// wait behind "other installers". The page is rendered before the chip is known, so it first lists both chips.
 const props = defineProps<{ link: LinkInfo }>();
 
 const { t, locale } = useI18n();
@@ -14,14 +16,22 @@ const appLocale = computed(() => toAppLocale(locale.value));
 
 const official = computed(() => httpsUrl(props.link.downloadUrl));
 const release = computed(() => props.link.github?.latest ?? null);
-const assets = computed(() => sortedAssets(release.value?.assets ?? []).filter(asset => httpsUrl(asset.url)));
+const platform = useVisitorPlatform();
+// Only a Mac has a chip to match; anyone else, or a browser that does not say, gets the installers of both chips.
+const chip = computed(() => (platform.value?.system === 'mac' ? platform.value.chip : null));
+const files = computed(() => (release.value?.assets ?? []).filter(asset => httpsUrl(asset.url)));
+const choice = computed(() => selectAssets(files.value, chip.value));
 const releaseUrl = computed(() => githubReleaseUrl(props.link));
 const notes = computed(() => linkNotes(props.link.notes, appLocale.value));
-
-const assetMeta = (asset: ReleaseAsset) =>
-  [formatBytes(asset.size, { locale: appLocale.value }), asset.arch ? t(`package.link.arch.${asset.arch}`) : null]
-    .filter(Boolean)
-    .join(' · ');
+// Why the list is what it is, said once the visitor's system is known.
+const note = computed(() => {
+  const visitor = platform.value;
+  if (!visitor || !choice.value.narrowed) return '';
+  if (visitor.system !== 'mac') return t('package.link.notMac');
+  return chip.value
+    ? t('package.link.filtered', { chip: t(`package.link.arch.${chip.value}`) })
+    : t('package.link.chipUnknown');
+});
 </script>
 
 <template>
@@ -50,28 +60,18 @@ const assetMeta = (asset: ReleaseAsset) =>
           })
         }}
       </p>
-      <ul v-if="assets.length" class="m-0 flex list-none flex-col p-0">
-        <li
-          v-for="asset in assets"
-          :key="asset.name"
-          class="flex items-center gap-8px border-t border-t-solid border-line-subtle py-8px first:border-t-0"
-        >
-          <div class="min-w-0 flex-1">
-            <p class="m-0 truncate font-mono text-12px text-ink-primary">{{ asset.name }}</p>
-            <p class="m-0 text-11.5px text-ink-tertiary">{{ assetMeta(asset) }}</p>
-          </div>
-          <OnButton
-            size="xs"
-            icon="arrow-up-right"
-            :href="asset.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            @click="trackEvent('get_app')"
-          >
-            {{ t('package.link.download') }}
-          </OnButton>
-        </li>
+      <p v-if="note" class="m-0 text-11.5px text-ink-tertiary">{{ note }}</p>
+      <ul v-if="choice.main.length" class="m-0 flex list-none flex-col p-0">
+        <LinkAssetRow v-for="asset in choice.main" :key="asset.name" :asset="asset" />
       </ul>
+      <details v-if="choice.rest.length" class="text-12px">
+        <summary class="cursor-pointer select-none text-ink-secondary">
+          {{ t('package.link.others', { count: choice.rest.length }) }}
+        </summary>
+        <ul class="m-0 mt-4px flex list-none flex-col p-0">
+          <LinkAssetRow v-for="asset in choice.rest" :key="asset.name" :asset="asset" />
+        </ul>
+      </details>
       <OnButton
         v-if="releaseUrl"
         variant="ghost"

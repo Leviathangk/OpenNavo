@@ -1,0 +1,2 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+"NSAppleEventsUsageDescription" = "O OpenNavo só usa o System Events quando você remove ou restaura um item de login legado.";

@@ -2,9 +2,16 @@
 # Copy comes from Rust language resources and is passed only as arguments; only sudo reads passwords.
 # The HOMEBREW_ prefix keeps the copy through bin/brew's environment filter when brew runs sudo.
 : "${HOMEBREW_OPENNAVO_ASKPASS_MESSAGE:?}" "${HOMEBREW_OPENNAVO_ASKPASS_TITLE:?}" "${HOMEBREW_OPENNAVO_ASKPASS_OK:?}" "${HOMEBREW_OPENNAVO_ASKPASS_CANCEL:?}"
-exec /usr/bin/osascript - "$HOMEBREW_OPENNAVO_ASKPASS_MESSAGE" "$HOMEBREW_OPENNAVO_ASKPASS_TITLE" "$HOMEBREW_OPENNAVO_ASKPASS_OK" "$HOMEBREW_OPENNAVO_ASKPASS_CANCEL" <<'APPLESCRIPT'
+# In the app bundle (Contents/Resources/resources/askpass/) the dialog wears OpenNavo's icon; a development build has none.
+icon="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/icon.icns"
+[ -f "$icon" ] || icon=""
+exec /usr/bin/osascript - "$HOMEBREW_OPENNAVO_ASKPASS_MESSAGE" "$HOMEBREW_OPENNAVO_ASKPASS_TITLE" "$HOMEBREW_OPENNAVO_ASKPASS_OK" "$HOMEBREW_OPENNAVO_ASKPASS_CANCEL" "$icon" <<'APPLESCRIPT'
 on run argv
-  set r to display dialog (item 1 of argv) default answer "" with hidden answer with title (item 2 of argv) with icon caution buttons {item 4 of argv, item 3 of argv} default button (item 3 of argv) cancel button (item 4 of argv)
+  set dialogIcon to note
+  if (item 5 of argv) is not "" then set dialogIcon to (POSIX file (item 5 of argv)) as alias
+  -- Left unanswered it gives up like Cancel, so a missed dialog cannot hold a task for good (sudo's own limit is 5 minutes).
+  set r to display dialog (item 1 of argv) default answer "" with hidden answer with title (item 2 of argv) with icon dialogIcon buttons {item 4 of argv, item 3 of argv} default button (item 3 of argv) cancel button (item 4 of argv) giving up after 300
+  if gave up of r then error "User canceled." number -128
   return text returned of r
 end run
 APPLESCRIPT

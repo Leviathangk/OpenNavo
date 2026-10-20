@@ -235,9 +235,11 @@ fn processes_are_visible_only_two_second_throttled_and_cleared_on_hide() {
         sampler.tick(now, now as i64).unwrap();
     }
     let calls = calls.lock().unwrap();
+    // The first capture has nothing to measure against, so the next one comes about a second later instead of two;
+    // from then on the two-second throttle holds.
     assert_eq!(
         calls.iter().skip(1).map(|(_, p)| *p).collect::<Vec<_>>(),
-        [true, false, true, false]
+        [true, true, false, true]
     );
     drop(calls);
     sampler.remove_window("tray-monitor");
@@ -305,6 +307,14 @@ fn process(pid: u32, cpu: f64, memory: u64) -> ProcessInfo {
         net_up_bytes_per_sec: None,
         kind: ProcessKind::App,
         quittable: true,
+        count: 1,
+        is_self: false,
+    }
+}
+fn fixture_group() -> Group {
+    Group {
+        key: "exe:fixture".into(),
+        label: "fixture".into(),
     }
 }
 #[test]
@@ -417,6 +427,9 @@ fn process_cpu_is_whole_machine_and_pid_reuse_resets_baseline() {
         info: process(7, 0.0, 1000),
         started: start,
         cpu_ns: total,
+        child_cpu_ns: None,
+        ppid: 1,
+        group: fixture_group(),
         disk_bytes: None,
         net_bytes: None,
         net_at: None,
@@ -979,6 +992,9 @@ fn process_io_first_delta_resets_pid_reuse_counter_rollbacks_and_missing_data() 
         info: process(7, 0.0, 100),
         started: start,
         cpu_ns: 0,
+        child_cpu_ns: None,
+        ppid: 1,
+        group: fixture_group(),
         disk_bytes: bytes,
         net_bytes: bytes,
         net_at: None,
@@ -1092,6 +1108,9 @@ impl Collector for ExtraCollector {
                 info: process(7, 0.0, 100),
                 started: 1,
                 cpu_ns: 0,
+                child_cpu_ns: None,
+                ppid: 1,
+                group: fixture_group(),
                 disk_bytes: None,
                 net_bytes: None,
                 net_at: None,
@@ -1262,6 +1281,9 @@ fn independently_captured_network_uses_its_clock_and_pending_snapshot_never_spik
             info: process(7, 0.0, 100),
             started: 1,
             cpu_ns: 0,
+            child_cpu_ns: None,
+            ppid: 1,
+            group: fixture_group(),
             disk_bytes: None,
             net_bytes: bytes,
             net_at: captured,
@@ -1775,4 +1797,1179 @@ fn fan_change_replaces_the_cached_reading_drops_in_flight_ticks_and_reads_again(
     assert_eq!(reads.load(Ordering::SeqCst), 2);
     sampler.tick(2200, 2200).unwrap();
     assert_eq!(reads.load(Ordering::SeqCst), 2);
+}
+
+// ---- Process CPU attribution: processes born between captures, children that ended, and what the parts add up to. ----
+fn host(step: u32, busy: u32) -> RawCpu {
+    // Every core spends `busy` of each 100 ticks working.
+    RawCpu {
+        ticks: (0..6)
+            .map(|_| [busy * step, 0, (100 - busy) * step, 0])
+            .collect(),
+        load: [0.0; 3],
+    }
+}
+fn secs(value: f64) -> u64 {
+    (value * 1e9) as u64
+}
+fn capture(mono: u64, wall: u64) -> Capture {
+    Capture {
+        mono_ns: mono * 1_000_000_000,
+        wall_us: wall * 1_000_000,
+    }
+}
+fn near(actual: f64, expected: f64) {
+    assert!(
+        (actual - expected).abs() < 1e-9,
+        "{actual} is not {expected}"
+    );
+}
+/// A process whose CPU totals and start (wall-clock seconds) are given directly.
+fn live(pid: u32, ppid: u32, started: u64, cpu: f64, children: Option<f64>) -> RawProcess {
+    RawProcess {
+        info: process(pid, 0.0, 1000),
+        started: started * 1_000_000,
+        cpu_ns: secs(cpu),
+        child_cpu_ns: children.map(secs),
+        ppid,
+        group: fixture_group(),
+        disk_bytes: None,
+        net_bytes: None,
+        net_at: None,
+    }
+}
+fn capture_step(
+    engine: &mut Engine,
+    step: u32,
+    busy: u32,
+    at: Capture,
+    processes: Vec<RawProcess>,
+) -> MonitorSample {
+    let mut f = frame(step);
+    f.cpu = Some(host(step, busy));
+    f.processes = Some(processes);
+    f.processes_at = Some(at);
+    engine.sample(f, &m1_modules(), true, at.mono_ns / 1_000_000, 0)
+}
+fn cpu_of(sample: &MonitorSample, pid: u32) -> f64 {
+    f64::from(
+        sample
+            .processes
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|p| p.pid == pid)
+            .unwrap()
+            .cpu,
+    )
+}
+#[test]
+fn a_process_born_since_the_previous_capture_counts_its_cpu_since_start_and_others_wait_for_a_baseline()
+ {
+    let mut engine = Engine::new(system(), frame(0));
+    let first = capture_step(
+        &mut engine,
+        1,
+        50,
+        capture(10, 1000),
+        vec![live(7, 1, 500, 100.0, None)],
+    );
+    // Nothing to measure against yet.
+    assert_eq!(cpu_of(&first, 7), 0.0);
+    assert!(first.cpu_breakdown.is_none());
+    assert_eq!(engine.process_interval_ms(), 900);
+    let second = capture_step(
+        &mut engine,
+        2,
+        50,
+        capture(12, 1002),
+        vec![
+            live(7, 1, 500, 103.0, None),
+            // Started after the previous capture began: all 1.5 s of CPU were used inside this window.
+            live(8, 1, 1001, 1.5, None),
+            // Older than the previous capture but not seen then: no way to say how much was this window's.
+            live(9, 1, 900, 50.0, None),
+        ],
+    );
+    // Six cores for two seconds offer 12 CPU-seconds.
+    near(cpu_of(&second, 7), 3.0 / 12.0);
+    near(cpu_of(&second, 8), 1.5 / 12.0);
+    assert_eq!(cpu_of(&second, 9), 0.0);
+    assert_eq!(engine.process_interval_ms(), 2000);
+    // A baseline older than the window limit is refused, and a prompt second capture is asked for.
+    let stale = capture_step(
+        &mut engine,
+        3,
+        50,
+        capture(40, 1030),
+        vec![live(7, 1, 500, 110.0, None), live(10, 1, 1029, 4.0, None)],
+    );
+    assert_eq!(cpu_of(&stale, 7), 0.0);
+    assert_eq!(cpu_of(&stale, 10), 0.0);
+    assert!(stale.cpu_breakdown.is_none());
+    assert_eq!(engine.process_interval_ms(), 900);
+}
+#[test]
+fn a_reused_pid_is_a_new_process_and_gets_nothing_for_cpu_it_used_before() {
+    // Same pid, different start: a new process, not the old one's continuation.
+    let mut engine = Engine::new(system(), frame(0));
+    capture_step(
+        &mut engine,
+        1,
+        50,
+        capture(10, 1000),
+        vec![live(7, 1, 500, 100.0, None)],
+    );
+    let reused = capture_step(
+        &mut engine,
+        2,
+        50,
+        capture(12, 1002),
+        // Started long before the previous capture, so its CPU is not this window's, whatever its total.
+        vec![live(7, 1, 600, 900.0, None)],
+    );
+    assert_eq!(cpu_of(&reused, 7), 0.0);
+}
+#[test]
+fn children_that_ended_are_credited_once_to_the_breakdown_and_their_parent_is_named() {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut go = live(100, 1, 100, 10.0, Some(0.0));
+    go.info.name = "go".into();
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![go.clone(), live(101, 100, 100, 5.0, Some(0.0))],
+    );
+    // The child works for two more seconds, all of it listed against the child.
+    go.cpu_ns = secs(10.2);
+    let second = capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![go.clone(), live(101, 100, 100, 7.0, Some(0.0))],
+    );
+    near(cpu_of(&second, 101), 2.0 / 12.0);
+    let breakdown = second.cpu_breakdown.clone().unwrap();
+    near(f64::from(breakdown.finished), 0.0);
+    // Child 101 then ends having used 8.5 s in all, and child 102 lived and died between captures using 1 s: the
+    // parent collected both. 101's 7 s were counted while it was alive; the other 1.5 s and 102's 1 s were not.
+    go.cpu_ns = secs(10.4);
+    go.child_cpu_ns = Some(secs(9.5));
+    let third = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![go.clone()]);
+    let breakdown = third.cpu_breakdown.clone().unwrap();
+    near(f64::from(breakdown.finished), 2.5 / 12.0);
+    assert_eq!(breakdown.finished_from.len(), 1);
+    assert_eq!(breakdown.finished_from[0].pid, 100);
+    assert_eq!(breakdown.finished_from[0].name, "go");
+    near(f64::from(breakdown.finished_from[0].cpu), 2.5 / 12.0);
+    // Counted once: the next window has nothing more to credit.
+    go.cpu_ns = secs(10.6);
+    let fourth = capture_step(&mut engine, 4, 90, capture(16, 1006), vec![go]);
+    near(f64::from(fourth.cpu_breakdown.unwrap().finished), 0.0);
+}
+#[test]
+fn the_breakdown_splits_the_host_busy_share_and_never_overshoots_it() {
+    let mut engine = Engine::new(system(), frame(0));
+    let procs = |cpu_a: f64, cpu_b: f64, children: f64| {
+        vec![
+            live(1, 0, 100, cpu_a, Some(children)),
+            live(2, 0, 100, cpu_b, None),
+        ]
+    };
+    capture_step(&mut engine, 1, 90, capture(10, 1000), procs(0.0, 0.0, 0.0));
+    // 90% busy; the two processes used 3.6 s and 1.8 s of 12, and 2.4 s were left by children that are gone.
+    let sample = capture_step(&mut engine, 2, 90, capture(12, 1002), procs(3.6, 1.8, 2.4));
+    let breakdown = sample.cpu_breakdown.unwrap();
+    near(f64::from(breakdown.usage), 0.9);
+    near(f64::from(breakdown.readable), 0.45);
+    near(f64::from(breakdown.finished), 0.2);
+    near(f64::from(breakdown.other), 0.25);
+    assert_eq!(breakdown.active_count, 2);
+    near(
+        f64::from(breakdown.readable) + f64::from(breakdown.finished) + f64::from(breakdown.other),
+        f64::from(breakdown.usage),
+    );
+    // The same kind of figures against a machine that was only 40% busy overshoot it (sampling skew): nothing is
+    // left over, and nothing is shown above what the host measured as the busy share.
+    let mut engine = Engine::new(system(), frame(0));
+    capture_step(&mut engine, 1, 40, capture(10, 1000), procs(0.0, 0.0, 0.0));
+    let skew = capture_step(&mut engine, 2, 40, capture(12, 1002), procs(7.2, 3.6, 4.8));
+    let breakdown = skew.cpu_breakdown.unwrap();
+    near(f64::from(breakdown.usage), 0.4);
+    assert_eq!(f64::from(breakdown.other), 0.0);
+}
+#[test]
+fn views_hiding_keeps_the_cpu_baseline_for_a_quick_reopen_but_not_past_the_window_limit() {
+    let mut engine = Engine::new(system(), frame(0));
+    capture_step(
+        &mut engine,
+        1,
+        50,
+        capture(10, 1000),
+        vec![live(7, 1, 500, 10.0, None)],
+    );
+    capture_step(
+        &mut engine,
+        2,
+        50,
+        capture(12, 1002),
+        vec![live(7, 1, 500, 11.0, None)],
+    );
+    // Hidden for a moment: a sample without processes.
+    let mut hidden = frame(3);
+    hidden.cpu = Some(host(3, 50));
+    engine.sample(hidden, &m1_modules(), false, 14_000, 0);
+    // Reopened five seconds after the last capture: measured against it at once.
+    let back = capture_step(
+        &mut engine,
+        4,
+        50,
+        capture(17, 1007),
+        vec![live(7, 1, 500, 14.0, None)],
+    );
+    near(cpu_of(&back, 7), 3.0 / (5.0 * 6.0));
+    assert_eq!(engine.process_interval_ms(), 2000);
+    let mut hidden = frame(5);
+    hidden.cpu = Some(host(5, 50));
+    engine.sample(hidden, &m1_modules(), false, 40_000, 0);
+    let late = capture_step(
+        &mut engine,
+        6,
+        50,
+        capture(60, 1050),
+        vec![live(7, 1, 500, 20.0, None)],
+    );
+    assert_eq!(cpu_of(&late, 7), 0.0);
+    assert_eq!(engine.process_interval_ms(), 900);
+}
+fn grouped(pid: u32, name: &str, key: &str, label: &str, cpu_s: f64, memory: u64) -> RawProcess {
+    let mut raw = live(pid, 1, 100, cpu_s, None);
+    raw.info.name = name.into();
+    raw.info.memory_bytes = memory;
+    raw.group = Group {
+        key: key.into(),
+        label: label.into(),
+    };
+    raw
+}
+#[test]
+fn processes_merge_by_app_bundle_or_executable_with_the_main_process_leading_an_app() {
+    let mut engine = Engine::new(system(), frame(0));
+    let chrome = "app:/Applications/Google Chrome.app";
+    let all = |bump: f64| {
+        let mut main = grouped(
+            10,
+            "Google Chrome",
+            chrome,
+            "Google Chrome",
+            5.0 + bump,
+            500,
+        );
+        main.info.kind = ProcessKind::App;
+        main.info.bundle_id = Some("com.google.Chrome".into());
+        main.info.quittable = true;
+        let mut renderer = grouped(
+            11,
+            "Google Chrome Helper (Renderer)",
+            chrome,
+            "Google Chrome",
+            8.0 + 3.0 * bump,
+            700,
+        );
+        renderer.info.kind = ProcessKind::Background;
+        renderer.info.bundle_id = None;
+        renderer.info.quittable = false;
+        let mut compile_a = grouped(20, "compile", "exe:compile", "compile", 1.0 + bump, 40);
+        compile_a.info.kind = ProcessKind::Background;
+        compile_a.info.quittable = false;
+        let mut compile_b = grouped(
+            21,
+            "compile",
+            "exe:compile",
+            "compile",
+            1.0 + 2.0 * bump,
+            60,
+        );
+        compile_b.info.kind = ProcessKind::Background;
+        compile_b.info.quittable = false;
+        let mut mine = grouped(
+            30,
+            "OpenNavo",
+            "app:/Applications/OpenNavo.app",
+            "OpenNavo",
+            2.0 + bump,
+            90,
+        );
+        mine.info.is_self = true;
+        mine.info.quittable = false;
+        vec![main, renderer, compile_a, compile_b, mine]
+    };
+    capture_step(&mut engine, 1, 90, capture(10, 1000), all(0.0));
+    let sample = capture_step(&mut engine, 2, 90, capture(12, 1002), all(1.2));
+    // Every process is still listed on its own, OpenNavo's included.
+    assert_eq!(sample.processes.as_ref().unwrap().len(), 5);
+    let groups = sample.process_groups.unwrap();
+    assert_eq!(groups.len(), 3);
+    let chrome = groups.iter().find(|p| p.name == "Google Chrome").unwrap();
+    assert_eq!(chrome.count, 2);
+    // The main process leads: its pid, its name, and it alone decides whether the app can be quit.
+    assert_eq!(chrome.pid, 10);
+    assert!(chrome.quittable);
+    assert_eq!(chrome.kind, ProcessKind::App);
+    assert_eq!(chrome.memory_bytes, 1200);
+    near(f64::from(chrome.cpu), (1.2 + 3.6) / 12.0);
+    let compile = groups.iter().find(|p| p.name == "compile").unwrap();
+    assert_eq!(compile.count, 2);
+    assert_eq!(compile.kind, ProcessKind::Background);
+    assert!(!compile.quittable);
+    assert_eq!(compile.memory_bytes, 100);
+    near(f64::from(compile.cpu), (1.2 + 2.4) / 12.0);
+    let mine = groups.iter().find(|p| p.pid == 30).unwrap();
+    assert!(mine.is_self && !mine.quittable && mine.count == 1);
+    // Ranked by CPU like the plain list; an executable without a main process is led by its heaviest member.
+    let order: Vec<_> = groups.iter().map(|p| p.pid).collect();
+    assert_eq!(order, [10, 21, 30]);
+}
+#[test]
+fn a_busy_machine_is_never_blamed_on_opennavo_itself() {
+    let mut tracker = opennavo_desktop_lib::monitor::health::HealthTracker::default();
+    let mut sample = opennavo_desktop_lib::monitor::engine::empty_sample(&system());
+    sample.cpu.usage = ratio(0.95);
+    let mut me = process(2, 0.7, 10);
+    me.is_self = true;
+    sample.processes = Some(vec![process(1, 0.2, 10), me]);
+    let modules = [MonitorModule::Cpu].into_iter().collect();
+    tracker.evaluate(&sample, &modules, 0, 0);
+    let health = tracker.evaluate(&sample, &modules, 180_000, 0);
+    let busy = health
+        .issues
+        .iter()
+        .find(|issue| issue.key == HealthIssueKey::CpuBusy)
+        .unwrap();
+    assert_eq!(busy.top_pid, Some(1));
+}
+#[test]
+fn a_parent_slow_to_wait_for_an_ended_child_is_credited_when_it_does_and_nothing_is_counted_twice()
+{
+    let mut engine = Engine::new(system(), frame(0));
+    let mut go = live(100, 1, 100, 10.0, Some(0.0));
+    go.info.name = "go".into();
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![go.clone(), live(101, 100, 100, 5.0, Some(0.0))],
+    );
+    go.cpu_ns = secs(10.2);
+    let second = capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![go.clone(), live(101, 100, 100, 7.0, Some(0.0))],
+    );
+    near(cpu_of(&second, 101), 2.0 / 12.0);
+    // The child ends, but its parent has not waited for it yet: it can no longer be listed, and it is not in the
+    // parent's child totals either, so nothing is credited yet.
+    let gap = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![go.clone()]);
+    near(f64::from(gap.cpu_breakdown.unwrap().finished), 0.0);
+    // The parent waits for it a window later: 8.5 s in all, of which 7 s were counted while it was alive.
+    go.child_cpu_ns = Some(secs(8.5));
+    let later = capture_step(&mut engine, 4, 90, capture(16, 1006), vec![go.clone()]);
+    near(f64::from(later.cpu_breakdown.unwrap().finished), 1.5 / 12.0);
+    // Settled: the deduction is spent and a later child is credited in full.
+    go.child_cpu_ns = Some(secs(9.5));
+    let next = capture_step(&mut engine, 5, 90, capture(18, 1008), vec![go]);
+    near(f64::from(next.cpu_breakdown.unwrap().finished), 1.0 / 12.0);
+}
+/// A tree that works for a while and then ends all at once, as a build tool and the processes it started do: the
+/// grandparent is the one that finally collects everything, and what was counted while the tree was alive is not new.
+#[test]
+fn parent_and_child_ending_in_the_same_window_hand_the_whole_deduction_to_the_one_that_collects_them()
+ {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut tool = live(100, 1, 100, 10.0, Some(0.0));
+    tool.info.name = "tool".into();
+    let mut child = live(101, 100, 100, 1.0, Some(0.0));
+    let mut grandchild = live(102, 101, 100, 1.0, None);
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![tool.clone(), child.clone(), grandchild.clone()],
+    );
+    // Both work for a while: 1 s and 2 s, listed against themselves.
+    child.cpu_ns = secs(2.0);
+    grandchild.cpu_ns = secs(3.0);
+    let second = capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![tool.clone(), child.clone(), grandchild.clone()],
+    );
+    near(cpu_of(&second, 101), 1.0 / 12.0);
+    near(cpu_of(&second, 102), 2.0 / 12.0);
+    // Then both end without using anything more, the child having waited for the grandchild and the tool for the
+    // child. The tool's child totals grow by what the two ever used, 2 s and 3 s, all of it counted before.
+    tool.child_cpu_ns = Some(secs(5.0));
+    let third = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![tool.clone()]);
+    let breakdown = third.cpu_breakdown.clone().unwrap();
+    near(f64::from(breakdown.finished), 0.0);
+    assert!(breakdown.finished_from.is_empty());
+    // Nothing is left over to be taken off a later child either: a new one is credited in full.
+    tool.child_cpu_ns = Some(secs(6.0));
+    let fourth = capture_step(&mut engine, 4, 90, capture(16, 1006), vec![tool]);
+    near(
+        f64::from(fourth.cpu_breakdown.unwrap().finished),
+        1.0 / 12.0,
+    );
+}
+
+#[test]
+fn a_whole_ended_chain_and_its_siblings_are_deducted_from_the_ancestor_that_is_still_there() {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut root = live(100, 1, 100, 10.0, Some(0.0));
+    root.info.name = "root".into();
+    // Two chains below the root: 101 -> 102 -> 103, and 104 -> 105.
+    let mut chain = vec![
+        live(101, 100, 100, 1.0, Some(0.0)),
+        live(102, 101, 100, 1.0, Some(0.0)),
+        live(103, 102, 100, 1.0, None),
+        live(104, 100, 100, 1.0, Some(0.0)),
+        live(105, 104, 100, 1.0, None),
+    ];
+    let mut all = vec![root.clone()];
+    all.extend(chain.clone());
+    capture_step(&mut engine, 1, 90, capture(10, 1000), all);
+    for process in &mut chain {
+        process.cpu_ns += secs(1.0);
+    }
+    let mut all = vec![root.clone()];
+    all.extend(chain.clone());
+    capture_step(&mut engine, 2, 90, capture(12, 1002), all);
+    // Everything ends. Each used 2 s in all, and 1.5 s more that no capture saw, in the last window, on 103 and 105.
+    // The root's child totals: the two chains' 5 processes at 2 s each, plus the unseen 3 s.
+    root.child_cpu_ns = Some(secs(10.0 + 3.0));
+    let third = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![root.clone()]);
+    let breakdown = third.cpu_breakdown.unwrap();
+    near(f64::from(breakdown.finished), 3.0 / 12.0);
+    assert_eq!(breakdown.finished_from[0].pid, 100);
+}
+
+#[test]
+fn a_child_that_ended_while_its_parent_was_busy_is_still_deducted_from_the_parent_that_collects_it_later()
+ {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut tool = live(100, 1, 100, 10.0, Some(0.0));
+    tool.info.name = "tool".into();
+    let mut child = live(101, 100, 100, 1.0, Some(0.0));
+    let grandchild = live(102, 101, 100, 1.0, None);
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![tool.clone(), child.clone(), grandchild.clone()],
+    );
+    // The grandchild ends: its parent (the child) is slow to wait for it, so for now nothing is credited.
+    child.cpu_ns = secs(2.0);
+    let gap = capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![tool.clone(), child.clone()],
+    );
+    near(f64::from(gap.cpu_breakdown.unwrap().finished), 0.0);
+    // The child waits for it and ends too; the tool collects the child. Both were counted for before (2 s and 1 s
+    // as of the last capture, the grandchild's 1 s still owed to the child), so only the 1.5 s used since is new.
+    tool.child_cpu_ns = Some(secs(2.0 + 1.0 + 1.5));
+    let third = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![tool]);
+    near(f64::from(third.cpu_breakdown.unwrap().finished), 1.5 / 12.0);
+}
+
+/// A parent that ends without waiting for its child leaves the child to launchd, which collects it: what the child used
+/// never reaches the grandparent, so it cannot be taken off what the grandparent did collect.
+#[test]
+fn a_child_orphaned_by_a_parent_that_did_not_wait_is_not_deducted_from_the_grandparent() {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut tool = live(100, 1, 100, 10.0, Some(0.0));
+    tool.info.name = "tool".into();
+    let mut parent = live(101, 100, 100, 1.0, Some(0.0));
+    let mut orphan = live(102, 101, 100, 1.0, None);
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![tool.clone(), parent.clone(), orphan.clone()],
+    );
+    parent.cpu_ns = secs(2.0);
+    orphan.cpu_ns = secs(3.0);
+    capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![tool.clone(), parent.clone(), orphan.clone()],
+    );
+    // Both end. The parent never waited, so the tool collects only the parent: 3 s in all, of which 2 s were counted
+    // while it was alive. The orphan's 3 s (and what it used since) went to launchd, not to the tool.
+    tool.child_cpu_ns = Some(secs(3.0));
+    let third = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![tool.clone()]);
+    let breakdown = third.cpu_breakdown.clone().unwrap();
+    near(f64::from(breakdown.finished), 1.0 / 12.0);
+    assert_eq!(breakdown.finished_from[0].pid, 100);
+    // And no deduction is left to eat into a later, unrelated child.
+    tool.child_cpu_ns = Some(secs(4.0));
+    let fourth = capture_step(&mut engine, 4, 90, capture(16, 1006), vec![tool]);
+    near(
+        f64::from(fourth.cpu_breakdown.unwrap().finished),
+        1.0 / 12.0,
+    );
+}
+
+#[test]
+fn an_orphaned_chain_below_a_parent_that_did_not_wait_is_not_deducted_either() {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut tool = live(100, 1, 100, 10.0, Some(0.0));
+    tool.info.name = "tool".into();
+    let mut parent = live(101, 100, 100, 1.0, Some(0.0));
+    let mut child = live(102, 101, 100, 1.0, Some(0.0));
+    let mut grandchild = live(103, 102, 100, 1.0, None);
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![
+            tool.clone(),
+            parent.clone(),
+            child.clone(),
+            grandchild.clone(),
+        ],
+    );
+    parent.cpu_ns = secs(2.0);
+    child.cpu_ns = secs(2.0);
+    grandchild.cpu_ns = secs(2.0);
+    capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![tool.clone(), parent, child, grandchild],
+    );
+    // The child waited for the grandchild, but the parent did not wait for the child: the tool collects the parent
+    // alone, which used 0.5 s more than was counted.
+    tool.child_cpu_ns = Some(secs(2.5));
+    let third = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![tool]);
+    near(f64::from(third.cpu_breakdown.unwrap().finished), 0.5 / 12.0);
+}
+
+/// Nothing in the process list says whether a parent waited for its ended child or left it to launchd, so a collection
+/// that is big enough to have held the child is never taken as proof that it did: what cannot be told stays out of the
+/// finished share (it falls to "other"), and the share never claims CPU that may have been counted already.
+#[test]
+fn a_collection_big_enough_to_hold_a_child_does_not_prove_that_the_child_was_collected() {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut tool = live(100, 1, 100, 10.0, Some(0.0));
+    tool.info.name = "tool".into();
+    let mut parent = live(101, 100, 100, 1.0, Some(0.0));
+    let mut orphan = live(102, 101, 100, 0.5, None);
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![tool.clone(), parent.clone(), orphan.clone()],
+    );
+    parent.cpu_ns = secs(2.0);
+    orphan.cpu_ns = secs(1.0);
+    capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![tool.clone(), parent.clone(), orphan.clone()],
+    );
+    // Both end. The parent did not wait: the tool collects the parent alone, 3.5 s in all, 1.5 s of it used since the
+    // last capture. The orphan's 1 s went to launchd. A collection of 3.5 s could also have held both (2 s + 1 s counted
+    // and 0.5 s more), and nothing tells the two apart: only the 0.5 s that is certain is claimed, the rest is left alone.
+    tool.child_cpu_ns = Some(secs(3.5));
+    let third = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![tool.clone()]);
+    let breakdown = third.cpu_breakdown.clone().unwrap();
+    near(f64::from(breakdown.finished), 0.5 / 12.0);
+    // What was not claimed is not lost: it is part of what the other parts leave over.
+    near(
+        f64::from(breakdown.finished) + f64::from(breakdown.readable) + f64::from(breakdown.other),
+        f64::from(breakdown.usage),
+    );
+    // And nothing is left to eat into a later, unrelated child.
+    tool.child_cpu_ns = Some(secs(4.5));
+    let fourth = capture_step(&mut engine, 4, 90, capture(16, 1006), vec![tool]);
+    near(
+        f64::from(fourth.cpu_breakdown.unwrap().finished),
+        1.0 / 12.0,
+    );
+}
+
+#[test]
+fn of_two_ended_subtrees_one_waited_for_and_one_not_nothing_is_claimed_twice() {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut tool = live(100, 1, 100, 10.0, Some(0.0));
+    tool.info.name = "tool".into();
+    let mut tree = vec![
+        // 101 waited for 102; 103 did not wait for 104, which went to launchd.
+        live(101, 100, 100, 1.0, Some(0.0)),
+        live(102, 101, 100, 1.0, None),
+        live(103, 100, 100, 1.0, Some(0.0)),
+        live(104, 103, 100, 1.0, None),
+    ];
+    let mut all = vec![tool.clone()];
+    all.extend(tree.clone());
+    capture_step(&mut engine, 1, 90, capture(10, 1000), all);
+    for process in &mut tree {
+        process.cpu_ns += secs(1.0);
+    }
+    let mut all = vec![tool.clone()];
+    all.extend(tree);
+    capture_step(&mut engine, 2, 90, capture(12, 1002), all);
+    // All four end without using anything more. The tool collects 101 with 102, and 103 alone: 2 s each, 6 s in all,
+    // every second of it counted before. 104's 2 s were not collected by anyone readable.
+    tool.child_cpu_ns = Some(secs(6.0));
+    let third = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![tool]);
+    near(f64::from(third.cpu_breakdown.unwrap().finished), 0.0);
+}
+
+/// A count larger than everything the parent collected is the one thing that proves the child was not collected, so a
+/// collection that cannot have held it leaves it for the collection that can.
+#[test]
+fn a_child_counted_for_more_than_the_parent_collected_is_not_taken_off_a_smaller_collection() {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut tool = live(100, 1, 100, 10.0, Some(0.0));
+    tool.info.name = "tool".into();
+    let mut child = live(101, 100, 100, 1.0, Some(0.0));
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![tool.clone(), child.clone()],
+    );
+    child.cpu_ns = secs(3.0);
+    capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![tool.clone(), child],
+    );
+    // The child ends but is not waited for. The tool collects 1 s from a process that started and ended within the
+    // window: far less than the 3 s counted for the child, which cannot be inside it.
+    tool.child_cpu_ns = Some(secs(1.0));
+    let gap = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![tool.clone()]);
+    near(f64::from(gap.cpu_breakdown.unwrap().finished), 1.0 / 12.0);
+    // When the tool does wait for the child, 3.5 s in all, only the 0.5 s since the last capture is new.
+    tool.child_cpu_ns = Some(secs(4.5));
+    let later = capture_step(&mut engine, 4, 90, capture(16, 1006), vec![tool]);
+    near(f64::from(later.cpu_breakdown.unwrap().finished), 0.5 / 12.0);
+}
+
+/// The kernel adds a collected child to its parent's totals in microseconds, so the parent can be credited with a few
+/// microseconds less than the nanosecond readings counted for the child.
+#[test]
+fn a_few_microseconds_of_rounding_in_the_parents_totals_do_not_make_a_collected_child_look_uncollected()
+ {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut tool = live(100, 1, 100, 10.0, Some(0.0));
+    tool.info.name = "tool".into();
+    let mut child = live(101, 100, 100, 1.0, Some(0.0));
+    let mut grandchild = live(102, 101, 100, 1.0, None);
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![tool.clone(), child.clone(), grandchild.clone()],
+    );
+    child.cpu_ns = secs(2.0) + 999;
+    grandchild.cpu_ns = secs(3.0) + 999;
+    capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![tool.clone(), child, grandchild],
+    );
+    // Both ended without using anything more; the tool was credited with 5 s less 3 µs.
+    tool.child_cpu_ns = Some(secs(5.0) - 1_000);
+    let third = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![tool]);
+    near(f64::from(third.cpu_breakdown.unwrap().finished), 0.0);
+}
+
+/// A small deterministic generator, so a failing case can be replayed from its seed.
+struct Dice(u64);
+impl Dice {
+    fn roll(&mut self, sides: u64) -> u64 {
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        (self.0 >> 33) % sides
+    }
+}
+/// One process of a generated tree that ends within the window. CPU is in quarter seconds, so every sum is exact.
+#[derive(Debug)]
+struct Doomed {
+    /// Its parent in the tree; `None` for a child of the collector.
+    parent: Option<usize>,
+    /// Counted while it was alive: its own CPU and that of the children it had collected by then.
+    own: u64,
+    kids: u64,
+    /// Used after the last capture, before it ended.
+    more: u64,
+    /// Whether its parent waited for it (a child of the collector: whether the collector did).
+    waited: bool,
+}
+fn quarters(count: u64) -> f64 {
+    count as f64 / 4.0
+}
+fn random_tree(dice: &mut Dice, flat: bool) -> Vec<Doomed> {
+    let size = 1 + dice.roll(6) as usize;
+    (0..size)
+        .map(|index| Doomed {
+            parent: (!flat && index > 0 && dice.roll(3) > 0)
+                .then(|| dice.roll(index as u64) as usize),
+            own: dice.roll(5),
+            kids: dice.roll(3),
+            more: dice.roll(4),
+            waited: dice.roll(10) < 7,
+        })
+        .collect()
+}
+/// Whether the collector's child totals gain the process: it was waited for, and so was every ended parent above it.
+fn collected(tree: &[Doomed], index: usize) -> bool {
+    tree[index].waited
+        && tree[index]
+            .parent
+            .is_none_or(|parent| collected(tree, parent))
+}
+/// What a process takes with it when its parent waits for it: all it and the children it waited for used.
+fn total(tree: &[Doomed], index: usize) -> u64 {
+    let node = &tree[index];
+    node.own
+        + node.kids
+        + node.more
+        + (0..tree.len())
+            .filter(|child| tree[*child].parent == Some(index) && tree[*child].waited)
+            .map(|child| total(tree, child))
+            .sum::<u64>()
+}
+/// Runs a tree through the engine: it is seen once alive below a tool, then everything in it ends and the tool's child
+/// totals are credited with `credit` quarter seconds in each of the following windows. Returns the finished CPU in
+/// seconds each window reports.
+fn finished_after_the_tree_ends(tree: &[Doomed], credit: &[u64]) -> Vec<f64> {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut tool = live(100, 1, 100, 10.0, Some(0.0));
+    tool.info.name = "tool".into();
+    let mut alive = vec![tool.clone()];
+    alive.extend(tree.iter().enumerate().map(|(index, node)| {
+        let ppid = node.parent.map_or(100, |parent| 101 + parent as u32);
+        live(
+            101 + index as u32,
+            ppid,
+            100,
+            quarters(node.own),
+            Some(quarters(node.kids)),
+        )
+    }));
+    capture_step(&mut engine, 1, 90, capture(10, 1000), alive);
+    let mut credited = 0;
+    credit
+        .iter()
+        .enumerate()
+        .map(|(window, gained)| {
+            credited += gained;
+            tool.child_cpu_ns = Some(secs(quarters(credited)));
+            let step = 2 + window as u32;
+            let at = 10 + 2 * (window as u64 + 1);
+            let sample = capture_step(
+                &mut engine,
+                step,
+                90,
+                capture(at, 1000 + at - 10),
+                vec![tool.clone()],
+            );
+            f64::from(sample.cpu_breakdown.unwrap().finished) * 12.0
+        })
+        .collect()
+}
+/// Nothing says which of the processes that ended were waited for, so the finished CPU may fall short of what really
+/// is new, but it is never more than that: no CPU is counted twice. And it falls short by no more than was counted
+/// for processes whose CPU never reached the collector.
+#[test]
+fn finished_cpu_is_never_more_than_the_new_cpu_however_the_tree_was_waited_for() {
+    let mut dice = Dice(7);
+    let (mut exact, mut short) = (0, 0);
+    for case in 0..400 {
+        let tree = random_tree(&mut dice, false);
+        let unseen = dice.roll(5);
+        let reached: u64 = (0..tree.len())
+            .filter(|index| collected(&tree, *index))
+            .map(|index| tree[index].own + tree[index].kids + tree[index].more)
+            .sum();
+        let new: u64 = (0..tree.len())
+            .filter(|index| collected(&tree, *index))
+            .map(|index| tree[index].more)
+            .sum::<u64>()
+            + unseen;
+        let lost: u64 = (0..tree.len())
+            .filter(|index| !collected(&tree, *index))
+            .map(|index| tree[index].own + tree[index].kids)
+            .sum();
+        // The tool waits for the roots that were waited for, taking everything they waited for with them.
+        let roots: u64 = (0..tree.len())
+            .filter(|index| tree[*index].parent.is_none() && tree[*index].waited)
+            .map(|index| total(&tree, index))
+            .sum();
+        assert_eq!(roots + unseen, reached + unseen, "case {case}");
+        let found = finished_after_the_tree_ends(&tree, &[roots + unseen])[0];
+        assert!(
+            found <= quarters(new) + 1e-6,
+            "case {case}: {found} s counted twice, only {} s new",
+            quarters(new)
+        );
+        assert!(
+            found + quarters(lost) + 1e-6 >= quarters(new),
+            "case {case}: {found} s is short of {} s by more than the {} s that never reached the tool",
+            quarters(new),
+            quarters(lost)
+        );
+        if (found - quarters(new)).abs() < 1e-6 {
+            exact += 1;
+        } else {
+            short += 1;
+        }
+    }
+    // Not vacuous: a good share of the cases is told exactly, and some are not.
+    assert!(exact > 100 && short > 20, "exact {exact}, short {short}");
+}
+
+/// Children a slow parent waits for in a later window are taken off whichever window collects them, so over the windows
+/// nothing is counted twice and, when every child is waited for, nothing is missed.
+#[test]
+fn children_collected_in_later_windows_are_credited_exactly_over_the_windows() {
+    let mut dice = Dice(11);
+    for case in 0..300 {
+        let mut tree = random_tree(&mut dice, true);
+        for node in &mut tree {
+            node.waited = true;
+        }
+        // Each child is collected in the first window or the second, never both.
+        let later: Vec<bool> = tree.iter().map(|_| dice.roll(2) == 0).collect();
+        let credit = |second: bool| -> u64 {
+            (0..tree.len())
+                .filter(|index| later[*index] == second)
+                .map(|index| total(&tree, index))
+                .sum()
+        };
+        let new: u64 = tree.iter().map(|node| node.more).sum();
+        let found = finished_after_the_tree_ends(&tree, &[credit(false), credit(true)]);
+        let sum: f64 = found.iter().sum();
+        assert!(
+            (sum - quarters(new)).abs() < 1e-6,
+            "case {case}: {sum} s over the windows, {} s new ({found:?})",
+            quarters(new)
+        );
+    }
+}
+
+#[test]
+fn a_reading_the_kernel_would_not_give_does_not_turn_the_next_one_into_the_processs_whole_life() {
+    let mut engine = Engine::new(system(), frame(0));
+    capture_step(
+        &mut engine,
+        1,
+        50,
+        capture(10, 1000),
+        vec![live(7, 1, 500, 100.0, None)],
+    );
+    // Unreadable this time: no CPU is claimed for it.
+    let blind = capture_step(
+        &mut engine,
+        2,
+        50,
+        capture(12, 1002),
+        vec![live(7, 1, 500, 0.0, None)],
+    );
+    assert_eq!(cpu_of(&blind, 7), 0.0);
+    // Readable again: only what it used since the last good reading, not the hundred seconds before.
+    let back = capture_step(
+        &mut engine,
+        3,
+        50,
+        capture(14, 1004),
+        vec![live(7, 1, 500, 103.0, None)],
+    );
+    near(cpu_of(&back, 7), 3.0 / 12.0);
+}
+
+#[test]
+fn ambiguous_collection_preserves_unspent_subtree_deductions() {
+    let tree = vec![
+        Doomed {
+            parent: None,
+            own: 2,
+            kids: 0,
+            more: 0,
+            waited: true,
+        },
+        Doomed {
+            parent: Some(0),
+            own: 4,
+            kids: 0,
+            more: 0,
+            waited: true,
+        },
+    ];
+    // An unseen sibling contributes 0.75 s first. That fits the root's 0.5 s,
+    // but does not prove it was collected. The actual 1.5 s tree arrives later.
+    let found = finished_after_the_tree_ends(&tree, &[3, 6, 4]);
+    near(found[0] + found[1], 0.75);
+    // Every deduction has now been spent; subsequent new work counts in full.
+    near(found[2], 1.0);
+}
+
+#[test]
+fn delayed_collection_keeps_history_while_parent_is_sampled() {
+    let tree = vec![Doomed {
+        parent: None,
+        own: 20,
+        kids: 0,
+        more: 0,
+        waited: true,
+    }];
+    // Two-second captures continue for 18 seconds after the child disappears.
+    let found = finished_after_the_tree_ends(&tree, &[0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 4]);
+    for value in &found[..10] {
+        near(*value, 0.0);
+    }
+    near(found[10], 1.0);
+}
+
+#[test]
+fn ambiguous_collections_across_windows_never_exceed_new_cpu() {
+    let mut dice = Dice(29);
+    for case in 0..400 {
+        let tree = random_tree(&mut dice, false);
+        let unseen = dice.roll(12);
+        let mut credit = vec![unseen, 0, 0];
+        for index in 0..tree.len() {
+            if tree[index].parent.is_none() && tree[index].waited {
+                credit[1 + dice.roll(2) as usize] += total(&tree, index);
+            }
+        }
+        let new = unseen
+            + (0..tree.len())
+                .filter(|index| collected(&tree, *index))
+                .map(|index| tree[index].more)
+                .sum::<u64>();
+        let lost: u64 = (0..tree.len())
+            .filter(|index| !collected(&tree, *index))
+            .map(|index| tree[index].own + tree[index].kids)
+            .sum();
+        let found = finished_after_the_tree_ends(&tree, &credit);
+        let sum: f64 = found.iter().sum();
+        assert!(
+            sum <= quarters(new) + 1e-6,
+            "case {case}: {tree:?}, credit {credit:?}, {found:?}, only {} s new",
+            quarters(new)
+        );
+        assert!(
+            sum + quarters(lost) + 1e-6 >= quarters(new),
+            "case {case}: {found:?} deducted more than the uncollected history"
+        );
+    }
+}
+
+#[test]
+fn partially_spent_deductions_remain_usable_after_transfer_to_an_ancestor() {
+    for (small, large) in [(1.0, 2.0), (2.0, 3.0), (0.25, 4.0)] {
+        let mut engine = Engine::new(system(), frame(0));
+        let mut ancestor = live(100, 1, 100, 10.0, Some(0.0));
+        let mut parent = live(101, 100, 100, 2.0, Some(0.0));
+        capture_step(
+            &mut engine,
+            1,
+            90,
+            capture(10, 1000),
+            vec![
+                ancestor.clone(),
+                parent.clone(),
+                live(102, 101, 100, small, Some(0.0)),
+                live(103, 101, 100, large, Some(0.0)),
+            ],
+        );
+        // Both children disappear. The parent collects the larger child, but
+        // settlement spends the smaller child's deduction first, leaving a
+        // partial balance on the larger candidate. Neither child used new CPU.
+        parent.child_cpu_ns = Some(secs(large));
+        let first = capture_step(
+            &mut engine,
+            2,
+            90,
+            capture(12, 1002),
+            vec![ancestor.clone(), parent],
+        );
+        near(f64::from(first.cpu_breakdown.unwrap().finished), 0.0);
+        // The parent collects the other child and exits. Its sampled total
+        // already includes the earlier collection, so only the unspent balance
+        // may be added to the eligibility threshold when passing it upward.
+        ancestor.child_cpu_ns = Some(secs(2.0 + small + large));
+        let second = capture_step(
+            &mut engine,
+            3,
+            90,
+            capture(14, 1004),
+            vec![ancestor.clone()],
+        );
+        near(f64::from(second.cpu_breakdown.unwrap().finished), 0.0);
+        ancestor.child_cpu_ns = Some(secs(3.0 + small + large));
+        let third = capture_step(&mut engine, 4, 90, capture(16, 1006), vec![ancestor]);
+        near(f64::from(third.cpu_breakdown.unwrap().finished), 1.0 / 12.0);
+    }
+}
+
+#[test]
+fn ambiguous_pending_balance_can_cover_multiple_smaller_collections() {
+    let tree: Vec<_> = [4, 4, 8]
+        .into_iter()
+        .map(|own| Doomed {
+            parent: None,
+            own,
+            kids: 0,
+            more: 0,
+            waited: true,
+        })
+        .collect();
+    let found = finished_after_the_tree_ends(&tree, &[8, 4, 4, 4]);
+    for value in &found[..3] {
+        near(*value, 0.0);
+    }
+    near(found[3], 1.0);
+}
+
+#[test]
+fn ambiguous_pending_eligibility_survives_transfer_to_an_ancestor() {
+    let mut engine = Engine::new(system(), frame(0));
+    let mut ancestor = live(100, 1, 100, 10.0, Some(0.0));
+    let mut parent = live(101, 100, 100, 2.0, Some(0.0));
+    capture_step(
+        &mut engine,
+        1,
+        90,
+        capture(10, 1000),
+        vec![
+            ancestor.clone(),
+            parent.clone(),
+            live(102, 101, 100, 1.0, Some(0.0)),
+            live(103, 101, 100, 1.0, Some(0.0)),
+            live(104, 101, 100, 2.0, Some(0.0)),
+        ],
+    );
+    // Collect the 2 s child. The engine spends the two 1 s candidates instead.
+    parent.child_cpu_ns = Some(secs(2.0));
+    let first = capture_step(
+        &mut engine,
+        2,
+        90,
+        capture(12, 1002),
+        vec![ancestor.clone(), parent],
+    );
+    near(f64::from(first.cpu_breakdown.unwrap().finished), 0.0);
+    // Collect one 1 s child and exit, leaving the other to launchd. The ancestor
+    // receives 5 s of entirely historical CPU, including the parent's own 2 s.
+    ancestor.child_cpu_ns = Some(secs(5.0));
+    let second = capture_step(&mut engine, 3, 90, capture(14, 1004), vec![ancestor]);
+    near(f64::from(second.cpu_breakdown.unwrap().finished), 0.0);
+}
+
+#[test]
+fn ambiguous_pending_eligibility_is_independent_of_collection_order() {
+    let orders = [
+        [0, 1, 2],
+        [0, 2, 1],
+        [1, 0, 2],
+        [1, 2, 0],
+        [2, 0, 1],
+        [2, 1, 0],
+    ];
+    for a in 1..=3 {
+        for b in 1..=3 {
+            for c in 1..=3 {
+                let sizes = [a, b, c];
+                for order in orders {
+                    let tree: Vec<_> = sizes
+                        .iter()
+                        .map(|own| Doomed {
+                            parent: None,
+                            own: own * 4,
+                            kids: 0,
+                            more: 0,
+                            waited: true,
+                        })
+                        .collect();
+                    let credit = [
+                        sizes[order[0]] * 4,
+                        sizes[order[1]] * 4,
+                        sizes[order[2]] * 4,
+                        4,
+                    ];
+                    let found = finished_after_the_tree_ends(&tree, &credit);
+                    assert!(
+                        found[..3].iter().all(|value| value.abs() < 1e-6),
+                        "sizes {sizes:?}, order {order:?}: {found:?}"
+                    );
+                    near(found[3], 1.0);
+                    // After the first collection the parent exits, collecting
+                    // zero, one, or both remaining children before doing so.
+                    // Any uncollected children go to launchd, not the ancestor.
+                    for remaining in 0..=2 {
+                        let mut engine = Engine::new(system(), frame(0));
+                        let mut ancestor = live(100, 1, 100, 10.0, Some(0.0));
+                        let mut parent = live(101, 100, 100, 2.0, Some(0.0));
+                        let mut alive = vec![ancestor.clone(), parent.clone()];
+                        alive.extend(sizes.iter().enumerate().map(|(i, size)| {
+                            live(102 + i as u32, 101, 100, *size as f64, Some(0.0))
+                        }));
+                        capture_step(&mut engine, 1, 90, capture(10, 1000), alive);
+                        parent.child_cpu_ns = Some(secs(sizes[order[0]] as f64));
+                        let first = capture_step(
+                            &mut engine,
+                            2,
+                            90,
+                            capture(12, 1002),
+                            vec![ancestor.clone(), parent],
+                        );
+                        near(f64::from(first.cpu_breakdown.unwrap().finished), 0.0);
+                        let collected: u64 = order[..=remaining].iter().map(|i| sizes[*i]).sum();
+                        ancestor.child_cpu_ns = Some(secs(2.0 + collected as f64));
+                        let last =
+                            capture_step(&mut engine, 3, 90, capture(14, 1004), vec![ancestor]);
+                        let finished = f64::from(last.cpu_breakdown.unwrap().finished);
+                        assert!(
+                            finished.abs() < 1e-6,
+                            "sizes {sizes:?}, order {order:?}, remaining {remaining}: {finished}"
+                        );
+                    }
+                }
+            }
+        }
+    }
 }

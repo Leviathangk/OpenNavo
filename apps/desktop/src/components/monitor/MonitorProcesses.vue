@@ -7,11 +7,15 @@ import type { ProcessInfo } from '@/ipc/bindings';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useMonitorStore } from '@/stores/monitor';
+import MonitorCpuBreakdown from './MonitorCpuBreakdown.vue';
 import { useMonitorFormat } from './meta';
 import type { ProcessSort } from './meta';
+import { useProcessView } from './useProcessView';
 
 // Top processes (decisions 5 and 9): CPU share of the whole machine, memory as phys_footprint, and from M3 disk and
-// network rates; only GUI apps can be quit, after confirmation, the same as ⌘Q in the app.
+// network rates; only GUI apps can be quit, after confirmation, the same as ⌘Q in the app. Each row also says how
+// many cores that share is, a view can merge an app's helpers into one row, and under the CPU list the rest of the
+// machine's busy share is accounted for, so the rows are never mistaken for the whole story.
 const props = withDefaults(defineProps<{ sort?: ProcessSort; limit?: number; tabs?: boolean; compact?: boolean }>(), {
   sort: 'cpu',
   limit: 8,
@@ -28,7 +32,16 @@ const f = useMonitorFormat();
 const { errorText } = usePackageState();
 
 const order = computed(() => props.sort);
-const processes = computed(() => store.sample?.processes ?? []);
+const { view, set: setView } = useProcessView();
+const viewOptions = computed(() => [
+  { value: 'process' as const, label: t('monitor.processes.viewProcess') },
+  { value: 'app' as const, label: t('monitor.processes.viewApp') }
+]);
+const processes = computed(() => {
+  const sample = store.sample;
+  return (view.value === 'app' ? (sample?.processGroups ?? sample?.processes) : sample?.processes) ?? [];
+});
+const cores = computed(() => store.system?.logicalCores ?? 0);
 /** Disk and network rates arrive only while a visible view shows those modules; offer the tabs once they do. */
 const tabOptions = computed(() => [
   { value: 'cpu' as const, label: t('monitor.processes.byCpu') },
@@ -90,6 +103,11 @@ function hint(entry: ProcessInfo) {
   }
   return undefined;
 }
+/** What a CPU share is in cores, so a busy Mac's 11% reads as one core and not as "almost nothing". */
+const coresText = (entry: ProcessInfo) => {
+  if (order.value !== 'cpu' || !cores.value || entry.cpu * cores.value < 0.05) return '';
+  return t('monitor.processes.cores', { value: f.decimal(entry.cpu * cores.value, 1) });
+};
 const icon = (entry: ProcessInfo) => (entry.iconPath && isTauri() ? convertFileSrc(entry.iconPath) : null);
 const tag = (entry: ProcessInfo) =>
   entry.kind === 'system'
@@ -145,10 +163,25 @@ async function activityMonitor() {
         @update:model-value="value => emit('update:sort', value)"
       />
       <span class="flex-1"></span>
+      <OnSegmented
+        :model-value="view"
+        :options="viewOptions"
+        size="sm"
+        :aria-label="t('monitor.processes.view')"
+        data-testid="monitor-process-view"
+        @update:model-value="setView"
+      />
       <OnButton v-if="tabs" variant="ghost" size="sm" icon-right="arrow-up-right" @click="activityMonitor">{{
         t('monitor.processes.activityMonitor')
       }}</OnButton>
     </header>
+    <p
+      v-if="order === 'cpu' && cores"
+      class="m-0 text-11px text-ink-tertiary"
+      :class="compact ? 'px-2px pb-4px' : 'px-16px pt-8px'"
+    >
+      {{ t('monitor.processes.scaleCpu', { percent: f.percent(1 / cores) }) }}
+    </p>
     <ul class="m-0 list-none p-0">
       <li
         v-for="entry in list"
@@ -165,6 +198,14 @@ async function activityMonitor() {
             :size="compact ? 20 : 24"
           />
           <span class="truncate text-12.5px text-ink-primary">{{ entry.name }}</span>
+          <span v-if="entry.count > 1" class="shrink-0 text-11.5px tabular-nums text-ink-tertiary"
+            >×{{ entry.count }}</span
+          >
+          <span
+            v-if="entry.isSelf"
+            class="shrink-0 rounded-[5px] bg-[rgba(255,255,255,0.06)] px-6px text-10.5px leading-18px text-ink-tertiary"
+            >{{ t('monitor.processes.self') }}</span
+          >
           <span
             v-if="tag(entry)"
             class="shrink-0 rounded-[5px] bg-[rgba(255,255,255,0.06)] px-6px text-10.5px leading-18px text-ink-tertiary"
@@ -178,9 +219,13 @@ async function activityMonitor() {
           ></i>
         </span>
         <span
-          class="w-84px whitespace-nowrap text-right text-12.5px tabular-nums text-ink-secondary"
+          class="whitespace-nowrap text-right text-12.5px tabular-nums text-ink-secondary"
+          :class="order === 'cpu' ? 'w-[124px]' : 'w-84px'"
           :title="hint(entry)"
-          >{{ display(entry) }}</span
+          >{{ display(entry)
+          }}<span v-if="coresText(entry)" class="ml-6px text-11.5px text-ink-tertiary">{{
+            coresText(entry)
+          }}</span></span
         >
         <span v-if="!compact" class="flex w-52px justify-end">
           <OnButton
@@ -197,6 +242,7 @@ async function activityMonitor() {
     <p v-if="!list.length" class="m-0 px-16px py-12px text-12px text-ink-tertiary">
       {{ t('monitor.waiting') }}
     </p>
+    <MonitorCpuBreakdown v-if="order === 'cpu' && list.length" :rows="list" :compact="compact" />
     <OnConfirm
       :open="Boolean(quitting)"
       :title="t('monitor.processes.quitTitle', { name: quitting?.name ?? '' })"

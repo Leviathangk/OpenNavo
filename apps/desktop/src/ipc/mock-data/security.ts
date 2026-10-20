@@ -546,7 +546,7 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
     custom: { files: 2_310, bytes: 640 * MB, ticks: 3 }
   };
 
-  function startScan(kind: AvScanKind, paths: string[] | null): { scanId: string } {
+  function startScan(kind: AvScanKind, paths: string[] | null, force = false): { scanId: string } {
     if (!engine.db) throw appError('E_AV_NOT_READY', 'database_missing');
     if (kind === 'custom' && !paths?.length) throw appError('E_INVALID_ARG', 'paths_required');
     const scanId = `scan-${++sequence}`;
@@ -560,6 +560,18 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
       filesScanned: 0,
       bytesScanned: 0,
       skipped: { dataless: 0, tooLarge: 0, unreadable: 0, excluded: 0 },
+      metrics: {
+        cachedFiles: 0,
+        workers: kind === 'full' ? 2 : 1,
+        preparationMs: 0,
+        hashMs: 0,
+        engineMs: 0,
+        queueMs: 0,
+        inspectionMs: 0,
+        cleanupMs: 0,
+        persistenceMs: 0,
+        slowFiles: 0
+      },
       findings: [],
       errorCode: null,
       // ?mock=av-denied-downloads: macOS refused the Downloads folder (Files and Folders privacy).
@@ -587,6 +599,7 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
       }
       step++;
       scan.filesScanned = Math.round((total.files * step) / total.ticks);
+      if (flags.has('av-cache-hit') && !force) scan.metrics.cachedFiles = Math.floor(scan.filesScanned / 2);
       scan.bytesScanned = Math.round((total.bytes * step) / total.ticks);
       // The EICAR test file sits in Downloads; every scan kind reaches it halfway.
       if (step === Math.ceil(total.ticks / 2) && kind !== 'custom') {
@@ -631,7 +644,8 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
         filesScanned: scan.filesScanned,
         bytesScanned: scan.bytesScanned,
         currentPath: kind === 'full' ? '~/Library/Containers/com.apple.mail/Data' : '~/Downloads/tools',
-        findings: scan.findings.length
+        findings: scan.findings.length,
+        cachedFiles: scan.metrics.cachedFiles
       });
     }, tickMs);
     timers.add(timer);
@@ -811,7 +825,8 @@ export function createSecurityMock({ flags, tickMs, settings }: SecurityMockOpti
     posture_check: () => posture(),
     av_engine_status: () => ({ ...engine }),
     av_db_update: () => updateDatabase(),
-    av_scan_start: args => startScan(args.kind as AvScanKind, (args.paths as string[] | null) ?? null),
+    av_scan_start: args =>
+      startScan(args.kind as AvScanKind, (args.paths as string[] | null) ?? null, args.force === true),
     av_scan_cancel: args => {
       const scan = scans.get(String(args.scanId));
       if (scan?.state === 'running') {

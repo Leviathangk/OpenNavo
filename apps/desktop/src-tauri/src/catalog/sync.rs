@@ -349,11 +349,21 @@ impl CatalogService {
         let _lock = self.lock.lock().await;
         self.syncing.store(true, Ordering::Release);
         let _reset = Reset(&self.syncing);
-        let mut result = self.sync_inner(force).await;
-        let mut links_applied = 0;
-        match self.sync_links(force).await {
+        let had_links_error = self
+            .database
+            .meta("links_last_error")
+            .ok()
+            .flatten()
+            .is_some();
+        // Independent sources: a slow snapshot must not delay the small links catalog.
+        let (mut result, links) = tokio::join!(self.sync_inner(force), self.sync_links(force));
+        // Snapshots/deltas may commit before sync fails; the UI must still read the available offline catalog.
+        let mut publish = result.is_err();
+        match links {
             Ok(applied) => {
-                links_applied = applied;
+                // `sync_inner` published before the links source answered: say so again if it changed anything,
+                // or if it just cleared an error the UI still shows.
+                publish |= applied > 0 || had_links_error;
                 if let Ok(result) = &mut result {
                     result.applied += applied;
                     if applied > 0 && result.mode == SyncMode::None {
@@ -362,12 +372,15 @@ impl CatalogService {
                 }
             }
             Err(error) => {
+                // The failure is published as `links_error` and shown by the UI. It must not fail the sync as a whole:
+                // casks that arrived still need the library reclassified and the updates rebuilt, and the scheduler
+                // would otherwise retry every minute for as long as the links source stays unavailable.
                 let _ = self.database.set_meta("links_last_error", &error.code);
-                log::warn!("links sync failed: {}", error.code);
+                log::warn!("links sync failed: {} ({})", error.code, error.message);
+                publish = true;
             }
         }
-        // Snapshots/deltas may commit before sync fails; the UI must still read the available offline catalog.
-        if result.is_err() || links_applied > 0 {
+        if publish {
             let _ = self.finish(SyncMode::None, 0).await;
         }
         result
@@ -376,9 +389,14 @@ impl CatalogService {
         let url = format!("{}/catalog/links", self.base);
         validate_url(&url)?;
         let mut request = self.client()?.get(url);
+        // `links_etag` is the catalog's own tag and says which content the local rows hold. `links_validator` is the
+        // ETag header of the response that delivered it, as the server and every proxy before it sent it. A proxy that
+        // compresses the body suffixes and weakens that header and accepts only its own form back, so that form is what
+        // a conditional request has to carry; the two are not required to be equal.
         let cached = self.database.meta("links_etag")?;
         if !force && let Some(etag) = &cached {
-            request = request.header("If-None-Match", etag);
+            let validator = self.database.meta("links_validator")?;
+            request = request.header("If-None-Match", validator.as_ref().unwrap_or(etag));
         }
         let response = request.send().await?;
         if response.status() == reqwest::StatusCode::NOT_MODIFIED {
@@ -398,7 +416,7 @@ impl CatalogService {
             })?;
             return Ok(0);
         }
-        let response_etag = response
+        let validator = response
             .headers()
             .get("ETag")
             .and_then(|h| h.to_str().ok())
@@ -407,16 +425,17 @@ impl CatalogService {
         if response.code != "0000" {
             return Err(protocol("links_response"));
         }
+        // The body is the authority on its own version. The header is not compared with it: an intermediary that
+        // compresses the response rewrites the header, and the body, which `apply` validates, is what gets stored.
         let catalog = response.data.ok_or_else(|| protocol("links_response"))?;
-        if response_etag
-            .as_ref()
-            .is_some_and(|etag| etag != &catalog.etag)
-        {
-            return Err(protocol("links_etag_mismatch"));
-        }
         let database = self.database.clone();
         crate::blocking(move || {
-            super::links::apply(&database, &catalog, chrono::Utc::now().timestamp_millis())
+            super::links::apply(
+                &database,
+                &catalog,
+                validator.as_deref(),
+                chrono::Utc::now().timestamp_millis(),
+            )
         })
         .await
     }
@@ -547,6 +566,311 @@ mod tests {
     use std::io::{Read, Write};
 
     #[tokio::test]
+    async fn partial_sync_reports_links_failure_then_recovers_without_losing_casks() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        std::fs::create_dir(&cache).unwrap();
+        let info = cache_build(&cache, 1);
+        let db = Database::open(&temp.path().join("catalog.db")).unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let metadata = serde_json::json!({"code":"0000","data":info}).to_string();
+        let changes = serde_json::json!({"code":"0000","data":{
+            "changes":[], "nextCursor":info.cursor, "hasMore":false
+        }})
+        .to_string();
+        let mut item = super::super::links::tests::item();
+        item.token = "ely-office".into();
+        let links = serde_json::json!({"code":"0000","data":{
+            "etag":"\"recovered\"", "items":[item]
+        }})
+        .to_string();
+        // What the links requests carried as If-None-Match, in order.
+        let conditions = Arc::new(std::sync::Mutex::new(Vec::<Option<String>>::new()));
+        let seen = conditions.clone();
+        let server = std::thread::spawn(move || {
+            let mut links_requests = 0;
+            for _ in 0..9 {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                let mut request = Vec::new();
+                let mut byte = [0];
+                while !request.ends_with(b"\r\n\r\n") {
+                    stream.read_exact(&mut byte).unwrap();
+                    request.push(byte[0]);
+                }
+                let request = String::from_utf8(request).unwrap();
+                // Compressing in front of the API rewrites the tag: the header never equals the catalog's own.
+                let (status, headers, body) = if request.starts_with("GET /catalog/links ") {
+                    links_requests += 1;
+                    seen.lock().unwrap().push(header(&request, "if-none-match"));
+                    match links_requests {
+                        1 => ("503 Unavailable", "", ""),
+                        2 => ("200 OK", "ETag: W/\"recovered-gzip\"\r\n", links.as_str()),
+                        _ => ("304 Not Modified", "ETag: W/\"recovered-gzip\"\r\n", ""),
+                    }
+                } else if request.starts_with("GET /catalog/snapshot ") {
+                    ("200 OK", "", metadata.as_str())
+                } else {
+                    assert!(request.starts_with("GET /catalog/changes?"));
+                    ("200 OK", "", changes.as_str())
+                };
+                write!(
+                    stream,
+                    "HTTP/1.1 {status}\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .unwrap();
+            }
+        });
+        let emitted = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let sink = emitted.clone();
+        let service = CatalogService::new(
+            db.clone(),
+            base,
+            String::new(),
+            cache,
+            Arc::new(RwLock::new(Settings::default())),
+            Arc::new(move |event| {
+                if let CoreEvent::Catalog(status) = event {
+                    sink.lock().unwrap().push(status);
+                }
+            }),
+        );
+        service.snapshot(&info).await.unwrap();
+        // The links source is down: the casks still sync and the result is Ok, so the library is reclassified and the
+        // scheduler does not retry every minute. The failure is published for the UI instead.
+        service.sync(false).await.unwrap();
+        assert_eq!(service.status().await.unwrap().item_count, 40);
+        assert!(
+            emitted
+                .lock()
+                .unwrap()
+                .last()
+                .unwrap()
+                .links_error
+                .is_some()
+        );
+        service.sync(false).await.unwrap();
+        assert_eq!(service.status().await.unwrap().item_count, 41);
+        assert!(
+            emitted
+                .lock()
+                .unwrap()
+                .last()
+                .unwrap()
+                .links_error
+                .is_none()
+        );
+        let found: i64 = db
+            .with(|c| {
+                Ok(c.query_row(
+                    "SELECT count(*) FROM catalog_fts WHERE catalog_fts MATCH '\"ely-office\"'",
+                    [],
+                    |r| r.get(0),
+                )?)
+            })
+            .unwrap();
+        assert_eq!(found, 1);
+        // Unchanged: the tag the proxy sent goes back as it came, and the cached links stay.
+        service.sync(false).await.unwrap();
+        assert_eq!(service.status().await.unwrap().item_count, 41);
+        assert!(
+            emitted
+                .lock()
+                .unwrap()
+                .last()
+                .unwrap()
+                .links_error
+                .is_none()
+        );
+        server.join().unwrap();
+        assert_eq!(
+            *conditions.lock().unwrap(),
+            [None, None, Some("W/\"recovered-gzip\"".to_string())]
+        );
+        assert_eq!(
+            db.meta("links_etag").unwrap().as_deref(),
+            Some("\"recovered\"")
+        );
+    }
+
+    /// Value of a request header (any case), if the request has it.
+    fn header(request: &str, name: &str) -> Option<String> {
+        request.lines().find_map(|line| {
+            let (key, value) = line.split_once(':')?;
+            key.trim()
+                .eq_ignore_ascii_case(name)
+                .then(|| value.trim().to_string())
+        })
+    }
+
+    /// Serves one scripted response per connection and checks the conditional header of each request. A script entry is
+    /// (If-None-Match the client must send, status line, extra response headers, body).
+    fn serve_links(
+        listener: std::net::TcpListener,
+        script: Vec<(Option<&'static str>, &'static str, &'static str, String)>,
+    ) -> std::thread::JoinHandle<()> {
+        std::thread::spawn(move || {
+            for (round, (expected, status, headers, body)) in script.into_iter().enumerate() {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                let mut request = Vec::new();
+                let mut byte = [0u8; 1];
+                while !request.ends_with(b"\r\n\r\n") {
+                    stream.read_exact(&mut byte).unwrap();
+                    request.push(byte[0]);
+                }
+                let request = String::from_utf8(request).unwrap();
+                assert!(request.starts_with("GET /catalog/links "));
+                assert_eq!(
+                    header(&request, "if-none-match").as_deref(),
+                    expected,
+                    "If-None-Match of request {round}"
+                );
+                write!(
+                    stream,
+                    "HTTP/1.1 {status}\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .unwrap();
+            }
+        })
+    }
+
+    fn links_body(etag: &str, token: &str) -> String {
+        let mut item = super::super::links::tests::item();
+        item.token = token.into();
+        serde_json::json!({"code":"0000","data":{"etag":etag,"items":[item]}}).to_string()
+    }
+
+    #[tokio::test]
+    async fn links_sync_survives_an_edge_that_rewrites_the_etag_header() {
+        let temp = tempfile::tempdir().unwrap();
+        let db = Database::open(&temp.path().join("catalog.db")).unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let server = serve_links(
+            listener,
+            vec![
+                // Compressed at the edge: the tag gains a suffix and Cloudflare weakens it. The body is intact.
+                (
+                    None,
+                    "200 OK",
+                    "ETag: W/\"one-gzip\"\r\n",
+                    links_body("\"one\"", "first-link"),
+                ),
+                // Only the form the edge produced is understood by it, never the catalog's own tag.
+                (
+                    Some("W/\"one-gzip\""),
+                    "304 Not Modified",
+                    "ETag: W/\"one-gzip\"\r\n",
+                    String::new(),
+                ),
+                // The catalog changed: a new body with a new header replaces both.
+                (
+                    Some("W/\"one-gzip\""),
+                    "200 OK",
+                    "ETag: \"two-gzip\"\r\n",
+                    links_body("\"two\"", "second-link"),
+                ),
+                (
+                    Some("\"two-gzip\""),
+                    "304 Not Modified",
+                    "ETag: \"two-gzip\"\r\n",
+                    String::new(),
+                ),
+                // A forced sync asks for the whole catalog; a response without a tag clears the stored header form.
+                (None, "200 OK", "", links_body("\"two\"", "second-link")),
+                (Some("\"two\""), "304 Not Modified", "", String::new()),
+            ],
+        );
+        let service = CatalogService::new(
+            db.clone(),
+            base,
+            String::new(),
+            temp.path().join("cache"),
+            Arc::new(RwLock::new(Settings::default())),
+            Arc::new(|_| {}),
+        );
+        assert_eq!(service.sync_links(false).await.unwrap(), 1);
+        assert_eq!(db.meta("links_etag").unwrap().as_deref(), Some("\"one\""));
+        assert_eq!(
+            db.meta("links_validator").unwrap().as_deref(),
+            Some("W/\"one-gzip\"")
+        );
+        assert_eq!(service.sync_links(false).await.unwrap(), 0);
+        assert!(db.meta("links_last_error").unwrap().is_none());
+        assert_eq!(service.sync_links(false).await.unwrap(), 1);
+        assert_eq!(db.meta("links_etag").unwrap().as_deref(), Some("\"two\""));
+        assert_eq!(
+            db.meta("links_validator").unwrap().as_deref(),
+            Some("\"two-gzip\"")
+        );
+        assert!(
+            super::super::get(&db, Kind::Link, "first-link")
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            super::super::get(&db, Kind::Link, "second-link")
+                .unwrap()
+                .is_some()
+        );
+        assert_eq!(service.sync_links(false).await.unwrap(), 0);
+        assert_eq!(service.sync_links(true).await.unwrap(), 0);
+        assert!(db.meta("links_validator").unwrap().is_none());
+        assert_eq!(service.sync_links(false).await.unwrap(), 0);
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_known_good_links_response_clears_an_earlier_failure_even_when_nothing_changed() {
+        let temp = tempfile::tempdir().unwrap();
+        let db = Database::open(&temp.path().join("catalog.db")).unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let server = serve_links(
+            listener,
+            vec![
+                (
+                    None,
+                    "200 OK",
+                    "ETag: \"one\"\r\n",
+                    links_body("\"one\"", "stable"),
+                ),
+                (Some("\"one\""), "503 Unavailable", "", String::new()),
+                // A shared cache may answer in full again even though the client presented the tag.
+                (
+                    Some("\"one\""),
+                    "200 OK",
+                    "ETag: \"one\"\r\n",
+                    links_body("\"one\"", "stable"),
+                ),
+            ],
+        );
+        let service = CatalogService::new(
+            db.clone(),
+            base,
+            String::new(),
+            temp.path().join("cache"),
+            Arc::new(RwLock::new(Settings::default())),
+            Arc::new(|_| {}),
+        );
+        assert_eq!(service.sync_links(false).await.unwrap(), 1);
+        assert!(service.sync_links(false).await.is_err());
+        db.set_meta("links_last_error", "E_NETWORK").unwrap();
+        assert_eq!(service.sync_links(false).await.unwrap(), 0);
+        assert!(db.meta("links_last_error").unwrap().is_none());
+        assert!(db.meta("links_synced_at").unwrap().is_some());
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
     async fn links_etag_offline_cache_and_cask_snapshot_are_independent() {
         let temp = tempfile::tempdir().unwrap();
         let db = Database::open(&temp.path().join("catalog.db")).unwrap();
@@ -578,9 +902,10 @@ mod tests {
                     0 => ("200 OK", raw.as_str()),
                     1 => ("304 Not Modified", ""),
                     2 => ("503 Unavailable", ""),
+                    // An invalid catalog (its own tag is unusable) is rejected whatever the headers say.
                     _ => (
                         "200 OK",
-                        "{\"code\":\"0000\",\"data\":{\"etag\":\"bad\",\"items\":[]}}",
+                        "{\"code\":\"0000\",\"data\":{\"etag\":\"x\",\"items\":[]}}",
                     ),
                 };
                 write!(stream,"HTTP/1.1 {status}\r\nETag: \"one\"\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).unwrap();

@@ -188,9 +188,23 @@ fn validate(item: &CatalogItem) -> Result<(), AppError> {
     Ok(())
 }
 
+/// An `ETag` header value is kept only if it is safe to send back verbatim.
+pub fn valid_validator(value: &str) -> bool {
+    (1..=256).contains(&value.len()) && value.is_ascii() && !value.chars().any(char::is_control)
+}
+
 /// Full replacement is atomic and restricted to links. Snapshot/changes cannot
 /// introduce links, and a stale links response cannot shadow a newly adopted cask.
-pub fn apply(database: &Database, catalog: &LinkCatalog, now: i64) -> Result<u32, AppError> {
+///
+/// `validator` is the `ETag` header of the response that carried `catalog`. It is stored beside the catalog's own tag so
+/// that the next request can present exactly what the server (or a proxy in front of it) sent: a proxy that compresses
+/// the body suffixes and weakens that header, and only the form it produced is accepted back.
+pub fn apply(
+    database: &Database,
+    catalog: &LinkCatalog,
+    validator: Option<&str>,
+    now: i64,
+) -> Result<u32, AppError> {
     if catalog.etag.len() < 2
         || catalog.etag.len() > 256
         || !catalog.etag.is_ascii()
@@ -213,33 +227,45 @@ pub fn apply(database: &Database, catalog: &LinkCatalog, now: i64) -> Result<u32
                 r.get(0)
             })
             .optional()?;
-        if old.as_ref() == Some(&catalog.etag) {
-            return Ok(0);
-        }
-        tx.execute("DELETE FROM catalog_fts WHERE kind='link'", [])?;
-        let removed = tx.execute("DELETE FROM catalog_items WHERE kind='link'", [])?;
+        // The rows already match this tag; the response still proves the source is reachable and healthy.
+        let changed = old.as_ref() != Some(&catalog.etag);
         let mut count = 0;
-        for item in &catalog.items {
-            let cask: bool = tx.query_row(
-                "SELECT EXISTS(SELECT 1 FROM catalog_items WHERE kind='cask' AND token=?1)",
-                [&item.token],
-                |r| r.get(0),
-            )?;
-            if !cask
-                && item
-                    .link
-                    .as_ref()
-                    .is_some_and(|l| l.adopted_by_cask.is_none())
-            {
-                super::upsert(&tx, item)?;
-                count += 1;
+        let mut removed = 0;
+        if changed {
+            tx.execute("DELETE FROM catalog_fts WHERE kind='link'", [])?;
+            removed = tx.execute("DELETE FROM catalog_items WHERE kind='link'", [])?;
+            for item in &catalog.items {
+                let cask: bool = tx.query_row(
+                    "SELECT EXISTS(SELECT 1 FROM catalog_items WHERE kind='cask' AND token=?1)",
+                    [&item.token],
+                    |r| r.get(0),
+                )?;
+                if !cask
+                    && item
+                        .link
+                        .as_ref()
+                        .is_some_and(|l| l.adopted_by_cask.is_none())
+                {
+                    super::upsert(&tx, item)?;
+                    count += 1;
+                }
+            }
+            super::set_meta(&tx, "links_etag", &catalog.etag)?;
+        }
+        match validator.filter(|value| valid_validator(value)) {
+            Some(value) => super::set_meta(&tx, "links_validator", value)?,
+            None => {
+                tx.execute("DELETE FROM meta WHERE key='links_validator'", [])?;
             }
         }
-        super::set_meta(&tx, "links_etag", &catalog.etag)?;
         super::set_meta(&tx, "links_synced_at", &now.to_string())?;
         tx.execute("DELETE FROM meta WHERE key='links_last_error'", [])?;
         tx.commit()?;
-        Ok(count.max(removed as u32))
+        Ok(if changed {
+            count.max(removed as u32)
+        } else {
+            0
+        })
     })
 }
 
@@ -445,12 +471,12 @@ pub(crate) mod tests {
             etag: "\"one\"".into(),
             items: vec![link.clone()],
         };
-        assert_eq!(apply(&db, &catalog, 1).unwrap(), 1);
-        assert_eq!(apply(&db, &catalog, 2).unwrap(), 0);
+        assert_eq!(apply(&db, &catalog, None, 1).unwrap(), 1);
+        assert_eq!(apply(&db, &catalog, None, 2).unwrap(), 0);
         let mut invalid = catalog.clone();
         invalid.etag = "\"bad\"".into();
         invalid.items[0].link.as_mut().unwrap().download_url = Some("file:///etc/passwd".into());
-        assert!(apply(&db, &invalid, 3).is_err());
+        assert!(apply(&db, &invalid, None, 3).is_err());
         assert_eq!(db.meta("links_etag").unwrap().as_deref(), Some("\"one\""));
         assert_eq!(
             super::super::get(&db, Kind::Link, &link.token).unwrap(),
@@ -494,7 +520,7 @@ pub(crate) mod tests {
                 .unwrap()
                 .is_none()
         );
-        assert_eq!(apply(&db, &catalog, 4).unwrap(), 0);
+        assert_eq!(apply(&db, &catalog, None, 4).unwrap(), 0);
         assert!(
             super::super::get(&db, Kind::Link, &link.token)
                 .unwrap()
@@ -517,6 +543,7 @@ pub(crate) mod tests {
                 etag: "\"one\"".into(),
                 items: vec![item.clone()],
             },
+            None,
             1,
         )
         .unwrap();

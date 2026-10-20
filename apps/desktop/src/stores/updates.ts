@@ -89,6 +89,7 @@ export const useUpdatesStore = defineStore('updates', () => {
   const checking = computed(() => requested.value || Boolean(status.value?.checking));
   const checkedAt = computed(() => status.value?.checkedAt ?? null);
   /** Sources the last check could not read; the others' results are listed as usual (plan §11.4). */
+  const failures = computed(() => status.value?.failures ?? []);
   const failedSources = computed(() => status.value?.failedSources ?? []);
   const nextCheckAt = computed(() => status.value?.nextCheckAt ?? null);
 
@@ -284,6 +285,7 @@ export const useUpdatesStore = defineStore('updates', () => {
     checking,
     checkedAt,
     failedSources,
+    failures,
     nextCheckAt,
     masSignedOut,
     byKey,

@@ -130,6 +130,9 @@ export function startLocalState() {
     const onFocus = () => {
       void permissions.returned();
       void localApps.load().catch(() => undefined);
+      // Homebrew or the command line tools may have just been installed in Terminal. Once Homebrew is found there is
+      // nothing to wait for, so only a missing one is looked for again.
+      if (env.info && !env.hasBrew) void env.detect().catch(() => undefined);
     };
     window.addEventListener('focus', onFocus);
     await register(() => window.removeEventListener('focus', onFocus));

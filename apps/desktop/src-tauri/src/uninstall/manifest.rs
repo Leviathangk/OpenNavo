@@ -2,7 +2,12 @@ use super::{
     Engine, poison,
     rules::{self, Snapshot},
 };
-use crate::{AppError, db::Database, model::*};
+use crate::{
+    AppError,
+    brew::env::{Ask, Reason},
+    db::Database,
+    model::*,
+};
 use rusqlite::params;
 use std::{
     fs,
@@ -188,7 +193,8 @@ impl Engine {
                     requests.len()
                 ),
             )?;
-            let results = super::execute::admin_batch(self, &requests).unwrap_or_default();
+            let results = super::execute::admin_batch(self, &requests, Ask::new(Reason::Restore))
+                .unwrap_or_default();
             for (e, _) in admins {
                 if results
                     .iter()
@@ -279,7 +285,7 @@ impl Engine {
                     requests.len()
                 ),
             )?;
-            let results = super::execute::admin_batch(self, &requests)?;
+            let results = super::execute::admin_batch(self, &requests, Ask::new(Reason::Purge))?;
             for (e, _) in admins {
                 if results
                     .iter()
@@ -337,6 +343,16 @@ impl Engine {
             lines: vec![line.to_owned()],
         }));
         Ok(())
+    }
+    /// Whether anything this run moved to the Trash can still be put back: it is there as it was left. An item that the
+    /// system's privacy protection keeps us from examining counts as there, so nothing is given up on a guess.
+    pub(crate) fn undoable(&self, task: &str) -> Result<bool, AppError> {
+        Ok(entries(&self.database, task)?.iter().any(|e| {
+            e.state == "trash"
+                && e.trash
+                    .as_ref()
+                    .is_some_and(|path| e.snapshot.matches(path) || privacy_denied(path))
+        }))
     }
     fn refresh_outcome(&self, task: &str) -> Result<(), AppError> {
         if let Some(mut record) = self.database.tasks()?.into_iter().find(|t| t.id == task) {

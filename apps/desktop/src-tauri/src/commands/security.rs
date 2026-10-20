@@ -49,9 +49,11 @@ pub async fn av_scan_start(
     state: State<'_, Arc<DesktopCore>>,
     kind: AvScanKind,
     paths: Option<Vec<String>>,
+    force: Option<bool>,
 ) -> Result<AvScanStarted, AppError> {
     let service = state.queue.security.clone();
-    crate::blocking(move || service.scan_start(kind, paths)).await
+    crate::blocking(move || service.scan_start_with_options(kind, paths, force.unwrap_or(false)))
+        .await
 }
 
 #[tauri::command]

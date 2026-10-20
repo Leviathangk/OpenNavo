@@ -33,7 +33,7 @@ impl HealthTracker {
                 .processes
                 .as_ref()
                 .and_then(|items| {
-                    items.iter().max_by(|a, b| {
+                    items.iter().filter(|p| !p.is_self).max_by(|a, b| {
                         if cpu {
                             f64::from(a.cpu).total_cmp(&f64::from(b.cpu))
                         } else {

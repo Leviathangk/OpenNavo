@@ -1,9 +1,10 @@
+mod history;
 mod native;
 use crate::{
     AppError,
     brew::{
         args::{write_args, write_args_in_tap},
-        env::construct,
+        env::{Ask, Reason, construct, explain},
         locate,
         pty::{Execution, Progress, execute},
     },
@@ -26,6 +27,17 @@ use std::{
 use tokio::sync::Notify;
 
 type Completion = Arc<dyn Fn(Task) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+
+/// The brew operations whose sudo prompt gets a sentence of its own; the rest keep the neutral one.
+fn password_reason(op: TaskOp) -> Option<Reason> {
+    match op {
+        TaskOp::Install | TaskOp::Reinstall => Some(Reason::Install),
+        TaskOp::Upgrade => Some(Reason::Update),
+        TaskOp::Uninstall => Some(Reason::Uninstall),
+        TaskOp::InstallHomebrew => Some(Reason::Homebrew),
+        _ => None,
+    }
+}
 struct Control {
     cancel: Arc<AtomicBool>,
     notify: Arc<Notify>,
@@ -560,6 +572,21 @@ impl TaskQueue {
         }
         Ok(())
     }
+    /// What the password dialog calls a package: the catalog's name for it, else its token. Only decoration, so a
+    /// failed lookup never fails the task.
+    async fn dialog_name(&self, target: Option<&TaskTarget>, locale: Locale) -> Option<String> {
+        let target = target?;
+        let kind = target.kind.brew_kind().ok()?;
+        let database = self.database.clone();
+        let token = target.token.clone();
+        let item = crate::blocking({
+            let token = token.clone();
+            move || crate::catalog::get(&database, kind, &token)
+        })
+        .await
+        .ok()?;
+        Some(crate::library::display_name(item.as_ref(), &token, locale))
+    }
     async fn execute_task(
         self: &Arc<Self>,
         task: &Task,
@@ -701,6 +728,20 @@ impl TaskQueue {
         let mut env = construct(&settings, &prefix, &self.askpass);
         if task.op == TaskOp::InstallHomebrew {
             env.insert("NONINTERACTIVE".into(), "1".into());
+        }
+        // sudo may ask for the password mid-task; the dialog should say what this task is doing.
+        if let Some(reason) = password_reason(task.op) {
+            let name = self
+                .dialog_name(task.target.as_ref(), settings.locale)
+                .await;
+            explain(
+                &mut env,
+                settings.locale,
+                Ask {
+                    reason,
+                    name: name.as_deref(),
+                },
+            );
         }
         env.extend(self.extra_env.lock().map_err(poison)?.clone());
         #[cfg(debug_assertions)]
@@ -1177,6 +1218,7 @@ else:
                 etag: "\"queue\"".into(),
                 items: vec![item.clone()],
             },
+            None,
             1,
         )
         .unwrap();
@@ -1830,7 +1872,13 @@ else:
             copy.state = state;
             queue.database.save_task(&copy).expect("save");
         }
-        assert_eq!(queue.database.clear_history().expect("clear"), 3);
+        assert_eq!(
+            queue.clear_history().expect("clear"),
+            HistoryCleared {
+                cleared: 3,
+                kept: 0
+            }
+        );
         let retained = queue.database.tasks().expect("read");
         assert_eq!(retained.len(), 2);
         assert!(
@@ -1838,7 +1886,109 @@ else:
                 .iter()
                 .all(|task| matches!(task.state, TaskState::Queued | TaskState::Running))
         );
-        assert_eq!(queue.database.clear_history().expect("clear again"), 0);
+        assert_eq!(
+            queue.clear_history().expect("clear again"),
+            HistoryCleared {
+                cleared: 0,
+                kept: 0
+            }
+        );
+    }
+
+    #[test]
+    fn history_clear_keeps_runs_whose_trash_items_can_still_be_put_back() {
+        use crate::uninstall::{manifest, rules::Snapshot};
+        let (directory, queue, _) = fixture("install_ok");
+        let root = directory.path().canonicalize().expect("root");
+        let template = queue
+            .enqueue(
+                TaskOp::Upgrade,
+                Some(target("calibre")),
+                TaskOptions::default(),
+                TaskTrigger::Manual,
+            )
+            .expect("queued");
+        let moved = |name: &str| {
+            let path = root.join(name);
+            std::fs::write(&path, name).expect("file");
+            path
+        };
+        let in_trash = moved("in-trash.txt");
+        let emptied = moved("emptied.txt");
+        let unflagged = moved("unflagged.txt");
+        for (id, op, path, restorable) in [
+            ("run-in-trash", TaskOp::Uninstall, &in_trash, true),
+            ("run-cleanup-in-trash", TaskOp::Clean, &in_trash, true),
+            ("run-emptied", TaskOp::Uninstall, &emptied, true),
+            ("run-unflagged", TaskOp::Uninstall, &unflagged, false),
+        ] {
+            let snapshot = Snapshot::capture(path).expect("snapshot");
+            let item = PlanItem {
+                id: "item".into(),
+                path: path.to_string_lossy().into(),
+                category: ItemCategory::AppData,
+                kind: PlanItemKind::File,
+                count: 1,
+                size_bytes: Some(4),
+                reason: MatchReason::ZapRule,
+                confidence: PlanItemConfidence::High,
+                selected: true,
+                required: false,
+                needs_admin: false,
+                shared_with: vec![],
+                note: None,
+            };
+            manifest::pending(&queue.database, id, &item, &snapshot, Some(path)).expect("pending");
+            manifest::finish(&queue.database, id, "item", "trash", Some(path), &snapshot)
+                .expect("moved");
+            let mut run = template.clone();
+            run.id = id.into();
+            run.op = op;
+            run.state = TaskState::Succeeded;
+            run.target = None;
+            run.outcome = Some(UninstallOutcome {
+                freed_bytes: 4,
+                trashed_bytes: 4,
+                trashed: 1,
+                deleted: 0,
+                skipped: vec![],
+                restorable,
+            });
+            queue.database.save_task(&run).expect("save");
+        }
+        // The Trash was emptied behind OpenNavo's back, so this run's flag is stale.
+        std::fs::remove_file(&emptied).expect("emptied");
+        assert_eq!(
+            queue.clear_history().expect("clear"),
+            HistoryCleared {
+                cleared: 2,
+                kept: 2
+            }
+        );
+        let mut left: Vec<_> = queue
+            .database
+            .tasks()
+            .expect("read")
+            .into_iter()
+            .map(|task| task.id)
+            .collect();
+        left.sort();
+        let mut expected = vec![
+            template.id.clone(),
+            "run-cleanup-in-trash".to_owned(),
+            "run-in-trash".to_owned(),
+        ];
+        expected.sort();
+        assert_eq!(left, expected);
+        // Putting the items back leaves nothing to keep: the next clear takes the records too.
+        std::fs::remove_file(&in_trash).expect("put back");
+        assert_eq!(
+            queue.clear_history().expect("clear again"),
+            HistoryCleared {
+                cleared: 2,
+                kept: 0
+            }
+        );
     }
 
     #[tokio::test]

@@ -160,12 +160,23 @@ impl Database {
         }
         Ok(queued)
     }
-    pub fn clear_history(&self) -> Result<u32, AppError> {
+    /// Deletes these finished records. The caller read the history once and chose them, so a task that finishes in the
+    /// meantime is never touched, and neither is one that is queued or running.
+    pub fn delete_finished(&self, ids: &[String]) -> Result<u32, AppError> {
         self.with(|c| {
-            Ok(c.execute(
-                "DELETE FROM tasks WHERE state IN ('succeeded','failed','canceled')",
-                [],
-            )? as u32)
+            let tx = c.transaction()?;
+            let mut deleted = 0;
+            for chunk in ids.chunks(500) {
+                let marks = vec!["?"; chunk.len()].join(",");
+                deleted += tx.execute(
+                    &format!(
+                        "DELETE FROM tasks WHERE state IN ('succeeded','failed','canceled') AND id IN ({marks})"
+                    ),
+                    rusqlite::params_from_iter(chunk),
+                )? as u32;
+            }
+            tx.commit()?;
+            Ok(deleted)
         })
     }
     pub fn history(&self, query: &HistoryQuery) -> Result<Page<Task>, AppError> {

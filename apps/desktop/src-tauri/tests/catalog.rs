@@ -336,6 +336,13 @@ async fn sync_http_snapshot_delta_expiry_cdn_and_headers() {
                 std::fs::read(fixtures().join("v2").join(path.trim_start_matches('/'))).unwrap(),
             );
         }
+        if path == "/api/catalog/links" {
+            // A separate source with its own protocol: an empty, valid catalog keeps it out of what this test measures.
+            return (
+                200,
+                br#"{"code":"0000","data":{"etag":"\"links\"","items":[]}}"#.to_vec(),
+            );
+        }
         if path.starts_with("/api/catalog/changes") {
             if control.load(Ordering::Relaxed) == 6 {
                 return (503, b"{}".to_vec());

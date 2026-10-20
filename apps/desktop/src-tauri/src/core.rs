@@ -164,11 +164,17 @@ impl DesktopCore {
                 let Some(core) = weak.upgrade() else {
                     break;
                 };
-                if let Err(error) = core.sync_catalog(false).await {
+                let result = core.sync_catalog(false).await;
+                if let Err(error) = &result {
                     log::info!("Catalog sync temporarily unavailable: {}", error.code);
                 }
                 drop(core);
-                tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(if result.is_err() {
+                    60
+                } else {
+                    3600
+                }))
+                .await;
             }
         });
     }
@@ -525,6 +531,10 @@ impl DesktopCore {
             "updates_failed_sources",
             &serde_json::to_string(&outcome.failed_sources())?,
         )?;
+        self.database.set_meta(
+            "updates_failures",
+            &serde_json::to_string(&outcome.details)?,
+        )?;
         *self.checked_at.write().map_err(poisoned)? = Some(now);
         drop(reset); // The final event must let the frontend observe completed status.
         self.queue.updater.changed()?;
@@ -622,6 +632,11 @@ impl DesktopCore {
             next_check_at: next,
             checking: self.updates_checking.load(Ordering::Acquire)
                 || self.source_checks_active.load(Ordering::Acquire),
+            failures: self
+                .database
+                .meta("updates_failures")?
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
             failed_sources: self
                 .database
                 .meta("updates_failed_sources")?

@@ -1,5 +1,5 @@
 use super::{
-    collect::{RawProcess, number},
+    collect::{Group, RawProcess, number},
     types::*,
 };
 use crate::AppError;
@@ -28,6 +28,58 @@ fn cpu_time_ns(ticks: u64) -> u64 {
     });
     cpu_ticks_to_ns(ticks, numer, denom)
 }
+/// The app bundle a process belongs to (the outermost `.app`, so helpers join their app) or else its executable name.
+pub fn group_for(path: Option<&str>, name: &str) -> Group {
+    if let Some(path) = path
+        && let Some(end) = path.find(".app/").map(|index| index + 4)
+    {
+        let bundle = &path[..end];
+        let label = std::path::Path::new(bundle)
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .filter(|stem| !stem.is_empty())
+            .unwrap_or(name);
+        return Group {
+            key: format!("app:{bundle}").into(),
+            label: label.into(),
+        };
+    }
+    Group {
+        key: format!("exe:{name}").into(),
+        label: name.into(),
+    }
+}
+#[cfg(target_os = "macos")]
+fn executable_path(pid: i32) -> Option<String> {
+    // PROC_PIDPATHINFO_MAXSIZE is 4 * MAXPATHLEN.
+    let mut buffer = [0u8; 4096];
+    let length =
+        unsafe { nix::libc::proc_pidpath(pid, buffer.as_mut_ptr().cast(), buffer.len() as u32) };
+    (length > 0).then(|| String::from_utf8_lossy(&buffer[..length as usize]).into_owned())
+}
+/// A process's group never changes while it lives, so the path is read once per (pid, start).
+#[cfg(target_os = "macos")]
+fn cached_group(
+    cache: &mut std::collections::BTreeMap<u32, (u64, Group)>,
+    pid: i32,
+    started: u64,
+    own_user: bool,
+    name: &str,
+) -> Group {
+    if let Some((at, group)) = cache.get(&(pid as u32))
+        && *at == started
+    {
+        return group.clone();
+    }
+    // Other users' executables are not looked at: they are grouped by name like the rest of their entry.
+    let path = if own_user { executable_path(pid) } else { None };
+    let group = group_for(path.as_deref(), name);
+    cache.insert(pid as u32, (started, group.clone()));
+    group
+}
+#[cfg(target_os = "macos")]
+static GROUPS: std::sync::Mutex<std::collections::BTreeMap<u32, (u64, Group)>> =
+    std::sync::Mutex::new(std::collections::BTreeMap::new());
 #[derive(Clone, Debug)]
 pub struct AppIdentity {
     pub pid: u32,
@@ -108,8 +160,12 @@ pub fn list() -> Option<Vec<RawProcess>> {
     let own = unsafe { libc::geteuid() };
     let own_pid = std::process::id();
     let mut output = Vec::new();
-    for pid in pids {
-        if pid <= 0 || pid as u32 == own_pid {
+    let mut groups = GROUPS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    for &pid in &pids {
+        // OpenNavo's own process stays in: its CPU is part of the machine's, and the list says whose it is.
+        if pid <= 0 {
             continue;
         }
         let Some(bsd) = bsd(pid) else {
@@ -138,6 +194,7 @@ pub fn list() -> Option<Vec<RawProcess>> {
             });
         let mut memory = 0;
         let mut cpu_ns = 0;
+        let mut child_cpu_ns = None;
         let mut disk_bytes = None;
         // Other users' processes are names only. Never inspect argv, environment or executable arguments.
         if own_user {
@@ -153,6 +210,11 @@ pub fn list() -> Option<Vec<RawProcess>> {
                 memory = usage.ri_phys_footprint;
                 disk_bytes = Some((usage.ri_diskio_bytesread, usage.ri_diskio_byteswritten));
                 cpu_ns = cpu_time_ns(usage.ri_user_time.saturating_add(usage.ri_system_time));
+                child_cpu_ns = Some(cpu_time_ns(
+                    usage
+                        .ri_child_user_time
+                        .saturating_add(usage.ri_child_system_time),
+                ));
             } else {
                 let mut task = unsafe { std::mem::zeroed::<libc::proc_taskinfo>() };
                 let size = std::mem::size_of_val(&task);
@@ -176,9 +238,14 @@ pub fn list() -> Option<Vec<RawProcess>> {
             || ident
                 .as_ref()
                 .is_some_and(|a| a.path.starts_with("/System/Library/"));
+        let started = started(&bsd);
+        let group = cached_group(&mut groups, pid, started, own_user, &name);
         output.push(RawProcess {
-            started: started(&bsd),
+            started,
             cpu_ns,
+            child_cpu_ns,
+            ppid: bsd.pbi_ppid,
+            group,
             disk_bytes,
             net_bytes: None,
             net_at: None,
@@ -207,9 +274,18 @@ pub fn list() -> Option<Vec<RawProcess>> {
                     ProcessKind::Background
                 },
                 quittable,
+                count: 1,
+                is_self: pid as u32 == own_pid,
             },
         });
     }
+    // Forget processes that are gone, so a reused pid never inherits another process's group.
+    let live: std::collections::BTreeSet<u32> = pids
+        .iter()
+        .filter(|&&pid| pid > 0)
+        .map(|&pid| pid as u32)
+        .collect();
+    groups.retain(|pid, _| live.contains(pid));
     Some(output)
 }
 #[cfg(target_os = "macos")]
@@ -250,4 +326,27 @@ pub fn quit(target: &RawProcess) -> Result<(), AppError> {
 #[cfg(not(target_os = "macos"))]
 pub fn quit(_: &RawProcess) -> Result<(), AppError> {
     Err(AppError::new("E_MONITOR_UNAVAILABLE", "monitor_quit_app"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::group_for;
+    #[test]
+    fn helpers_join_the_outermost_app_and_other_executables_group_by_name() {
+        let helper = "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/1/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)";
+        let main = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+        let group = group_for(Some(helper), "Google Chrome Helper (Renderer)");
+        assert_eq!(&*group.key, "app:/Applications/Google Chrome.app");
+        assert_eq!(&*group.label, "Google Chrome");
+        assert_eq!(group_for(Some(main), "Google Chrome"), group);
+        let tool = group_for(
+            Some("/opt/homebrew/Cellar/go/1.26/libexec/pkg/tool/darwin_arm64/compile"),
+            "compile",
+        );
+        assert_eq!((&*tool.key, &*tool.label), ("exe:compile", "compile"));
+        // No readable path (another user's process, or the read failed): the name alone.
+        assert_eq!(&*group_for(None, "kernel_task").key, "exe:kernel_task");
+        // A path that merely mentions ".app" without a bundle directory is not a bundle.
+        assert_eq!(&*group_for(Some("/tmp/x.app"), "x.app").key, "exe:x.app");
+    }
 }

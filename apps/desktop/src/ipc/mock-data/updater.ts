@@ -471,5 +471,5 @@ export function createUpdaterMock({
     });
   }
 
-  return { handlers, merge, hooks: { steps, completed } };
+  return { handlers, merge, hooks: { steps, completed }, rollbackable };
 }

@@ -19,8 +19,9 @@ import { useMasStore } from '@/stores/mas';
 import { useNamesStore } from '@/stores/names';
 
 // Command-K palette (mockup 07, M3-11): local search (06 §7.1), first-result actions, and navigation.
-// Enter opens; Command-Enter installs/updates; Command-C copies brew command. Up to three App Store results follow the
-// catalog (store/security plan §5); they arrive after the search debounce and never move the catalog rows.
+// Typing lists the actions first, with "view all results" on top, so Enter goes to the full results; the apps follow
+// (Command-Enter installs/updates the one chosen, Command-C copies its brew command). Up to three App Store results
+// come after the catalog (store/security plan §5); they arrive after the search debounce and never move the rows above.
 const open = defineModel<boolean>('open', { required: true });
 
 const { t } = useI18n();
@@ -148,7 +149,10 @@ const groups = computed<OnCommandGroup[]>(() => {
     ];
   }
   const apps = hits.value.map(packageItem);
-  const actions: OnCommandItem[] = [];
+  // The first row of the first group is what Enter does: all the results for what was typed. It does not wait for hits.
+  const searchKey = `search:${q}`;
+  payloads.set(searchKey, { type: 'search', q });
+  const actions: OnCommandItem[] = [{ key: searchKey, label: t('palette.viewAll', { q }), icon: 'search' }];
   const first = hits.value[0]?.item;
   if (first) {
     const name = pick(first.displayName, first.name, first.sourceLocale);
@@ -172,9 +176,6 @@ const groups = computed<OnCommandGroup[]>(() => {
       actions.push({ key, label: t('palette.reveal', { name: app }), icon: 'folder' });
     }
   }
-  const searchKey = `search:${q}`;
-  payloads.set(searchKey, { type: 'search', q });
-  actions.push({ key: searchKey, label: t('palette.viewAll', { q }), icon: 'search' });
   const store = (masSearch.results.value ?? []).slice(0, 3).map(app => {
     const key = `mas:${app.adamId}`;
     payloads.set(key, { type: 'mas', adamId: app.adamId });
@@ -192,9 +193,9 @@ const groups = computed<OnCommandGroup[]>(() => {
     };
   });
   return [
+    { key: 'actions', label: t('palette.actions'), items: actions },
     { key: 'apps', label: t('palette.apps'), items: apps },
-    ...(store.length ? [{ key: 'appstore', label: t('appStore.title'), items: store }] : []),
-    { key: 'actions', label: t('palette.actions'), items: actions }
+    ...(store.length ? [{ key: 'appstore', label: t('appStore.title'), items: store }] : [])
   ];
 });
 

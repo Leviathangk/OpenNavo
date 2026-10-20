@@ -8,6 +8,7 @@ import type {
   AppInfo,
   CatalogStatus,
   EnvInfo,
+  HistoryCleared,
   HistoryQuery,
   Kind,
   LinkOpenTarget,
@@ -479,6 +480,7 @@ export function installMockIpc(
   let catalogStatus: CatalogStatus = {
     cursor: catalogCursor,
     itemCount: catalogItems.length,
+    linksError: null,
     syncedAt: Date.now() - 5 * 60 * 1000,
     syncing: false
   };
@@ -571,7 +573,15 @@ export function installMockIpc(
       checkedAt,
       nextCheckAt: nextCheckAt(settings),
       checking: false,
-      failedSources: flags.has('updates-partial') ? ['github', 'vendor'] : []
+      failedSources: flags.has('updates-partial') ? ['github', 'vendor'] : [],
+      failures: flags.has('updates-app-failures')
+        ? [
+            { source: 'sparkle', appId: 'keka', appName: 'Keka', reason: 'rateLimited' },
+            { source: 'electron', appId: 'open-design', appName: 'Open Design', reason: 'invalidUrl' }
+          ]
+        : flags.has('updates-rules-failed')
+          ? [{ source: null, appId: null, appName: null, reason: 'rulesUnavailable' }]
+          : []
     }),
     // null checks every enabled source; [] only rereads the list (plan §11.4).
     updates_check: args => {
@@ -672,10 +682,15 @@ export function installMockIpc(
         items: items.slice(query.offset, query.offset + query.limit)
       };
     },
-    history_clear: () => {
-      const count = state.history.length;
-      state.history = [];
-      return count;
+    // Like Rust: what can still be undone or rolled back stays.
+    history_clear: (): HistoryCleared => {
+      const keep = (task: Task) =>
+        ((task.op === 'uninstall' || task.op === 'clean') && task.outcome?.restorable === true) ||
+        updates.rollbackable(task);
+      const kept = state.history.filter(keep);
+      const cleared = state.history.length - kept.length;
+      state.history = kept;
+      return { cleared, kept: kept.length };
     },
     history_export_csv: () => state.history.length,
     settings_get: () => settings,

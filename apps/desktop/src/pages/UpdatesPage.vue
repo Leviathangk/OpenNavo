@@ -4,7 +4,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { unwrap } from '@opennavo/api';
 import { formatBytes, formatRelativeTime } from '@opennavo/shared';
-import { OnButton, OnEmpty, OnIcon, OnPageHeader, OnSegmented } from '@opennavo/ui';
+import { OnButton, OnConfirm, OnEmpty, OnIcon, OnPageHeader, OnSegmented } from '@opennavo/ui';
 import HistoryList from '@/components/updates/HistoryList.vue';
 import OutdatedList from '@/components/updates/OutdatedList.vue';
 import RunningTask from '@/components/updates/RunningTask.vue';
@@ -52,6 +52,7 @@ const subtitle = computed(() => {
 
 // A check that read most sources but not all says which ones, instead of failing as a whole.
 const failedText = computed(() => {
+  if (updates.failures.length) return t('updates.checkFailures.summary');
   const sources = updates.failedSources;
   if (!sources.length) return '';
   const label = (source: string) =>
@@ -199,7 +200,7 @@ const {
     const request = { ...query(), limit: Math.min(MAX_HISTORY, Math.max(PAGE, keep)) };
     return { filter: filter.value, ...(await readHistoryPage(request)) };
   },
-  [filter, () => tasks.finished],
+  [filter, () => tasks.finished, () => tasks.historyEpoch],
   page => {
     shownRows = { filter: page.filter, count: page.items.length };
     nextOffset.value = page.nextOffset;
@@ -215,6 +216,28 @@ const historyItems = computed<Task[]>(() => (shownHistory.value?.items ?? []).fi
 const hasMore = computed(
   () => historyItems.value.length < MAX_HISTORY && nextOffset.value < (shownHistory.value?.total ?? 0)
 );
+
+// Clearing covers every finished record, not only the rows of the selected filter, and spares those that can still be
+// undone or rolled back.
+const clearOpen = ref(false);
+const clearing = ref(false);
+const nothingToClear = computed(() => filter.value === 'all' && !!shownHistory.value && shownHistory.value.total === 0);
+async function clearHistory() {
+  if (clearing.value) return;
+  clearing.value = true;
+  try {
+    const { kept } = await tasks.clearHistory();
+    toasts.push({
+      tone: 'success',
+      title: kept ? t('history.clearedKept', { count: kept }, { plural: kept }) : t('history.cleared')
+    });
+  } catch (error) {
+    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+  } finally {
+    clearing.value = false;
+    clearOpen.value = false;
+  }
+}
 
 async function loadMoreHistory() {
   if (!hasMore.value || historyLoading.value || loadingMore.value) return;
@@ -299,6 +322,18 @@ useLoader(() => updates.load());
       <OnIcon name="info" :size="14" class="shrink-0" />{{ failedText }}
     </p>
 
+    <details v-if="updates.failures.length" class="text-12.5px text-ink-tertiary">
+      <summary class="cursor-pointer">{{ t('updates.checkFailures.details') }}</summary>
+      <ul>
+        <li v-for="(failure, index) in updates.failures" :key="index">
+          <template v-if="failure.appName || failure.source">
+            {{ failure.appName || t(`updates.sources.${failure.source}`) }}：
+          </template>
+          {{ t(`updates.checkFailures.${failure.reason}`) }}
+        </li>
+      </ul>
+    </details>
+
     <OnSegmented
       v-if="filterOptions.length > 2"
       v-model="sourceFilter"
@@ -320,16 +355,21 @@ useLoader(() => updates.load());
         <h2 class="m-0 flex items-baseline gap-10px text-headline text-ink-primary">
           {{ t('updates.history.title') }}
         </h2>
-        <OnSegmented
-          v-model="filter"
-          size="sm"
-          :aria-label="t('updates.history.filterLabel')"
-          :options="[
-            { value: 'all', label: t('updates.history.all') },
-            { value: 'succeeded', label: t('updates.history.succeeded') },
-            { value: 'failed', label: t('updates.history.failed') }
-          ]"
-        />
+        <div class="flex items-center gap-10px">
+          <OnButton variant="ghost" size="sm" icon="trash" :disabled="nothingToClear" @click="clearOpen = true">{{
+            t('history.clear')
+          }}</OnButton>
+          <OnSegmented
+            v-model="filter"
+            size="sm"
+            :aria-label="t('updates.history.filterLabel')"
+            :options="[
+              { value: 'all', label: t('updates.history.all') },
+              { value: 'succeeded', label: t('updates.history.succeeded') },
+              { value: 'failed', label: t('updates.history.failed') }
+            ]"
+          />
+        </div>
       </div>
       <p v-if="historyLoading && !shownHistory" role="status">{{ t('common.loading') }}</p>
       <HistoryList v-if="historyItems.length" :tasks="historyItems" />
@@ -339,6 +379,18 @@ useLoader(() => updates.load());
           {{ t('common.loadMore') }}
         </OnButton>
       </div>
+      <OnConfirm
+        :open="clearOpen"
+        :title="t('history.clear')"
+        :description="t('history.clearDescription')"
+        :confirm-label="t('history.clear')"
+        tone="danger"
+        :loading="clearing"
+        @confirm="clearHistory"
+        @cancel="clearOpen = false"
+      >
+        <p class="m-0 text-13px leading-relaxed text-ink-secondary">{{ t('history.clearNote') }}</p>
+      </OnConfirm>
     </section>
   </div>
 </template>

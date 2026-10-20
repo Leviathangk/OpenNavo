@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { unwrap } from '@opennavo/api';
-import type { PublicComponents } from '@opennavo/api';
 import { OnCommandPalette, useUiMessages } from '@opennavo/ui';
 import type { OnCommandGroup, OnCommandItem } from '@opennavo/ui';
+import { paletteGroups } from '~/utils/commandPalette';
+import type { SuggestItem } from '~/utils/commandPalette';
 
-type SuggestItem = PublicComponents['schemas']['SuggestItem'];
-
-// Web Command-K (05 §7): Apps and tools / Navigation groups only; suggestions from suggest API.
+// Web Command-K (05 §7): Go to (all results first) and Apps groups only; suggestions from suggest API.
 const { t } = useI18n();
 const api = useApi();
 const localePath = useLocalePath();
@@ -47,51 +46,7 @@ watch(open, value => {
   if (!value) query.value = '';
 });
 
-const PAGES = [
-  { key: 'discover', path: '/discover', icon: 'compass' },
-  { key: 'categories', path: '/categories', icon: 'layout-grid' },
-  { key: 'rankings', path: '/rankings', icon: 'chart-no-axes-column' },
-  { key: 'recent', path: '/recent', icon: 'clock' },
-  { key: 'collections', path: '/collections', icon: 'boxes' },
-  { key: 'download', path: '/download', icon: 'download' },
-  { key: 'brewfile', path: '/brewfile', icon: 'file-text' }
-] as const;
-
-const groups = computed<OnCommandGroup[]>(() => {
-  const q = query.value.trim();
-  const lower = q.toLowerCase();
-  const packages: OnCommandItem[] = suggestions.value.flatMap(item =>
-    // Casks and link apps share /apps (store/security plan §4); command-line tools have no web page.
-    item.type === 'package' && (item.kind === 'cask' || item.kind === 'link') && item.token
-      ? [
-          {
-            key: `package:${item.kind}:${item.token}`,
-            label: item.name,
-            description: item.summary ?? undefined,
-            app: { kind: item.kind, token: item.token, name: item.name, src: item.iconUrl }
-          }
-        ]
-      : []
-  );
-  const jumps: OnCommandItem[] = [
-    ...(q ? [{ key: `search:${q}`, label: t('palette.searchAll', { q }), icon: 'search' }] : []),
-    ...suggestions.value
-      .filter(item => item.type === 'category' && item.slug)
-      .map(item => ({
-        key: `category:${item.slug}`,
-        label: t('palette.category', { name: item.name }),
-        icon: 'layout-grid'
-      })),
-    // Match page names or English keys; rank can find Rankings even in the Chinese UI.
-    ...PAGES.filter(
-      page => !lower || page.key.includes(lower) || t(`palette.pages.${page.key}`).toLowerCase().includes(lower)
-    ).map(page => ({ key: `page:${page.path}`, label: t(`palette.pages.${page.key}`), icon: page.icon }))
-  ];
-  return [
-    { key: 'packages', label: t('palette.packages'), items: packages },
-    { key: 'jump', label: t('palette.jump'), items: jumps }
-  ];
-});
+const groups = computed<OnCommandGroup[]>(() => paletteGroups(query.value, suggestions.value, t));
 
 function targetOf(item: OnCommandItem): string | null {
   const [type, ...rest] = item.key.split(':');

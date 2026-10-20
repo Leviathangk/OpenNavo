@@ -37,11 +37,18 @@ pub fn connect(socket: &Path) -> Result<UnixStream, AppError> {
     Ok(stream)
 }
 pub fn reply(stream: &mut UnixStream, cancel: &AtomicBool) -> Result<String, AppError> {
+    reply_with_budget(stream, cancel, Duration::from_secs(300))
+}
+fn reply_with_budget(
+    stream: &mut UnixStream,
+    cancel: &AtomicBool,
+    budget: Duration,
+) -> Result<String, AppError> {
     let mut bytes = Vec::new();
     let start = Instant::now();
     loop {
         files::canceled(cancel)?;
-        if start.elapsed() > Duration::from_secs(300) {
+        if start.elapsed() > budget {
             return Err(
                 AppError::new("E_AV_ENGINE", "av_scan_too_large").with_detail("scan_time_budget")
             );
@@ -113,7 +120,12 @@ fn verdict(response: &str) -> Result<Option<String>, AppError> {
     Err(error(response))
 }
 
-fn fildes(socket: &Path, file: &File, cancel: &AtomicBool) -> Result<Option<String>, AppError> {
+fn fildes(
+    socket: &Path,
+    file: &File,
+    cancel: &AtomicBool,
+    budget: Duration,
+) -> Result<Option<String>, AppError> {
     let mut stream = connect(socket)?;
     // One request per connection needs no IDSESSION. A single FILDES enters
     // clamd's WAITREPLY state, instead of leaving a session awaiting commands
@@ -143,7 +155,7 @@ fn fildes(socket: &Path, file: &File, cancel: &AtomicBool) -> Result<Option<Stri
             return Err(transport(std::io::Error::last_os_error()));
         }
     }
-    let response = reply(&mut stream, cancel)?;
+    let response = reply_with_budget(&mut stream, cancel, budget)?;
     verdict(&response)
 }
 pub fn scan(
@@ -151,12 +163,26 @@ pub fn scan(
     file: &mut File,
     cancel: &AtomicBool,
 ) -> Result<Option<String>, AppError> {
+    scan_with_budget(socket, file, cancel, Duration::from_secs(300))
+}
+pub(super) fn scan_with_budget(
+    socket: &Path,
+    file: &mut File,
+    cancel: &AtomicBool,
+    budget: Duration,
+) -> Result<Option<String>, AppError> {
+    let deadline = Instant::now() + budget;
     files::canceled(cancel)?;
     if files::dataless(&file.metadata()?) {
         return Err(error("dataless descriptor"));
     }
     file.seek(SeekFrom::Start(0))?;
-    let mut result = fildes(socket, file, cancel);
+    let mut result = fildes(
+        socket,
+        file,
+        cancel,
+        deadline.saturating_duration_since(Instant::now()),
+    );
     if result
         .as_ref()
         .is_err_and(|e| e.message == "clamd_disconnected")
@@ -168,7 +194,12 @@ pub fn scan(
         // SCM_RIGHTS shares the open-file offset. Rewind the same verified fd;
         // never reopen its pathname, and never treat a missing reply as clean.
         file.seek(SeekFrom::Start(0))?;
-        result = fildes(socket, file, cancel);
+        result = fildes(
+            socket,
+            file,
+            cancel,
+            deadline.saturating_duration_since(Instant::now()),
+        );
     }
     match result {
         Ok(v) => Ok(v),
@@ -185,6 +216,10 @@ pub fn scan(
             let mut bytes = 0_u64;
             loop {
                 files::canceled(cancel)?;
+                if Instant::now() >= deadline {
+                    return Err(AppError::new("E_AV_ENGINE", "av_scan_too_large")
+                        .with_detail("scan_time_budget"));
+                }
                 let count = file.read(&mut buffer)?;
                 bytes += count as u64;
                 if bytes > files::MAX_INSTALLER_FILE {
@@ -198,7 +233,11 @@ pub fn scan(
                 }
                 stream.write_all(&buffer[..count]).map_err(error)?;
             }
-            verdict(&reply(&mut stream, cancel)?)
+            verdict(&reply_with_budget(
+                &mut stream,
+                cancel,
+                deadline.saturating_duration_since(Instant::now()),
+            )?)
         }
         Err(e) => Err(e),
     }

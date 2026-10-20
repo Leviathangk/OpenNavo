@@ -68,6 +68,29 @@ struct CachedFeed {
     etag: Option<String>,
     body: String,
 }
+#[derive(Serialize, Deserialize)]
+struct FeedRetry {
+    url: String,
+    until: i64,
+}
+fn retry_after(value: Option<&str>, now: i64) -> i64 {
+    value
+        .and_then(|value| {
+            value
+                .parse::<i64>()
+                .ok()
+                .filter(|seconds| *seconds >= 0)
+                .map(|seconds| now.saturating_add(seconds))
+                .or_else(|| {
+                    chrono::DateTime::parse_from_rfc2822(value)
+                        .ok()
+                        .map(|date| date.timestamp())
+                })
+        })
+        .filter(|until| *until > now)
+        .unwrap_or_else(|| now.saturating_add(60))
+}
+
 pub struct Service {
     pub database: Database,
     pub apps: Arc<crate::uninstall::Engine>,
@@ -477,6 +500,24 @@ impl Service {
         cache_key: &str,
         max: usize,
     ) -> Result<Vec<u8>, AppError> {
+        let parsed = reqwest::Url::parse(url)
+            .map_err(|_| AppError::new("E_UPDATE_FEED", "invalid_update_url"))?;
+        if parsed.host_str().is_some_and(|host| {
+            let host = host.trim_end_matches('.');
+            host == "invalid" || host.ends_with(".invalid")
+        }) {
+            return Err(AppError::new("E_UPDATE_FEED", "invalid_update_url"));
+        }
+        let retry_key = format!("{cache_key}:retry_after");
+        let now = chrono::Utc::now().timestamp();
+        if self
+            .database
+            .meta(&retry_key)?
+            .and_then(|value| serde_json::from_str::<FeedRetry>(&value).ok())
+            .is_some_and(|retry| retry.url == url && retry.until > now)
+        {
+            return Err(AppError::new("E_UPDATE_FEED", "feed_rate_limited"));
+        }
         let cached = self
             .database
             .meta(cache_key)?
@@ -487,12 +528,29 @@ impl Service {
             request = request.header(reqwest::header::IF_NONE_MATCH, tag);
         }
         let mut response = request.send().await.map_err(|e| {
-            AppError::new("E_UPDATE_FEED", "feed_request").with_detail(e.to_string())
+            AppError::new("E_UPDATE_FEED", "feed_request").with_detail(e.without_url().to_string())
         })?;
         if response.status() == reqwest::StatusCode::NOT_MODIFIED {
             return cached
                 .map(|c| c.body.into_bytes())
                 .ok_or_else(|| AppError::new("E_UPDATE_FEED", "feed_304_without_cache"));
+        }
+        if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            let until = retry_after(
+                response
+                    .headers()
+                    .get(reqwest::header::RETRY_AFTER)
+                    .and_then(|value| value.to_str().ok()),
+                chrono::Utc::now().timestamp(),
+            );
+            self.database.set_meta(
+                &retry_key,
+                &serde_json::to_string(&FeedRetry {
+                    url: url.into(),
+                    until,
+                })?,
+            )?;
+            return Err(AppError::new("E_UPDATE_FEED", "feed_rate_limited"));
         }
         if !response.status().is_success()
             || response.content_length().is_some_and(|n| n > max as u64)

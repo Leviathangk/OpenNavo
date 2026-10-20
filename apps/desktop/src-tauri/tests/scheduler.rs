@@ -500,6 +500,8 @@ async fn completed_checks_replace_failed_sources_and_empty_selection_preserves_s
     assert!(failed.is_err());
     let status = core.updates_status_at(1000).unwrap();
     assert_eq!(status.failed_sources, [UpdateSource::Homebrew]);
+    assert_eq!(status.failures.len(), 1);
+    assert_eq!(status.failures[0].source, Some(UpdateSource::Homebrew));
     assert_eq!(status.checked_at, Some(100));
     assert!(!status.checking);
     core.check_update_sources(Some(vec![]), TaskTrigger::Manual, Some(200))
@@ -521,6 +523,7 @@ async fn completed_checks_replace_failed_sources_and_empty_selection_preserves_s
     );
     let status = core.updates_status().unwrap();
     assert!(status.failed_sources.is_empty());
+    assert!(status.failures.is_empty());
     assert!(!status.checking);
     assert_eq!(status.checked_at, Some(300));
     assert_eq!(

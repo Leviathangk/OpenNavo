@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import type { VueWrapper } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { watch } from 'vue';
+import { defineComponent, watch } from 'vue';
 import type { Component } from 'vue';
 import { OnMenu } from '@opennavo/ui';
 import { useToasts } from '@/composables/useToasts';
@@ -11,6 +11,7 @@ import { commands, unwrap } from '@/ipc/client';
 import PasteGuard from '@/components/security/PasteGuard.vue';
 import SecurityNotifier from '@/components/security/SecurityNotifier.vue';
 import SecurityProtectionPanel from '@/components/security/SecurityProtectionPanel.vue';
+import { usePasteAccess } from '@/components/security/usePasteAccess';
 import SecuritySettings from '@/components/settings/SecuritySettings.vue';
 import HistoryList from '@/components/updates/HistoryList.vue';
 import SecurityPage from '@/pages/SecurityPage.vue';
@@ -78,6 +79,39 @@ describe('Security overview', () => {
     // Without the database the main action sets it up instead of scanning.
     expect(button(wrapper, '下载病毒库')).toBeTruthy();
     expect(useSecurityStore().attention).toBe(1);
+  });
+});
+
+describe('Security overview refresh', () => {
+  it('Rereads the check-up when the window comes back from System Settings', async () => {
+    const { wrapper } = await mountPage('/security');
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    expect(wrapper.text()).toContain('Gatekeeper 已关闭');
+    // The user switched Gatekeeper on in System Settings; Rust probes the Mac afresh on every call.
+    const real = commands.securityOverview;
+    const overview = vi.spyOn(commands, 'securityOverview').mockImplementation(async () => {
+      const result = await real();
+      if (result.status !== 'ok') return result;
+      const posture = result.data.posture.map(check =>
+        check.id === 'gatekeeper' ? { ...check, state: 'ok' as const } : check
+      );
+      return { ...result, data: { ...result.data, posture } };
+    });
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(overview).toHaveBeenCalled();
+    expect(wrapper.text()).not.toContain('Gatekeeper 已关闭');
+    expect(wrapper.text()).toContain('只允许运行经过验证的 App');
+  });
+
+  it('Does not reread while another tab is open', async () => {
+    const { wrapper } = await mountPage('/security/startup');
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const overview = vi.spyOn(commands, 'securityOverview');
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(overview).not.toHaveBeenCalled();
+    expect(wrapper.exists()).toBe(true);
   });
 });
 
@@ -226,7 +260,7 @@ describe('Downloads watch', () => {
     await flushPromises();
     await flushPromises();
     expect(context.router.currentRoute.value.path).toBe('/security/scan');
-    expect(scan).toHaveBeenCalledWith('custom', [path]);
+    expect(scan).toHaveBeenCalledWith('custom', [path], false);
   });
 });
 
@@ -241,7 +275,7 @@ describe('Background scans', () => {
     expect(wrapper.text()).toContain('扫描完成');
     const shown = useSecurityStore().scan!.scanId;
     // What the schedule does in Rust: start a quick scan without the page asking for it.
-    const { scanId } = await unwrap(commands.avScanStart('quick', null));
+    const { scanId } = await unwrap(commands.avScanStart('quick', null, false));
     expect(scanId).not.toBe(shown);
     await vi.waitFor(() => expect(useSecurityStore().scan?.scanId).toBe(scanId));
     await flushPromises();
@@ -254,13 +288,38 @@ describe('Background scans', () => {
   });
 });
 
+describe('Scan performance options', () => {
+  it('Shows reused clean results and clears that count for forced rescans', async () => {
+    const { wrapper } = await mountPage('/security/scan', 'av-ready,av-cache-hit');
+    await button(wrapper, '快速扫描')!.trigger('click');
+    await vi.waitFor(() => expect(useSecurityStore().scan?.state).toBe('done'));
+    await flushPromises();
+    expect(wrapper.text()).toContain('复用了干净结果');
+    await wrapper.get('input[aria-describedby="scan-force-hint"]').setValue(true);
+    await button(wrapper, '快速扫描')!.trigger('click');
+    await vi.waitFor(() => expect(useSecurityStore().scan?.state).toBe('done'));
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('复用了干净结果');
+  });
+
+  it('Passes the forced rescan choice to the scanner', async () => {
+    const { wrapper } = await mountPage('/security/scan', 'av-ready');
+    const start = vi.spyOn(commands, 'avScanStart');
+    await wrapper.get('input[aria-describedby="scan-force-hint"]').setValue(true);
+    await button(wrapper, '开始全盘扫描')!.trigger('click');
+    await flushPromises();
+    expect(start).toHaveBeenCalledWith('full', null, true);
+    expect(wrapper.get('input[aria-describedby="scan-force-hint"]').attributes('disabled')).toBeDefined();
+  });
+});
+
 describe('Scan failures', () => {
   it('Stops an old mock scan before installing a new session', async () => {
     vi.useFakeTimers();
     try {
       history.replaceState(null, '', '/?mock=av-ready');
       await setup('/security/scan', { tickMs: TICK });
-      await unwrap(commands.avScanStart('quick', null));
+      await unwrap(commands.avScanStart('quick', null, false));
       await setup('/security/scan', { tickMs: TICK });
       const finished = vi.fn();
       const unlisten = await events.avFinished.listen(finished);
@@ -519,6 +578,86 @@ describe('Protection', () => {
     await flushPromises();
     expect(request).toHaveBeenCalledOnce();
     expect(button(wrapper, '开启权限')).toBeUndefined();
+  });
+
+  it('Follows Accessibility in System Settings when the window comes back, without leaving the page', async () => {
+    const { wrapper } = await mountPage('/security/protection');
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const answer = (accessibilityGranted: boolean) => ({
+      status: 'ok' as const,
+      data: { enabled: true, accessibilityGranted, listening: accessibilityGranted }
+    });
+    // macOS shows its own prompt and answers "not yet"; the user then allows it in System Settings.
+    vi.spyOn(commands, 'pasteProtectionRequestAccess').mockResolvedValue(answer(false));
+    await wrapper.get('[role="switch"][aria-label="粘贴命令保护"]').trigger('click');
+    await flushPromises();
+    await button(wrapper, '开启权限')!.trigger('click');
+    await flushPromises();
+    expect(button(wrapper, '开启权限')).toBeTruthy();
+
+    const status = vi.spyOn(commands, 'pasteProtectionStatus').mockResolvedValue(answer(true));
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(button(wrapper, '开启权限')).toBeUndefined();
+    expect(wrapper.text()).not.toContain('允许后，OpenNavo 才能在终端粘贴前检查命令');
+
+    // Taking it away again is noticed the same way.
+    status.mockResolvedValue(answer(false));
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(button(wrapper, '开启权限')).toBeTruthy();
+  });
+
+  it('Settings follows Accessibility the same way', async () => {
+    const context = await setup('/settings/security', { tickMs: TICK });
+    await startLocalState();
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    const wrapper = mountIn(context, SecuritySettings);
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('需要辅助功能权限');
+    await wrapper.get('[role="switch"][aria-labelledby="setting-pasteProtection"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('需要辅助功能权限');
+
+    vi.spyOn(commands, 'pasteProtectionStatus').mockResolvedValue({
+      status: 'ok',
+      data: { enabled: true, accessibilityGranted: true, listening: true }
+    });
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('需要辅助功能权限');
+    expect(button(wrapper, '开启权限')).toBeUndefined();
+  });
+
+  it('Keeps asking while access is missing, only while the window is visible, and stops once it is allowed', async () => {
+    const context = await setup('/security/protection', { tickMs: TICK });
+    await startLocalState();
+    const security = useSecurityStore();
+    await security.setSecuritySetting('pasteProtection', true);
+    const status = vi.spyOn(commands, 'pasteProtectionStatus');
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    mountIn(
+      context,
+      defineComponent({
+        setup() {
+          usePasteAccess(10);
+          return () => null;
+        }
+      })
+    );
+    await flushPromises();
+    expect(security.pasteStatus?.accessibilityGranted).toBe(false);
+    const opened = status.mock.calls.length;
+    await wait(60);
+    expect(status.mock.calls.length).toBe(opened);
+
+    // Allowed in System Settings while the window was out of sight, then it is visible again.
+    status.mockResolvedValue({ status: 'ok', data: { enabled: true, accessibilityGranted: true, listening: true } });
+    visibility.mockReturnValue('visible');
+    await vi.waitFor(() => expect(security.pasteStatus?.accessibilityGranted).toBe(true));
+    const calls = status.mock.calls.length;
+    await wait(60);
+    expect(status.mock.calls.length).toBe(calls);
   });
 });
 

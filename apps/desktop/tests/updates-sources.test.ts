@@ -343,9 +343,31 @@ describe('Updates from every source', () => {
   it('A check that could not read some sources names them and still lists the rest', async () => {
     const wrapper = await mountUpdates('update-sources,updates-partial');
     const note = wrapper.get('p[role="status"]').text();
-    expect(note).toContain('这次没有查到');
+    expect(note).toContain('部分检查');
     expect(note).toContain('GitHub Releases');
     expect(note).toContain('开发者网站');
+    expect(rowOf(wrapper, 'Keynote')).toBeTruthy();
+  });
+
+  it('Names failed apps and distinguishes rate limits from invalid configuration', async () => {
+    const wrapper = await mountUpdates('update-sources,updates-app-failures');
+    expect(wrapper.get('p[role="status"]').text()).toContain('已取得的结果仍正常显示');
+    const details = wrapper.get('details');
+    expect(details.get('summary').text()).toBe('查看检查详情');
+    expect(details.text()).toContain('Keka');
+    expect(details.text()).toContain('请求过多');
+    expect(details.text()).toContain('Open Design');
+    expect(details.text()).toContain('需要应用开发者修正');
+    expect(details.text()).not.toContain('https://');
+    expect(rowOf(wrapper, 'Keynote')).toBeTruthy();
+  });
+
+  it('Shows a rules outage separately from app-owned update sources', async () => {
+    const wrapper = await mountUpdates('update-sources,updates-rules-failed');
+    const details = wrapper.get('details').text();
+    expect(details).toContain('更新规则暂时无法刷新');
+    expect(details).not.toContain('Electron');
+    expect(details).not.toContain('App 自带更新源');
     expect(rowOf(wrapper, 'Keynote')).toBeTruthy();
   });
 

@@ -3,7 +3,7 @@ use super::{AvScanKind, files, own_data::OwnData};
 use std::{
     collections::BTreeSet,
     fs,
-    io::Read,
+    os::unix::fs::FileExt,
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
 };
@@ -50,6 +50,7 @@ impl<'a> Policy<'a> {
         path: &Path,
         root: &Path,
         limit: u64,
+        file: &fs::File,
     ) -> Result<bool, crate::AppError> {
         if !self.code_only.contains(root)
             || limit == files::MAX_INSTALLER_FILE
@@ -78,9 +79,8 @@ impl<'a> Policy<'a> {
         {
             return Ok(true);
         }
-        let mut file = files::open_read_guarded(path, limit, self.own_data)?;
         let mut head = [0; 4];
-        let n = file.read(&mut head)?;
+        let n = file.read_at(&mut head, 0)?;
         let head = &head[..n];
         Ok(head.starts_with(b"#!")
             || head.starts_with(b"MZ")

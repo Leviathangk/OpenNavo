@@ -176,7 +176,11 @@ fn upsert_impl(
             [&item.token],
         )?;
         if removed > 0 {
-            connection.execute("DELETE FROM meta WHERE key='links_etag'", [])?;
+            // The cached tags describe rows that no longer exist; the next sync fetches the whole catalog again.
+            connection.execute(
+                "DELETE FROM meta WHERE key IN ('links_etag','links_validator')",
+                [],
+            )?;
         }
     }
     if let Some(tap) = &item.tap {
@@ -319,6 +323,13 @@ pub fn status(database: &Database, syncing: bool) -> Result<CatalogStatus, AppEr
             item_count: count,
             synced_at: meta("catalog_synced_at")?,
             syncing,
+            links_error: connection
+                .query_row(
+                    "SELECT value FROM meta WHERE key='links_last_error'",
+                    [],
+                    |r| r.get(0),
+                )
+                .optional()?,
         })
     })
 }

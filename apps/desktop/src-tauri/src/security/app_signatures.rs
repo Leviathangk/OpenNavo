@@ -7,8 +7,15 @@ const REPORT: &str = "security_s2_signature_report";
 const BASELINE: &str = "security_s2_signature_baseline";
 
 impl Service {
+    /// The last report, without the apps that are no longer on this Mac: one that was uninstalled since the check is not
+    /// a problem to show, nor part of how many apps were checked.
     pub fn app_signature_get(&self) -> Result<Option<AppSignatureReport>, AppError> {
-        self.s2_get(REPORT)
+        Ok(self
+            .s2_get::<AppSignatureReport>(REPORT)?
+            .map(|mut report| {
+                report.apps.retain(|app| Path::new(&app.path).exists());
+                report
+            }))
     }
     pub fn app_signature_check(&self, apps: &[LocalApp]) -> Result<AppSignatureReport, AppError> {
         let own_data = self.own_data()?;
@@ -150,6 +157,34 @@ mod tests {
             .unwrap();
         assert!(!last.apps[0].changed);
         assert!(s.app_signature_get().unwrap().is_some());
+    }
+    #[test]
+    fn reading_the_report_leaves_out_apps_that_are_gone() {
+        let (tmp, s, _) = super::super::tests::fixture();
+        let kept = tmp.path().join("Kept.app");
+        let removed = tmp.path().join("Removed.app");
+        std::fs::create_dir(&kept).unwrap();
+        std::fs::create_dir(&removed).unwrap();
+        let app = |path: &Path, name: &str| -> LocalApp {
+            serde_json::from_value(serde_json::json!({"id":name,"path":path,"name":name,"source":"direct","running":false,"removable":true})).unwrap()
+        };
+        let apps = [app(&kept, "Kept"), app(&removed, "Removed")];
+        let checked = s
+            .check_signatures_with(&apps, |_| Ok(signature::empty(SignatureStatus::Invalid)))
+            .unwrap();
+        assert_eq!(checked.apps.len(), 2);
+        assert_eq!(s.app_signature_get().unwrap().unwrap().apps.len(), 2);
+        // Uninstalled since the check.
+        std::fs::remove_dir(&removed).unwrap();
+        let read = s.app_signature_get().unwrap().unwrap();
+        assert_eq!(read.checked_at, checked.checked_at);
+        assert_eq!(
+            read.apps
+                .iter()
+                .map(|a| a.name.as_str())
+                .collect::<Vec<_>>(),
+            ["Kept"]
+        );
     }
     #[test]
     fn modified_has_its_own_issue_and_unknown_does_not_replace_identity() {

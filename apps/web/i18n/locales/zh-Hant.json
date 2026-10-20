@@ -157,7 +157,7 @@
   "palette": {
     "packages": "App",
     "jump": "跳轉",
-    "searchAll": "搜尋「{q}」",
+    "searchAll": "查看「{q}」的全部結果",
     "category": "分類：{name}",
     "pages": {
       "discover": "發現",
@@ -181,6 +181,10 @@
       "release": "{version} · {time}發布",
       "download": "下載",
       "allFiles": "在 GitHub 檢視全部檔案",
+      "filtered": "已依你的 Mac（{chip}）篩選",
+      "chipUnknown": "無法確定你的 Mac 晶片，下方列出兩種晶片的安裝檔",
+      "notMac": "這是 Mac App，下方是它的 Mac 安裝檔",
+      "others": "其他安裝檔（{count}）",
       "githubReleases": "前往 GitHub 下載",
       "teamId": "開發者簽名",
       "adopted": "Homebrew 已收錄這款 App，現在可以一鍵安裝",

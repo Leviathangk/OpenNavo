@@ -1,3 +1,4 @@
+import { flushPromises } from '@vue/test-utils';
 import { disposePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -8,6 +9,7 @@ import {
   startGuideState,
   startLocalState,
   startTrayState,
+  useEnvStore,
   useTasksStore,
   useSettingsStore,
   useUpdatesStore,
@@ -159,6 +161,31 @@ it('Stopping local state removes the settings watcher and focus handler', async 
     window.dispatchEvent(new Event('focus'));
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(focus).toHaveBeenCalledTimes(1);
+  } finally {
+    disposePinia(context.pinia);
+  }
+});
+
+it('Coming back to the window looks again for Homebrew, only while it is missing', async () => {
+  const context = await setup('/discover', { brew: false });
+  await startLocalState();
+  try {
+    const env = useEnvStore();
+    // Startup reads the environment in the background.
+    await vi.waitFor(() => expect(env.info).not.toBeNull());
+    expect(env.hasBrew).toBe(false);
+    // Installed in Terminal while OpenNavo stayed open.
+    const detect = vi.spyOn(commands, 'envDetect').mockResolvedValue({
+      status: 'ok',
+      data: { ...env.info!, brew: { path: '/opt/homebrew/bin/brew', prefix: '/opt/homebrew', version: '4.5.0' } }
+    });
+    window.dispatchEvent(new Event('focus'));
+    await vi.waitFor(() => expect(env.hasBrew).toBe(true));
+    expect(detect).toHaveBeenCalledTimes(1);
+    // Found, so nothing more to wait for.
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(detect).toHaveBeenCalledTimes(1);
   } finally {
     disposePinia(context.pinia);
   }

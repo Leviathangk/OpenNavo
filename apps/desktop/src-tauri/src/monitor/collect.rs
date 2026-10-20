@@ -22,11 +22,43 @@ pub struct RawNetwork {
     pub down: u64,
     pub up: u64,
 }
+/// Which app or executable a process belongs to, for the merged view. Stable for the life of the process.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Group {
+    /// `app:<outermost .app path>` or `exe:<executable name>`.
+    pub key: std::sync::Arc<str>,
+    /// The bundle's name, or the executable's.
+    pub label: std::sync::Arc<str>,
+}
+/// When a process list was read, on the clocks that matter: monotonic for the interval and wall for process start times.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Capture {
+    pub mono_ns: u64,
+    pub wall_us: u64,
+}
+impl Capture {
+    pub fn now() -> Self {
+        use std::sync::OnceLock;
+        static EPOCH: OnceLock<std::time::Instant> = OnceLock::new();
+        let epoch = EPOCH.get_or_init(std::time::Instant::now);
+        Self {
+            mono_ns: u64::try_from(epoch.elapsed().as_nanos()).unwrap_or(u64::MAX),
+            wall_us: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| u64::try_from(d.as_micros()).unwrap_or(u64::MAX)),
+        }
+    }
+}
 #[derive(Clone, Debug)]
 pub struct RawProcess {
     pub info: ProcessInfo,
     pub started: u64,
     pub cpu_ns: u64,
+    /// CPU time of children this process has collected (waited for), all of them ever, subtree included.
+    /// Unknown when the kernel would not say, which must not read as "none" and then jump.
+    pub child_cpu_ns: Option<u64>,
+    pub ppid: u32,
+    pub group: Group,
     pub disk_bytes: Option<(u64, u64)>,
     pub net_bytes: Option<(u64, u64)>,
     /// Monotonic time of the independently captured network snapshot; null for injected synchronous counters.
@@ -45,6 +77,9 @@ pub struct Frame {
     pub sensors: Option<Vec<SensorReading>>,
     pub fans: Option<Vec<FanState>>,
     pub processes: Option<Vec<RawProcess>>,
+    /// When `processes` began to be read. Collectors that cannot say leave it empty: the interval then comes from the
+    /// sampler's clock, and processes that started in between are not credited for their first interval.
+    pub processes_at: Option<Capture>,
 }
 impl Frame {
     pub fn available(&self) -> Modules {

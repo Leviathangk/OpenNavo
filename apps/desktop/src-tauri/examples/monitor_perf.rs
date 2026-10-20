@@ -581,6 +581,8 @@ mod snapshot_tests {
             net_up_bytes_per_sec: Some(MonitorNumber::default()),
             kind: ProcessKind::Background,
             quittable: false,
+            count: 1,
+            is_self: false,
         }]);
         sample
     }

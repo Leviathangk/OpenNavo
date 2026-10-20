@@ -157,7 +157,7 @@
   "palette": {
     "packages": "App",
     "jump": "Vai a",
-    "searchAll": "Cerca “{q}”",
+    "searchAll": "Mostra tutti i risultati per “{q}”",
     "category": "Categoria: {name}",
     "pages": {
       "discover": "Scopri",
@@ -181,6 +181,10 @@
       "release": "{version} · rilasciata {time}",
       "download": "Scarica",
       "allFiles": "Tutti i file su GitHub",
+      "filtered": "Filtrato per il tuo Mac ({chip})",
+      "chipUnknown": "Non siamo riusciti a capire quale chip abbia il tuo Mac, quindi sono elencati i programmi di installazione per entrambi",
+      "notMac": "Questa è un’app per Mac; ecco i suoi programmi di installazione per Mac",
+      "others": "Altri programmi di installazione ({count})",
       "githubReleases": "Scarica da GitHub",
       "teamId": "Firma dello sviluppatore",
       "adopted": "Ora Homebrew include questa app, che si installa con un clic",

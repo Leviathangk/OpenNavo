@@ -23,7 +23,11 @@ use super::{
     Engine, ItemAction, PlanEntry, identity, manifest, now, poison,
     rules::{self, Snapshot},
 };
-use crate::{model::*, queue::TaskQueue};
+use crate::{
+    brew::env::{Ask, Reason},
+    model::*,
+    queue::TaskQueue,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap},
@@ -552,7 +556,15 @@ pub async fn run(
                 task.target.as_ref(),
                 &TaskOptions::default(),
             )?,
-            env: crate::brew::env::construct(&settings, &brew.prefix, &queue.askpass),
+            env: {
+                let mut env = crate::brew::env::construct(&settings, &brew.prefix, &queue.askpass);
+                crate::brew::env::explain(
+                    &mut env,
+                    settings.locale,
+                    Ask::named(Reason::Uninstall, &app.name),
+                );
+                env
+            },
             log_path: task
                 .log_path
                 .as_ref()
@@ -824,7 +836,7 @@ fn execute_items(
                 admins.len()
             )),
         )?;
-        let results = admin_batch(engine, &admins);
+        let results = admin_batch(engine, &admins, Ask::named(Reason::Uninstall, &app.name));
         let mut indexed: HashMap<_, _> = results
             .unwrap_or_default()
             .into_iter()
@@ -1208,9 +1220,11 @@ enum AdminDone {
 pub trait AdminActions: Send + Sync {
     fn run(&self, requests: &[AdminRequest]) -> Result<Vec<AdminResult>, AppError>;
 }
+/// `ask` is what the password dialog says OpenNavo is doing.
 pub fn admin_batch(
     engine: &Engine,
     requests: &[AdminRequest],
+    ask: Ask<'_>,
 ) -> Result<Vec<AdminResult>, AppError> {
     if let Some(admin) = engine.admin_actions.lock().map_err(poison)?.as_ref() {
         return admin.run(requests);
@@ -1223,6 +1237,7 @@ pub fn admin_batch(
             native: Vec::new(),
             security: Vec::new(),
         },
+        ask,
     )
 }
 /// New fixed install/swap actions share the same batch envelope, sudo -A and
@@ -1234,6 +1249,7 @@ pub fn admin_batch_native(
     if requests.is_empty() {
         return Ok(Vec::new());
     }
+    let (reason, name) = crate::updater::admin::password_reason(requests);
     run_admin_batch(
         engine,
         AdminBatch {
@@ -1241,6 +1257,10 @@ pub fn admin_batch_native(
             requests: Vec::new(),
             native: requests.to_vec(),
             security: Vec::new(),
+        },
+        Ask {
+            reason,
+            name: name.as_deref(),
         },
     )
     .map_err(|error| {
@@ -1266,6 +1286,7 @@ pub fn admin_batch_security(
             native: vec![],
             security: requests.to_vec(),
         },
+        Ask::new(crate::security::admin::password_reason(requests)),
     )
     .map_err(|e| {
         if e.code == "E_SUDO" {
@@ -1278,6 +1299,7 @@ pub fn admin_batch_security(
 fn run_admin_batch<T: serde::de::DeserializeOwned>(
     engine: &Engine,
     batch: AdminBatch,
+    ask: Ask<'_>,
 ) -> Result<Vec<T>, AppError> {
     #[cfg(target_os = "macos")]
     {
@@ -1306,7 +1328,8 @@ fn run_admin_batch<T: serde::de::DeserializeOwned>(
             .open(&output)?;
         result_file.write_all(b"[]")?;
         let settings = engine.settings.read().map_err(poison)?.clone();
-        let env = crate::brew::env::construct(&settings, "/usr/local", &engine.askpass);
+        let mut env = crate::brew::env::construct(&settings, "/usr/local", &engine.askpass);
+        crate::brew::env::explain(&mut env, settings.locale, ask);
         let status = std::process::Command::new("/usr/bin/sudo")
             .args(["-A", "--"])
             .arg(std::env::current_exe()?)
@@ -1333,7 +1356,7 @@ fn run_admin_batch<T: serde::de::DeserializeOwned>(
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (engine, batch);
+        let _ = (engine, batch, ask);
         Err(AppError::new("E_SUDO", "unsupported_platform"))
     }
 }

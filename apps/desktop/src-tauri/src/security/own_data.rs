@@ -96,15 +96,17 @@ impl OwnData {
 
     /// Only stat/lstat: no file headers, canonicalize, or file descriptors.
     pub(super) fn check(&self, path: &Path) -> Result<(), AppError> {
+        self.checked_metadata(path).map(|_| ())
+    }
+
+    pub(super) fn checked_metadata(&self, path: &Path) -> Result<fs::Metadata, AppError> {
         if self.roots.iter().any(|root| path.starts_with(root)) {
             return Err(protected());
         }
-        let meta = files::safe_metadata(path)?;
-        for parent in path.ancestors().skip(1) {
-            let m = fs::symlink_metadata(parent)?;
-            self.check_directory(m.dev(), m.ino())?;
-        }
-        self.check_inode(meta.dev(), meta.ino(), meta.is_dir(), meta.nlink())
+        // One ancestry pass applies both filesystem and own-data guards.
+        files::safe_metadata_with(path, &|m| {
+            self.check_inode(m.dev(), m.ino(), m.is_dir(), m.nlink())
+        })
     }
 
     fn check_directory(&self, device: u64, inode: u64) -> Result<(), AppError> {

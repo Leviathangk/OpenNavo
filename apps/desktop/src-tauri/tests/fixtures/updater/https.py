@@ -14,6 +14,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         requests.append({"range": self.headers.get("Range"), "ifRange": self.headers.get("If-Range")})
         Path(str(sys.argv[1]) + ".requests").write_text(json.dumps(requests))
+        if mode == "rate_limit" and len(requests) == 1:
+            self.send_response(429)
+            self.send_header('Retry-After', '120')
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
         start = int(self.headers.get("Range", "bytes=0-")[6:-1])
         resumed = start > 0 and mode != "changed"
         self.send_response(206 if resumed else 200)

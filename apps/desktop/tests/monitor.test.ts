@@ -9,6 +9,7 @@ import MonitorNotifier from '@/components/monitor/MonitorNotifier.vue';
 import { useMonitorNames } from '@/components/monitor/meta';
 import { useHelperApproval } from '@/components/monitor/useHelperApproval';
 import MonitorSettings from '@/components/settings/MonitorSettings.vue';
+import MonitorProcesses from '@/components/monitor/MonitorProcesses.vue';
 import MonitorPage from '@/pages/MonitorPage.vue';
 import TrayMonitorPage from '@/pages/TrayMonitorPage.vue';
 import { i18n } from '@/i18n';
@@ -57,7 +58,9 @@ afterEach(() => {
   document.body.innerHTML = '';
   useToasts().clear();
   vi.restoreAllMocks();
+  localStorage.removeItem(VIEW_KEY);
 });
+const VIEW_KEY = 'opennavo.monitor.processView';
 
 describe('Monitor page', () => {
   it('Shows a card per module this Mac has; a card opens its detail with its own menu bar switch', async () => {
@@ -129,6 +132,136 @@ describe('Monitor page', () => {
     await flushPromises();
     expect(unsubscribe).toHaveBeenCalledWith('page');
     expect(store.views.page).toBeUndefined();
+  });
+});
+
+describe('Process list', () => {
+  const rows = (root: ParentNode) => [
+    ...root.querySelectorAll<HTMLElement>('[data-testid="monitor-processes"] > ul > li')
+  ];
+  const rowOf = (root: ParentNode, name: string) => rows(root).find(item => item.textContent?.includes(name));
+  /** A fixed sample in an unsubscribed list: the mock stops ticking once its page is gone. */
+  async function fixed(mutate: (sample: MonitorSample) => MonitorSample, props: Record<string, unknown> = {}) {
+    const ctx = await context('/monitor', 'cpu-busy');
+    const wrapper = await page(ctx);
+    const store = useMonitorStore();
+    const copy = JSON.parse(JSON.stringify(store.sample)) as MonitorSample;
+    wrapper.unmount();
+    await flushPromises();
+    store.history = [mutate(copy)];
+    return mount(MonitorProcesses, {
+      props,
+      global: { plugins: [ctx.pinia, ctx.router, i18n] },
+      attachTo: document.body
+    });
+  }
+
+  it('Says what a share is in cores and how to read the scale, so a busy Mac does not look idle', async () => {
+    const ctx = await context('/monitor', 'cpu-busy');
+    await page(ctx);
+    const list = document.querySelector<HTMLElement>('[data-testid="monitor-processes"]')!;
+    // The mock Mac has 14 logical cores: one core is 7% of it.
+    expect(list.textContent).toContain('占整机比例 · 1 核 ≈ 7%');
+    const xcode = rowOf(list, 'Xcode')!;
+    expect(xcode.textContent).toMatch(/\d+%\s*≈\d+(\.\d)?\s*核/);
+    expect(xcode.querySelector('span[title]')?.getAttribute('title')).toContain('活动监视器口径');
+  });
+
+  it('Accounts for the rest of a busy CPU under the list: other processes, finished short-lived ones, the system', async () => {
+    const ctx = await context('/monitor', 'cpu-busy');
+    await page(ctx);
+    const breakdown = document.querySelector<HTMLElement>('[data-testid="monitor-cpu-breakdown"]')!;
+    expect(breakdown.textContent).toMatch(/其余进程（\d+）/);
+    expect(breakdown.textContent).toContain('已结束的短命进程');
+    expect(breakdown.textContent).toContain('主要来自 node和zsh');
+    expect(breakdown.textContent).toContain('系统与 root 进程');
+    expect(breakdown.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('整机 CPU 的去向');
+    expect(breakdown.querySelector('li[title]')?.getAttribute('title')).toBeTruthy();
+  });
+
+  it('Leaves the breakdown out when there is nothing to account for or the Mac is quiet', async () => {
+    const none = await fixed(sample => ({ ...sample, cpuBreakdown: null }));
+    expect(none.find('[data-testid="monitor-cpu-breakdown"]').exists()).toBe(false);
+    none.unmount();
+    const quiet = await fixed(sample => ({
+      ...sample,
+      cpuBreakdown: { ...sample.cpuBreakdown!, usage: 0.06 }
+    }));
+    expect(quiet.find('[data-testid="monitor-cpu-breakdown"]').exists()).toBe(false);
+    // Only the CPU list explains itself this way.
+    quiet.unmount();
+    const memory = await fixed(sample => sample, { sort: 'memory' });
+    expect(memory.find('[data-testid="monitor-cpu-breakdown"]').exists()).toBe(false);
+  });
+
+  it('Names only the parts big enough to read, and keeps the bar within the machine when they overshoot it', async () => {
+    // Three rows list about 37% of the machine between them; 60% is readable, so 23% is the rest.
+    const plain = await fixed(
+      sample => ({
+        ...sample,
+        cpuBreakdown: { usage: 0.7, readable: 0.6, activeCount: 12, finished: 0.001, finishedFrom: [], other: 0 }
+      }),
+      { limit: 3 }
+    );
+    const text = plain.find('[data-testid="monitor-cpu-breakdown"]').text();
+    expect(text).toMatch(/其余进程（\d+）/);
+    expect(text).not.toContain('已结束的短命进程');
+    expect(text).not.toContain('系统与 root 进程');
+    plain.unmount();
+    const over = await fixed(
+      sample => ({
+        ...sample,
+        cpuBreakdown: { usage: 0.9, readable: 0.9, activeCount: 12, finished: 0.3, finishedFrom: [], other: 0 }
+      }),
+      { limit: 3 }
+    );
+    const widths = [...over.findAll('[data-testid="monitor-cpu-breakdown"] [role="img"] i')].map(node =>
+      Number.parseFloat((node.element as HTMLElement).style.width)
+    );
+    expect(widths.reduce((sum, width) => sum + width, 0)).toBeCloseTo(100, 3);
+  });
+
+  it('Lists OpenNavo itself, marked, and never offers to quit it', async () => {
+    const wrapper = await fixed(sample => sample, { limit: 20 });
+    const self = rowOf(wrapper.element, 'OpenNavo')!;
+    expect(self.textContent).toContain('本应用');
+    expect(find(self, 'button', '退出')).toBeUndefined();
+  });
+
+  it('Merges an app’s helpers on request, in every list, and remembers the choice', async () => {
+    const ctx = await context('/monitor', 'cpu-busy');
+    await page(ctx);
+    const list = () => document.querySelector<HTMLElement>('[data-testid="monitor-processes"]')!;
+    expect(rowOf(list(), 'Google Chrome Helper (Renderer)')).toBeDefined();
+    await click(find(list(), '[role="radio"]', '应用'));
+    await vi.waitFor(() => expect(rowOf(list(), 'Google Chrome Helper (Renderer)')).toBeUndefined());
+    const chrome = rowOf(list(), 'Google Chrome')!;
+    expect(chrome.textContent).toContain('×3');
+    // The main process leads the merged entry, so the app can still be quit.
+    expect(find(chrome, 'button', '退出')).toBeDefined();
+    expect(localStorage.getItem(VIEW_KEY)).toBe('app');
+
+    // Another window of the app changes the choice back: this one follows.
+    localStorage.setItem(VIEW_KEY, 'process');
+    window.dispatchEvent(new StorageEvent('storage', { key: VIEW_KEY }));
+    await vi.waitFor(() => expect(rowOf(list(), 'Google Chrome Helper (Renderer)')).toBeDefined());
+    expect(rowOf(list(), 'Google Chrome')?.textContent).not.toContain('×3');
+  });
+
+  it('Shows three rows and the accounting in the menu bar popover, in the saved view', async () => {
+    localStorage.setItem(VIEW_KEY, 'app');
+    const ctx = await context('/tray-monitor?module=cpu', 'cpu-busy');
+    const wrapper = mountWith(TrayMonitorPage, ctx);
+    await vi.waitFor(() => expect(useMonitorStore().sample?.processes?.length).toBeGreaterThan(0));
+    await flushPromises();
+    const popover = wrapper.find('[data-testid="monitor-popover"]').element as HTMLElement;
+    expect(rows(popover)).toHaveLength(3);
+    expect(popover.querySelector('[data-testid="monitor-process-view"] [aria-checked="true"]')?.textContent).toContain(
+      '应用'
+    );
+    expect(popover.querySelector('[data-testid="monitor-cpu-breakdown"]')?.textContent).toContain('已结束的短命进程');
+    // Merged: Chrome's helpers are one entry among them, not three.
+    expect(popover.textContent).not.toContain('Helper');
   });
 });
 

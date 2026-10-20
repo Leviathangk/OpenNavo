@@ -244,6 +244,18 @@ async fn server(
     String,
     reqwest::Client,
 ) {
+    server_mode(body, "normal").await
+}
+
+async fn server_mode(
+    body: &str,
+    mode: &str,
+) -> (
+    tempfile::TempDir,
+    tokio::process::Child,
+    String,
+    reqwest::Client,
+) {
     let temporary = tempfile::tempdir().unwrap();
     let payload = temporary.path().join("feed");
     fs::write(&payload, body).unwrap();
@@ -252,6 +264,7 @@ async fn server(
         .args(["-I", "-u"])
         .arg(fixtures.join("https.py"))
         .arg(&payload)
+        .arg(mode)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .kill_on_drop(true)
@@ -839,7 +852,12 @@ async fn retained_pending_does_not_hide_requested_source_failure() {
         )
         .await
         .unwrap();
-    assert_eq!(outcome.failed_sources(), [UpdateSource::Vendor]);
+    assert!(outcome.failed_sources().is_empty());
+    assert_eq!(outcome.details.len(), 1);
+    assert_eq!(
+        outcome.details[0].reason,
+        UpdateCheckFailureReason::RulesUnavailable
+    );
     assert!(
         outcome.result().is_err(),
         "retention is not a successful check"
@@ -1054,7 +1072,12 @@ async fn in_flight_check_preserves_install_committed_from_ordinary_candidate() {
                 )
                 .await
                 .unwrap();
-            assert_eq!(outcome.failed_sources(), [UpdateSource::Vendor]);
+            assert!(outcome.failed_sources().is_empty());
+            assert_eq!(outcome.details.len(), 1);
+            assert_eq!(
+                outcome.details[0].reason,
+                UpdateCheckFailureReason::RulesUnavailable
+            );
             assert!(outcome.result().is_err());
             assert_eq!(checked.is_empty(), check_removes_candidate);
             fixture
@@ -1096,7 +1119,12 @@ async fn in_flight_check_cannot_restore_candidate_after_install_completion() {
                 .await
                 .unwrap();
             assert!(outcome.result().is_err());
-            assert_eq!(outcome.failed_sources(), [UpdateSource::Vendor]);
+            assert!(outcome.failed_sources().is_empty());
+            assert_eq!(outcome.details.len(), 1);
+            assert_eq!(
+                outcome.details[0].reason,
+                UpdateCheckFailureReason::RulesUnavailable
+            );
             fixture
                 .service
                 .persist_checked_candidates(checked, &initial)
@@ -1323,4 +1351,123 @@ fn channel_change_preserves_restart_action_for_already_installed_update() {
             .candidate(&fixture.app.id, UpdateSource::Electron)
             .is_err()
     );
+}
+
+#[tokio::test]
+async fn rules_outage_does_not_mark_working_local_feeds_failed() {
+    for source in [UpdateSource::Sparkle, UpdateSource::Electron] {
+        let (_files, mut process, url, client) = server(&feed(source, "200.0.0")).await;
+        let mut fixture = Fixture::new(source, &url);
+        fixture.service.client = client;
+        let mut candidates = vec![];
+        let outcome = fixture
+            .service
+            .check_native_with_rules(
+                &[source],
+                std::slice::from_ref(&fixture.app),
+                &mut candidates,
+                true,
+                Err(AppError::new("E_UPDATE_FEED", "feed_request")),
+            )
+            .await
+            .unwrap();
+        assert!(outcome.result().is_ok());
+        assert!(outcome.failed_sources().is_empty());
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(outcome.details.len(), 1);
+        assert_eq!(
+            outcome.details[0].reason,
+            UpdateCheckFailureReason::RulesUnavailable
+        );
+        assert_eq!(outcome.details[0].source, None);
+        process.kill().await.unwrap();
+    }
+}
+
+#[tokio::test]
+async fn invalid_local_feed_reports_app_and_configuration_error_without_network() {
+    for source in [UpdateSource::Sparkle, UpdateSource::Electron] {
+        let fixture = Fixture::new(source, "https://updates.invalid./app/");
+        let outcome = fixture
+            .service
+            .check_native_with_rules(
+                &[source],
+                std::slice::from_ref(&fixture.app),
+                &mut vec![],
+                true,
+                Ok(vec![]),
+            )
+            .await
+            .unwrap();
+        assert_eq!(outcome.failed_sources(), [source]);
+        assert_eq!(outcome.result().unwrap_err().message, "invalid_update_url");
+        assert_eq!(
+            outcome.details[0].app_id.as_deref(),
+            Some(fixture.app.id.as_str())
+        );
+        assert_eq!(
+            outcome.details[0].app_name.as_deref(),
+            Some(fixture.app.name.as_str())
+        );
+        assert_eq!(
+            outcome.details[0].reason,
+            UpdateCheckFailureReason::InvalidUrl
+        );
+    }
+}
+
+#[tokio::test]
+async fn rate_limited_feed_respects_retry_after_then_recovers() {
+    let (files, mut process, url, client) = server_mode("feed", "rate_limit").await;
+    let mut fixture = Fixture::new(UpdateSource::Electron, &url);
+    fixture.service.client = client;
+    for _ in 0..2 {
+        let error = fixture
+            .service
+            .read_url(&url, "test_feed", 1024)
+            .await
+            .unwrap_err();
+        assert_eq!(error.message, "feed_rate_limited");
+    }
+    let requests: serde_json::Value =
+        serde_json::from_slice(&fs::read(files.path().join("feed.requests")).unwrap()).unwrap();
+    assert_eq!(requests.as_array().unwrap().len(), 1);
+    let retry: FeedRetry = serde_json::from_str(
+        &fixture
+            .database
+            .meta("test_feed:retry_after")
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(retry.until >= chrono::Utc::now().timestamp() + 100);
+    fixture
+        .database
+        .set_meta(
+            "test_feed:retry_after",
+            &serde_json::to_string(&FeedRetry {
+                url: url.clone(),
+                until: 0,
+            })
+            .unwrap(),
+        )
+        .unwrap();
+    assert_eq!(
+        fixture
+            .service
+            .read_url(&url, "test_feed", 1024)
+            .await
+            .unwrap(),
+        b"feed"
+    );
+    process.kill().await.unwrap();
+}
+
+#[test]
+fn retry_after_accepts_seconds_dates_and_defaults() {
+    assert_eq!(retry_after(Some("120"), 100), 220);
+    assert_eq!(retry_after(Some("Thu, 01 Jan 1970 00:05:00 GMT"), 100), 300);
+    assert_eq!(retry_after(None, 100), 160);
+    assert_eq!(retry_after(Some("invalid"), 100), 160);
+    assert_eq!(retry_after(Some("-1"), 100), 160);
 }

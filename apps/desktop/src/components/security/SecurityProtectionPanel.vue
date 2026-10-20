@@ -10,6 +10,7 @@ import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useSecurityStore } from '@/stores/security';
 import { useTasksStore } from '@/stores/tasks';
+import { usePasteAccess } from './usePasteAccess';
 
 // Protection (plan §6.4): what runs today (S1 and S2, no Apple entitlement) is switchable; the rest says it waits for
 // Endpoint Security approval (S3) instead of pretending to be available. The app firewall (S4) has its own page.
@@ -20,10 +21,10 @@ const { errorText } = usePackageState();
 const { taskName } = usePackageIdentity();
 const store = useSecurityStore();
 const tasks = useTasksStore();
+const pasteNeedsAccess = usePasteAccess();
 
 onMounted(() => {
   void store.loadEvents().catch(() => undefined);
-  void store.loadPasteStatus().catch(() => undefined);
 });
 
 type Switch = 'startupAlerts' | 'watchDownloads' | 'avScanBeforeInstall' | 'pasteProtection';
@@ -40,7 +41,6 @@ type Live = {
 };
 const live = computed<Live[]>(() => {
   const db = Boolean(store.overview?.engine.db);
-  const needsAccess = store.securitySettings.pasteProtection && store.pasteStatus?.accessibilityGranted === false;
   return [
     {
       key: 'startupAlerts',
@@ -71,8 +71,8 @@ const live = computed<Live[]>(() => {
       title: t('security.settings.paste.title'),
       body: t('security.settings.paste.hint'),
       disabled: false,
-      hint: needsAccess ? t('security.settings.paste.needsAccessHint') : undefined,
-      grant: needsAccess,
+      hint: pasteNeedsAccess.value ? t('security.settings.paste.needsAccessHint') : undefined,
+      grant: pasteNeedsAccess.value,
       stage: 'S2'
     }
   ];

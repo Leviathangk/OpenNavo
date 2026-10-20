@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { OnEmpty, OnSearchField, OnSearchResultsView, OnSegmented } from '@opennavo/ui';
+import { OnButton, OnEmpty, OnSearchField, OnSearchResultsView, OnSegmented } from '@opennavo/ui';
 import type { OnSearchResult, OnSegmentedOption } from '@opennavo/ui';
 import PackageGetButton from '@/components/package/PackageGetButton.vue';
 import MasResults from '@/components/appstore/MasResults.vue';
@@ -12,6 +12,7 @@ import { searchApps } from '@/composables/searchApps';
 import { useMasSearch } from '@/composables/useMasSearch';
 import { useSettingsStore } from '@/stores';
 import { useMasStore } from '@/stores/mas';
+import { useCatalogStore } from '@/stores/catalog';
 
 // Search (local FTS, 06 §7.1): Enter on View all results in the Command-K palette; truncate q to 64 characters, matching deep links. Cask-only (ADR-018).
 // Shared with the web view (ADR-017). App Store results (store/security plan §5) follow in their own group, straight from Apple.
@@ -19,6 +20,20 @@ const { t } = useI18n();
 const { pick, appLocale } = useAppLocale();
 const route = useRoute();
 const router = useRouter();
+const catalog = useCatalogStore();
+const retrying = ref(false);
+void catalog.loadStatus().catch(() => undefined);
+async function retryCatalog() {
+  if (retrying.value) return;
+  retrying.value = true;
+  try {
+    await catalog.sync();
+  } catch {
+    // The persisted source error remains visible; cached search results stay usable.
+  } finally {
+    retrying.value = false;
+  }
+}
 
 const query = ref(String(route.query.q ?? '').slice(0, 64));
 
@@ -120,6 +135,12 @@ const masHasResults = computed(() => showMas.value && Boolean(masSearch.results.
   >
     <template #search>
       <OnSearchField v-model="query" :placeholder="t('search.prompt')" clearable />
+      <div v-if="catalog.status?.linksError" class="mt-12px flex items-center gap-12px" role="status">
+        <span class="text-13px text-ink-secondary">{{ t('search.catalogIncomplete') }}</span>
+        <OnButton size="sm" variant="secondary" :disabled="retrying" @click="retryCatalog">
+          {{ t('common.retry') }}
+        </OnButton>
+      </div>
     </template>
     <OnSegmented
       v-if="masOn && query.trim()"

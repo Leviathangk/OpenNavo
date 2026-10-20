@@ -146,6 +146,8 @@ fn security_json_shapes_keep_nullable_fields_and_tagged_quarantine_reasons() {
     .unwrap();
     assert!(legacy.error_code.is_none());
     assert!(legacy.denied_roots.is_empty());
+    assert_eq!(legacy.metrics.cached_files, 0);
+    assert_eq!(legacy.metrics.workers, 0);
     assert_eq!(
         serde_json::to_value(&legacy).unwrap()["deniedRoots"],
         json!([])

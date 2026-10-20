@@ -169,12 +169,12 @@ export const useSecurityStore = defineStore('security', () => {
     await loadOverview();
   }
 
-  async function startScan(kind: AvScanKind, paths: string[] | null = null) {
+  async function startScan(kind: AvScanKind, paths: string[] | null = null, force = false) {
     const revision = ++scanRevision;
     const previousTarget = scanTarget;
     scanTarget = 'starting';
     try {
-      const { scanId } = await unwrap(commands.avScanStart(kind, paths));
+      const { scanId } = await unwrap(commands.avScanStart(kind, paths, force));
       if (revision === scanRevision) scanTarget = scanId;
       const result = await unwrap(commands.avScanGet(scanId));
       if (revision === scanRevision) {

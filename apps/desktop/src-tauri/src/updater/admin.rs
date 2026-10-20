@@ -4,6 +4,7 @@ use super::{gate, service, swap};
 use crate::{
     AppError,
     appstore::install::{PrivilegedInstall, validate_staging},
+    brew::env::Reason,
     uninstall::{
         identity::command,
         rules::{self, Snapshot},
@@ -35,6 +36,34 @@ pub struct ResultItem {
     pub id: String,
     pub error: Option<AppError>,
     pub backup: Option<PathBuf>,
+}
+impl Request {
+    fn app_path(&self) -> &Path {
+        match &self.action {
+            Action::MasInstallPkg { request } => &request.app_path,
+            Action::AppSwap { request } | Action::PkgInstall { request } => &request.installed,
+        }
+    }
+}
+/// What the password dialog says about a batch: App Store installs are installs, anything else swaps in an update.
+/// The app is named only when the whole batch is about one.
+pub fn password_reason(requests: &[Request]) -> (Reason, Option<String>) {
+    let reason = if requests
+        .iter()
+        .all(|r| matches!(r.action, Action::MasInstallPkg { .. }))
+    {
+        Reason::Install
+    } else {
+        Reason::Update
+    };
+    let mut names = requests
+        .iter()
+        .filter_map(|r| r.app_path().file_stem())
+        .map(|name| name.to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+    names.sort();
+    names.dedup();
+    (reason, (names.len() == 1).then(|| names.remove(0)))
 }
 pub trait Actions: Send + Sync {
     fn run(&self, requests: &[Request]) -> Result<Vec<ResultItem>, AppError>;

@@ -157,7 +157,7 @@
   "palette": {
     "packages": "App",
     "jump": "跳转",
-    "searchAll": "搜索「{q}」",
+    "searchAll": "查看「{q}」的全部结果",
     "category": "分类：{name}",
     "pages": {
       "discover": "发现",
@@ -181,6 +181,10 @@
       "release": "{version} · {time}发布",
       "download": "下载",
       "allFiles": "在 GitHub 查看全部文件",
+      "filtered": "已按你的 Mac（{chip}）筛选",
+      "chipUnknown": "没能确定你的 Mac 芯片，下面列出了两种芯片的安装包",
+      "notMac": "这是 Mac App，下面是它的 Mac 安装包",
+      "others": "其他安装包（{count}）",
       "githubReleases": "前往 GitHub 下载",
       "teamId": "开发者签名",
       "adopted": "Homebrew 已收录这款 App，现在可以一键安装",

@@ -7,6 +7,7 @@
 import { events } from '../bindings';
 import type {
   AppError,
+  CpuBreakdown,
   DiskDevice,
   FanHelperStatus,
   FanReason,
@@ -46,7 +47,9 @@ const IO: Record<string, [diskRead: number, diskWrite: number, netDown: number, 
   Spotify: [0.1 * MB, 0.05 * MB, 320 * KB, 8 * KB],
   Slack: [0.05 * MB, 0.1 * MB, 60 * KB, 20 * KB]
 };
-const PROCESSES: Omit<ProcessInfo, 'iconPath' | IoRates>[] = [
+/** One row of the fixture: a process, the app it belongs to for the merged view, and whether it is OpenNavo itself. */
+type MockProcess = Omit<ProcessInfo, 'iconPath' | IoRates | 'count' | 'isSelf'> & { group?: string; isSelf?: boolean };
+const PROCESSES: MockProcess[] = [
   {
     pid: 912,
     name: 'Xcode',
@@ -63,7 +66,28 @@ const PROCESSES: Omit<ProcessInfo, 'iconPath' | IoRates>[] = [
     cpu: 0.093,
     memoryBytes: 3.6 * GB,
     kind: 'app',
-    quittable: true
+    quittable: true,
+    group: 'Google Chrome'
+  },
+  {
+    pid: 1211,
+    name: 'Google Chrome Helper (Renderer)',
+    bundleId: null,
+    cpu: 0.052,
+    memoryBytes: 1.4 * GB,
+    kind: 'background',
+    quittable: false,
+    group: 'Google Chrome'
+  },
+  {
+    pid: 1212,
+    name: 'Google Chrome Helper (GPU)',
+    bundleId: null,
+    cpu: 0.024,
+    memoryBytes: 0.6 * GB,
+    kind: 'background',
+    quittable: false,
+    group: 'Google Chrome'
   },
   {
     pid: 0,
@@ -135,7 +159,8 @@ const PROCESSES: Omit<ProcessInfo, 'iconPath' | IoRates>[] = [
     cpu: 0.008,
     memoryBytes: 180 * MB,
     kind: 'app',
-    quittable: false
+    quittable: false,
+    isSelf: true
   }
 ];
 // Rust aggregates thermal zones under a fixed vocabulary and stable keys (monitor M2); the frontend localizes the names.
@@ -180,6 +205,55 @@ const DEVICES: DiskDevice[] = [
 ];
 
 let stopPrevious: (() => void) | null = null;
+
+const sumRates = (items: ProcessInfo[], pick: (entry: ProcessInfo) => number | null) =>
+  items.some(entry => pick(entry) != null) ? items.reduce((sum, entry) => sum + (pick(entry) ?? 0), 0) : null;
+
+/** Rust's merged view: processes of one app (or the same executable) as a single entry led by the main process. */
+function mergeProcesses(listed: ProcessInfo[], table: MockProcess[]): ProcessInfo[] {
+  const groups = new Map<string, ProcessInfo[]>();
+  listed.forEach((entry, index) => {
+    const key = table[index]?.group ?? entry.name;
+    groups.set(key, [...(groups.get(key) ?? []), entry]);
+  });
+  return [...groups.entries()].map(([name, members]) => {
+    const main = members.find(entry => entry.bundleId != null) ?? members[0]!;
+    if (members.length === 1) return main;
+    return {
+      ...main,
+      name: main.bundleId != null ? main.name : name,
+      count: members.length,
+      cpu: members.reduce((sum, entry) => sum + entry.cpu, 0),
+      memoryBytes: members.reduce((sum, entry) => sum + entry.memoryBytes, 0),
+      diskReadBytesPerSec: sumRates(members, entry => entry.diskReadBytesPerSec),
+      diskWriteBytesPerSec: sumRates(members, entry => entry.diskWriteBytesPerSec),
+      netDownBytesPerSec: sumRates(members, entry => entry.netDownBytesPerSec),
+      netUpBytesPerSec: sumRates(members, entry => entry.netUpBytesPerSec),
+      isSelf: members.some(entry => entry.isSelf)
+    };
+  });
+}
+
+/** Where the CPU went: the listed processes, children that ended before they could be listed, and the rest. */
+function breakdown(listed: ProcessInfo[], usage: number): CpuBreakdown {
+  const readable = Math.min(usage, listed.reduce((sum, entry) => sum + entry.cpu, 0) + usage * 0.12);
+  const finished = Math.min(usage - readable, usage * 0.1);
+  return {
+    usage,
+    readable,
+    // The real list has a long tail below the top rows.
+    activeCount: listed.filter(entry => entry.cpu >= 0.001).length + 9,
+    finished,
+    finishedFrom:
+      finished > 0.01
+        ? [
+            { pid: 3201, name: 'node', cpu: finished * 0.7 },
+            { pid: 3188, name: 'zsh', cpu: finished * 0.3 }
+          ]
+        : [],
+    other: Math.max(0, usage - readable - finished)
+  };
+}
 
 export interface MonitorMockOptions {
   tickMs: number;
@@ -272,6 +346,26 @@ export function createMonitorMock({ tickMs, flags, settings, updateSettings }: M
     const gpu = clamp(0.18 + (rnd() - 0.5) * 0.1, 0.02, 0.95);
     // ±15%: enough to look alive, never enough to reorder the top processes between ticks.
     const jitter = (value: number) => (value ? value * (0.85 + rnd() * 0.3) : 0);
+    // The table gives each process's weight; the list never claims more than three quarters of what the CPU is doing.
+    const weight = processes.reduce((sum, entry) => sum + entry.cpu, 0);
+    const scale = weight > 0 ? Math.min(1, (0.75 * cpu) / weight) : 0;
+    const listed: ProcessInfo[] | null =
+      withProcesses || wanted.size
+        ? processes.map(({ group: _group, isSelf, ...entry }) => {
+            const [read, write, down, up] = IO[entry.name] ?? [0, 0, 0, 0];
+            return {
+              ...entry,
+              cpu: entry.cpu * scale,
+              count: 1,
+              isSelf: isSelf ?? false,
+              iconPath: null,
+              diskReadBytesPerSec: wanted.has('disk') ? jitter(read) : null,
+              diskWriteBytesPerSec: wanted.has('disk') ? jitter(write) : null,
+              netDownBytesPerSec: wanted.has('network') ? jitter(down) : null,
+              netUpBytesPerSec: wanted.has('network') ? jitter(up) : null
+            };
+          })
+        : null;
     return {
       at: Date.now(),
       cpu: {
@@ -350,20 +444,9 @@ export function createMonitorMock({ tickMs, flags, settings, updateSettings }: M
         celsius: temp + offset
       })),
       fans: hasFans ? fans : null,
-      processes:
-        withProcesses || wanted.size
-          ? processes.map(entry => {
-              const [read, write, down, up] = IO[entry.name] ?? [0, 0, 0, 0];
-              return {
-                ...entry,
-                iconPath: null,
-                diskReadBytesPerSec: wanted.has('disk') ? jitter(read) : null,
-                diskWriteBytesPerSec: wanted.has('disk') ? jitter(write) : null,
-                netDownBytesPerSec: wanted.has('network') ? jitter(down) : null,
-                netUpBytesPerSec: wanted.has('network') ? jitter(up) : null
-              };
-            })
-          : null,
+      processes: listed,
+      processGroups: listed ? mergeProcesses(listed, processes) : null,
+      cpuBreakdown: listed ? breakdown(listed, cpu) : null,
       health: {
         level: issues.some(issue => issue.level === 'critical') ? 'critical' : issues.length ? 'attention' : 'good',
         issues

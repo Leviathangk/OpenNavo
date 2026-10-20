@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatRelativeTime } from '@opennavo/shared';
 import { OnButton, OnCard, OnIcon } from '@opennavo/ui';
-import type { AppSignatureIssue } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
+import { useLocalAppsStore } from '@/stores/localApps';
 import { useSecurityStore } from '@/stores/security';
+import SignatureIssuesDialog from './SignatureIssuesDialog.vue';
+import { useSignatureProblems } from './signatureProblems';
 
 // App signature check-up (store/security plan §6, S2): every installed app's code signature and notarization, and
-// whether its developer (Team ID) changed since the last check. Read-only: it lists problems and changes nothing.
+// whether its developer (Team ID) changed since the last check. The check only reads; the card shows the first few
+// problems and opens the whole list, where an app can be looked at in Finder or uninstalled.
 const { t } = useI18n();
 const { appLocale } = useAppLocale();
 const security = useSecurityStore();
@@ -21,24 +24,22 @@ onMounted(() => {
   if (!security.signatures) void security.loadSignatures().catch(() => undefined);
 });
 
-const report = computed(() => security.signatures);
-// Most serious first: another developer or a broken signature, then changed contents, then what is merely missing.
-const RANK: Record<AppSignatureIssue, number> = {
-  team_changed: 0,
-  invalid: 1,
-  modified: 2,
-  unreadable: 3,
-  unsigned: 4,
-  adhoc: 5,
-  not_notarized: 6
-};
-const rank = (issues: readonly AppSignatureIssue[]) => Math.min(...issues.map(issue => RANK[issue]));
-const problems = computed(() =>
-  (report.value?.apps ?? []).filter(app => app.issues.length).sort((a, b) => rank(a.issues) - rank(b.issues))
+const { report, rows: problems } = useSignatureProblems();
+const PREVIEW = 5;
+const listOpen = ref(false);
+
+// Apps uninstalled since the check drop out of the report Rust returns; read it again when the apps on this Mac change.
+const localApps = useLocalAppsStore();
+watch(
+  () =>
+    localApps.items
+      .map(app => app.path)
+      .sort()
+      .join('\n'),
+  () => {
+    if (security.signatures) void security.loadSignatures().catch(() => undefined);
+  }
 );
-// Another developer signing an app, or a broken signature, is worth more attention than a missing notarization.
-const SERIOUS: readonly AppSignatureIssue[] = ['team_changed', 'invalid'];
-const serious = (issues: readonly AppSignatureIssue[]) => issues.some(issue => SERIOUS.includes(issue));
 
 async function check() {
   try {
@@ -71,21 +72,21 @@ async function check() {
       >
     </p>
     <ul v-if="problems.length" class="m-0 flex list-none flex-col gap-3px p-0">
-      <li v-for="app in problems.slice(0, 5)" :key="app.path" class="truncate text-12.5px">
-        <span class="font-600 text-ink-primary">{{ app.name }}</span>
-        <span :class="serious(app.issues) ? 'text-status-danger' : 'text-status-warning'">
-          · {{ app.issues.map(issue => t(`security.signatures.issue.${issue}`)).join(' · ') }}
+      <li v-for="row in problems.slice(0, PREVIEW)" :key="row.entry.path" class="truncate text-12.5px">
+        <span class="font-600 text-ink-primary">{{ row.name }}</span>
+        <span :class="row.serious ? 'text-status-danger' : 'text-status-warning'">
+          · {{ row.issues.map(issue => t(`security.signatures.issue.${issue}`)).join(' · ') }}
         </span>
       </li>
     </ul>
-    <OnButton
-      size="sm"
-      variant="secondary"
-      class="mt-4px self-start"
-      :loading="security.checkingSignatures"
-      @click="check"
-    >
-      {{ report ? t('security.signatures.recheck') : t('security.signatures.check') }}
-    </OnButton>
+    <div class="mt-4px flex flex-wrap gap-8px">
+      <OnButton v-if="problems.length" size="sm" variant="primary" @click="listOpen = true">{{
+        t('security.signatures.viewAll', { count: problems.length })
+      }}</OnButton>
+      <OnButton size="sm" variant="secondary" :loading="security.checkingSignatures" @click="check">
+        {{ report ? t('security.signatures.recheck') : t('security.signatures.check') }}
+      </OnButton>
+    </div>
+    <SignatureIssuesDialog v-model:open="listOpen" />
   </OnCard>
 </template>

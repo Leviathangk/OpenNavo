@@ -171,6 +171,8 @@ pub struct CatalogStatus {
     pub item_count: u32,
     pub synced_at: Option<i64>,
     pub syncing: bool,
+    #[serde(default)]
+    pub links_error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
@@ -460,6 +462,15 @@ pub struct HistoryQuery {
     pub to: Option<i64>, // finished_at range.
     pub limit: u32,
     pub offset: u32, // limit ≤ 200
+}
+
+/// What clearing the history did: records deleted, and finished records kept because the uninstall or clean-up can still
+/// be undone or the update can still be rolled back.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryCleared {
+    pub cleared: u32,
+    pub kept: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
@@ -831,6 +842,25 @@ pub struct UpdatesChanged {
     pub count: u32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateCheckFailureReason {
+    RulesUnavailable,
+    RateLimited,
+    InvalidUrl,
+    Network,
+    Failed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCheckFailure {
+    pub source: Option<UpdateSource>,
+    pub app_id: Option<String>,
+    pub app_name: Option<String>,
+    pub reason: UpdateCheckFailureReason,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatesStatus {
@@ -838,6 +868,8 @@ pub struct UpdatesStatus {
     pub next_check_at: Option<i64>,
     pub checking: bool,
     pub failed_sources: Vec<UpdateSource>,
+    #[serde(default)]
+    pub failures: Vec<UpdateCheckFailure>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]

@@ -52,6 +52,20 @@ const settings = useSettingsStore();
 const env = useEnvStore();
 const catalog = useCatalogStore();
 const toasts = useToasts();
+const syncingCatalog = ref(false);
+async function syncCatalog() {
+  if (syncingCatalog.value) return;
+  syncingCatalog.value = true;
+  try {
+    await catalog.sync(true);
+    // The casks synced, but the links source can still be down: say so instead of reporting a plain success.
+    if (catalog.status?.linksError) toasts.push({ tone: 'danger', title: t('search.catalogIncomplete') });
+  } catch {
+    toasts.push({ tone: 'danger', title: t('common.refreshFailed') });
+  } finally {
+    syncingCatalog.value = false;
+  }
+}
 
 const followSystemLabel = computed(() =>
   t('settings.general.followSystem', { language: LOCALE_METADATA[appLocale.value].name })
@@ -430,9 +444,14 @@ onMounted(async () => {
                 )
               "
             >
-              <OnButton variant="secondary" size="sm" icon="refresh-cw" @click="catalog.sync(true)">{{
-                t('settings.about.sync')
-              }}</OnButton>
+              <OnButton
+                variant="secondary"
+                size="sm"
+                icon="refresh-cw"
+                :disabled="syncingCatalog"
+                @click="syncCatalog"
+                >{{ t('settings.about.sync') }}</OnButton
+              >
             </SettingRow>
             <SettingRow :label="t('settings.about.openSource')">
               <OnButton variant="secondary" size="sm" :disabled="!config?.about" @click="openSourceOpen = true">

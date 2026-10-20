@@ -148,7 +148,7 @@ describe('Scan previews', () => {
       .find(item => item.text() === '扫描这个 App')!
       .trigger('click');
     await flushPromises();
-    expect(start).toHaveBeenCalledExactlyOnceWith('custom', [app.path]);
+    expect(start).toHaveBeenCalledExactlyOnceWith('custom', [app.path], false);
   });
 
   it('says the app is not here, and never scans', async () => {

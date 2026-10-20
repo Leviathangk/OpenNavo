@@ -5,10 +5,8 @@ import {
   linkDownloadUrl,
   linkNotes,
   linkSource,
-  officialDownloadUrl,
-  sortedAssets
+  officialDownloadUrl
 } from '../app/utils/linkApp';
-import type { ReleaseAsset } from '../app/utils/linkApp';
 
 const release = {
   tag: 'v2.4.1',
@@ -26,15 +24,6 @@ const link = {
   notes: null,
   adoptedByCask: null
 };
-
-const asset = (name: string, arch: ReleaseAsset['arch'], format: ReleaseAsset['format'] = 'dmg'): ReleaseAsset => ({
-  name,
-  url: `https://github.com/lumen-labs/lumen/releases/download/v2.4.1/${name}`,
-  size: 1,
-  arch,
-  format,
-  sha256: null
-});
 
 describe('Link app downloads', () => {
   it('Only https addresses become links', () => {
@@ -78,16 +67,6 @@ describe('Link app downloads', () => {
     };
     expect(officialDownloadUrl(other)).toBe(release.url);
     expect(officialDownloadUrl({ ...link, downloadUrl: 'https://lumen.app.evil.example/L.dmg' })).toBe(release.url);
-  });
-
-  it('Lists installers first, universal before either chip', () => {
-    const names = sortedAssets([
-      asset('latest-mac.yml', null, 'other'),
-      asset('Lumen-x64.dmg', 'x86_64'),
-      asset('Lumen-arm64.dmg', 'arm64'),
-      asset('Lumen-universal.zip', 'universal', 'zip')
-    ]).map(item => item.name);
-    expect(names).toEqual(['Lumen-universal.zip', 'Lumen-arm64.dmg', 'Lumen-x64.dmg', 'latest-mac.yml']);
   });
 
   it('Shows notes in the page language, else English, else any', () => {

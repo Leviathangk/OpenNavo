@@ -44,7 +44,7 @@ const { data: month } = useLoader(
       limit: Number.MAX_SAFE_INTEGER,
       offset: 0
     }),
-  [() => tasks.finished, monthStart],
+  [() => tasks.finished, () => tasks.historyEpoch, monthStart],
   undefined,
   [monthStart]
 );

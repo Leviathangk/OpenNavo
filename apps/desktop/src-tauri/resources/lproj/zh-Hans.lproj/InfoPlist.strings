@@ -1,0 +1,2 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+"NSAppleEventsUsageDescription" = "OpenNavo 只会在你移除或恢复旧式登录项时使用 System Events。";

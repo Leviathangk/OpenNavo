@@ -47,6 +47,12 @@
       "hardenedRuntime": true,
       "entitlements": "entitlements.plist",
       "files": {
+        "Resources/en.lproj": "resources/lproj/en.lproj",
+        "Resources/zh-Hans.lproj": "resources/lproj/zh-Hans.lproj",
+        "Resources/ja.lproj": "resources/lproj/ja.lproj",
+        "Resources/es.lproj": "resources/lproj/es.lproj",
+        "Resources/pt-BR.lproj": "resources/lproj/pt-BR.lproj",
+        "Resources/ru.lproj": "resources/lproj/ru.lproj",
         "Library/SystemExtensions": "../native/staged/firewall/SystemExtensions",
         "Helpers/opennavo-store": "../native/staged/opennavo-store",
         "Library/LaunchDaemons/org.opennavo.desktop.FanHelper.plist": "fan-helper/org.opennavo.desktop.FanHelper.plist",

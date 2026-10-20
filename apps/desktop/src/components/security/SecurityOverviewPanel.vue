@@ -8,6 +8,7 @@ import SignatureCheckCard from './SignatureCheckCard.vue';
 import type { PostureCheck } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
+import { useRefreshOnReturn } from '@/composables/useRefreshOnReturn';
 import { useToasts } from '@/composables/useToasts';
 import { useSecurityStore } from '@/stores/security';
 import { openExternal } from '@/utils/external';
@@ -21,6 +22,8 @@ const router = useRouter();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 const store = useSecurityStore();
+// Each check has a button into System Settings; what the user changed there shows as soon as they are back.
+useRefreshOnReturn(() => store.loadOverview());
 
 const overview = computed(() => store.overview);
 const problems = computed(() => overview.value?.posture.filter(check => check.state === 'bad') ?? []);

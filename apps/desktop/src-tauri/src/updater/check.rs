@@ -154,13 +154,7 @@ impl Service {
         let rules = match rules {
             Ok(rules) => rules,
             Err(error) => {
-                for source in sources.iter().copied().filter(|s| native(*s)) {
-                    outcome.failed(
-                        source,
-                        "catalog/update-feeds; using cached rules",
-                        error.clone(),
-                    );
-                }
+                outcome.rules_failed(error);
                 super::service::cached_rules(&self.database)
             }
         };
@@ -224,27 +218,19 @@ impl Service {
                         app.running
                             && c.item.source == UpdateSource::Electron
                             && c.artifact.as_ref().is_some_and(|a| {
-                                disk_version(Path::new(&app.path), &a.version_key)
-                                    .is_some_and(|v| version::compare_source(c.item.source, &v, &a.version).is_ok_and(|o| o.is_eq()))
+                                disk_version(Path::new(&app.path), &a.version_key).is_some_and(
+                                    |v| {
+                                        version::compare_source(c.item.source, &v, &a.version)
+                                            .is_ok_and(|o| o.is_eq())
+                                    },
+                                )
                             })
                     }) {
                         candidate.item.running = true;
                         candidates.push(candidate);
                     }
                 }
-                Err(e) => outcome.failed(
-                    source,
-                    &format!(
-                        "app_id={} name={:?} bundle_id={:?} cask={:?} catalog_token={:?} rule_token={:?}",
-                        app.id,
-                        app.name,
-                        app.bundle_id,
-                        app.cask,
-                        app.catalog_token,
-                        rule.and_then(|r| r.token.as_deref()),
-                    ),
-                    e,
-                ),
+                Err(e) => outcome.failed_app(source, app, e),
             }
         }
         Ok(outcome)
@@ -475,6 +461,7 @@ mod partial_tests {
                 etag: "fixture".into(),
                 items: vec![item],
             },
+            None,
             1,
         )
         .unwrap();
@@ -585,10 +572,7 @@ mod partial_tests {
             .await
             .unwrap();
         assert!(outage.result().is_ok());
-        assert_eq!(
-            outage.failed_sources(),
-            [UpdateSource::Github, UpdateSource::Vendor]
-        );
+        assert_eq!(outage.failed_sources(), [UpdateSource::Vendor]);
         let retained = candidates.len();
         database.set_meta("update_feed_rules", "{}").unwrap();
         let no_cache = queue

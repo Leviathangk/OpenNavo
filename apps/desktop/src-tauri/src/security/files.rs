@@ -32,10 +32,10 @@ pub(super) fn scan_limit_guarded(
     path: &Path,
     guard: Option<&super::own_data::OwnData>,
 ) -> Result<u64, AppError> {
-    if let Some(guard) = guard {
-        guard.check(path)?;
-    }
-    let meta = safe_metadata(path)?;
+    let meta = match guard {
+        Some(guard) => guard.checked_metadata(path)?,
+        None => safe_metadata(path)?,
+    };
     if installer_extension(path) {
         return Ok(MAX_INSTALLER_FILE);
     }
@@ -45,6 +45,15 @@ pub(super) fn scan_limit_guarded(
     // An unreadable small file is still handled as unreadable by the caller;
     // do not infer that it is ordinary from a failed header read.
     let file = open_read_guarded(path, MAX_INSTALLER_FILE, guard)?;
+    scan_limit_from_file(path, &file)
+}
+
+/// Classify the already verified descriptor without opening its path again.
+pub(super) fn scan_limit_from_file(path: &Path, file: &File) -> Result<u64, AppError> {
+    if installer_extension(path) {
+        return Ok(MAX_INSTALLER_FILE);
+    }
+    let size = file.metadata()?.len();
     use std::os::unix::fs::FileExt;
     let mut head = [0; 512];
     let n = file.read_at(&mut head, 0)?;
@@ -63,9 +72,7 @@ pub(super) fn scan_limit_guarded(
     .any(|magic| head.starts_with(magic))
         || head.get(257..262) == Some(b"ustar");
     let mut trailer = [0; 4];
-    let dmg = meta.len() >= 512
-        && file.read_at(&mut trailer, meta.len() - 512)? == 4
-        && &trailer == b"koly";
+    let dmg = size >= 512 && file.read_at(&mut trailer, size - 512)? == 4 && &trailer == b"koly";
     Ok(if archive || dmg {
         MAX_INSTALLER_FILE
     } else {
@@ -101,10 +108,17 @@ pub fn dataless(meta: &Metadata) -> bool {
 }
 
 pub fn safe_metadata(path: &Path) -> Result<Metadata, AppError> {
+    safe_metadata_with(path, &|_| Ok(()))
+}
+
+pub(super) fn safe_metadata_with(
+    path: &Path,
+    check: &dyn Fn(&Metadata) -> Result<(), AppError>,
+) -> Result<Metadata, AppError> {
     if !path.is_absolute() || path.components().any(|p| matches!(p, Component::ParentDir)) {
         return Err(AppError::new("E_INVALID_ARG", "security_absolute_path"));
     }
-    // Check ancestors too: read_dir on a dataless directory can download its contents.
+    let mut last = None;
     for part in path.ancestors().collect::<Vec<_>>().into_iter().rev() {
         let meta = fs::symlink_metadata(part)?;
         if meta.is_symlink() {
@@ -113,8 +127,10 @@ pub fn safe_metadata(path: &Path) -> Result<Metadata, AppError> {
         if dataless(&meta) {
             return Err(AppError::new("E_PROTECTED", "security_dataless"));
         }
+        check(&meta)?;
+        last = Some(meta);
     }
-    Ok(fs::symlink_metadata(path)?)
+    last.ok_or_else(|| AppError::new("E_INVALID_ARG", "security_absolute_path"))
 }
 
 pub fn open_read(path: &Path, limit: u64) -> Result<File, AppError> {
@@ -126,10 +142,10 @@ pub(super) fn open_read_guarded(
     limit: u64,
     guard: Option<&super::own_data::OwnData>,
 ) -> Result<File, AppError> {
-    if let Some(guard) = guard {
-        guard.check(path)?;
-    }
-    let before = safe_metadata(path)?;
+    let before = match guard {
+        Some(guard) => guard.checked_metadata(path)?,
+        None => safe_metadata(path)?,
+    };
     if !before.is_file() || before.len() > limit {
         return Err(AppError::new("E_PROTECTED", "security_file_size_or_type"));
     }
@@ -336,6 +352,28 @@ pub fn write_private(path: &Path, bytes: &[u8]) -> Result<(), AppError> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn descriptor_classification_preserves_offset_and_original_identity() {
+        use std::io::{Read, Seek, SeekFrom};
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let path = root.join("extensionless");
+        fs::write(&path, b"PK\x03\x04payload").unwrap();
+        let mut file = open_read(&path, MAX_INSTALLER_FILE).unwrap();
+        file.seek(SeekFrom::Start(4)).unwrap();
+        let replacement = root.join("replacement");
+        fs::write(&replacement, b"ordinary").unwrap();
+        fs::rename(replacement, &path).unwrap();
+        assert_eq!(
+            scan_limit_from_file(&path, &file).unwrap(),
+            MAX_INSTALLER_FILE
+        );
+        assert_eq!(file.stream_position().unwrap(), 4);
+        let mut tail = String::new();
+        file.read_to_string(&mut tail).unwrap();
+        assert_eq!(tail, "payload");
+        assert_eq!(scan_limit(&path).unwrap(), MAX_REGULAR_FILE);
+    }
     use super::*;
     use std::os::unix::fs::FileExt;
     #[test]

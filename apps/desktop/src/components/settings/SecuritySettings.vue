@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { formatDate, formatTime } from '@opennavo/shared';
 import { OnButton, OnCard, OnMenu, OnSegmented, OnToggle } from '@opennavo/ui';
 import SettingRow from './SettingRow.vue';
+import { usePasteAccess } from '@/components/security/usePasteAccess';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
@@ -74,14 +75,8 @@ function onScheduleTime(event: Event) {
 }
 
 // Optional features (D8): statuses come from Rust; Accessibility is requested only on this click.
-onMounted(() => {
-  void security.loadPasteStatus().catch(() => undefined);
-  void security.loadVirusTotal().catch(() => undefined);
-});
-watch(
-  () => value.value.pasteProtection,
-  () => void security.loadPasteStatus().catch(() => undefined)
-);
+const pasteNeedsAccess = usePasteAccess();
+onMounted(() => void security.loadVirusTotal().catch(() => undefined));
 
 async function grantAccessibility() {
   try {
@@ -259,7 +254,7 @@ async function addExclusion() {
       />
     </SettingRow>
     <SettingRow
-      v-if="value.pasteProtection && security.pasteStatus && !security.pasteStatus.accessibilityGranted"
+      v-if="pasteNeedsAccess"
       :label="t('security.settings.paste.needsAccess')"
       :hint="t('security.settings.paste.needsAccessHint')"
       label-id="setting-pasteAccess"

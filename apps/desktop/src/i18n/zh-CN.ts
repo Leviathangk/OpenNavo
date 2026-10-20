@@ -187,6 +187,7 @@ export default {
     emptyHint: '换个关键词，或试试英文名、拼音缩写',
     alias: '别名：{name}',
     prompt: '输入名称、用途或命令开始搜索',
+    catalogIncomplete: '第三方应用目录同步失败，搜索结果可能不完整。',
     catalogEmpty: '目录里没有找到「{q}」',
     sources: {
       label: '结果来源',
@@ -268,6 +269,8 @@ export default {
       recommended: '推荐',
       download: '下载',
       allFiles: '在 GitHub 查看全部文件',
+      filtered: '已按这台 Mac（{chip}）筛选',
+      others: '其他安装包（{count}）',
       githubReleases: '前往 GitHub 下载',
       teamId: '开发者签名',
       pricingLabel: '价格',
@@ -673,7 +676,16 @@ export default {
       title: '{name} {version} 更新内容'
     },
     masSignedOut: '上次 App Store 更新未能确认账户状态。请重试，或在 App Store 中完成更新。',
-    failedSources: '这次没有查到：{sources}。其余来源的结果照常显示，下次检查会再试',
+    failedSources: '这次未能完成 {sources} 的部分检查，已取得的结果仍正常显示。',
+    checkFailures: {
+      summary: '部分 App 或更新来源未能完成检查，已取得的结果仍正常显示。',
+      details: '查看检查详情',
+      rulesUnavailable: '更新规则暂时无法刷新。已尽可能使用缓存规则；缺少规则的检查未能完成。',
+      rateLimited: '更新服务器请求过多，请稍后重试。',
+      invalidUrl: '更新地址无效，需要应用开发者修正更新配置。',
+      network: '无法连接更新服务器，请稍后重试。',
+      failed: '未能完成更新检查。'
+    },
     openAppStore: '打开 App Store',
     major: {
       titleOne: '{name} 是大版本更新',
@@ -774,7 +786,9 @@ export default {
   history: {
     clear: '清空记录',
     clearDescription: '确定清空全部更新记录吗？此操作不可恢复，不影响已安装的 App 和正在进行的任务。',
+    clearNote: '还能撤销的卸载和清理、还能回滚的更新会保留。',
     cleared: '更新记录已清空',
+    clearedKept: '已清空，{count} 条还能撤销或回滚的记录已保留',
     title: '更新记录',
     subtitle: '本机所有安装、更新与卸载',
     search: '按名称筛选',
@@ -1984,7 +1998,24 @@ export default {
       activityValue: '活动监视器口径 {value}',
       topDisk: '磁盘读写最多的进程',
       topNetwork: '网络流量最多的进程',
-      diskSplit: '读 {read} · 写 {write}'
+      diskSplit: '读 {read} · 写 {write}',
+      scaleCpu: '占整机比例 · 1 核 ≈ {percent}',
+      cores: '≈{value} 核',
+      self: '本应用',
+      view: '显示方式',
+      viewProcess: '进程',
+      viewApp: '应用',
+      breakdown: {
+        title: '整机 CPU 的去向',
+        rest: '其余进程（{count}）',
+        restAny: '其余进程',
+        finished: '已结束的短命进程',
+        finishedFrom: '主要来自 {names}',
+        other: '系统与 root 进程',
+        hintRest: '还在运行，但没有排进上面名单的进程。',
+        hintFinished: '这些进程在两次采样之间已经结束，没法逐个列出；这里是它们的父进程回收后统计到的 CPU 时间。',
+        hintOther: 'OpenNavo 无权读取内核、root 和其他用户进程的 CPU；这里是整机占用减去上面各项后的余量。'
+      }
     },
     detail: {
       open: '查看{name}详情',
@@ -2192,6 +2223,11 @@ export default {
       rateLimited: '病毒库更新被官方服务器暂时限制，稍后会自动重试'
     },
     scan: {
+      forceLabel: '强制重新检查所有文件',
+      forceHint: '不复用之前的干净结果；此模式下全盘扫描允许每个文件最多检查 5 分钟。',
+      performanceHint:
+        '全盘扫描最多使用两个扫描进程，会占用更多内存。默认每个文件的扫描预算为 60 秒，超时会标为未完成检查。',
+      cacheSummary: '已有 {count} 个文件在核对内容和病毒库版本后复用了干净结果。',
       denied:
         '没有权限读取：{folders}，这些位置没有扫描。可以在「系统设置 → 隐私与安全性 → 文件与文件夹」里允许 OpenNavo',
       folders: {
@@ -2535,7 +2571,24 @@ export default {
         modified: '签名后有改动'
       },
       check: '检查签名',
-      recheck: '重新检查'
+      recheck: '重新检查',
+      viewAll: '查看全部 {count} 个',
+      dialog: {
+        title: '签名有问题的 App',
+        hint: '签名有问题不一定有风险：有的 App 自己更新、写入缓存时也会这样。拿不准的，可以先在访达里看看，或到官网重新下载；确定不再用的，可以直接卸载。',
+        uninstallSelected: '卸载所选（{count}）',
+        empty: '没有签名问题了',
+        missing: '找不到这个 App，可能已经卸载了'
+      },
+      hint: {
+        invalid: '签名没有通过校验：App 里有文件在签名后被改动、增加或缺失，也可能是签名已损坏。',
+        modified: '签名本身没问题，但里面的部分组件在签名后被改动过。',
+        unsigned: '没有签名，系统无法确认它来自谁。',
+        adhoc: '只有临时签名，没有开发者身份，系统无法确认它来自谁。',
+        not_notarized: '有开发者签名，但没有经过 Apple 公证。',
+        team_changed: '签名它的开发者和上次检查时不一样了。如果你没有重新安装过它，请多留心。',
+        unreadable: '这次没能读到它的签名，稍后重新检查看看。'
+      }
     },
     paste: {
       title: '已暂停粘贴到「{app}」',

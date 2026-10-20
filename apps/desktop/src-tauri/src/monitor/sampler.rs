@@ -544,10 +544,9 @@ impl Sampler {
             let due = plan.processes
                 && (force_processes
                     || state.engine.latest.processes.as_ref().is_none_or(|_| {
-                        state
-                            .engine
-                            .process_at
-                            .is_none_or(|last| now.saturating_sub(last) >= 2000)
+                        state.engine.process_at.is_none_or(|last| {
+                            now.saturating_sub(last) >= state.engine.process_interval_ms()
+                        })
                     }));
             let visible: Modules = Self::visible_views(&state)
                 .flat_map(|v| v.iter().copied())
@@ -696,7 +695,11 @@ impl Sampler {
             state
                 .engine
                 .sample_read(frame, &plan.modules, &read_modules, plan.processes, now, at);
-        if let Some(items) = &mut state.engine.latest.processes {
+        let latest = &mut state.engine.latest;
+        for items in [&mut latest.processes, &mut latest.process_groups]
+            .into_iter()
+            .flatten()
+        {
             for p in items.iter_mut() {
                 if !extras.process_disk {
                     p.disk_read_bytes_per_sec = None;
@@ -715,8 +718,12 @@ impl Sampler {
         }
         let mut sample = sample;
         sample.processes = state.engine.latest.processes.clone();
+        sample.process_groups = state.engine.latest.process_groups.clone();
+        sample.cpu_breakdown = state.engine.latest.cpu_breakdown.clone();
         if let Some(last) = state.engine.history.back_mut() {
             last.processes = sample.processes.clone();
+            last.process_groups = sample.process_groups.clone();
+            last.cpu_breakdown = sample.cpu_breakdown.clone();
         }
         let alerts = state.alerts.evaluate(&sample.health, now);
         let menu_due = previous_available != state.engine.available

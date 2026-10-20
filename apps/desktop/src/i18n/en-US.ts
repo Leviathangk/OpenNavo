@@ -192,6 +192,7 @@ const messages: MessageSchema = {
     emptyHint: 'Try another keyword, the English name or a pinyin abbreviation',
     alias: 'Also known as {name}',
     prompt: 'Type a name, a purpose or a command to search',
+    catalogIncomplete: 'Third-party apps could not be synced. Catalog results may be incomplete.',
     catalogEmpty: 'No catalog results for “{q}”',
     sources: {
       label: 'Result source',
@@ -275,6 +276,8 @@ const messages: MessageSchema = {
       recommended: 'Recommended',
       download: 'Download',
       allFiles: 'All Files on GitHub',
+      filtered: 'Filtered for this Mac ({chip})',
+      others: 'Other installers ({count})',
       githubReleases: 'Download from GitHub',
       teamId: 'Developer signature',
       pricingLabel: 'Price',
@@ -691,8 +694,17 @@ const messages: MessageSchema = {
     },
     masSignedOut:
       'The last App Store update couldn’t confirm the account status. Try again, or finish the update in the App Store.',
-    failedSources:
-      'Couldn’t check {sources} this time. Results from the other sources are shown as usual, and the next check tries again',
+    failedSources: 'Some checks for {sources} could not complete. Available results are still shown.',
+    checkFailures: {
+      summary: 'Some apps or update sources could not be checked. Available results are still shown.',
+      details: 'Show check details',
+      rulesUnavailable:
+        'Update rules could not be refreshed. Cached rules were used where available; checks that require missing rules could not complete.',
+      rateLimited: 'The update server is receiving too many requests. Try again later.',
+      invalidUrl: 'The update address is invalid. The app developer needs to correct its update configuration.',
+      network: 'Could not connect to the update server. Try again later.',
+      failed: 'The update check could not complete.'
+    },
     openAppStore: 'Open App Store',
     major: {
       titleOne: '{name} has a major update',
@@ -793,7 +805,11 @@ const messages: MessageSchema = {
   history: {
     clear: 'Clear history',
     clearDescription: 'Clear all history? This cannot be undone. Installed apps and active tasks will not be affected.',
+    clearNote:
+      'Uninstalls and Clean Up runs that can still be undone, and updates that can still be rolled back, are kept.',
     cleared: 'History cleared',
+    clearedKept:
+      'Cleared. {count} record that can still be undone or rolled back was kept. | Cleared. {count} records that can still be undone or rolled back were kept.',
     title: 'History',
     subtitle: 'Every install, update and uninstall on this Mac',
     search: 'Filter by name',
@@ -2038,7 +2054,26 @@ const messages: MessageSchema = {
       activityValue: 'Activity Monitor shows {value}',
       topDisk: 'Top Processes by Disk',
       topNetwork: 'Top Processes by Network',
-      diskSplit: 'Read {read} · Write {write}'
+      diskSplit: 'Read {read} · Write {write}',
+      scaleCpu: 'Share of the whole Mac · 1 core ≈ {percent}',
+      cores: '≈{value} cores',
+      self: 'This app',
+      view: 'Group by',
+      viewProcess: 'Process',
+      viewApp: 'App',
+      breakdown: {
+        title: 'Where the CPU went',
+        rest: 'Other processes ({count})',
+        restAny: 'Other processes',
+        finished: 'Short-lived processes that ended',
+        finishedFrom: 'mostly from {names}',
+        other: 'System and root processes',
+        hintRest: 'Still running, but not among the rows above.',
+        hintFinished:
+          'These processes ended between two readings, so they cannot be listed one by one. This is the CPU time their parents collected from them.',
+        hintOther:
+          'OpenNavo cannot read CPU for the kernel, root or other users’ processes. This is what is left of the total after the rows above.'
+      }
     },
     detail: {
       open: 'View {name} details',
@@ -2252,6 +2287,12 @@ const messages: MessageSchema = {
       rateLimited: 'Database updates are temporarily limited by the official server. OpenNavo will retry later'
     },
     scan: {
+      forceLabel: 'Recheck every file',
+      forceHint: 'Ignore previous clean results. A full scan allows up to 5 minutes per file in this mode.',
+      performanceHint:
+        'Full scans use up to two scan processes and may use more memory. Normally each file has a 60-second scan budget; files that exceed it are reported as incomplete.',
+      cacheSummary:
+        'Reused verified clean results for {count} files after checking their content and signature database version.',
       denied:
         'No permission to read {folders}, so they weren’t scanned. You can allow OpenNavo in System Settings → Privacy & Security → Files & Folders',
       folders: {
@@ -2606,7 +2647,26 @@ const messages: MessageSchema = {
         modified: 'Changed after signing'
       },
       check: 'Check Signatures',
-      recheck: 'Check Again'
+      recheck: 'Check Again',
+      viewAll: 'View All {count}',
+      dialog: {
+        title: 'Apps with signature problems',
+        hint: 'A signature problem is not always a risk: some apps cause it when they update themselves or write caches. If you are unsure, look at the app in Finder or download it again from its website; if you no longer use it, uninstall it here.',
+        uninstallSelected: 'Uninstall {count} Selected',
+        empty: 'No signature problems left',
+        missing: 'This app can’t be found. It may already be uninstalled.'
+      },
+      hint: {
+        invalid:
+          'The signature did not pass verification: files inside the app were changed, added or removed after it was signed, or the signature is damaged.',
+        modified: 'The signature itself is fine, but some components inside were changed after signing.',
+        unsigned: 'It has no signature, so macOS can’t tell who made it.',
+        adhoc: 'It only has an ad-hoc signature with no developer identity, so macOS can’t tell who made it.',
+        not_notarized: 'It is signed by a developer but was not notarized by Apple.',
+        team_changed:
+          'The developer who signed it is different from the last check. If you didn’t reinstall it, be careful.',
+        unreadable: 'Its signature couldn’t be read this time. Check again later.'
+      }
     },
     paste: {
       title: 'Paste into {app} paused',

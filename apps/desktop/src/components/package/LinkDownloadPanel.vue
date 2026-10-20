@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatBytes, formatRelativeTime } from '@opennavo/shared';
-import { OnButton, OnChip } from '@opennavo/ui';
-import type { LinkInfo, LinkOpenTarget, ReleaseAsset } from '@/ipc/bindings';
+import { formatRelativeTime, selectAssets } from '@opennavo/shared';
+import type { MacChip } from '@opennavo/shared';
+import { OnButton } from '@opennavo/ui';
+import type { LinkInfo, LinkOpenTarget } from '@/ipc/bindings';
 import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useEnvStore } from '@/stores';
 import { useLinksStore } from '@/stores/links';
+import LinkAssetRow from './LinkAssetRow.vue';
 
 // Download panel for link apps (store/security plan §4, mockup A): OpenNavo hosts nothing. It lists the official
-// download page and, for GitHub projects, the latest release's files with the one for this Mac's chip first.
+// download page and, for GitHub projects, the latest release's Mac installers that fit this Mac's chip; the other
+// chip's and the files for other systems wait behind "other installers".
 const props = defineProps<{ token: string; link: LinkInfo }>();
 
 const { t } = useI18n();
@@ -21,30 +24,16 @@ const links = useLinksStore();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 
-const appleSilicon = computed(() => ['arm64', 'aarch64'].includes(env.info?.arch ?? 'arm64'));
+const chip = computed<MacChip>(() => (['arm64', 'aarch64'].includes(env.info?.arch ?? 'arm64') ? 'arm64' : 'x86_64'));
 const release = computed(() => props.link.github?.latest ?? null);
-// Only positively identified macOS installers can be recommended. A ZIP's
-// architecture alone says nothing about its operating system.
-const isMacInstaller = (asset: ReleaseAsset) => {
-  if (/(^|[^a-z0-9])(linux|windows|win32|win64|win|ubuntu|debian|android)(?=[^a-z0-9]|$)/i.test(asset.name)) {
-    return false;
-  }
-  return (
-    asset.format === 'dmg' ||
-    asset.format === 'pkg' ||
-    (asset.format === 'zip' && /(^|[^a-z0-9])(mac|macos|macosx|osx|darwin)(?=[^a-z0-9]|$)/i.test(asset.name))
-  );
-};
-const fits = (asset: ReleaseAsset) =>
-  asset.arch === 'universal' || asset.arch === (appleSilicon.value ? 'arm64' : 'x86_64');
-const assets = computed(() => {
-  const rank = (asset: ReleaseAsset) => (isMacInstaller(asset) ? 0 : 2) + (fits(asset) ? 0 : 1);
-  return (release.value?.assets ?? []).toSorted((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
-});
-const recommended = computed(() => assets.value.find(asset => isMacInstaller(asset) && fits(asset))?.name ?? null);
+// Only positively identified macOS installers that fit the chip are listed (shared with the website); when none can be
+// told apart everything is listed, so an odd file name never leaves the panel empty.
+const choice = computed(() => selectAssets(release.value?.assets ?? [], chip.value));
+// One installer that fits is the recommendation. Several are different apps or formats of one release: none stands out.
+const recommended = computed(() =>
+  choice.value.narrowed && choice.value.main.length === 1 ? choice.value.main[0]!.name : null
+);
 const notes = computed(() => (props.link.notes ? pick(props.link.notes, '', 'en-US') : ''));
-
-const archLabel = (asset: ReleaseAsset) => (asset.arch ? t(`package.link.arch.${asset.arch}`) : null);
 
 async function open(target: LinkOpenTarget) {
   try {
@@ -81,34 +70,34 @@ async function open(target: LinkOpenTarget) {
           })
         }}
       </p>
-      <ul v-if="assets.length" class="m-0 flex list-none flex-col p-0">
-        <li
-          v-for="asset in assets"
+      <p v-if="choice.narrowed" class="m-0 text-11.5px text-ink-tertiary">
+        {{ t('package.link.filtered', { chip: t(`package.link.arch.${chip}`) }) }}
+      </p>
+      <ul v-if="choice.main.length" class="m-0 flex list-none flex-col p-0">
+        <LinkAssetRow
+          v-for="asset in choice.main"
           :key="asset.name"
-          class="flex items-center gap-8px border-t border-t-solid border-line-subtle py-8px first:border-t-0"
-        >
-          <div class="min-w-0 flex-1">
-            <p class="m-0 truncate font-mono text-12px text-ink-primary">
-              {{ asset.name }}
-            </p>
-            <p class="m-0 flex flex-wrap items-center gap-6px text-11.5px text-ink-tertiary">
-              <span>{{ formatBytes(asset.size, { locale: appLocale }) }}</span>
-              <span v-if="archLabel(asset)">· {{ archLabel(asset) }}</span>
-              <OnChip v-if="asset.name === recommended" tone="success" size="sm">{{
-                t('package.link.recommended')
-              }}</OnChip>
-            </p>
-          </div>
-          <OnButton
-            :variant="asset.name === recommended && !link.downloadUrl ? 'primary' : 'secondary'"
-            size="xs"
-            icon="arrow-up-right"
-            @click="open({ asset: asset.name })"
-          >
-            {{ t('package.link.download') }}
-          </OnButton>
-        </li>
+          :asset="asset"
+          :recommended="asset.name === recommended"
+          :primary="asset.name === recommended && !link.downloadUrl"
+          @open="open({ asset: asset.name })"
+        />
       </ul>
+      <details v-if="choice.rest.length" class="text-12px">
+        <summary class="cursor-pointer select-none text-ink-secondary">
+          {{ t('package.link.others', { count: choice.rest.length }) }}
+        </summary>
+        <ul class="m-0 mt-4px flex list-none flex-col p-0">
+          <LinkAssetRow
+            v-for="asset in choice.rest"
+            :key="asset.name"
+            :asset="asset"
+            :recommended="false"
+            :primary="false"
+            @open="open({ asset: asset.name })"
+          />
+        </ul>
+      </details>
       <OnButton variant="ghost" size="sm" icon="arrow-up-right" @click="open('github')">{{
         t('package.link.allFiles')
       }}</OnButton>

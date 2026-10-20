@@ -10,13 +10,38 @@ test('vscode search ranks Visual Studio Code first', async ({ page }) => {
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, follow');
 });
 
-test('Command-K vscode then Enter opens Visual Studio Code details', async ({ page }) => {
+// The Go to group comes first and starts with all the results for the text, so Enter goes to them.
+test('Command-K vscode then Enter goes to all the results', async ({ page }) => {
   await gotoReady(page, '/zh');
   await page.keyboard.press('ControlOrMeta+K');
   const input = page.getByRole('combobox');
   await expect(input).toBeFocused();
   await input.fill('vscode');
-  await expect(page.getByRole('option').first()).toContainText(/VS Code|Visual Studio Code/);
+  await expect(page.getByRole('option').first()).toContainText('查看「vscode」的全部结果');
+  await expect(
+    page
+      .getByRole('option')
+      .filter({ hasText: /VS Code|Visual Studio Code/ })
+      .first()
+  ).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/search\?q=vscode$/);
+});
+
+test('Command-K vscode then Down and Enter opens Visual Studio Code details', async ({ page }) => {
+  await gotoReady(page, '/zh');
+  await page.keyboard.press('ControlOrMeta+K');
+  const input = page.getByRole('combobox');
+  await expect(input).toBeFocused();
+  await input.fill('vscode');
+  const app = page
+    .getByRole('option')
+    .filter({ hasText: /VS Code|Visual Studio Code/ })
+    .first();
+  await expect(app).toBeVisible();
+  for (let step = 0; step < 6 && (await app.getAttribute('aria-selected')) !== 'true'; step++)
+    await page.keyboard.press('ArrowDown');
+  await expect(app).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/apps\/visual-studio-code$/);
 });

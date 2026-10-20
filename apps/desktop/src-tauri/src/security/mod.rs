@@ -18,6 +18,7 @@ pub mod preinstall;
 pub mod quarantine;
 pub mod s2_types;
 pub mod scan;
+mod scan_cache;
 mod scan_policy;
 pub mod schedule;
 pub mod signature;

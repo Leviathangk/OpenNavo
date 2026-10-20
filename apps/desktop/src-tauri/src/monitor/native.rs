@@ -190,6 +190,8 @@ impl Collector for NativeCollector {
                 } else {
                     None
                 },
+                // Read before the list, so it names the moment the process figures start from.
+                processes_at: processes.then(Capture::now),
                 processes: processes.then(super::procs::list).flatten(),
                 ..Frame::default()
             })

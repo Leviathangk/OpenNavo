@@ -67,6 +67,7 @@ struct Daemon {
     child: Child,
     socket: socket::SocketDir,
     generation: Option<String>,
+    fingerprint: String,
     last_used: Instant,
 }
 impl Drop for Daemon {
@@ -93,6 +94,8 @@ pub struct Engine {
     stopped: AtomicBool,
     updating: AtomicBool,
     last_error: Mutex<Option<AvEngineError>>,
+    disk: Arc<Mutex<DiskBudget>>,
+    children: Mutex<Vec<std::sync::Weak<Engine>>>,
 }
 fn poison<T>(_: T) -> AppError {
     AppError::new("E_AV_ENGINE", "av_lock")
@@ -109,6 +112,68 @@ fn disk_budget(available: u64) -> Result<(), AppError> {
         Ok(())
     }
 }
+#[derive(Default)]
+pub(super) struct ScanTiming {
+    pub queue_us: u64,
+    pub inspection_us: u64,
+    pub engine_us: u64,
+    pub cleanup_us: u64,
+}
+
+#[derive(Default)]
+struct DiskBudget {
+    sampled: Option<Instant>,
+    available: u64,
+    reserved: u64,
+}
+struct DiskReservation(Arc<Mutex<DiskBudget>>);
+impl Drop for DiskReservation {
+    fn drop(&mut self) {
+        let mut state = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        state.reserved = state.reserved.saturating_sub(files::MAX_SCAN_SIZE);
+    }
+}
+
+pub(super) struct ScanSession {
+    lease: Lease,
+    pub fingerprint: String,
+    budget: Duration,
+}
+impl ScanSession {
+    pub fn validate(&self) -> Result<(), AppError> {
+        let engine = &self.lease.engine;
+        if engine.stopped.load(Ordering::Acquire)
+            || !engine.settings.read().map_err(poison)?.av_consent
+        {
+            return Err(AppError::new("E_SCAN_CANCELED", "av_stopped"));
+        }
+        if engine
+            .daemon
+            .lock()
+            .map_err(poison)?
+            .as_ref()
+            .is_some_and(|daemon| daemon.fingerprint != self.fingerprint)
+        {
+            return Err(AppError::new("E_AV_ENGINE", "av_database_changed"));
+        }
+        Ok(())
+    }
+    pub fn scan(
+        &self,
+        file: &mut File,
+        cancel: &AtomicBool,
+        timing: &mut ScanTiming,
+    ) -> Result<Option<String>, AppError> {
+        self.validate()?;
+        let result = self
+            .lease
+            .engine
+            .scan_loaded(file, cancel, self.budget, timing);
+        self.validate()?;
+        result
+    }
+}
+
 pub struct Lease {
     engine: Arc<Engine>,
 }
@@ -129,6 +194,21 @@ impl Engine {
         settings: Arc<RwLock<Settings>>,
         sink: EventSink,
     ) -> Arc<Self> {
+        Self::new_with_disk(
+            config,
+            db,
+            settings,
+            sink,
+            Arc::new(Mutex::new(DiskBudget::default())),
+        )
+    }
+    fn new_with_disk(
+        config: Config,
+        db: Database,
+        settings: Arc<RwLock<Settings>>,
+        sink: EventSink,
+        disk: Arc<Mutex<DiskBudget>>,
+    ) -> Arc<Self> {
         let engine = Arc::new(Self {
             config,
             db,
@@ -140,6 +220,8 @@ impl Engine {
             stopped: AtomicBool::new(false),
             updating: AtomicBool::new(false),
             last_error: Mutex::new(None),
+            disk,
+            children: Mutex::new(Vec::new()),
         });
         let weak = Arc::downgrade(&engine);
         std::thread::spawn(move || {
@@ -176,10 +258,103 @@ impl Engine {
     /// Synchronous owner teardown, independent of the weak idle worker's lifetime.
     pub(crate) fn shutdown(&self) {
         self.stopped.store(true, Ordering::Release);
+        let children: Vec<_> = self
+            .children
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .filter_map(std::sync::Weak::upgrade)
+            .collect();
+        for child in children {
+            child.shutdown();
+            let _ = fs::remove_dir_all(&child.config.runtime);
+        }
         let mut daemon = self.daemon.lock().unwrap_or_else(|e| e.into_inner());
-        // Daemon::drop kills and waits before the fixture/runtime can disappear.
+        // Kill/wait before waiting for the request lock: the child may be stuck
+        // extracting while its caller owns that lock.
         *daemon = None;
+        drop(daemon);
+        let _serial = self.scan_serial.lock().unwrap_or_else(|e| e.into_inner());
+        let _ = self.clean_temporary();
     }
+    /// An isolated daemon owns its socket and extraction directory. Canceling
+    /// this worker cannot kill or clean another worker's in-flight request.
+    pub(super) fn isolated(self: &Arc<Self>) -> Arc<Self> {
+        let mut config = self.config.clone();
+        config.runtime = self
+            .config
+            .runtime
+            .join(format!("worker-{}", uuid::Uuid::now_v7()));
+        let child = Self::new_with_disk(
+            config,
+            self.db.clone(),
+            self.settings.clone(),
+            self.sink.clone(),
+            self.disk.clone(),
+        );
+        let mut children = self.children.lock().unwrap_or_else(|e| e.into_inner());
+        children.retain(|child| child.strong_count() > 0);
+        children.push(Arc::downgrade(&child));
+        drop(children);
+        // Covers a shutdown which raced with registration.
+        if self.stopped.load(Ordering::Acquire) {
+            child.shutdown();
+        }
+        child
+    }
+
+    pub(super) fn session(
+        self: &Arc<Self>,
+        cancel: &AtomicBool,
+        budget: Duration,
+    ) -> Result<ScanSession, AppError> {
+        let lease = self.lease(cancel)?;
+        let fingerprint = self
+            .daemon
+            .lock()
+            .map_err(poison)?
+            .as_ref()
+            .ok_or_else(|| AppError::new("E_AV_ENGINE", "clamd_stopped"))?
+            .fingerprint
+            .clone();
+        Ok(ScanSession {
+            lease,
+            fingerprint,
+            budget,
+        })
+    }
+
+    fn fingerprint(&self) -> Result<String, AppError> {
+        use sha2::{Digest, Sha256};
+        let mut paths = fs::read_dir(&self.config.database)?
+            .map(|entry| entry.map(|e| e.path()))
+            .collect::<std::io::Result<Vec<_>>>()?;
+        paths.sort();
+        paths.push(self.config.helpers.join("clamd"));
+        let mut hash = Sha256::new();
+        hash.update(b"opennavo-av-clean-v1:archives:encrypted:limits");
+        hash.update(self.db.meta("av_db_generation")?.unwrap_or_default());
+        for path in paths {
+            let m = fs::symlink_metadata(&path)?;
+            if !m.is_file() {
+                continue;
+            }
+            hash.update(path.file_name().unwrap_or_default().as_encoded_bytes());
+            for value in [
+                m.dev(),
+                m.ino(),
+                m.len(),
+                m.mtime() as u64,
+                m.mtime_nsec() as u64,
+                m.ctime() as u64,
+                m.ctime_nsec() as u64,
+            ] {
+                hash.update(value.to_le_bytes());
+            }
+        }
+        Ok(format!("{:x}", hash.finalize()))
+    }
+
     pub fn ready(&self) -> Result<(), AppError> {
         if self.stopped.load(Ordering::Acquire) {
             return Err(AppError::new("E_AV_ENGINE", "av_stopped"));
@@ -247,6 +422,7 @@ impl Engine {
                 files::config_path(&temporary)?
             );
             files::write_private(&config, content.as_bytes())?;
+            let fingerprint = self.fingerprint()?;
             let spawned = Command::new(self.config.helpers.join("clamd"))
                 .arg(format!("--config-file={}", config.display()))
                 .env("CVD_CERTS_DIR", &self.config.helpers)
@@ -269,6 +445,7 @@ impl Engine {
                 child,
                 socket: socket_dir,
                 generation,
+                fingerprint,
                 last_used: Instant::now(),
             };
             let started = Instant::now();
@@ -316,6 +493,22 @@ impl Engine {
         file: &mut File,
         cancel: &AtomicBool,
     ) -> Result<Option<String>, AppError> {
+        let _lease = self.lease(cancel)?;
+        self.scan_loaded(
+            file,
+            cancel,
+            Duration::from_secs(300),
+            &mut ScanTiming::default(),
+        )
+    }
+    fn scan_loaded(
+        self: &Arc<Self>,
+        file: &mut File,
+        cancel: &AtomicBool,
+        budget: Duration,
+        timing: &mut ScanTiming,
+    ) -> Result<Option<String>, AppError> {
+        let queued_at = Instant::now();
         // Serialize requests, including small compressed inputs which may expand
         // substantially. Cancellation can then terminate the one owned daemon
         // without aborting another caller's in-flight request.
@@ -329,8 +522,22 @@ impl Engine {
                 Err(e) => return Err(poison(e)),
             }
         };
-        let _lease = self.lease(cancel)?;
-        self.check_disk_budget()?;
+        timing.queue_us = queued_at.elapsed().as_micros() as u64;
+        files::canceled(cancel)?;
+        if self.stopped.load(Ordering::Acquire) || !self.settings.read().map_err(poison)?.av_consent
+        {
+            return Err(AppError::new("E_SCAN_CANCELED", "av_stopped"));
+        }
+        // A timed-out file kills only this worker. Reload only in that case,
+        // rather than reading the signature database headers for every file.
+        let absent = self.daemon.lock().map_err(poison)?.is_none();
+        let _restart = if absent {
+            Some(self.lease(cancel)?)
+        } else {
+            None
+        };
+        let inspection_at = Instant::now();
+        let _disk = self.reserve_disk()?;
         let coverage = container::inspect(file);
         let socket = {
             let daemon = self.daemon.lock().map_err(poison)?;
@@ -340,7 +547,11 @@ impl Engine {
             daemon.socket.verify()?;
             daemon.socket.path()
         };
-        let mut result = protocol::scan(&socket, file, cancel);
+        timing.inspection_us = inspection_at.elapsed().as_micros() as u64;
+        let engine_at = Instant::now();
+        let mut result = protocol::scan_with_budget(&socket, file, cancel, budget);
+        timing.engine_us = engine_at.elapsed().as_micros() as u64;
+        let cleanup_at = Instant::now();
         // Preserve a real finding even when another member cannot be inspected.
         if matches!(result, Ok(None)) {
             match coverage {
@@ -378,6 +589,10 @@ impl Engine {
             *self.daemon.lock().map_err(poison)? = None;
         }
         let cleanup = self.clean_temporary();
+        if cleanup.is_err() {
+            self.disk.lock().map_err(poison)?.sampled = None;
+        }
+        timing.cleanup_us = cleanup_at.elapsed().as_micros() as u64;
         if let Err(e) = &result {
             self.record_failure(e);
         }
@@ -397,15 +612,27 @@ impl Engine {
         }
         Ok(())
     }
-    fn check_disk_budget(&self) -> Result<(), AppError> {
+    fn reserve_disk(&self) -> Result<DiskReservation, AppError> {
         use std::os::unix::ffi::OsStrExt;
-        let path = std::ffi::CString::new(self.config.runtime.as_os_str().as_bytes())
-            .map_err(|_| AppError::new("E_AV_SCAN_FAILED", "av_scan_unreadable"))?;
-        let mut stat: nix::libc::statvfs = unsafe { std::mem::zeroed() };
-        if unsafe { nix::libc::statvfs(path.as_ptr(), &mut stat) } != 0 {
-            return Err(AppError::new("E_AV_SCAN_FAILED", "av_scan_unreadable"));
+        let mut state = self.disk.lock().map_err(poison)?;
+        if state
+            .sampled
+            .is_none_or(|sampled| sampled.elapsed() >= Duration::from_secs(1))
+        {
+            let path = std::ffi::CString::new(self.config.runtime.as_os_str().as_bytes())
+                .map_err(|_| AppError::new("E_AV_SCAN_FAILED", "av_scan_unreadable"))?;
+            let mut stat: nix::libc::statvfs = unsafe { std::mem::zeroed() };
+            if unsafe { nix::libc::statvfs(path.as_ptr(), &mut stat) } != 0 {
+                return Err(AppError::new("E_AV_SCAN_FAILED", "av_scan_unreadable"));
+            }
+            state.available = (stat.f_bavail as u64).saturating_mul(stat.f_frsize as u64);
+            state.sampled = Some(Instant::now());
         }
-        disk_budget((stat.f_bavail as u64).saturating_mul(stat.f_frsize as u64))
+        // All workers share reservations, even for tiny compressed inputs.
+        // Release only after the child has finished and cleanup has completed.
+        disk_budget(state.available.saturating_sub(state.reserved))?;
+        state.reserved = state.reserved.saturating_add(files::MAX_SCAN_SIZE);
+        Ok(DiskReservation(self.disk.clone()))
     }
     pub(crate) fn record_failure(&self, error: &AppError) {
         if error.code != "E_SCAN_CANCELED"
@@ -651,6 +878,84 @@ fn cooldown_at(text: &str, now_secs: i64) -> Option<i64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn parent_shutdown_reaps_an_isolated_worker_even_with_live_leases() {
+        let (_fixture, service, _) = super::super::tests::fixture();
+        super::super::tests::fake_engine(&service);
+        service.settings.write().unwrap().av_consent = true;
+        let child = service.av.isolated();
+        let _lease = child.lease(&AtomicBool::new(false)).unwrap();
+        let pid = child.daemon.lock().unwrap().as_ref().unwrap().child.id();
+        service.av.shutdown();
+        assert!(child.stopped.load(Ordering::Acquire));
+        assert!(child.daemon.lock().unwrap().is_none());
+        assert_eq!(unsafe { nix::libc::kill(pid as i32, 0) }, -1);
+        assert_eq!(
+            std::io::Error::last_os_error().raw_os_error(),
+            Some(nix::libc::ESRCH)
+        );
+        assert!(!child.config.runtime.exists());
+        assert!(service.av.isolated().stopped.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn shared_disk_reservations_bound_concurrent_extraction() {
+        let (_fixture, service, _) = super::super::tests::fixture();
+        let other = service.av.isolated();
+        assert!(Arc::ptr_eq(&service.av.disk, &other.disk));
+        {
+            let mut state = service.av.disk.lock().unwrap();
+            state.sampled = Some(Instant::now());
+            state.available = 2 * files::MAX_SCAN_SIZE + 128 * 1024 * 1024;
+        }
+        let first = service.av.reserve_disk().unwrap();
+        let second = other.reserve_disk().unwrap();
+        assert!(service.av.reserve_disk().is_err());
+        drop(first);
+        assert!(service.av.reserve_disk().is_ok());
+        drop(second);
+        other.shutdown();
+    }
+
+    #[test]
+    fn bounded_session_timeout_restarts_its_worker_and_cleans_extraction() {
+        let (_fixture, service, _) = super::super::tests::fixture();
+        super::super::tests::fake_engine(&service);
+        service.settings.write().unwrap().av_consent = true;
+        let cancel = AtomicBool::new(false);
+        let session = service
+            .av
+            .session(&cancel, Duration::from_millis(100))
+            .unwrap();
+        let path = service.home.join("slow");
+        fs::write(&path, b"wait-for-test-cancel").unwrap();
+        let mut timing = ScanTiming::default();
+        let error = session
+            .scan(&mut File::open(&path).unwrap(), &cancel, &mut timing)
+            .unwrap_err();
+        assert_eq!(error.message, "av_scan_too_large");
+        assert!(service.av.daemon.lock().unwrap().is_none());
+        assert!(
+            !service
+                .av
+                .config
+                .runtime
+                .join("scan-tmp/partial-extraction")
+                .exists()
+        );
+        fs::write(&path, b"clean").unwrap();
+        assert!(
+            session
+                .scan(
+                    &mut File::open(path).unwrap(),
+                    &cancel,
+                    &mut ScanTiming::default()
+                )
+                .unwrap()
+                .is_none()
+        );
+    }
+
     #[test]
     fn long_home_can_scan_and_shutdown_removes_its_short_private_socket() {
         let home = format!("Users/{}", "long-username-".repeat(8));

@@ -17,6 +17,7 @@ func TestPublicCacheHeadersConditionalResponsesAndVary(t *testing.T) {
 	router.GET("/api/v1/search", func(c *gin.Context) { c.JSON(200, gin.H{}) })
 	router.GET("/api/v1/catalog/changes", func(c *gin.Context) { c.JSON(200, gin.H{}) })
 	router.GET("/api/v1/config/client", func(c *gin.Context) { c.JSON(200, gin.H{}) })
+	router.GET("/api/v1/catalog/links", func(c *gin.Context) { c.JSON(200, gin.H{}) })
 	router.GET("/error", func(c *gin.Context) { c.JSON(500, gin.H{}) })
 	first := httptest.NewRecorder()
 	router.ServeHTTP(first, httptest.NewRequest("GET", "/api/v1/home", nil))
@@ -32,7 +33,7 @@ func TestPublicCacheHeadersConditionalResponsesAndVary(t *testing.T) {
 		require.Equal(t, http.StatusNotModified, reply.Code)
 		require.Empty(t, reply.Body.String())
 	}
-	for _, example := range []struct{ path, policy string }{{"/api/v1/search", "public, max-age=30"}, {"/api/v1/catalog/changes", "public, max-age=60"}, {"/api/v1/config/client", "public, max-age=300"}, {"/error", "no-store"}} {
+	for _, example := range []struct{ path, policy string }{{"/api/v1/search", "public, max-age=30"}, {"/api/v1/catalog/changes", "public, max-age=60"}, {"/api/v1/config/client", "public, max-age=300"}, {"/error", "no-store"}, {"/api/v1/catalog/links", "public, max-age=60, s-maxage=300, stale-while-revalidate=600, no-transform"}} {
 		reply := httptest.NewRecorder()
 		router.ServeHTTP(reply, httptest.NewRequest("GET", example.path, nil))
 		require.Equal(t, example.policy, reply.Header().Get("Cache-Control"))

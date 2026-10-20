@@ -157,7 +157,7 @@
   "palette": {
     "packages": "App",
     "jump": "移動",
-    "searchAll": "「{q}」を検索",
+    "searchAll": "「{q}」の検索結果をすべて表示",
     "category": "カテゴリ：{name}",
     "pages": {
       "discover": "見つける",
@@ -181,6 +181,10 @@
       "release": "{version} · {time}に公開",
       "download": "ダウンロード",
       "allFiles": "GitHub ですべてのファイルを表示",
+      "filtered": "お使いの Mac（{chip}）向けに絞り込み済み",
+      "chipUnknown": "Mac のチップを判別できなかったため、両方のチップ向けのインストーラを表示しています",
+      "notMac": "これは Mac 用 App です。以下は Mac 用のインストーラです",
+      "others": "その他のインストーラ（{count}）",
       "githubReleases": "GitHub からダウンロード",
       "teamId": "開発元の署名",
       "adopted": "この App は Homebrew に収録されたので、ワンクリックでインストールできます",

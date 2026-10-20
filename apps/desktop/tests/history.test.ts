@@ -1,8 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
+import { createOnUi } from '@opennavo/ui';
 import { commands } from '@/ipc/client';
 import { i18n } from '@/i18n';
 import HistoryList from '@/components/updates/HistoryList.vue';
+import UpdatesRail from '@/components/rails/UpdatesRail.vue';
+import { useToasts } from '@/composables/useToasts';
 import UpdatesPage from '@/pages/UpdatesPage.vue';
 import InstalledPage from '@/pages/InstalledPage.vue';
 import RunningTask from '@/components/updates/RunningTask.vue';
@@ -25,6 +29,8 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  useToasts().clear();
+  document.body.innerHTML = '';
 });
 
 it('Cache cleanup progress belongs to Installed, while upgrade progress stays in Updates', async () => {
@@ -284,4 +290,203 @@ it.each(['install', 'upgrade', 'uninstall'] as const)('Keeps ordinary Homebrew %
     .trigger('click');
   expect(enqueue).toHaveBeenCalledWith(op, task.target, 'retry', task.options);
   wrapper.unmount();
+});
+
+// Clear history: one confirmation, then every finished record goes and the screens built from them reread.
+const ui = createOnUi({ locale: ref('zh-CN' as const) });
+const dialogButton = (attribute: 'data-on-cancel' | 'data-on-confirm') =>
+  document.body.querySelector<HTMLButtonElement>(`[role="alertdialog"] button[${attribute}]`);
+
+it('Clearing the history asks first, then empties the list and the month stats', async () => {
+  const context = await setup('/updates');
+  const sample = context.state.history[0]!;
+  const now = Date.now();
+  context.state.history = [
+    {
+      ...sample,
+      id: 'worked',
+      op: 'upgrade',
+      state: 'succeeded',
+      target: { kind: 'cask', token: 'firefox' },
+      finishedAt: now
+    },
+    {
+      ...sample,
+      id: 'broke',
+      op: 'upgrade',
+      state: 'failed',
+      target: { kind: 'cask', token: 'ghostty' },
+      finishedAt: now
+    }
+  ];
+  const global = { plugins: [context.pinia, context.router, i18n, ui] };
+  const page = mount(UpdatesPage, { global, attachTo: document.body });
+  const rail = mount(UpdatesRail, { global });
+  try {
+    await flushPromises();
+    expect(page.findComponent(HistoryList).props('tasks')).toHaveLength(2);
+    expect(rail.text()).toContain('50%');
+    const clear = vi.spyOn(commands, 'historyClear');
+    const open = () => page.findAll('button').find(button => button.text() === '清空记录')!;
+
+    // Asking is not clearing.
+    await open().trigger('click');
+    await flushPromises();
+    expect(document.body.textContent).toContain('确定清空全部更新记录吗？');
+    expect(document.body.textContent).toContain('还能撤销的卸载和清理、还能回滚的更新会保留。');
+    dialogButton('data-on-cancel')!.click();
+    await flushPromises();
+    expect(clear).not.toHaveBeenCalled();
+    expect(page.findComponent(HistoryList).props('tasks')).toHaveLength(2);
+
+    await open().trigger('click');
+    await flushPromises();
+    dialogButton('data-on-confirm')!.click();
+    await flushPromises();
+    expect(clear).toHaveBeenCalledTimes(1);
+    expect(context.state.history).toEqual([]);
+    expect(page.findComponent(HistoryList).exists()).toBe(false);
+    expect(page.text()).toContain('还没有更新记录');
+    expect(rail.text()).not.toContain('50%');
+    expect(useToasts().items.value.map(toast => toast.title)).toContain('更新记录已清空');
+    // Nothing left to clear.
+    expect(open().attributes('disabled')).toBeDefined();
+  } finally {
+    page.unmount();
+    rail.unmount();
+  }
+});
+
+it('Clearing keeps what can still be undone or rolled back, and says how many', async () => {
+  const context = await setup('/updates');
+  const sample = context.state.history[0]!;
+  const now = Date.now();
+  const outcome = (restorable: boolean) => ({
+    freedBytes: 3_000,
+    trashedBytes: 1_000,
+    trashed: 2,
+    deleted: 4,
+    skipped: [],
+    restorable
+  });
+  context.state.history = [
+    {
+      ...sample,
+      id: 'uninstall-in-trash',
+      op: 'uninstall',
+      target: { kind: 'cask', token: 'zoom' },
+      outcome: outcome(true),
+      finishedAt: now
+    },
+    {
+      ...sample,
+      id: 'update-with-kept-copy',
+      op: 'upgrade',
+      state: 'succeeded',
+      target: { kind: 'app', token: 'local-notion' },
+      targetName: 'Notion',
+      options: { source: 'electron' },
+      finishedAt: now - 1_000
+    },
+    { ...sample, id: 'clean-emptied', op: 'clean', target: null, outcome: outcome(false), finishedAt: now - 2_000 },
+    {
+      ...sample,
+      id: 'plain-update',
+      op: 'upgrade',
+      state: 'failed',
+      target: { kind: 'cask', token: 'firefox' },
+      finishedAt: now - 3_000
+    }
+  ];
+  const page = mount(UpdatesPage, {
+    global: { plugins: [context.pinia, context.router, i18n, ui] },
+    attachTo: document.body
+  });
+  const ids = () =>
+    page
+      .findComponent(HistoryList)
+      .props('tasks')
+      .map((task: { id: string }) => task.id);
+  try {
+    await flushPromises();
+    expect(ids()).toHaveLength(4);
+    await page
+      .findAll('button')
+      .find(button => button.text() === '清空记录')!
+      .trigger('click');
+    await flushPromises();
+    dialogButton('data-on-confirm')!.click();
+    await flushPromises();
+    expect(context.state.history.map(task => task.id)).toEqual(['uninstall-in-trash', 'update-with-kept-copy']);
+    expect(ids()).toEqual(['uninstall-in-trash', 'update-with-kept-copy']);
+    expect(useToasts().items.value.map(toast => toast.title)).toContain('已清空，2 条还能撤销或回滚的记录已保留');
+    // Still there to act on.
+    expect(page.text()).toContain('撤销');
+  } finally {
+    page.unmount();
+  }
+});
+
+it('A failed clear says so and keeps the records', async () => {
+  const context = await setup('/updates');
+  const sample = context.state.history[0]!;
+  context.state.history = [{ ...sample, id: 'kept', op: 'upgrade', target: { kind: 'cask', token: 'firefox' } }];
+  vi.spyOn(commands, 'historyClear').mockResolvedValue({
+    status: 'error',
+    error: { code: 'E_INTERNAL', message: 'database locked', detail: null }
+  });
+  const page = mount(UpdatesPage, {
+    global: { plugins: [context.pinia, context.router, i18n, ui] },
+    attachTo: document.body
+  });
+  try {
+    await flushPromises();
+    await page
+      .findAll('button')
+      .find(button => button.text() === '清空记录')!
+      .trigger('click');
+    await flushPromises();
+    dialogButton('data-on-confirm')!.click();
+    await flushPromises();
+    expect(page.findComponent(HistoryList).props('tasks')).toHaveLength(1);
+    const toast = useToasts().items.value.at(-1);
+    expect(toast).toMatchObject({ tone: 'danger', title: '操作没有完成' });
+    expect(useToasts().items.value.map(item => item.title)).not.toContain('更新记录已清空');
+  } finally {
+    page.unmount();
+  }
+});
+
+it('Clearing is offered only while there is something to clear', async () => {
+  const context = await setup('/updates');
+  const sample = context.state.history[0]!;
+  const clearButton = (page: ReturnType<typeof mount>) =>
+    page.findAll('button').find(item => item.text() === '清空记录')!;
+  context.state.history = [];
+  const empty = mount(UpdatesPage, { global: { plugins: [context.pinia, context.router, i18n, ui] } });
+  try {
+    await flushPromises();
+    expect(clearButton(empty).attributes('disabled')).toBeDefined();
+  } finally {
+    empty.unmount();
+  }
+
+  // A filter can show no rows while other records exist: clearing stays available there.
+  context.state.history = [
+    { ...sample, id: 'fine', op: 'upgrade', state: 'succeeded', target: { kind: 'cask', token: 'firefox' } }
+  ];
+  const page = mount(UpdatesPage, { global: { plugins: [context.pinia, context.router, i18n, ui] } });
+  try {
+    await flushPromises();
+    expect(clearButton(page).attributes('disabled')).toBeUndefined();
+    await page
+      .findAll('button')
+      .find(item => item.text() === '失败')!
+      .trigger('click');
+    await flushPromises();
+    expect(page.findComponent(HistoryList).exists()).toBe(false);
+    expect(clearButton(page).attributes('disabled')).toBeUndefined();
+  } finally {
+    page.unmount();
+  }
 });

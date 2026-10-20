@@ -34,7 +34,7 @@ export const commands = {
 	postureCheck: () => typedError<PostureCheck[], AppError>(__TAURI_INVOKE("posture_check")),
 	avEngineStatus: () => typedError<AvEngineStatus, AppError>(__TAURI_INVOKE("av_engine_status")),
 	avDbUpdate: () => typedError<string, AppError>(__TAURI_INVOKE("av_db_update")),
-	avScanStart: (kind: AvScanKind, paths: string[] | null) => typedError<AvScanStarted, AppError>(__TAURI_INVOKE("av_scan_start", { kind, paths })),
+	avScanStart: (kind: AvScanKind, paths: string[] | null, force: boolean | null) => typedError<AvScanStarted, AppError>(__TAURI_INVOKE("av_scan_start", { kind, paths, force })),
 	avScanCancel: (scanId: string) => typedError<null, AppError>(__TAURI_INVOKE("av_scan_cancel", { scanId })),
 	avScanGet: (scanId: string) => typedError<AvScanResult, AppError>(__TAURI_INVOKE("av_scan_get", { scanId })),
 	avFindingsAct: (scanId: string, findingIds: string[], action: FindingAction) => typedError<ActOutcome, AppError>(__TAURI_INVOKE("av_findings_act", { scanId, findingIds, action })),
@@ -200,7 +200,7 @@ export const commands = {
 	taskListActive: () => typedError<Task[], AppError>(__TAURI_INVOKE("task_list_active")),
 	taskLog: (id: string, tail: number | null) => typedError<string, AppError>(__TAURI_INVOKE("task_log", { id, tail })),
 	historyList: (query: HistoryQuery) => typedError<Page<Task>, AppError>(__TAURI_INVOKE("history_list", { query })),
-	historyClear: () => typedError<number, AppError>(__TAURI_INVOKE("history_clear")),
+	historyClear: () => typedError<HistoryCleared, AppError>(__TAURI_INVOKE("history_clear")),
 	historyExportCsv: (path: string) => typedError<number, AppError>(__TAURI_INVOKE("history_export_csv", { path })),
 	brewfileExport: (path: string, targets: TaskTarget[] | null) => typedError<number, AppError>(__TAURI_INVOKE("brewfile_export", { path, targets })),
 	brewfilePreview: (path: string) => typedError<BrewfilePreview, AppError>(__TAURI_INVOKE("brewfile_preview", { path })),
@@ -381,11 +381,25 @@ export type AvProgress = {
 	bytesScanned: number,
 	currentPath: string,
 	findings: number,
+	cachedFiles?: number,
 };
 
 export type AvProgressEvent = AvProgress;
 
 export type AvScanKind = "quick" | "full" | "custom";
+
+export type AvScanMetrics = {
+	cachedFiles: number,
+	workers: number,
+	preparationMs: number,
+	hashMs: number,
+	engineMs: number,
+	queueMs: number,
+	inspectionMs: number,
+	cleanupMs: number,
+	persistenceMs: number,
+	slowFiles: number,
+};
 
 export type AvScanResult = {
 	scanId: string,
@@ -397,6 +411,7 @@ export type AvScanResult = {
 	filesScanned: number,
 	bytesScanned: number,
 	skipped: AvSkipped,
+	metrics: AvScanMetrics,
 	deniedRoots: string[],
 	findings: AvFinding[],
 };
@@ -569,6 +584,7 @@ export type CatalogStatus = {
 	itemCount: number,
 	syncedAt: number | null,
 	syncing: boolean,
+	linksError?: string | null,
 };
 
 export type CatalogSynced = CatalogStatus;
@@ -679,6 +695,28 @@ export type CleanupVolume = {
 	name: string,
 	totalBytes: number,
 	freeBytes: number,
+};
+
+/**
+ *  How the machine's busy share was spent over one process window (all ratios of the whole machine).
+ *  `readable + finished + other` equals `usage` unless the parts overshoot it by sampling skew, then `other` is 0.
+ */
+export type CpuBreakdown = {
+	/**  The host's busy ratio over the same window as the process figures. */
+	usage: number,
+	/**  Used by every process whose CPU OpenNavo can read (its own user's), whether listed or not. */
+	readable: number,
+	/**  How many of those used at least 0.1% of the machine. */
+	activeCount: number,
+	/**
+	 *  Used by child processes that ended and were collected by their parents since the last capture, so they can no
+	 *  longer be listed. Credited once: what they were already counted while alive is not repeated.
+	 */
+	finished: number,
+	/**  The parents that collected the most of `finished`, largest first (at most three). */
+	finishedFrom: FinishedParent[],
+	/**  What is left of the busy share: the kernel, root and other users' processes, and rounding. */
+	other: number,
 };
 
 export type CpuSample = {
@@ -818,6 +856,13 @@ export type FindingOwner = {
 };
 
 export type FindingStatus = "open" | "quarantined" | "deleted" | "trusted";
+
+export type FinishedParent = {
+	pid: number,
+	name: string,
+	/**  Whole-machine ratio of the finished children's CPU this parent collected. */
+	cpu: number,
+};
 
 export type FirewallAction = "allow" | "block";
 
@@ -1041,6 +1086,15 @@ export type HealthIssueKey = "cpu_busy" | "memory_pressure" | "disk_low" | "disk
 export type HealthIssueLevel = "info" | "attention" | "critical";
 
 export type HealthLevel = "good" | "attention" | "critical";
+
+/**
+ *  What clearing the history did: records deleted, and finished records kept because the uninstall or clean-up can still
+ *  be undone or the update can still be rolled back.
+ */
+export type HistoryCleared = {
+	cleared: number,
+	kept: number,
+};
 
 export type HistoryQuery = {
 	q: string | null,
@@ -1347,6 +1401,13 @@ export type MonitorSample = {
 	 *  M3.1 adds disk top 10 / network top 10 when those modules have a visible subscription.
 	 */
 	processes: ProcessInfo[] | null,
+	/**
+	 *  The same processes merged by app bundle (helpers included) or executable name, selected like `processes`.
+	 *  Each entry stands for `count` processes: sums of CPU, memory and I/O, the main process's pid and name.
+	 */
+	processGroups: ProcessInfo[] | null,
+	/**  Where the machine's CPU went in the last process window; null until two process captures exist. */
+	cpuBreakdown: CpuBreakdown | null,
 	health: Health,
 };
 
@@ -1527,6 +1588,10 @@ export type ProcessInfo = {
 	netUpBytesPerSec: number | null,
 	kind: ProcessKind,
 	quittable: boolean,
+	/**  How many processes this entry stands for: 1, or the members of a merged app or executable. */
+	count: number,
+	/**  OpenNavo itself (or the group holding it): listed, but never quittable. */
+	isSelf: boolean,
 };
 
 export type ProcessKind = "app" | "background" | "system";
@@ -1997,6 +2062,15 @@ export type UninstallScanEvent = ScanProgress;
 
 export type UpdateChannel = "stable" | "beta";
 
+export type UpdateCheckFailure = {
+	source: UpdateSource | null,
+	appId: string | null,
+	appName: string | null,
+	reason: UpdateCheckFailureReason,
+};
+
+export type UpdateCheckFailureReason = "rulesUnavailable" | "rateLimited" | "invalidUrl" | "network" | "failed";
+
 /**  Exported error vocabulary; AppError.code stays a string for existing errors. */
 export type UpdateErrorCode = "E_UPDATE_INTEGRITY" | "E_UPDATE_TEAM_MISMATCH" | "E_UPDATE_NOT_NOTARIZED" | "E_UPDATE_ARCH" | "E_UPDATE_MIN_OS" | "E_UPDATE_FEED" | "E_UPDATE_DMG_LICENSE" | "E_UPDATE_SWAP" | "E_APP_RUNNING" | "E_ADMIN_CANCELED" | "E_NOT_IMPLEMENTED";
 
@@ -2022,6 +2096,7 @@ export type UpdatesStatus = {
 	nextCheckAt: number | null,
 	checking: boolean,
 	failedSources: UpdateSource[],
+	failures?: UpdateCheckFailure[],
 };
 
 export type VirusTotalStatus = {

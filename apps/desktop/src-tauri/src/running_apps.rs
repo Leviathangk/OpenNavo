@@ -254,8 +254,16 @@ pub async fn identity(
             {
                 return Err(check_failed());
             }
-            let value = plist::Value::from_file(path.join("Contents/Info.plist"))
-                .map_err(|_| check_failed())?;
+            // A removed bundle (or missing plist) does not prevent checking the
+            // destination path. Keep it in Identity: a process can still be
+            // running from that path after its on-disk bundle was removed.
+            // Permission and parsing failures remain errors, not "not running".
+            let file = match std::fs::File::open(path.join("Contents/Info.plist")) {
+                Ok(file) => file,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(_) => return Err(check_failed()),
+            };
+            let value = plist::Value::from_reader(file).map_err(|_| check_failed())?;
             let id = value
                 .as_dictionary()
                 .and_then(|d| d.get("CFBundleIdentifier"))
@@ -458,6 +466,76 @@ pub(crate) mod tests {
             ..Default::default()
         })
     }
+    #[tokio::test]
+    async fn missing_bundle_or_plist_still_checks_running_processes_by_path() {
+        for remove_bundle in [false, true] {
+            let tmp = tempfile::tempdir().unwrap();
+            let database = Database::open(&tmp.path().join("db")).unwrap();
+            cache_apps(&database, &["target"]);
+            let path = tmp.path().canonicalize().unwrap().join("apps/target.app");
+            if remove_bundle {
+                std::fs::remove_dir_all(&path).unwrap();
+            } else {
+                std::fs::remove_file(path.join("Contents/Info.plist")).unwrap();
+            }
+            let identity = Arc::new(
+                super::identity(
+                    &database,
+                    &Settings::default(),
+                    &TaskTarget {
+                        kind: TaskKind::Cask,
+                        token: "target".into(),
+                    },
+                )
+                .await
+                .unwrap(),
+            );
+            assert_eq!(identity.paths, vec![path.clone()]);
+            let apps = Arc::new(FakeApps::default());
+            let check = || {
+                prepare(
+                    identity.clone(),
+                    apps.clone(),
+                    false,
+                    Arc::new(AtomicBool::new(false)),
+                    Arc::new(Notify::new()),
+                    Duration::ZERO,
+                )
+            };
+            assert!(check().await.unwrap().is_empty());
+            // Even a helper with a different identifier must block replacement.
+            apps.processes.lock().unwrap().push(Process {
+                pid: 42,
+                path: path.join("Contents/Helpers/Helper.app"),
+                bundle_id: "test.helper".into(),
+            });
+            assert_eq!(check().await.unwrap_err().code, "E_APP_RUNNING");
+            assert!(apps.quits.lock().unwrap().is_empty());
+        }
+    }
+
+    #[tokio::test]
+    async fn malformed_plist_does_not_bypass_running_app_protection() {
+        let tmp = tempfile::tempdir().unwrap();
+        let database = Database::open(&tmp.path().join("db")).unwrap();
+        cache_apps(&database, &["target"]);
+        std::fs::write(
+            tmp.path().join("apps/target.app/Contents/Info.plist"),
+            "bad",
+        )
+        .unwrap();
+        let result = super::identity(
+            &database,
+            &Settings::default(),
+            &TaskTarget {
+                kind: TaskKind::Cask,
+                token: "target".into(),
+            },
+        )
+        .await;
+        assert_eq!(result.err().unwrap().code, "E_APP_CHECK_FAILED");
+    }
+
     async fn prepare_test(apps: Arc<FakeApps>, allow: bool) -> Result<Vec<PathBuf>, AppError> {
         prepare(
             identity(),

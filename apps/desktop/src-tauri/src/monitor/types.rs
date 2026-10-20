@@ -150,6 +150,11 @@ pub struct MonitorSample {
     /// Visible page/detail/popover only: CPU top 20 union memory top 20, deduplicated by PID.
     /// M3.1 adds disk top 10 / network top 10 when those modules have a visible subscription.
     pub processes: Option<Vec<ProcessInfo>>,
+    /// The same processes merged by app bundle (helpers included) or executable name, selected like `processes`.
+    /// Each entry stands for `count` processes: sums of CPU, memory and I/O, the main process's pid and name.
+    pub process_groups: Option<Vec<ProcessInfo>>,
+    /// Where the machine's CPU went in the last process window; null until two process captures exist.
+    pub cpu_breakdown: Option<CpuBreakdown>,
     pub health: Health,
 }
 
@@ -165,6 +170,33 @@ pub struct CpuSample {
     pub load: (MonitorNumber, MonitorNumber, MonitorNumber),
     /// Watts; M3.1 visible CPU/GPU subscriptions only, at most once per two seconds; otherwise null.
     pub power_watts: Option<MonitorNumber>,
+}
+/// How the machine's busy share was spent over one process window (all ratios of the whole machine).
+/// `readable + finished + other` equals `usage` unless the parts overshoot it by sampling skew, then `other` is 0.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CpuBreakdown {
+    /// The host's busy ratio over the same window as the process figures.
+    pub usage: MonitorNumber,
+    /// Used by every process whose CPU OpenNavo can read (its own user's), whether listed or not.
+    pub readable: MonitorNumber,
+    /// How many of those used at least 0.1% of the machine.
+    pub active_count: u32,
+    /// Used by child processes that ended and were collected by their parents since the last capture, so they can no
+    /// longer be listed. Credited once: what they were already counted while alive is not repeated.
+    pub finished: MonitorNumber,
+    /// The parents that collected the most of `finished`, largest first (at most three).
+    pub finished_from: Vec<FinishedParent>,
+    /// What is left of the busy share: the kernel, root and other users' processes, and rounding.
+    pub other: MonitorNumber,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FinishedParent {
+    pub pid: u32,
+    pub name: String,
+    /// Whole-machine ratio of the finished children's CPU this parent collected.
+    pub cpu: MonitorNumber,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -309,6 +341,10 @@ pub struct ProcessInfo {
     pub net_up_bytes_per_sec: Option<MonitorNumber>,
     pub kind: ProcessKind,
     pub quittable: bool,
+    /// How many processes this entry stands for: 1, or the members of a merged app or executable.
+    pub count: u32,
+    /// OpenNavo itself (or the group holding it): listed, but never quittable.
+    pub is_self: bool,
 }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]

@@ -50,7 +50,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let catalog = response.data.ok_or("missing catalog")?;
     let temp = tempfile::tempdir()?;
     let database = Database::open(&temp.path().join("links.db"))?;
-    let count = links::apply(&database, &catalog, chrono::Utc::now().timestamp_millis())?;
+    let count = links::apply(
+        &database,
+        &catalog,
+        None,
+        chrono::Utc::now().timestamp_millis(),
+    )?;
     println!(
         "{}",
         serde_json::json!({"readOnly":true,"items":count,"etag":catalog.etag,"tasks":database.tasks()?.len(),"temporaryDatabase":true,"source":args[1]})

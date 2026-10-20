@@ -32,6 +32,18 @@ const savedScan = (scanId = 'persisted'): AvScanResult => ({
   filesScanned: 1,
   bytesScanned: 68,
   skipped: { dataless: 0, tooLarge: 0, unreadable: 0, excluded: 0 },
+  metrics: {
+    cachedFiles: 0,
+    workers: 1,
+    preparationMs: 0,
+    hashMs: 0,
+    engineMs: 0,
+    queueMs: 0,
+    inspectionMs: 0,
+    cleanupMs: 0,
+    persistenceMs: 0,
+    slowFiles: 0
+  },
   deniedRoots: [],
   findings: [
     {
