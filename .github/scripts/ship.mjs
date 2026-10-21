@@ -12,11 +12,12 @@ export const FLAKES = /429 Too Many Requests|toomanyrequests|sixteen_thousand_im
 export const MAX_ATTEMPTS = 3;
 
 // Paths that end up in the server, web, admin or MCP images or the deployment.
-// The dev and E2E stacks under ops/ (and ops tests) never reach production.
+// The dev and E2E stacks under ops/ (and ops tests) never reach production, and
+// a deployment never updates the receiver: operators install it on the host.
 export const SHIPS = [
   /^apps\/(server|web|admin|mcp)\//,
   /^packages\//,
-  /^ops\/(?!(?:e2e\.py|test_[^/]*\.py|docker-compose\.(?:dev|e2e)(?:\.[^/]+)?\.yml|Dockerfile\.minio)$)/,
+  /^ops\/(?!(?:e2e\.py|test_[^/]*\.py|github-deploy\.py|GUIDE\.md|docker-compose\.(?:dev|e2e)(?:\.[^/]+)?\.yml|Dockerfile\.minio)$)/,
   /^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml)$/
 ];
 // Go never builds _test.go files into a binary.

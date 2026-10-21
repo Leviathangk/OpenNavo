@@ -227,6 +227,10 @@ rollback. Cleanup failures do not roll back a verified release; retrying the sam
 revision verifies the live routes and resumes cleanup. First inspect a failed run on the server; logs
 intentionally omit expanded Docker/Compose errors that could reveal secrets.
 The registry token is job-scoped and stored only in a temporary Docker config.
+The receiver pulls the three images in parallel, writes the pre-migration dump with zstd
+compression (falling back to pg_dump's default where the server lacks zstd), and prints each
+phase's duration to the workflow log. Deployments never update the receiver itself: reinstall
+the root-owned host copy after every change to `ops/github-deploy.py`.
 
 ### Production image and build-cache cleanup
 
