@@ -83,16 +83,16 @@ export function plan(eventName, payload, files) {
   return { ...areas, full };
 }
 
+async function get(path) {
+  const response = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}${path}`, {
+    headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' },
+    signal: AbortSignal.timeout(30_000)
+  });
+  if (!response.ok) throw new Error(`GET ${path}: HTTP ${response.status}`);
+  return response.json();
+}
+
 async function changedFiles(eventName, payload) {
-  const repository = process.env.GITHUB_REPOSITORY;
-  const get = async path => {
-    const response = await fetch(`https://api.github.com/repos/${repository}${path}`, {
-      headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json' },
-      signal: AbortSignal.timeout(30_000)
-    });
-    if (!response.ok) throw new Error(`GET ${path}: HTTP ${response.status}`);
-    return response.json();
-  };
   if (eventName === 'pull_request') {
     const files = [];
     for (let page = 1; page <= 30; page++) {
@@ -136,6 +136,10 @@ async function changedFiles(eventName, payload) {
 async function main() {
   const eventName = process.env.GITHUB_EVENT_NAME;
   const payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+  // The event keeps the labels it fired with: `gh pr create --label` adds them
+  // just after opening, and re-runs reuse the event. Read the current ones, so
+  // labelling full-ci and re-running the workflow takes effect.
+  if (eventName === 'pull_request') payload.pull_request.labels = (await get(`/pulls/${payload.pull_request.number}`)).labels;
   const files = eventName === 'pull_request' || eventName === 'push' ? await changedFiles(eventName, payload) : null;
   const result = plan(eventName, payload, files);
   console.log(files ? `${files.length} changed paths` : 'every area');
