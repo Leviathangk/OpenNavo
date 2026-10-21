@@ -19,7 +19,10 @@ export const SHIPS = [
   /^ops\/(?!(?:e2e\.py|test_[^/]*\.py|docker-compose\.(?:dev|e2e)(?:\.[^/]+)?\.yml|Dockerfile\.minio)$)/,
   /^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml)$/
 ];
-export const ships = files => files === null || files.some(file => SHIPS.some(pattern => pattern.test(file)));
+// Go never builds _test.go files into a binary.
+const TESTS = /_test\.go$/;
+export const ships = files =>
+  files === null || files.some(file => !TESTS.test(file) && SHIPS.some(pattern => pattern.test(file)));
 
 // The revision of the newest successful deploy: the SHA in its title, or the
 // main commit it ran on when it was dispatched for "main".

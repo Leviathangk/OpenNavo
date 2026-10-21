@@ -5,6 +5,9 @@ services:
     build:
       context: ../apps/server
       target: postgres
+    # Production runs with JIT off; with it on, every packages insert pays about
+    # 110 ms of JIT compilation in the background declaration trigger.
+    command: ['postgres', '-c', 'jit=off']
     environment:
       POSTGRES_DB: opennavo_e2e
       POSTGRES_USER: opennavo

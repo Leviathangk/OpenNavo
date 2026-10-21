@@ -218,7 +218,30 @@ jobs:
       - run: pnpm --filter @opennavo/web run e2e
       # Full-stack admin cases (07 section 9) reuse the E2E stack; Playwright starts the admin dev server, with Vite proxying to 18082.
       - run: pnpm --filter @opennavo/admin exec playwright test e2e/stack.spec.ts
-      # Detail-page Lighthouse (10 M2-08, 05 section 8): production build with a proxy simulating Caddy compression; performance scores warn only in CI.
+      - if: always()
+        run: node tooling/scripts/tasks/server.mjs e2e-down --ci
+
+  # Detail-page Lighthouse (10 M2-08, 05 section 8) on its own runner beside web-e2e, against its own seeded stack:
+  # production build with a proxy simulating Caddy compression; performance scores warn only in CI.
+  web-lighthouse:
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true' && needs.changes.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # web-e2e saves the stack's caches; both jobs would write the same entries.
+      - uses: ./.github/actions/e2e-backend
+        with:
+          save-cache: 'false'
       - run: pnpm --filter @opennavo/web build
       - name: Lighthouse
         working-directory: apps/web
