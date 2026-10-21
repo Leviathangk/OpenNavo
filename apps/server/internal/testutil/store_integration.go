@@ -38,7 +38,7 @@ func NewStore(t *testing.T) *store.Store {
 	t.Cleanup(func() { require.NoError(t, pg.Terminate(context.Background())) })
 	dsn, err := pg.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
-	redisRequest := testcontainers.ContainerRequest{Image: "public.ecr.aws/docker/library/redis:8", ExposedPorts: []string{"6379/tcp"}, WaitingFor: wait.ForAll(wait.ForLog("Ready to accept connections"), wait.ForListeningPort("6379/tcp"))}
+	redisRequest := testcontainers.ContainerRequest{Image: "redis:8", ExposedPorts: []string{"6379/tcp"}, WaitingFor: wait.ForAll(wait.ForLog("Ready to accept connections"), wait.ForListeningPort("6379/tcp"))}
 	if os.Getenv("OPENNAVO_TEST_EXPLICIT_PORTS") == "1" {
 		redisRequest.HostConfigModifier = explicitTestPort(t, "6379/tcp")
 	}
