@@ -33,4 +33,4 @@ jobs:
       - run: python3 -I tooling/scripts/test_check_notices.py
       - run: python3 tooling/scripts/check-notices.py
       - run: node tooling/scripts/check-secrets.mjs --history
-      - run: node --test tooling/scripts/tasks/shared.test.mjs tooling/scripts/check-secrets.test.mjs .github/scripts/changes.test.mjs .github/scripts/go-shard.test.mjs
+      - run: node --test tooling/scripts/tasks/shared.test.mjs tooling/scripts/check-secrets.test.mjs .github/scripts/changes.test.mjs .github/scripts/go-shard.test.mjs .github/scripts/ship.test.mjs

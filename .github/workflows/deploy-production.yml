@@ -1,4 +1,6 @@
 name: Deploy production
+# The revision in the title lets ship.mjs see whether a commit already deployed.
+run-name: Deploy production ${{ inputs.revision }}
 on:
   workflow_dispatch:
     inputs:
