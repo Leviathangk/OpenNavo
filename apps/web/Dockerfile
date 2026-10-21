@@ -4,8 +4,22 @@
 FROM node:24.19.0-alpine AS build
 WORKDIR /repo
 RUN corepack enable
+# Dependencies install from the manifests alone, so the layer is reused until
+# one of them or the lockfile changes; before, every source change reinstalled
+# them and exported the result to the build cache again. Add a manifest here
+# when the web app gains a workspace dependency (the install fails otherwise).
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches/ patches/
+COPY apps/web/package.json apps/web/
+COPY packages/api/package.json packages/api/
+COPY packages/shared/package.json packages/shared/
+COPY packages/tokens/package.json packages/tokens/
+COPY packages/ui/package.json packages/ui/
+# Lifecycle scripts need the sources: dependency builds run in `pnpm rebuild`
+# below, and `nuxt build` does what the web app's `nuxt prepare` would.
+RUN pnpm install --frozen-lockfile --filter "@opennavo/web..." --ignore-scripts
 COPY . .
-RUN pnpm install --frozen-lockfile --filter "@opennavo/web..."
+RUN pnpm rebuild --filter "@opennavo/web..."
 RUN pnpm --filter @opennavo/web build
 
 FROM node:24.19.0-alpine
