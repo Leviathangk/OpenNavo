@@ -217,6 +217,10 @@ services:
     image: ${POSTGRES_IMAGE:-opennavo-postgres:local}
     profiles: [local-db]
     restart: unless-stopped
+    # JIT stays off, as on the live host (ALTER SYSTEM, 2026-10-10): with it on,
+    # the background declaration trigger compiles its query for every packages
+    # insert or artifact update, about 110 ms each.
+    command: ['postgres', '-c', 'jit=off']
     environment:
       POSTGRES_DB: opennavo
       POSTGRES_USER: opennavo_migrate
