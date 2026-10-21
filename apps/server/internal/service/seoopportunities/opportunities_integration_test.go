@@ -155,3 +155,36 @@ func TestInstallPriorityIsWrittenOnlyWhenItRises(t *testing.T) {
 	require.NoError(t, st.DB.Raw("SELECT xmin::text FROM seo_tasks WHERE dedupe_key='translate:fixture-popular:de-DE'").Scan(&second).Error)
 	require.Equal(t, first.Xmin, second, "an unchanged priority must not rewrite the task")
 }
+
+func TestSkippedArticleRefreshIsRetriedAfterAWeek(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &Service{DB: st.DB}
+	require.NoError(t, st.DB.Exec(`INSERT INTO articles(id,slug,status,working_revision_id,published_revision_id,first_published_at) VALUES(9101,'legacy-fixture','published',9101,9101,now());
+ INSERT INTO article_revisions(id,article_id,number,source_locale,type,published_at) VALUES(9101,9101,1,'zh-CN','tutorial',now())`).Error)
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	state := func() string {
+		var s string
+		require.NoError(t, st.DB.Raw("SELECT state FROM seo_tasks WHERE dedupe_key='article-refresh:9101:9101'").Scan(&s).Error)
+		return s
+	}
+	require.Equal(t, "open", state())
+	require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET state='skipped',updated_at=now()-interval '2 days' WHERE dedupe_key='article-refresh:9101:9101'").Error)
+	_, err = svc.Run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "skipped", state(), "a fresh skip is not retried at once")
+	require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET updated_at=now()-interval '8 days' WHERE dedupe_key='article-refresh:9101:9101'").Error)
+	_, err = svc.Run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "open", state(), "a week later the article is tried again")
+	require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET state='quarantined',updated_at=now()-interval '8 days' WHERE dedupe_key='article-refresh:9101:9101'").Error)
+	_, err = svc.Run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "quarantined", state(), "quarantined refreshes wait for a person")
+	require.NoError(t, st.DB.Exec(`UPDATE seo_tasks SET state='skipped',updated_at=now()-interval '8 days' WHERE dedupe_key='article-refresh:9101:9101';
+ UPDATE article_revisions SET claim_evidence='[{"evidenceId":1}]'::jsonb WHERE id=9101`).Error)
+	_, err = svc.Run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "skipped", state(), "an article republished with receipts needs no retry")
+}
