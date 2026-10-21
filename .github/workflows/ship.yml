@@ -1,0 +1,30 @@
+name: Ship
+
+# Hands-off release, decided by the owner on 2026-10-21: a main commit whose
+# Backend CI, Frontend CI and Security checks all passed deploys to production,
+# and known infrastructure or timing flakes rerun (.github/scripts/ship.mjs).
+# Runs main's scripts only; the deploy still verifies CI with require-ci.mjs.
+on:
+  workflow_run:
+    workflows: [Backend CI, Frontend CI, Security checks]
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: ship-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - run: node .github/scripts/ship.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
