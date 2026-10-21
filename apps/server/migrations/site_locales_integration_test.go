@@ -16,6 +16,7 @@ import (
 	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 
+	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/opennavo/opennavo/server/migrations"
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
@@ -28,7 +29,7 @@ func TestSiteLocaleMigrationAndLosslessRollback(t *testing.T) {
 	require.NoError(t, err)
 	hostPort := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 	require.NoError(t, listener.Close())
-	pg, err := postgres.Run(ctx, "postgres:18", postgres.WithDatabase("site_locales_test"), postgres.WithUsername("test"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies(), testcontainers.WithHostConfigModifier(func(h *container.HostConfig) {
+	pg, err := postgres.Run(ctx, "postgres:18", postgres.WithDatabase("site_locales_test"), postgres.WithUsername("test"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies(), testutil.PostgresSettings(), testcontainers.WithHostConfigModifier(func(h *container.HostConfig) {
 		h.PortBindings = network.PortMap{network.MustParsePort("5432/tcp"): {{HostIP: netip.MustParseAddr("127.0.0.1"), HostPort: hostPort}}}
 	}))
 	if pg != nil {

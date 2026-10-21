@@ -31,7 +31,7 @@ func NewSEOStore(t *testing.T) *store.Store {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	opts := []testcontainers.ContainerCustomizer{pgcontainer.WithDatabase("seo_test"), pgcontainer.WithUsername("seo_test"), pgcontainer.WithPassword("isolated-test-only"), pgcontainer.BasicWaitStrategies()}
+	opts := []testcontainers.ContainerCustomizer{pgcontainer.WithDatabase("seo_test"), pgcontainer.WithUsername("seo_test"), pgcontainer.WithPassword("isolated-test-only"), pgcontainer.BasicWaitStrategies(), PostgresSettings()}
 	if os.Getenv("OPENNAVO_TEST_EXPLICIT_PORTS") == "1" {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)

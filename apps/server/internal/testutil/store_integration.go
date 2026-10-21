@@ -29,7 +29,7 @@ func NewStore(t *testing.T) *store.Store {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	opts := []testcontainers.ContainerCustomizer{postgres.WithDatabase("opennavo_test"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies()}
+	opts := []testcontainers.ContainerCustomizer{postgres.WithDatabase("opennavo_test"), postgres.WithUsername("opennavo"), postgres.WithPassword("isolated-test-only"), postgres.BasicWaitStrategies(), PostgresSettings()}
 	if os.Getenv("OPENNAVO_TEST_EXPLICIT_PORTS") == "1" {
 		opts = append(opts, testcontainers.WithHostConfigModifier(explicitTestPort(t, "5432/tcp")))
 	}
@@ -73,6 +73,14 @@ func explicitTestPort(t *testing.T, port string) func(*container.HostConfig) {
 	return func(c *container.HostConfig) {
 		c.PortBindings = network.PortMap{containerPort: []network.PortBinding{{HostIP: netip.MustParseAddr("127.0.0.1"), HostPort: hostPort}}}
 	}
+}
+
+// PostgresSettings runs test servers with production's JIT setting (off since
+// 2026-10-10). With JIT on, the planner's estimate for the background
+// declaration trigger crosses the JIT threshold, and every packages insert or
+// artifact update spends about 110 ms compiling a query that runs in microseconds.
+func PostgresSettings() testcontainers.ContainerCustomizer {
+	return testcontainers.WithCmdArgs("-c", "jit=off")
 }
 
 // PostgresTestPorts applies the same optional Docker Desktop workaround to
