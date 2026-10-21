@@ -154,10 +154,41 @@ jobs:
           name: unit
 
   # Integration tests start PostgreSQL/Redis containers for each case; run serially
-  # they took 22 minutes, 20 of them in internal/http. Six shards each take a
-  # sixth of every package's tests (.github/scripts/go-shard.mjs).
-  server-integration:
+  # they took 22 minutes, 20 of them in internal/http. Six shards split them by
+  # the durations the last green main run recorded, longest first
+  # (.github/scripts/go-shard.mjs); without recordings they are dealt in turn.
+  integration-plan:
     needs: changes
+    if: needs.changes.outputs.server == 'true' && needs.changes.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      patterns: ${{ steps.plan.outputs.patterns }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts
+            apps/server
+      - name: Fetch recorded test durations
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for id in $(gh run list --workflow ci-server.yml --branch main --status success --limit 10 --json databaseId --jq '.[].databaseId'); do
+            if gh run download "$id" --pattern 'integration-durations-*' --dir "$RUNNER_TEMP/durations" 2>/dev/null; then
+              echo "durations recorded by run $id"
+              break
+            fi
+          done
+      - id: plan
+        run: echo "patterns=$(node .github/scripts/go-shard.mjs apps/server 6 "$RUNNER_TEMP/durations")" >> "$GITHUB_OUTPUT"
+
+  server-integration:
+    needs: [changes, integration-plan]
     if: needs.changes.outputs.server == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -187,8 +218,19 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter opennavo --ignore-scripts
-      - run: go test -race -tags=integration -timeout 25m -run "$(node ../../.github/scripts/go-shard.mjs . ${{ matrix.shard }} 6)" ./...
+      - name: go test
         working-directory: apps/server
+        env:
+          PATTERN: ${{ fromJSON(needs.integration-plan.outputs.patterns)[matrix.shard] }}
+        run: go test -race -tags=integration -timeout 25m -json -run "$PATTERN" ./... | node ../../.github/scripts/go-test-log.mjs "$RUNNER_TEMP/durations-${{ matrix.shard }}.json"
+      # Recordings from main balance the next full runs.
+      - if: always() && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v6
+        with:
+          name: integration-durations-${{ matrix.shard }}
+          path: ${{ runner.temp }}/durations-${{ matrix.shard }}.json
+          retention-days: 14
+          if-no-files-found: ignore
       - if: matrix.shard == 0
         uses: ./.github/actions/go-cache-save
         with:

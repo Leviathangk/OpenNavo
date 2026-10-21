@@ -1,38 +1,55 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { pattern, shardTests, testsByPackage } from './go-shard.mjs';
+import { pattern, planShards, testsByPackage } from './go-shard.mjs';
 
-test('shards cover every test once and spread each package', () => {
-  const packages = new Map([
-    ['internal/http', ['TestA', 'TestB', 'TestC', 'TestD', 'TestE', 'TestF']],
-    ['internal/store', ['TestG', 'TestH']],
-    ['cmd/seed', ['TestI']]
-  ]);
-  const shards = [0, 1, 2].map(index => shardTests(packages, index, 3));
-  assert.deepEqual(shards.flat().sort(), [...packages.values()].flat().sort());
-  for (const shard of shards)
-    assert.equal(shard.filter(name => packages.get('internal/http').includes(name)).length, 2);
-  assert.equal(pattern(['TestA', 'TestB']), '^(TestA|TestB)$');
+const packages = new Map([
+  ['internal/http', ['TestA', 'TestB', 'TestC', 'TestD', 'TestE', 'TestF']],
+  ['internal/store', ['TestG', 'TestH']],
+  ['cmd/seed', ['TestI']]
+]);
+const all = [...packages.values()].flat().sort();
+
+test('without recordings, tests are dealt in turn and all of them run', () => {
+  const shards = planShards(packages, 3);
+  assert.deepEqual(shards.flat().sort(), all);
+  for (const shard of shards) assert.equal(shard.length, 3);
+  assert.equal(pattern(['TestA', 'TestB', 'TestA']), '^(TestA|TestB)$');
   assert.equal(pattern([]), '^$');
+});
+
+test('recorded durations put the longest tests on separate shards', () => {
+  const durations = {
+    'internal/http TestA': 120,
+    'internal/http TestB': 110,
+    'internal/http TestC': 100,
+    'internal/http TestD': 4,
+    'internal/http TestE': 3,
+    'internal/store TestG': 5,
+    'internal/store TestH': 2
+  };
+  const shards = planShards(packages, 3, durations);
+  assert.deepEqual(shards.flat().sort(), all, 'tests without a recording still run');
+  const heavy = ['TestA', 'TestB', 'TestC'];
+  for (const shard of shards) assert.equal(shard.filter(name => heavy.includes(name)).length, 1);
 });
 
 test('the server module is fully covered by six shards', () => {
   const root = fileURLToPath(new URL('../../apps/server', import.meta.url));
-  const packages = testsByPackage(root);
-  const all = new Set([...packages.values()].flat());
-  const covered = new Set([0, 1, 2, 3, 4, 5].flatMap(index => shardTests(packages, index, 6)));
-  assert.ok(all.size > 500, `found only ${all.size} tests`);
+  const tests = new Set([...testsByPackage(root).values()].flat());
+  assert.ok(tests.size > 500, `found only ${tests.size} tests`);
+  const covered = new Set(planShards(testsByPackage(root), 6).flat());
   assert.deepEqual(
-    [...all].filter(name => !covered.has(name)),
+    [...tests].filter(name => !covered.has(name)),
     []
   );
-  const http = packages.get('internal/http');
-  for (const index of [0, 1, 2, 3, 4, 5]) {
-    const share = shardTests(packages, index, 6).filter(name => http.includes(name)).length;
-    assert.ok(
-      Math.abs(share - http.length / 6) <= 1,
-      `shard ${index} has ${share} of ${http.length} internal/http tests`
-    );
-  }
+});
+
+test('tests recorded at 0 s stay light instead of taking the median', () => {
+  const durations = { 'internal/http TestA': 60, 'internal/http TestB': 50, 'internal/http TestC': 40 };
+  for (const name of ['TestD', 'TestE', 'TestF']) durations[`internal/http ${name}`] = 0;
+  for (const name of ['TestG', 'TestH']) durations[`internal/store ${name}`] = 0;
+  durations['cmd/seed TestI'] = 0;
+  const shards = planShards(packages, 3, durations);
+  for (const shard of shards) assert.equal(shard.filter(name => ['TestA', 'TestB', 'TestC'].includes(name)).length, 1);
 });
