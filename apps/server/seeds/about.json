@@ -4572,7 +4572,7 @@
     {
       "ecosystem": "Platform",
       "name": "Go standard library",
-      "version": "go1.27.2",
+      "version": "go1.27.3",
       "license": "BSD-3-Clause",
       "url": "https://go.dev/LICENSE"
     },

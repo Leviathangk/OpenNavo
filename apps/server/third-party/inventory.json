@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "lockDigests": {
     "pnpm-lock.yaml": "314b6de9a6acd82e2f839929c89b98e872f958e77e1730cf853535e65d733d9a",
-    "apps/server/go.mod": "dfd089440bff1cbb31b6bcebda13c7ecc4fdf44847e84e0bc9250a544471fb1e",
+    "apps/server/go.mod": "050c75d83f7ecfb606c5f2e2ac355d84102d221aefa3dd250d4e18268af70ad6",
     "apps/server/go.sum": "d0383bdc83d8992b2c966db97eabf88db8baa3c886792290cac525e6f5228c5e",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
     "apps/desktop/src-tauri/Cargo.lock": "e68ee8f8254068d4996af4517485dedb8b25ea4c4926e80a2ab00f622e3e3f4c",
@@ -1843,13 +1843,13 @@
     {
       "ecosystem": "Platform",
       "name": "Go standard library",
-      "version": "go1.27.2",
+      "version": "go1.27.3",
       "license": "BSD-3-Clause",
       "url": "https://go.dev/LICENSE",
       "scope": "runtime",
       "evidence": {
         "source": "Installed Go toolchain LICENSE",
-        "toolchain": "go1.27.2"
+        "toolchain": "go1.27.3"
       },
       "licenseFiles": [
         {
