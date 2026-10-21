@@ -12,6 +12,16 @@ e2e = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(e2e)
 
 
+class ComposeFileTests(unittest.TestCase):
+    def test_ci_build_cache_override_is_opt_in(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop('OPENNAVO_E2E_BUILD_CACHE', None)
+            self.assertEqual(e2e.compose_files(True), ['-f', 'ops/docker-compose.e2e.yml'])
+        with patch.dict(os.environ, {'OPENNAVO_E2E_BUILD_CACHE': 'gha'}):
+            self.assertEqual(e2e.compose_files(True), ['-f', 'ops/docker-compose.e2e.yml', '-f', 'ops/docker-compose.e2e.ci.yml'])
+            self.assertEqual(e2e.compose_files(False), ['-f', 'ops/docker-compose.dev.yml'], 'local development never uses it')
+
+
 class IsolationTests(unittest.TestCase):
     def test_environment_does_not_inherit_development_connections_or_credentials(self):
         with patch.dict(os.environ, {'DATABASE_URL': 'forbidden', 'REDIS_URL': 'forbidden',

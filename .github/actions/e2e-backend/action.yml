@@ -6,9 +6,21 @@ runs:
     - uses: actions/setup-go@v7
       with:
         go-version-file: apps/server/go.mod
-        cache-dependency-path: apps/server/go.sum
+        cache: false
+    - uses: ./.github/actions/go-cache
+      with:
+        name: e2e
+    # Image layers go to the GitHub Actions cache (ops/docker-compose.e2e.ci.yml):
+    # a buildx builder that can export them, and the runtime variables compose
+    # needs to reach the cache service.
+    - uses: docker/setup-buildx-action@v4
+    - uses: crazy-max/ghaction-github-runtime@v4
     - name: Start seeded backend
       shell: bash
       run: python3 ops/e2e.py up --ci
       env:
         RUNNER_TRACKING_ID: ''
+        OPENNAVO_E2E_BUILD_CACHE: gha
+    - uses: ./.github/actions/go-cache-save
+      with:
+        name: e2e

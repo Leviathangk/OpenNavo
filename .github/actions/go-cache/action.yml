@@ -1,0 +1,30 @@
+name: Restore Go caches
+description: >-
+  Restore the shared Go module cache and this job's own build cache. Jobs keep
+  separate build caches because they compile different things (lint export
+  data, unit tests, race-enabled integration tests); a single cache saved by
+  whichever job finished first left the others compiling from scratch. Save
+  them at the end of the job with ./.github/actions/go-cache-save.
+inputs:
+  name:
+    description: Build cache name for this job
+    required: true
+  paths:
+    description: Directories kept in this job's build cache
+    required: false
+    default: ~/.cache/go-build
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache/restore@v5
+      with:
+        path: ~/go/pkg/mod
+        key: gomod-${{ runner.os }}-${{ hashFiles('apps/server/go.sum') }}
+        restore-keys: gomod-${{ runner.os }}-
+    - uses: actions/cache/restore@v5
+      with:
+        path: ${{ inputs.paths }}
+        key: gobuild-${{ runner.os }}-${{ inputs.name }}-${{ hashFiles('apps/server/go.sum') }}-${{ github.sha }}
+        restore-keys: |
+          gobuild-${{ runner.os }}-${{ inputs.name }}-${{ hashFiles('apps/server/go.sum') }}-
+          gobuild-${{ runner.os }}-${{ inputs.name }}-

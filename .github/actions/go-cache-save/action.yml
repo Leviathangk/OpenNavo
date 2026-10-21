@@ -1,0 +1,26 @@
+name: Save Go caches
+description: >-
+  Save the caches ./.github/actions/go-cache restored. Only main saves; pull
+  requests restore main's caches and never add their own, which would crowd
+  main's out of the repository's cache space.
+inputs:
+  name:
+    description: Build cache name for this job
+    required: true
+  paths:
+    description: Directories kept in this job's build cache
+    required: false
+    default: ~/.cache/go-build
+runs:
+  using: composite
+  steps:
+    - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      uses: actions/cache/save@v5
+      with:
+        path: ~/go/pkg/mod
+        key: gomod-${{ runner.os }}-${{ hashFiles('apps/server/go.sum') }}
+    - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ inputs.paths }}
+        key: gobuild-${{ runner.os }}-${{ inputs.name }}-${{ hashFiles('apps/server/go.sum') }}-${{ github.sha }}
