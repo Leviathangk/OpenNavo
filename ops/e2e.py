@@ -32,9 +32,17 @@ def command(args, *, env=None, capture=True, cwd=ROOT):
     return result.stdout.strip() if capture else ''
 
 
-def compose(ci, *args, capture=True):
+def compose_files(ci):
     name = 'e2e' if ci else 'dev'
-    return command(['docker', 'compose', '-f', f'ops/docker-compose.{name}.yml', *args], capture=capture)
+    files = ['-f', f'ops/docker-compose.{name}.yml']
+    # CI keeps E2E image layers in the GitHub Actions cache (see the override file).
+    if ci and os.environ.get('OPENNAVO_E2E_BUILD_CACHE') == 'gha':
+        files += ['-f', 'ops/docker-compose.e2e.ci.yml']
+    return files
+
+
+def compose(ci, *args, capture=True):
+    return command(['docker', 'compose', *compose_files(ci), *args], capture=capture)
 
 
 def environment(ci):

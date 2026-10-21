@@ -50,7 +50,10 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server/go.mod
-          cache-dependency-path: apps/server/go.sum
+          cache: false
+      - uses: ./.github/actions/go-cache
+        with:
+          name: contract
       - uses: pnpm/action-setup@v6
         with:
           version: 10.13.1
@@ -64,6 +67,9 @@ jobs:
       - run: git diff --exit-code
       - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 ../../.github/workflows/*.yml
         working-directory: apps/server
+      - uses: ./.github/actions/go-cache-save
+        with:
+          name: contract
 
   server-lint:
     needs: changes
@@ -75,14 +81,13 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server/go.mod
-          cache-dependency-path: apps/server/go.sum
-      # golangci-lint keeps per-package results, so packages a change does not
-      # touch are not analysed again. Main saves a fresh entry; PRs restore it.
-      - uses: actions/cache@v5
+          cache: false
+      - uses: ./.github/actions/go-cache
         with:
-          path: ~/.cache/golangci-lint
-          key: golangci-lint-${{ runner.os }}-${{ hashFiles('apps/server/go.sum', 'apps/server/.golangci.yml') }}-${{ github.sha }}
-          restore-keys: golangci-lint-${{ runner.os }}-${{ hashFiles('apps/server/go.sum', 'apps/server/.golangci.yml') }}-
+          name: lint
+          paths: |
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
       - uses: pnpm/action-setup@v6
         with:
           version: 10.13.1
@@ -92,6 +97,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter opennavo --ignore-scripts
       - run: make lint-server
+      - uses: ./.github/actions/go-cache-save
+        with:
+          name: lint
+          paths: |
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
 
   server:
     needs: changes
@@ -120,7 +131,10 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server/go.mod
-          cache-dependency-path: apps/server/go.sum
+          cache: false
+      - uses: ./.github/actions/go-cache
+        with:
+          name: unit
       - uses: pnpm/action-setup@v6
         with:
           version: 10.13.1
@@ -135,6 +149,9 @@ jobs:
       - run: go tool govulncheck ./...
         working-directory: apps/server
       - run: make build-server
+      - uses: ./.github/actions/go-cache-save
+        with:
+          name: unit
 
   # Integration tests start PostgreSQL/Redis containers for each case; run serially
   # they took 22 minutes, 20 of them in internal/http. Six shards each take a
@@ -157,7 +174,10 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server/go.mod
-          cache-dependency-path: apps/server/go.sum
+          cache: false
+      - uses: ./.github/actions/go-cache
+        with:
+          name: integration
       # Some tests run the repository's Node scripts (interface i18n replay).
       - uses: pnpm/action-setup@v6
         with:
@@ -169,6 +189,10 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter opennavo --ignore-scripts
       - run: go test -race -tags=integration -timeout 25m -run "$(node ../../.github/scripts/go-shard.mjs . ${{ matrix.shard }} 6)" ./...
         working-directory: apps/server
+      - if: matrix.shard == 0
+        uses: ./.github/actions/go-cache-save
+        with:
+          name: integration
 
   deployment-config:
     runs-on: ubuntu-latest
