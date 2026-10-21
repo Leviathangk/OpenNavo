@@ -30,6 +30,8 @@ jobs:
   gate:
     if: github.event_name == 'push'
     uses: ./.github/workflows/release-gate.yml
+    with:
+      desktop: true
   meta:
     needs: gate
     if: always() && (needs.gate.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.gate.result == 'skipped'))

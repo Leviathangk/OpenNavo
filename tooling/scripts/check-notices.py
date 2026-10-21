@@ -50,7 +50,7 @@ def check_toolchain(canonical, check_compiler):
     record = records[0]
     require(record['version'] == pin and record['evidence'].get('toolchain') == pin,
             'Rust toolchain pin does not match standard-library notice evidence; regenerate notices')
-    for name in ('ci-frontend.yml', 'release-desktop.yml'):
+    for name in ('ci-desktop.yml', 'release-desktop.yml'):
         workflow = (ROOT / '.github/workflows' / name).read_text()
         installers = re.findall(r'^\s*-\s*uses:\s*dtolnay/rust-toolchain@([^\s#]+)', workflow, re.MULTILINE)
         # Jobs may each install Rust (the desktop checks and bundle run in parallel), but only the pin.

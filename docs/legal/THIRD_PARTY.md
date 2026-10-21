@@ -26,7 +26,7 @@ apps/mcp/.venv/bin/python -I tooling/scripts/license-evidence.py
 apps/mcp/.venv/bin/python -I tooling/scripts/about-inventory.py
 ```
 
-Rust is pinned to an exact release in `apps/desktop/src-tauri/rust-toolchain.toml`, including the `rust-docs` component that supplies standard-library copyright evidence. The collector rejects a compiler that differs from that pin. To upgrade Rust, update the pin and the installers in `ci-frontend.yml` and `release-desktop.yml`, install the matching toolchain, and regenerate the inventory and bundles above.
+Rust is pinned to an exact release in `apps/desktop/src-tauri/rust-toolchain.toml`, including the `rust-docs` component that supplies standard-library copyright evidence. The collector rejects a compiler that differs from that pin. To upgrade Rust, update the pin and the installers in `ci-desktop.yml` and `release-desktop.yml`, install the matching toolchain, and regenerate the inventory and bundles above.
 
 Validate the generated artifacts before distribution:
 

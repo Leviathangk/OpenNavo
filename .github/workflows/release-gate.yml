@@ -1,6 +1,11 @@
 name: Release CI gate
 on:
   workflow_call:
+    inputs:
+      desktop:
+        description: Also require Desktop CI, which production deploys do not wait for
+        type: boolean
+        default: false
 permissions:
   contents: read
   actions: read
@@ -18,3 +23,4 @@ jobs:
       - run: node .github/scripts/require-ci.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          REQUIRE_DESKTOP_CI: ${{ inputs.desktop }}

@@ -39,7 +39,7 @@ export const AREAS = {
   ],
   // Rust, Swift and Tauri builds. Shared packages reach the desktop only through
   // its web view, which the frontend jobs typecheck, test and build.
-  desktop: [/^apps\/desktop\//, /^tooling\/scripts\/check-notices\.py$/, /^\.github\/workflows\/ci-frontend\.yml$/],
+  desktop: [/^apps\/desktop\//, /^tooling\/scripts\/check-notices\.py$/, /^\.github\/workflows\/ci-desktop\.yml$/],
   // Full-stack web and admin E2E run against the seeded API.
   e2e: [
     /^apps\/(server|web|admin)\//,
@@ -52,6 +52,10 @@ export const AREAS = {
 };
 const everything = Object.fromEntries(Object.keys(AREAS).map(area => [area, true]));
 const GATE = ['ci-server.yml', 'ci-frontend.yml', 'ci-security.yml'];
+// Desktop CI is outside the deploy gate, so its main pushes compare with its
+// own last green commit; the gate workflows ignore desktop results.
+export const baseline = workflowRef =>
+  /\/\.github\/workflows\/ci-desktop\.yml@/.test(workflowRef ?? '') ? ['ci-desktop.yml'] : GATE;
 
 // Main commits on which every gate workflow passed, newest first (the order of
 // the first workflow's runs).
@@ -110,7 +114,7 @@ async function changedFiles(eventName, payload) {
     // not only the previous push: areas an earlier push left red or unchecked
     // are checked again, so a green tip means everything since was tested.
     const runs = await Promise.all(
-      GATE.map(workflow =>
+      baseline(process.env.GITHUB_WORKFLOW_REF).map(workflow =>
         get(`/actions/workflows/${workflow}/runs?branch=main&event=push&status=success&per_page=50`).then(
           result => result.workflow_runs
         )
