@@ -71,7 +71,7 @@ export function planShards(packages, count, durations = {}) {
 
 export const pattern = names => (names.length ? `^(${[...new Set(names)].join('|')})$` : '^$');
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [root, count, durationsDir] = process.argv.slice(2);
   if (!root || !(Number(count) > 0)) throw new Error('usage: node go-shard.mjs ROOT COUNT [DURATIONS_DIR]');
   const durations = readDurations(durationsDir);

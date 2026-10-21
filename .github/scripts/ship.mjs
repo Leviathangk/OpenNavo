@@ -120,4 +120,4 @@ async function main() {
     return deployMain(api, run.head_sha);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

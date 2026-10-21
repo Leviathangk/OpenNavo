@@ -50,7 +50,7 @@ export function createLog(write) {
   };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const log = createLog(text => process.stdout.write(text));
   for await (const text of createInterface({ input: process.stdin, crlfDelay: Infinity })) log.line(text);
   log.end();
