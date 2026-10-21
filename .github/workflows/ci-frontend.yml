@@ -1,45 +1,51 @@
 name: Frontend CI
 
 # Web, admin, desktop, and shared packages (09 section 6.1). Backend/contract checks: ci-server.yml.
+# Every event runs this workflow; .github/scripts/changes.mjs decides which jobs
+# run. Pull requests get static checks, unit tests and builds for the areas they
+# touch; desktop (Rust, Swift, Tauri) only for desktop changes. Main, the nightly
+# run, dispatched runs and pull requests labelled full-ci add the full-stack
+# E2E with Lighthouse.
 on:
   push:
     branches: [main]
   pull_request:
-    paths:
-      - '.github/**'
-      - 'apps/**'
-      - 'packages/**'
-      # Shared brand regression tests depend on the logo generator.
-      - 'docs/design/logo/source/**'
-      # Full-stack web E2E depends on backend behavior, so run for backend changes too.
-      - 'apps/server/**'
-      - 'ops/e2e.py'
-      - 'ops/docker-compose.e2e.yml'
-      - '.github/actions/e2e-backend/**'
-      - 'tooling/scripts/tasks/frontend.mjs'
-      - 'tooling/scripts/tasks/shared.mjs'
-      - 'tooling/scripts/workspace.mjs'
-      - 'Makefile'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'tooling/config/**'
-      - 'tooling/scripts/lint-frontend.mjs'
-      - 'tooling/scripts/format-frontend.mjs'
-      - '.github/workflows/ci-frontend.yml'
+  schedule:
+    - cron: '43 18 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: frontend-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  frontend:
+  changes:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 5
+    outputs:
+      frontend: ${{ steps.changes.outputs.frontend }}
+      desktop: ${{ steps.changes.outputs.desktop }}
+      e2e: ${{ steps.changes.outputs.e2e }}
+      full: ${{ steps.changes.outputs.full }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - id: changes
+        run: node .github/scripts/changes.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # The former single frontend job, split so its parts run side by side.
+  frontend-static:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -56,12 +62,45 @@ jobs:
       - run: pnpm run format:check
       - run: pnpm --filter "@opennavo/*" --if-present run lint
       - run: pnpm --filter "@opennavo/*" --if-present run typecheck
+
+  frontend-test:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "@opennavo/*" --if-present run test
+
+  frontend-build:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @opennavo/web --filter @opennavo/admin --filter @opennavo/desktop --filter @opennavo/ui run build
       - run: pnpm --filter @opennavo/web test:ssr
-      - run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color .github/workflows/ci-frontend.yml .github/workflows/release-desktop.yml
 
   desktop:
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
     runs-on: macos-15
     timeout-minutes: 90
     steps:
@@ -121,6 +160,8 @@ jobs:
 
   # Admin menu/permission E2E (intercepted API; no backend required).
   e2e:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -139,6 +180,8 @@ jobs:
   # Full-stack web E2E (05 section 10): the composite action starts isolated PostgreSQL/Redis/MinIO and the seeded E2E API on 18082.
   # Write frontend environment variables to GITHUB_ENV; always remove dedicated containers and volumes (03 section 5.5).
   web-e2e:
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true' && needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

@@ -25,7 +25,7 @@ import (
 func NewFactsStore(t *testing.T) *store.Store {
 	t.Helper()
 	st := NewSEOStore(t)
-	req := testcontainers.ContainerRequest{Image: "public.ecr.aws/docker/library/redis:8", ExposedPorts: []string{"6379/tcp"}, WaitingFor: wait.ForListeningPort("6379/tcp")}
+	req := testcontainers.ContainerRequest{Image: "redis:8", ExposedPorts: []string{"6379/tcp"}, WaitingFor: wait.ForListeningPort("6379/tcp")}
 	if os.Getenv("OPENNAVO_TEST_EXPLICIT_PORTS") == "1" {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)

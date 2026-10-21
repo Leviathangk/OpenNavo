@@ -1,18 +1,7 @@
 name: MCP CI
+# Called by Backend CI when MCP paths change (see .github/scripts/changes.mjs)
+# and by release-mcp.yml; no own push or pull request trigger, so it never runs twice.
 on:
-  push:
-    branches: [main]
-    paths: &mcp-paths
-      - 'apps/mcp/**'
-      - 'apps/server/api/admin.openapi.yaml'
-      - 'apps/server/internal/http/admin/agent.go'
-      - 'apps/server/internal/http/admin/hermes_test.go'
-      - 'packages/shared/src/locales.json'
-      - 'tooling/scripts/tasks/server.mjs'
-      - '.github/workflows/ci-mcp.yml'
-      - '.github/workflows/release-mcp.yml'
-  pull_request:
-    paths: *mcp-paths
   workflow_dispatch:
   workflow_call:
 permissions:

@@ -71,7 +71,7 @@ COPY --from=asynqmon-build /out/asynqmon /asynqmon
 ENTRYPOINT ["/asynqmon"]
 
 # Apply available OS fixes without changing service major versions.
-FROM public.ecr.aws/docker/library/redis:8-alpine AS redis
+FROM redis:8-alpine AS redis
 RUN apk upgrade --no-cache
 
 FROM registry.hub.docker.com/library/caddy:2.11.6-alpine AS caddy
