@@ -136,6 +136,15 @@ class NoticeGateTests(unittest.TestCase):
         (self.root / '.github/workflows/release-desktop.yml').write_text('steps:\n  - uses: dtolnay/rust-toolchain@stable\n')
         self.check(1)
 
+    def test_parallel_jobs_may_each_install_the_pinned_toolchain(self):
+        workflow = self.root / '.github/workflows/ci-frontend.yml'
+        workflow.write_text('steps:\n  - uses: dtolnay/rust-toolchain@1.96.0\n  - uses: dtolnay/rust-toolchain@1.96.0\n')
+        self.check(0)
+        workflow.write_text('steps:\n  - uses: dtolnay/rust-toolchain@1.96.0\n  - uses: dtolnay/rust-toolchain@stable\n')
+        self.check(1)
+        workflow.write_text('steps:\n  - run: true\n')
+        self.check(1)
+
     def test_actual_compiler_must_match_notices_when_requested(self):
         bin_dir = self.root / 'bin'
         bin_dir.mkdir()
