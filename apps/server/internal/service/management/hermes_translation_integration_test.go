@@ -97,3 +97,32 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	require.NoError(t, st.DB.Table("translation_logs").Count(&count).Error)
 	require.Zero(t, count)
 }
+
+func TestBatchTranslationFailureNamesTheBrokenRule(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	require.NoError(t, st.DB.Exec("INSERT INTO categories(id,slug,icon,source_locale) VALUES(701,'translation-rule-fixture','lucide:box','en-US')").Error)
+	ref := content.Ref{Entity: "category", ID: 701}
+	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
+		return (&store.Store{DB: tx}).WriteContentText(ctx, ref, "en-US", map[string]any{"name": "File organizer", "description": "Run `brew install organizer` once."}, true)
+	}))
+	leased, err := (&seotasks.Service{DB: st.DB}).Claim(ctx, seotasks.Owner(1, 2), 1, []string{"translate"})
+	require.NoError(t, err)
+	require.Len(t, leased, 1)
+	source, err := st.ReadContentSource(ctx, ref)
+	require.NoError(t, err)
+	current, err := st.TranslationValue(ctx, ref, "de-DE")
+	require.NoError(t, err)
+	op := &domain.Operation{RequestID: uuid.NewString(), Name: "writeTranslations", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"*"}, RequiredPermissions: []string{"translation:review"}}
+	svc := &Service{Store: st}
+	// The translation drops the code span around the command.
+	result, err := svc.Execute(domain.WithOperation(ctx, op), "WriteTranslations", Input{Body: map[string]any{
+		"ref": map[string]any{"entity": "category", "id": 701}, "model": "fixture-model", "taskId": leased[0].ID, "fencing": leased[0].Fencing,
+		"translations": []any{map[string]any{"locale": "de-DE", "sourceHash": source.Hash, "expectedRevision": current.Revision, "idempotencyKey": uuid.NewString(),
+			"fields": map[string]any{"name": "Dateiorganisator", "description": "Führe brew install organizer einmal aus."}}},
+	}})
+	require.NoError(t, err)
+	item := result.(map[string]any)["results"].([]any)[0].(map[string]any)
+	require.Equal(t, "failed", item["status"])
+	require.Equal(t, "validation_failed:changed_literal", item["reason"])
+}

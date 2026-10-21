@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -103,6 +104,12 @@ func (s *Store) validateTranslationWrite(ctx context.Context, source ContentSour
 	}
 	input := llm.ContentInput{SourceLocale: source.SourceLocale, Targets: []string{locale}, Fields: content.Flatten(source.Fields), Limits: limits, Protected: append(source.Protected, protected...), Glossary: glossary, Strict: true}
 	if err := llm.ValidateContent(llm.ContentOutput{locale: content.Flatten(merged)}, input); err != nil {
+		// An agent gets the rule (for example changed_structure) so it can correct the
+		// translation; it never echoes content. People keep the localized message.
+		var failure *llm.Failure
+		if model != "" && errors.As(err, &failure) {
+			return "", &domain.AppError{Code: domain.CodeValidation, HTTPStatus: http.StatusBadRequest, Msg: failure.Reason}
+		}
 		return "", domain.Validation()
 	}
 	return model, nil
