@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { pattern, planShards, testsByPackage } from './go-shard.mjs';
+import { estimate, pattern, planShards, testsByPackage } from './go-shard.mjs';
 
 const packages = new Map([
   ['internal/http', ['TestA', 'TestB', 'TestC', 'TestD', 'TestE', 'TestF']],
@@ -52,4 +52,17 @@ test('tests recorded at 0 s stay light instead of taking the median', () => {
   durations['cmd/seed TestI'] = 0;
   const shards = planShards(packages, 3, durations);
   for (const shard of shards) assert.equal(shard.filter(name => ['TestA', 'TestB', 'TestC'].includes(name)).length, 1);
+});
+
+test('tests of one package run one after another, so its long chain is split', () => {
+  // http: three 90 s tests in one package; store: twelve 20 s tests that run beside it.
+  const chained = new Map([
+    ['internal/http', ['TestH1', 'TestH2', 'TestH3']],
+    ['internal/store', Array.from({ length: 12 }, (_, i) => `TestS${i}`)]
+  ]);
+  const durations = { 'internal/http TestH1': 90, 'internal/http TestH2': 90, 'internal/http TestH3': 90 };
+  for (let i = 0; i < 12; i++) durations[`internal/store TestS${i}`] = 20;
+  const plan = planShards(chained, 3, durations);
+  for (const shard of plan) assert.equal(shard.filter(name => name.startsWith('TestH')).length, 1);
+  assert.ok(Math.max(...estimate(chained, plan, durations)) <= 90, 'no shard waits on two http tests');
 });

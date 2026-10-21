@@ -43,13 +43,19 @@ export function readDurations(dir) {
   return durations;
 }
 
+// go test runs a shard's packages side by side (-p, the runner's 4 cores) but
+// one package's tests one after another, so a shard takes about as long as its
+// longest package chain or a quarter of its total, whichever is larger.
+export const PARALLEL = 4;
+const cost = shard => Math.max(shard.longest, shard.total / PARALLEL);
+
 export function planShards(packages, count, durations = {}) {
   const tests = [];
   for (const pkg of [...packages.keys()].sort()) {
     for (const name of [...new Set(packages.get(pkg))].sort())
-      tests.push({ name, weight: durations[`${pkg} ${name}`] });
+      tests.push({ pkg, name, weight: durations[`${pkg} ${name}`] });
   }
-  const shards = Array.from({ length: count }, () => ({ load: 0, names: [] }));
+  const shards = Array.from({ length: count }, () => ({ chains: new Map(), longest: 0, total: 0, names: [] }));
   const known = tests
     .map(test => test.weight)
     .filter(weight => typeof weight === 'number')
@@ -61,12 +67,42 @@ export function planShards(packages, count, durations = {}) {
   // A test recorded at 0 s stays light; only tests never recorded take the median.
   const median = known[Math.floor(known.length / 2)];
   for (const test of tests) test.weight = typeof test.weight === 'number' ? Math.max(test.weight, 0.01) : median;
+  // Longest first, each to the shard whose estimated time grows least.
   for (const test of [...tests].sort((a, b) => b.weight - a.weight)) {
-    const shard = shards.reduce((least, candidate) => (candidate.load < least.load ? candidate : least));
-    shard.load += test.weight;
-    shard.names.push(test.name);
+    let best;
+    let bestCost = Infinity;
+    for (const shard of shards) {
+      const chain = (shard.chains.get(test.pkg) ?? 0) + test.weight;
+      const after = Math.max(shard.longest, chain, (shard.total + test.weight) / PARALLEL);
+      if (after < bestCost || (after === bestCost && shard.total < best.total)) {
+        best = shard;
+        bestCost = after;
+      }
+    }
+    const chain = (best.chains.get(test.pkg) ?? 0) + test.weight;
+    best.chains.set(test.pkg, chain);
+    best.longest = Math.max(best.longest, chain);
+    best.total += test.weight;
+    best.names.push(test.name);
   }
   return shards.map(shard => shard.names);
+}
+
+// Estimated seconds per shard for a plan, by the same model.
+export function estimate(packages, plan, durations) {
+  const pkgOf = new Map();
+  for (const [pkg, names] of packages) for (const name of names) pkgOf.set(name, pkg);
+  return plan.map(names => {
+    const shard = { chains: new Map(), longest: 0, total: 0 };
+    for (const name of names) {
+      const weight = durations[`${pkgOf.get(name)} ${name}`] ?? 0;
+      const chain = (shard.chains.get(pkgOf.get(name)) ?? 0) + weight;
+      shard.chains.set(pkgOf.get(name), chain);
+      shard.longest = Math.max(shard.longest, chain);
+      shard.total += weight;
+    }
+    return cost(shard);
+  });
 }
 
 export const pattern = names => (names.length ? `^(${[...new Set(names)].join('|')})$` : '^$');
