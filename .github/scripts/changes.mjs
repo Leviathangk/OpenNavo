@@ -51,6 +51,18 @@ export const AREAS = {
   ]
 };
 const everything = Object.fromEntries(Object.keys(AREAS).map(area => [area, true]));
+const GATE = ['ci-server.yml', 'ci-frontend.yml', 'ci-security.yml'];
+
+// Main commits on which every gate workflow passed, newest first (the order of
+// the first workflow's runs).
+export function greenCommits(runsByWorkflow) {
+  const [first, ...rest] = runsByWorkflow.map(runs =>
+    runs
+      .filter(run => run.head_branch === 'main' && run.status === 'completed' && run.conclusion === 'success')
+      .map(run => run.head_sha)
+  );
+  return [...new Set(first)].filter(sha => rest.every(list => list.includes(sha)));
+}
 
 export function classify(files) {
   return Object.fromEntries(
@@ -94,13 +106,29 @@ async function changedFiles(eventName, payload) {
     return null;
   }
   if (eventName === 'push') {
-    if (!payload.before || /^0+$/.test(payload.before)) return null;
-    const { files = [] } = await get(`/compare/${payload.before}...${payload.after}`);
-    if (files.length >= 300) return null;
-    return [
-      ...files.map(file => file.filename),
-      ...files.flatMap(file => (file.previous_filename ? [file.previous_filename] : []))
-    ];
+    // Compare with the newest main commit on which every gate workflow passed,
+    // not only the previous push: areas an earlier push left red or unchecked
+    // are checked again, so a green tip means everything since was tested.
+    const runs = await Promise.all(
+      GATE.map(workflow =>
+        get(`/actions/workflows/${workflow}/runs?branch=main&event=push&status=success&per_page=50`).then(
+          result => result.workflow_runs
+        )
+      )
+    );
+    for (const base of greenCommits(runs)) {
+      if (base === payload.after) continue;
+      const comparison = await get(`/compare/${base}...${payload.after}`);
+      if (comparison.status !== 'ahead') continue;
+      const files = comparison.files ?? [];
+      if (files.length >= 300) return null;
+      console.log(`comparing with ${base}, the newest main commit with green CI`);
+      return [
+        ...files.map(file => file.filename),
+        ...files.flatMap(file => (file.previous_filename ? [file.previous_filename] : []))
+      ];
+    }
+    return null;
   }
   return null;
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { classify, plan } from './changes.mjs';
+import { classify, greenCommits, plan } from './changes.mjs';
 
 const none = { server: false, mcp: false, frontend: false, desktop: false, e2e: false };
 
@@ -50,4 +50,19 @@ test('depth: pull requests are fast unless labelled, main and scheduled runs are
     true,
     'unlisted changes run every area'
   );
+});
+
+test('main compares with the newest commit on which every gate workflow passed', () => {
+  const run = (sha, conclusion = 'success', branch = 'main') => ({
+    head_sha: sha,
+    head_branch: branch,
+    status: 'completed',
+    conclusion
+  });
+  const server = [run('c3', 'failure'), run('c2'), run('c1')];
+  const frontend = [run('c3'), run('c2', 'failure'), run('c1')];
+  const security = [run('c3'), run('c2'), run('c1'), run('x', 'success', 'feature')];
+  assert.deepEqual(greenCommits([server, frontend, security]), ['c1']);
+  assert.deepEqual(greenCommits([[run('c2'), run('c1')], [run('c2'), run('c1')], [run('c1')]]), ['c1']);
+  assert.deepEqual(greenCommits([[], [], []]), []);
 });

@@ -142,7 +142,6 @@ jobs:
   server-integration:
     needs: changes
     if: needs.changes.outputs.server == 'true' && needs.changes.outputs.full == 'true'
-    name: server-integration (${{ matrix.shard }}/6)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
