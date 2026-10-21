@@ -6,16 +6,11 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/api ./cmd/api && \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/worker ./cmd/worker && \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/desktop-publish ./cmd/desktop-publish && \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/migrate ./cmd/migrate && \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/seed ./cmd/seed && \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/seed-e2e ./cmd/seed-e2e && \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/backup ./cmd/backup && \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/db-bootstrap ./cmd/db-bootstrap && \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/storage-init ./cmd/storage-init && \
-    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/probe ./cmd/probe
+# The heavy commands share one binary (cmd/opennavo); the Go build cache is a
+# cache mount so it stays out of image and build-cache layers.
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/ ./cmd/opennavo ./cmd/backup ./cmd/storage-init ./cmd/probe && \
+    for name in api worker desktop-publish migrate seed seed-e2e db-bootstrap; do ln -s opennavo /out/"$name"; done
 
 FROM alpine:3.24 AS ops
 # Backups require PostgreSQL 18 clients, not a database server or its entrypoint helpers.
