@@ -29,8 +29,33 @@ var literals = regexp.MustCompile("(?s)```.*?```|~~~.*?~~~|`[^`\\n]+`|https?://[
 var markdownLinks = regexp.MustCompile(`!?\[[^\]]*\]\(([^\s)]+)(?:\s+"[^"]*")?\)`)
 var commandLines = regexp.MustCompile(`(?m)^\s*(?:\$ |brew |sudo |curl |git |npm |pnpm |uv |python3 |docker ).+$`)
 
+// A slash part attached to a word stays a literal only if it looks like a path:
+// a second slash, a file extension or path punctuation. "src/a.ts", "docs/help.md"
+// and "/Applications/Orbit.app" are paths; "desktop/web", "and/or" and "X/Y" are
+// prose a translator may rephrase.
+var pathExtension = regexp.MustCompile(`\.[A-Za-z0-9]{1,8}$`)
+
+func literalIndexes(s string) [][]int {
+	out := [][]int{}
+	for _, m := range literals.FindAllStringIndex(s, -1) {
+		v := s[m[0]:m[1]]
+		if strings.HasPrefix(v, "/") && m[0] > 0 {
+			r, _ := utf8.DecodeLastRuneInString(s[:m[0]])
+			attached := unicode.IsLetter(r) || unicode.IsDigit(r)
+			if attached && strings.Count(v, "/") < 2 && !pathExtension.MatchString(strings.TrimRight(v, ".,，。；;！!")) && !strings.ContainsAny(v, "{}_=?#@:%\\") {
+				continue
+			}
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
 func LiteralSpans(s string) []string {
-	out := literals.FindAllString(s, -1)
+	out := []string{}
+	for _, m := range literalIndexes(s) {
+		out = append(out, s[m[0]:m[1]])
+	}
 	out = append(out, commandLines.FindAllString(s, -1)...)
 	for _, link := range markdownLinks.FindAllStringSubmatch(s, -1) {
 		out = append(out, "link:"+link[1])
@@ -44,7 +69,14 @@ func LiteralSpans(s string) []string {
 	return out
 }
 func stripLiterals(s string, protected []string) string {
-	s = literals.ReplaceAllString(s, "")
+	var b strings.Builder
+	last := 0
+	for _, m := range literalIndexes(s) {
+		b.WriteString(s[last:m[0]])
+		last = m[1]
+	}
+	b.WriteString(s[last:])
+	s = b.String()
 	s = commandLines.ReplaceAllString(s, "")
 	for _, p := range protected {
 		if p != "" {

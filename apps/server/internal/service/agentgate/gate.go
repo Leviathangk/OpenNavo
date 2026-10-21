@@ -73,6 +73,10 @@ type Write struct {
 	Body                             map[string]any
 	Task                             seotasks.Task
 	EvidenceIDs                      []int64
+	// Source is the text a translation renders. Testing or performance wording
+	// the source already states may be translated ("faster" becomes "更快"); a
+	// translation that adds such wording is rejected like any unsupported claim.
+	Source string
 }
 
 type Decision struct {
@@ -137,7 +141,8 @@ func Check(ctx context.Context, tx *gorm.DB, w Write) (Decision, error) {
 			return d, err
 		}
 	}
-	if err := validateText(w.Body, w.Version, d.Rule.Object == "article"); err != nil {
+	allowTesting := d.Rule.Object == "article" || d.Rule.Object == "translation" && testingClaim.MatchString(w.Source)
+	if err := validateText(w.Body, w.Version, allowTesting); err != nil {
 		return d, err
 	}
 	if w.Operation == "SetPackageFactRecords" {
@@ -182,7 +187,7 @@ func ValidateText(body map[string]any, version string) error {
 	return validateText(body, version, false)
 }
 
-func validateText(body map[string]any, version string, article bool) error {
+func validateText(body map[string]any, version string, allowTesting bool) error {
 	var walk func(any, string) error
 	walk = func(v any, key string) error {
 		switch x := v.(type) {
@@ -219,7 +224,7 @@ func validateText(body map[string]any, version string, article bool) error {
 					}
 				}
 			}
-			if !article && testingClaim.MatchString(x) {
+			if !allowTesting && testingClaim.MatchString(x) {
 				return reject("test_artifact_required")
 			}
 		}
