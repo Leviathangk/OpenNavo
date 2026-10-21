@@ -9,6 +9,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+import unittest.mock
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('github_deploy', Path(__file__).with_name('github-deploy.py'))
@@ -231,6 +232,58 @@ class DeployTests(unittest.TestCase):
 
     def test_environment_update_preserves_unrelated_secrets(self):
         self.assertEqual(deploy.update_env('SERVER_IMAGE=old\nPRIVATE=value\n', {'SERVER_IMAGE': 'new', 'WEB_IMAGE': 'web'}), 'SERVER_IMAGE=new\nPRIVATE=value\nWEB_IMAGE=web\n')
+
+    def test_pulls_every_image_and_rejects_a_foreign_revision_before_preparing(self):
+        for revision in ['a' * 40, 'f' * 40]:
+            with self.subTest(revision=revision):
+                obj = object.__new__(deploy.Deployment)
+                obj.payload, obj.state = payload(), {}
+                events = []
+                def stop(_):
+                    events.append('prepare')
+                    raise RuntimeError('stop after pulls')
+                obj.prepare = stop
+                def cmd(args, output=None):
+                    if args[1:4] == ['--config', args[2], 'pull']:
+                        events.append(('pull', args[-1]))
+                    if args[:3] == ['docker', 'image', 'inspect']:
+                        return json.dumps({'org.opencontainers.image.revision': revision})
+                    return ''
+                with patch.object(deploy, 'command', side_effect=cmd), contextlib.redirect_stdout(io.StringIO()), \
+                        self.assertRaises(RuntimeError) as failure:
+                    obj.apply(archive())
+                pulled = sorted(event[1] for event in events if event[0] == 'pull')
+                self.assertEqual(pulled, sorted(obj.payload['images'].values()))
+                if revision == obj.payload['sha']:
+                    self.assertEqual(str(failure.exception), 'stop after pulls')
+                else:
+                    self.assertIn('image source revision does not match', str(failure.exception))
+                    self.assertNotIn('prepare', events)
+
+    def test_backup_prefers_zstd_and_falls_back_to_the_default_compression(self):
+        for zstd in [True, False]:
+            with self.subTest(zstd=zstd), tempfile.TemporaryDirectory() as root:
+                obj = object.__new__(deploy.Deployment)
+                obj.config = {'postgres_container': 'db', 'postgres_user': 'user', 'postgres_database': 'app'}
+                obj.directory = Path(root)
+                dumps = []
+                def cmd(args, output=None):
+                    dumps.append(args)
+                    if '--compress=zstd' in args and not zstd:
+                        output.write(b'pg_dump: error: compression method zstd is not supported')
+                        raise RuntimeError('command failed: docker (exit 1); inspect privately on host')
+                    output.write(b'PGDMP' + b'x' * 2048)
+                    return ''
+                restored = unittest.mock.Mock(returncode=0)
+                with patch.object(deploy, 'command', side_effect=cmd), \
+                        patch.object(deploy.subprocess, 'run', return_value=restored), contextlib.redirect_stdout(io.StringIO()):
+                    obj.backup()
+                self.assertEqual(dumps[0][-1], '--compress=zstd')
+                self.assertEqual(len(dumps), 1 if zstd else 2)
+                if not zstd:
+                    self.assertEqual(dumps[1][-1], '-Fc')
+                # A retry replaces the failed attempt's output instead of appending to it.
+                self.assertTrue((obj.directory / 'before-migration.dump').read_bytes().startswith(b'PGDMP'))
 
     def test_failed_route_check_restores_old_route_and_worker_without_down_migration(self):
         with tempfile.TemporaryDirectory() as root:

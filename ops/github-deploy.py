@@ -5,6 +5,8 @@ Install with a root-owned /etc/opennavo/github-deploy.json. This receiver is
 intended for the existing versioned Compose/Caddy deployment, not first install.
 """
 import base64
+import concurrent.futures
+import contextlib
 import copy
 import fcntl
 import hashlib
@@ -74,6 +76,14 @@ def command(args, output=None):
         # Docker/Compose diagnostics can contain expanded credentials.
         raise RuntimeError(f'command failed: {args[0]} (exit {result.returncode}); inspect privately on host')
     return result.stdout.decode().strip() if output is None else ''
+
+
+@contextlib.contextmanager
+def phase(name):
+    # Durations go to the public workflow log, so it shows where a deployment spends its time.
+    start = time.monotonic()
+    yield
+    print(f'{name} took {time.monotonic() - start:.0f} s', flush=True)
 
 
 def write_private(path, value):
@@ -194,8 +204,16 @@ class Deployment:
 
     def backup(self):
         dump = self.directory / 'before-migration.dump'
-        with dump.open('wb') as output:
-            command(['docker', 'exec', self.config['postgres_container'], 'pg_dump', '-U', self.config['postgres_user'], '-d', self.config['postgres_database'], '-Fc'], output=output)
+        args = ['docker', 'exec', self.config['postgres_container'], 'pg_dump', '-U', self.config['postgres_user'], '-d', self.config['postgres_database'], '-Fc']
+        # zstd compresses several times faster than pg_dump's default gzip, and the
+        # dump shares a two-core host with production traffic. Servers built
+        # without zstd fall back to the default.
+        try:
+            with dump.open('wb') as output:
+                command([*args, '--compress=zstd'], output=output)
+        except RuntimeError:
+            with dump.open('wb') as output:
+                command(args, output=output)
         if dump.stat().st_size < 1024:
             raise RuntimeError('database backup is unexpectedly small')
         with dump.open('rb') as source:
@@ -323,27 +341,35 @@ class Deployment:
                 result = subprocess.run(['docker', '--config', auth, 'login', 'ghcr.io', '--username', self.payload['registry_username'], '--password-stdin'], input=token.encode(), capture_output=True, timeout=60)
                 if result.returncode:
                     raise RuntimeError('registry authentication failed')
-            for image in self.payload['images'].values():
+            def pull(image):
                 command(['docker', '--config', auth, 'pull', image])
                 labels = json.loads(command(['docker', 'image', 'inspect', '--format', '{{json .Config.Labels}}', image]))
                 if labels.get('org.opencontainers.image.revision') != self.payload['sha']:
                     raise RuntimeError('image source revision does not match the deployment')
-        self.prepare(archive)
-        self.backup()
+            with phase('Pulling images'), concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+                for pulled in [pool.submit(pull, image) for image in self.payload['images'].values()]:
+                    pulled.result()
+        with phase('Preparing the release'):
+            self.prepare(archive)
+        with phase('Database backup'):
+            self.backup()
         print('Applying migrations and starting isolated candidates.', flush=True)
-        self.compose('run', '--rm', '--no-deps', 'migrate', 'up')
-        self.compose('run', '--rm', '--no-deps', 'db-permissions')
-        self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '240', *self.services.values())
+        with phase('Migrations'):
+            self.compose('run', '--rm', '--no-deps', 'migrate', 'up')
+            self.compose('run', '--rm', '--no-deps', 'db-permissions')
+        with phase('Starting candidates'):
+            self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '240', *self.services.values())
         print('All candidates healthy; switching routes.', flush=True)
         try:
-            # Preserve the inode because Caddy bind-mounts this file.
-            self.live_caddy.write_bytes((self.directory / 'Caddyfile.next').read_bytes())
-            self.reload()
-            self.verify()
-            self.env.write_bytes((self.directory / 'release.env').read_bytes())
-            self.rolling.write_bytes((self.directory / 'rolling.compose.json').read_bytes())
-            self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker', candidate=False)
-            self.verify()
+            with phase('Switching routes and worker'):
+                # Preserve the inode because Caddy bind-mounts this file.
+                self.live_caddy.write_bytes((self.directory / 'Caddyfile.next').read_bytes())
+                self.reload()
+                self.verify()
+                self.env.write_bytes((self.directory / 'release.env').read_bytes())
+                self.rolling.write_bytes((self.directory / 'rolling.compose.json').read_bytes())
+                self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker', candidate=False)
+                self.verify()
         except Exception:
             self.rollback()
             raise
@@ -352,8 +378,9 @@ class Deployment:
         write_private(self.directory / 'manifest.json', {key: value for key, value in self.payload.items() if key not in ['admin_archive', 'registry_token']})
         print('Production deployed and verified: ' + self.payload['sha'], flush=True)
         # Cleanup failure must not roll back a verified release; a retry resumes cleanup.
-        self.cleanup(previous)
-        self.prune(previous)
+        with phase('Cleanup'):
+            self.cleanup(previous)
+            self.prune(previous)
 
 
 def main():

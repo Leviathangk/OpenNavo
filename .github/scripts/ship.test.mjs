@@ -48,6 +48,7 @@ test('only changes that reach production deploy', () => {
   ]) {
     assert.equal(ships([file]), false, `${file} only serves the dev or E2E stack`);
   }
+  assert.equal(ships(['ops/github-deploy.py', 'ops/GUIDE.md']), false, 'operators install the receiver by hand');
   assert.equal(ships(['ops/docker-compose.prod.yml']), true);
   assert.equal(ships(['ops/caddy/Caddyfile']), true);
   assert.equal(ships(['apps/server/internal/http/server_test.go']), false, 'Go tests never reach a binary');
