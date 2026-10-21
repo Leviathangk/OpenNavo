@@ -161,7 +161,7 @@ func (s *Service) writeTranslationLocale(ctx context.Context, request translatio
 		if err != nil {
 			return err
 		}
-		d, err := agentgate.Check(ctx, tx, agentgate.Write{Operation: "FixTranslation", Entity: entity, Task: b.Task, Body: item.Fields, Site: seobudget.Site(s.Config.WebBaseURL)})
+		d, err := agentgate.Check(ctx, tx, agentgate.Write{Operation: "FixTranslation", Entity: entity, Task: b.Task, Body: item.Fields, Site: seobudget.Site(s.Config.WebBaseURL), Source: sourceText(src.Fields)})
 		if err != nil {
 			return err
 		}

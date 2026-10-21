@@ -78,3 +78,16 @@ func TestLiteralPathsAdjacentToCJK(t *testing.T) {
 	require.NotEqual(t, LiteralSpans("src/theme/settings.ts"), LiteralSpans("src/theme/changed.tsの変数"))
 	require.NotEqual(t, LiteralSpans("https://example.com/path"), LiteralSpans("https://example.com/changedの内容"))
 }
+
+func TestProseSlashesAreNotPathLiterals(t *testing.T) {
+	source := "See [Installation and desktop/web differences](https://learning.postman.com/docs/install/). Use it with and/or without the CLI; settings live in ~/Library/App/config.json and docs/help.md."
+	in := ContentInput{SourceLocale: "en-US", Targets: []string{"de-DE"}, Fields: map[string]string{"text": source}}
+	translated := "Siehe [Installation und Unterschiede zwischen Desktop- und Web-App](https://learning.postman.com/docs/install/). Nutze sie mit oder ohne die CLI; die Einstellungen liegen in ~/Library/App/config.json und docs/help.md."
+	require.NoError(t, ValidateContent(ContentOutput{"de-DE": {"text": translated}}, in))
+	for _, changed := range []string{"~/Library/App/other.json", "docs/other.md"} {
+		broken := strings.Replace(strings.Replace(translated, "~/Library/App/config.json", changed, 1), "docs/help.md", changed, 1)
+		require.ErrorContains(t, ValidateContent(ContentOutput{"de-DE": {"text": broken}}, in), "changed_literal", changed)
+	}
+	require.Empty(t, LiteralSpans("desktop/web and/or X/Y TCP/IP"))
+	require.Equal(t, []string{"/Applications/Orbit.app", "/web"}, LiteralSpans("Open /Applications/Orbit.app or the /web endpoint"))
+}

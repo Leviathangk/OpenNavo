@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -95,7 +96,15 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 		if err := guardInlineTranslations(ctx, st, name, refs, in); err != nil {
 			return err
 		}
-		d, err := agentgate.Check(ctx, tx, agentgate.Write{Site: seobudget.Site(s.Config.WebBaseURL), Operation: name, Entity: entity, Version: version, Body: in.Body, Task: b.Task, EvidenceIDs: b.Write.EvidenceIDs})
+		source := ""
+		if rule.Object == "translation" {
+			if ref, err := contentRef(in.Body["ref"]); err == nil {
+				if src, err := st.ReadContentSource(ctx, ref); err == nil {
+					source = sourceText(src.Fields)
+				}
+			}
+		}
+		d, err := agentgate.Check(ctx, tx, agentgate.Write{Site: seobudget.Site(s.Config.WebBaseURL), Operation: name, Entity: entity, Version: version, Body: in.Body, Task: b.Task, EvidenceIDs: b.Write.EvidenceIDs, Source: source})
 		if err != nil {
 			return err
 		}
@@ -217,6 +226,22 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 		return nil, store.MapAdminError(mapTaskError(err))
 	}
 	return result, nil
+}
+
+// sourceText joins a content source's text fields for checks that compare a
+// translation with what it renders.
+func sourceText(fields map[string]any) string {
+	flat := content.Flatten(fields)
+	keys := make([]string, 0, len(flat))
+	for key := range flat {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	values := make([]string, 0, len(keys))
+	for _, key := range keys {
+		values = append(values, flat[key])
+	}
+	return strings.Join(values, "\n")
 }
 
 func agentScope(ctx context.Context, st *store.Store, name, object string, in Input, task seotasks.Task) (string, []content.Ref, string, error) {

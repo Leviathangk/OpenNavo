@@ -5,6 +5,7 @@ package management
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/google/uuid"
@@ -125,4 +126,43 @@ func TestBatchTranslationFailureNamesTheBrokenRule(t *testing.T) {
 	item := result.(map[string]any)["results"].([]any)[0].(map[string]any)
 	require.Equal(t, "failed", item["status"])
 	require.Equal(t, "validation_failed:changed_literal", item["reason"])
+}
+
+// A translation renders the source's own claims: "faster" in the source may
+// become "更快", but a translation may not add testing wording on its own.
+func TestTranslationsKeepOnlyTheTestingWordingTheirSourceStates(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &Service{Store: st}
+	write := func(id int64, description, translated string) map[string]any {
+		t.Helper()
+		require.NoError(t, st.DB.Exec("INSERT INTO categories(id,slug,icon,source_locale) VALUES(?,?,'lucide:box','en-US')", id, "testing-wording-"+uuid.NewString()[:8]).Error)
+		ref := content.Ref{Entity: "category", ID: id}
+		require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
+			return (&store.Store{DB: tx}).WriteContentText(ctx, ref, "en-US", map[string]any{"name": "File organizer", "description": description}, true)
+		}))
+		leased, err := (&seotasks.Service{DB: st.DB}).Claim(ctx, seotasks.Owner(1, 2), 1, []string{"translate"})
+		require.NoError(t, err)
+		require.Len(t, leased, 1)
+		source, err := st.ReadContentSource(ctx, ref)
+		require.NoError(t, err)
+		current, err := st.TranslationValue(ctx, ref, "zh-Hant")
+		require.NoError(t, err)
+		op := &domain.Operation{RequestID: uuid.NewString(), Name: "writeTranslations", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"*"}, RequiredPermissions: []string{"translation:review"}}
+		result, err := svc.Execute(domain.WithOperation(ctx, op), "WriteTranslations", Input{Body: map[string]any{
+			"ref": map[string]any{"entity": "category", "id": id}, "model": "fixture-model", "taskId": leased[0].ID, "fencing": leased[0].Fencing,
+			"translations": []any{map[string]any{"locale": "zh-Hant", "sourceHash": source.Hash, "expectedRevision": current.Revision, "idempotencyKey": uuid.NewString(),
+				"fields": map[string]any{"name": "檔案整理工具", "description": translated}}},
+		}})
+		require.NoError(t, err)
+		// Retire this category's other languages so the next claim gets the next fixture.
+		require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET state='done',lease_owner=NULL,lease_until=NULL WHERE entity_key=?", "category:"+strconv.FormatInt(id, 10)).Error)
+		require.NoError(t, st.DB.Exec("UPDATE seo_entity_leases SET owner=NULL,task_id=NULL,lease_until=NULL WHERE entity_key=?", "category:"+strconv.FormatInt(id, 10)).Error)
+		return result.(map[string]any)["results"].([]any)[0].(map[string]any)
+	}
+	stated := write(702, "Opens large folders faster than the Finder list view.", "開啟大型資料夾的速度比 Finder 列表檢視更快。")
+	require.Equal(t, "validated", stated["reason"], stated)
+	added := write(703, "Opens large folders from the menu bar.", "從選單列開啟大型資料夾，速度更快。")
+	require.Equal(t, "failed", added["status"])
+	require.Equal(t, "test_artifact_required", added["reason"])
 }
