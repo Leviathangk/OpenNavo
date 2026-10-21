@@ -20,7 +20,8 @@ runs:
       run: python3 ops/e2e.py up --ci
       env:
         RUNNER_TRACKING_ID: ''
-        OPENNAVO_E2E_BUILD_CACHE: gha
+        # Pull requests read the image cache; only main writes it.
+        OPENNAVO_E2E_BUILD_CACHE: ${{ github.ref == 'refs/heads/main' && 'gha-save' || 'gha' }}
     - uses: ./.github/actions/go-cache-save
       with:
         name: e2e

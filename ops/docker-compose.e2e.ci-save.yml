@@ -1,0 +1,16 @@
+# CI on main only: also write the E2E image layers to the GitHub Actions cache
+# (see docker-compose.e2e.ci.yml). ops/e2e.py adds this file when
+# OPENNAVO_E2E_BUILD_CACHE=gha-save.
+services:
+  postgres:
+    build:
+      cache_to:
+        - type=gha,scope=e2e-postgres,mode=max
+  redis:
+    build:
+      cache_to:
+        - type=gha,scope=e2e-redis,mode=max
+  minio:
+    build:
+      cache_to:
+        - type=gha,scope=e2e-minio,mode=max

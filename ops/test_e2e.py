@@ -20,6 +20,8 @@ class ComposeFileTests(unittest.TestCase):
         with patch.dict(os.environ, {'OPENNAVO_E2E_BUILD_CACHE': 'gha'}):
             self.assertEqual(e2e.compose_files(True), ['-f', 'ops/docker-compose.e2e.yml', '-f', 'ops/docker-compose.e2e.ci.yml'])
             self.assertEqual(e2e.compose_files(False), ['-f', 'ops/docker-compose.dev.yml'], 'local development never uses it')
+        with patch.dict(os.environ, {'OPENNAVO_E2E_BUILD_CACHE': 'gha-save'}):
+            self.assertEqual(e2e.compose_files(True), ['-f', 'ops/docker-compose.e2e.yml', '-f', 'ops/docker-compose.e2e.ci.yml', '-f', 'ops/docker-compose.e2e.ci-save.yml'])
 
 
 class IsolationTests(unittest.TestCase):
