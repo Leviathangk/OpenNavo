@@ -58,13 +58,22 @@ test('only changes that reach production deploy', () => {
 test('the live revision comes from the newest successful deploy', () => {
   const sha = 'd1cb7edb9d954798ca63cb765077284073294f52';
   const runs = [
-    { run_number: 3, conclusion: 'failure', display_title: 'Deploy production ' + 'f'.repeat(40), head_sha: 'x' },
-    { run_number: 2, conclusion: 'success', display_title: `Deploy production ${sha}`, head_sha: 'y' },
-    { run_number: 1, conclusion: 'success', display_title: 'Deploy production main', head_sha: 'z' }
+    { run_number: 3, status: 'completed', conclusion: 'failure', display_title: 'Deploy production ' + 'f'.repeat(40), head_sha: 'x' },
+    { run_number: 2, status: 'completed', conclusion: 'success', display_title: `Deploy production ${sha}`, head_sha: 'y' },
+    { run_number: 1, status: 'completed', conclusion: 'success', display_title: 'Deploy production main', head_sha: 'z' }
   ];
   assert.equal(lastDeployed(runs), sha);
   assert.equal(lastDeployed(runs.slice(2)), 'z', 'a deploy of "main" ran on its head commit');
   assert.equal(lastDeployed([]), null);
+  const running = 'a'.repeat(40);
+  assert.equal(
+    lastDeployed([
+      { run_number: 4, status: 'in_progress', conclusion: null, display_title: `Deploy production ${running}`, head_sha: 'w' },
+      ...runs
+    ]),
+    running,
+    'a deploy still in flight is what production is getting'
+  );
 });
 
 test('only older entries of a known cache kind are superseded', () => {

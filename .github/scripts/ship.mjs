@@ -24,11 +24,14 @@ const TESTS = /_test\.go$/;
 export const ships = files =>
   files === null || files.some(file => !TESTS.test(file) && SHIPS.some(pattern => pattern.test(file)));
 
-// The revision of the newest successful deploy: the SHA in its title, or the
-// main commit it ran on when it was dispatched for "main".
+// The revision production has or is getting: the newest deploy that succeeded
+// or is still queued or running (the SHA in its title, or the main commit it
+// ran on when it was dispatched for "main"). Comparing with a deploy still in
+// flight keeps a later commit that ships nothing new from deploying the same
+// code again; if that deploy fails, the next commit that ships deploys.
 export function lastDeployed(runs) {
   const run = runs
-    .filter(candidate => candidate.conclusion === 'success')
+    .filter(candidate => candidate.status !== 'completed' || candidate.conclusion === 'success')
     .sort((a, b) => b.run_number - a.run_number)[0];
   return run ? (run.display_title.match(/\b[0-9a-f]{40}\b/)?.[0] ?? run.head_sha) : null;
 }
