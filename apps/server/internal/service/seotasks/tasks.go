@@ -46,6 +46,12 @@ type Task struct {
 	CreatedAt     time.Time       `json:"createdAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`
 	ExpiresAt     *time.Time      `json:"expiresAt"`
+	// Evidence that changed while the task was leased; it replaces Evidence when
+	// the lease ends (see promotePending).
+	PendingEvidence     json.RawMessage `json:"pendingEvidence,omitempty"`
+	PendingEvidenceHash *string         `json:"-"`
+	ReopenCount         int             `json:"reopenCount"`
+	ReopenedAt          *time.Time      `json:"reopenedAt,omitempty"`
 }
 
 func (Task) TableName() string { return "seo_tasks" }
@@ -80,9 +86,28 @@ func (s *Service) Get(ctx context.Context, id int64) (Task, error) {
 	return t, err
 }
 
+// ClaimFilter narrows a claim. IDs claim tasks the caller was handed (a
+// nomination, a task it reopened) instead of the head of the queue; they still
+// have to be claimable.
+type ClaimFilter struct {
+	Limit int
+	Kinds []string
+	IDs   []int64
+}
+
 func (s *Service) Claim(ctx context.Context, owner string, limit int, kinds []string) ([]Task, error) {
-	if strings.TrimSpace(owner) == "" || len(owner) > 200 || limit < 1 || limit > 50 || len(kinds) > 20 {
+	return s.ClaimWith(ctx, owner, ClaimFilter{Limit: limit, Kinds: kinds})
+}
+
+func (s *Service) ClaimWith(ctx context.Context, owner string, f ClaimFilter) ([]Task, error) {
+	limit, kinds := f.Limit, f.Kinds
+	if strings.TrimSpace(owner) == "" || len(owner) > 200 || limit < 1 || limit > 50 || len(kinds) > 20 || len(f.IDs) > 50 {
 		return nil, ErrInvalid
+	}
+	for _, id := range f.IDs {
+		if id < 1 {
+			return nil, ErrInvalid
+		}
 	}
 	out := []Task{}
 	err := s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -103,6 +128,9 @@ func (s *Service) Claim(ctx context.Context, owner string, limit int, kinds []st
 			}
 			if len(kinds) > 0 {
 				query = query.Where("kind IN ?", kinds)
+			}
+			if len(f.IDs) > 0 {
+				query = query.Where("id IN ?", f.IDs)
 			}
 			// Adding age in days is this static score plus the same current-time
 			// constant for every row. Keep the expression and open/retry predicate in
@@ -158,7 +186,10 @@ func (s *Service) Claim(ctx context.Context, owner string, limit int, kinds []st
 				if r.RowsAffected == 0 {
 					continue
 				}
-				if err := tx.Model(&Task{}).Where("id=?", t.ID).Updates(map[string]any{"state": "leased", "lease_owner": owner, "lease_until": lease.LeaseUntil, "fencing": lease.Fencing, "attempts": gorm.Expr("attempts+1"), "last_attempt_at": gorm.Expr("clock_timestamp()"), "updated_at": gorm.Expr("clock_timestamp()"), "next_retry_at": gorm.Expr("CASE WHEN kind='hermes_import' THEN CASE WHEN evidence->>'field' IN ('price','repoUrl','screenshots','icon','macos') THEN clock_timestamp()+interval '30 days' ELSE NULL END ELSE next_retry_at END")}).Error; err != nil {
+				if err := tx.Model(&Task{}).Where("id=?", t.ID).Updates(map[string]any{"state": "leased", "lease_owner": owner, "lease_until": lease.LeaseUntil, "fencing": lease.Fencing, "attempts": gorm.Expr("attempts+1"), "last_attempt_at": gorm.Expr("clock_timestamp()"), "updated_at": gorm.Expr("clock_timestamp()"), "next_retry_at": gorm.Expr("CASE WHEN kind='hermes_import' THEN CASE WHEN evidence->>'field' IN ('price','repoUrl','screenshots','icon','macos') THEN clock_timestamp()+interval '30 days' ELSE NULL END ELSE next_retry_at END"),
+					// A new holder starts from the newest evidence, including what
+					// arrived while an earlier lease was abandoned.
+					"evidence": gorm.Expr("coalesce(pending_evidence,evidence)"), "evidence_hash": gorm.Expr("coalesce(pending_evidence_hash,evidence_hash)"), "pending_evidence": gorm.Expr("NULL"), "pending_evidence_hash": gorm.Expr("NULL")}).Error; err != nil {
 					return err
 				}
 				if err := tx.First(&t, t.ID).Error; err != nil {
@@ -221,8 +252,23 @@ func (s *Service) Defer(ctx context.Context, id, fencing int64, owner, reason st
 		if err := tx.Model(&Task{}).Where("id=?", id).Updates(map[string]any{"state": "deferred", "lease_owner": nil, "lease_until": nil, "next_retry_at": retry, "result": gorm.Expr("?::jsonb", string(result)), "updated_at": gorm.Expr("clock_timestamp()")}).Error; err != nil {
 			return err
 		}
-		return release(tx, task, owner)
+		if err := release(tx, task, owner); err != nil {
+			return err
+		}
+		return promotePending(ctx, tx, id)
 	})
+}
+
+// promotePending applies evidence that changed while the task was leased. Like a
+// fresh opportunity signal, new evidence reopens the task now unless it waits
+// for a person (quarantined) or no longer applies (expired).
+func promotePending(ctx context.Context, tx *gorm.DB, id int64) error {
+	return tx.WithContext(ctx).Exec(`UPDATE seo_tasks SET
+  state=CASE WHEN pending_evidence_hash=evidence_hash OR state IN ('quarantined','expired') THEN state ELSE 'open' END,
+  next_retry_at=CASE WHEN pending_evidence_hash=evidence_hash OR state IN ('quarantined','expired') THEN next_retry_at ELSE NULL END,
+  result=CASE WHEN pending_evidence_hash=evidence_hash OR state IN ('quarantined','expired') THEN result ELSE jsonb_build_object('reopened','newer_evidence','previous',result) END,
+  evidence=pending_evidence,evidence_hash=pending_evidence_hash,pending_evidence=NULL,pending_evidence_hash=NULL,updated_at=clock_timestamp()
+  WHERE id=? AND pending_evidence IS NOT NULL`, id).Error
 }
 
 func release(tx *gorm.DB, t Task, owner string) error {

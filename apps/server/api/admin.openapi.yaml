@@ -1209,6 +1209,308 @@ paths:
               fencing: 1
               reason: Official source unavailable
               retryAt: '2026-10-20T00:00:00Z'
+  /seo/tasks/{id}/reopen:
+    post:
+      tags:
+      - jobs
+      operationId: reopenSeoTask
+      summary: reopenSeoTask
+      description: >-
+        Return a quarantined or skipped task to the queue after its cause was fixed. People may always
+        reopen; agents at most three times per task and once per hour. A translation whose source changed since is
+        superseded by the task for the current source and is not reopened. Rejections carry `rejected: <rule>`
+        (not_reopenable, expired, superseded, reopen_limit, reopen_cooldown).
+      x-permissions:
+      - seo:task:handle
+      x-agent-access:
+        permissions:
+        - seo:task:handle
+      parameters:
+      - $ref: '#/components/parameters/AgentTool'
+      - $ref: '#/components/parameters/AgentRequestId'
+      - $ref: '#/components/parameters/AgentClientIP'
+      - $ref: '#/components/parameters/IdPath'
+      - $ref: '#/components/parameters/DryRun'
+      responses:
+        '200':
+          description: Business result
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/SeoTaskResponse'
+                - $ref: '#/components/schemas/BusinessErrorResponse'
+              examples:
+                dry-run:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                  description: Validated preview; the reopen is rolled back.
+                en-US:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                zh-CN:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                ja-JP:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                es-ES:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                pt-BR:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                ru-RU:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                de-DE:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                fr-FR:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                it-IT:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+                zh-Hant:
+                  value:
+                    code: '0000'
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: translate
+                      entityKey: category:7
+                      locale: de-DE
+                      dedupeKey: translate:category:7:de-DE:fixture
+                      priority: 100
+                      evidence: {}
+                      evidenceHash: fixture
+                      ruleVersion: translation-v1
+                      state: open
+                      fencing: 2
+                      attempts: 2
+                      reopenCount: 1
+                      result:
+                        reopenedFrom: quarantined
+                        reason: Corrected the version literal in the description
+                      createdAt: '2026-10-19T00:00:00Z'
+                      updatedAt: '2026-10-21T00:00:00Z'
+      servers:
+      - url: https://admin.opennavo.example/admin-api
+      - url: https://admin.opennavo.example/agent-api
+      security:
+      - bearerAuth: []
+      - agentToken: []
+        agentGateway: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeoTaskReopen'
+            example:
+              idempotencyKey: fixture-reopen-001
+              reason: Corrected the version literal in the description
   /seo/evidence:
     post:
       tags:
@@ -19476,6 +19778,337 @@ paths:
       servers:
         - url: http://localhost:8080/admin-api
         - url: http://api:8080/agent-api
+  /seo/listings/{token}/nominate:
+    post:
+      tags:
+        - seo
+      operationId: nominateSeoListing
+      summary: nominateSeoListing
+      description: >-
+        Turn an app a person asked for into a listing task (entity listing:<token>, priority 1000) so an
+        agent can prepare its listing candidate. Nominating publishes nothing; publishing keeps the listing rules.
+        Nominating the same token again returns the open task, or reopens a finished one. Rejections carry
+        `rejected: <rule>` (already_listed, candidate_rejected).
+      x-permissions:
+        - catalog:package:edit
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[a-z0-9][a-z0-9+@._-]{0,127}$
+        - $ref: "#/components/parameters/DryRun"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+      responses:
+        "200":
+          description: Business result
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/SeoTaskResponse"
+                  - $ref: "#/components/schemas/BusinessErrorResponse"
+              examples:
+                dry-run:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                  description: Validated preview; the task is not created.
+                en-US:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                zh-CN:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                ja-JP:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                es-ES:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                pt-BR:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                ru-RU:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                de-DE:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                fr-FR:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                it-IT:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                zh-Hant:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: listing
+                      entityKey: listing:example-app
+                      locale: en-US
+                      dedupeKey: nominate:example-app
+                      priority: 1000
+                      evidence:
+                        source: nomination
+                        token: example-app
+                        name: Example App
+                        homepage: https://vendor.example.test
+                        reason: Requested by the site owner
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeoListingNomination"
+            example:
+              idempotencyKey: nominate-001
+              name: Example App
+              homepage: https://vendor.example.test
+              reason: Requested by the site owner
+      x-agent-access:
+        permissions:
+          - catalog:package:edit
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
   /seo/listing-baselines/{id}:
     put:
       tags:
@@ -20934,6 +21567,14 @@ components:
           items:
             type: string
             maxLength: 80
+        taskIds:
+          type: array
+          maxItems: 50
+          description: Claim only these tasks (a nomination or a task the caller reopened); they must still be claimable.
+          items:
+            type: integer
+            format: int64
+            minimum: 1
       required:
       - idempotencyKey
       example:
@@ -20970,6 +21611,54 @@ components:
         idempotencyKey: fixture-complete-001
         fencing: 1
         outcome: done
+    SeoTaskReopen:
+      type: object
+      additionalProperties: false
+      properties:
+        idempotencyKey:
+          type: string
+          minLength: 8
+          maxLength: 200
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+      required:
+      - idempotencyKey
+      - reason
+      example:
+        idempotencyKey: fixture-reopen-001
+        reason: Corrected the version literal in the description
+    SeoListingNomination:
+      type: object
+      additionalProperties: false
+      properties:
+        idempotencyKey:
+          type: string
+          minLength: 8
+          maxLength: 200
+        name:
+          type: string
+          minLength: 1
+          maxLength: 256
+        homepage:
+          type: string
+          maxLength: 2048
+          description: Official https page of the app, where the agent starts its research.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Who asked for the app and why.
+      required:
+      - idempotencyKey
+      - name
+      - reason
+      example:
+        idempotencyKey: nominate-001
+        name: Example App
+        homepage: https://vendor.example.test
+        reason: Requested by the site owner
     SeoTaskDefer:
       type: object
       additionalProperties: false
@@ -21175,6 +21864,16 @@ components:
           nullable: true
         leaseOwner:
           type: string
+          nullable: true
+        pendingEvidence:
+          description: Evidence that changed while the task was leased; it replaces evidence when the lease ends and
+            then reopens the task.
+        reopenCount:
+          type: integer
+          minimum: 0
+        reopenedAt:
+          type: string
+          format: date-time
           nullable: true
       required:
       - id
@@ -22296,6 +22995,12 @@ components:
           allOf:
             - $ref: "#/components/schemas/BatchTranslationValue"
           nullable: true
+        violations:
+          type: array
+          maxItems: 20
+          description: Every failed content check for a validation_failed result; reason names the first.
+          items:
+            $ref: "#/components/schemas/TranslationViolation"
       additionalProperties: false
       example:
         locale: zh-CN
@@ -22309,6 +23014,50 @@ components:
           model: hermes:fixture
           fields:
             name: 文件管理工具
+    TranslationViolation:
+      type: object
+      additionalProperties: false
+      description: One failed check. missing/extra are the code spans, URLs, numbers or Markdown markers the source has
+        and the translation lacks, or the translation added; term/expected/expectedCount/actualCount describe brand and
+        glossary rules; limit/length/sourceLength describe length rules.
+      required:
+        - rule
+      properties:
+        rule:
+          type: string
+        field:
+          type: string
+        missing:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+        extra:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+        term:
+          type: string
+        expected:
+          type: string
+        expectedCount:
+          type: integer
+        actualCount:
+          type: integer
+        limit:
+          type: integer
+        length:
+          type: integer
+        sourceLength:
+          type: integer
+      example:
+        rule: changed_literal
+        field: description
+        missing:
+          - "14.2"
+        extra:
+          - "14,2"
     TranslationsBatchResult:
       type: object
       required:

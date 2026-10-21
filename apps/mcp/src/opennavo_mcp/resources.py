@@ -41,11 +41,17 @@ GEO 入口：opennavo://guide/geo-routine；未授权不运行。Reading is not 
    translations. Every business step retains the lease until seo_task_complete.
 6. Evidence missing/429/timeout: seo_task_defer with reason and retry_at within 30
    days; changed evidence can reopen a deferred task. Use skipped/quarantined only
-   with a reason. Never convert fetch failure to removal or 410.
+   with a reason. Never convert fetch failure to removal or 410. Evidence that
+   changes during your lease arrives as pendingEvidence and reopens the task after
+   you finish. Once the cause is fixed, seo_task_reopen returns a quarantined or
+   skipped task to the queue (agents: at most 3 times, once per hour); claim it
+   again with task_ids. Rejections end with (rejected: <rule>).
 7. New listings stay isolated in seo_listing_upsert until identity and content gates
-   pass; the download link goes to the official page. New articles reserve their
-   unique entity/intent/locale target. All key claims bind captured evidence and
-   applicable version/region; testing claims need article_test_artifacts_list IDs.
+   pass; an app a person asked for becomes a listing task via seo_listing_nominate
+   (nominating publishes nothing); the download link goes to the official page.
+   New articles reserve their unique entity/intent/locale target. All key claims
+   bind captured evidence and applicable version/region; testing claims need
+   article_test_artifacts_list IDs.
 8. Optimization is template-only via seo_snippet_template_propose. The server checks
    samples, stratifies groups and evaluates 14/28-day checkpoints. 42 days without
    a conclusion means inconclusive plus cooldown. Traffic decline alone never

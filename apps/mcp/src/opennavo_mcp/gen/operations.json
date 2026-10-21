@@ -2102,6 +2102,30 @@
     },
     "summary": "Zero-result search queries"
   },
+  "nominateSeoListing": {
+    "body": {
+      "$ref": "#/components/schemas/SeoListingNomination"
+    },
+    "headerNames": {},
+    "method": "POST",
+    "model": "NominateSeoListingInput",
+    "parameters": {
+      "header": [],
+      "path": [
+        "token"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/seo/listings/{token}/nominate",
+    "policy": {
+      "permissions": [
+        "catalog:package:edit"
+      ]
+    },
+    "summary": "nominateSeoListing"
+  },
   "proposeSnippetTemplate": {
     "body": {
       "$ref": "#/components/schemas/SeoSnippetProposal"
@@ -2302,6 +2326,30 @@
       ]
     },
     "summary": "Remove a third-party tap cask"
+  },
+  "reopenSeoTask": {
+    "body": {
+      "$ref": "#/components/schemas/SeoTaskReopen"
+    },
+    "headerNames": {},
+    "method": "POST",
+    "model": "ReopenSeoTaskInput",
+    "parameters": {
+      "header": [],
+      "path": [
+        "id"
+      ],
+      "query": [
+        "dryRun"
+      ]
+    },
+    "path": "/seo/tasks/{id}/reopen",
+    "policy": {
+      "permissions": [
+        "seo:task:handle"
+      ]
+    },
+    "summary": "reopenSeoTask"
   },
   "reorderCategories": {
     "body": {

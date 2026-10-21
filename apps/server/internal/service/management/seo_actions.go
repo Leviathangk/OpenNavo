@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"sort"
 
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
+	"gorm.io/gorm"
 )
 
 func beginAgentAction(ctx context.Context, st *store.Store, in Input) (*seotasks.Begun, error) {
@@ -70,6 +72,13 @@ func mapTaskError(err error) error {
 	}
 	if errors.Is(err, seotasks.ErrInvalid) {
 		return domain.Validation()
+	}
+	var state *seotasks.StateError
+	if errors.As(err, &state) {
+		return &domain.AppError{Code: domain.CodeInvalidState, HTTPStatus: http.StatusConflict, Msg: "rejected: " + state.Reason, Cause: err}
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return &domain.AppError{Code: domain.CodeNotFound, HTTPStatus: http.StatusNotFound}
 	}
 	return err
 }

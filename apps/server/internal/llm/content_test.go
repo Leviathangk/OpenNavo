@@ -91,3 +91,49 @@ func TestProseSlashesAreNotPathLiterals(t *testing.T) {
 	require.Empty(t, LiteralSpans("desktop/web and/or X/Y TCP/IP"))
 	require.Equal(t, []string{"/Applications/Orbit.app", "/web"}, LiteralSpans("Open /Applications/Orbit.app or the /web endpoint"))
 }
+
+func TestContentViolationsNameFieldAndSpans(t *testing.T) {
+	in := ContentInput{SourceLocale: "en-US", Targets: []string{"de-DE"}, Strict: true, Protected: []string{"Orbit"},
+		Fields: map[string]string{
+			"description": "Run `brew install orbit` and open version 14.2 of Orbit.",
+			"title":       "Orbit for files",
+		}}
+	// The translation drops the code span, rewrites the version and loses the brand
+	// in the title. Every failed check is reported, fields in key order.
+	err := ValidateContent(ContentOutput{"de-DE": {
+		"description": "Führe brew install orbit aus und öffne Version 14,2 von Orbit.",
+		"title":       "Dateien verwalten",
+	}}, in)
+	var failure *Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, "changed_literal", failure.Reason)
+	one, zero := 1, 0
+	require.Equal(t, []ContentViolation{
+		{Rule: "changed_literal", Field: "description", Missing: []string{"14.2", "`brew install orbit`"}},
+		{Rule: "changed_brand", Field: "title", Term: "Orbit", ExpectedCount: &one, ActualCount: &zero},
+	}, failure.Violations)
+}
+
+func TestContentViolationReasonIsStableAcrossFields(t *testing.T) {
+	in := ContentInput{SourceLocale: "en-US", Targets: []string{"de-DE"}, Protected: []string{"Orbit"},
+		Fields: map[string]string{"a": "Orbit app", "b": "See https://example.com/a", "c": "Version 2.0"}}
+	out := ContentOutput{"de-DE": {"a": "App", "b": "Siehe https://example.com/b", "c": "Version 2,0"}}
+	for range 20 {
+		var failure *Failure
+		require.ErrorAs(t, ValidateContent(out, in), &failure)
+		require.Equal(t, "changed_brand", failure.Reason)
+		require.Equal(t, "a", failure.Violations[0].Field)
+		require.Len(t, failure.Violations, 3)
+	}
+}
+
+func TestContentViolationsDescribeLengthAndGlossary(t *testing.T) {
+	in := ContentInput{SourceLocale: "en-US", Targets: []string{"zh-CN"}, Limits: map[string]int{"text": 6},
+		Glossary: map[string]map[string]string{"menu bar": {"zh-CN": "菜单栏"}}, Fields: map[string]string{"text": "Lives in the menu bar"}}
+	var failure *Failure
+	require.ErrorAs(t, ValidateContent(ContentOutput{"zh-CN": {"text": "常驻在顶部的状态区域里"}}, in), &failure)
+	require.Equal(t, []ContentViolation{
+		{Rule: "too_long", Field: "text", Limit: 6, Length: 11},
+		{Rule: "missing_glossary", Field: "text", Term: "menu bar", Expected: "菜单栏"},
+	}, failure.Violations)
+}

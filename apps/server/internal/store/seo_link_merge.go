@@ -289,7 +289,8 @@ func mergeSEORelationships(ctx context.Context, tx *gorm.DB, from, to int64) err
 			sum := sha256.Sum256(evidence)
 			hash = hex.EncodeToString(sum[:])
 		}
-		if err := exec(`UPDATE seo_tasks SET entity_key=?,dedupe_key=?,evidence=?::jsonb,evidence_hash=?,lease_owner=NULL,lease_until=NULL,fencing=fencing+1,state=CASE WHEN state='leased' THEN 'open' ELSE state END WHERE id=?`, entity, key, string(evidence), hash, t.ID); err != nil {
+		// Evidence waiting for the old lease described the merged-away identity.
+		if err := exec(`UPDATE seo_tasks SET entity_key=?,dedupe_key=?,evidence=?::jsonb,evidence_hash=?,pending_evidence=NULL,pending_evidence_hash=NULL,lease_owner=NULL,lease_until=NULL,fencing=fencing+1,state=CASE WHEN state='leased' THEN 'open' ELSE state END WHERE id=?`, entity, key, string(evidence), hash, t.ID); err != nil {
 			return err
 		}
 	}

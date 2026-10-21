@@ -300,7 +300,7 @@ func (r AgentRouter) DELETE(p string, h ...gin.HandlerFunc) gin.IRoutes {
 // Keep the exemption explicit: new business writes remain fail-closed.
 func agentControlOperation(operation string) bool {
 	switch operation {
-	case "claimSeoTasks", "completeSeoTask", "deferSeoTask", "createSeoEvidence", "updateSeoAutomation", "importSeoTasks", "writeTranslations", "recordSeoGeo":
+	case "claimSeoTasks", "completeSeoTask", "deferSeoTask", "reopenSeoTask", "nominateSeoListing", "createSeoEvidence", "updateSeoAutomation", "importSeoTasks", "writeTranslations", "recordSeoGeo":
 		return true
 	default:
 		return false

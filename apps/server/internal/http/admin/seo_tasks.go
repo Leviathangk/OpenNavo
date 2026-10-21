@@ -22,6 +22,14 @@ func (h *Handler) DeferSeoTask(ctx context.Context, r adminapi.DeferSeoTaskReque
 	data, err := h.manage(ctx, "DeferSeoTask", r)
 	return response[adminapi.DeferSeoTask200JSONResponse](data, err)
 }
+func (h *Handler) ReopenSeoTask(ctx context.Context, r adminapi.ReopenSeoTaskRequestObject) (adminapi.ReopenSeoTaskResponseObject, error) {
+	data, err := h.manage(ctx, "ReopenSeoTask", r)
+	return response[adminapi.ReopenSeoTask200JSONResponse](data, err)
+}
+func (h *Handler) NominateSeoListing(ctx context.Context, r adminapi.NominateSeoListingRequestObject) (adminapi.NominateSeoListingResponseObject, error) {
+	data, err := h.manage(ctx, "NominateSeoListing", r)
+	return response[adminapi.NominateSeoListing200JSONResponse](data, err)
+}
 func (h *Handler) CreateSeoEvidence(ctx context.Context, r adminapi.CreateSeoEvidenceRequestObject) (adminapi.CreateSeoEvidenceResponseObject, error) {
 	data, err := h.manage(ctx, "CreateSeoEvidence", r)
 	return response[adminapi.CreateSeoEvidence200JSONResponse](data, err)

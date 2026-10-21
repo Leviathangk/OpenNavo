@@ -42,6 +42,10 @@ class Kind(RootModel[str]):
     root: Annotated[str, Field(max_length=80)]
 
 
+class TaskId(RootModel[int]):
+    root: Annotated[int, Field(ge=1)]
+
+
 class SeoTaskClaim(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -49,6 +53,7 @@ class SeoTaskClaim(BaseModel):
     idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
     limit: Annotated[int, Field(ge=1, le=50)] = 1
     kinds: Annotated[list[Kind] | None, Field(max_length=20)] = None
+    taskIds: Annotated[list[TaskId] | None, Field(description='Claim only these tasks (a nomination or a task the caller reopened); they must still be claimable.', max_length=50)] = None
 
 
 class SeoTaskComplete(BaseModel):
@@ -59,6 +64,24 @@ class SeoTaskComplete(BaseModel):
     fencing: Annotated[int, Field(ge=1)]
     outcome: Literal['done', 'skipped', 'quarantined']
     reason: Annotated[str | None, Field(max_length=1000)] = None
+
+
+class SeoTaskReopen(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
+    reason: Annotated[str, Field(max_length=1000, min_length=1)]
+
+
+class SeoListingNomination(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
+    name: Annotated[str, Field(max_length=256, min_length=1)]
+    homepage: Annotated[str | None, Field(description='Official https page of the app, where the agent starts its research.', max_length=2048)] = None
+    reason: Annotated[str, Field(description='Who asked for the app and why.', max_length=1000, min_length=1)]
 
 
 class SeoTaskDefer(BaseModel):
@@ -119,6 +142,9 @@ class SeoTask(BaseModel):
     lastAttemptAt: AwareDatetime | None = None
     expiresAt: AwareDatetime | None = None
     leaseOwner: str | None = None
+    pendingEvidence: Annotated[Any | None, Field(description='Evidence that changed while the task was leased; it replaces evidence when the lease ends and then reopens the task.')] = None
+    reopenCount: Annotated[int | None, Field(ge=0)] = None
+    reopenedAt: AwareDatetime | None = None
 
 
 class SeoTaskList(BaseModel):
@@ -349,6 +375,23 @@ class SeoAutomationUpdate(BaseModel):
     expectedRevision: Annotated[int, Field(ge=1, le=1000000000)]
     idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
     reason: Annotated[str, Field(max_length=2000, min_length=1)]
+
+
+class TranslationViolation(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    rule: str
+    field: str | None = None
+    missing: Annotated[list[str] | None, Field(max_length=10)] = None
+    extra: Annotated[list[str] | None, Field(max_length=10)] = None
+    term: str | None = None
+    expected: str | None = None
+    expectedCount: int | None = None
+    actualCount: int | None = None
+    limit: int | None = None
+    length: int | None = None
+    sourceLength: int | None = None
 
 
 class SeoImportResult(BaseModel):
@@ -3896,6 +3939,15 @@ class DeferSeoTaskInput(BaseModel):
     body: SeoTaskDefer
 
 
+class ReopenSeoTaskInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: Annotated[int, Field(examples=[1], ge=1)]
+    dryRun: Annotated[bool, Field(examples=[False])] = False
+    body: SeoTaskReopen
+
+
 class CreateSeoEvidenceInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -5138,6 +5190,15 @@ class GetSeoListingCandidateInput(BaseModel):
     token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
 
 
+class NominateSeoListingInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
+    dryRun: Annotated[bool, Field(examples=[False])] = False
+    body: SeoListingNomination
+
+
 class ListArticleTestArtifactsInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -5309,6 +5370,7 @@ class BatchTranslationResult(BaseModel):
     status: Literal['written', 'preview', 'proposal', 'preserved_manual', 'failed']
     reason: str
     value: Annotated[BatchTranslationValue | None, Field(...)]
+    violations: Annotated[list[TranslationViolation] | None, Field(description='Every failed content check for a validation_failed result; reason names the first.', max_length=20)] = None
 
 
 class TranslationsBatchResult(BaseModel):

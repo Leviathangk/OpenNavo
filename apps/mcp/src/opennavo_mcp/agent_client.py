@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from typing import Any, cast
 from urllib.parse import quote
 from uuid import uuid4
@@ -31,10 +32,18 @@ MESSAGES = {
 }
 
 
+# A gate rejection names one snake_case rule the agent can act on (for example
+# reopen_limit). That exact shape is the only backend text ever forwarded.
+REJECTION = re.compile(r"rejected: [a-z][a-z0-9_]{0,63}")
+
+
 class AgentError(ToolError):
-    def __init__(self, code: str):
+    def __init__(self, code: str, detail: object = None):
         self.code = code if code in MESSAGES else "5000"
-        super().__init__(f"{self.code}: {MESSAGES[self.code]}")
+        message = f"{self.code}: {MESSAGES[self.code]}"
+        if self.code != "5000" and isinstance(detail, str) and REJECTION.fullmatch(detail):
+            message += f" ({detail})"
+        super().__init__(message)
 
 
 class AgentClient:
@@ -105,7 +114,7 @@ class AgentClient:
             if not isinstance(payload.get("code"), str):
                 raise AgentError("5000")
             if payload["code"] != "0000":
-                raise AgentError(payload["code"])
+                raise AgentError(payload["code"], payload.get("msg"))
             return payload.get("data")
         except (httpx2.HTTPError, ValueError, TypeError):
             # Raw exceptions may contain URLs or request headers; never forward or print them.
