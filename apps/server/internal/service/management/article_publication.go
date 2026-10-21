@@ -143,7 +143,7 @@ func (s *Service) validateArticlePublication(ctx context.Context, st *store.Stor
 			hasTest = true
 			receipt.TestArtifactID = c.TestArtifactID
 			receipt.TestArtifactHash = &artifact.SHA256
-		} else if c.TestArtifactID != nil || !articles.CompleteAssertion(c.Text, e.BodyText) || !articles.CompleteAssertion(c.Text, c.Excerpt) {
+		} else if c.TestArtifactID != nil || !articles.Supports(c.Text, c.Excerpt) {
 			return domain.Validation()
 		}
 		receipts = append(receipts, receipt)

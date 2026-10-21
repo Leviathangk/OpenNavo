@@ -110,6 +110,18 @@ func Reserve(ctx context.Context, tx *gorm.DB, site, action, entity, requestID s
 	return tx.Exec("INSERT INTO seo_daily_entities(site,day,action,entity_key,first_request_id) VALUES(?,?::date,?,?,?) ON CONFLICT DO NOTHING", site, day, action, entity, requestID).Error
 }
 
+// Rebind moves reservations from a provisional creation key to the entity it
+// created, so creating and then publishing a new entity uses one daily slot.
+func Rebind(ctx context.Context, tx *gorm.DB, site, oldKey, newKey string) error {
+	if oldKey == "" || oldKey == newKey {
+		return nil
+	}
+	if err := tx.WithContext(ctx).Exec(`UPDATE seo_daily_entities d SET entity_key=? WHERE site=? AND entity_key=? AND NOT EXISTS(SELECT 1 FROM seo_daily_entities x WHERE x.site=d.site AND x.day=d.day AND x.action=d.action AND x.entity_key=?)`, newKey, site, oldKey, newKey).Error; err != nil {
+		return err
+	}
+	return tx.WithContext(ctx).Exec("DELETE FROM seo_daily_entities WHERE site=? AND entity_key=?", site, oldKey).Error
+}
+
 var decimal = regexp.MustCompile(`^(0|[1-9][0-9]{0,8})(?:\.([0-9]{1,6}))?$`)
 
 func Micros(value string) (int64, error) {
