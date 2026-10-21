@@ -158,6 +158,22 @@ var codeSpan = regexp.MustCompile("`([^`\n]+)`")
 var numberToken = regexp.MustCompile(`\p{Nd}+(?:\.\p{Nd}+)*`)
 var currencySign = regexp.MustCompile(`\p{Sc}`)
 
+// Numbers compare without trailing zero groups: macOS 14 and 14.0, or $100 and
+// $100.00, state the same number; 14 and 14.1 do not.
+var trailingZeros = regexp.MustCompile(`(?:\.0+)+$`)
+
+func numbers(text string) []string {
+	out := numberToken.FindAllString(text, -1)
+	for i, n := range out {
+		out[i] = trailingZeros.ReplaceAllString(n, "")
+	}
+	return out
+}
+
+// Code compares without whitespace: pages render keys and options as separate
+// elements, so a page's "Ctrl - Shift - C" is the article's `Ctrl-Shift-C`.
+func compact(text string) string { return strings.Join(strings.Fields(text), "") }
+
 // "Free up space" is disk cleanup, not a price.
 var diskSpace = regexp.MustCompile(`(?i)\bfree(?:s|d|ing)?[ \t]+up\b|\bfree[ \t]+(?:disk[ \t]+)?space\b`)
 
@@ -220,9 +236,9 @@ func Supports(claim, excerpt string) bool {
 		return true
 	}
 	source := NormalizeAssertion(excerpt)
-	numbers := numberToken.FindAllString(source, -1)
-	for _, n := range numberToken.FindAllString(claim, -1) {
-		if !slices.Contains(numbers, n) {
+	stated := numbers(source)
+	for _, n := range numbers(claim) {
+		if !slices.Contains(stated, n) {
 			return false
 		}
 	}
@@ -232,7 +248,7 @@ func Supports(claim, excerpt string) bool {
 		}
 	}
 	for _, code := range codeSpan.FindAllStringSubmatch(claim, -1) {
-		if !strings.Contains(source, NormalizeAssertion(code[1])) {
+		if !strings.Contains(compact(source), compact(code[1])) {
 			return false
 		}
 	}
@@ -247,8 +263,8 @@ func Supports(claim, excerpt string) bool {
 
 // ClaimsCover requires a claim for every sentence that states something
 // checkable; a claim for one sentence never covers a neighboring one. Code in
-// a fence must appear verbatim in some claim's excerpt, and inline code in a
-// covered sentence must appear in that claim's excerpt.
+// a fence must appear in some claim's excerpt, and inline code in a covered
+// sentence must appear in that claim's excerpt (whitespace aside).
 func ClaimsCover(text string, claims []Claim) bool {
 	text = appCardLine.ReplaceAllString(text, "")
 	text = referenceLine.ReplaceAllString(text, "")
@@ -304,10 +320,10 @@ func claimCovers(unit string, claims []Claim) bool {
 		if !CompleteAssertion(plain, strings.ReplaceAll(c.Text, "`", "")) {
 			continue
 		}
-		excerpt := NormalizeAssertion(c.Excerpt)
+		excerpt := compact(c.Excerpt)
 		quoted := true
 		for _, code := range codes {
-			quoted = quoted && strings.Contains(excerpt, NormalizeAssertion(code[1]))
+			quoted = quoted && strings.Contains(excerpt, compact(code[1]))
 		}
 		if quoted {
 			return true
@@ -317,9 +333,9 @@ func claimCovers(unit string, claims []Claim) bool {
 }
 
 func excerptsContain(claims []Claim, line string) bool {
-	line = NormalizeAssertion(line)
+	line = compact(line)
 	for _, c := range claims {
-		if strings.Contains(NormalizeAssertion(c.Excerpt), line) {
+		if strings.Contains(compact(c.Excerpt), line) {
 			return true
 		}
 	}

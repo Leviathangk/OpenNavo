@@ -82,6 +82,10 @@ func TestReworkedClaimsMustAgreeWithTheirExcerpt(t *testing.T) {
 		{"turned negative", "Obsidian ist nicht kostenlos.", "Obsidian is free for personal use.", false},
 		{"code quoted", "Run `brew install --cask obsidian` to install it.", "Install with brew install --cask obsidian from a terminal.", true},
 		{"code invented", "Run `brew install obsidian` to install it.", "Install with brew install --cask obsidian from a terminal.", false},
+		{"trailing zero", "It needs macOS 14 or later.", "Requires macOS 14.0+ (Sonoma).", true},
+		{"other minor version", "It needs macOS 14.1 or later.", "Requires macOS 14.0+ (Sonoma).", false},
+		{"cents", "Pro costs $100.", "Pro: $100.00 one-time purchase.", true},
+		{"keys rendered apart", "Press `Ctrl-Shift-C` to optimise the clipboard.", "Press Ctrl - Shift - C to optimise the current clipboard.", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) { require.Equal(t, tc.want, Supports(tc.claim, tc.excerpt)) })
 	}
@@ -91,5 +95,6 @@ func TestReworkedClaimsMustAgreeWithTheirExcerpt(t *testing.T) {
 	require.False(t, ClaimsCover(code, []Claim{{Text: code, Excerpt: "Install it from the website."}}), "inline code must come from the excerpt")
 	fence := "```\nbrew install --cask obsidian\n```"
 	require.True(t, ClaimsCover(fence, quoted))
+	require.True(t, ClaimsCover("Press `Ctrl-Shift-C`.", []Claim{{Text: "Press `Ctrl-Shift-C`.", Excerpt: "Press Ctrl - Shift - C to optimise."}}), "inline code ignores whitespace the page adds between elements")
 	require.False(t, ClaimsCover(fence, []Claim{{Text: "Install it.", Excerpt: "Install it from the website."}}))
 }
