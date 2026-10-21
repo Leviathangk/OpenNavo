@@ -50,6 +50,9 @@ test('only changes that reach production deploy', () => {
   }
   assert.equal(ships(['ops/docker-compose.prod.yml']), true);
   assert.equal(ships(['ops/caddy/Caddyfile']), true);
+  assert.equal(ships(['apps/server/internal/http/server_test.go']), false, 'Go tests never reach a binary');
+  assert.equal(ships(['apps/server/internal/http/server_test.go', 'apps/server/internal/http/router.go']), true);
+  assert.equal(ships(['apps/server/internal/testutil/contract.go']), true, 'helpers are ordinary packages');
 });
 
 test('the live revision comes from the newest successful deploy', () => {
