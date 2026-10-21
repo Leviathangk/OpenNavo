@@ -13,6 +13,9 @@ services:
       cache_from:
         - type=gha,scope=e2e-redis
   minio:
+    # The base file always rebuilds MinIO for local runs; CI loads an unchanged
+    # image from the cache in .github/actions/e2e-backend and builds only if missing.
+    pull_policy: missing
     build:
       cache_from:
         - type=gha,scope=e2e-minio
