@@ -6,7 +6,11 @@ execFileSync('git', ['merge-base', '--is-ancestor', sha, 'FETCH_HEAD'], { stdio:
 const repository = process.env.GITHUB_REPOSITORY;
 const token = process.env.GITHUB_TOKEN;
 if (!repository || !token) throw new Error('GitHub authentication is required');
-for (const workflow of ['ci-server.yml', 'ci-frontend.yml', 'ci-security.yml']) {
+// Production deploys and server, web and MCP releases need these; a desktop
+// release (REQUIRE_DESKTOP_CI) also needs the desktop builds.
+const workflows = ['ci-server.yml', 'ci-frontend.yml', 'ci-security.yml'];
+if (process.env.REQUIRE_DESKTOP_CI === 'true') workflows.push('ci-desktop.yml');
+for (const workflow of workflows) {
   const url = `https://api.github.com/repos/${repository}/actions/workflows/${workflow}/runs?head_sha=${sha}&event=push&per_page=100`;
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },

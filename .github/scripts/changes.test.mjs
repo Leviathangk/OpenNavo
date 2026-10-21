@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { classify, greenCommits, plan } from './changes.mjs';
+import { baseline, classify, greenCommits, plan } from './changes.mjs';
 
 const none = { server: false, mcp: false, frontend: false, desktop: false, e2e: false };
 
@@ -22,12 +22,8 @@ test('documentation changes need no build', () => {
 
 test('workspace files and workflow edits reach the areas they configure', () => {
   assert.deepEqual(classify(['pnpm-lock.yaml']), { ...none, server: true, frontend: true, e2e: true });
-  assert.deepEqual(classify(['.github/workflows/ci-frontend.yml']), {
-    ...none,
-    frontend: true,
-    desktop: true,
-    e2e: true
-  });
+  assert.deepEqual(classify(['.github/workflows/ci-frontend.yml']), { ...none, frontend: true, e2e: true });
+  assert.deepEqual(classify(['.github/workflows/ci-desktop.yml']), { ...none, desktop: true });
   assert.deepEqual(classify(['.github/workflows/ci-server.yml']), { ...none, server: true, mcp: true });
   assert.deepEqual(classify(['apps/mcp/src/opennavo_mcp/resources.py']), { ...none, mcp: true });
 });
@@ -65,4 +61,14 @@ test('main compares with the newest commit on which every gate workflow passed',
   assert.deepEqual(greenCommits([server, frontend, security]), ['c1']);
   assert.deepEqual(greenCommits([[run('c2'), run('c1')], [run('c2'), run('c1')], [run('c1')]]), ['c1']);
   assert.deepEqual(greenCommits([[], [], []]), []);
+});
+
+test('Desktop CI compares main pushes with its own green commits, the gate with the gate', () => {
+  assert.deepEqual(baseline('opennavo/OpenNavo/.github/workflows/ci-desktop.yml@refs/heads/main'), ['ci-desktop.yml']);
+  assert.deepEqual(baseline('opennavo/OpenNavo/.github/workflows/ci-frontend.yml@refs/heads/main'), [
+    'ci-server.yml',
+    'ci-frontend.yml',
+    'ci-security.yml'
+  ]);
+  assert.deepEqual(baseline(undefined), ['ci-server.yml', 'ci-frontend.yml', 'ci-security.yml']);
 });

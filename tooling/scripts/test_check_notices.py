@@ -13,7 +13,7 @@ import unittest
 SCRIPT = Path(__file__).with_name('check-notices.py')
 BUNDLES = ['docs/legal/third-party', 'apps/server/third-party', 'apps/mcp/third-party',
            'apps/desktop/src-tauri/resources/third-party']
-WORKFLOWS = ['ci-frontend.yml', 'release-desktop.yml']
+WORKFLOWS = ['ci-desktop.yml', 'release-desktop.yml']
 
 
 class NoticeGateTests(unittest.TestCase):
@@ -137,7 +137,7 @@ class NoticeGateTests(unittest.TestCase):
         self.check(1)
 
     def test_parallel_jobs_may_each_install_the_pinned_toolchain(self):
-        workflow = self.root / '.github/workflows/ci-frontend.yml'
+        workflow = self.root / '.github/workflows/ci-desktop.yml'
         workflow.write_text('steps:\n  - uses: dtolnay/rust-toolchain@1.96.0\n  - uses: dtolnay/rust-toolchain@1.96.0\n')
         self.check(0)
         workflow.write_text('steps:\n  - uses: dtolnay/rust-toolchain@1.96.0\n  - uses: dtolnay/rust-toolchain@stable\n')

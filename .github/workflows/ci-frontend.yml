@@ -1,11 +1,11 @@
 name: Frontend CI
 
-# Web, admin, desktop, and shared packages (09 section 6.1). Backend/contract checks: ci-server.yml.
+# Web, admin, desktop web view, and shared packages (09 section 6.1). Backend/contract checks: ci-server.yml;
+# the desktop's Rust, Swift and Tauri builds: ci-desktop.yml.
 # Every event runs this workflow; .github/scripts/changes.mjs decides which jobs
 # run. Pull requests get static checks, unit tests and builds for the areas they
-# touch; desktop (Rust, Swift, Tauri) only for desktop changes. Main, the nightly
-# run, dispatched runs and pull requests labelled full-ci add the full-stack
-# E2E with Lighthouse.
+# touch. Main, the nightly run, dispatched runs and pull requests labelled
+# full-ci add the full-stack E2E with Lighthouse.
 on:
   push:
     branches: [main]
@@ -28,7 +28,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       frontend: ${{ steps.changes.outputs.frontend }}
-      desktop: ${{ steps.changes.outputs.desktop }}
       e2e: ${{ steps.changes.outputs.e2e }}
       full: ${{ steps.changes.outputs.full }}
     steps:
@@ -56,7 +55,7 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Generated tokens, API types, and icon subsets must match committed output; IPC bindings require Rust and are checked in the desktop job.
+      # Generated tokens, API types, and icon subsets must match committed output; IPC bindings require Rust and are checked in Desktop CI (ci-desktop.yml).
       - run: pnpm --filter "./packages/*" run gen
       - run: git diff --exit-code
       - run: pnpm run format:check
@@ -97,85 +96,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @opennavo/web --filter @opennavo/admin --filter @opennavo/desktop --filter @opennavo/ui run build
       - run: pnpm --filter @opennavo/web test:ssr
-
-  # Rust checks and the app bundle build in parallel; each keeps its own Rust cache.
-  desktop-rust:
-    needs: changes
-    if: needs.changes.outputs.desktop == 'true'
-    runs-on: macos-15
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.96.0
-        with:
-          components: rustfmt, clippy
-      - run: python3 tooling/scripts/check-notices.py --check-rust-toolchain
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri
-          # Pull requests restore main's Rust build; only main saves it, so
-          # pull request caches never crowd main's out of the cache space.
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - run: cargo fmt --check
-        working-directory: apps/desktop/src-tauri
-      - run: cargo clippy --all-targets -- -D warnings
-        working-directory: apps/desktop/src-tauri
-      - run: cargo test
-        working-directory: apps/desktop/src-tauri
-      - name: Check firewall policy and optional bundle preparation
-        run: |
-          cargo fmt --check --manifest-path apps/desktop/native/firewall/core/Cargo.toml
-          cargo clippy --locked --manifest-path apps/desktop/native/firewall/core/Cargo.toml --all-targets -- -D warnings
-          cargo test --locked --manifest-path apps/desktop/native/firewall/core/Cargo.toml
-          python3 -m unittest discover -s apps/desktop/scripts -p test_prepare_firewall.py
-          python3 apps/desktop/scripts/prepare-firewall.py --config-out "$RUNNER_TEMP/firewall-unbundled.json"
-          python3 apps/desktop/scripts/prepare-firewall.py --compile-only "$RUNNER_TEMP/firewall-link-check" --target aarch64-apple-darwin
-          cargo run --manifest-path apps/desktop/src-tauri/Cargo.toml --example firewall_probe
-
-  desktop-bundle:
-    needs: changes
-    if: needs.changes.outputs.desktop == 'true'
-    runs-on: macos-15
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.13.1
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: pnpm
-      - uses: dtolnay/rust-toolchain@1.96.0
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri
-          # Pull requests restore main's Rust build; only main saves it, so
-          # pull request caches never crowd main's out of the cache space.
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @opennavo/desktop run gen
-      - run: git diff --exit-code apps/desktop/src/ipc/bindings.ts
-      - run: swift test --package-path apps/desktop/native/store
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
-      - name: Install standalone engine build tools
-        run: |
-          python3 -m venv "$RUNNER_TEMP/clamav-tools"
-          "$RUNNER_TEMP/clamav-tools/bin/pip" install cmake==4.1.2 ninja==1.13.0
-          echo "$RUNNER_TEMP/clamav-tools/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache@v5
-        with:
-          path: ${{ runner.temp }}/clamav
-          key: clamav-1.5.4-macos15-aarch64-apple-darwin-${{ hashFiles('apps/desktop/native/clamav/**') }}
-      - name: Build standalone ClamAV for the debug bundle
-        run: |
-          python3 apps/desktop/native/clamav/build.py --work "$RUNNER_TEMP/clamav" --arch arm64
-          echo "OPENNAVO_CLAMAV_DIR=$RUNNER_TEMP/clamav/artifacts/arm64" >> "$GITHUB_ENV"
-      # Unsigned debug builds; signing, notarization, and updater artifacts are handled by release-desktop.yml (M5-03).
-      # With an updater public key, Tauri requires the private signing key; forks/PRs lack it, so disable updater artifacts here.
-      - run: pnpm --filter @opennavo/desktop tauri build --debug --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
   # Admin menu/permission E2E (intercepted API; no backend required).
   e2e:
