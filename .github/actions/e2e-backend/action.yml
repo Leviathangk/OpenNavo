@@ -15,9 +15,24 @@ runs:
     - uses: ./.github/actions/go-cache
       with:
         name: e2e
-    # Image layers go to the GitHub Actions cache (ops/docker-compose.e2e.ci.yml):
-    # a buildx builder that can export them, and the runtime variables compose
-    # needs to reach the cache service.
+    # The stack's three images, saved whole: with every layer cached, exporting
+    # them from the buildx builder into Docker still took about 75 s. compose
+    # builds only images Docker lacks, so a hit skips the build. The month in
+    # the key picks up base image updates.
+    - id: images-month
+      shell: bash
+      run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+    - id: images
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ runner.temp }}/e2e-images.tar
+        key: e2e-images-${{ runner.os }}-${{ steps.images-month.outputs.month }}-${{ hashFiles('apps/server/Dockerfile', 'ops/Dockerfile.minio', 'apps/server/upstream/minio/**', 'ops/docker-compose.e2e.yml') }}
+    - if: steps.images.outputs.cache-hit == 'true'
+      shell: bash
+      run: docker load --input "$RUNNER_TEMP/e2e-images.tar"
+    # Otherwise image layers come from the GitHub Actions cache
+    # (ops/docker-compose.e2e.ci.yml): a buildx builder that can export them,
+    # and the runtime variables compose needs to reach the cache service.
     - uses: docker/setup-buildx-action@v4
     - uses: crazy-max/ghaction-github-runtime@v4
     - name: Start seeded backend
@@ -27,6 +42,14 @@ runs:
         RUNNER_TRACKING_ID: ''
         # Pull requests read the image cache; only main writes it.
         OPENNAVO_E2E_BUILD_CACHE: ${{ github.ref == 'refs/heads/main' && inputs.save-cache == 'true' && 'gha-save' || 'gha' }}
+    - if: steps.images.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main' && inputs.save-cache == 'true'
+      shell: bash
+      run: docker save opennavo-postgres:dev opennavo-redis:dev opennavo-minio:e2e --output "$RUNNER_TEMP/e2e-images.tar"
+    - if: steps.images.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main' && inputs.save-cache == 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ runner.temp }}/e2e-images.tar
+        key: ${{ steps.images.outputs.cache-primary-key }}
     - if: inputs.save-cache == 'true'
       uses: ./.github/actions/go-cache-save
       with:
