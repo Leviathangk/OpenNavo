@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS build
 ARG TARGETOS
 ARG TARGETARCH
 ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH}
@@ -26,7 +26,7 @@ ENTRYPOINT ["/backup"]
 
 # Rebuild the privilege helper with the supported Go toolchain while retaining
 # PostgreSQL's Debian base and existing volume/collation compatibility.
-FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine AS gosu-build
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS gosu-build
 ARG TARGETOS
 ARG TARGETARCH
 RUN go mod download github.com/tianon/gosu@v0.0.0-20250923190938-6456aaa0f3c8 && \
@@ -48,7 +48,7 @@ COPY --from=gosu-build /out/gosu /usr/local/bin/gosu
 COPY --from=gosu-build /notices/ /usr/share/licenses/gosu/
 
 # Preserve the upstream UI and rebuild the monitor rather than shipping its Go 1.16 binary.
-FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine AS asynqmon-build
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS asynqmon-build
 ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
