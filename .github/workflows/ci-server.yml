@@ -149,14 +149,13 @@ jobs:
       - run: go tool govulncheck ./...
         working-directory: apps/server
       - run: make build-server
-
-  # Integration tests start PostgreSQL/Redis containers for each case; run serially
-  # they took 22 minutes, 20 of them in internal/http. Six shards each take a
-  # sixth of every package's tests (.github/scripts/go-shard.mjs).
       - uses: ./.github/actions/go-cache-save
         with:
           name: unit
 
+  # Integration tests start PostgreSQL/Redis containers for each case; run serially
+  # they took 22 minutes, 20 of them in internal/http. Six shards each take a
+  # sixth of every package's tests (.github/scripts/go-shard.mjs).
   server-integration:
     needs: changes
     if: needs.changes.outputs.server == 'true' && needs.changes.outputs.full == 'true'
