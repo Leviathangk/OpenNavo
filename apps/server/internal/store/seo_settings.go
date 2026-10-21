@@ -36,6 +36,7 @@ type SEOSettings struct {
 		Bing   string `json:"bing"`
 	} `json:"verification"`
 	Analytics struct {
+		UsageEnabled     bool     `json:"usageEnabled"`
 		GA4Enabled       bool     `json:"ga4Enabled"`
 		GA4MeasurementID string   `json:"ga4MeasurementId"`
 		ConsentRegions   []string `json:"consentRegions"`

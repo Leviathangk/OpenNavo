@@ -41,6 +41,23 @@ const pages: PageMessages = {
     charCount: '{count} / {max}'
   },
   dashboard: {
+    usage: {
+      title: 'User activity',
+      hint: 'Asia/Shanghai · Today is partial · Opted-in anonymous installations and browsers, not people. Client counts include background operation; web counts require a visible visit. The two platforms are not deduplicated.',
+      date: 'Date',
+      desktop: 'Client DAU',
+      web: 'Web DAU',
+      newDesktop: 'New client IDs',
+      newWeb: 'New browser IDs',
+      versions: 'Active client versions today',
+      version: 'Version',
+      count: 'Installations',
+      empty: 'No activity reported yet. Enable collection and allow time for opted-in clients and visitors to report.',
+      trend: 'Daily activity · Last 30 days',
+      details: 'Daily counts',
+      newHint:
+        'New means first observed with this ID. Clearing local data or returning after 90 days without activity may count as new.'
+    },
     seo: {
       geo: {
         title: 'GEO visibility',
@@ -845,6 +862,7 @@ const pages: PageMessages = {
       bing: 'Bing verification code',
       verificationHint:
         'Enter the content value of the HTML tag. It is output on the root home page only; leave it empty when using DNS verification.',
+      usageEnabled: 'Collect anonymous web activity',
       ga4Enabled: 'Enable GA4',
       ga4MeasurementId: 'GA4 measurement ID',
       ga4Placeholder: 'G-XXXXXXXXXX',

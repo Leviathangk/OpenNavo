@@ -1772,6 +1772,7 @@ export type Settings = {
 	trayShowCount: boolean,
 	autoCheck: boolean,
 	autoCheckAppUpdates: boolean,
+	usageAnalytics: boolean,
 	avConsent: boolean,
 	avDbCheckHours: number,
 	avKeepResident: boolean,

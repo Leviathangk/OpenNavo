@@ -898,7 +898,9 @@
       "granted": "Activado",
       "denied": "Desactivado",
       "unknown": "No se puede comprobar",
-      "clearSearch": "Borrar búsquedas recientes"
+      "clearSearch": "Borrar búsquedas recientes",
+      "usageAnalytics": "Compartir estadísticas anónimas de uso",
+      "usageAnalyticsHint": "Desactivado por defecto. Cuenta esta instalación una vez al día, incluso en segundo plano. Envía un identificador aleatorio, fecha, versión e idioma; no archivos ni listas de aplicaciones. Al desactivarlo se borran el identificador y los informes pendientes."
     },
     "about": {
       "openSource": "Agradecimientos por el código abierto",

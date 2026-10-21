@@ -417,6 +417,22 @@
             "missing": "Ausente"
           }
         }
+      },
+      "usage": {
+        "title": "Atividade de usuários",
+        "hint": "Horário de Xangai · Hoje é parcial · Instalações e navegadores anônimos participantes, não pessoas. O cliente inclui execução em segundo plano; a web exige uma visita visível. Não há deduplicação entre plataformas.",
+        "date": "Data",
+        "desktop": "Atividade diária do cliente",
+        "web": "Atividade diária da web",
+        "newDesktop": "Novos identificadores de cliente",
+        "newWeb": "Novos identificadores de navegador",
+        "versions": "Versões ativas do cliente hoje",
+        "version": "Versão",
+        "count": "Instalações",
+        "empty": "Nenhuma atividade recebida. Ative a coleta e aguarde os relatos de quem aceitou participar.",
+        "trend": "Atividade diária · Últimos 30 dias",
+        "details": "Detalhes por dia",
+        "newHint": "Novo significa a primeira observação do identificador. Limpar dados locais ou retornar após 90 dias sem atividade pode contar como novo."
       }
     },
     "catalog": {
@@ -1344,7 +1360,8 @@
           "tooMany": "No máximo {max} rastreadores por classe.",
           "defaultLocaleOpen": "O inglês é o idioma padrão e precisa continuar aberto.",
           "invalidMinNotes": "Digite um número inteiro de 1 a 100000."
-        }
+        },
+        "usageEnabled": "Coletar atividade anônima da web"
       },
       "user": {
         "title": "Administradores",

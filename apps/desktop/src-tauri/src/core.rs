@@ -22,6 +22,8 @@ pub struct DesktopCore {
     settings_save: RwLock<crate::settings::Save>,
     settings_lock: tokio::sync::Mutex<()>,
     pub settings_changed: tokio::sync::Notify,
+    pub usage_changed: tokio::sync::Notify,
+    pub usage_epoch: AtomicU64,
     pub queue: Arc<TaskQueue>,
     pub data_dir: PathBuf,
     pub cache_dir: PathBuf,
@@ -97,6 +99,8 @@ impl DesktopCore {
             settings_save: RwLock::new(settings_save),
             settings_lock: tokio::sync::Mutex::new(()),
             settings_changed: tokio::sync::Notify::new(),
+            usage_changed: tokio::sync::Notify::new(),
+            usage_epoch: AtomicU64::new(0),
             queue: queue.clone(),
             data_dir,
             cache_dir,
@@ -252,7 +256,16 @@ impl DesktopCore {
             core.queue
                 .security
                 .record_schedule_settings(&saved, chrono::Utc::now().timestamp_millis())?;
-            *core.settings.write().map_err(poisoned)? = saved;
+            let mut current = core.settings.write().map_err(poisoned)?;
+            let usage_changed = current.usage_analytics != saved.usage_analytics;
+            *current = saved;
+            if usage_changed {
+                core.usage_epoch.fetch_add(1, Ordering::AcqRel);
+                core.usage_changed.notify_waiters();
+                if !current.usage_analytics {
+                    core.database.set_meta(crate::usage::HISTORY_KEY, "null")?;
+                }
+            }
             Ok(())
         })
         .await;
@@ -496,7 +509,7 @@ impl DesktopCore {
         let mut outcome = crate::updater::outcome::CheckOutcome::default();
         if sources.contains(&UpdateSource::Homebrew) {
             match self
-                .check_updates_for(settings.run_brew_update_on_check, trigger, finished_at)
+                .check_updates_for(settings.run_brew_update_on_check, trigger)
                 .await
             {
                 Ok(_) => outcome.succeeded(),
@@ -545,14 +558,13 @@ impl DesktopCore {
         self: &Arc<Self>,
         run_brew_update: bool,
     ) -> Result<Vec<OutdatedItem>, AppError> {
-        self.check_updates_for(run_brew_update, TaskTrigger::Manual, None)
+        self.check_updates_for(run_brew_update, TaskTrigger::Manual)
             .await
     }
     pub async fn check_updates_for(
         self: &Arc<Self>,
         run_brew_update: bool,
         trigger: TaskTrigger,
-        finished_at: Option<i64>,
     ) -> Result<Vec<OutdatedItem>, AppError> {
         if run_brew_update {
             let queue = self.queue.clone();
@@ -606,10 +618,9 @@ impl DesktopCore {
         })
         .await?;
         let result = self.rebuild_updates().await?;
-        let now = finished_at.unwrap_or_else(|| chrono::Utc::now().timestamp_millis());
-        let database = self.database.clone();
-        crate::blocking(move || database.set_meta("updates_checked_at", &now.to_string())).await?;
-        *self.checked_at.write().map_err(poisoned)? = Some(now);
+        // Startup and task-completion scans refresh Homebrew results only. The
+        // shared source check records completion after all selected sources run;
+        // recording it here would suppress today's scheduled check.
         self.updates_checking.store(false, Ordering::Release);
         self.queue.updater.changed()?;
         Ok(result)

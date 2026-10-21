@@ -2,25 +2,15 @@ package seotasks
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"unicode"
 
+	"github.com/opennavo/opennavo/server/internal/content"
 	"gorm.io/gorm"
 )
 
-func Hash(raw []byte) string {
-	var value any
-	if json.Unmarshal(raw, &value) == nil {
-		if encoded, err := json.Marshal(value); err == nil {
-			raw = encoded
-		}
-	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:])
-}
+func Hash(raw []byte) string { return content.JSONHash(raw) }
 
 type Write struct {
 	TaskID           int64   `json:"taskId"`

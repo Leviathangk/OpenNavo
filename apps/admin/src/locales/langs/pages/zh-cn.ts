@@ -31,6 +31,22 @@ const pages = {
     charCount: '{count} / {max}'
   },
   dashboard: {
+    usage: {
+      title: '用户活跃',
+      hint: '北京时间 · 今日数据截至当前 · 仅统计参与统计的匿名安装和浏览器，不代表人数。客户端包含后台运行；网页需有效访问。两端不做跨端去重。',
+      date: '日期',
+      desktop: '客户端日活',
+      web: '网页日活',
+      newDesktop: '新增客户端标识',
+      newWeb: '新增浏览器标识',
+      versions: '今日活跃客户端版本',
+      version: '版本',
+      count: '安装数',
+      empty: '暂未收到活跃数据。开启统计后，需要参与统计的客户端或访客上报。',
+      trend: '每日活跃趋势 · 近 30 天',
+      details: '每日明细',
+      newHint: '新增指首次观察到此标识。清除本地数据，或超过 90 天未活跃后回访，可能计为新增。'
+    },
     seo: {
       geo: {
         title: 'GEO 可见度',
@@ -806,6 +822,7 @@ const pages = {
       google: 'Google 验证码',
       bing: 'Bing 验证码',
       verificationHint: '填写 HTML 标记中 content 的值，只输出在根域名首页；使用 DNS 验证时留空。',
+      usageEnabled: '统计网页匿名日活',
       ga4Enabled: '启用 GA4',
       ga4MeasurementId: 'GA4 衡量 ID',
       ga4Placeholder: 'G-XXXXXXXXXX',

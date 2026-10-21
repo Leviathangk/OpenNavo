@@ -101,14 +101,18 @@ describe('OpenNavo automatic self-update checks', () => {
     expect(check).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(check).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(3_599_999);
+    expect(check).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(check).toHaveBeenCalledTimes(2);
     wrapper.unmount();
     vi.setSystemTime(new Date(2026, 9, 10, 12));
     window.dispatchEvent(new Event('focus'));
     await vi.advanceTimersByTimeAsync(3_600_000);
-    expect(check).toHaveBeenCalledTimes(1);
+    expect(check).toHaveBeenCalledTimes(2);
   });
 
-  it('Persists daily checks across launches and checks again on the next local date', async () => {
+  it('Persists hourly checks across launches and checks again after one hour on the same date', async () => {
     const updater = useAppUpdaterStore();
     await updater.checkNow(true);
     await updater.checkNow(true);
@@ -117,9 +121,44 @@ describe('OpenNavo automatic self-update checks', () => {
     await useSettingsStore().load();
     await useAppUpdaterStore().checkNow(true);
     expect(check).toHaveBeenCalledTimes(1);
-    vi.setSystemTime(new Date(2026, 9, 10, 12));
+    await vi.advanceTimersByTimeAsync(3_599_999);
+    await useAppUpdaterStore().checkNow(true);
+    expect(check).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
     await useAppUpdaterStore().checkNow(true);
     expect(check).toHaveBeenCalledTimes(2);
+  });
+
+  it('Measures the hourly interval from request start rather than response completion', async () => {
+    const updater = useAppUpdaterStore();
+    vi.mocked(check).mockImplementationOnce(() => new Promise(resolve => setTimeout(() => resolve(null), 5000)));
+    const pending = updater.checkNow(true);
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(5000);
+    await pending;
+    await vi.advanceTimersByTimeAsync(3_595_000);
+    await updater.checkNow(true);
+    expect(check).toHaveBeenCalledTimes(2);
+  });
+
+  it('Prompts for a newly published version at the next hourly check without repeating a dismissed version', async () => {
+    const updater = useAppUpdaterStore();
+    await updater.checkNow(true);
+    expect(updater.dialogOpen).toBe(false);
+    vi.mocked(check).mockResolvedValue(release('0.1.4'));
+    await vi.advanceTimersByTimeAsync(3_600_000);
+    await updater.checkNow(true);
+    expect(updater.dialogOpen).toBe(true);
+    updater.dismiss();
+    await vi.advanceTimersByTimeAsync(3_600_000);
+    await updater.checkNow(true);
+    expect(check).toHaveBeenCalledTimes(3);
+    expect(updater.dialogOpen).toBe(false);
+    vi.mocked(check).mockResolvedValue(release('0.1.5'));
+    await vi.advanceTimersByTimeAsync(3_600_000);
+    await updater.checkNow(true);
+    expect(updater.update?.version).toBe('0.1.5');
+    expect(updater.dialogOpen).toBe(true);
   });
 
   it('Honors opt-out while allowing manual checks and deduplicates in-flight requests', async () => {

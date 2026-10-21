@@ -23,8 +23,8 @@ export function useAppUpdateChecks() {
     startup = setTimeout(() => {
       ready = true;
       check();
+      interval = setInterval(check, 3_600_000);
     }, 30_000);
-    interval = setInterval(check, 3_600_000);
     window.addEventListener('focus', check);
     window.addEventListener('online', check);
     document.addEventListener('visibilitychange', check);

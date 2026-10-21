@@ -29510,6 +29510,9 @@ components:
           additionalProperties: false
           required: [ga4Enabled, ga4MeasurementId, consentRegions]
           properties:
+            usageEnabled:
+              type: boolean
+              default: false
             ga4Enabled:
               type: boolean
             ga4MeasurementId:
@@ -32436,6 +32439,55 @@ components:
       example:
         done: 1
         total: 1
+    UsageOverview:
+      example:
+        timeZone: Asia/Shanghai
+        asOf: '2026-10-22T08:00:00Z'
+        days:
+          - {date: '2026-10-22', web: 20, desktop: 10, newWeb: 5, newDesktop: 2}
+        versions:
+          - {version: '0.1.3', count: 10}
+      type: object
+      required: [timeZone, asOf, days, versions]
+      properties:
+        timeZone:
+          type: string
+          enum: [Asia/Shanghai]
+        asOf:
+          type: string
+          format: date-time
+        days:
+          type: array
+          items:
+            type: object
+            required: [date, web, desktop, newWeb, newDesktop]
+            properties:
+              date:
+                type: string
+              web:
+                type: integer
+                format: int64
+              desktop:
+                type: integer
+                format: int64
+              newWeb:
+                type: integer
+                format: int64
+              newDesktop:
+                type: integer
+                format: int64
+        versions:
+          description: Today's active desktop installations, one most-recent version per installation.
+          type: array
+          items:
+            type: object
+            required: [version, count]
+            properties:
+              version:
+                type: string
+              count:
+                type: integer
+                format: int64
     DashboardOverview:
       type: object
       required:
@@ -32445,6 +32497,8 @@ components:
         - jobs
         - snapshot
       properties:
+        usage:
+          $ref: '#/components/schemas/UsageOverview'
         packages:
           type: object
           required:
@@ -48525,6 +48579,14 @@ components:
         code: '0000'
         msg: ok
         data:
+          usage:
+            timeZone: Asia/Shanghai
+            asOf: '2026-10-22T08:00:00Z'
+            days:
+              - {date: '2026-10-21', web: 17, desktop: 8, newWeb: 4, newDesktop: 1}
+              - {date: '2026-10-22', web: 20, desktop: 10, newWeb: 5, newDesktop: 2}
+            versions:
+              - {version: '0.1.3', count: 10}
           packages:
             casks: 40
             formulae: 0

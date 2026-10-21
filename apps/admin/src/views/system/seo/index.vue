@@ -38,7 +38,7 @@ function blankSettings(): Settings {
   return {
     identity: { name: '', alternateNames: [], logoUrl: '', sameAs: [] },
     verification: { google: '', bing: '' },
-    analytics: { ga4Enabled: false, ga4MeasurementId: '', consentRegions: [] },
+    analytics: { usageEnabled: false, ga4Enabled: false, ga4MeasurementId: '', consentRegions: [] },
     indexNow: { enabled: false },
     cloudflare: { zoneId: '', purgeEnabled: false },
     edgeCache: { enabled: false },
@@ -328,6 +328,9 @@ void load();
 
         <NDivider title-placement="left">{{ text('sections.analytics') }}</NDivider>
         <div class="grid grid-cols-1 gap-x-20px sm:grid-cols-2">
+          <NFormItem :label="text('usageEnabled')">
+            <NSwitch v-model:value="draft.analytics.usageEnabled" :aria-label="text('usageEnabled')" />
+          </NFormItem>
           <NFormItem :label="text('ga4Enabled')">
             <NSwitch v-model:value="draft.analytics.ga4Enabled" :aria-label="text('ga4Enabled')" />
           </NFormItem>

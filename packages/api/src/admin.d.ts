@@ -9217,6 +9217,8 @@ export interface components {
                 bing: string;
             };
             analytics: {
+                /** @default false */
+                usageEnabled: boolean;
                 ga4Enabled: boolean;
                 ga4MeasurementId: string;
                 /** @description ISO 3166-1 alpha-2 regions where analytics cookies wait for consent. */
@@ -12289,6 +12291,50 @@ export interface components {
         };
         /**
          * @example {
+         *       "timeZone": "Asia/Shanghai",
+         *       "asOf": "2026-10-22T08:00:00Z",
+         *       "days": [
+         *         {
+         *           "date": "2026-10-22",
+         *           "web": 20,
+         *           "desktop": 10,
+         *           "newWeb": 5,
+         *           "newDesktop": 2
+         *         }
+         *       ],
+         *       "versions": [
+         *         {
+         *           "version": "0.1.3",
+         *           "count": 10
+         *         }
+         *       ]
+         *     }
+         */
+        UsageOverview: {
+            /** @enum {string} */
+            timeZone: "Asia/Shanghai";
+            /** Format: date-time */
+            asOf: string;
+            days: {
+                date: string;
+                /** Format: int64 */
+                web: number;
+                /** Format: int64 */
+                desktop: number;
+                /** Format: int64 */
+                newWeb: number;
+                /** Format: int64 */
+                newDesktop: number;
+            }[];
+            /** @description Today's active desktop installations, one most-recent version per installation. */
+            versions: {
+                version: string;
+                /** Format: int64 */
+                count: number;
+            }[];
+        };
+        /**
+         * @example {
          *       "packages": {
          *         "casks": 40,
          *         "formulae": 0,
@@ -12338,6 +12384,7 @@ export interface components {
          *     }
          */
         DashboardOverview: {
+            usage?: components["schemas"]["UsageOverview"];
             packages: {
                 /**
                  * @description Non-font Cask apps, excluding disabled and removed packages.

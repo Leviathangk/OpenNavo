@@ -7,7 +7,6 @@ import (
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
-	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 )
 
 type TranslationValue struct {
@@ -22,7 +21,7 @@ type TranslationValue struct {
 // Revision covers the entire persisted language row, including provenance and
 // update time, so intervening edits (including edit-and-revert) invalidate a CAS.
 func (s *Store) TranslationValue(ctx context.Context, ref content.Ref, locale string) (TranslationValue, error) {
-	out := TranslationValue{Locale: locale, Revision: seotasks.Hash([]byte("null")), Status: "missing", Fields: map[string]any{}}
+	out := TranslationValue{Locale: locale, Revision: content.JSONHash([]byte("null")), Status: "missing", Fields: map[string]any{}}
 	if !ref.Valid() || !i18n.Valid(locale) {
 		return out, domain.Validation()
 	}
@@ -42,7 +41,7 @@ func (s *Store) TranslationValue(ctx context.Context, ref content.Ref, locale st
 	if err := json.Unmarshal(raw, &row); err != nil {
 		return out, err
 	}
-	out.Revision = seotasks.Hash(raw)
+	out.Revision = content.JSONHash(raw)
 	out.Status, _ = row["status"].(string)
 	out.SourceHash, _ = row["source_hash"].(string)
 	if model, ok := row["model"].(string); ok {

@@ -62,7 +62,7 @@
   },
   "analytics": {
     "label": "分析用 Cookie の設定",
-    "message": "OpenNavo はアクセス数と主な操作を Google Analytics で計測し、ブラウザに分析用の Cookie を保存します。許可しますか？",
+    "message": "OpenNavo はランダムなブラウザー識別子で日次利用を集計し、Google Analytics の Cookie で訪問や主な操作を計測する場合があります。統計を許可しますか？",
     "privacy": "プライバシーの詳細",
     "accept": "許可する",
     "decline": "許可しない",

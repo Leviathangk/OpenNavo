@@ -34,6 +34,7 @@ pub mod tray;
 pub mod uninstall;
 pub mod updater;
 pub mod updates;
+pub mod usage;
 
 pub use error::AppError;
 
@@ -441,6 +442,7 @@ pub fn run() {
             security::watch::install(app.handle());
             firewall::install(app.handle(), &core);
             scheduler::start(&core);
+            usage::start(&core, app.package_info().version.to_string());
             Ok(())
         })
         .build(tauri::generate_context!());

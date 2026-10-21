@@ -11,20 +11,33 @@ import SeoCard from './modules/seo-card.vue';
 import StatCard from './modules/stat-card.vue';
 import SyncCard from './modules/sync-card.vue';
 import TodoCard from './modules/todo-card.vue';
+import UsageCard from './modules/usage-card.vue';
 
 defineOptions({ name: 'Dashboard' });
 
 // Dashboard (07 §7.1): scale, coverage, sync health, Hermes and open feedback; refresh every 60 seconds.
 const overview = ref<DataOf<'getDashboardOverview'> | null>(null);
 const loading = ref(false);
+const failed = ref(false);
 const refreshedAt = ref<Date | null>(null);
 
 async function load() {
+  if (loading.value) return;
   loading.value = true;
-  const summary = await fetchDashboardOverview();
-  if (!summary.error) overview.value = summary.data;
-  refreshedAt.value = new Date();
-  loading.value = false;
+  failed.value = false;
+  try {
+    const summary = await fetchDashboardOverview();
+    if (summary.error || !summary.data) {
+      failed.value = true;
+      return;
+    }
+    overview.value = summary.data;
+    refreshedAt.value = new Date();
+  } catch {
+    failed.value = true;
+  } finally {
+    loading.value = false;
+  }
 }
 
 void load();
@@ -58,6 +71,10 @@ const stats = computed(() => {
           <HermesCard :hermes="overview.hermes" />
         </NGi>
       </NGrid>
+      <NAlert v-if="failed" type="error" role="alert" :title="$t('page.dashboard.seo.loadFailed')">
+        <NButton :loading="loading" @click="load">{{ $t('page.dashboard.seo.retry') }}</NButton>
+      </NAlert>
+      <UsageCard v-if="overview?.usage" :usage="overview.usage" />
       <SeoCard />
       <template v-if="overview">
         <NGrid :x-gap="16" :y-gap="16" responsive="screen" item-responsive>

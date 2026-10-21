@@ -68,7 +68,7 @@ func TestCORSOriginsPreflightVaryAndAdminIsolation(t *testing.T) {
 				for _, name := range []string{"Accept-Language", "X-Client-Platform", "X-Client-Version", "X-Request-Id", "If-None-Match"} {
 					require.True(t, headerHas(preflight.Header(), "Access-Control-Allow-Headers", name), name)
 				}
-				for _, name := range []string{"X-Request-Id", "Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "ETag"} {
+				for _, name := range []string{"X-Request-Id", "Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "ETag", "X-Usage-Day"} {
 					require.True(t, headerHas(preflight.Header(), "Access-Control-Expose-Headers", name), name)
 				}
 				first := call("GET", "/api/v1/home", origin, "")

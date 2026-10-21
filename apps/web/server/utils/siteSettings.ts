@@ -16,6 +16,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   },
   verification: { google: '', bing: '' },
   analytics: {
+    usageEnabled: false,
     ga4Enabled: false,
     ga4MeasurementId: '',
     // EU/EEA, the UK and Switzerland: analytics cookies wait for consent.

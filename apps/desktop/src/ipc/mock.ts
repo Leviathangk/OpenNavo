@@ -92,6 +92,7 @@ function defaultSettings(): AppSettings {
     },
     brewPath: null,
     homebrewAnalytics: null,
+    usageAnalytics: false,
     crashReports: false,
     // Match Rust defaults for new installs: clean related files, move them to the Trash.
     zapByDefault: true,

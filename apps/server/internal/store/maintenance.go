@@ -43,6 +43,8 @@ func (s *Store) PruneLogs(ctx context.Context, before time.Time) (map[string]int
 			arg              any
 		}{
 			{"agent_call_logs", "created_at<?", before.AddDate(0, 0, -90)},
+			{"usage_daily", "day<?::date", before.In(usageZone).Format("2006-01-02")},
+			{"usage_identities", "last_seen_at<?", before},
 			{"content_trash", "expires_at<?", before.AddDate(0, 0, 90)},
 		} {
 			r := tx.WithContext(ctx).Exec("DELETE FROM "+entry.table+" WHERE "+entry.predicate, entry.arg)

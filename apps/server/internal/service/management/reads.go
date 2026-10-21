@@ -179,6 +179,11 @@ SELECT jsonb_build_object(
 	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT (SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code='0000' AND is_write AND NOT dry_run) writes,(SELECT count(*) FROM content_revisions WHERE created_at>=? AND actor_type='agent' AND operation_id='fixTranslation') translations,(SELECT count(*) FROM agent_call_logs WHERE created_at>=? AND code<>'0000') failures`, day, day, day).Scan(&metrics).Error; err != nil {
 		return nil, err
 	}
+	usage, err := s.Store.UsageOverview(ctx, s.now())
+	if err != nil {
+		return nil, err
+	}
+	out["usage"] = usage
 	out["hermes"] = map[string]any{"date": day.Format("2006-01-02"), "timeZone": "UTC", "writes": metrics.Writes, "translations": metrics.Translations, "failures": metrics.Failures}
 	return out, nil
 }

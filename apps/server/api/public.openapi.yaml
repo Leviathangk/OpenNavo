@@ -27,6 +27,8 @@ servers:
   - url: http://localhost:8080/api/v1
 security: []
 tags:
+  - name: usage
+    description: Opted-in anonymous daily activity
   - name: home
     description: 'Home'
   - name: catalog
@@ -8695,6 +8697,33 @@ paths:
           $ref: '#/components/responses/Error'
         default:
           $ref: '#/components/responses/Error'
+  /usage/activity:
+    post:
+      tags: [usage]
+      operationId: recordUsageActivity
+      summary: Record an opted-in anonymous active installation or browser
+      description: One daily row per anonymous ID and platform, using Asia/Shanghai. Accepts up to seven days of offline activity. Client activity includes background operation; web activity requires a visible visit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsageActivity'
+      responses:
+        '204':
+          description: Activity accepted (including duplicate submissions). Clients must deduplicate using X-Usage-Day, which can differ from the requested date after clock correction. When web collection is disabled, acknowledges the requested date without recording activity.
+          headers:
+            X-Usage-Day:
+              required: true
+              description: Acknowledged reporting date in Asia/Shanghai.
+              schema:
+                type: string
+                pattern: '^\d{4}-\d{2}-\d{2}$'
+                example: '2026-10-22'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
   /feedback:
     post:
       tags:
@@ -15870,6 +15899,35 @@ components:
             machineTranslated: false
         sourceLocale: en-US
         machineTranslated: false
+    UsageActivity:
+      example:
+        anonymousId: '2a77e45e-1ac2-4d72-b9c2-aaf2a42f8234'
+        platform: desktop
+        occurredAt: '2026-10-22T08:00:00Z'
+        version: '0.1.3'
+        locale: en-US
+      type: object
+      additionalProperties: false
+      required: [anonymousId, platform, occurredAt, version, locale]
+      properties:
+        anonymousId:
+          type: string
+          format: uuid
+        platform:
+          type: string
+          enum: [web, desktop]
+        occurredAt:
+          type: string
+          format: date-time
+        version:
+          type: string
+          maxLength: 64
+          pattern: '^[0-9A-Za-z.+_-]{0,64}$'
+        locale:
+          type: string
+          minLength: 2
+          maxLength: 35
+          pattern: '^[A-Za-z0-9-]+$'
     FeedbackCreateRequest:
       type: object
       required:
@@ -16030,6 +16088,9 @@ components:
           type: object
           required: [ga4Enabled, ga4MeasurementId, consentRegions]
           properties:
+            usageEnabled:
+              type: boolean
+              default: false
             ga4Enabled:
               type: boolean
             ga4MeasurementId:

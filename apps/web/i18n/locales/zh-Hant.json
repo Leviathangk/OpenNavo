@@ -62,7 +62,7 @@
   },
   "analytics": {
     "label": "統計 Cookie 設定",
-    "message": "OpenNavo 使用 Google Analytics 統計瀏覽量和關鍵操作，會在瀏覽器中設定統計 Cookie。是否允許？",
+    "message": "OpenNavo 使用隨機瀏覽器識別碼統計每日活躍，並可能使用 Google Analytics Cookie 統計造訪和重要操作。是否允許統計？",
     "privacy": "隱私說明",
     "accept": "允許",
     "decline": "不允許",

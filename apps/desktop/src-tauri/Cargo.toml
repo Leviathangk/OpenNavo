@@ -51,7 +51,7 @@ glob = "0.3"
 tokio = { version = "1", features = ["full"] }
 nix = { version = "0.31", features = ["signal", "process", "fs"] }
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1", features = ["v7", "serde"] }
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "stream", "system-proxy"] }
 sha2 = "0.10"

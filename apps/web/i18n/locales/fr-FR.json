@@ -62,7 +62,7 @@
   },
   "analytics": {
     "label": "Réglages des cookies de mesure d’audience",
-    "message": "OpenNavo utilise Google Analytics pour mesurer les visites et les actions clés, ce qui dépose des cookies de mesure d’audience dans votre navigateur. L’autorisez-vous ?",
+    "message": "OpenNavo utilise un identifiant de navigateur aléatoire pour compter l’activité quotidienne et peut utiliser des cookies Google Analytics pour mesurer les visites et actions. Autoriser les statistiques ?",
     "privacy": "Détails sur la confidentialité",
     "accept": "Autoriser",
     "decline": "Ne pas autoriser",

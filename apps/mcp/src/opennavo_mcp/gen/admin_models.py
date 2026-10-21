@@ -1379,6 +1379,7 @@ class Analytics(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    usageEnabled: bool = False
     ga4Enabled: bool
     ga4MeasurementId: Annotated[str, Field(pattern='^(G-[A-Z0-9]{4,16})?$')]
     consentRegions: Annotated[list[ConsentRegion], Field(description='ISO 3166-1 alpha-2 regions where analytics cookies wait for consent.', max_length=60)]
@@ -1580,6 +1581,26 @@ class PasswordReset(BaseModel):
 class Ratio(BaseModel):
     done: Annotated[int, Field(examples=[1])]
     total: Annotated[int, Field(examples=[1])]
+
+
+class Day(BaseModel):
+    date: str
+    web: int
+    desktop: int
+    newWeb: int
+    newDesktop: int
+
+
+class Version1(BaseModel):
+    version: str
+    count: int
+
+
+class UsageOverview(BaseModel):
+    timeZone: Literal['Asia/Shanghai']
+    asOf: AwareDatetime
+    days: list[Day]
+    versions: Annotated[list[Version1], Field(description="Today's active desktop installations, one most-recent version per installation.")]
 
 
 class Packages(BaseModel):
@@ -6012,6 +6033,7 @@ class UserInfoResponseResult(RootModel[UserInfoResponse | BusinessErrorResponse]
 
 
 class DashboardOverview(BaseModel):
+    usage: UsageOverview | None = None
     packages: Packages
     coverage: Annotated[Coverage, Field(description='All four coverage metrics use all valid Cask apps, including fonts, as denominator, excluding disabled, hidden and removed packages.')]
     feedbackOpen: Annotated[int, Field(examples=[1])]

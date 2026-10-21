@@ -524,6 +524,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/usage/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record an opted-in anonymous active installation or browser
+         * @description One daily row per anonymous ID and platform, using Asia/Shanghai. Accepts up to seven days of offline activity. Client activity includes background operation; web activity requires a visible visit.
+         */
+        post: operations["recordUsageActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/feedback": {
         parameters: {
             query?: never;
@@ -5596,6 +5616,25 @@ export interface components {
         };
         /**
          * @example {
+         *       "anonymousId": "2a77e45e-1ac2-4d72-b9c2-aaf2a42f8234",
+         *       "platform": "desktop",
+         *       "occurredAt": "2026-10-22T08:00:00Z",
+         *       "version": "0.1.3",
+         *       "locale": "en-US"
+         *     }
+         */
+        UsageActivity: {
+            /** Format: uuid */
+            anonymousId: string;
+            /** @enum {string} */
+            platform: "web" | "desktop";
+            /** Format: date-time */
+            occurredAt: string;
+            version: string;
+            locale: string;
+        };
+        /**
+         * @example {
          *       "type": "wrong_info",
          *       "packageKind": "cask",
          *       "packageToken": "visual-studio-code",
@@ -5769,6 +5808,8 @@ export interface components {
                 bing: string;
             };
             analytics: {
+                /** @default false */
+                usageEnabled: boolean;
                 ga4Enabled: boolean;
                 ga4MeasurementId: string;
                 consentRegions: string[];
@@ -9396,6 +9437,32 @@ export interface operations {
                 };
             };
             404: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    recordUsageActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsageActivity"];
+            };
+        };
+        responses: {
+            /** @description Activity accepted (including duplicate submissions). Clients must deduplicate using X-Usage-Day, which can differ from the requested date after clock correction. When web collection is disabled, acknowledges the requested date without recording activity. */
+            204: {
+                headers: {
+                    /** @description Acknowledged reporting date in Asia/Shanghai. */
+                    "X-Usage-Day": string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };

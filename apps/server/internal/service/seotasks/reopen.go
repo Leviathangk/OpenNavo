@@ -2,9 +2,13 @@ package seotasks
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/content"
+	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 )
 
@@ -49,12 +53,22 @@ func (s *Service) Reopen(ctx context.Context, id int64, owner, reason string, pe
 			return &StateError{"expired"}
 		}
 		if task.Kind == "translate" {
-			entity, key, _ := strings.Cut(task.EntityKey, ":")
-			var current bool
-			if err := tx.Raw("SELECT EXISTS(SELECT 1 FROM content_translation_sources WHERE entity=? AND object_key=? AND source_hash=?)", entity, key, task.EvidenceHash).Scan(&current).Error; err != nil {
+			// Backfilled tasks have no source snapshot. Always compare with the
+			// actual source, including when a snapshot exists but is stale.
+			var evidence struct {
+				Ref content.Ref `json:"ref"`
+			}
+			if json.Unmarshal(task.Evidence, &evidence) != nil || !evidence.Ref.Valid() || evidence.Ref.Entity+":"+evidence.Ref.Key() != task.EntityKey {
+				return &StateError{"superseded"}
+			}
+			source, err := (&store.Store{DB: tx}).ReadContentSource(ctx, evidence.Ref)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return &StateError{"superseded"}
+			}
+			if err != nil {
 				return err
 			}
-			if !current {
+			if source.Hash != task.EvidenceHash {
 				return &StateError{"superseded"}
 			}
 		}

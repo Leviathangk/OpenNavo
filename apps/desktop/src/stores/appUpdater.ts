@@ -97,7 +97,8 @@ export const useAppUpdaterStore = defineStore('appUpdater', () => {
         await initialize();
         const now = Date.now();
         if (automatic) {
-          if (sameDay(history.succeededAt, now)) return;
+          // Throttle from request start for both success and failure. Using the
+          // completion time would skip the hourly timer after a slow response.
           if (history.attemptedAt && now >= history.attemptedAt && now - history.attemptedAt < HOUR) return;
         }
         history.attemptedAt = now;

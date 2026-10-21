@@ -37,3 +37,5 @@ export type CatalogItem = Schemas['CatalogItem'];
 export type ClientConfig = Schemas['ClientConfig'];
 export type DesktopReleaseInfo = Schemas['DesktopReleaseInfo'];
 export type SiteSettings = Schemas['SiteSettings'];
+export { createUsageTracker } from './usage';
+export type { UsageActivity } from './usage';

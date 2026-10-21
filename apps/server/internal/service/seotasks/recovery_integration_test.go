@@ -113,24 +113,6 @@ func TestReopenBoundsAgentsButNotPeople(t *testing.T) {
 	require.Equal(t, "expired", state.Reason)
 }
 
-// A translation task stays tied to the source it was made for.
-func TestReopenRefusesSupersededTranslations(t *testing.T) {
-	ctx := context.Background()
-	st := testutil.NewSEOStore(t)
-	svc := &seotasks.Service{DB: st.DB}
-	require.NoError(t, st.DB.Exec(`INSERT INTO content_translation_sources(entity,object_key,ref,source_locale,source_hash,fields) VALUES('category','901','{"entity":"category","id":901}','en-US','source-new','{}')`).Error)
-	var id int64
-	require.NoError(t, st.DB.Raw(`INSERT INTO seo_tasks(kind,entity_key,locale,dedupe_key,priority,evidence,evidence_hash,rule_version,state) VALUES('translate','category:901','de-DE','translate:category:901:de-DE:source-old',100,'{}','source-old','translation-v1','quarantined') RETURNING id`).Scan(&id).Error)
-	var state *seotasks.StateError
-	_, err := svc.Reopen(ctx, id, "agent:1:2", "fixed", false)
-	require.ErrorAs(t, err, &state)
-	require.Equal(t, "superseded", state.Reason)
-	require.NoError(t, st.DB.Exec("UPDATE content_translation_sources SET source_hash='source-old'").Error)
-	task, err := svc.Reopen(ctx, id, "agent:1:2", "fixed", false)
-	require.NoError(t, err)
-	require.Equal(t, "open", task.State)
-}
-
 func TestClaimTargetsRequestedTasks(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)

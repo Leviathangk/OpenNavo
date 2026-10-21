@@ -11,6 +11,8 @@ export function useAnalyticsConsent() {
     return analytics?.ga4Enabled && analytics.ga4MeasurementId ? analytics.ga4MeasurementId : '';
   });
 
+  const enabled = computed(() => Boolean(measurementId.value || settings.value?.analytics.usageEnabled));
+
   function storedChoice(): ConsentChoice | null {
     try {
       const value = localStorage.getItem(CONSENT_STORAGE_KEY);
@@ -29,14 +31,14 @@ export function useAnalyticsConsent() {
   }
 
   function activate() {
-    if (!measurementId.value) return;
-    loadGtag(measurementId.value);
+    if (!enabled.value) return;
+    if (measurementId.value) loadGtag(measurementId.value);
     active.value = true;
     trackPageView();
   }
 
   async function start() {
-    if (!measurementId.value) return;
+    if (!enabled.value) return;
     const choice = storedChoice();
     // Pages are cached and shared, so the visitor's region is asked for separately.
     const requireConsent = choice
@@ -66,7 +68,7 @@ export function useAnalyticsConsent() {
   return {
     banner,
     active,
-    enabled: computed(() => Boolean(measurementId.value)),
+    enabled,
     start,
     accept,
     decline,

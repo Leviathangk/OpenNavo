@@ -62,7 +62,7 @@
   },
   "analytics": {
     "label": "Einstellungen für Analyse-Cookies",
-    "message": "OpenNavo nutzt Google Analytics, um Besuche und wichtige Aktionen zu zählen, und setzt dafür Analyse-Cookies in Ihrem Browser. Möchten Sie das erlauben?",
+    "message": "OpenNavo zählt die tägliche Aktivität mit einer zufälligen Browserkennung und kann Google-Analytics-Cookies für Besuche und wichtige Aktionen verwenden. Statistiken erlauben?",
     "privacy": "Datenschutzhinweise",
     "accept": "Erlauben",
     "decline": "Nicht erlauben",
