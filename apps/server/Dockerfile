@@ -3,12 +3,12 @@ ARG TARGETOS
 ARG TARGETARCH
 ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH}
 WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
 COPY . .
-# The heavy commands share one binary (cmd/opennavo); the Go build cache is a
-# cache mount so it stays out of image and build-cache layers.
-RUN --mount=type=cache,target=/root/.cache/go-build \
+# The heavy commands share one binary (cmd/opennavo). Modules and the Go build
+# cache are cache mounts, so neither lands in image or build-cache layers; the
+# build downloads only the modules these binaries need (about 220 MB, where a
+# `go mod download` layer held every module of the server's tests too).
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/ ./cmd/opennavo ./cmd/backup ./cmd/storage-init ./cmd/probe && \
     for name in api worker desktop-publish migrate seed seed-e2e db-bootstrap; do ln -s opennavo /out/"$name"; done
 
