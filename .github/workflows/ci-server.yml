@@ -76,6 +76,13 @@ jobs:
         with:
           go-version-file: apps/server/go.mod
           cache-dependency-path: apps/server/go.sum
+      # golangci-lint keeps per-package results, so packages a change does not
+      # touch are not analysed again. Main saves a fresh entry; PRs restore it.
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/golangci-lint
+          key: golangci-lint-${{ runner.os }}-${{ hashFiles('apps/server/go.sum', 'apps/server/.golangci.yml') }}-${{ github.sha }}
+          restore-keys: golangci-lint-${{ runner.os }}-${{ hashFiles('apps/server/go.sum', 'apps/server/.golangci.yml') }}-
       - uses: pnpm/action-setup@v6
         with:
           version: 10.13.1
@@ -142,12 +149,25 @@ jobs:
       fail-fast: false
       matrix:
         shard: [0, 1, 2, 3, 4, 5]
+    env:
+      # Every test terminates its own containers and the runner is discarded
+      # afterwards; the shared reaper container only added a startup race.
+      TESTCONTAINERS_RYUK_DISABLED: 'true'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server/go.mod
           cache-dependency-path: apps/server/go.sum
+      # Some tests run the repository's Node scripts (interface i18n replay).
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter opennavo --ignore-scripts
       - run: go test -race -tags=integration -timeout 25m -run "$(node ../../.github/scripts/go-shard.mjs . ${{ matrix.shard }} 6)" ./...
         working-directory: apps/server
 
