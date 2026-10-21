@@ -87,6 +87,9 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 			var app *domain.AppError
 			if errors.As(err, &app) && app.Code == domain.CodeValidation {
 				reason = "validation_failed"
+				if app.Msg != "" {
+					reason += ":" + app.Msg
+				}
 			}
 			switch {
 			case errors.Is(err, seotasks.ErrLease):
