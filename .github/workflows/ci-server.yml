@@ -129,19 +129,26 @@ jobs:
         working-directory: apps/server
       - run: make build-server
 
-  # Integration tests start PostgreSQL/Redis containers for each case; internal/http alone exceeds go test's default 10-minute timeout.
+  # Integration tests start PostgreSQL/Redis containers for each case; run serially
+  # they took 22 minutes, 20 of them in internal/http. Six shards each take a
+  # sixth of every package's tests (.github/scripts/go-shard.mjs).
   server-integration:
     needs: changes
     if: needs.changes.outputs.server == 'true' && needs.changes.outputs.full == 'true'
+    name: server-integration (${{ matrix.shard }}/6)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version-file: apps/server/go.mod
           cache-dependency-path: apps/server/go.sum
-      - run: go test -race -tags=integration -timeout 30m ./...
+      - run: go test -race -tags=integration -timeout 25m -run "$(node ../../.github/scripts/go-shard.mjs . ${{ matrix.shard }} 6)" ./...
         working-directory: apps/server
 
   deployment-config:
