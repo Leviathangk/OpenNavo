@@ -1,24 +1,18 @@
-# CI only: keep the E2E images' build layers in the GitHub Actions cache, so the
-# MinIO source build (about 2.5 minutes) and the helper images are reused across
-# runs. ops/e2e.py adds this file when OPENNAVO_E2E_BUILD_CACHE=gha; the
-# e2e-backend action sets that after creating a buildx builder that can export
-# the cache. Local runs never read it.
+# CI only: build the E2E images from layers kept in the GitHub Actions cache, so
+# the MinIO source build (about 2.5 minutes) and the helper images are reused
+# across runs. ops/e2e.py adds this file when OPENNAVO_E2E_BUILD_CACHE is gha or
+# gha-save; docker-compose.e2e.ci-save.yml also writes the layers, on main only,
+# so pull requests never fill the repository cache. Local runs never read either.
 services:
   postgres:
     build:
       cache_from:
         - type=gha,scope=e2e-postgres
-      cache_to:
-        - type=gha,scope=e2e-postgres,mode=max
   redis:
     build:
       cache_from:
         - type=gha,scope=e2e-redis
-      cache_to:
-        - type=gha,scope=e2e-redis,mode=max
   minio:
     build:
       cache_from:
         - type=gha,scope=e2e-minio
-      cache_to:
-        - type=gha,scope=e2e-minio,mode=max

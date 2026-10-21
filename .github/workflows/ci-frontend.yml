@@ -98,20 +98,14 @@ jobs:
       - run: pnpm --filter @opennavo/web --filter @opennavo/admin --filter @opennavo/desktop --filter @opennavo/ui run build
       - run: pnpm --filter @opennavo/web test:ssr
 
-  desktop:
+  # Rust checks and the app bundle build in parallel; each keeps its own Rust cache.
+  desktop-rust:
     needs: changes
     if: needs.changes.outputs.desktop == 'true'
     runs-on: macos-15
-    timeout-minutes: 90
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.13.1
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: pnpm
       - uses: dtolnay/rust-toolchain@1.96.0
         with:
           components: rustfmt, clippy
@@ -119,9 +113,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @opennavo/desktop run gen
-      - run: git diff --exit-code apps/desktop/src/ipc/bindings.ts
+          # Pull requests restore main's Rust build; only main saves it, so
+          # pull request caches never crowd main's out of the cache space.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --check
         working-directory: apps/desktop/src-tauri
       - run: cargo clippy --all-targets -- -D warnings
@@ -137,6 +131,31 @@ jobs:
           python3 apps/desktop/scripts/prepare-firewall.py --config-out "$RUNNER_TEMP/firewall-unbundled.json"
           python3 apps/desktop/scripts/prepare-firewall.py --compile-only "$RUNNER_TEMP/firewall-link-check" --target aarch64-apple-darwin
           cargo run --manifest-path apps/desktop/src-tauri/Cargo.toml --example firewall_probe
+
+  desktop-bundle:
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.13.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+          # Pull requests restore main's Rust build; only main saves it, so
+          # pull request caches never crowd main's out of the cache space.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @opennavo/desktop run gen
+      - run: git diff --exit-code apps/desktop/src/ipc/bindings.ts
       - run: swift test --package-path apps/desktop/native/store
       - uses: actions/setup-python@v6
         with:

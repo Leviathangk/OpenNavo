@@ -53,7 +53,9 @@ def check_toolchain(canonical, check_compiler):
     for name in ('ci-frontend.yml', 'release-desktop.yml'):
         workflow = (ROOT / '.github/workflows' / name).read_text()
         installers = re.findall(r'^\s*-\s*uses:\s*dtolnay/rust-toolchain@([^\s#]+)', workflow, re.MULTILINE)
-        require(installers == [pin], f'Workflow Rust toolchain differs from the notice pin: {name}')
+        # Jobs may each install Rust (the desktop checks and bundle run in parallel), but only the pin.
+        require(installers and all(version == pin for version in installers),
+                f'Workflow Rust toolchain differs from the notice pin: {name}')
     if check_compiler:
         version = subprocess.check_output(['rustc', '--version'], cwd=ROOT / 'apps/desktop/src-tauri', text=True).split()[1]
         require(version == pin, f'Actual Rust compiler {version} differs from notice toolchain {pin}')

@@ -38,6 +38,18 @@ test('only changes that reach production deploy', () => {
     false
   );
   assert.equal(ships(null), true, 'an unlisted comparison deploys');
+  for (const file of [
+    'ops/e2e.py',
+    'ops/test_e2e.py',
+    'ops/docker-compose.e2e.yml',
+    'ops/docker-compose.e2e.ci.yml',
+    'ops/docker-compose.dev.yml',
+    'ops/Dockerfile.minio'
+  ]) {
+    assert.equal(ships([file]), false, `${file} only serves the dev or E2E stack`);
+  }
+  assert.equal(ships(['ops/docker-compose.prod.yml']), true);
+  assert.equal(ships(['ops/caddy/Caddyfile']), true);
 });
 
 test('the live revision comes from the newest successful deploy', () => {
