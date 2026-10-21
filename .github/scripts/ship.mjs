@@ -12,10 +12,11 @@ export const FLAKES = /429 Too Many Requests|toomanyrequests|sixteen_thousand_im
 export const MAX_ATTEMPTS = 3;
 
 // Paths that end up in the server, web, admin or MCP images or the deployment.
+// The dev and E2E stacks under ops/ (and ops tests) never reach production.
 export const SHIPS = [
   /^apps\/(server|web|admin|mcp)\//,
   /^packages\//,
-  /^ops\//,
+  /^ops\/(?!(?:e2e\.py|test_[^/]*\.py|docker-compose\.(?:dev|e2e)(?:\.[^/]+)?\.yml|Dockerfile\.minio)$)/,
   /^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml)$/
 ];
 export const ships = files => files === null || files.some(file => SHIPS.some(pattern => pattern.test(file)));
