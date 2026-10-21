@@ -113,6 +113,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
+          # Pull requests restore main's Rust build; only main saves it, so
+          # pull request caches never crowd main's out of the cache space.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --check
         working-directory: apps/desktop/src-tauri
       - run: cargo clippy --all-targets -- -D warnings
@@ -147,6 +150,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
+          # Pull requests restore main's Rust build; only main saves it, so
+          # pull request caches never crowd main's out of the cache space.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @opennavo/desktop run gen
       - run: git diff --exit-code apps/desktop/src/ipc/bindings.ts
