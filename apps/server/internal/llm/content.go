@@ -86,9 +86,73 @@ func stripLiterals(s string, protected []string) string {
 	return strings.TrimSpace(s)
 }
 func contentFailure(reason string) error { return &Failure{Reason: reason} }
+
+// ContentViolation names one failed check, so a translator can correct exactly
+// that field. Spans and terms are bounded copies of text the caller already holds:
+// the source it read and the target it wrote.
+type ContentViolation struct {
+	Rule          string   `json:"rule"`
+	Field         string   `json:"field,omitempty"`
+	Missing       []string `json:"missing,omitempty"`
+	Extra         []string `json:"extra,omitempty"`
+	Term          string   `json:"term,omitempty"`
+	Expected      string   `json:"expected,omitempty"`
+	ExpectedCount *int     `json:"expectedCount,omitempty"`
+	ActualCount   *int     `json:"actualCount,omitempty"`
+	Limit         int      `json:"limit,omitempty"`
+	Length        int      `json:"length,omitempty"`
+	SourceLength  int      `json:"sourceLength,omitempty"`
+}
+
+const (
+	maxViolations     = 20
+	maxViolationSpans = 10
+	maxViolationText  = 200
+)
+
+// spanDiff compares two multisets of spans: what the source has that the target
+// lacks, and what the target added.
+func spanDiff(source, target []string) (missing, extra []string) {
+	counts := map[string]int{}
+	for _, v := range source {
+		counts[v]++
+	}
+	for _, v := range target {
+		counts[v]--
+	}
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		for n := counts[k]; n > 0 && len(missing) < maxViolationSpans; n-- {
+			missing = append(missing, Truncate(k, maxViolationText))
+		}
+		for n := counts[k]; n < 0 && len(extra) < maxViolationSpans; n++ {
+			extra = append(extra, Truncate(k, maxViolationText))
+		}
+	}
+	return missing, extra
+}
+
+// ValidateContent checks every target locale and field and reports all
+// violations. Fields are checked in key order, so the reported Reason (the first
+// violation) is stable between attempts.
 func ValidateContent(out ContentOutput, in ContentInput) error {
 	if !i18n.Valid(in.SourceLocale) || len(out) != len(in.Targets) {
 		return contentFailure("invalid_schema")
+	}
+	keys := make([]string, 0, len(in.Fields))
+	for key := range in.Fields {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var found []ContentViolation
+	add := func(v ContentViolation) {
+		if len(found) < maxViolations {
+			found = append(found, v)
+		}
 	}
 	for _, locale := range in.Targets {
 		fields, ok := out[locale]
@@ -96,34 +160,43 @@ func ValidateContent(out ContentOutput, in ContentInput) error {
 			return contentFailure("invalid_schema")
 		}
 		var sourceText, targetText strings.Builder
-		for key, source := range in.Fields {
+		for _, key := range keys {
+			source := in.Fields[key]
 			target, ok := fields[key]
 			if !ok || strings.TrimSpace(target) == "" {
-				return contentFailure("missing_field")
+				add(ContentViolation{Rule: "missing_field", Field: key})
+				continue
 			}
 			if maximum := in.Limits[key]; maximum > 0 && utf8.RuneCountInString(target) > maximum {
-				return contentFailure("too_long")
+				add(ContentViolation{Rule: "too_long", Field: key, Limit: maximum, Length: utf8.RuneCountInString(target)})
 			}
-			if !reflect.DeepEqual(LiteralSpans(source), LiteralSpans(target)) {
-				return contentFailure("changed_literal")
-			}
-			if in.Strict && !reflect.DeepEqual(markdownStructure(source), markdownStructure(target)) {
-				return contentFailure("changed_structure")
+			if want, got := LiteralSpans(source), LiteralSpans(target); !reflect.DeepEqual(want, got) {
+				missing, extra := spanDiff(want, got)
+				add(ContentViolation{Rule: "changed_literal", Field: key, Missing: missing, Extra: extra})
 			}
 			if in.Strict {
+				if want, got := markdownStructure(source), markdownStructure(target); !reflect.DeepEqual(want, got) {
+					missing, extra := spanDiff(want, got)
+					add(ContentViolation{Rule: "changed_structure", Field: key, Missing: missing, Extra: extra})
+				}
 				n, m := utf8.RuneCountInString(stripLiterals(source, in.Protected)), utf8.RuneCountInString(stripLiterals(target, in.Protected))
 				if n >= 20 && (m*5 < n || m > n*5) {
-					return contentFailure("length_ratio")
+					add(ContentViolation{Rule: "length_ratio", Field: key, SourceLength: n, Length: m})
 				}
 			}
 			for _, term := range in.Protected {
-				if term != "" && strings.Count(source, term) != strings.Count(target, term) {
-					return contentFailure("changed_brand")
+				if want, got := strings.Count(source, term), strings.Count(target, term); term != "" && want != got {
+					add(ContentViolation{Rule: "changed_brand", Field: key, Term: Truncate(term, maxViolationText), ExpectedCount: &want, ActualCount: &got})
 				}
 			}
-			for term, translations := range in.Glossary {
-				if translated := translations[locale]; translated != "" && strings.Contains(source, term) && !strings.Contains(target, translated) {
-					return contentFailure("missing_glossary")
+			terms := make([]string, 0, len(in.Glossary))
+			for term := range in.Glossary {
+				terms = append(terms, term)
+			}
+			sort.Strings(terms)
+			for _, term := range terms {
+				if translated := in.Glossary[term][locale]; translated != "" && strings.Contains(source, term) && !strings.Contains(target, translated) {
+					add(ContentViolation{Rule: "missing_glossary", Field: key, Term: Truncate(term, maxViolationText), Expected: Truncate(translated, maxViolationText)})
 				}
 			}
 			sourceText.WriteString(stripLiterals(source, in.Protected))
@@ -133,11 +206,13 @@ func ValidateContent(out ContentOutput, in ContentInput) error {
 		}
 		src, dst := strings.TrimSpace(sourceText.String()), strings.TrimSpace(targetText.String())
 		if src != "" && src == dst {
-			return contentFailure("untranslated")
+			add(ContentViolation{Rule: "untranslated"})
+		} else if src != "" && !MatchesLanguage(dst, locale) {
+			add(ContentViolation{Rule: "wrong_language"})
 		}
-		if src != "" && !MatchesLanguage(dst, locale) {
-			return contentFailure("wrong_language")
-		}
+	}
+	if len(found) > 0 {
+		return &Failure{Reason: found[0].Rule, Violations: found}
 	}
 	return nil
 }

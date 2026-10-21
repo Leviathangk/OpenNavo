@@ -23,6 +23,7 @@ TOOLS = (
     tool("seo_task_get", "seo:task:handle", "getSeoTask"),
     tool("seo_task_complete", "seo:task:handle", "completeSeoTask", write=True),
     tool("seo_task_defer", "seo:task:handle", "deferSeoTask", write=True),
+    tool("seo_task_reopen", "seo:task:handle", "reopenSeoTask", write=True),
     tool("seo_evidence_capture", "seo:task:handle", "createSeoEvidence", write=True),
     tool("seo_actions_list", "seo:insight:view", "listSeoActions"),
     tool(
@@ -31,6 +32,7 @@ TOOLS = (
     tool("seo_action_compensate", "seo:task:handle", "compensateSeoAction", write=True),
     tool("seo_listing_get", "catalog:package:edit", "getSeoListingCandidate"),
     tool("seo_listing_upsert", "catalog:package:edit", "upsertSeoListingCandidate", write=True),
+    tool("seo_listing_nominate", "catalog:package:edit", "nominateSeoListing", write=True),
     tool("article_test_artifacts_list", "content:article:edit", "listArticleTestArtifacts"),
     tool(
         "seo_automation_set",

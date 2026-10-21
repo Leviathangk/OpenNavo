@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/llm"
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
@@ -126,6 +127,9 @@ func TestBatchTranslationFailureNamesTheBrokenRule(t *testing.T) {
 	item := result.(map[string]any)["results"].([]any)[0].(map[string]any)
 	require.Equal(t, "failed", item["status"])
 	require.Equal(t, "validation_failed:changed_literal", item["reason"])
+	// The agent also learns where: the field and the span the translation dropped.
+	violations := item["violations"].([]llm.ContentViolation)
+	require.Equal(t, llm.ContentViolation{Rule: "changed_literal", Field: "description", Missing: []string{"`brew install organizer`"}}, violations[0])
 }
 
 // A translation renders the source's own claims: "faster" in the source may

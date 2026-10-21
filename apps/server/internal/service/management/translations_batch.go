@@ -9,6 +9,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
+	"github.com/opennavo/opennavo/server/internal/llm"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/seobudget"
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
@@ -115,7 +116,11 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 					current = v
 				}
 			}
-			result = map[string]any{"locale": item.Locale, "status": "failed", "reason": reason, "value": current}
+			failed := map[string]any{"locale": item.Locale, "status": "failed", "reason": reason, "value": current}
+			if failure := (*llm.Failure)(nil); errors.As(err, &failure) && len(failure.Violations) > 0 {
+				failed["violations"] = failure.Violations
+			}
+			result = failed
 		}
 		results = append(results, result)
 	}

@@ -82,7 +82,9 @@ func TestMeasurementsRequireCompleteQueryDataAndPreserveUnknownVolume(t *testing
 	require.EqualValues(t, 1, count, "raw anomalies remain available for audit")
 }
 
-func TestLeasedOpportunityRetainsCatalogEvent(t *testing.T) {
+// A held task keeps the evidence its owner works from; the new version waits and
+// reopens the task when the lease ends. The run itself never fails on a lease.
+func TestHeldTaskKeepsItsEvidenceUntilTheLeaseEnds(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	svc := &Service{DB: st.DB}
@@ -101,18 +103,22 @@ func TestLeasedOpportunityRetainsCatalogEvent(t *testing.T) {
 	require.NoError(t, st.DB.Raw("SELECT cursor FROM seo_opportunity_cursors WHERE source='catalog_changes'").Scan(&before).Error)
 	require.NoError(t, st.DB.Exec("UPDATE packages SET version='2.0' WHERE id=701").Error)
 	event()
-	_, err = svc.Run(ctx)
-	require.Error(t, err)
+	out, err := svc.Run(ctx)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, out["stashed"])
 	require.NoError(t, st.DB.Raw("SELECT cursor FROM seo_opportunity_cursors WHERE source='catalog_changes'").Scan(&after).Error)
-	require.Equal(t, before, after)
-	_, err = tasks.Complete(ctx, claimed[0].ID, claimed[0].Fencing, "test-owner", "skipped", "already reviewed")
+	require.Greater(t, after, before)
+	held, err := tasks.Get(ctx, claimed[0].ID)
 	require.NoError(t, err)
-	_, err = svc.Run(ctx)
-	require.NoError(t, err)
-	task, err := tasks.Get(ctx, claimed[0].ID)
+	require.Equal(t, "leased", held.State)
+	require.Contains(t, string(held.Evidence), `"1.0"`)
+	require.Contains(t, string(held.PendingEvidence), `"2.0"`)
+	task, err := tasks.Complete(ctx, claimed[0].ID, claimed[0].Fencing, "test-owner", "skipped", "already reviewed")
 	require.NoError(t, err)
 	require.Equal(t, "open", task.State)
-	require.Contains(t, string(task.Evidence), "2.0")
+	require.Contains(t, string(task.Evidence), `"2.0"`)
+	require.Nil(t, task.PendingEvidence)
+	require.Contains(t, string(task.Result), "newer_evidence")
 }
 
 func TestMeasurementsAcceptHomebrewSnapshotDatedAheadOfUTC(t *testing.T) {

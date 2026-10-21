@@ -155,7 +155,7 @@ func commit(ctx context.Context, tx *gorm.DB, b Begun, m Mutation, complete bool
 	if err := release(tx, task, b.Write.Owner); err != nil {
 		return 0, err
 	}
-	return id, nil
+	return id, promotePending(ctx, tx, task.ID)
 }
 
 // Run keeps every callback effect (including revisions and outbox inserts) in

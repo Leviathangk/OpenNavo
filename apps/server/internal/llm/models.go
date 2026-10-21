@@ -24,6 +24,8 @@ func (u Usage) Tokens() int64 {
 type Failure struct {
 	Reason           string
 	Retryable, Pause bool
+	// Violations lists every failed content check; Reason is the first one.
+	Violations []ContentViolation
 }
 type Price struct {
 	Input  float64 `json:"input"`

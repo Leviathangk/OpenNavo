@@ -90,6 +90,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/seo/tasks/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * reopenSeoTask
+         * @description Return a quarantined or skipped task to the queue after its cause was fixed. People may always reopen; agents at most three times per task and once per hour. A translation whose source changed since is superseded by the task for the current source and is not reopened. Rejections carry `rejected: <rule>` (not_reopenable, expired, superseded, reopen_limit, reopen_cooldown).
+         */
+        post: operations["reopenSeoTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/seo/evidence": {
         parameters: {
             query?: never;
@@ -2970,6 +2990,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/seo/listings/{token}/nominate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * nominateSeoListing
+         * @description Turn an app a person asked for into a listing task (entity listing:<token>, priority 1000) so an agent can prepare its listing candidate. Nominating publishes nothing; publishing keeps the listing rules. Nominating the same token again returns the open task, or reopens a finished one. Rejections carry `rejected: <rule>` (already_listed, candidate_rejected).
+         */
+        post: operations["nominateSeoListing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/seo/listing-baselines/{id}": {
         parameters: {
             query?: never;
@@ -3148,6 +3188,8 @@ export interface components {
             /** @default 1 */
             limit: number;
             kinds?: string[];
+            /** @description Claim only these tasks (a nomination or a task the caller reopened); they must still be claimable. */
+            taskIds?: number[];
         };
         /**
          * @example {
@@ -3163,6 +3205,32 @@ export interface components {
             /** @enum {string} */
             outcome: "done" | "skipped" | "quarantined";
             reason?: string;
+        };
+        /**
+         * @example {
+         *       "idempotencyKey": "fixture-reopen-001",
+         *       "reason": "Corrected the version literal in the description"
+         *     }
+         */
+        SeoTaskReopen: {
+            idempotencyKey: string;
+            reason: string;
+        };
+        /**
+         * @example {
+         *       "idempotencyKey": "nominate-001",
+         *       "name": "Example App",
+         *       "homepage": "https://vendor.example.test",
+         *       "reason": "Requested by the site owner"
+         *     }
+         */
+        SeoListingNomination: {
+            idempotencyKey: string;
+            name: string;
+            /** @description Official https page of the app, where the agent starts its research. */
+            homepage?: string;
+            /** @description Who asked for the app and why. */
+            reason: string;
         };
         /**
          * @example {
@@ -3281,6 +3349,11 @@ export interface components {
             /** Format: date-time */
             expiresAt?: string | null;
             leaseOwner?: string | null;
+            /** @description Evidence that changed while the task was leased; it replaces evidence when the lease ends and then reopens the task. */
+            pendingEvidence?: unknown;
+            reopenCount?: number;
+            /** Format: date-time */
+            reopenedAt?: string | null;
         };
         /**
          * @example {
@@ -4041,6 +4114,34 @@ export interface components {
             status: "written" | "preview" | "proposal" | "preserved_manual" | "failed";
             reason: string;
             value: components["schemas"]["BatchTranslationValue"] | null;
+            /** @description Every failed content check for a validation_failed result; reason names the first. */
+            violations?: components["schemas"]["TranslationViolation"][];
+        };
+        /**
+         * @description One failed check. missing/extra are the code spans, URLs, numbers or Markdown markers the source has and the translation lacks, or the translation added; term/expected/expectedCount/actualCount describe brand and glossary rules; limit/length/sourceLength describe length rules.
+         * @example {
+         *       "rule": "changed_literal",
+         *       "field": "description",
+         *       "missing": [
+         *         "14.2"
+         *       ],
+         *       "extra": [
+         *         "14,2"
+         *       ]
+         *     }
+         */
+        TranslationViolation: {
+            rule: string;
+            field?: string;
+            missing?: string[];
+            extra?: string[];
+            term?: string;
+            expected?: string;
+            expectedCount?: number;
+            actualCount?: number;
+            limit?: number;
+            length?: number;
+            sourceLength?: number;
         };
         /**
          * @example {
@@ -26247,6 +26348,48 @@ export interface operations {
             };
         };
     };
+    reopenSeoTask: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "idempotencyKey": "fixture-reopen-001",
+                 *       "reason": "Corrected the version literal in the description"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoTaskReopen"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
     createSeoEvidence: {
         parameters: {
             query?: {
@@ -33815,6 +33958,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SeoListingCandidateResponse"] | components["schemas"]["BusinessErrorResponse"] | components["schemas"]["AgentDryRunResponse"];
+                };
+            };
+        };
+    };
+    nominateSeoListing: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "idempotencyKey": "nominate-001",
+                 *       "name": "Example App",
+                 *       "homepage": "https://vendor.example.test",
+                 *       "reason": "Requested by the site owner"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoListingNomination"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
                 };
             };
         };

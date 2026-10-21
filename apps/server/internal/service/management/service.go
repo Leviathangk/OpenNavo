@@ -372,8 +372,10 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 	// Control-plane operations and batch translations have their own permission,
 	// fencing and transaction boundaries; they never bypass the business gate.
 	switch op {
-	case "ClaimSeoTasks", "GetSeoTask", "CompleteSeoTask", "DeferSeoTask":
+	case "ClaimSeoTasks", "GetSeoTask", "CompleteSeoTask", "DeferSeoTask", "ReopenSeoTask":
 		return s.seoTaskControl(ctx, op, in)
+	case "NominateSeoListing":
+		return s.nominateListing(ctx, in)
 	case "CreateSeoEvidence":
 		return s.captureSeoEvidence(ctx, in)
 	case "ListSeoActions":

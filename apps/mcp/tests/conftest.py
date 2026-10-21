@@ -74,6 +74,7 @@ class Backend:
         self.active = True
         self.expected_ip = "203.0.113.10"
         self.code = "0000"
+        self.msg = "test-only-sensitive-do-not-echo"
         self.responses: dict[str, Any] = {}
         self.settings = Settings.model_validate({"AGENT_GATEWAY_SECRET": "test-only-" * 4})
         self.http = httpx2.AsyncClient(transport=httpx2.MockTransport(self.handle))
@@ -120,9 +121,7 @@ class Backend:
                 DOCUMENT["paths"][spec["path"]][spec["method"].lower()]["responses"]["200"]
             )
             data = example(response["content"]["application/json"]["schema"])["data"]
-        return httpx2.Response(
-            200, json={"code": self.code, "msg": "test-only-sensitive-do-not-echo", "data": data}
-        )
+        return httpx2.Response(200, json={"code": self.code, "msg": self.msg, "data": data})
 
 
 @pytest.fixture

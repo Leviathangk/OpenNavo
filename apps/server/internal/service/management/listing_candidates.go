@@ -17,6 +17,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/facts"
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
+	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 )
 
@@ -312,4 +313,68 @@ func (s *Service) validateListing(ctx context.Context, st *store.Store, req stor
 		return fail(domain.CodeConflict)
 	}
 	return nil
+}
+
+// nominateListing turns an app a person asked for into a listing task, so an
+// agent can research it and prepare its candidate. Keyword demand stays the
+// other source of listing tasks; nominating publishes nothing by itself.
+func (s *Service) nominateListing(ctx context.Context, in Input) (any, error) {
+	if err := requireSEOAccess(ctx, "seo:task:handle"); err != nil {
+		return nil, err
+	}
+	if err := requireSEOAccess(ctx, "catalog:package:edit"); err != nil {
+		return nil, err
+	}
+	var req struct {
+		IdempotencyKey string  `json:"idempotencyKey"`
+		Name           string  `json:"name"`
+		Homepage       *string `json:"homepage"`
+		Reason         string  `json:"reason"`
+	}
+	if err := decodeStrictBody(in.Body, &req); err != nil {
+		return nil, err
+	}
+	req.Name, req.Reason = strings.TrimSpace(req.Name), strings.TrimSpace(req.Reason)
+	if !domain.ValidLinkToken(in.Key) || req.Name == "" || len(req.Name) > 256 || req.Reason == "" || len(req.Reason) > 1000 || req.Homepage != nil && (len(*req.Homepage) > 2048 || !domain.LinkHTTPS(*req.Homepage)) {
+		return nil, domain.Validation()
+	}
+	owner := seoOwner(ctx)
+	evidence := map[string]any{"source": "nomination", "token": in.Key, "name": req.Name, "homepage": req.Homepage, "reason": req.Reason, "nominatedBy": owner}
+	raw, err := json.Marshal(evidence)
+	if err != nil {
+		return nil, err
+	}
+	tasks := &seotasks.Service{DB: s.Store.DB}
+	result, err := tasks.Control(ctx, owner, "NominateSeoListing", req.IdempotencyKey, map[string]any{"token": in.Key, "body": in.Body}, domain.CurrentOperation(ctx).DryRun, func(t *seotasks.Service) (any, error) {
+		var listed bool
+		if err := t.DB.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM packages WHERE token=? AND removed_at IS NULL) OR EXISTS(SELECT 1 FROM seo_listing_candidates WHERE token=? AND state='published')", in.Key, in.Key).Scan(&listed).Error; err != nil {
+			return nil, err
+		}
+		if listed {
+			return nil, &seotasks.StateError{Reason: "already_listed"}
+		}
+		var rejected bool
+		if err := t.DB.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM seo_listing_candidates WHERE token=? AND state='rejected')", in.Key).Scan(&rejected).Error; err != nil {
+			return nil, err
+		}
+		if rejected {
+			return nil, &seotasks.StateError{Reason: "candidate_rejected"}
+		}
+		// A repeated nomination keeps the task that is queued or in progress; a finished
+		// one is opened again with the latest request.
+		var task seotasks.Task
+		r := t.DB.WithContext(ctx).Raw(`INSERT INTO seo_tasks(kind,entity_key,locale,dedupe_key,priority,evidence,evidence_hash,rule_version) VALUES('listing',?,'en-US',?,1000,?::jsonb,?,'nomination-v1')
+  ON CONFLICT(dedupe_key) DO UPDATE SET evidence=EXCLUDED.evidence,evidence_hash=EXCLUDED.evidence_hash,priority=greatest(seo_tasks.priority,EXCLUDED.priority),state='open',next_retry_at=NULL,lease_owner=NULL,lease_until=NULL,pending_evidence=NULL,pending_evidence_hash=NULL,updated_at=clock_timestamp()
+  WHERE seo_tasks.state IN ('done','skipped','expired') RETURNING *`, "listing:"+in.Key, "nominate:"+in.Key, string(raw), seotasks.Hash(raw)).Scan(&task)
+		if r.Error != nil {
+			return nil, r.Error
+		}
+		if r.RowsAffected == 0 {
+			if err := t.DB.WithContext(ctx).Raw("SELECT * FROM seo_tasks WHERE dedupe_key=?", "nominate:"+in.Key).Scan(&task).Error; err != nil {
+				return nil, err
+			}
+		}
+		return task, nil
+	})
+	return result, mapTaskError(err)
 }

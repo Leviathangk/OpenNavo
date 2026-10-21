@@ -105,7 +105,7 @@ func TestAgentRouteWhitelistCountAndForbiddenSurfaces(t *testing.T) {
 	spec, err := adminapi.GetSpec()
 	require.NoError(t, err)
 	policies := AgentPolicies(spec)
-	require.Len(t, policies, 133)
+	require.Len(t, policies, 135)
 	require.Contains(t, policies, "POST /introspect")
 	require.NotContains(t, policies, "GET /dashboard/llm-usage")
 	require.NotContains(t, policies, "POST /translations/retranslate")

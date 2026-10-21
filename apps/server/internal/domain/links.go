@@ -74,6 +74,10 @@ type LinkInput struct {
 }
 
 var linkToken = regexp.MustCompile(`^[a-z0-9][a-z0-9+@._-]{0,127}$`)
+
+// ValidLinkToken reports whether token can name a link app.
+func ValidLinkToken(token string) bool { return linkToken.MatchString(token) }
+
 var linkRepo = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$`)
 var linkTeam = regexp.MustCompile(`^[A-Z0-9]{10}$`)
 var linkBundle = regexp.MustCompile(`^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+$`)

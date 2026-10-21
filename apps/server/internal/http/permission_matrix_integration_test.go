@@ -34,7 +34,7 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups := map[string]string{
 		"seo:insight:view":           "getSeoOverview getSeoPage listSeoKeywords listSeoAlerts listSeoGeo getSeoGeo listSeoActions",
 		"seo:keyword:edit":           "upsertSeoKeywords",
-		"seo:task:handle":            "recordSeoGeo claimSeoTasks getSeoTask completeSeoTask deferSeoTask createSeoEvidence compensateSeoAction importSeoTasks",
+		"seo:task:handle":            "recordSeoGeo claimSeoTasks getSeoTask completeSeoTask deferSeoTask reopenSeoTask createSeoEvidence compensateSeoAction importSeoTasks",
 		"seo:snippet:propose":        "proposeSnippetTemplate",
 		"seo:automation:tune":        "getSeoAutomation updateSeoAutomation",
 		"":                           "getUserInfo logout getProfile updateProfile changePassword",
@@ -68,7 +68,7 @@ func documentedPermissionPolicy() (map[string]string, map[string][]string) {
 	groups["catalog:package:edit"] += " updatePackageText updatePackageChangelogSettings setPackagePrice setPackageMacosSupport setPackageAlternatives addTapPackage removeTapPackage"
 	groups["catalog:package:edit"] += " listLinkPackages addLinkPackage updateLinkPackage removeLinkPackage upsertUpdateFeed disableUpdateFeed"
 	groups["catalog:package:view"] += " getPackageFactRecords"
-	groups["catalog:package:edit"] += " setPackageFactRecords setBackgroundItem getSeoListingCandidate upsertSeoListingCandidate lockSeoListingBaseline"
+	groups["catalog:package:edit"] += " setPackageFactRecords setBackgroundItem getSeoListingCandidate upsertSeoListingCandidate lockSeoListingBaseline nominateSeoListing"
 	groups["content:collection:edit"] += " setCollectionSetupCriteria"
 	groups["system:seo:edit"] += " getSeoProvider updateSeoProvider"
 	groups["changelog:release:edit"] += " upsertReleaseNotes"

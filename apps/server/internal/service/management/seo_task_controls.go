@@ -23,6 +23,7 @@ func (s *Service) seoTaskControl(ctx context.Context, name string, in Input) (an
 		IdempotencyKey string    `json:"idempotencyKey"`
 		Limit          int       `json:"limit"`
 		Kinds          []string  `json:"kinds"`
+		TaskIDs        []int64   `json:"taskIds"`
 		Fencing        int64     `json:"fencing"`
 		Outcome        string    `json:"outcome"`
 		Reason         string    `json:"reason"`
@@ -42,7 +43,7 @@ func (s *Service) seoTaskControl(ctx context.Context, name string, in Input) (an
 	result, err := tasks.Control(ctx, owner, name, request.IdempotencyKey, map[string]any{"id": in.ID, "body": in.Body}, domain.CurrentOperation(ctx).DryRun, func(t *seotasks.Service) (any, error) {
 		switch name {
 		case "ClaimSeoTasks":
-			records, err := t.Claim(ctx, owner, request.Limit, request.Kinds)
+			records, err := t.ClaimWith(ctx, owner, seotasks.ClaimFilter{Limit: request.Limit, Kinds: request.Kinds, IDs: request.TaskIDs})
 			return map[string]any{"records": records}, err
 		case "CompleteSeoTask":
 			return t.Complete(ctx, in.ID, request.Fencing, owner, request.Outcome, request.Reason)
@@ -51,6 +52,9 @@ func (s *Service) seoTaskControl(ctx context.Context, name string, in Input) (an
 				return nil, err
 			}
 			return t.Get(ctx, in.ID)
+		case "ReopenSeoTask":
+			// People decide without limits; agents get a bounded number of retries.
+			return t.Reopen(ctx, in.ID, owner, request.Reason, domain.CurrentOperation(ctx).AgentClientID == 0)
 		}
 		return nil, domain.Validation()
 	})

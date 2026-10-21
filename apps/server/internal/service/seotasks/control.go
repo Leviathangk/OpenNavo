@@ -102,10 +102,19 @@ func (s *Service) Complete(ctx context.Context, id, fencing int64, owner, outcom
 			}
 		}
 		raw, _ := json.Marshal(map[string]any{"outcome": outcome, "reason": reason})
-		if err := tx.Exec("UPDATE seo_tasks SET state=?,lease_owner=NULL,lease_until=NULL,result=coalesce((SELECT a.result FROM seo_actions a WHERE a.task_id=seo_tasks.id ORDER BY a.id DESC LIMIT 1),?::jsonb),updated_at=clock_timestamp() WHERE id=?", outcome, string(raw), id).Error; err != nil {
+		// A finished task reports what its last write produced. A skipped or
+		// quarantined one keeps the agent's reason, with the last write beside it.
+		update := "UPDATE seo_tasks SET state=?,lease_owner=NULL,lease_until=NULL,result=coalesce((SELECT a.result FROM seo_actions a WHERE a.task_id=seo_tasks.id ORDER BY a.id DESC LIMIT 1),?::jsonb),updated_at=clock_timestamp() WHERE id=?"
+		if outcome != "done" {
+			update = "UPDATE seo_tasks SET state=?,lease_owner=NULL,lease_until=NULL,result=?::jsonb||jsonb_build_object('lastAction',(SELECT a.result FROM seo_actions a WHERE a.task_id=seo_tasks.id ORDER BY a.id DESC LIMIT 1)),updated_at=clock_timestamp() WHERE id=?"
+		}
+		if err := tx.Exec(update, outcome, string(raw), id).Error; err != nil {
 			return err
 		}
 		if err := release(tx, verified, owner); err != nil {
+			return err
+		}
+		if err := promotePending(ctx, tx, id); err != nil {
 			return err
 		}
 		result, err = (&Service{DB: tx}).Get(ctx, id)
