@@ -228,7 +228,17 @@ async fn updates_status_persists_success_and_clears_checking() {
     let tmp = tempfile::tempdir().unwrap();
     let core = core(tmp.path());
     assert!(core.updates_status().unwrap().checked_at.is_none());
+    // A Homebrew-only refresh must not consume the full source-check schedule.
     core.check_updates(false).await.unwrap();
+    assert!(core.updates_status().unwrap().checked_at.is_none());
+    core.settings.write().unwrap().run_brew_update_on_check = false;
+    core.check_update_sources(
+        Some(vec![UpdateSource::Homebrew]),
+        TaskTrigger::Manual,
+        None,
+    )
+    .await
+    .unwrap();
     let status = core.updates_status().unwrap();
     assert!(!status.checking);
     assert!(status.checked_at.is_some());
