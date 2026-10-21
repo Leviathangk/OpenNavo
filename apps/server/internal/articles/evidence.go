@@ -139,40 +139,189 @@ func CompleteAssertion(assertion, body string) bool {
 var markdownLinks = regexp.MustCompile(`!?\[([^\]]*)\]\([^\s)]+\)`)
 var appCardLine = regexp.MustCompile(`(?m)^\s*::app\[[a-z0-9+@._-]+\]\s*$`)
 
-// Every visible textual span must be supported. Supplying a valid claim for one
-// sentence never gives permission to publish unsupported neighboring prose.
+// A line that is only a link, optionally numbered, is a reference entry, and
+// [1] after a sentence is a citation marker: attribution, not statements.
+var referenceLine = regexp.MustCompile(`(?m)^[ \t]*(?:[-+*][ \t]+|[0-9]+\.[ \t]+)?(?:\[\^?[0-9]{1,3}\]:?[ \t]*)?\[[^\]]*\]\([^\s)]+\)[ \t]*$`)
+var citationMarker = regexp.MustCompile(`\[\^?[0-9]{1,3}\]:?`)
+
+// Only statements a reader could check need evidence: numbers (versions, prices,
+// dates, sizes, counts), money, code, test or performance results, and pricing,
+// licensing, platform-compatibility or safety terms. Explanatory prose that
+// states none of these needs no claim; headings and table headers need one only
+// for numbers, money, code or test results. Each table cell is its own unit.
 var assertionSentence = regexp.MustCompile(`(?:[.!?][ \t]+|[。！？])`)
 var markdownPrefix = regexp.MustCompile(`^(?:#{1,6}[ \t]+|[-+*][ \t]+|[0-9]+\.[ \t]+|>[ \t]*)`)
+var headingLine = regexp.MustCompile(`^#{1,6}[ \t]`)
+var tableSeparator = regexp.MustCompile(`^\|?[ \t]*:?-{3,}:?[ \t]*(?:\|[ \t]*:?-{3,}:?[ \t]*)*\|?$`)
+var codeFence = regexp.MustCompile("^(?:```|~~~)")
+var codeSpan = regexp.MustCompile("`([^`\n]+)`")
+var numberToken = regexp.MustCompile(`\p{Nd}+(?:\.\p{Nd}+)*`)
+var currencySign = regexp.MustCompile(`\p{Sc}`)
 
+// "Free up space" is disk cleanup, not a price.
+var diskSpace = regexp.MustCompile(`(?i)\bfree(?:s|d|ing)?[ \t]+up\b|\bfree[ \t]+(?:disk[ \t]+)?space\b`)
+
+// Each category is compared on its own: a claim stating a price, licence,
+// platform or safety property needs an excerpt that names the same kind of
+// property, in any of the site languages. states finds the fact in a sentence;
+// names confirms that an excerpt is about the same kind of fact.
+type factCategory struct{ states, names *regexp.Regexp }
+
+const platformChips = `\b(?:apple silicon|intel|rosetta|arm64|x86_64|universal binary|tahoe|sequoia|sonoma|ventura|monterey|big sur|catalina|mojave|high sierra)\b|apple ?(?:芯片|晶片|シリコン)|苹果芯片|蘋果晶片`
+const platformNames = `\b(?:mac|macs|macos|os x|windows|linux|ios|ipados|iphone|ipad|android)\b|苹果电脑|蘋果電腦`
+const compatibilityVerbs = `\b(?:supports?|supported|unsupported|requires?|required|requirements?|compatib\w*|incompatib\w*|runs? on|available (?:for|on)|works? on|unterstützt|erfordert|kompatib\w*|läuft auf|prend en charge|nécessite|requiert|fonctionne sur|supporta|richiede|funziona su|admite|requiere|funciona en|suporta|requer|exige|compatív\w*|funciona em)\b|поддерж|требует|совместим|работает на|支持|兼容|适配|支援|相容|対応|互換|适用于|適用於|运行于|運行於`
+
+func sameCategory(pattern string) factCategory {
+	re := regexp.MustCompile(pattern)
+	return factCategory{re, re}
+}
+
+var factCategories = []factCategory{
+	// pricing
+	sameCategory(`(?i)\b(?:free|freeware|paid|prices?|priced|pricing|costs?|subscriptions?|subscribe|trials?|purchases?|in-app|one-time)\b|免费|收费|付费|价格|售价|订阅|试用|买断|内购|免費|收費|付費|價格|售價|訂閱|試用|買斷|內購|無料|有料|価格|料金|サブスク|買い切り|課金|\b(?:kostenlos|kostenpflichtig|preis\w*|abo|abonnement\w*|testversion|kauf\w*|gratuit\w*|payant\w*|prix|tarif\w*|essai|gratis|prezz\w*|abbonament\w*|a pagamento|precio\w*|de pago|suscripci\w*|grátis|gratuit\w*|preço\w*|pago|assinatura\w*)\b|бесплатн|платн|стоимост|подписк|пробн`),
+	// licensing
+	sameCategory(`(?i)\b(?:licen[cs]es?|licen[cs]ed|licensing|open[- ]source|proprietary|closed[- ]source|lizenz\w*|quelloffen|licenza|licencia|licença)\b|开源|闭源|许可证|開源|閉源|許可證|授權條款|オープンソース|ライセンス|code source ouvert|codice aperto|código abierto|código aberto|лицензи|открыт\S* исходн`),
+	// platform compatibility: chips, macOS releases, or a compatibility verb
+	// naming a platform; "supports PDF" describes a feature and is not one
+	{regexp.MustCompile(`(?i)` + platformChips + `|(?:` + compatibilityVerbs + `)[^.!?。！？\n]{0,40}(?:` + platformNames + `)`), regexp.MustCompile(`(?i)` + platformChips + `|` + platformNames + `|` + compatibilityVerbs)},
+	// safety and security
+	sameCategory(`(?i)\b(?:safe|safety|unsafe|secure|security|insecure|malware|malicious|virus|viruses|spyware|adware|privacy|encrypt\w*|notari[sz]\w*|code[- ]signed|sandbox\w*|telemetry|sicher\w*|schadsoftware|datenschutz|verschlüssel\w*|sécurité|sécurisé\w*|malveillant\w*|confidentialité|chiffr\w*|sicur\w*|crittograf\w*|segur\w*|privacidad|privacidade|cifrad\w*|criptograf\w*)\b|安全|恶意|病毒|隐私|加密|公证|代码签名|沙盒|遥测|木马|惡意|隱私|公證|代碼簽名|沙箱|遙測|木馬|マルウェア|ウイルス|プライバシー|暗号化|サンドボックス|безопас|вредонос|вирус|конфиденц|шифр`),
+}
+
+// Negation must agree between a claim and its excerpt, so a reworded claim can
+// never turn "does not support" into "supports".
+var negation = regexp.MustCompile(`(?i)\b(?:not|no|never|none|without|cannot|can't|doesn't|don't|isn't|aren't|wasn't|won't|nicht|kein\w*|nie|ohne|pas|jamais|sans|aucun\w*|non|senza|mai|nessun\w*|nunca|sin|ningún|ninguna|não|nem|sem|nenhum\w*)\b|不支持|不兼容|不提供|不包含|不再|不能|不会|不可|没有|无法|未提供|不是|并非|不支援|不相容|不會|沒有|無法|並非|ない|ません|非対応|できない|(?:^|\s)(?:не|нет|без|никогда)(?:\s|$)`)
+
+// NeedsEvidence reports whether a sentence states something checkable.
+func NeedsEvidence(text string, heading bool) bool {
+	if numberToken.MatchString(text) || currencySign.MatchString(text) || codeSpan.MatchString(text) || TestingClaim(text) {
+		return true
+	}
+	if heading {
+		return false
+	}
+	plain := diskSpace.ReplaceAllString(text, "")
+	for _, category := range factCategories {
+		if category.states.MatchString(plain) {
+			return true
+		}
+	}
+	return false
+}
+
+// Supports reports whether an excerpt backs a claim written in the article's own
+// words or language. A claim quoted verbatim always qualifies; otherwise every
+// number, currency sign and code literal in the claim must appear in the
+// excerpt, every fact category it names must appear there too, and both must
+// agree on negation.
+func Supports(claim, excerpt string) bool {
+	text := strings.ReplaceAll(claim, "`", "")
+	if CompleteAssertion(text, excerpt) {
+		return true
+	}
+	source := NormalizeAssertion(excerpt)
+	numbers := numberToken.FindAllString(source, -1)
+	for _, n := range numberToken.FindAllString(claim, -1) {
+		if !slices.Contains(numbers, n) {
+			return false
+		}
+	}
+	for _, sign := range currencySign.FindAllString(claim, -1) {
+		if !strings.Contains(source, sign) {
+			return false
+		}
+	}
+	for _, code := range codeSpan.FindAllStringSubmatch(claim, -1) {
+		if !strings.Contains(source, NormalizeAssertion(code[1])) {
+			return false
+		}
+	}
+	plainClaim, plainSource := diskSpace.ReplaceAllString(text, ""), diskSpace.ReplaceAllString(source, "")
+	for _, category := range factCategories {
+		if category.states.MatchString(plainClaim) && !category.names.MatchString(plainSource) {
+			return false
+		}
+	}
+	return negation.MatchString(text) == negation.MatchString(source)
+}
+
+// ClaimsCover requires a claim for every sentence that states something
+// checkable; a claim for one sentence never covers a neighboring one. Code in
+// a fence must appear verbatim in some claim's excerpt, and inline code in a
+// covered sentence must appear in that claim's excerpt.
 func ClaimsCover(text string, claims []Claim) bool {
 	text = appCardLine.ReplaceAllString(text, "")
+	text = referenceLine.ReplaceAllString(text, "")
 	text = markdownLinks.ReplaceAllString(text, "$1")
-	text = strings.NewReplacer("**", "", "__", "", "~~", "", "`", "").Replace(text)
-	for _, line := range strings.Split(text, "\n") {
-		line = markdownPrefix.ReplaceAllString(strings.TrimSpace(line), "")
-		for _, unit := range assertionSentence.Split(line, -1) {
-			unit = strings.TrimSpace(unit)
-			substantive := false
-			for _, r := range unit {
-				if unicode.IsLetter(r) || unicode.IsNumber(r) {
-					substantive = true
-					break
-				}
-			}
-			if !substantive {
-				continue
-			}
-			covered := false
-			for _, c := range claims {
-				if CompleteAssertion(unit, c.Text) {
-					covered = true
-					break
-				}
-			}
-			if !covered {
+	text = citationMarker.ReplaceAllString(text, "")
+	text = strings.NewReplacer("**", "", "__", "", "~~", "").Replace(text)
+	lines := strings.Split(text, "\n")
+	fenced := false
+	for i, raw := range lines {
+		line := strings.TrimSpace(raw)
+		if codeFence.MatchString(line) {
+			fenced = !fenced
+			continue
+		}
+		if fenced {
+			if line != "" && !excerptsContain(claims, line) {
 				return false
+			}
+			continue
+		}
+		heading := headingLine.MatchString(line) || i+1 < len(lines) && tableSeparator.MatchString(strings.TrimSpace(lines[i+1]))
+		line = markdownPrefix.ReplaceAllString(line, "")
+		segments := []string{line}
+		if strings.HasPrefix(line, "|") {
+			segments = strings.Split(strings.Trim(line, "|"), "|")
+		}
+		for _, segment := range segments {
+			for _, unit := range assertionSentence.Split(segment, -1) {
+				unit = strings.TrimSpace(unit)
+				substantive := false
+				for _, r := range unit {
+					if unicode.IsLetter(r) || unicode.IsNumber(r) {
+						substantive = true
+						break
+					}
+				}
+				if !substantive || !NeedsEvidence(unit, heading) {
+					continue
+				}
+				if !claimCovers(unit, claims) {
+					return false
+				}
 			}
 		}
 	}
 	return true
+}
+
+func claimCovers(unit string, claims []Claim) bool {
+	plain := strings.ReplaceAll(unit, "`", "")
+	codes := codeSpan.FindAllStringSubmatch(unit, -1)
+	for _, c := range claims {
+		if !CompleteAssertion(plain, strings.ReplaceAll(c.Text, "`", "")) {
+			continue
+		}
+		excerpt := NormalizeAssertion(c.Excerpt)
+		quoted := true
+		for _, code := range codes {
+			quoted = quoted && strings.Contains(excerpt, NormalizeAssertion(code[1]))
+		}
+		if quoted {
+			return true
+		}
+	}
+	return false
+}
+
+func excerptsContain(claims []Claim, line string) bool {
+	line = NormalizeAssertion(line)
+	for _, c := range claims {
+		if strings.Contains(NormalizeAssertion(c.Excerpt), line) {
+			return true
+		}
+	}
+	return false
 }

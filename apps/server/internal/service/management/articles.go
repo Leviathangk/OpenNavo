@@ -685,6 +685,11 @@ func (s *Service) publishArticle(ctx context.Context, in Input) (any, error) {
 		if err := st.TouchArticle(ctx, article.ID, update); err != nil {
 			return 0, "", err
 		}
+		if article.PublishedRevisionID != nil {
+			if err := st.CarryArticleTranslations(ctx, *article.PublishedRevisionID, working.ID); err != nil {
+				return 0, "", err
+			}
+		}
 		if err := st.ScheduleContentTranslation(ctx, content.Ref{Entity: "article", ID: working.ID}); err != nil {
 			return 0, "", err
 		}

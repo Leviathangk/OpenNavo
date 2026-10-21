@@ -233,6 +233,21 @@ func (s *Store) ReplaceArticleDraft(ctx context.Context, revisionID int64, d Art
 	return s.writeArticleText(ctx, revisionID, d)
 }
 
+// CarryArticleTranslations copies the previous revision's ready translations into
+// a newly published revision whose source text is unchanged, so a change to the
+// byline, claims or sources keeps every language live. Languages the new
+// revision already has are left alone.
+func (s *Store) CarryArticleTranslations(ctx context.Context, fromRevision, toRevision int64) error {
+	return s.DB.WithContext(ctx).Exec(`INSERT INTO article_revision_i18n(revision_id,locale,title,summary,body_markdown,test_note,seo_title,seo_description,cover_alt,status,source_locale,source_hash,model,translated_at,fail_reason,machine_translated,withheld)
+ SELECT tr.id,o.locale,o.title,o.summary,o.body_markdown,o.test_note,o.seo_title,o.seo_description,o.cover_alt,o.status,o.source_locale,o.source_hash,o.model,o.translated_at,o.fail_reason,o.machine_translated,o.withheld
+ FROM article_revisions fr JOIN article_revisions tr ON tr.id=? AND tr.source_locale=fr.source_locale
+ JOIN article_revision_i18n fs ON fs.revision_id=fr.id AND fs.locale=fr.source_locale
+ JOIN article_revision_i18n ts ON ts.revision_id=tr.id AND ts.locale=tr.source_locale
+ JOIN article_revision_i18n o ON o.revision_id=fr.id AND o.locale<>fr.source_locale AND o.status IN ('machine','manual')
+ WHERE fr.id=? AND (fs.title,fs.summary,fs.body_markdown,fs.test_note,fs.seo_title,fs.seo_description,fs.cover_alt) IS NOT DISTINCT FROM (ts.title,ts.summary,ts.body_markdown,ts.test_note,ts.seo_title,ts.seo_description,ts.cover_alt)
+ ON CONFLICT(revision_id,locale) DO NOTHING`, toRevision, fromRevision).Error
+}
+
 // CreateArticleRecord inserts the identity row; the caller adds the first revision in the same transaction.
 func (s *Store) CreateArticleRecord(ctx context.Context, slug string, clientKey *string) (int64, error) {
 	_, actorID, _ := articleActor(ctx)

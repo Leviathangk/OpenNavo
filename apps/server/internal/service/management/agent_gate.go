@@ -108,8 +108,9 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 		if err := tx.SavePoint("agent_business").Error; err != nil {
 			return err
 		}
+		budgetEntity := ""
 		if d.Policy.Mode == "live" {
-			budgetEntity, err := seotasks.CanonicalEntity(ctx, tx, entity)
+			budgetEntity, err = seotasks.CanonicalEntity(ctx, tx, entity)
 			if err != nil {
 				return err
 			}
@@ -162,6 +163,9 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 				stable = "pkg:" + strconv.FormatInt(afterInput.ID, 10)
 			}
 			if err := seotasks.Rebind(ctx, tx, b.Task, b.Write.Owner, stable); err != nil {
+				return err
+			}
+			if err := seobudget.Rebind(ctx, tx, seobudget.Site(s.Config.WebBaseURL), budgetEntity, stable); err != nil {
 				return err
 			}
 			if err := tx.Exec("UPDATE seo_evidence_snapshots SET entity_key=? WHERE entity_key=? AND created_by=?", stable, entity, b.Write.Owner).Error; err != nil {

@@ -12,18 +12,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// Shared site content first; packages follow by popularity, and the opportunity
-// job later raises package priority by installs.
-var translationBackfill = []struct {
-	Entity   string
-	Priority float64
-	Query    string
-}{
-	{"category", 100, "SELECT id,0 secondary_id FROM categories WHERE applies_to<>'formula' ORDER BY sort,id"},
-	{"collection", 90, "SELECT id,0 secondary_id FROM collections ORDER BY id"},
-	{"feature", 80, "SELECT id,0 secondary_id FROM features ORDER BY id"},
-	{"collection_item", 70, "SELECT ci.collection_id id,ci.package_id secondary_id FROM collection_items ci JOIN packages p ON p.id=ci.package_id WHERE p.removed_at IS NULL ORDER BY ci.collection_id,ci.sort,ci.package_id"},
-	{"package", 10, "SELECT p.id,0 secondary_id FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL AND NOT (p.disabled OR p.stale_disabled) AND NOT COALESCE(m.hidden,false) ORDER BY p.popularity DESC,p.id"},
+// Translate work order: published articles first, because their other languages
+// stay noindex until translated; then shared site content; packages follow by
+// popularity, and the opportunity job later raises package priority by installs.
+var translationPriority = map[string]float64{"article": 150, "category": 100, "collection": 90, "feature": 80, "collection_item": 70, "package": 10}
+
+var translationBackfill = []struct{ Entity, Query string }{
+	{"category", "SELECT id,0 secondary_id FROM categories WHERE applies_to<>'formula' ORDER BY sort,id"},
+	{"collection", "SELECT id,0 secondary_id FROM collections ORDER BY id"},
+	{"feature", "SELECT id,0 secondary_id FROM features ORDER BY id"},
+	{"collection_item", "SELECT ci.collection_id id,ci.package_id secondary_id FROM collection_items ci JOIN packages p ON p.id=ci.package_id WHERE p.removed_at IS NULL ORDER BY ci.collection_id,ci.sort,ci.package_id"},
+	{"package", "SELECT p.id,0 secondary_id FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL AND NOT (p.disabled OR p.stale_disabled) AND NOT COALESCE(m.hidden,false) ORDER BY p.popularity DESC,p.id"},
 }
 
 // BackfillTranslationTasks queues translate tasks for public catalog content whose
@@ -59,7 +58,7 @@ func (s *Store) BackfillTranslationTasks(ctx context.Context) (map[string]int, e
 			evidence, _ := json.Marshal(map[string]any{"ref": ref, "sourceLocale": source.SourceLocale, "sourceHash": source.Hash})
 			for _, locale := range locales {
 				r := s.DB.WithContext(ctx).Exec(`INSERT INTO seo_tasks(kind,entity_key,locale,dedupe_key,priority,evidence,evidence_hash,rule_version) VALUES('translate',?,?,?,?,?::jsonb,?,'translation-v1') ON CONFLICT(dedupe_key) DO NOTHING`,
-					entity, locale, "translate:"+entity+":"+locale+":"+source.Hash, group.Priority, string(evidence), source.Hash)
+					entity, locale, "translate:"+entity+":"+locale+":"+source.Hash, translationPriority[group.Entity], string(evidence), source.Hash)
 				if r.Error != nil {
 					return queued, r.Error
 				}

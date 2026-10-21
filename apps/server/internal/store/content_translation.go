@@ -198,7 +198,7 @@ func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref)
 		}
 		evidence, _ := json.Marshal(map[string]any{"ref": ref, "sourceLocale": source.SourceLocale, "sourceHash": source.Hash})
 		key := "translate:" + entity + ":" + locale + ":" + source.Hash
-		if err := s.DB.WithContext(ctx).Exec(`INSERT INTO seo_tasks(kind,entity_key,locale,dedupe_key,evidence,evidence_hash,rule_version) VALUES('translate',?,?,?,?::jsonb,?,'translation-v1') ON CONFLICT(dedupe_key) DO UPDATE SET state='open',fencing=seo_tasks.fencing+1,lease_owner=NULL,lease_until=NULL,next_retry_at=NULL,updated_at=now() WHERE seo_tasks.state IN ('done','expired','skipped')`, entity, locale, key, string(evidence), source.Hash).Error; err != nil {
+		if err := s.DB.WithContext(ctx).Exec(`INSERT INTO seo_tasks(kind,entity_key,locale,dedupe_key,priority,evidence,evidence_hash,rule_version) VALUES('translate',?,?,?,?,?::jsonb,?,'translation-v1') ON CONFLICT(dedupe_key) DO UPDATE SET state='open',priority=greatest(seo_tasks.priority,EXCLUDED.priority),fencing=seo_tasks.fencing+1,lease_owner=NULL,lease_until=NULL,next_retry_at=NULL,updated_at=now() WHERE seo_tasks.state IN ('done','expired','skipped')`, entity, locale, key, translationPriority[ref.Entity], string(evidence), source.Hash).Error; err != nil {
 			return err
 		}
 	}

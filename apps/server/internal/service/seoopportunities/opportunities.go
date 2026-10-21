@@ -73,6 +73,13 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
    FROM package_fact_records f WHERE f.evidence->>'status'='verified' AND (f.evidence->>'validUntil')::timestamptz<=clock_timestamp() ORDER BY f.id LIMIT 2000`); err != nil {
 			return err
 		}
+		// Articles published before the claim gate have no evidence receipts and the
+		// editorial byline; the article job adds both and republishes.
+		if err := emit(`SELECT 'article_refresh' kind,'article:'||a.id entity_key,r.source_locale locale,'article-refresh:'||a.id||':'||r.id dedupe_key,8 priority,
+   jsonb_build_object('source','legacy_article','articleId',a.id,'slug',a.slug,'revisionId',r.id,'authorId',r.author_id) evidence
+   FROM articles a JOIN article_revisions r ON r.id=a.published_revision_id WHERE a.status='published' AND r.claim_evidence='[]'::jsonb ORDER BY a.id`); err != nil {
+			return err
+		}
 		if err := s.measurements(ctx, tx); err != nil {
 			return err
 		}
