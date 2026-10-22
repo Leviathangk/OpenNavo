@@ -223,7 +223,7 @@ func (s *Service) listingCandidate(ctx context.Context, name string, in Input) (
 		revision := int64(0)
 		if old != nil {
 			revision = old.Revision
-			if old.State != "candidate" && !(old.State == "published" && req.Action == "publish") {
+			if old.State != "candidate" && (old.State != "published" || req.Action != "publish") {
 				return nil, fail(domain.CodeInvalidState)
 			}
 		}
