@@ -168,8 +168,10 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 		"bodyMarkdown": "## Pick by task\n\n![Annotated capture](https://elsewhere.example/a.png)\n\n::app[cleanshot]",
 		"sources":      []any{map[string]any{"title": "Fixture screenshot guide", "url": sourceURL}}}, "0000")
 	require.Greater(t, revision(edited), revision(created))
-	require.Equal(t, []any{"image_host"}, edited["readiness"], "body images must be OpenNavo assets")
-	call("POST", base+"/submit", map[string]any{"expectedRevision": revision(edited)}, "1001")
+	require.Equal(t, []any{"image_host"}, edited["readiness"], "readiness reports external image hosts")
+	edited = call("POST", base+"/submit", map[string]any{"expectedRevision": revision(edited)}, "0000")
+	require.Equal(t, "review", edited["status"], "readiness is advisory and does not block submission")
+	require.Equal(t, []any{"image_host"}, edited["readiness"])
 
 	// A dry run previews without writing.
 	preview := call("PUT", base+"?dryRun=true", map[string]any{"expectedRevision": revision(edited), "title": "Preview only"}, "0000")
@@ -187,8 +189,6 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	reworded := call("PUT", base, map[string]any{"expectedRevision": revision(submitted), "summary": "What to compare when choosing."}, "0000")
 	require.Equal(t, "draft", reworded["status"])
 	require.Equal(t, "review_invalidated", reworded["events"].([]any)[1].(map[string]any)["action"])
-	call("POST", base+"/publish", map[string]any{"expectedRevision": revision(reworded)}, "1006")
-	submitted = call("POST", base+"/submit", map[string]any{"expectedRevision": revision(reworded)}, "0000")
 
 	// Drafts are not public, and draft edits queue no page refreshes.
 	read("/articles/choose-a-screenshot-app", 404, nil)
@@ -196,21 +196,17 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM content_url_changes").Scan(&queued).Error)
 	require.Zero(t, queued)
 
-	// A source URL alone cannot publish: the persisted revision needs bound claims and a target.
-	call("POST", base+"/publish", map[string]any{"expectedRevision": revision(submitted)}, "1001")
+	// Supplied stale revisions still reject publication without changing public state.
+	call("POST", base+"/publish", map[string]any{"expectedRevision": revision(reworded) - 1}, "1003")
 	rejected := call("GET", base, nil, "0000")
-	require.Equal(t, revision(submitted), revision(rejected))
-	require.Equal(t, "review", rejected["status"])
+	require.Equal(t, revision(reworded), revision(rejected))
+	require.Equal(t, "draft", rejected["status"])
 	require.Nil(t, rejected["published"])
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM content_url_changes").Scan(&queued).Error)
 	require.Zero(t, queued, "rejected publication cannot refresh public pages")
-	claims := claimsFor("choose-a-screenshot-app", "How to choose a screenshot app", "What to compare.",
-		"What to compare when choosing.", "Pick by task", "Annotated capture", "Screenshot apps compared")
-	edited = call("PUT", base, map[string]any{"expectedRevision": revision(submitted), "claims": claims,
-		"target": articles.Target{EntityKey: "pkg:" + strconv.FormatInt(shottr, 10), Intent: "compare"}}, "0000")
-	submitted = call("POST", base+"/submit", map[string]any{"expectedRevision": revision(edited)}, "0000")
-	published := call("POST", base+"/publish", map[string]any{"expectedRevision": revision(submitted)}, "0000")
-	require.Len(t, published["working"].(map[string]any)["claimEvidence"], len(claims))
+	// Publish directly after editing, without resubmission, claims or a target.
+	published := call("POST", base+"/publish", map[string]any{"expectedRevision": revision(reworded)}, "0000")
+	require.Empty(t, published["working"].(map[string]any)["claimEvidence"], "publication does not create evidence receipts")
 	firstPublishedRevision := publishedRevisionID(t, st, id)
 	require.Equal(t, "published", published["status"])
 	require.NotNil(t, published["firstPublishedAt"])
@@ -357,7 +353,9 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 		"target": articles.Target{EntityKey: "pkg:" + strconv.FormatInt(shottr, 10), Intent: "topic"}}, "0000")
 	secondBase := "/articles/" + strconv.FormatInt(int64(second["id"].(float64)), 10)
 	second = call("POST", secondBase+"/submit", map[string]any{"expectedRevision": revision(second)}, "0000")
-	call("POST", secondBase+"/publish", map[string]any{"expectedRevision": revision(second)}, "0000")
+	require.Equal(t, "review", second["status"])
+	second = call("POST", secondBase+"/publish", map[string]any{}, "0000")
+	require.Empty(t, second["working"].(map[string]any)["claimEvidence"], "even supplied claims do not fabricate receipts")
 	require.Eventually(t, func() bool {
 		related := lookup("screenshot-apps-for-mac", "en-US").Article.Related
 		return len(related) == 1 && related[0].Slug == "annotate-screenshots"

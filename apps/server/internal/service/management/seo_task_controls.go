@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
@@ -38,6 +39,9 @@ func (s *Service) seoTaskControl(ctx context.Context, name string, in Input) (an
 	if request.Limit == 0 {
 		request.Limit = 1
 	}
+	if request.IdempotencyKey == "" {
+		request.IdempotencyKey = uuid.NewString()
+	}
 	owner := seoOwner(ctx)
 	tasks := &seotasks.Service{DB: s.Store.DB}
 	result, err := tasks.Control(ctx, owner, name, request.IdempotencyKey, map[string]any{"id": in.ID, "body": in.Body}, domain.CurrentOperation(ctx).DryRun, func(t *seotasks.Service) (any, error) {
@@ -53,7 +57,6 @@ func (s *Service) seoTaskControl(ctx context.Context, name string, in Input) (an
 			}
 			return t.Get(ctx, in.ID)
 		case "ReopenSeoTask":
-			// People decide without limits; agents get a bounded number of retries.
 			return t.Reopen(ctx, in.ID, owner, request.Reason, domain.CurrentOperation(ctx).AgentClientID == 0)
 		}
 		return nil, domain.Validation()

@@ -21,7 +21,7 @@ func WithTranslationModel(ctx context.Context, model string) context.Context {
 }
 
 // WriteTranslationSnapshot applies a complete translation only to the source
-// version it was prepared for. Management callers also enforce task fencing.
+// version it was prepared for. This legacy background path preserves manual text.
 func (s *Store) WriteTranslationSnapshot(ctx context.Context, source ContentSource, locale string, translated map[string]string, model string) (bool, error) {
 	applied := false
 	err := s.WithTx(ctx, func(tx *gorm.DB) error {
@@ -62,16 +62,19 @@ func (s *Store) WriteTranslationSnapshot(ctx context.Context, source ContentSour
 
 var translationModelName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$`)
 
-// Validate the full resulting snapshot before stamping its source hash. A partial
-// correction may reuse current text, but never silently bless stale fields.
+// Explicit agent edits record provenance without mechanical translation checks.
+// Other callers retain validation of the full resulting snapshot.
 func (s *Store) validateTranslationWrite(ctx context.Context, source ContentSource, locale string, fields map[string]any) (string, error) {
 	model := ""
 	if op := domain.CurrentOperation(ctx); op != nil && op.AgentClientID > 0 {
 		name, _ := ctx.Value(translationModelKey{}).(string)
+		if name == "" {
+			return "agent:unspecified", nil
+		}
 		if !translationModelName.MatchString(name) {
 			return "", domain.Validation()
 		}
-		model = "hermes:" + strings.TrimPrefix(name, "hermes:")
+		return "hermes:" + strings.TrimPrefix(name, "hermes:"), nil
 	}
 	spec := content.Registry[source.Ref.Entity]
 	where, args := textWhere(source.Ref)
@@ -93,20 +96,6 @@ func (s *Store) validateTranslationWrite(ctx context.Context, source ContentSour
 	}
 	for key, value := range fields {
 		merged[textColumn(key)] = value
-	}
-	// Hermes owns catalog translation quality. Keep schema completeness, storage
-	// limits and source-version checks, but do not compare prose mechanically.
-	if model != "" && (source.Ref.Entity == "package" || source.Ref.Entity == "release") {
-		want, got := content.Flatten(source.Fields), content.Flatten(merged)
-		if len(want) != len(got) {
-			return "", domain.Validation()
-		}
-		for key := range want {
-			if strings.TrimSpace(got[key]) == "" {
-				return "", domain.Validation()
-			}
-		}
-		return model, nil
 	}
 	glossary, protected, err := s.ContentGlossary(ctx)
 	if err != nil {

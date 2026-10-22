@@ -11,16 +11,15 @@ import (
 	"unicode"
 )
 
-// Claims are editor-supplied references, not publication approvals. Publication
-// rebinds them to server snapshots and immutable, administrator-attested reports.
+// Claims are optional editor-supplied references, not verified publication receipts.
 type Claim struct {
 	Text           string `json:"text"`
 	Kind           string `json:"kind"`
-	EvidenceID     int64  `json:"evidenceId"`
+	EvidenceID     int64  `json:"evidenceId,omitempty"`
 	Excerpt        string `json:"excerpt"`
 	PackageID      *int64 `json:"packageId"`
 	AppVersion     string `json:"appVersion"`
-	Region         string `json:"region"`
+	Region         string `json:"region,omitempty"`
 	TestArtifactID *int64 `json:"testArtifactId"`
 }
 type Target struct {
@@ -68,10 +67,7 @@ func ValidClaims(claims []Claim) bool {
 		return false
 	}
 	for _, c := range claims {
-		if strings.TrimSpace(c.Text) == "" || len(c.Text) > 20000 || !slices.Contains([]string{"factual", "test"}, c.Kind) || c.EvidenceID < 1 || strings.TrimSpace(c.Excerpt) == "" || len(c.Excerpt) > 20000 || len(c.AppVersion) > 100 || !claimRegion.MatchString(c.Region) || c.PackageID != nil && *c.PackageID < 1 || c.TestArtifactID != nil && *c.TestArtifactID < 1 {
-			return false
-		}
-		if c.Kind == "test" && (c.TestArtifactID == nil || c.PackageID == nil || c.AppVersion == "") {
+		if strings.TrimSpace(c.Text) == "" || len(c.Text) > 20000 || !slices.Contains([]string{"factual", "test"}, c.Kind) || c.EvidenceID < 0 || len(c.Excerpt) > 20000 || len(c.AppVersion) > 100 || c.Region != "" && !claimRegion.MatchString(c.Region) || c.PackageID != nil && *c.PackageID < 1 || c.TestArtifactID != nil && *c.TestArtifactID < 1 {
 			return false
 		}
 	}

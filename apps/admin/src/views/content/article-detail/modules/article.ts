@@ -106,29 +106,18 @@ export function formProblems(form: ArticleForm): string[] {
   return out;
 }
 
-/** Publication requirements are separate so incomplete drafts can still be saved. */
+/** Validate supplied editorial metadata; evidence and targets are optional. */
 export function publicationProblems(form: ArticleForm): string[] {
   const out: string[] = [];
-  if (!form.target || !/^(pkg:[1-9][0-9]*|topic:[a-z0-9][a-z0-9-]*)$/.test(form.target.entityKey)) out.push('target');
+  if (form.target && !/^(pkg:[1-9][0-9]*|topic:[a-z0-9][a-z0-9-]*)$/.test(form.target.entityKey)) out.push('target');
   if (
-    !form.claims.length ||
     form.claims.some(
       claim =>
         !claim.text.trim() ||
-        !claim.excerpt.trim() ||
-        !Number.isSafeInteger(claim.evidenceId) ||
-        claim.evidenceId < 1 ||
-        !/^[A-Z]{2}$/.test(claim.region) ||
-        (claim.packageId != null && !form.packages.some(item => item.id === claim.packageId)) ||
-        ((form.type === 'review' || claim.kind === 'test') &&
-          (!claim.testArtifactId || !claim.packageId || !claim.appVersion.trim()))
+        (claim.evidenceId != null && (!Number.isSafeInteger(claim.evidenceId) || claim.evidenceId < 1)) ||
+        (claim.region != null && !/^[A-Z]{2}$/.test(claim.region))
     )
   )
     out.push('claims');
-  if (
-    form.target?.entityKey.startsWith('pkg:') &&
-    !form.packages.some(item => `pkg:${item.id}` === form.target?.entityKey)
-  )
-    out.push('target');
-  return [...new Set(out)];
+  return out;
 }

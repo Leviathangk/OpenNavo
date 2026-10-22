@@ -221,12 +221,12 @@ func (s *Service) Upsert(ctx context.Context, in Request, dry bool, actor store.
 			var id int64
 			if err := tx.Raw(`INSERT INTO seo_keywords(keyword,normalized,source,engine,country,language,device,period,search_volume,volume_state,difficulty,our_position,serp_features,vendor_task_id,cost_usd,anomaly,observed_at)
 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?,?,nullif(?,''),?)
-ON CONFLICT(normalized,source,engine,country,language,device,period) DO UPDATE SET keyword=EXCLUDED.keyword,search_volume=EXCLUDED.search_volume,volume_state=EXCLUDED.volume_state,difficulty=EXCLUDED.difficulty,our_position=EXCLUDED.our_position,serp_features=EXCLUDED.serp_features,vendor_task_id=EXCLUDED.vendor_task_id,cost_usd=EXCLUDED.cost_usd,anomaly=EXCLUDED.anomaly,observed_at=EXCLUDED.observed_at
+ON CONFLICT(keyword,source,engine,country,language,device,period) DO UPDATE SET keyword=EXCLUDED.keyword,search_volume=EXCLUDED.search_volume,volume_state=EXCLUDED.volume_state,difficulty=EXCLUDED.difficulty,our_position=EXCLUDED.our_position,serp_features=EXCLUDED.serp_features,vendor_task_id=EXCLUDED.vendor_task_id,cost_usd=EXCLUDED.cost_usd,anomaly=EXCLUDED.anomaly,observed_at=EXCLUDED.observed_at
 WHERE seo_keywords.observed_at<=EXCLUDED.observed_at AND (seo_keywords.keyword,seo_keywords.search_volume,seo_keywords.volume_state,seo_keywords.difficulty,seo_keywords.our_position,seo_keywords.serp_features,seo_keywords.vendor_task_id,seo_keywords.cost_usd,seo_keywords.anomaly,seo_keywords.observed_at) IS DISTINCT FROM (EXCLUDED.keyword,EXCLUDED.search_volume,EXCLUDED.volume_state,EXCLUDED.difficulty,EXCLUDED.our_position,EXCLUDED.serp_features,EXCLUDED.vendor_task_id,EXCLUDED.cost_usd,EXCLUDED.anomaly,EXCLUDED.observed_at) RETURNING id`, o.Keyword, Normalize(o.Keyword), o.Source, o.Engine, o.Country, o.Language, o.Device, o.Period, o.SearchVolume, o.VolumeState, o.Difficulty, o.OurPosition, string(features), o.VendorTaskID, o.CostUSD, anomaly, o.ObservedAt).Scan(&id).Error; err != nil {
 				return err
 			}
 			if id == 0 {
-				if err := tx.Raw(`SELECT id FROM seo_keywords WHERE normalized=? AND source=? AND engine=? AND country=? AND language=? AND device=? AND period=?`, Normalize(o.Keyword), o.Source, o.Engine, o.Country, o.Language, o.Device, o.Period).Scan(&id).Error; err != nil {
+				if err := tx.Raw(`SELECT id FROM seo_keywords WHERE keyword=? AND source=? AND engine=? AND country=? AND language=? AND device=? AND period=?`, o.Keyword, o.Source, o.Engine, o.Country, o.Language, o.Device, o.Period).Scan(&id).Error; err != nil {
 					return err
 				}
 			}

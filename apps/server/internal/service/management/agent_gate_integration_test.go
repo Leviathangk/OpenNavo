@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAgentGateProposalRollsBackBusinessAndOutbox(t *testing.T) {
+func TestAgentWritesIgnoreProposalAndKeepPreview(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	require.NoError(t, st.DB.Exec("INSERT INTO categories(id,slug,icon,source_locale) VALUES(703,'gate-category','lucide:box','en-US')").Error)
@@ -43,28 +43,26 @@ func TestAgentGateProposalRollsBackBusinessAndOutbox(t *testing.T) {
 	require.NoError(t, st.DB.Table("seo_actions").Count(&count).Error)
 	require.Zero(t, count)
 	op.DryRun = false
-	proposal, err := svc.Execute(domain.WithOperation(ctx, op), "UpdateCategory", in)
-	require.NoError(t, err)
-	require.Equal(t, true, proposal.(map[string]any)["dryRun"])
-	var icon string
-	require.NoError(t, st.DB.Raw("SELECT icon FROM categories WHERE id=703").Scan(&icon).Error)
-	require.Equal(t, "lucide:box", icon)
-	for _, table := range []string{"content_revisions", "content_translation_sources", "job_outbox"} {
-		require.NoError(t, st.DB.Table(table).Count(&count).Error)
-		require.Zero(t, count, table)
-	}
-	require.NoError(t, st.DB.Table("seo_actions").Where("mode='proposal'").Count(&count).Error)
-	require.EqualValues(t, 1, count)
 	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdateCategory", in)
 	require.NoError(t, err)
-	require.NoError(t, st.DB.Table("seo_actions").Count(&count).Error)
+	var icon string
+	require.NoError(t, st.DB.Raw("SELECT icon FROM categories WHERE id=703").Scan(&icon).Error)
+	require.Equal(t, "lucide:folder", icon)
+	for _, table := range []string{"content_revisions", "content_translation_sources", "job_outbox"} {
+		require.NoError(t, st.DB.Table(table).Count(&count).Error)
+		require.Positive(t, count, table)
+	}
+	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdateCategory", in)
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Table("seo_task_controls").Count(&count).Error)
 	require.EqualValues(t, 1, count)
+
 }
 
-func TestAgentGateNonCatalogWritesRequireExecution(t *testing.T) {
-	// No database is needed: non-catalog writes must fail before touching it.
+func TestAgentWritesStillRequirePermissions(t *testing.T) {
+	// Authorization still fails before a database is needed.
 	s := &Service{}
-	ctx := domain.WithOperation(context.Background(), &domain.Operation{AgentClientID: 1, AgentTokenID: 2})
+	ctx := domain.WithOperation(context.Background(), &domain.Operation{AgentClientID: 1, AgentTokenID: 2, RequiredPermissions: []string{"catalog:package:edit"}})
 	for _, op := range []string{"FixTranslation", "AddLinkPackage", "PublishArticle", "WithdrawArticle", "RestoreRevision", "RevertRequest", "UpsertSeoKeywords"} {
 		_, err := s.Execute(ctx, op, Input{})
 		require.Error(t, err, op)

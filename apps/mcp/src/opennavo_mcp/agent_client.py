@@ -32,33 +32,7 @@ MESSAGES = {
 }
 
 
-# Catalog edits are authorized by token permissions, not by a preallocated task.
-AUTONOMOUS_CATALOG_OPERATIONS = frozenset(
-    {
-        "updatePackageText",
-        "updatePackageMeta",
-        "setPackagePrice",
-        "setPackageMacosSupport",
-        "setPackageAlternatives",
-        "updatePackageI18n",
-        "setPackageCategories",
-        "setPackageFactRecords",
-        "setPackageIcon",
-        "deletePackageIcon",
-        "addPackageScreenshot",
-        "reorderPackageScreenshots",
-        "updatePackageScreenshot",
-        "deletePackageScreenshot",
-        "updatePackageChangelogSettings",
-        "upsertReleaseNotes",
-        "updateRelease",
-        "updateReleaseI18n",
-    }
-)
-
-
-# A gate rejection names one snake_case rule the agent can act on (for example
-# reopen_cooldown). That exact shape is the only backend text ever forwarded.
+# Forward only short, structured rejection reasons; never arbitrary backend text.
 REJECTION = re.compile(r"rejected: [a-z][a-z0-9_]{0,63}")
 
 
@@ -92,15 +66,6 @@ class AgentClient:
             data = model.model_dump(mode="json", exclude_unset=True, by_alias=True)
         except (ValidationError, ValueError, TypeError):
             raise AgentError("1001") from None
-        execution = {"taskId", "fencing", "idempotencyKey", "expectedRevision"}
-        supplied = execution.intersection(data)
-        if operation in AUTONOMOUS_CATALOG_OPERATIONS and not {"taskId", "fencing"} & supplied:
-            # Unleased catalog edit: the key is always required; the revision comes
-            # from the dry run and is required to commit (enforced by the server).
-            if "idempotencyKey" not in supplied:
-                raise AgentError("1001")
-        elif supplied and supplied != execution:
-            raise AgentError("1001")
         path = spec["path"]
         for key in spec["parameters"]["path"]:
             value = str(data.pop(key))

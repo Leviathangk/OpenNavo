@@ -17,7 +17,6 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/http/respond"
 	"github.com/opennavo/opennavo/server/internal/service/agent"
-	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/auth"
 	"github.com/opennavo/opennavo/server/internal/store"
 )
@@ -246,16 +245,11 @@ func touchAgentToken(c *gin.Context, svc *agent.Service, id agent.Identity, ip s
 	return true
 }
 
-// Catalog writes may run without an SEO task, but never without an idempotency
-// key: a retried request returns its first result. A commit also names the
-// revision its preview returned, so an unleased edit cannot overwrite a change
-// made in between. A partial task lease is never treated as an unleased edit.
-func optionalCatalogExecution(operation string, headers http.Header, dryRun bool) (*domain.AgentExecution, error) {
-	if !agentgate.AutonomousCatalogWrite(operation) || headers.Get("X-SEO-Task-ID") != "" || headers.Get("X-SEO-Fencing") != "" {
-		return agentExecution(headers)
-	}
+// Execution metadata is optional for all authorized business writes. When
+// supplied, a revision enables optimistic concurrency and a key enables replay.
+func optionalCatalogExecution(_ string, headers http.Header, _ bool) (*domain.AgentExecution, error) {
 	out := &domain.AgentExecution{IdempotencyKey: headers.Get("Idempotency-Key")}
-	if len(out.IdempotencyKey) < 8 || len(out.IdempotencyKey) > 200 {
+	if out.IdempotencyKey != "" && (len(out.IdempotencyKey) < 8 || len(out.IdempotencyKey) > 200) {
 		return nil, domain.Validation()
 	}
 	if raw := headers.Get("X-SEO-Expected-Revision"); raw != "" {
@@ -264,52 +258,8 @@ func optionalCatalogExecution(operation string, headers http.Header, dryRun bool
 			return nil, domain.Validation()
 		}
 		out.ExpectedRevision, out.ExpectedRevisionSet = value, true
-	} else if !dryRun {
-		return nil, &domain.AppError{Code: domain.CodeValidation, HTTPStatus: http.StatusUnprocessableEntity, Msg: "rejected: expected_revision_required"}
-	}
-	var err error
-	out.EvidenceIDs, err = evidenceIDs(headers.Get("X-SEO-Evidence-IDs"))
-	if err != nil {
-		return nil, err
 	}
 	return out, nil
-}
-
-func agentExecution(headers http.Header) (*domain.AgentExecution, error) {
-	out := &domain.AgentExecution{IdempotencyKey: headers.Get("Idempotency-Key"), ExpectedRevisionSet: true}
-	for name, dst := range map[string]*int64{"X-SEO-Task-ID": &out.TaskID, "X-SEO-Fencing": &out.Fencing, "X-SEO-Expected-Revision": &out.ExpectedRevision} {
-		value, err := strconv.ParseInt(headers.Get(name), 10, 64)
-		if err != nil || value < 0 {
-			return nil, domain.Validation()
-		}
-		*dst = value
-	}
-	if out.TaskID == 0 || out.Fencing == 0 || len(out.IdempotencyKey) < 8 || len(out.IdempotencyKey) > 200 {
-		return nil, domain.Validation()
-	}
-	var err error
-	out.EvidenceIDs, err = evidenceIDs(headers.Get("X-SEO-Evidence-IDs"))
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func evidenceIDs(raw string) ([]int64, error) {
-	if raw == "" {
-		return nil, nil
-	}
-	ids := []int64{}
-	seen := map[int64]bool{}
-	for _, part := range strings.Split(raw, ",") {
-		id, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
-		if err != nil || id <= 0 || seen[id] || len(ids) >= 40 {
-			return nil, domain.Validation()
-		}
-		ids = append(ids, id)
-		seen[id] = true
-	}
-	return ids, nil
 }
 
 // Pass only allowlisted operations to the generated router; system and similar paths are never registered.
@@ -337,8 +287,8 @@ func (r AgentRouter) DELETE(p string, h ...gin.HandlerFunc) gin.IRoutes {
 	return r.register(http.MethodDelete, p, h...)
 }
 
-// These operations verify their own body-bound idempotency and lease metadata.
-// Keep the exemption explicit: new business writes remain fail-closed.
+// Control operations and batch translations parse their own optional execution
+// metadata. Task claim/complete/defer still enforce the queue lease contract.
 func agentControlOperation(operation string) bool {
 	switch operation {
 	case "claimSeoTasks", "completeSeoTask", "deferSeoTask", "reopenSeoTask", "nominateSeoListing", "nominateSeoTopic", "createSeoEvidence", "updateSeoAutomation", "importSeoTasks", "writeTranslations", "recordSeoGeo":

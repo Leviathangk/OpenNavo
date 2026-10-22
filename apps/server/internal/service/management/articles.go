@@ -23,7 +23,7 @@ import (
 
 // Article writes (WP14). Drafts are edited in place until submitted; editing a published article
 // forks a new working revision, so nothing reaches the site until someone with publish permission
-// publishes it. Every write checks expectedRevision against the article's change counter.
+// publishes it. A supplied expectedRevision checks the article's change counter.
 
 func articleFields(body map[string]any) (map[string]json.RawMessage, error) {
 	data, err := json.Marshal(body)
@@ -229,7 +229,10 @@ func ptrText(value *string) string {
 func expectedRevision(fields map[string]json.RawMessage) (int64, error) {
 	raw, ok := fields["expectedRevision"]
 	var value int64
-	if !ok || json.Unmarshal(raw, &value) != nil || value < 1 {
+	if !ok {
+		return 0, nil
+	}
+	if json.Unmarshal(raw, &value) != nil || value < 1 {
 		return 0, domain.Validation()
 	}
 	delete(fields, "expectedRevision")
@@ -338,7 +341,7 @@ func (s *Service) lockArticle(ctx context.Context, st *store.Store, id int64, fi
 	if !found {
 		return article, fail(domain.CodeNotFound)
 	}
-	if article.Revision != expected {
+	if expected > 0 && article.Revision != expected {
 		return article, fail(domain.CodeConflict)
 	}
 	return article, nil
@@ -445,11 +448,6 @@ func (s *Service) createArticle(ctx context.Context, in Input) (any, error) {
 		if err := checkArticleReferences(ctx, st, draft); err != nil {
 			return 0, "", err
 		}
-		if draft.Target != nil || domain.CurrentOperation(ctx).AgentClientID > 0 {
-			if err := s.reserveArticleTarget(ctx, st, slug, draft); err != nil {
-				return 0, "", err
-			}
-		}
 		id, err := st.CreateArticleRecord(ctx, slug, key)
 		if err != nil {
 			return 0, "", err
@@ -487,11 +485,6 @@ func (s *Service) updateArticle(ctx context.Context, op string, in Input) (any, 
 		next, err := patchArticleDraft(current, fields, allowed...)
 		if err != nil {
 			return 0, "", err
-		}
-		if next.Target != nil {
-			if err := s.reserveArticleTarget(ctx, st, article.Slug, next); err != nil {
-				return 0, "", err
-			}
 		}
 		err = s.saveWorkingDraft(ctx, st, article, next, action, nil)
 		return article.ID, "update", err
@@ -595,17 +588,6 @@ func (s *Service) submitArticle(ctx context.Context, in Input) (any, error) {
 		if working.SubmittedAt != nil {
 			return article.ID, "update", nil
 		}
-		draft, err := st.LoadArticleDraft(ctx, working.ID)
-		if err != nil {
-			return 0, "", err
-		}
-		problems, _, err := articleReadiness(ctx, st, draft)
-		if err != nil {
-			return 0, "", err
-		}
-		if len(problems) > 0 {
-			return 0, "", domain.Validation()
-		}
 		_, actorID, actorName := articleActorInfo(ctx)
 		if err := st.DB.WithContext(ctx).Exec("UPDATE article_revisions SET submitted_at=now(),submitted_by=?,submitted_by_name=? WHERE id=?", actorID, actorName, working.ID).Error; err != nil {
 			return 0, "", err
@@ -629,7 +611,7 @@ func articleActorInfo(ctx context.Context) (bool, *int64, string) {
 	return op.AgentClientID > 0, op.ActorID, op.ActorName
 }
 
-// publishArticle makes the submitted working revision live. The first publication sets the
+// publishArticle makes the working revision live. The first publication sets the
 // publication date; later ones move dateModified only when what readers see changed.
 func (s *Service) publishArticle(ctx context.Context, in Input) (any, error) {
 	fields, err := articleFields(in.Body)
@@ -648,19 +630,12 @@ func (s *Service) publishArticle(ctx context.Context, in Input) (any, error) {
 		if err != nil {
 			return 0, "", err
 		}
-		if working.SubmittedAt == nil || working.PublishedAt != nil {
+		if working.PublishedAt != nil {
 			return 0, "", fail(domain.CodeInvalidState)
 		}
 		draft, err := st.LoadArticleDraft(ctx, working.ID)
 		if err != nil {
 			return 0, "", err
-		}
-		problems, _, err := articleReadiness(ctx, st, draft)
-		if err != nil {
-			return 0, "", err
-		}
-		if len(problems) > 0 {
-			return 0, "", domain.Validation()
 		}
 		if err := s.validateArticlePublication(ctx, st, article, working.ID, draft); err != nil {
 			return 0, "", err
@@ -811,9 +786,6 @@ func (s *Service) setArticleSlug(ctx context.Context, in Input) (any, error) {
 				continue
 			}
 			if err := st.DB.WithContext(ctx).Exec("UPDATE seo_targets SET target_url=? WHERE entity_key=? AND intent=? AND locale=? AND target_url=?", articleTargetURL(s.Config.WebBaseURL, d.SourceLocale, slug), d.Target.EntityKey, d.Target.Intent, d.SourceLocale, articleTargetURL(s.Config.WebBaseURL, d.SourceLocale, article.Slug)).Error; err != nil {
-				return 0, "", err
-			}
-			if err := s.reserveArticleTarget(ctx, st, slug, d); err != nil {
 				return 0, "", err
 			}
 		}

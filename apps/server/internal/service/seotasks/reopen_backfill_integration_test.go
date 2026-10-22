@@ -50,21 +50,12 @@ INSERT INTO category_i18n(category_id,locale,name,source_locale,status) VALUES(9
 						owner = "admin:1"
 					}
 					reopened, err := svc.Reopen(ctx, task.ID, owner, "corrected translation", person)
-					if change == "unchanged" {
-						require.NoError(t, err)
-						require.Equal(t, "open", reopened.State)
-						require.Equal(t, 1, reopened.ReopenCount)
-						again := claimOne(t, svc, owner, task.ID)
-						require.Greater(t, again.Fencing, claimed.Fencing)
-					} else {
-						var state *seotasks.StateError
-						require.ErrorAs(t, err, &state)
-						require.Equal(t, "superseded", state.Reason)
-						current, err := svc.Get(ctx, task.ID)
-						require.NoError(t, err)
-						require.Equal(t, outcome, current.State)
-						require.Zero(t, current.ReopenCount)
-					}
+					require.NoError(t, err)
+					require.Equal(t, "open", reopened.State)
+					require.Equal(t, 1, reopened.ReopenCount)
+					again := claimOne(t, svc, owner, task.ID)
+					require.Greater(t, again.Fencing, claimed.Fencing)
+
 				})
 			}
 		}

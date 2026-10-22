@@ -297,7 +297,6 @@ function addClaim() {
   form.value?.claims.push({
     text: '',
     kind: 'factual',
-    evidenceId: 0,
     excerpt: '',
     appVersion: '',
     region: 'ZZ',
@@ -351,16 +350,16 @@ const articlePath = computed(() => `/articles/${detail.value?.slug ?? ''}`);
               v-if="!isPublishedRevision && !submitted"
               type="primary"
               ghost
-              :disabled="problems.length > 0 && !dirty"
+              :disabled="localProblems.length > 0"
               :loading="busy === 'submit'"
               @click="submit"
             >
               {{ text('submit') }}
             </NButton>
             <NButton
-              v-if="canPublish && submitted"
+              v-if="canPublish && !isPublishedRevision"
               type="primary"
-              :disabled="dirty || publicationIssues.length > 0"
+              :disabled="dirty || localProblems.length > 0"
               :loading="busy === 'publish'"
               @click="publish"
             >

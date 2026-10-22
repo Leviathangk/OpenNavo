@@ -30,6 +30,15 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 describe('Human article evidence workflow', () => {
+  it('renders an annotation without evidence fields and keeps optional capture disabled', async () => {
+    const { wrapper, claim, button } = setup();
+    delete claim.excerpt;
+    delete claim.appVersion;
+    delete claim.region;
+    await flushPromises();
+    expect(button('captureSource')!.attributes('disabled')).toBeDefined();
+    expect(wrapper.exists()).toBe(true);
+  });
   it('captures a source and fills its returned ID without a task or manual ID entry', async () => {
     const { claim, button, fill, prepare } = setup();
     api.captureArticleEvidence.mockResolvedValue({

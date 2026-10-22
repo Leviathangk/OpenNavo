@@ -7,14 +7,10 @@ import (
 	"strings"
 
 	"github.com/opennavo/opennavo/server/internal/domain"
-	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/store"
 )
 
 func (s *Service) linkOperation(ctx context.Context, op string, in Input) (any, error) {
-	if op == "AddLinkPackage" && domain.CurrentOperation(ctx).AgentClientID > 0 {
-		return nil, &agentgate.Violation{Reason: "candidate_required"}
-	}
 	if op == "ListLinkPackages" {
 		rows, err := s.Store.LinkApps(ctx, false)
 		if err != nil {

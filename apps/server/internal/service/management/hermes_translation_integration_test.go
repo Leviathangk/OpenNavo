@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
-	"github.com/opennavo/opennavo/server/internal/llm"
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
@@ -57,7 +56,7 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 		return err
 	}
 	translated := map[string]any{"name": "文件管理工具", "description": "## 文件管理\n\n将 {count} 份文档保存在分类整理的文件夹中。"}
-	require.Error(t, fix(true, "", translated))
+	require.NoError(t, fix(true, "", translated))
 	require.NoError(t, fix(true, "fixture-model", translated))
 	var row struct{ Status, Model, SourceHash, Description string }
 	read := func() {
@@ -68,9 +67,10 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	require.Equal(t, "machine", row.Status)
 	require.Equal(t, "hermes:fixture-model", row.Model)
 	oldHash := row.SourceHash
-	require.Error(t, fix(true, "fixture-model", map[string]any{"description": "## 文件管理\n\n错误地删除了占位符的译文。"}))
+	require.NoError(t, fix(true, "fixture-model", map[string]any{"description": "## 文件管理\n\n错误地删除了占位符的译文。"}))
 	read()
-	require.Equal(t, translated["description"], row.Description)
+	require.Contains(t, row.Description, "删除了占位符")
+	require.NoError(t, fix(true, "fixture-model", translated))
 	require.NoError(t, fix(false, "", map[string]any{"name": "文档管理工具"}))
 	read()
 	require.Equal(t, "manual", row.Status)
@@ -83,7 +83,7 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	source, err := st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
 	require.Contains(t, source.Targets, "zh-CN")
-	require.Error(t, fix(true, "fixture-model", map[string]any{"name": "文件管理工具"}), "a partial stale translation cannot stamp a new source hash")
+	require.NoError(t, fix(true, "fixture-model", map[string]any{"name": "文件管理工具"}), "an explicit edit may replace manual or partial text")
 	injected := errors.New("injected failure after scheduling")
 	require.ErrorIs(t, st.WithTx(ctx, func(tx *gorm.DB) error {
 		if err := (&store.Store{DB: tx}).WriteContentText(ctx, ref, "en-US", map[string]any{"description": "Rollback this source change"}, true); err != nil {
@@ -100,7 +100,7 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	require.Zero(t, count)
 }
 
-func TestBatchTranslationFailureNamesTheBrokenRule(t *testing.T) {
+func TestBatchTranslationAcceptsChangedFormatting(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	require.NoError(t, st.DB.Exec("INSERT INTO categories(id,slug,icon,source_locale) VALUES(701,'translation-rule-fixture','lucide:box','en-US')").Error)
@@ -125,16 +125,13 @@ func TestBatchTranslationFailureNamesTheBrokenRule(t *testing.T) {
 	}})
 	require.NoError(t, err)
 	item := result.(map[string]any)["results"].([]any)[0].(map[string]any)
-	require.Equal(t, "failed", item["status"])
-	require.Equal(t, "validation_failed:changed_literal", item["reason"])
-	// The agent also learns where: the field and the span the translation dropped.
-	violations := item["violations"].([]llm.ContentViolation)
-	require.Equal(t, llm.ContentViolation{Rule: "changed_literal", Field: "description", Missing: []string{"`brew install organizer`"}}, violations[0])
+	require.Equal(t, "written", item["status"])
+
 }
 
 // A translation renders the source's own claims: "faster" in the source may
 // become "更快", but a translation may not add testing wording on its own.
-func TestTranslationsKeepOnlyTheTestingWordingTheirSourceStates(t *testing.T) {
+func TestTranslationsLeaveWordingToTheCaller(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	svc := &Service{Store: st}
@@ -167,6 +164,6 @@ func TestTranslationsKeepOnlyTheTestingWordingTheirSourceStates(t *testing.T) {
 	stated := write(702, "Opens large folders faster than the Finder list view.", "開啟大型資料夾的速度比 Finder 列表檢視更快。")
 	require.Equal(t, "validated", stated["reason"], stated)
 	added := write(703, "Opens large folders from the menu bar.", "從選單列開啟大型資料夾，速度更快。")
-	require.Equal(t, "failed", added["status"])
-	require.Equal(t, "test_artifact_required", added["reason"])
+	require.Equal(t, "written", added["status"])
+	require.Equal(t, "validated", added["reason"])
 }

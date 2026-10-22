@@ -35,7 +35,7 @@ func listingBody(t *testing.T, in any) map[string]any {
 	return b
 }
 
-func TestListingQuarantineIdentityAndPublication(t *testing.T) {
+func TestListingWorkspaceIsolationAndDirectPublication(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	s := &Service{Store: st}
 	actor := int64(1)
@@ -75,18 +75,11 @@ func TestListingQuarantineIdentityAndPublication(t *testing.T) {
 	require.Empty(t, links)
 	req.ExpectedRevision = 1
 	req.Action = "publish"
-	bad := "https://attacker.example.test/download"
-	req.Link.DownloadURL = &bad
-	_, err = write()
-	require.Error(t, err)
-	bad = "https://vendor.example.test/App.dmg"
-	_, err = write()
-	require.Error(t, err)
+	// An installer URL, a different download host and a suspicious optional
+	// baseline no longer block an editor's publication decision.
+	download = "https://downloads.example.test/App.dmg"
 	req.Link.DownloadURL = &download
 	require.NoError(t, st.DB.Exec("UPDATE seo_listing_baselines SET suspicious=true WHERE package_id=80").Error)
-	_, err = write()
-	require.Error(t, err)
-	require.NoError(t, st.DB.Exec("UPDATE seo_listing_baselines SET suspicious=false WHERE package_id=80").Error)
 	value, err := write()
 	require.NoError(t, err)
 	view := value.(map[string]any)
@@ -96,6 +89,14 @@ func TestListingQuarantineIdentityAndPublication(t *testing.T) {
 	c, err := st.ListingCandidate(ctx, "example-app")
 	require.NoError(t, err)
 	require.NotNil(t, c.PackageID)
+	require.NoError(t, st.DB.Exec("UPDATE seo_listing_baselines SET suspicious=false WHERE package_id=80").Error)
+	verified, err := s.listingView(ctx, st, req.Link.Token)
+	require.NoError(t, err)
+	require.Equal(t, true, verified["identityVerified"])
+	require.NoError(t, st.DB.Exec("UPDATE link_apps SET team_id='CHANGED123' WHERE package_id=?", *c.PackageID).Error)
+	changed, err := s.listingView(ctx, st, req.Link.Token)
+	require.NoError(t, err)
+	require.Equal(t, false, changed["identityVerified"])
 	app, err := st.LinkApp(ctx, *c.PackageID)
 	require.NoError(t, err)
 	require.Equal(t, download, *app.DownloadURL)
@@ -105,12 +106,12 @@ func TestListingQuarantineIdentityAndPublication(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, after.Removed)
 	}
-	// A legacy write (including restoration SQL) cannot turn it into an installer link.
-	require.Error(t, st.DB.Exec("UPDATE link_apps SET download_url='https://vendor.example.test/App.pkg' WHERE package_id=?", app.ID).Error)
-	require.Error(t, st.DB.Exec("UPDATE link_apps SET bundle_ids=ARRAY['test.rogue.App'] WHERE package_id=?", app.ID).Error)
-	require.Error(t, st.DB.Exec("UPDATE packages SET name='Unverified developer app' WHERE id=?", app.ID).Error)
+	// All writers can update published candidate identity and download fields.
+	require.NoError(t, st.DB.Exec("UPDATE link_apps SET download_url='https://vendor.example.test/App.pkg' WHERE package_id=?", app.ID).Error)
+	require.NoError(t, st.DB.Exec("UPDATE link_apps SET bundle_ids=ARRAY['test.rogue.App'] WHERE package_id=?", app.ID).Error)
+	require.NoError(t, st.DB.Exec("UPDATE packages SET name='Unverified developer app' WHERE id=?", app.ID).Error)
 	_, err = write()
-	require.Error(t, err) // Published candidates are terminal.
+	require.Error(t, err) // An explicitly stale revision still conflicts.
 	req.Link.Token = "other-app"
 	req.Link.Name = "Other App"
 	req.ExpectedRevision = 0
@@ -118,7 +119,8 @@ func TestListingQuarantineIdentityAndPublication(t *testing.T) {
 	req.Link.DownloadURL = nil
 	req.EvidenceID = listingEvidence(t, st, "listing:other-app", "Example Software EXAMPL1234 Other App An editor for macOS.", homepage, "reference").ID
 	_, err = write()
-	require.Error(t, err) // Bundle identity already exists.
+	require.NoError(t, err) // Shared bundle aliases no longer veto listing.
+	req.ExpectedRevision = 1
 	req.Link.BundleIDs = []string{"test.example.Other"}
 	_, err = write()
 	require.NoError(t, err) // Store/purchase-only does not prevent listing.
@@ -151,7 +153,7 @@ func TestListingAgentLiveOverrideReplayAndRevision(t *testing.T) {
 	require.NoError(t, err)
 	var count int64
 	require.NoError(t, st.DB.Table("seo_actions").Count(&count).Error)
-	require.EqualValues(t, 1, count)
+	require.Zero(t, count)
 	_, err = tasks.Complete(ctx, op.Execution.TaskID, op.Execution.Fencing, seotasks.Owner(1, 2), "done", "")
 	require.NoError(t, err)
 	// Live override works even with proposal configured. Further writes check revisions.
@@ -199,19 +201,25 @@ func TestListingAgentLiveOverrideReplayAndRevision(t *testing.T) {
 	_, err = s.Execute(domain.WithOperation(ctx, op), "UpsertSeoListingCandidate", in)
 	require.NoError(t, err)
 	_, err = s.linkOperation(domain.WithOperation(ctx, op), "AddLinkPackage", Input{})
-	require.ErrorContains(t, err, "candidate_required")
+	require.Error(t, err, "ordinary required link fields still apply")
 }
 
 func TestPublicationMigrationsUpAndDown(t *testing.T) {
 	st := testutil.NewSEOStore(t)
-	for _, name := range []string{"00056_article_evidence_artifacts.sql", "00055_seo_listing_candidates.sql"} {
+	names := []string{"00098_direct_agent_writes.sql", "00056_article_evidence_artifacts.sql", "00055_seo_listing_candidates.sql"}
+	for _, name := range names {
 		raw, err := migrations.Files.ReadFile(name)
 		require.NoError(t, err)
 		parts := strings.Split(string(raw), "-- +goose Down")
 		require.Len(t, parts, 2)
 		require.NoError(t, st.DB.Exec(parts[1]).Error, name+" down")
-		require.NoError(t, st.DB.Exec(parts[0]).Error, name+" up")
 	}
+	for i := len(names) - 1; i >= 0; i-- {
+		raw, err := migrations.Files.ReadFile(names[i])
+		require.NoError(t, err)
+		require.NoError(t, st.DB.Exec(strings.Split(string(raw), "-- +goose Down")[0]).Error, names[i]+" up")
+	}
+
 }
 
 func TestListingPublicationWithoutHumanBaseline(t *testing.T) {

@@ -369,8 +369,8 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error) {
 	ctx = operationContext(ctx, op, in)
 	domain.CurrentOperation(ctx).WebBaseURL = s.Config.WebBaseURL
-	// Control-plane operations and batch translations have their own permission,
-	// fencing and transaction boundaries; they never bypass the business gate.
+	// Control operations and batch translations have their own permission and
+	// transaction boundaries; task queue operations also verify lease ownership.
 	switch op {
 	case "ClaimSeoTasks", "GetSeoTask", "CompleteSeoTask", "DeferSeoTask", "ReopenSeoTask":
 		return s.seoTaskControl(ctx, op, in)

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"path"
 	"slices"
 	"strings"
 
@@ -43,28 +42,6 @@ func officialHost(raw string) string {
 	}
 	return strings.ToLower(u.Hostname())
 }
-func officialPage(raw, host string) bool {
-	if host == "" || officialHost(raw) != host {
-		return false
-	}
-	u, _ := url.Parse(raw)
-	// Extensionless endpoints cannot be proven to be HTML from their URL alone.
-	// Publication also binds the address to H2's captured HTML/text evidence.
-	for _, v := range append([]string{u.Path}, queryValues(u)...) {
-		ext := strings.ToLower(path.Ext(v))
-		if slices.Contains([]string{".dmg", ".pkg", ".zip", ".gz", ".xz", ".bz2", ".exe", ".app", ".iso", ".tar", ".7z"}, ext) {
-			return false
-		}
-	}
-	return true
-}
-func queryValues(u *url.URL) []string {
-	out := []string{}
-	for _, vs := range u.Query() {
-		out = append(out, vs...)
-	}
-	return out
-}
 func decodeStrictBody(body map[string]any, out any) error {
 	raw, err := json.Marshal(body)
 	if err != nil {
@@ -78,8 +55,7 @@ func decodeStrictBody(body map[string]any, out any) error {
 	return nil
 }
 
-// ListingAgentRevision and ListingAgentSnapshot are extension points for H2.
-// The generic gate still owns leases, policy, idempotency and atomic actions.
+// Candidate revisions and snapshots support optional concurrency checks and previews.
 func ListingAgentRevision(ctx context.Context, st *store.Store, token string) (int64, error) {
 	c, err := st.ListingCandidate(ctx, token)
 	if err != nil || c == nil {
@@ -169,6 +145,12 @@ func (s *Service) listingView(ctx context.Context, st *store.Store, token string
 	if c == nil {
 		return nil, fail(domain.CodeNotFound)
 	}
+	// Re-encode optional fields so older payloads with an empty download mode
+	// also satisfy the response contract without inventing a mode.
+	var input store.ListingInput
+	if err := json.Unmarshal(c.Payload, &input); err != nil {
+		return nil, domain.Internal(err)
+	}
 	var indexing any
 	if c.PackageID != nil {
 		row, found, err := st.IndexRowByID(ctx, *c.PackageID)
@@ -180,22 +162,24 @@ func (s *Service) listingView(ctx context.Context, st *store.Store, token string
 			if err != nil {
 				return nil, err
 			}
-			var p store.ListingInput
-			if json.Unmarshal(c.Payload, &p) != nil {
-				return nil, domain.Internal(nil)
-			}
-			indexing = seo.DecidePage(row.Facts(), seo.PageRef{Kind: seo.PageOverview, Locale: p.Link.SourceLocale}, policy)
+			indexing = seo.DecidePage(row.Facts(), seo.PageRef{Kind: seo.PageOverview, Locale: input.Link.SourceLocale}, policy)
 		}
 	}
 	identityVerified := false
-	if c.State == "published" && c.BaselinePackageID != nil {
+	if c.State == "published" && c.BaselinePackageID != nil && c.PackageID != nil {
 		b, err := st.ListingBaseline(ctx, *c.BaselinePackageID)
 		if err != nil {
 			return nil, err
 		}
-		identityVerified = b != nil && !b.Suspicious && b.ValidUntil.After(s.now())
+		app, err := st.LinkApp(ctx, *c.PackageID)
+		if err != nil {
+			return nil, err
+		}
+		// Direct edits may change the publisher; an old attestation must not be
+		// presented as verification of the replacement identity.
+		identityVerified = b != nil && !b.Suspicious && b.ValidUntil.After(s.now()) && app != nil && !app.Removed && app.Homepage != nil && app.TeamID != nil && officialHost(*app.Homepage) == b.Domain && *app.TeamID == b.TeamID
 	}
-	return map[string]any{"id": c.ID, "token": c.Token, "state": c.State, "revision": c.Revision, "packageId": c.PackageID, "identityVerified": identityVerified, "canDirectDownload": false, "indexing": indexing, "input": json.RawMessage(c.Payload)}, nil
+	return map[string]any{"id": c.ID, "token": c.Token, "state": c.State, "revision": c.Revision, "packageId": c.PackageID, "identityVerified": identityVerified, "canDirectDownload": false, "indexing": indexing, "input": input}, nil
 }
 
 func (s *Service) listingCandidate(ctx context.Context, name string, in Input) (any, error) {
@@ -206,11 +190,11 @@ func (s *Service) listingCandidate(ctx context.Context, name string, in Input) (
 	if err := decodeStrictBody(in.Body, &req); err != nil {
 		return nil, err
 	}
-	if req.Link.Token != in.Key || req.ExpectedRevision < 0 || !slices.Contains([]string{"save", "publish", "reject"}, req.Action) || req.Link.Validate() != nil || len(req.Summary) > 400 || len(req.Description) > 100000 || req.BaselinePackageID < 0 || !slices.Contains([]string{"official_page", "not_applicable"}, req.DownloadMode) {
+	if req.Link.Token != in.Key || req.ExpectedRevision < 0 || !slices.Contains([]string{"save", "publish", "reject"}, req.Action) || req.Link.Validate() != nil || len(req.Summary) > 400 || len(req.Description) > 100000 || req.BaselinePackageID < 0 {
 		return nil, domain.Validation()
 	}
-	if op := domain.CurrentOperation(ctx); op.AgentClientID > 0 && (op.Execution == nil || op.Execution.ExpectedRevision != req.ExpectedRevision) {
-		return nil, fail(domain.CodeConflict)
+	if _, supplied := in.Body["downloadMode"]; supplied && !slices.Contains([]string{"official_page", "not_applicable", "direct"}, req.DownloadMode) {
+		return nil, domain.Validation()
 	}
 	return s.write(ctx, in, name, "listing", func(st *store.Store) (any, error) {
 		if err := store.LockCatalogWrites(ctx, st.DB); err != nil {
@@ -223,17 +207,21 @@ func (s *Service) listingCandidate(ctx context.Context, name string, in Input) (
 		revision := int64(0)
 		if old != nil {
 			revision = old.Revision
-			if old.State != "candidate" && (old.State != "published" || req.Action != "publish") {
-				return nil, fail(domain.CodeInvalidState)
-			}
 		}
-		if revision != req.ExpectedRevision {
+		if _, supplied := in.Body["expectedRevision"]; supplied && revision != req.ExpectedRevision {
 			return nil, fail(domain.CodeConflict)
 		}
 		state := "candidate"
 		var packageID any
+		if old != nil {
+			packageID = old.PackageID
+		}
 		if req.Action == "reject" {
 			state = "rejected"
+		}
+		// Saving or rejecting candidate edits does not remove an already listed app.
+		if old != nil && old.PackageID != nil {
+			state = "published"
 		}
 		if req.Action == "publish" {
 			existingID := int64(0)
@@ -250,29 +238,22 @@ func (s *Service) listingCandidate(ctx context.Context, name string, in Input) (
 			if err := s.validateListingExcept(ctx, st, req, existingID); err != nil {
 				return nil, err
 			}
-			// Revalidate the replacement before advancing the trigger's identity snapshot.
-			// Any subsequent failure rolls this and the package write back together.
-			if existingID > 0 {
-				payload, err := json.Marshal(req)
-				if err != nil {
-					return nil, err
-				}
-				if err := st.DB.WithContext(ctx).Exec("UPDATE seo_listing_candidates SET payload=?::jsonb WHERE id=?", string(payload), old.ID).Error; err != nil {
-					return nil, err
-				}
-			}
 			id, err := st.WriteLinkApp(ctx, existingID, req.Link)
 			if err != nil {
 				return nil, err
 			}
-			if err := st.DB.WithContext(ctx).Exec(`INSERT INTO package_meta(package_id,icon_asset_id,icon_source,developer) VALUES(?,?,'manual',(SELECT developer FROM seo_listing_baselines WHERE package_id=?)) ON CONFLICT(package_id) DO UPDATE SET icon_asset_id=EXCLUDED.icon_asset_id,icon_source=EXCLUDED.icon_source,developer=COALESCE(EXCLUDED.developer,package_meta.developer)`, id, req.IconAssetID, req.BaselinePackageID).Error; err != nil {
-				return nil, err
+			if req.IconAssetID > 0 {
+				if err := st.DB.WithContext(ctx).Exec(`INSERT INTO package_meta(package_id,icon_asset_id,icon_source) VALUES(?,?,'manual') ON CONFLICT(package_id) DO UPDATE SET icon_asset_id=EXCLUDED.icon_asset_id,icon_source=EXCLUDED.icon_source`, id, req.IconAssetID).Error; err != nil {
+					return nil, err
+				}
 			}
-			if err := st.DB.WithContext(ctx).Exec("UPDATE package_categories SET is_primary=false WHERE package_id=? AND is_primary", id).Error; err != nil {
-				return nil, err
-			}
-			if err := st.DB.WithContext(ctx).Exec("INSERT INTO package_categories(package_id,category_id,is_primary,source) VALUES(?,?,true,'human') ON CONFLICT(package_id,category_id) DO UPDATE SET is_primary=true", id, req.CategoryID).Error; err != nil {
-				return nil, err
+			if req.CategoryID > 0 {
+				if err := st.DB.WithContext(ctx).Exec("UPDATE package_categories SET is_primary=false WHERE package_id=? AND is_primary", id).Error; err != nil {
+					return nil, err
+				}
+				if err := st.DB.WithContext(ctx).Exec("INSERT INTO package_categories(package_id,category_id,is_primary,source) VALUES(?,?,true,'human') ON CONFLICT(package_id,category_id) DO UPDATE SET is_primary=true", id, req.CategoryID).Error; err != nil {
+					return nil, err
+				}
 			}
 			if err := st.WriteContentText(ctx, content.Ref{Entity: "package", ID: id}, req.Link.SourceLocale, map[string]any{"displayName": req.Link.Name, "summary": req.Summary, "description": req.Description}, true); err != nil {
 				return nil, err
@@ -299,54 +280,15 @@ func (s *Service) listingCandidate(ctx context.Context, name string, in Input) (
 func (s *Service) validateListing(ctx context.Context, st *store.Store, req store.ListingInput) error {
 	return s.validateListingExcept(ctx, st, req, 0)
 }
-func (s *Service) validateListingExcept(ctx context.Context, st *store.Store, req store.ListingInput, exceptID int64) error {
-	if strings.TrimSpace(req.Summary) == "" || req.CategoryID < 1 || req.IconAssetID < 1 || req.Link.Homepage == nil || req.Link.GithubRepo != nil || req.Link.SparkleFeed != nil || len(req.Link.AssetRules) > 0 || len(req.Link.Notes) > 0 {
-		return domain.Validation()
-	}
-	host := officialHost(*req.Link.Homepage)
-	if req.BaselinePackageID > 0 {
-		b, err := st.ListingBaseline(ctx, req.BaselinePackageID)
-		if err != nil {
-			return err
-		}
-		if b == nil || b.Suspicious || !b.ValidUntil.After(s.now()) || b.Domain != host || req.Link.TeamID == nil || b.TeamID != *req.Link.TeamID {
-			return domain.Validation()
-		}
-		baseline, err := agentgate.LoadEvidence(ctx, st.DB, []int64{b.EvidenceID}, fmt.Sprintf("pkg:%d", b.PackageID), true)
-		if err != nil {
-			return publicationEvidenceError(err)
-		}
-		if !evidenceIntact(baseline[0]) || baseline[0].BodyHash != b.EvidenceHash {
-			return domain.Validation()
-		}
-	}
-	if req.DownloadMode == "official_page" && (req.Link.DownloadURL == nil || !officialPage(*req.Link.DownloadURL, host)) || req.DownloadMode == "not_applicable" && req.Link.DownloadURL != nil {
-		return domain.Validation()
-	}
-	evidence, err := agentgate.LoadEvidence(ctx, st.DB, []int64{req.EvidenceID}, "listing:"+req.Link.Token, false)
-	if err != nil {
-		return publicationEvidenceError(err)
-	}
-	e := evidence[0]
-	if !evidenceIntact(e) || officialHost(e.FinalURL) != host {
-		return domain.Validation()
-	}
-	if req.DownloadMode == "official_page" && e.FinalURL != *req.Link.DownloadURL {
-		return domain.Validation()
-	}
-	var ready bool
-	if err := st.DB.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM categories WHERE id=? AND applies_to IN ('both','cask')) AND EXISTS(SELECT 1 FROM assets WHERE id=? AND kind='icon')`, req.CategoryID, req.IconAssetID).Scan(&ready).Error; err != nil {
+func (s *Service) validateListingExcept(ctx context.Context, st *store.Store, req store.ListingInput, _ int64) error {
+	// Optional references must point to compatible stored objects. Editorial
+	// completeness, provenance and download-source selection belong to the caller.
+	var valid bool
+	if err := st.DB.WithContext(ctx).Raw(`SELECT (?=0 OR EXISTS(SELECT 1 FROM categories WHERE id=? AND applies_to IN ('both','cask'))) AND (?=0 OR EXISTS(SELECT 1 FROM assets WHERE id=? AND kind='icon'))`, req.CategoryID, req.CategoryID, req.IconAssetID, req.IconAssetID).Scan(&valid).Error; err != nil {
 		return err
 	}
-	if !ready {
+	if !valid {
 		return domain.Validation()
-	}
-	duplicate, err := st.ListingDuplicateExcept(ctx, req.Link, exceptID)
-	if err != nil {
-		return err
-	}
-	if duplicate {
-		return fail(domain.CodeConflict)
 	}
 	return nil
 }

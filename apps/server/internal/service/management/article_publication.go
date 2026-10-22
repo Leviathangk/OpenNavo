@@ -2,13 +2,10 @@ package management
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/opennavo/opennavo/server/internal/articles"
@@ -21,120 +18,15 @@ import (
 func articleTargetURL(base, locale, slug string) string {
 	return strings.TrimRight(base, "/") + i18n.Metadata[i18n.LocaleCode(locale)].Prefix + "/articles/" + url.PathEscape(slug)
 }
-func (s *Service) reserveArticleTarget(ctx context.Context, st *store.Store, slug string, d store.ArticleDraft) error {
-	if d.Target == nil || !d.Target.Valid() {
-		return domain.Validation()
-	}
-	base, err := url.Parse(s.Config.WebBaseURL)
-	if err != nil || base.Scheme != "https" || base.Host == "" {
-		return domain.Validation()
-	}
-	if strings.HasPrefix(d.Target.EntityKey, "pkg:") {
-		id, err := strconv.ParseInt(strings.TrimPrefix(d.Target.EntityKey, "pkg:"), 10, 64)
-		if err != nil || !slices.Contains(d.Packages, id) {
-			return domain.Validation()
-		}
-	}
-	target := articleTargetURL(s.Config.WebBaseURL, d.SourceLocale, slug)
-	var saved string
-	err = st.DB.WithContext(ctx).Raw(`INSERT INTO seo_targets(entity_key,intent,locale,target_url) VALUES(?,?,?,?) ON CONFLICT(entity_key,intent,locale) DO UPDATE SET target_url=seo_targets.target_url RETURNING target_url`, d.Target.EntityKey, d.Target.Intent, d.SourceLocale, target).Scan(&saved).Error
-	if err != nil {
-		return err
-	}
-	if saved != target {
-		return fail(domain.CodeConflict)
-	}
-	return nil
-}
-func evidenceContainsScope(body, value string) bool {
-	if value == "" || value == "ZZ" {
-		return true
-	}
-	boundary := `[^\pL\pN]`
-	if regexp.MustCompile(`^[0-9]+(?:\.[0-9]+)*$`).MatchString(value) {
-		boundary = `[^\pL\pN.]`
-	}
-	return regexp.MustCompile(`(?:^|` + boundary + `)` + regexp.QuoteMeta(value) + `(?:$|` + boundary + `)`).MatchString(body)
-}
-func loadClaimEvidence(ctx context.Context, st *store.Store, a store.Article, c articles.Claim) (agentgate.Evidence, error) {
-	// Read the persisted scope, then use H2's actual freshness/revocation checks.
-	// A caller cannot pick a different entity just by putting a URL in a claim.
-	var scope string
-	if err := st.DB.WithContext(ctx).Raw("SELECT entity_key FROM seo_evidence_snapshots WHERE id=? FOR SHARE", c.EvidenceID).Scan(&scope).Error; err != nil {
-		return agentgate.Evidence{}, err
-	}
-	allowed := scope == fmt.Sprintf("article:%d", a.ID) || scope == "article:new:"+a.Slug
-	if !allowed && strings.HasPrefix(scope, "article:new:") {
-		if err := st.DB.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM article_slug_aliases WHERE article_id=? AND slug=?)", a.ID, strings.TrimPrefix(scope, "article:new:")).Scan(&allowed).Error; err != nil {
-			return agentgate.Evidence{}, err
-		}
-	}
-	if c.PackageID != nil {
-		allowed = scope == fmt.Sprintf("pkg:%d", *c.PackageID) || scope == fmt.Sprintf("package:%d", *c.PackageID)
-	}
-	if !allowed {
-		return agentgate.Evidence{}, domain.Validation()
-	}
-	e, err := agentgate.LoadEvidence(ctx, st.DB, []int64{c.EvidenceID}, scope, false)
-	if err != nil {
-		return agentgate.Evidence{}, publicationEvidenceError(err)
-	}
-	return e[0], nil
-}
 
-// All publication paths validate the persisted revision, including rollback and
-// restore. A request body with valid claims cannot approve different stored text.
-func (s *Service) validateArticlePublication(ctx context.Context, st *store.Store, a store.Article, revisionID int64, d store.ArticleDraft) error {
-	problems, _, err := articleReadiness(ctx, st, d)
-	if err != nil {
-		return err
-	}
-	if len(problems) > 0 || !articles.ValidClaims(d.Claims) {
-		return domain.Validation()
-	}
+// Publication checks actual stored references and records the editorial decision.
+func (s *Service) validateArticlePublication(ctx context.Context, st *store.Store, _ store.Article, revisionID int64, d store.ArticleDraft) error {
 	if err := checkArticleReferences(ctx, st, d); err != nil {
 		return err
 	}
-	if err := s.reserveArticleTarget(ctx, st, a.Slug, d); err != nil {
-		return err
-	}
-	// Editors judge factual coverage and wording; references remain auditable.
-	receipts := []articles.ClaimEvidence{}
-	for _, c := range d.Claims {
-		if c.PackageID != nil && !slices.Contains(d.Packages, *c.PackageID) {
-			return domain.Validation()
-		}
-		e, err := loadClaimEvidence(ctx, st, a, c)
-		if err != nil {
-			return err
-		}
-		if !evidenceIntact(e) {
-			return domain.Validation()
-		}
-		receipt := articles.ClaimEvidence{EvidenceID: e.ID, SourceURL: e.FinalURL, BodyHash: e.BodyHash, CheckedAt: e.FetchedAt, ValidUntil: e.ValidUntil}
-		needsTest := c.Kind == "test" || c.TestArtifactID != nil
-		if needsTest {
-			if c.TestArtifactID == nil || c.PackageID == nil {
-				return domain.Validation()
-			}
-			artifact, err := st.ArticleTestArtifact(ctx, *c.TestArtifactID)
-			if err != nil {
-				return err
-			}
-			var report articles.TestArtifactInput
-			if artifact.ID == 0 || artifact.ArticleID != a.ID || artifact.PackageID != *c.PackageID || json.Unmarshal(artifact.Payload, &report) != nil || artifact.SHA256 != report.Hash() || !report.Valid(s.now()) || report.AppVersion != c.AppVersion || report.Region != c.Region {
-				return domain.Validation()
-			}
-			receipt.TestArtifactID = c.TestArtifactID
-			receipt.TestArtifactHash = &artifact.SHA256
-		}
-		receipts = append(receipts, receipt)
-	}
-	raw, err := json.Marshal(receipts)
-	if err != nil {
-		return err
-	}
-	return st.DB.WithContext(ctx).Exec("UPDATE article_revisions SET claim_evidence=?::jsonb,editorial_reviewed_at=clock_timestamp() WHERE id=?", string(raw), revisionID).Error
+	// Record the editor's publication decision so it is not repeatedly queued
+	// for review. This does not synthesize factual evidence or test receipts.
+	return st.DB.WithContext(ctx).Exec("UPDATE article_revisions SET editorial_reviewed_at=clock_timestamp() WHERE id=?", revisionID).Error
 }
 
 func (s *Service) articleTestArtifacts(ctx context.Context, op string, in Input) (any, error) {

@@ -92,15 +92,6 @@ func (s *Service) Complete(ctx context.Context, id, fencing int64, owner, outcom
 		if err != nil {
 			return err
 		}
-		if outcome == "done" && task.Kind != "tech_alert" {
-			var count int64
-			if err := tx.Raw("SELECT count(*) FROM seo_actions WHERE task_id=? AND owner=?", id, owner).Scan(&count).Error; err != nil {
-				return err
-			}
-			if count == 0 {
-				return ErrInvalid
-			}
-		}
 		raw, _ := json.Marshal(map[string]any{"outcome": outcome, "reason": reason})
 		// A finished task reports what its last write produced. A skipped or
 		// quarantined one keeps the agent's reason, with the last write beside it.

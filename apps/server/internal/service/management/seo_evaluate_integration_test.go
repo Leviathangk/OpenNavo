@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/seobudget"
@@ -32,13 +33,14 @@ func seedEvaluatedPackage(t *testing.T, svc *Service) (int64, int64) {
 	evidence := agentgate.Evidence{EntityKey: "pkg:709", SourceURL: "https://vendor.example.test", FinalURL: "https://vendor.example.test", BodyText: "Mac utility", Excerpt: "Mac utility", BodyHash: seotasks.Hash([]byte("Mac utility")), FetchedAt: time.Now(), ValidUntil: time.Now().Add(time.Hour), Authority: "official", FetchStatus: 200, CreatedBy: "fixture", CaptureKey: uuid.NewString(), RequestHash: seotasks.Hash([]byte("fixture"))}
 	require.NoError(t, db.Create(&evidence).Error)
 	op := &domain.Operation{RequestID: uuid.NewString(), Name: "updatePackageMeta", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"catalog:package:edit"}, RequiredPermissions: []string{"catalog:package:edit"}, Execution: &domain.AgentExecution{TaskID: leased[0].ID, Fencing: leased[0].Fencing, IdempotencyKey: uuid.NewString(), EvidenceIDs: []int64{evidence.ID}}}
+	ref := content.Ref{Entity: "package", ID: 709}
+	before, err := captureHistory(ctx, svc.Store, []content.Ref{ref})
+	require.NoError(t, err)
 	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdatePackageMeta", Input{ID: 709, Body: map[string]any{"notes": "Changed Mac utility", "downloadSize": int64(4096)}})
 	require.NoError(t, err)
+	action := recordLegacyAction(t, svc.Store, leased[0], op, ref, before)
 	_, err = tasks.Complete(ctx, leased[0].ID, leased[0].Fencing, seotasks.Owner(1, 2), "done", "")
 	require.NoError(t, err)
-	var action int64
-	require.NoError(t, db.Raw("SELECT id FROM seo_actions WHERE task_id=?", leased[0].ID).Scan(&action).Error)
-	require.Positive(t, action)
 	return action, evidence.ID
 }
 

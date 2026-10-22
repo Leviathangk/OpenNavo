@@ -27,7 +27,7 @@ func TestKeywordRevisionDetectsHumanWriteAndTaskTraceExposesRevision(t *testing.
 	body := map[string]any{"records": []any{map[string]any{"keyword": "example mac", "source": "gsc", "engine": "google", "country": "US", "language": "en-US", "device": "all", "period": "2026-10", "volumeState": "unknown", "observedAt": time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)}}, "targets": []any{}}
 	_, err = svc.Execute(domain.WithOperation(ctx, &domain.Operation{Permissions: []string{"*"}}), "UpsertSeoKeywords", Input{Body: body})
 	require.NoError(t, err)
-	op := &domain.Operation{RequestID: uuid.NewString(), Name: "upsertSeoKeywords", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"seo:keyword:edit", "seo:task:handle"}, RequiredPermissions: []string{"seo:keyword:edit"}, Execution: &domain.AgentExecution{TaskID: leased[0].ID, Fencing: leased[0].Fencing, IdempotencyKey: uuid.NewString()}}
+	op := &domain.Operation{RequestID: uuid.NewString(), Name: "upsertSeoKeywords", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"seo:keyword:edit", "seo:task:handle"}, RequiredPermissions: []string{"seo:keyword:edit"}, Execution: &domain.AgentExecution{TaskID: leased[0].ID, Fencing: leased[0].Fencing, IdempotencyKey: uuid.NewString(), ExpectedRevisionSet: true}}
 	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpsertSeoKeywords", Input{Body: body})
 	require.Error(t, err)
 	trace, err := svc.Execute(domain.WithOperation(ctx, op), "GetSeoTask", Input{ID: leased[0].ID})

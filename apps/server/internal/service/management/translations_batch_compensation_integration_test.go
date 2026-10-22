@@ -42,17 +42,29 @@ func TestHermesBatchCompensationRestoresTranslationAndProtectsLaterFix(t *testin
 		current, err := st.TranslationValue(ctx, ref, "zh-CN")
 		require.NoError(t, err)
 		key := uuid.NewString()
+		before, err := st.HistorySnapshot(ctx, ref)
+		require.NoError(t, err)
 		request := translationBatch{Ref: ref, Model: "fixture-model", TaskID: leased[0].ID, Fencing: leased[0].Fencing, Translations: []translationItem{{Locale: "zh-CN", SourceHash: source.Hash, ExpectedRevision: current.Revision, IdempotencyKey: key, Fields: map[string]any{"name": name, "description": "将 {count} 份文档整理到文件夹中。"}}}}
 		value, err := svc.Execute(ctx, "WriteTranslations", Input{Body: hermesMap(request)})
 		require.NoError(t, err)
 		require.Equal(t, "written", hermesMap(value)["results"].([]any)[0].(map[string]any)["status"])
-		var action savedAction
-		require.NoError(t, st.DB.Raw("SELECT id,after_revision FROM seo_actions WHERE idempotency_key=?", key).Scan(&action).Error)
-		require.NotNil(t, action.AfterRevision)
 		currentRevision, err := actionRevision(ctx, st, []content.Ref{ref})
 		require.NoError(t, err)
-		require.Positive(t, *action.AfterRevision)
-		require.Equal(t, currentRevision, *action.AfterRevision)
+		after, err := st.HistorySnapshot(ctx, ref)
+		require.NoError(t, err)
+		entity := "category:820"
+		prior := map[string]store.HistoryState{entity: before}
+		next := map[string]store.HistoryState{entity: after}
+		var action savedAction
+		require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
+			begun, err := seotasks.Begin(ctx, tx, seotasks.Write{TaskID: leased[0].ID, Fencing: leased[0].Fencing, Owner: seotasks.Owner(1, 2), IdempotencyKey: key, Operation: "WriteTranslations", Payload: request})
+			if err != nil {
+				return err
+			}
+			action.ID, err = seotasks.CommitPartial(ctx, tx, begun, seotasks.Mutation{Mode: "live", RuleVersion: "fixture", PlaybookVersion: "fixture", Object: "translation", ObjectID: entity, Fields: agentgate.ChangedFields(prior, next), Before: prior, After: next, Result: value, AfterRevision: &currentRevision})
+			return err
+		}))
+		action.AfterRevision = &currentRevision
 		return action
 	}
 	compensate := func(actionID int64) (any, error) {

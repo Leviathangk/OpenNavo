@@ -101,7 +101,7 @@ export interface paths {
         put?: never;
         /**
          * reopenSeoTask
-         * @description Return a quarantined or skipped task to the queue after its cause was fixed. People may always reopen; agents at most three times per task and once per hour. A translation whose source changed since is superseded by the task for the current source and is not reopened. Rejections carry `rejected: <rule>` (not_reopenable, expired, superseded, reopen_limit, reopen_cooldown).
+         * @description Return any existing task to the queue without cooldown, expiry or source-version prerequisites. Clears its current lease and retry delay and advances fencing so previous workers cannot complete it.
          */
         post: operations["reopenSeoTask"];
         delete?: never;
@@ -187,12 +187,12 @@ export interface paths {
         };
         /**
          * getSeoAutomation
-         * @description Server-owned Hermes control/import/translation operation. Requires seo:automation:tune. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         * @description Server-owned Hermes control/import/translation operation. Requires seo:automation:tune. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
          */
         get: operations["getSeoAutomation"];
         /**
          * updateSeoAutomation
-         * @description Server-owned Hermes control/import/translation operation. Requires seo:automation:tune. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         * @description Server-owned Hermes control/import/translation operation. Requires seo:automation:tune. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
          */
         put: operations["updateSeoAutomation"];
         post?: never;
@@ -213,7 +213,7 @@ export interface paths {
         put?: never;
         /**
          * importSeoTasks
-         * @description Server-owned Hermes control/import/translation operation. Requires seo:task:handle. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         * @description Server-owned Hermes control/import/translation operation. Requires seo:task:handle. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
          */
         post: operations["importSeoTasks"];
         delete?: never;
@@ -231,7 +231,7 @@ export interface paths {
         };
         /**
          * getTranslationsSource
-         * @description Server-owned Hermes control/import/translation operation. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         * @description Server-owned Hermes control/import/translation operation. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
          */
         get: operations["getTranslationsSource"];
         put?: never;
@@ -253,7 +253,7 @@ export interface paths {
         put?: never;
         /**
          * writeTranslations
-         * @description Server-owned Hermes control/import/translation operation. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action must pass current gates.
+         * @description Server-owned Hermes control/import/translation operation. Requires translation:review. Agent access requires an internal gateway and a separately scoped token. Tuning never applies old proposals; each live action validates permissions and input independently.
          */
         post: operations["writeTranslations"];
         delete?: never;
@@ -1178,7 +1178,7 @@ export interface paths {
         put?: never;
         /**
          * Create an article draft
-         * @description Creates a draft with revision 1. Text goes in the source language only; translations start after publication. idempotencyKey returns the same article when a call is retried. Problems that block review are listed in readiness. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Creates a draft with revision 1. Text goes in the source language only; translations start after publication. idempotencyKey returns the same article when a call is retried. Editorial suggestions are listed in readiness. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         post: operations["createArticle"];
         delete?: never;
@@ -1196,12 +1196,12 @@ export interface paths {
         };
         /**
          * Read an article
-         * @description The working revision with its source text, the published revision, language status of the published revision, revision history, review record and what blocks review (readiness). Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description The working revision with its source text, the published revision, language status of the published revision, revision history, review record and editorial suggestions (readiness). Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         get: operations["getAdminArticle"];
         /**
          * Edit the working revision
-         * @description Changes only the fields sent; null clears optional fields. Editing a published article creates a new working revision and never changes the live page. Editing a submitted draft withdraws the submission. expectedRevision must equal the article revision. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Changes only the fields sent; null clears optional fields. Editing a published article creates a new working revision and never changes the live page. Editing a submitted draft withdraws the submission. When provided, expectedRevision must equal the article revision. Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         put: operations["updateArticle"];
         post?: never;
@@ -1242,7 +1242,7 @@ export interface paths {
         put?: never;
         /**
          * Submit the working revision for review
-         * @description Fails while readiness lists problems (missing title, summary or body, unsafe Markdown, images that are not OpenNavo assets, unknown app cards, no sources for compilations, no test record for reviews). Requires content:article:edit. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Optionally marks a draft as submitted for editorial review. Readiness is advisory and does not block submission or publication. Requires content:article:edit. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         post: operations["submitArticleReview"];
         delete?: never;
@@ -1262,7 +1262,7 @@ export interface paths {
         put?: never;
         /**
          * Publish the submitted revision
-         * @description Makes the submitted working revision live and starts its translations; each language appears once its translation passes the checks. The first publication sets the publication date; later ones move the update date only when what readers see changed. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
+         * @description Makes the working draft live and starts its translations. Review submission, readiness, task, target and evidence are not prerequisites. The first publication sets the publication date; later ones move the update date only when what readers see changed. Requires content:article:publish. Also available through /agent-api with an Agent token and gateway secret; token permissions are enforced.
          */
         post: operations["publishArticle"];
         delete?: never;
@@ -1322,7 +1322,7 @@ export interface paths {
         put?: never;
         /**
          * Restore an earlier article revision
-         * @description Restores a previously published revision directly online, including its published pointer and language state; this requires content:article:publish and fresh evidence/artifacts. An unpublished revision is copied into a working draft and requires content:article:edit. All writes check expectedRevision. Agent writes also require the task lease and evidence envelope.
+         * @description Restores a previously published revision directly online, including its published pointer and language state; this requires content:article:publish. An unpublished revision is copied into a working draft and requires content:article:edit. expectedRevision is optional. Agent writes require no task lease or evidence envelope.
          */
         post: operations["revertArticle"];
         delete?: never;
@@ -2975,12 +2975,12 @@ export interface paths {
         };
         /**
          * getSeoListingCandidate
-         * @description Isolated software listing. Only publish creates a public package. Downloads use an evidence-backed official page; installer files are never verified.
+         * @description Optional candidate workspace. Publishing directly creates or updates a link app; tasks, evidence, identity baselines and complete editorial metadata are not required.
          */
         get: operations["getSeoListingCandidate"];
         /**
          * upsertSeoListingCandidate
-         * @description Isolated software listing. Only publish creates a public package. Downloads use an evidence-backed official page; installer files are never verified.
+         * @description Optional candidate workspace. Publishing directly creates or updates a link app; tasks, evidence, identity baselines and complete editorial metadata are not required.
          */
         put: operations["upsertSeoListingCandidate"];
         post?: never;
@@ -3233,7 +3233,7 @@ export interface components {
          *     }
          */
         SeoTaskReopen: {
-            idempotencyKey: string;
+            idempotencyKey?: string;
             reason: string;
         };
         /**
@@ -4091,9 +4091,9 @@ export interface components {
          */
         BatchTranslationInput: {
             locale: components["schemas"]["Locale"];
-            sourceHash: string;
-            expectedRevision: string;
-            idempotencyKey: string;
+            sourceHash?: string;
+            expectedRevision?: string;
+            idempotencyKey?: string;
             fields: components["schemas"]["ContentFields"];
         };
         /**
@@ -4120,7 +4120,7 @@ export interface components {
          */
         TranslationsBatchWrite: {
             ref: components["schemas"]["ContentRef"];
-            model: string;
+            model?: string;
             /** Format: int64 */
             taskId?: number;
             /** Format: int64 */
@@ -4503,7 +4503,7 @@ export interface components {
             data: components["schemas"]["TranslationsBatchResult"];
         };
         /**
-         * @description A complete assertion bound to a fresh server-captured evidence snapshot. All visible sentences, title, summary, SEO text and test notes must be covered at publication. Review revisions require an immutable testArtifactId for every claim, including claims labeled factual; other types need an artifact for test or comparison assertions. Artifact references must match article, package, appVersion and region. Missing proof rejects publication without rewriting the draft.
+         * @description Optional editorial annotation. Evidence, excerpt, version, region and test artifacts may be supplied for reference; they are not publication prerequisites or verified receipts.
          * @example {
          *       "text": "Example App supports macOS.",
          *       "kind": "factual",
@@ -4527,18 +4527,18 @@ export interface components {
              * Format: int64
              * @example 1
              */
-            evidenceId: number;
+            evidenceId?: number;
             /** @example Example App supports macOS. */
-            excerpt: string;
+            excerpt?: string;
             /**
              * Format: int64
              * @example 1
              */
             packageId?: number | null;
             /** @example  */
-            appVersion: string;
+            appVersion?: string;
             /** @example ZZ */
-            region: string;
+            region?: string;
             /**
              * Format: int64
              * @example 1
@@ -4546,7 +4546,7 @@ export interface components {
             testArtifactId?: number | null;
         };
         /**
-         * @description Unique entity, intent and source-language destination in seo_targets. Required for Agent article creation and all publication paths; an existing different destination rejects the write.
+         * @description Optional entity and intent metadata for editorial planning. Article creation and publication do not require a target or reserve an exclusive destination.
          * @example {
          *       "entityKey": "topic:mac-editors",
          *       "intent": "topic"
@@ -4883,7 +4883,7 @@ export interface components {
              * Format: int64
              * @example 0
              */
-            expectedRevision: number;
+            expectedRevision?: number;
             /**
              * @example save
              * @enum {string}
@@ -4891,19 +4891,19 @@ export interface components {
             action: "save" | "publish" | "reject";
             link: components["schemas"]["LinkPackageAdd"];
             /** @example An editor for macOS. */
-            summary: string;
+            summary?: string;
             /** @example  */
-            description: string;
+            description?: string;
             /**
              * Format: int64
              * @example 1
              */
-            categoryId: number;
+            categoryId?: number;
             /**
              * Format: int64
              * @example 1
              */
-            iconAssetId: number;
+            iconAssetId?: number;
             /**
              * Format: int64
              * @description Optional human identity attestation. Omit or use zero when unavailable; publication does not assert verified identity.
@@ -4914,12 +4914,12 @@ export interface components {
              * @example official_page
              * @enum {string}
              */
-            downloadMode: "official_page" | "not_applicable";
+            downloadMode?: "official_page" | "not_applicable" | "direct";
             /**
              * Format: int64
              * @example 1
              */
-            evidenceId: number;
+            evidenceId?: number;
         };
         /**
          * @example {
@@ -8701,6 +8701,12 @@ export interface components {
          *     }
          */
         LinkPackage: {
+            /**
+             * Format: int64
+             * @description Link edit counter. Use this value for the optional expected revision when updating or removing this Link app; package content revisions are separate.
+             * @example 0
+             */
+            revision?: number;
             token: string;
             name: string;
             sourceLocale: components["schemas"]["Locale"];
@@ -19229,7 +19235,7 @@ export interface components {
          */
         AgentDryRun: {
             /**
-             * @description All server gates passed against the previewed state; live execution revalidates.
+             * @description Input validation passed against the previewed state; live execution revalidates.
              * @example passed
              * @enum {string}
              */
@@ -20334,7 +20340,7 @@ export interface components {
             locales?: components["schemas"]["Locale"][];
         };
         /**
-         * @description Non-source languages only. Agent writes require model and become machine with the current source hash; human edits become manual. Validate complete snapshots, literals, Markdown, language, glossary and lengths.
+         * @description Non-source languages only. Agent edits become machine with the current source hash; human edits become manual. Agent translation wording, completeness and formatting are decided by the caller; field types and storage limits still apply.
          * @example {
          *       "ref": {
          *         "entity": "package",
@@ -20351,7 +20357,7 @@ export interface components {
             ref: components["schemas"]["ContentRef"];
             locale: components["schemas"]["Locale"];
             /**
-             * @description Required for Agent writes; the server adds the hermes prefix.
+             * @description Optional model provenance; omitted models are recorded as agent:unspecified.
              * @example example-model
              */
             model?: string;
@@ -21540,7 +21546,7 @@ export interface components {
              * @description The article revision from the last read; a mismatch means someone else changed it
              * @example 4
              */
-            expectedRevision: number;
+            expectedRevision?: number;
             sourceLocale?: components["schemas"]["Locale"];
             type?: components["schemas"]["ArticleType"];
             /** @example How to choose a screenshot app for Mac */
@@ -21583,7 +21589,7 @@ export interface components {
              * Format: int64
              * @example 4
              */
-            expectedRevision: number;
+            expectedRevision?: number;
             packageIds: number[];
         };
         /**
@@ -21596,7 +21602,7 @@ export interface components {
              * Format: int64
              * @example 4
              */
-            expectedRevision: number;
+            expectedRevision?: number;
         };
         /**
          * @example {
@@ -21608,7 +21614,7 @@ export interface components {
              * Format: int64
              * @example 4
              */
-            expectedRevision: number;
+            expectedRevision?: number;
             /** @example Prices changed; rewriting. */
             reason?: string | null;
         };
@@ -21623,7 +21629,7 @@ export interface components {
              * Format: int64
              * @example 4
              */
-            expectedRevision: number;
+            expectedRevision?: number;
             /** @example 2 */
             revisionNumber: number;
         };
@@ -21638,7 +21644,7 @@ export interface components {
              * Format: int64
              * @example 4
              */
-            expectedRevision: number;
+            expectedRevision?: number;
             /** @example screenshot-apps-for-mac */
             slug: string;
         };
@@ -21653,7 +21659,7 @@ export interface components {
              * Format: int64
              * @example 4
              */
-            expectedRevision: number;
+            expectedRevision?: number;
             /** @example true */
             withheld: boolean;
         };
@@ -26208,15 +26214,15 @@ export interface components {
         };
     };
     parameters: {
-        /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+        /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
         SeoTaskID: number;
-        /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+        /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
         SeoFencing: number;
-        /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+        /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
         SeoExpectedRevision: number;
-        /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+        /** @description Optional retry key. An identical retry with this key returns the first result. */
         SeoIdempotencyKey: string;
-        /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+        /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
         SeoEvidenceIDs: number[];
         IdPath: number;
         LocalePath: components["schemas"]["Locale"];
@@ -26585,15 +26591,15 @@ export interface operations {
                 "X-Request-Id"?: components["parameters"]["AgentRequestId"];
                 /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
                 "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
             };
             path?: never;
@@ -26642,15 +26648,15 @@ export interface operations {
                 "X-Request-Id"?: components["parameters"]["AgentRequestId"];
                 /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
                 "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
             };
             path: {
@@ -26970,15 +26976,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -27016,15 +27022,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -27341,15 +27347,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -27433,15 +27439,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -27888,15 +27894,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -27988,15 +27994,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28053,15 +28059,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28125,15 +28131,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28220,15 +28226,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28281,15 +28287,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28337,15 +28343,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28418,15 +28424,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28481,15 +28487,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28539,15 +28545,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28602,15 +28608,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28735,15 +28741,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28818,15 +28824,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28883,15 +28889,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -28930,15 +28936,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29018,15 +29024,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29072,15 +29078,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29151,15 +29157,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29217,15 +29223,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29277,15 +29283,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29345,15 +29351,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29431,15 +29437,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29534,15 +29540,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29591,15 +29597,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29651,15 +29657,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29707,15 +29713,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29758,15 +29764,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29809,15 +29815,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29860,15 +29866,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29911,15 +29917,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -29962,15 +29968,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30046,15 +30052,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30095,15 +30101,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30185,15 +30191,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30287,15 +30293,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30354,15 +30360,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30401,15 +30407,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30467,15 +30473,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30523,15 +30529,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30609,15 +30615,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30720,15 +30726,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -30796,15 +30802,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -31004,15 +31010,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -31253,15 +31259,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -31408,15 +31414,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -31467,15 +31473,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -31528,15 +31534,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -31646,15 +31652,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -31739,15 +31745,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -31798,15 +31804,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -32544,15 +32550,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -32598,15 +32604,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -32727,15 +32733,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -32816,15 +32822,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -32874,15 +32880,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -32948,15 +32954,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -33000,15 +33006,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -33483,15 +33489,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -33599,15 +33605,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -33641,15 +33647,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -33852,15 +33858,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -33911,15 +33917,15 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
                 /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
                 "X-Agent-Tool"?: components["parameters"]["AgentTool"];
@@ -34006,15 +34012,15 @@ export interface operations {
                 "X-Request-Id"?: components["parameters"]["AgentRequestId"];
                 /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
                 "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional task metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
+                /** @description Legacy optional fencing metadata; business writes do not acquire or require task leases. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
+                /** @description Optional optimistic concurrency check. Omit to write directly; a supplied stale revision rejects the write. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
+                /** @description Optional retry key. An identical retry with this key returns the first result. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
-                /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
+                /** @description Optional legacy evidence metadata, serialized as comma-separated integers; evidence does not gate business writes. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
             };
             path: {

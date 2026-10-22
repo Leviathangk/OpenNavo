@@ -202,16 +202,16 @@ describe('Article publication fields', () => {
     expect(changedFields(form, view)).toMatchObject({ claims: [{ evidenceId: 42 }], target: { intent: 'compare' } });
     expect(publicationProblems(form)).toEqual([]);
     form.claims[0]!.kind = 'test';
-    expect(publicationProblems(form)).toContain('claims');
-    form.target!.entityKey = 'pkg:999';
+    expect(publicationProblems(form)).toEqual([]);
+    form.target!.entityKey = 'pkg:invalid';
     expect(publicationProblems(form)).toContain('target');
   });
-  it('blocks publishing when evidence or target is missing', async () => {
+  it('allows direct publication without submission, evidence or target', async () => {
     permissions.publish = true;
     api.fetchArticle.mockResolvedValue({
       data: article(
-        { status: 'review', readiness: [] },
-        { claims: [], target: null, submittedAt: '2026-10-13T09:00:00Z' }
+        { status: 'draft', readiness: ['summary'] },
+        { claims: [{ text: 'An annotation without evidence', kind: 'test' }], target: null }
       ),
       error: null
     });
@@ -220,8 +220,8 @@ describe('Article publication fields', () => {
     });
     await flushPromises();
     const publish = wrapper.findAll('button').find(node => node.text() === 'page.content.articleDetail.publish')!;
-    expect(publish.attributes('disabled')).toBeDefined();
-    expect(wrapper.text()).toContain('page.content.articleDetail.problems.claims');
+    expect(publish.attributes('disabled')).toBeUndefined();
+    expect(wrapper.text()).not.toContain('page.content.articleDetail.problems.claims');
   });
 });
 
@@ -356,7 +356,7 @@ describe('Article editor', () => {
     expect(wrapper.text()).toContain('page.content.article.statuses.review');
   });
 
-  it('offers publishing only to publishers once the draft is submitted', async () => {
+  it('offers publishing to publishers for a submitted draft', async () => {
     permissions.publish = true;
     api.fetchArticle.mockResolvedValue({
       data: article({ status: 'review', readiness: [] }, { summary: 'Done', submittedAt: '2026-10-13T09:00:00Z' }),

@@ -53,7 +53,7 @@ func articleFixture(t *testing.T) (*store.Store, *Service, *seotasks.Service) {
 
 // An agent article states its facts in its own words, cites them, and uses one
 // daily article slot from creation through publication.
-func TestAgentArticleClaimsInOwnWordsPublishInOneDailySlot(t *testing.T) {
+func TestAgentArticlePublicationWithoutBusinessQuota(t *testing.T) {
 	ctx := context.Background()
 	st, s, tasks := articleFixture(t)
 	slug := "batch-export-mac"
@@ -80,7 +80,7 @@ func TestAgentArticleClaimsInOwnWordsPublishInOneDailySlot(t *testing.T) {
 	id := created.(map[string]any)["id"].(int64)
 	var slots []string
 	require.NoError(t, st.DB.Raw("SELECT entity_key FROM seo_daily_entities WHERE action='article'").Scan(&slots).Error)
-	require.Equal(t, []string{fmt.Sprintf("article:%d", id)}, slots, "creation moves its slot to the article it created")
+	require.Empty(t, slots, "direct publication does not reserve business quota")
 	_, err = agent.write("SubmitArticleReview", id, map[string]any{}, e.ID)
 	require.NoError(t, err, "the second write to the new article must not need another daily slot")
 
@@ -98,7 +98,7 @@ func TestAgentArticleClaimsInOwnWordsPublishInOneDailySlot(t *testing.T) {
 	require.NoError(t, s.validateArticlePublication(ctx, st, a, a.WorkingRevisionID, draft))
 	foreign := listingEvidence(t, st, "pkg:777", "Unrelated vendor notes. "+excerpt, "https://other.example.test/notes", "official")
 	wrong[1].EvidenceID = foreign.ID
-	require.Error(t, s.validateArticlePublication(ctx, st, a, a.WorkingRevisionID, draft), "evidence of an unlinked package is still rejected")
+	require.NoError(t, s.validateArticlePublication(ctx, st, a, a.WorkingRevisionID, draft), "annotations are not a publication gate")
 
 	_, err = agent.write("PublishArticle", id, map[string]any{}, e.ID)
 	require.NoError(t, err)
@@ -107,9 +107,9 @@ func TestAgentArticleClaimsInOwnWordsPublishInOneDailySlot(t *testing.T) {
 	require.Equal(t, "published", a.Status)
 	var receipts string
 	require.NoError(t, st.DB.Raw("SELECT claim_evidence::text FROM article_revisions WHERE id=?", *a.PublishedRevisionID).Scan(&receipts).Error)
-	require.Contains(t, receipts, e.BodyHash)
+	require.JSONEq(t, "[]", receipts, "direct publication does not fabricate verified receipts")
 	require.NoError(t, st.DB.Raw("SELECT entity_key FROM seo_daily_entities WHERE action='article'").Scan(&slots).Error)
-	require.Len(t, slots, 1)
+	require.Empty(t, slots)
 	var priorities []float64
 	require.NoError(t, st.DB.Raw("SELECT DISTINCT priority FROM seo_tasks WHERE kind='translate' AND entity_key=?", fmt.Sprintf("article:%d", *a.PublishedRevisionID)).Scan(&priorities).Error)
 	require.Equal(t, []float64{150}, priorities, "a published article's other languages are translated first")

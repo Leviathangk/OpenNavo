@@ -126,7 +126,7 @@ func TestNominatedTopicBecomesATopicTask(t *testing.T) {
 	require.Equal(t, domain.CodeValidation, app.Code)
 }
 
-func TestReopenThroughManagementNamesTheRule(t *testing.T) {
+func TestReopenThroughManagementWithoutPreconditions(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	svc := &Service{Store: st}
@@ -136,10 +136,10 @@ func TestReopenThroughManagementNamesTheRule(t *testing.T) {
 		return svc.Execute(domain.WithOperation(ctx, agentOperation("reopenSeoTask")), "ReopenSeoTask", Input{ID: task.ID, Body: map[string]any{"idempotencyKey": uuid.NewString(), "reason": "fixed"}})
 	}
 	_, err = reopen()
-	requireRejected(t, err, "not_reopenable")
+	require.NoError(t, err)
 	require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET state='quarantined' WHERE id=?", task.ID).Error)
 	result, err := reopen()
 	require.NoError(t, err)
 	require.Equal(t, "open", result.(seotasks.Task).State)
-	require.Equal(t, 1, result.(seotasks.Task).ReopenCount)
+	require.Equal(t, 2, result.(seotasks.Task).ReopenCount)
 }

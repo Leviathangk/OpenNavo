@@ -13,6 +13,7 @@ import (
 type LinkApp struct {
 	domain.LinkInput
 	ID              int64                 `json:"id"`
+	Revision        int64                 `json:"revision"`
 	Kind            string                `json:"kind"`
 	Latest          *domain.GithubRelease `json:"latest"`
 	ETag            *string               `json:"etag"`
@@ -22,7 +23,7 @@ type LinkApp struct {
 	Removed         bool                  `json:"removed"`
 }
 
-const linkView = `SELECT jsonb_build_object('id',p.id,'kind',p.kind,'token',p.token,'name',p.name,'sourceLocale',p.source_locale,'homepage',l.homepage,'downloadUrl',l.download_url,'githubRepo',l.github_repo,'bundleIds',l.bundle_ids,'teamId',l.team_id,'pricing',l.pricing,'sparkleFeed',l.sparkle_feed,'assetRules',l.asset_rules,'notes',l.notes,'latest',l.latest,'etag',l.etag,'syncedAt',l.synced_at,'lastError',l.last_error,'adoptedByCaskAt',l.adopted_by_cask_at,'removed',p.removed_at IS NOT NULL) AS data FROM link_apps l JOIN packages p ON p.id=l.package_id`
+const linkView = `SELECT jsonb_build_object('id',p.id,'revision',l.revision,'kind',p.kind,'token',p.token,'name',p.name,'sourceLocale',p.source_locale,'homepage',l.homepage,'downloadUrl',l.download_url,'githubRepo',l.github_repo,'bundleIds',l.bundle_ids,'teamId',l.team_id,'pricing',l.pricing,'sparkleFeed',l.sparkle_feed,'assetRules',l.asset_rules,'notes',l.notes,'latest',l.latest,'etag',l.etag,'syncedAt',l.synced_at,'lastError',l.last_error,'adoptedByCaskAt',l.adopted_by_cask_at,'removed',p.removed_at IS NOT NULL) AS data FROM link_apps l JOIN packages p ON p.id=l.package_id`
 
 func (s *Store) LinkApps(ctx context.Context, activeOnly bool) ([]LinkApp, error) {
 	condition := ""

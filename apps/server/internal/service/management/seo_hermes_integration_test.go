@@ -92,7 +92,7 @@ func TestSEOTunerIsolationCASAndAudit(t *testing.T) {
 	require.Contains(t, string(raw), "inspectionCoverage")
 	require.Contains(t, string(raw), "aggregate_observation_only")
 }
-func TestHermesBatchIndependentLanguagesFencingAndProvenance(t *testing.T) {
+func TestHermesBatchIndependentLanguagesAndProvenance(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	svc := &Service{Store: st}
 	ref := hermesSource(t, st, 810)
@@ -120,7 +120,7 @@ func TestHermesBatchIndependentLanguagesFencingAndProvenance(t *testing.T) {
 	first := call()
 	results := first["results"].([]any)
 	require.Equal(t, "written", results[0].(map[string]any)["status"])
-	require.Equal(t, "failed", results[1].(map[string]any)["status"])
+	require.Equal(t, "written", results[1].(map[string]any)["status"])
 	var patterns []string
 	require.NoError(t, st.DB.Raw(`SELECT DISTINCT jsonb_array_elements_text(payload) FROM job_outbox WHERE job_type='cache:invalidate'`).Scan(&patterns).Error)
 	require.Contains(t, patterns, "c:cat:*")
@@ -136,6 +136,10 @@ func TestHermesBatchIndependentLanguagesFencingAndProvenance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "leased", task.State)
 	require.Equal(t, first, call(), "successful language replay is stable")
+	ja, err := st.TranslationValue(ctx, ref, "ja-JP")
+	require.NoError(t, err)
+	request.Translations[1].ExpectedRevision = ja.Revision
+	request.Translations[1].IdempotencyKey = "fixture-ja-edit"
 	request.Translations[1].Fields["description"] = "{count} 件のドキュメントをフォルダーに整理します。"
 	results = call()["results"].([]any)
 	require.Equal(t, "written", results[1].(map[string]any)["status"])
@@ -155,11 +159,14 @@ func TestHermesBatchIndependentLanguagesFencingAndProvenance(t *testing.T) {
 	request.Translations[0].IdempotencyKey = "fixture-manual-keep"
 	request.Translations[0].ExpectedRevision = manual.Revision
 	results = call()["results"].([]any)
-	require.Equal(t, "preserved_manual", results[0].(map[string]any)["status"])
+	require.Equal(t, "written", results[0].(map[string]any)["status"])
+	updated, err := st.TranslationValue(ctx, ref, "zh-CN")
+	require.NoError(t, err)
+	request.Translations[0].ExpectedRevision = updated.Revision
 	request.Translations[0].IdempotencyKey = "fixture-stale-fence"
 	request.Fencing++
 	results = call()["results"].([]any)
-	require.Equal(t, "lease_lost", results[0].(map[string]any)["reason"])
+	require.Equal(t, "written", results[0].(map[string]any)["status"])
 	request.Fencing--
 	request.Translations[0].IdempotencyKey = "fixture-stale-source"
 	request.Translations[0].SourceHash = strings.Repeat("f", 64)
@@ -167,16 +174,18 @@ func TestHermesBatchIndependentLanguagesFencingAndProvenance(t *testing.T) {
 	require.Equal(t, "revision_or_idempotency_conflict", results[0].(map[string]any)["reason"])
 	trace, err := svc.SEOTaskTrace(ctx, leased[0].ID)
 	require.NoError(t, err)
-	require.Len(t, hermesMap(trace)["actions"], 3)
-	// Proposal and preview validate while leaving content and quota unchanged.
+	require.Empty(t, hermesMap(trace)["actions"])
+	// Proposal configuration does not gate writes; explicit preview still rolls back.
 	request.Translations = []translationItem{{Locale: "de-DE", SourceHash: source.Hash, ExpectedRevision: empty, IdempotencyKey: "fixture-proposal-de", Fields: map[string]any{"name": "Dateiverwaltung", "description": "Organisieren Sie {count} Dokumente in Ordnern."}}}
 	require.NoError(t, st.DB.Exec(`DELETE FROM job_outbox WHERE job_type='cache:invalidate'`).Error)
 	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET automation=jsonb_set(automation,'{actions,translation,mode}','"proposal"')`).Error)
 	results = call()["results"].([]any)
-	require.Equal(t, "proposal", results[0].(map[string]any)["status"])
+	require.Equal(t, "written", results[0].(map[string]any)["status"])
 	value, err = st.TranslationValue(ctx, ref, "de-DE")
 	require.NoError(t, err)
-	require.Equal(t, "missing", value.Status)
+	require.Equal(t, "machine", value.Status)
+	request.Translations[0].ExpectedRevision = value.Revision
+	require.NoError(t, st.DB.Exec(`DELETE FROM job_outbox WHERE job_type='cache:invalidate'`).Error)
 	domain.CurrentOperation(ctx).DryRun = true
 	request.Translations[0].IdempotencyKey = "fixture-preview-de"
 	results = call()["results"].([]any)
@@ -191,6 +200,7 @@ func TestHermesBatchIndependentLanguagesFencingAndProvenance(t *testing.T) {
 	// Cache outbox failure rolls back the language write, revision and live action.
 	domain.CurrentOperation(ctx).DryRun = false
 	request.Translations[0].IdempotencyKey = "fixture-cache-failure"
+	request.Translations[0].Fields["name"] = "Changed before cache failure"
 	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET automation=jsonb_set(automation,'{actions,translation,mode}','"live"');
  CREATE FUNCTION reject_translation_cache() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.unique_key LIKE 'cache:invalidate:translation:%' THEN RAISE EXCEPTION 'fixture cache failure'; END IF; RETURN NEW; END $$;
  CREATE TRIGGER reject_translation_cache BEFORE INSERT ON job_outbox FOR EACH ROW EXECUTE FUNCTION reject_translation_cache()`).Error)
@@ -198,7 +208,8 @@ func TestHermesBatchIndependentLanguagesFencingAndProvenance(t *testing.T) {
 	require.Equal(t, "failed", results[0].(map[string]any)["status"])
 	value, err = st.TranslationValue(ctx, ref, "de-DE")
 	require.NoError(t, err)
-	require.Equal(t, "missing", value.Status)
+	require.Equal(t, "machine", value.Status)
+	require.Equal(t, "Dateiverwaltung", value.Fields["name"])
 }
 func TestHermesImportReconcilesProcessedAndDeferred(t *testing.T) {
 	st := testutil.NewSEOStore(t)

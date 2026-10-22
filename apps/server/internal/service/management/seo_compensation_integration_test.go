@@ -17,9 +17,10 @@ import (
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
-func TestCompensationAtomicScopeRevisionAndBudget(t *testing.T) {
+func TestCompensationAtomicScopeRevisionWithoutBusinessBudget(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	svc := &Service{Store: st}
@@ -36,10 +37,11 @@ func TestCompensationAtomicScopeRevisionAndBudget(t *testing.T) {
 	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET automation=jsonb_set(automation,'{actions,content,mode}','"live"')`).Error)
 	op := &domain.Operation{RequestID: uuid.NewString(), Name: "updateCategory", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"catalog:category:edit", "seo:task:handle"}, RequiredPermissions: []string{"catalog:category:edit"}, Execution: &domain.AgentExecution{TaskID: leased[0].ID, Fencing: leased[0].Fencing, IdempotencyKey: uuid.NewString(), EvidenceIDs: []int64{evidence.ID}}}
 	in := Input{ID: 708, Body: map[string]any{"icon": "lucide:folder", "sourceLocale": "en-US", "i18n": map[string]any{"en-US": map[string]any{"name": "Mac utilities"}}}}
+	before, err := captureHistory(ctx, st, []content.Ref{ref})
+	require.NoError(t, err)
 	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdateCategory", in)
 	require.NoError(t, err)
-	var actionID int64
-	require.NoError(t, st.DB.Raw("SELECT id FROM seo_actions WHERE task_id=?", leased[0].ID).Scan(&actionID).Error)
+	actionID := recordLegacyAction(t, st, leased[0], op, ref, before)
 	revision, err := actionRevision(ctx, st, []content.Ref{ref})
 	require.NoError(t, err)
 	require.Positive(t, revision)
@@ -67,14 +69,17 @@ func TestCompensationAtomicScopeRevisionAndBudget(t *testing.T) {
 	require.NoError(t, st.DB.Table("seo_actions").Where("compensated_at IS NOT NULL").Count(&count).Error)
 	require.EqualValues(t, 1, count)
 	require.NoError(t, st.DB.Table("seo_daily_entities").Where("action='compensate'").Count(&count).Error)
-	require.EqualValues(t, 1, count)
+	require.Zero(t, count)
 	// A later revision blocks compensation even when its snapshot is identical.
-	var latest struct {
-		ID                    int64
-		BeforeData, AfterData json.RawMessage
-		AfterRevision         int64
-	}
-	require.NoError(t, st.DB.Raw("SELECT id,before_data,after_data,after_revision FROM seo_actions ORDER BY id DESC LIMIT 1").Scan(&latest).Error)
+	before, err = captureHistory(ctx, st, []content.Ref{ref})
+	require.NoError(t, err)
+	op.RequestID = uuid.NewString()
+	op.Name = "UpdateCategory"
+	op.RequiredPermissions = []string{"catalog:category:edit"}
+	op.Execution.IdempotencyKey = uuid.NewString()
+	_, err = svc.Execute(domain.WithOperation(ctx, op), "UpdateCategory", in)
+	require.NoError(t, err)
+	laterAction := recordLegacyAction(t, st, leased[0], op, ref, before)
 	state, err := st.HistorySnapshot(ctx, ref)
 	require.NoError(t, err)
 	altered := store.HistoryState{"categories": []map[string]any{{"id": float64(708), "icon": "fixture"}}}
@@ -84,6 +89,29 @@ func TestCompensationAtomicScopeRevisionAndBudget(t *testing.T) {
 	require.NoError(t, err)
 	op.Execution.IdempotencyKey = uuid.NewString()
 	op.RequestID = uuid.NewString()
-	_, err = svc.Execute(domain.WithOperation(ctx, op), "CompensateSeoAction", Input{ID: latest.ID, Body: map[string]any{"reason": "implementation_error"}})
+	op.Name = "CompensateSeoAction"
+	op.RequiredPermissions = []string{"seo:task:handle"}
+	_, err = svc.Execute(domain.WithOperation(ctx, op), "CompensateSeoAction", Input{ID: laterAction, Body: map[string]any{"reason": "implementation_error"}})
 	require.Error(t, err)
+}
+
+// Seed a historical leased action explicitly. Direct writes no longer produce
+// seo_actions, but compensation and evaluation must still handle old records.
+func recordLegacyAction(t *testing.T, st *store.Store, task seotasks.Task, op *domain.Operation, ref content.Ref, before any) int64 {
+	t.Helper()
+	ctx := context.Background()
+	after, err := captureHistory(ctx, st, []content.Ref{ref})
+	require.NoError(t, err)
+	revision, err := actionRevision(ctx, st, []content.Ref{ref})
+	require.NoError(t, err)
+	var id int64
+	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
+		b, err := seotasks.Begin(ctx, tx, seotasks.Write{TaskID: task.ID, Fencing: task.Fencing, Owner: seotasks.Owner(op.AgentClientID, op.AgentTokenID), Operation: op.Name, IdempotencyKey: uuid.NewString(), EvidenceIDs: op.Execution.EvidenceIDs, Payload: after})
+		if err != nil {
+			return err
+		}
+		id, err = seotasks.CommitPartial(ctx, tx, b, seotasks.Mutation{Mode: "live", Object: ref.Entity, ObjectID: task.EntityKey, Before: before, After: after, Fields: agentgate.ChangedFields(before, after), AfterRevision: &revision, RuleVersion: "fixture", PlaybookVersion: "fixture"})
+		return err
+	}))
+	return id
 }

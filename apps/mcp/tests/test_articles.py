@@ -66,8 +66,8 @@ async def test_article_revision_and_payload(
         assert json.loads(request.content) == {"expectedRevision": 9, **body}
         backend.calls.clear()
         result = await client.call_tool(name, {"id": 7, **extra}, raise_on_error=False)
-        assert result.is_error
-        assert not backend.calls
+        assert not result.is_error, result.content
+        assert json.loads(backend.calls[-1][1].content) == body
 
 
 async def test_editor_cannot_publish_but_can_list_authors(backend: Backend) -> None:
@@ -83,3 +83,12 @@ async def test_editor_cannot_publish_but_can_list_authors(backend: Backend) -> N
         assert not any(op == "publishArticle" for op, _ in backend.calls)
         result = await client.call_tool("article_authors_list", {})
         assert not result.is_error
+
+
+async def test_article_annotation_without_evidence(backend: Backend) -> None:
+    claims = [{"text": "An editorial annotation", "kind": "test"}]
+    async with Client(backend.server) as client:
+        result = await client.call_tool("article_update", {"id": 7, "claims": claims})
+    assert not result.is_error
+    request = next(req for name, req in backend.calls if name == "updateArticle")
+    assert json.loads(request.content) == {"claims": claims}

@@ -32,11 +32,11 @@ async def test_catalog_write_without_task_or_evidence(backend: Backend) -> None:
 @pytest.mark.parametrize(
     "args",
     [
-        {},  # an unleased catalog edit still needs an idempotency key
-        {"idempotency_key": "catalog-text-002", "task_id": 7},  # a partial lease
+        {},  # no execution metadata is required
+        {"idempotency_key": "catalog-text-002", "task_id": 7},  # legacy task metadata is optional
     ],
 )
-async def test_catalog_write_envelope_is_complete(
+async def test_catalog_write_metadata_is_optional(
     backend: Backend, args: dict[str, object]
 ) -> None:
     async with Client(backend.server) as client:
@@ -45,20 +45,20 @@ async def test_catalog_write_envelope_is_complete(
             {"package": 42, "source_locale": "en-US", "summary": "Mac utility", **args},
             raise_on_error=False,
         )
-    assert result.is_error
-    assert not [name for name, _ in backend.calls if name == "updatePackageText"]
+    assert not result.is_error, result.content
+    assert any(name == "updatePackageText" for name, _ in backend.calls)
 
 
 @pytest.mark.parametrize("missing", ["task_id", "fencing", "idempotency_key", "expected_revision"])
-async def test_business_write_requires_complete_execution(backend: Backend, missing: str) -> None:
+async def test_business_write_accepts_partial_metadata(backend: Backend, missing: str) -> None:
     args = execution_args(
         "package_set_text", {"package": 42, "source_locale": "en-US", "summary": "Mac utility"}
     )
     del args[missing]
     async with Client(backend.server) as client:
         result = await client.call_tool("package_set_text", args, raise_on_error=False)
-    assert result.is_error
-    assert not any(name == "updatePackageText" for name, _ in backend.calls)
+    assert not result.is_error, result.content
+    assert any(name == "updatePackageText" for name, _ in backend.calls)
 
 
 async def test_business_execution_is_sent_only_in_headers(backend: Backend) -> None:

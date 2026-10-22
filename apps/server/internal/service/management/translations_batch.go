@@ -6,12 +6,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/llm"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
-	"github.com/opennavo/opennavo/server/internal/service/seobudget"
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
@@ -67,10 +67,7 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 	}
 	var request translationBatch
 	raw, _ := json.Marshal(in.Body)
-	if json.Unmarshal(raw, &request) != nil || !request.Ref.Valid() || len(request.Translations) < 1 || len(request.Translations) > 10 || request.Model == "" {
-		return nil, domain.Validation()
-	}
-	if request.TaskID < 0 || request.Fencing < 0 || (request.TaskID == 0) != (request.Fencing == 0) || request.TaskID == 0 && request.Ref.Entity != "package" && request.Ref.Entity != "release" {
+	if json.Unmarshal(raw, &request) != nil || !request.Ref.Valid() || len(request.Translations) < 1 || len(request.Translations) > 10 {
 		return nil, domain.Validation()
 	}
 	if err := assertContentAccess(ctx, request.Ref); err != nil {
@@ -100,8 +97,6 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 				reason = "lease_lost"
 			case errors.Is(err, seotasks.ErrConflict):
 				reason = "revision_or_idempotency_conflict"
-			case errors.Is(err, seobudget.ErrLimit), errors.Is(err, seobudget.ErrFrozen):
-				reason = "budget_or_breaker"
 			}
 			var violation *agentgate.Violation
 			if errors.As(err, &violation) {
@@ -127,42 +122,32 @@ func (s *Service) writeTranslations(ctx context.Context, in Input) (any, error) 
 		}
 		results = append(results, result)
 	}
-	return map[string]any{"results": results, "taskId": request.TaskID, "leaseRetained": request.TaskID > 0}, nil
+	return map[string]any{"results": results, "taskId": request.TaskID, "leaseRetained": false}, nil
 }
 func (s *Service) writeTranslationLocale(ctx context.Context, request translationBatch, item translationItem) (any, error) {
-	if request.TaskID == 0 {
-		return (&seotasks.Service{DB: s.Store.DB}).Control(ctx, seoOwner(ctx), "WriteTranslations", item.IdempotencyKey,
-			map[string]any{"ref": request.Ref, "model": request.Model, "translation": item}, domain.CurrentOperation(ctx).DryRun,
-			func(control *seotasks.Service) (any, error) {
-				local := *s
-				local.Store = &store.Store{DB: control.DB, Redis: s.Store.Redis}
-				return local.writeTranslationLocaleOnce(ctx, request, item)
-			})
+	key := item.IdempotencyKey
+	if key == "" {
+		key = uuid.NewString()
 	}
-	return s.writeTranslationLocaleOnce(ctx, request, item)
+	return (&seotasks.Service{DB: s.Store.DB}).Control(ctx, seoOwner(ctx), "WriteTranslations", key,
+		map[string]any{"ref": request.Ref, "model": request.Model, "translation": item}, domain.CurrentOperation(ctx).DryRun,
+		func(control *seotasks.Service) (any, error) {
+			local := *s
+			local.Store = &store.Store{DB: control.DB, Redis: s.Store.Redis}
+			return local.writeTranslationLocaleOnce(ctx, request, item)
+		})
 }
 
 func (s *Service) writeTranslationLocaleOnce(ctx context.Context, request translationBatch, item translationItem) (any, error) {
 	var result any
 	err := s.Store.WithTx(ctx, func(tx *gorm.DB) error {
-		if !i18n.Valid(item.Locale) || len(item.SourceHash) != 64 || len(item.ExpectedRevision) != 64 {
+		if !i18n.Valid(item.Locale) || item.SourceHash != "" && len(item.SourceHash) != 64 || item.ExpectedRevision != "" && len(item.ExpectedRevision) != 64 {
 			return domain.Validation()
 		}
 		if err := store.LockCatalogWrites(ctx, tx); err != nil {
 			return err
 		}
 		op := domain.CurrentOperation(ctx)
-		var b seotasks.Begun
-		var err error
-		if request.TaskID > 0 {
-			b, err = seotasks.Begin(ctx, tx, seotasks.Write{TaskID: request.TaskID, Fencing: request.Fencing, Owner: seoOwner(ctx), IdempotencyKey: item.IdempotencyKey, Operation: "WriteTranslations", Payload: map[string]any{"ref": request.Ref, "model": request.Model, "translation": item}})
-			if err != nil {
-				return err
-			}
-			if b.Replayed {
-				return json.Unmarshal(b.Replay, &result)
-			}
-		}
 		st := &store.Store{DB: tx, Redis: s.Store.Redis}
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?,0))", "content:"+request.Ref.Entity+":"+request.Ref.Key()).Error; err != nil {
 			return err
@@ -175,29 +160,13 @@ func (s *Service) writeTranslationLocaleOnce(ctx context.Context, request transl
 		if err != nil {
 			return err
 		}
-		if src.Hash != item.SourceHash || current.Revision != item.ExpectedRevision {
+		if item.SourceHash != "" && src.Hash != item.SourceHash || item.ExpectedRevision != "" && current.Revision != item.ExpectedRevision {
 			return seotasks.ErrConflict
 		}
 		if item.Locale == src.SourceLocale {
 			return domain.Validation()
 		}
 		entity := request.Ref.Entity + ":" + request.Ref.Key()
-		budgetEntity, err := seotasks.CanonicalEntity(ctx, tx, entity)
-		if err != nil {
-			return err
-		}
-		d, err := agentgate.Check(ctx, tx, agentgate.Write{Operation: "FixTranslation", Entity: entity, Task: b.Task, Body: item.Fields, Site: seobudget.Site(s.Config.WebBaseURL), Source: sourceText(src.Fields)})
-		if err != nil {
-			return err
-		}
-		if current.Status == "manual" {
-			result = map[string]any{"locale": item.Locale, "status": "preserved_manual", "reason": "manual_translation", "value": current}
-			if op.DryRun || request.TaskID == 0 {
-				return nil
-			}
-			_, err = seotasks.CommitPartial(ctx, tx, b, seotasks.Mutation{Mode: "proposal", Object: "translation", ObjectID: entity, Fields: []string{}, Before: current, After: current, Result: result, RuleVersion: agentgate.RuleVersion, PlaybookVersion: agentgate.PlaybookVersion})
-			return err
-		}
 		before, err := st.HistorySnapshot(ctx, request.Ref)
 		if err != nil {
 			return err
@@ -217,11 +186,6 @@ func (s *Service) writeTranslationLocaleOnce(ctx context.Context, request transl
 		if err != nil {
 			return err
 		}
-		if d.Policy.Mode == "live" && hasContentChanges(before, after) {
-			if err := seobudget.Reserve(ctx, tx, seobudget.Site(s.Config.WebBaseURL), "translation", budgetEntity, op.RequestID); err != nil {
-				return err
-			}
-		}
 		if _, err := st.RecordRevision(local, request.Ref, before, after, "update", &copy); err != nil {
 			return err
 		}
@@ -230,48 +194,28 @@ func (s *Service) writeTranslationLocaleOnce(ctx context.Context, request transl
 			return err
 		}
 		status := "written"
-		if op.DryRun || d.Policy.Mode == "proposal" {
+		if op.DryRun {
 			if err := tx.RollbackTo("batch_language").Error; err != nil {
 				return err
 			}
-			status = "proposal"
-			if op.DryRun {
-				status = "preview"
-			}
+			status = "preview"
 		}
 		result = map[string]any{"locale": item.Locale, "status": status, "reason": "validated", "value": value}
 		if op.DryRun {
 			return nil
 		}
-		var afterRevision *int64
-		if d.Policy.Mode == "live" {
-			revision, err := actionRevision(ctx, st, []content.Ref{request.Ref})
-			if err != nil {
-				return err
-			}
-			afterRevision = &revision
+		// Retire matching queued work after the direct edit; active leases remain
+		// available to their owner, who can explicitly complete them.
+		if err := tx.Exec(`UPDATE seo_tasks SET state='done',result=jsonb_build_object('reason','batch_translation'),updated_at=clock_timestamp() WHERE entity_key=? AND kind='translate' AND locale=? AND evidence_hash=? AND state IN ('open','deferred')`, entity, item.Locale, src.Hash).Error; err != nil {
+			return err
 		}
-		var id int64
-		if request.TaskID > 0 {
-			id, err = seotasks.CommitPartial(ctx, tx, b, seotasks.Mutation{Mode: d.Policy.Mode, Object: "translation", ObjectID: entity, Fields: agentgate.ChangedFields(map[string]store.HistoryState{entity: before}, map[string]store.HistoryState{entity: after}), Before: map[string]store.HistoryState{entity: before}, After: map[string]store.HistoryState{entity: after}, Result: result, RuleVersion: agentgate.RuleVersion, PlaybookVersion: agentgate.PlaybookVersion, AfterRevision: afterRevision})
-			if err != nil {
-				return err
-			}
+		if err := st.QueueTranslationInvalidation(ctx, request.Ref); err != nil {
+			return err
 		}
-		if d.Policy.Mode == "live" {
-			// This entity lease covers the whole batch. Retire matching queued
-			// locale work only after its validated write commits.
-			if err := tx.Exec(`UPDATE seo_tasks SET state='done',result=jsonb_build_object('actionId',NULLIF(?::bigint,0),'reason','batch_translation'),updated_at=clock_timestamp() WHERE id<>? AND entity_key=? AND kind='translate' AND locale=? AND evidence_hash=? AND state IN ('open','deferred')`, id, b.Task.ID, entity, item.Locale, src.Hash).Error; err != nil {
-				return err
-			}
-			if err := st.QueueTranslationInvalidation(ctx, request.Ref); err != nil {
-				return err
-			}
-		}
-		if request.TaskID == 0 && !hasContentChanges(before, after) {
+		if !hasContentChanges(before, after) {
 			return nil
 		}
-		return agentgate.Log(ctx, tx, op.RequestID, seoOwner(ctx), "WriteTranslations", d.Policy.Mode, "validated", b.Task.ID, nil)
+		return agentgate.Log(ctx, tx, op.RequestID, seoOwner(ctx), "WriteTranslations", "live", "validated", 0, nil)
 	})
 	return result, err
 }

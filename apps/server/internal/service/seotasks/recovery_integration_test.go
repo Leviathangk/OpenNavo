@@ -68,56 +68,28 @@ func TestSettledTasksKeepTheirReason(t *testing.T) {
 	require.JSONEq(t, `{"locale":"fr-FR","status":"written","reason":"validated"}`, string(task.Result))
 }
 
-func TestReopenBacksOffWithoutLifetimeLimit(t *testing.T) {
-	require.Equal(t, time.Hour, seotasks.AgentReopenWait(1))
-	require.Equal(t, 2*time.Hour, seotasks.AgentReopenWait(2))
-	require.Equal(t, 16*time.Hour, seotasks.AgentReopenWait(5))
-	require.Equal(t, 24*time.Hour, seotasks.AgentReopenWait(6))
-	require.Equal(t, 24*time.Hour, seotasks.AgentReopenWait(40))
-
+func TestReopenWithoutCooldownOrStatePrerequisites(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	svc := &seotasks.Service{DB: st.DB}
 	id := enqueueFixture(t, svc, "pkg:811").ID
-	quarantine := func() {
-		task := claimOne(t, svc, "agent:1:2", id)
-		_, err := svc.Complete(ctx, id, task.Fencing, "agent:1:2", "quarantined", "validator rejected the fix")
-		require.NoError(t, err)
-	}
-	reopenedAgo := func(d time.Duration) {
-		require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET reopened_at=clock_timestamp()-make_interval(secs=>?) WHERE id=?", d.Seconds(), id).Error)
-	}
-	var state *seotasks.StateError
-	_, err := svc.Reopen(ctx, id, "agent:1:2", "nothing to reopen", false)
-	require.ErrorAs(t, err, &state)
-	require.Equal(t, "not_reopenable", state.Reason)
-
-	for round := 1; round <= 7; round++ {
-		quarantine()
-		if round > 1 {
-			wait := seotasks.AgentReopenWait(round - 1)
-			reopenedAgo(wait - time.Minute)
-			_, err = svc.Reopen(ctx, id, "agent:1:2", "retry too soon", false)
-			require.ErrorAs(t, err, &state, "round %d waits %s", round, wait)
-			require.Equal(t, "reopen_cooldown", state.Reason)
-			reopenedAgo(wait + time.Minute)
-		}
-		task, err := svc.Reopen(ctx, id, "agent:1:2", "corrected the version literal", false)
+	for round, state := range []string{"open", "deferred", "skipped", "quarantined", "done", "expired"} {
+		require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET state=?,expires_at=clock_timestamp()-interval '1 minute',next_retry_at=clock_timestamp()+interval '1 day' WHERE id=?", state, id).Error)
+		task, err := svc.Reopen(ctx, id, "agent:1:2", "retry now", false)
 		require.NoError(t, err)
 		require.Equal(t, "open", task.State)
-		require.Equal(t, round, task.ReopenCount)
-		require.Contains(t, string(task.Result), `"reopenedFrom": "quarantined"`)
+		require.Nil(t, task.ExpiresAt)
+		require.Nil(t, task.NextRetryAt)
+		require.Equal(t, round+1, task.ReopenCount)
 	}
-	quarantine()
-	task, err := svc.Reopen(ctx, id, "admin:1", "reviewed by a person", true)
+	leased := claimOne(t, svc, "agent:1:2", id)
+	reopened, err := svc.Reopen(ctx, id, "agent:1:2", "restart leased work", false)
 	require.NoError(t, err)
-	require.Equal(t, "open", task.State)
-
-	expired := enqueueFixture(t, svc, "pkg:812")
-	require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET state='skipped',expires_at=clock_timestamp()-interval '1 minute' WHERE id=?", expired.ID).Error)
-	_, err = svc.Reopen(ctx, expired.ID, "admin:1", "too late", true)
-	require.ErrorAs(t, err, &state)
-	require.Equal(t, "expired", state.Reason)
+	require.Greater(t, reopened.Fencing, leased.Fencing)
+	_, err = svc.Complete(ctx, id, leased.Fencing, "agent:1:2", "done", "")
+	require.Error(t, err, "old worker must not complete a reopened task")
+	again := claimOne(t, svc, "agent:1:2", id)
+	require.Greater(t, again.Fencing, reopened.Fencing)
 }
 
 func TestClaimTargetsRequestedTasks(t *testing.T) {
@@ -132,6 +104,33 @@ func TestClaimTargetsRequestedTasks(t *testing.T) {
 	require.Equal(t, wanted.ID, claimed[0].ID)
 	_, err = svc.ClaimWith(ctx, "owner", seotasks.ClaimFilter{Limit: 1, IDs: []int64{0}})
 	require.ErrorIs(t, err, seotasks.ErrInvalid)
+}
+
+func TestReopenAfterEntityLeaseTakeover(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &seotasks.Service{DB: st.DB}
+	old := claimOne(t, svc, "old-worker", enqueueFixture(t, svc, "pkg:841").ID)
+	require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET lease_until=clock_timestamp()-interval '1 minute' WHERE id=?", old.ID).Error)
+	require.NoError(t, st.DB.Exec("UPDATE seo_entity_leases SET lease_until=clock_timestamp()-interval '1 minute' WHERE task_id=?", old.ID).Error)
+	next, err := svc.Enqueue(ctx, seotasks.NewTask{Kind: "fixture", EntityKey: "package:841", DedupeKey: "takeover", RuleVersion: "fixture", Evidence: map[string]any{}})
+	require.NoError(t, err)
+	held := claimOne(t, svc, "new-worker", next.ID)
+	reopened, err := svc.Reopen(ctx, old.ID, "operator", "retry abandoned task", false)
+	require.NoError(t, err)
+	require.Equal(t, "open", reopened.State)
+	require.Nil(t, reopened.LeaseOwner)
+	require.Nil(t, reopened.LeaseUntil)
+	require.Greater(t, reopened.Fencing, old.Fencing)
+	require.Equal(t, 1, reopened.ReopenCount)
+	_, err = svc.Complete(ctx, old.ID, old.Fencing, "old-worker", "done", "")
+	require.ErrorIs(t, err, seotasks.ErrLease)
+	claimed, err := svc.ClaimWith(ctx, "retry-worker", seotasks.ClaimFilter{Limit: 1, IDs: []int64{old.ID}})
+	require.NoError(t, err)
+	require.Empty(t, claimed, "the replacement task still owns the shared entity")
+	_, err = svc.Complete(ctx, held.ID, held.Fencing, "new-worker", "done", "")
+	require.NoError(t, err, "reopening the old task must preserve the new lease")
+	claimOne(t, svc, "retry-worker", old.ID)
 }
 
 // Evidence that arrived during a lease replaces the task's evidence when the

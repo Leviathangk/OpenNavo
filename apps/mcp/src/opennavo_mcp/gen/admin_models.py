@@ -70,7 +70,7 @@ class SeoTaskReopen(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
+    idempotencyKey: Annotated[str | None, Field(max_length=200, min_length=8)] = None
     reason: Annotated[str, Field(max_length=1000, min_length=1)]
 
 
@@ -439,11 +439,11 @@ class ArticleClaim(BaseModel):
     )
     text: Annotated[str, Field(examples=['Example App supports macOS.'], max_length=20000)]
     kind: Annotated[Literal['factual', 'test'], Field(examples=['factual'])]
-    evidenceId: Annotated[int, Field(examples=[1], ge=1)]
-    excerpt: Annotated[str, Field(examples=['Example App supports macOS.'], max_length=20000)]
+    evidenceId: Annotated[int | None, Field(examples=[1], ge=1)] = None
+    excerpt: Annotated[str | None, Field(examples=['Example App supports macOS.'], max_length=20000)] = None
     packageId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    appVersion: Annotated[str, Field(examples=[''], max_length=100)]
-    region: Annotated[str, Field(examples=['ZZ'], max_length=2, pattern='^[A-Z]{2}$')]
+    appVersion: Annotated[str | None, Field(examples=[''], max_length=100)] = None
+    region: Annotated[str | None, Field(examples=['ZZ'], max_length=2, pattern='^[A-Z]{2}$')] = None
     testArtifactId: Annotated[int | None, Field(examples=[1], ge=1)] = None
 
 
@@ -2725,7 +2725,7 @@ class TranslationFix(BaseModel):
     )
     ref: ContentRef
     locale: Locale
-    model: Annotated[str | None, Field(description='Required for Agent writes; the server adds the hermes prefix.', examples=['example-model'], max_length=160, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = None
+    model: Annotated[str | None, Field(description='Optional model provenance; omitted models are recorded as agent:unspecified.', examples=['example-model'], max_length=160, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = None
     fields: ContentFields
 
 
@@ -3037,7 +3037,7 @@ class ArticleUpdate(BaseModel):
     packageIds: Annotated[list[PackageId] | None, Field(description='Replace related apps atomically with the other draft fields.', max_length=50)] = None
     claims: Annotated[list[ArticleClaim] | None, Field(max_length=200)] = None
     target: ArticleSeoTarget | None = None
-    expectedRevision: Annotated[int, Field(description='The article revision from the last read; a mismatch means someone else changed it', examples=[4], ge=1)]
+    expectedRevision: Annotated[int | None, Field(description='The article revision from the last read; a mismatch means someone else changed it', examples=[4], ge=1)] = None
     sourceLocale: Locale | None = None
     type: ArticleType | None = None
     title: Annotated[str | None, Field(examples=['How to choose a screenshot app for Mac'], max_length=200, min_length=1)] = None
@@ -3056,7 +3056,7 @@ class ArticlePackagesUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
     packageIds: Annotated[list[PackageId], Field(max_length=50)]
 
 
@@ -3064,14 +3064,14 @@ class ArticleRevisionCheck(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
 
 
 class ArticleWithdraw(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
     reason: Annotated[str | None, Field(examples=['Prices changed; rewriting.'], max_length=500)] = None
 
 
@@ -3079,7 +3079,7 @@ class ArticleRevert(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
     revisionNumber: Annotated[int, Field(examples=[2], ge=1)]
 
 
@@ -3087,7 +3087,7 @@ class ArticleSlugUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
     slug: Annotated[str, Field(examples=['screenshot-apps-for-mac'], max_length=100, pattern='^[a-z0-9]+(-[a-z0-9]+)*$')]
 
 
@@ -3095,7 +3095,7 @@ class ArticleLocaleUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int, Field(examples=[4], ge=1)]
+    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
     withheld: Annotated[bool, Field(examples=[True])]
 
 
@@ -5384,9 +5384,9 @@ class BatchTranslationInput(BaseModel):
         extra='forbid',
     )
     locale: Locale
-    sourceHash: Annotated[str, Field(pattern='^[0-9a-f]{64}$')]
-    expectedRevision: Annotated[str, Field(pattern='^[0-9a-f]{64}$')]
-    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
+    sourceHash: Annotated[str | None, Field(pattern='^[0-9a-f]{64}$')] = None
+    expectedRevision: Annotated[str | None, Field(pattern='^[0-9a-f]{64}$')] = None
+    idempotencyKey: Annotated[str | None, Field(max_length=200, min_length=8)] = None
     fields: ContentFields
 
 
@@ -5395,7 +5395,7 @@ class TranslationsBatchWrite(BaseModel):
         extra='forbid',
     )
     ref: ContentRef
-    model: Annotated[str, Field(max_length=160, min_length=1, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')]
+    model: Annotated[str | None, Field(max_length=160, min_length=1, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = None
     taskId: Annotated[int | None, Field(ge=1, le=1000000000)] = None
     fencing: Annotated[int | None, Field(ge=1, le=1000000000)] = None
     translations: Annotated[list[BatchTranslationInput], Field(max_length=10, min_length=1)]
@@ -5831,6 +5831,7 @@ class LinkPackage(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    revision: Annotated[int | None, Field(description='Link edit counter. Use this value for the optional expected revision when updating or removing this Link app; package content revisions are separate.', examples=[0], ge=0)] = None
     token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
     name: Annotated[str, Field(max_length=256, min_length=1)]
     sourceLocale: Locale
@@ -6473,7 +6474,7 @@ class AgentDryRun(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    validation: Annotated[Literal['passed'] | None, Field(description='All server gates passed against the previewed state; live execution revalidates.', examples=['passed'])] = None
+    validation: Annotated[Literal['passed'] | None, Field(description='Input validation passed against the previewed state; live execution revalidates.', examples=['passed'])] = None
     mode: Annotated[Literal['preview', 'proposal'] | None, Field(description='Proposal records the validated change without applying it.', examples=['preview'])] = None
     dryRun: Annotated[Literal[True], Field(examples=[True])]
     requestId: Annotated[str, Field(examples=['demo-preview-001'], max_length=128)]
@@ -6861,16 +6862,16 @@ class SeoListingWrite(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int, Field(examples=[0], ge=0)]
+    expectedRevision: Annotated[int | None, Field(examples=[0], ge=0)] = None
     action: Annotated[Literal['save', 'publish', 'reject'], Field(examples=['save'])]
     link: LinkPackageAdd
-    summary: Annotated[str, Field(examples=['An editor for macOS.'], max_length=400)]
-    description: Annotated[str, Field(examples=[''], max_length=100000)]
-    categoryId: Annotated[int, Field(examples=[1], ge=0)]
-    iconAssetId: Annotated[int, Field(examples=[1], ge=0)]
+    summary: Annotated[str | None, Field(examples=['An editor for macOS.'], max_length=400)] = None
+    description: Annotated[str | None, Field(examples=[''], max_length=100000)] = None
+    categoryId: Annotated[int | None, Field(examples=[1], ge=0)] = None
+    iconAssetId: Annotated[int | None, Field(examples=[1], ge=0)] = None
     baselinePackageId: Annotated[int | None, Field(description='Optional human identity attestation. Omit or use zero when unavailable; publication does not assert verified identity.', examples=[1], ge=0)] = None
-    downloadMode: Annotated[Literal['official_page', 'not_applicable'], Field(examples=['official_page'])]
-    evidenceId: Annotated[int, Field(examples=[1], ge=0)]
+    downloadMode: Annotated[Literal['official_page', 'not_applicable', 'direct'] | None, Field(examples=['official_page'])] = None
+    evidenceId: Annotated[int | None, Field(examples=[1], ge=0)] = None
 
 
 class SeoListingCandidate(BaseModel):

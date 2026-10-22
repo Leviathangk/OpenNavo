@@ -16,7 +16,7 @@ import (
 )
 
 // EvaluateSEO never treats a traffic decrease as permission to undo a fact.
-// Technical compensation uses the very same snapshot/evidence validator as MCP.
+// Automatic compensation of legacy actions additionally verifies its task and evidence.
 func (s *Service) EvaluateSEO(ctx context.Context) (map[string]any, error) {
 	if err := s.assessPageGuards(ctx); err != nil {
 		return nil, err

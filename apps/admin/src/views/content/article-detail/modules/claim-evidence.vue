@@ -29,14 +29,14 @@ const report = reactive({
   output: '',
   attested: false
 });
-const canCapture = computed(() => /^https:\/\/\S+$/.test(url.value.trim()) && Boolean(props.claim.excerpt.trim()));
+const canCapture = computed(() => /^https:\/\/\S+$/.test(url.value.trim()) && Boolean(props.claim.excerpt?.trim()));
 const canRegister = computed(
   () =>
     props.canPublish &&
     props.claim.packageId &&
-    props.claim.appVersion.trim() &&
+    props.claim.appVersion?.trim() &&
     props.claim.text.trim() &&
-    /^[A-Z]{2}$/.test(props.claim.region) &&
+    /^[A-Z]{2}$/.test(props.claim.region ?? '') &&
     report.macOS.trim() &&
     report.runner.trim() &&
     report.command.trim() &&
@@ -56,7 +56,7 @@ async function capture() {
     if (!(await props.prepare())) return;
     const { data, error: failure } = await captureArticleEvidence(props.articleId, {
       url: url.value.trim(),
-      excerpt: claim.excerpt,
+      excerpt: claim.excerpt ?? '',
       packageId: claim.packageId ?? null,
       idempotencyKey: crypto.randomUUID()
     });
@@ -83,8 +83,8 @@ async function register() {
     if (!(await props.prepare())) return;
     const { data, error: failure } = await createArticleTestArtifact(props.articleId, {
       packageId: claim.packageId!,
-      appVersion: claim.appVersion,
-      region: claim.region,
+      appVersion: claim.appVersion ?? '',
+      region: claim.region ?? '',
       macOS: report.macOS.trim(),
       architecture: report.architecture,
       performedAt: new Date(report.performedAt).toISOString(),

@@ -19,7 +19,7 @@ type ListingInput struct {
 	CategoryID        int64            `json:"categoryId"`
 	IconAssetID       int64            `json:"iconAssetId"`
 	BaselinePackageID int64            `json:"baselinePackageId"`
-	DownloadMode      string           `json:"downloadMode"`
+	DownloadMode      string           `json:"downloadMode,omitempty"`
 	EvidenceID        int64            `json:"evidenceId"`
 }
 type ListingCandidate struct {

@@ -50,13 +50,10 @@ INSERT INTO assets(id,kind,storage_key,url,width,height,bytes,sha256,mime) VALUE
 	require.Zero(t, count("releases", "package_id=901"), "preview must not persist content")
 	require.Zero(t, count("seo_task_controls", "1=1"), "a preview does not consume its idempotency key")
 
-	// A commit names the revision its preview returned.
-	_, err = execute("UpsertReleaseNotes", "notes-commit-01", false, nil, in, "changelog:release:edit")
+	// A direct commit needs neither a preview nor a revision.
 	var app *domain.AppError
-	require.ErrorAs(t, err, &app)
-	require.Equal(t, "rejected: expected_revision_required", app.Msg)
 	zero := int64(0)
-	first, err := execute("UpsertReleaseNotes", "notes-commit-01", false, &zero, in, "changelog:release:edit")
+	first, err := execute("UpsertReleaseNotes", "notes-commit-01", false, nil, in, "changelog:release:edit")
 	require.NoError(t, err)
 	var releaseID int64
 	require.NoError(t, st.DB.Raw("SELECT id FROM releases WHERE package_id=901 AND version='2.0'").Scan(&releaseID).Error)
@@ -67,12 +64,12 @@ INSERT INTO assets(id,kind,storage_key,url,width,height,bytes,sha256,mime) VALUE
 
 	// A lost response is retried with the same key: the first result, no second write.
 	revisions := count("content_revisions", "entity='release' AND object_key=?", strconv.FormatInt(releaseID, 10))
-	replay, err := execute("UpsertReleaseNotes", "notes-commit-01", false, &zero, in, "changelog:release:edit")
+	replay, err := execute("UpsertReleaseNotes", "notes-commit-01", false, nil, in, "changelog:release:edit")
 	require.NoError(t, err)
 	require.JSONEq(t, jsonText(t, first), jsonText(t, replay))
 	require.Equal(t, revisions, count("content_revisions", "entity='release' AND object_key=?", strconv.FormatInt(releaseID, 10)))
 	changed := Input{ID: 901, Version: "2.0", Body: map[string]any{"sourceLocale": "en-US", "title": "Arc search", "summary": "Different summary.", "bodyMarkdown": "Arc search is faster.", "sections": []any{}}}
-	_, err = execute("UpsertReleaseNotes", "notes-commit-01", false, &zero, changed, "changelog:release:edit")
+	_, err = execute("UpsertReleaseNotes", "notes-commit-01", false, nil, changed, "changelog:release:edit")
 	require.ErrorAs(t, err, &app)
 	require.Equal(t, domain.CodeConflict, app.Code, "one key never names two different requests")
 
@@ -153,11 +150,10 @@ INSERT INTO assets(id,kind,storage_key,url,width,height,bytes,sha256,mime) VALUE
 	require.True(t, errors.As(err, &app))
 	require.Equal(t, domain.CodeForbidden, app.Code)
 
-	// The action switch still stops the agent; proposal mode does not.
+	// Historical action settings do not gate direct writes.
 	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET automation=jsonb_set(automation,'{actions,maintenance,enabled}','false')`).Error)
 	_, err = execute("UpsertReleaseNotes", "notes-commit-05", false, &current, changed, "changelog:release:edit")
-	require.ErrorAs(t, err, &app)
-	require.Equal(t, "rejected: automation_disabled", app.Msg)
+	require.NoError(t, err)
 }
 
 func jsonText(t *testing.T, value any) string {

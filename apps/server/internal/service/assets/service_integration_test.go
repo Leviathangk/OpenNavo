@@ -14,6 +14,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -100,4 +102,27 @@ func TestAssetURLUploadAndPreview(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, &source, stored.SourceURL)
 	require.NotEmpty(t, objects.files)
+}
+
+func TestAgentUploadWithoutTaskOrEvidence(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	objects := &fakeObjects{files: map[string][]byte{}}
+	service := &Service{Store: st, Objects: objects}
+	op := &domain.Operation{RequestID: uuid.NewString(), AgentClientID: 1, AgentTokenID: 2, Name: "uploadAsset", Permissions: []string{"catalog:asset:upload"}, RequiredPermissions: []string{"catalog:asset:upload"}, DryRun: true}
+	ctx := domain.WithOperation(context.Background(), op)
+	require.NoError(t, service.ValidateUploadTicket(ctx))
+	preview, err := service.UploadAgent(ctx, "icon", fixturePNG(t), nil, store.AuditActor{})
+	require.NoError(t, err)
+	require.Equal(t, "preview", preview.(map[string]any)["mode"])
+	require.Empty(t, objects.files)
+	op.DryRun = false
+	_, err = service.UploadAgent(ctx, "icon", fixturePNG(t), nil, store.AuditActor{})
+	require.NoError(t, err)
+	var count int64
+	require.NoError(t, st.DB.Table("assets").Count(&count).Error)
+	require.EqualValues(t, 1, count)
+	require.NoError(t, st.DB.Table("content_revisions").Count(&count).Error)
+	require.EqualValues(t, 1, count)
+	_, err = service.UploadAgent(ctx, "icon", []byte("invalid image"), nil, store.AuditActor{})
+	require.Error(t, err)
 }

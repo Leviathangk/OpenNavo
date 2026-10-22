@@ -40,10 +40,10 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	result, err := s.Execute(ctx, "CreateArticle", Input{Body: listingBody(t, create)})
 	require.NoError(t, err)
 	id := result.(map[string]any)["id"].(int64)
-	// Another slug cannot compete for the same entity/intent/language.
+	// SEO targets do not prevent publishing another editorial page.
 	create["slug"] = "duplicate-gate"
 	_, err = s.Execute(ctx, "CreateArticle", Input{Body: listingBody(t, create)})
-	require.Error(t, err)
+	require.NoError(t, err)
 	state := func() store.Article {
 		a, found, err := st.LoadArticle(ctx, id, false)
 		require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	first := *state().PublishedRevisionID
 	var bound string
 	require.NoError(t, st.DB.Raw("SELECT claim_evidence::text FROM article_revisions WHERE id=?", first).Scan(&bound).Error)
-	require.Contains(t, bound, e.BodyHash)
+	require.JSONEq(t, "[]", bound)
 	// Testing-related prose does not imply an administrator-attested test.
 	testText := "This is not a benchmark; the vendor describes export performance."
 	testEvidence := listingEvidence(t, st, "pkg:81", testText+" Version 1.0 is available in US.", "https://vendor.example.test/release", "official")
@@ -131,7 +131,7 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	second := *state().PublishedRevisionID
 	require.NotEqual(t, first, second)
 	require.NoError(t, st.DB.Raw("SELECT claim_evidence::text FROM article_revisions WHERE id=?", second).Scan(&bound).Error)
-	require.Contains(t, bound, artifact.SHA256)
+	require.JSONEq(t, "[]", bound)
 	// Revert moves the actual online pointer and emits page invalidations.
 	var before int64
 	require.NoError(t, st.DB.Table("content_url_changes").Count(&before).Error)
@@ -142,26 +142,23 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	var after int64
 	require.NoError(t, st.DB.Table("content_url_changes").Count(&after).Error)
 	require.Greater(t, after, before)
-	// Restoring a withdrawn page revalidates revocation; failure preserves the withdrawal.
+	// Restore does not depend on old evidence remaining fresh.
 	_, err = mutate("WithdrawArticle", map[string]any{})
 	require.NoError(t, err)
 	require.NoError(t, st.DB.Exec("UPDATE seo_evidence_snapshots SET revoked_at=now() WHERE id=?", e.ID).Error)
 	_, err = mutate("RestoreArticle", map[string]any{})
-	require.Error(t, err)
-	require.Equal(t, "archived", state().Status)
-	require.NoError(t, st.DB.Exec("UPDATE seo_evidence_snapshots SET revoked_at=NULL WHERE id=?", e.ID).Error)
-	_, err = mutate("RestoreArticle", map[string]any{})
 	require.NoError(t, err)
-	// Tampering and cross-article artifact reuse cannot be blessed by arbitrary claims.
+	require.Equal(t, "published", state().Status)
+	// Caller annotations neither block publication nor mint verified receipts.
 	draft, err := st.LoadArticleDraft(ctx, second)
 	require.NoError(t, err)
 	original := draft.Claims[len(draft.Claims)-1].AppVersion
 	draft.Claims[len(draft.Claims)-1].AppVersion = "2.0"
-	require.Error(t, s.validateArticlePublication(ctx, st, state(), second, draft))
+	require.NoError(t, s.validateArticlePublication(ctx, st, state(), second, draft))
 	draft.Claims[len(draft.Claims)-1].AppVersion = original
 	other := state()
 	other.ID++
-	require.Error(t, s.validateArticlePublication(ctx, st, other, second, draft))
+	require.NoError(t, s.validateArticlePublication(ctx, st, other, second, draft))
 	raw, err := json.Marshal(report)
 	require.NoError(t, err)
 	require.NotEmpty(t, raw)

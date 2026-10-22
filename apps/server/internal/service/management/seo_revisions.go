@@ -84,6 +84,13 @@ func (s *Service) seoTaskTrace(ctx context.Context, id int64) (any, error) {
 		for _, row := range rows {
 			revisions[row.Entity+":"+row.ObjectKey] = row.Revision
 		}
+		app, err := s.Store.LinkApp(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if app != nil {
+			revisions["link:"+strconv.FormatInt(id, 10)] = app.Revision
+		}
 	}
 	result["currentRevision"], result["revisions"] = revision, revisions
 	return result, nil
