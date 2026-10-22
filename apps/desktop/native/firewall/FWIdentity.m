@@ -38,11 +38,26 @@ static NSDictionary *FWCodeInfo(SecStaticCodeRef code) {
     return CFBridgingRelease(raw);
 }
 NSString *FWOwnTeam(void) {
-    SecCodeRef code=NULL;CFDictionaryRef raw=NULL;
-    if (SecCodeCopySelf(kSecCSDefaultFlags,&code)!=errSecSuccess) return nil;
-    OSStatus status=SecCodeCopySigningInformation(code,kSecCSSigningInformation,&raw);CFRelease(code);
-    if (status!=errSecSuccess || !raw) return nil;
-    NSDictionary *info=CFBridgingRelease(raw);return info[(__bridge NSString *)kSecCodeInfoTeamIdentifier];
+    // The running image's identity is fixed until exec. Status polling and peer
+    // checks share this value; the peer's audit token is still verified each time.
+    static NSLock *lock;static dispatch_once_t once;
+    static BOOL loaded=NO;static NSString *team;
+    dispatch_once(&once,^{lock=[NSLock new];});
+    [lock lock];
+    @try {
+        if(loaded) return team;
+        SecCodeRef code=NULL;CFDictionaryRef raw=NULL;
+        if(SecCodeCopySelf(kSecCSDefaultFlags,&code)!=errSecSuccess) return nil;
+        OSStatus status=SecCodeCopySigningInformation(code,kSecCSSigningInformation,&raw);CFRelease(code);
+        if(status!=errSecSuccess || !raw) {if(raw) CFRelease(raw);return nil;}
+        NSDictionary *info=CFBridgingRelease(raw);
+        id value=info[(__bridge NSString *)kSecCodeInfoTeamIdentifier];
+        team=[value isKindOfClass:NSString.class]?[value copy]:nil;
+        // A successfully read ad-hoc identity has no team. API failures above
+        // remain retryable instead of permanently disabling the firewall.
+        loaded=YES;
+        return team;
+    } @finally {[lock unlock];}
 }
 static BOOL FWRequirement(SecStaticCodeRef code,NSString *text) {
     SecRequirementRef requirement=NULL;

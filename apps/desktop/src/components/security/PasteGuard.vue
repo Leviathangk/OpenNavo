@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { OnButton, OnModal } from '@opennavo/ui';
 import type { PasteAction } from '@/ipc/bindings';
@@ -20,17 +20,25 @@ const paste = computed(() => security.paste);
 // Text over the check limit is paused unread: say so rather than describe a command it may not contain.
 const unchecked = computed(() => paste.value?.patterns.includes('too_long') ?? false);
 const now = ref(Date.now());
-const timer = window.setInterval(() => {
-  now.value = Date.now();
-}, 1000);
-onScopeDispose(() => window.clearInterval(timer));
+// Rust discards it at expiry too; run the UI clock only while a paste is pending.
+watch(
+  paste,
+  (pending, _, onCleanup) => {
+    if (!pending) return;
+    const tick = () => {
+      now.value = Date.now();
+      if (now.value >= pending.expiresAt && paste.value?.id === pending.id) security.paste = null;
+    };
+    tick();
+    if (now.value >= pending.expiresAt) return;
+    const timer = window.setInterval(tick, 1000);
+    onCleanup(() => window.clearInterval(timer));
+  },
+  { immediate: true }
+);
 const remaining = computed(() =>
   paste.value ? Math.max(0, Math.ceil((paste.value.expiresAt - now.value) / 1000)) : 0
 );
-// Rust discards it at expiry too; the dialog just goes away.
-watch(remaining, seconds => {
-  if (paste.value && seconds === 0) security.paste = null;
-});
 
 async function act(action: PasteAction) {
   try {

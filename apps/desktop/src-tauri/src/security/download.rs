@@ -9,6 +9,12 @@ use std::{
 };
 const MAX_DOWNLOAD: u64 = 8 * 1024 * 1024 * 1024;
 
+#[derive(Debug, PartialEq)]
+pub(crate) struct DownloadListing {
+    pub paths: Vec<PathBuf>,
+    pub complete: bool,
+}
+
 #[derive(Clone)]
 pub(crate) struct Session {
     detected: Snapshot,
@@ -319,20 +325,39 @@ impl Service {
             Ok(None)
         })
     }
-    pub(crate) fn downloads(&self) -> Vec<PathBuf> {
+    /// None means monitoring is disabled or the directory could not be opened.
+    /// Only a complete listing can retire previously observed paths.
+    pub(crate) fn download_candidates(&self) -> Option<DownloadListing> {
         if !self.download_monitor_enabled() {
-            return vec![];
+            return None;
         }
         let root = self.home.join("Downloads");
-        if files::safe_metadata(&root).is_err() {
-            return vec![];
+        files::safe_metadata(&root).ok()?;
+        let entries = fs::read_dir(root).ok()?;
+        let mut listing = DownloadListing {
+            paths: vec![],
+            complete: true,
+        };
+        for entry in entries {
+            match entry {
+                Ok(entry) => {
+                    let path = entry.path();
+                    // DirEntry carries the type from enumeration on macOS. Do
+                    // not stat every ordinary file just to filter the listing;
+                    // the watcher will perform the full safe metadata check.
+                    if download_name(&path)
+                        && (path
+                            .extension()
+                            .is_some_and(|e| e.eq_ignore_ascii_case("app"))
+                            || entry.file_type().map_or(true, |kind| kind.is_file()))
+                    {
+                        listing.paths.push(path);
+                    }
+                }
+                Err(_) => listing.complete = false,
+            }
         }
-        fs::read_dir(root)
-            .into_iter()
-            .flatten()
-            .filter_map(|e| e.ok().map(|e| e.path()))
-            .filter(|p| watched_download(p))
-            .collect()
+        Some(listing)
     }
     pub(crate) fn download_monitor_enabled(&self) -> bool {
         self.settings
@@ -393,21 +418,23 @@ fn download_origins(path: &Path, guard: &own_data::OwnData) -> Vec<String> {
 /// Files the Downloads watch checks (plan §6, S1): every finished download, not
 /// only installers; installers also get their signature checked. Partial files
 /// are skipped until the browser renames them, and hidden files are never downloads.
-pub(crate) fn watched_download(path: &Path) -> bool {
+fn download_name(path: &Path) -> bool {
     let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
         return false;
     };
-    let extension = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(str::to_ascii_lowercase);
+    let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     !name.starts_with('.')
-        && !matches!(
-            extension.as_deref(),
-            Some("download" | "crdownload" | "part" | "partial" | "opdownload")
-        )
-        && (extension.as_deref() == Some("app")
-            || std::fs::symlink_metadata(path).is_ok_and(|m| m.is_file()))
+        && !["download", "crdownload", "part", "partial", "opdownload"]
+            .iter()
+            .any(|partial| extension.eq_ignore_ascii_case(partial))
+}
+
+pub(crate) fn watched_download(path: &Path, metadata: &fs::Metadata) -> bool {
+    download_name(path)
+        && (path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("app"))
+            || metadata.is_file())
 }
 
 #[cfg(test)]
@@ -435,7 +462,9 @@ mod smoke_tests {
         let mut watched: Vec<_> = std::fs::read_dir(&root)
             .unwrap()
             .map(|e| e.unwrap().path())
-            .filter(|p| super::watched_download(p))
+            .filter(|p| {
+                files::safe_metadata(p).is_ok_and(|metadata| super::watched_download(p, &metadata))
+            })
             .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
             .collect();
         watched.sort();
@@ -458,24 +487,42 @@ mod smoke_tests {
         fs::create_dir(s.home.join("Downloads")).unwrap();
         let path = s.home.join("Downloads/app.dmg");
         fs::write(&path, "fixture").unwrap();
-        assert!(s.downloads().is_empty());
+        assert!(s.download_candidates().is_none());
         s.settings.write().unwrap().av_consent = true;
-        assert_eq!(s.downloads(), vec![path.clone()]);
+        assert_eq!(s.download_candidates().unwrap().paths, vec![path.clone()]);
         s.settings.write().unwrap().watch_downloads = false;
-        assert!(s.downloads().is_empty());
+        assert!(s.download_candidates().is_none());
         s.database.with(|c| {
             c.execute("INSERT INTO link_activity(token,target,url,opened_at) VALUES('fixture','download','https://example.invalid/app.dmg',?1)", [now()])?;
             Ok(())
         }).unwrap();
-        assert_eq!(s.downloads(), vec![path]);
+        assert_eq!(s.download_candidates().unwrap().paths, vec![path]);
         s.database
             .with(|c| {
                 c.execute("UPDATE link_activity SET opened_at=0", [])?;
                 Ok(())
             })
             .unwrap();
-        assert!(s.downloads().is_empty());
+        assert!(s.download_candidates().is_none());
     }
+
+    #[test]
+    fn an_unavailable_download_directory_is_distinct_from_a_complete_empty_listing() {
+        let (_temp, s, _) = super::super::tests::fixture();
+        s.settings.write().unwrap().av_consent = true;
+        assert!(s.download_candidates().is_none());
+        let root = s.home.join("Downloads");
+        fs::create_dir(&root).unwrap();
+        fs::write(root.join(".hidden"), b"fixture").unwrap();
+        fs::write(root.join("unfinished.CRDOWNLOAD"), b"fixture").unwrap();
+        fs::create_dir(root.join("Folder")).unwrap();
+        let listing = s.download_candidates().unwrap();
+        assert!(listing.complete && listing.paths.is_empty());
+        let app = root.join("Tool.APP");
+        fs::create_dir(&app).unwrap();
+        assert_eq!(s.download_candidates().unwrap().paths, vec![app]);
+    }
+
     #[test]
     fn old_sessions_are_evicted_without_blocking_new_verification() {
         let (_temp, s, _) = super::super::tests::fixture();

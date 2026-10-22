@@ -103,10 +103,72 @@ impl OwnData {
         if self.roots.iter().any(|root| path.starts_with(root)) {
             return Err(protected());
         }
-        // One ancestry pass applies both filesystem and own-data guards.
+        // Refresh directory identities once for this metadata-only ancestry pass.
+        // Refreshing every protected root for every ancestor multiplied bundle
+        // fingerprints by the path depth. Never retain this snapshot across calls:
+        // a protected directory may be created or replaced between checks.
+        // open_no_follow still performs live check_inode checks before every openat.
+        let mut directories = self.directories.clone();
+        for root in &self.roots {
+            if let Some(m) = metadata_if_present(root)? {
+                directories.insert((m.dev(), m.ino()));
+            }
+        }
         files::safe_metadata_with(path, &|m| {
-            self.check_inode(m.dev(), m.ino(), m.is_dir(), m.nlink())
+            if m.is_dir() {
+                if directories.contains(&(m.dev(), m.ino())) {
+                    return Err(protected());
+                }
+                Ok(())
+            } else {
+                self.check_inode(m.dev(), m.ino(), false, m.nlink())
+            }
         })
+    }
+
+    /// Identities for one metadata-only walk below a root that has passed `check`.
+    /// The walk descends only into directories it examined itself, so each member's
+    /// ancestors were already checked as members. Per member, the full ancestry
+    /// pass and the SQLite refresh cost about twenty lstat calls; across the startup
+    /// fallback's bundles that was most of the resident CPU. Take one per walk only.
+    pub(super) fn walk(&self) -> Result<Walk<'_>, AppError> {
+        let mut directories = self.directories.clone();
+        for root in &self.roots {
+            if let Some(m) = metadata_if_present(root)? {
+                directories.insert((m.dev(), m.ino()));
+            }
+        }
+        let mut sqlite_inodes = self.sqlite_inodes.clone();
+        for path in &self.sqlite {
+            if let Some(m) = metadata_if_present(path)? {
+                sqlite_inodes.insert((m.dev(), m.ino()));
+            }
+        }
+        Ok(Walk {
+            guard: self,
+            directories,
+            sqlite_inodes,
+            linked: None,
+        })
+    }
+
+    /// Every identity below the protected roots, for hard-linked members.
+    fn data_identities(&self) -> Result<BTreeSet<(u64, u64)>, AppError> {
+        let mut identities = BTreeSet::new();
+        let mut stack = self.roots.clone();
+        let mut seen = BTreeSet::new();
+        while let Some(path) = stack.pop() {
+            let Some(m) = metadata_if_present(&path)? else {
+                continue;
+            };
+            identities.insert((m.dev(), m.ino()));
+            if m.is_dir() && !files::dataless(&m) && seen.insert((m.dev(), m.ino())) {
+                for entry in fs::read_dir(path)? {
+                    stack.push(entry?.path());
+                }
+            }
+        }
+        Ok(identities)
     }
 
     fn check_directory(&self, device: u64, inode: u64) -> Result<(), AppError> {
@@ -180,6 +242,44 @@ impl OwnData {
     }
 }
 
+pub(super) struct Walk<'a> {
+    guard: &'a OwnData,
+    directories: BTreeSet<(u64, u64)>,
+    sqlite_inodes: BTreeSet<(u64, u64)>,
+    linked: Option<BTreeSet<(u64, u64)>>,
+}
+
+impl Walk<'_> {
+    /// `metadata` is the member's own lstat result; symlinks are checked by target.
+    /// Metadata only: the walk opens no regular file, so it cannot drop SQLite locks.
+    pub(super) fn check(&mut self, path: &Path, metadata: &fs::Metadata) -> Result<(), AppError> {
+        if self.guard.roots.iter().any(|root| path.starts_with(root)) {
+            return Err(protected());
+        }
+        let identity = (metadata.dev(), metadata.ino());
+        if metadata.is_dir() {
+            return if self.directories.contains(&identity) {
+                Err(protected())
+            } else {
+                Ok(())
+            };
+        }
+        if self.sqlite_inodes.contains(&identity) {
+            return Err(protected());
+        }
+        if metadata.nlink() > 1 {
+            let linked = match &mut self.linked {
+                Some(linked) => linked,
+                linked => linked.insert(self.guard.data_identities()?),
+            };
+            if linked.contains(&identity) {
+                return Err(protected());
+            }
+        }
+        Ok(())
+    }
+}
+
 fn metadata_if_present(path: &Path) -> Result<Option<fs::Metadata>, AppError> {
     match fs::symlink_metadata(path) {
         Ok(m) => Ok(Some(m)),
@@ -192,6 +292,35 @@ fn metadata_if_present(path: &Path) -> Result<Option<fs::Metadata>, AppError> {
 mod tests {
     use super::*;
     use std::{os::fd::AsRawFd, process::Command, sync::atomic::AtomicBool};
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn metadata_checks_refresh_created_and_replaced_directory_aliases() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let data = root.join("protected");
+        let guard = OwnData::new(None, &data).unwrap();
+        let alias = Path::new("/System/Volumes/Data")
+            .join(data.strip_prefix("/").unwrap())
+            .join("canary");
+        for generation in 0..2 {
+            fs::create_dir(&data).unwrap();
+            fs::write(data.join("canary"), "private").unwrap();
+            assert!(alias.exists(), "Data-volume alias must reach the fixture");
+            assert_eq!(
+                guard.checked_metadata(&alias).unwrap_err().message,
+                "security_own_data"
+            );
+            assert_eq!(
+                guard.open_read(&alias, 1024).unwrap_err().message,
+                "security_own_data"
+            );
+            fs::rename(&data, root.join(format!("old-{generation}"))).unwrap();
+        }
+        let ordinary = root.join("ordinary");
+        fs::write(&ordinary, "public").unwrap();
+        assert!(guard.checked_metadata(&ordinary).is_ok());
+    }
 
     fn lock(file: &File) {
         let mut lock: nix::libc::flock = unsafe { std::mem::zeroed() };

@@ -9,6 +9,7 @@
 #import <IOKit/IOMessage.h>
 #import <os/log.h>
 #import <stdlib.h>
+#import "../../native/firewall/FWIdentity.h"
 extern void xpc_connection_get_audit_token(xpc_connection_t, audit_token_t *);
 extern void xpc_dictionary_get_audit_token(xpc_object_t, audit_token_t *);
 static const char *SERVICE="org.opennavo.desktop.FanHelper";
@@ -18,14 +19,11 @@ int on_service_status(void) {@autoreleasepool {return (int)service().status;}}
 int on_service_change(int install) {@autoreleasepool {NSError *error=nil; BOOL done=install ? [service() registerAndReturnError:&error] : [service() unregisterAndReturnError:&error]; return done ? 0 : (error ? (int)error.code : -1);}}
 void on_service_approval(void) {[SMAppService openSystemSettingsLoginItems];}
 int on_thermal_serious(void) {return NSProcessInfo.processInfo.thermalState >= NSProcessInfoThermalStateSerious;}
-// Get our actual signing team, never a user-supplied PID, pathname or Team ID.
-static NSString *ownTeam(void) {
-    SecCodeRef code=NULL; CFDictionaryRef info=NULL;
-    if (SecCodeCopySelf(kSecCSDefaultFlags,&code)!=errSecSuccess) return nil;
-    OSStatus result=SecCodeCopySigningInformation(code,kSecCSSigningInformation,&info); CFRelease(code);
-    if (result!=errSecSuccess || !info) return nil;
-    NSDictionary *dict=CFBridgingRelease(info);return dict[(__bridge NSString *)kSecCodeInfoTeamIdentifier];
-}
+// Get our actual signing team, never a user-supplied PID, pathname or Team ID. The running
+// image's team is fixed until exec: FWOwnTeam reads it once instead of re-validating our own
+// signature twice per heartbeat exchange (and per message in the helper). Peers are still
+// verified from their audit token every time.
+static NSString *ownTeam(void) {return FWOwnTeam();}
 // Only a developer-signed OpenNavo.app carries a daemon it can register; `tauri dev` runs a bare, ad-hoc binary.
 int on_helper_bundled(void) {
     @autoreleasepool {

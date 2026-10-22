@@ -29,6 +29,25 @@ pub enum Update {
     Activity(Vec<FirewallEvent>),
 }
 pub type Sink = Arc<dyn Fn(Update) + Send + Sync>;
+
+// Snapshots keep up to 1,000 events. Index the previous snapshot once instead of
+// searching it again for every event on each resident refresh. Compare the full
+// event so changes to counts, verdicts, or app information still reach the UI.
+fn changed_events<'a>(
+    previous: Option<&'a Snapshot>,
+    current: &'a Snapshot,
+) -> impl Iterator<Item = &'a FirewallEvent> {
+    let previous: HashMap<_, _> = previous
+        .into_iter()
+        .flat_map(|snapshot| &snapshot.events)
+        .map(|event| (event.id.as_str(), event))
+        .collect();
+    current
+        .events
+        .iter()
+        .filter(move |event| previous.get(event.id.as_str()).copied() != Some(*event))
+}
+
 #[derive(Clone)]
 struct Configuration {
     id: String,
@@ -262,15 +281,7 @@ impl Service {
                         updates.push(Update::Changed(changed));
                     }
                 }
-                let changed: Vec<_> = current
-                    .events
-                    .iter()
-                    .filter(|event| {
-                        !cache
-                            .snapshot
-                            .as_ref()
-                            .is_some_and(|last| last.events.contains(event))
-                    })
+                let changed: Vec<_> = changed_events(cache.snapshot.as_ref(), current)
                     .cloned()
                     .collect();
                 for event in changed {
@@ -454,5 +465,83 @@ impl Service {
                 crate::library::files::icon(database, std::path::Path::new(path), cache).ok()
             })
             .clone();
+    }
+}
+
+#[cfg(test)]
+mod activity_tests {
+    use super::*;
+
+    fn snapshot(count: usize) -> Snapshot {
+        let event: FirewallEvent = serde_json::from_value(json!({
+            "id":"fixture", "at":1000,
+            "app":{"key":"path:/fixture/tool", "name":"tool", "path":"/fixture/tool",
+                "bundlePath":null, "bundleId":null, "signingId":null, "teamId":null,
+                "teamName":null, "signer":"unsigned", "iconPath":null},
+            "remoteAddress":"192.0.2.1", "remoteHost":null, "port":443, "protocol":"tcp",
+            "action":"block", "reason":"rule", "ruleId":"rule", "blocklistId":null, "count":1
+        }))
+        .unwrap();
+        let mut snapshot = opennavo_firewall_core::engine::Engine::default().snapshot();
+        snapshot.events = (0..count)
+            .map(|index| FirewallEvent {
+                id: uuid::Uuid::from_u128(index as u128).to_string(),
+                ..event.clone()
+            })
+            .collect();
+        snapshot
+    }
+
+    #[test]
+    fn activity_preserves_full_updates_without_reemitting_unchanged_or_reordered_events() {
+        let previous = snapshot(5);
+        let mut current = previous.clone();
+        current.events.reverse();
+        assert_eq!(changed_events(Some(&previous), &current).count(), 0);
+        current.events[0].count += 1;
+        current.events[1].app.icon_path = Some("/fixture/icon.png".into());
+        current.events[2].reason = FirewallVerdictReason::Timeout;
+        current.events[3].id = "new-event".into();
+        assert_eq!(
+            changed_events(Some(&previous), &current).collect::<Vec<_>>(),
+            current.events[..4].iter().collect::<Vec<_>>()
+        );
+        assert_eq!(changed_events(None, &current).count(), 5);
+        // Evicted records are absent from a snapshot; they are not new activity.
+        current.events.drain(..4);
+        assert_eq!(changed_events(Some(&previous), &current).count(), 0);
+    }
+
+    #[test]
+    #[ignore = "manual resident activity comparison benchmark"]
+    fn activity_diff_perf() {
+        use std::{hint::black_box, time::Instant};
+        let previous = snapshot(1000);
+        let current = previous.clone();
+        for round in 0..3 {
+            let started = Instant::now();
+            for _ in 0..200 {
+                let changed = black_box(&current)
+                    .events
+                    .iter()
+                    .filter(|event| !black_box(&previous).events.contains(event))
+                    .count();
+                assert_eq!(black_box(changed), 0);
+            }
+            let before = started.elapsed().as_secs_f64() * 1000.0 / 200.0;
+            let started = Instant::now();
+            for _ in 0..200 {
+                assert_eq!(
+                    black_box(
+                        changed_events(Some(black_box(&previous)), black_box(&current)).count()
+                    ),
+                    0
+                );
+            }
+            let after = started.elapsed().as_secs_f64() * 1000.0 / 200.0;
+            eprintln!(
+                "activity-diff round={round} events=1000 before_ms={before:.6} after_ms={after:.6}"
+            );
+        }
     }
 }
