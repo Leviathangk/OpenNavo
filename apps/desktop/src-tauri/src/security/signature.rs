@@ -23,6 +23,8 @@ struct Cached {
     fingerprint: [u8; 32],
     at: Instant,
     info: SignatureInfo,
+    /// Set only for a bundle too large to judge; see `outline`.
+    outline: Option<[u8; 32]>,
 }
 static CACHE: OnceLock<Mutex<BTreeMap<PathBuf, Cached>>> = OnceLock::new();
 
@@ -60,6 +62,14 @@ fn fingerprint(
     guard: Option<&super::own_data::OwnData>,
 ) -> Result<[u8; 32], AppError> {
     files::safe_metadata(path)?;
+    // The root's whole ancestry once; below it, each member's own metadata.
+    let mut walk = match guard {
+        Some(guard) => {
+            guard.check(path)?;
+            Some(guard.walk()?)
+        }
+        None => None,
+    };
     let mut digest = Sha256::new();
     let mut stack = vec![path.to_owned()];
     let mut count = 0;
@@ -70,9 +80,9 @@ fn fingerprint(
         }
         let m = std::fs::symlink_metadata(&p)?;
         if !m.is_symlink()
-            && let Some(guard) = guard
+            && let Some(walk) = &mut walk
         {
-            guard.check(&p)?;
+            walk.check(&p, &m)?;
         }
         if files::dataless(&m) {
             return Err(AppError::new("E_PROTECTED", "security_dataless"));
@@ -193,8 +203,37 @@ fn inspect_inner(
     if !carries_signature(&path, guard)? {
         return Ok(empty(SignatureStatus::NotCode));
     }
-    let before = fingerprint(&path, guard)?;
     let cache = CACHE.get_or_init(Default::default);
+    let outline = outline(&path);
+    if let Some(entry) = cache.lock().map_err(super::poison)?.get(&path)
+        && entry.outline == Some(outline)
+        && entry.at.elapsed() < max_age
+    {
+        return Ok(entry.info.clone());
+    }
+    let remember = |fingerprint, info: &SignatureInfo, outline| -> Result<(), AppError> {
+        let mut cache = cache.lock().map_err(super::poison)?;
+        if cache.len() >= 4096 {
+            cache.clear();
+        }
+        cache.insert(
+            path.clone(),
+            Cached {
+                fingerprint,
+                at: Instant::now(),
+                info: info.clone(),
+                outline,
+            },
+        );
+        Ok(())
+    };
+    let before = match fingerprint(&path, guard) {
+        Err(error) if error.message == "signature_bundle_limit" => {
+            remember([0; 32], &empty(SignatureStatus::Unknown), Some(outline))?;
+            return Err(error);
+        }
+        result => result?,
+    };
     if let Some(entry) = cache.lock().map_err(super::poison)?.get(&path)
         && entry.fingerprint == before
         && entry.at.elapsed() < max_age
@@ -216,20 +255,47 @@ fn inspect_inner(
         ));
     }
     if info.status != SignatureStatus::Unknown || timed_out {
-        let mut cache = cache.lock().map_err(super::poison)?;
-        if cache.len() >= 4096 {
-            cache.clear();
-        }
-        cache.insert(
-            path,
-            Cached {
-                fingerprint: before,
-                at: Instant::now(),
-                info: info.clone(),
-            },
-        );
+        remember(before, &info, timed_out.then_some(outline))?;
     }
     Ok(info)
+}
+/// What replacing or updating a bundle changes, without walking its members: the root,
+/// its Info.plist, executable folder and signature seal. Only verdicts that say nothing
+/// about the members use it: a bundle too large to check in time (Xcode, 160,000 entries)
+/// or to walk at all. Each fallback scan used to walk all of Xcode to reuse its Unknown.
+fn outline(path: &Path) -> [u8; 32] {
+    let mut digest = Sha256::new();
+    for name in [
+        "",
+        "Contents",
+        "Contents/Info.plist",
+        "Contents/MacOS",
+        "Contents/_CodeSignature/CodeResources",
+    ] {
+        let member = if name.is_empty() {
+            path.to_owned()
+        } else {
+            path.join(name)
+        };
+        match std::fs::symlink_metadata(member) {
+            Ok(m) => {
+                for v in [
+                    m.dev(),
+                    m.ino(),
+                    m.len(),
+                    m.mode() as u64,
+                    m.mtime() as u64,
+                    m.mtime_nsec() as u64,
+                    m.ctime() as u64,
+                    m.ctime_nsec() as u64,
+                ] {
+                    digest.update(v.to_le_bytes());
+                }
+            }
+            Err(_) => digest.update([0]),
+        }
+    }
+    digest.finalize().into()
 }
 
 /// Fixed read-only helper mode; entered before Tauri or any database initialization.
@@ -369,6 +435,194 @@ fn package_signature(output: Option<&str>) -> SignatureInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// Run explicitly to compare the metadata work on an unchanged, deep bundle.
+    #[test]
+    #[ignore = "local filesystem performance probe"]
+    fn fingerprint_large_bundle_perf() {
+        let (_temp, service, _) = super::super::tests::fixture();
+        let bundle = service.home.join("Applications/Fixture.app");
+        let resources = bundle.join("Contents/Frameworks/Fixture.framework/Versions/A/Resources");
+        std::fs::create_dir_all(&resources).unwrap();
+        for index in 0..4000 {
+            std::fs::write(resources.join(format!("resource-{index}")), b"fixture").unwrap();
+        }
+        let guard = service.own_data().unwrap();
+        let expected = fingerprint(&bundle, Some(&guard)).unwrap();
+        let started = Instant::now();
+        for _ in 0..5 {
+            assert_eq!(fingerprint(&bundle, Some(&guard)).unwrap(), expected);
+        }
+        println!(
+            "fingerprint: 4000 files, 5 unchanged passes, {:.3} ms/pass",
+            started.elapsed().as_secs_f64() * 1000.0 / 5.0
+        );
+    }
+    /// The walk before `OwnData::walk`: a complete guard check for every member.
+    fn fingerprint_per_member(
+        path: &Path,
+        guard: &super::super::own_data::OwnData,
+    ) -> Result<[u8; 32], AppError> {
+        files::safe_metadata(path)?;
+        let mut digest = Sha256::new();
+        let mut stack = vec![path.to_owned()];
+        let mut count = 0;
+        while let Some(p) = stack.pop() {
+            count += 1;
+            if count > 200_000 {
+                return Err(AppError::new("E_PROTECTED", "signature_bundle_limit"));
+            }
+            let m = std::fs::symlink_metadata(&p)?;
+            if !m.is_symlink() {
+                guard.check(&p)?;
+            }
+            if files::dataless(&m) {
+                return Err(AppError::new("E_PROTECTED", "security_dataless"));
+            }
+            digest.update(p.as_os_str().as_encoded_bytes());
+            for v in [
+                m.dev(),
+                m.ino(),
+                m.len(),
+                m.mode() as u64,
+                m.uid() as u64,
+                m.gid() as u64,
+                m.mtime() as u64,
+                m.mtime_nsec() as u64,
+                m.ctime() as u64,
+                m.ctime_nsec() as u64,
+            ] {
+                digest.update(v.to_le_bytes());
+            }
+            if m.is_symlink() {
+                let target = p.canonicalize()?;
+                if !target.starts_with(path) {
+                    return Err(AppError::new("E_PROTECTED", "signature_external_link"));
+                }
+                guard.check(&target)?;
+                if files::dataless(&std::fs::symlink_metadata(&target)?) {
+                    return Err(AppError::new("E_PROTECTED", "security_dataless"));
+                }
+                digest.update(target.as_os_str().as_encoded_bytes());
+            } else if m.is_dir() {
+                let mut entries = std::fs::read_dir(&p)?
+                    .map(|e| e.map(|e| e.path()))
+                    .collect::<Result<Vec<_>, _>>()?;
+                entries.sort();
+                stack.extend(entries);
+            }
+        }
+        Ok(digest.finalize().into())
+    }
+    #[test]
+    fn walk_fingerprint_equals_the_per_member_check() {
+        let (_temp, service, _) = super::super::tests::fixture();
+        let bundle = service.home.join("Applications/Fixture.app");
+        let resources = bundle.join("Contents/Resources/en.lproj");
+        std::fs::create_dir_all(&resources).unwrap();
+        std::fs::create_dir_all(bundle.join("Contents/Frameworks/Empty.framework")).unwrap();
+        std::fs::write(resources.join("Localizable.strings"), b"fixture").unwrap();
+        std::fs::write(bundle.join("Contents/Info.plist"), b"<plist/>").unwrap();
+        std::os::unix::fs::symlink(
+            "en.lproj/Localizable.strings",
+            bundle.join("Contents/Resources/Base.strings"),
+        )
+        .unwrap();
+        let guard = service.own_data().unwrap();
+        let expected = fingerprint_per_member(&bundle, &guard).unwrap();
+        assert_eq!(fingerprint(&bundle, Some(&guard)).unwrap(), expected);
+        assert_eq!(fingerprint(&bundle, None).unwrap(), expected);
+        // Any member change still changes the print.
+        std::fs::write(resources.join("Localizable.strings"), b"changed").unwrap();
+        assert_ne!(fingerprint(&bundle, Some(&guard)).unwrap(), expected);
+        assert_eq!(
+            fingerprint(&bundle, Some(&guard)).unwrap(),
+            fingerprint_per_member(&bundle, &guard).unwrap()
+        );
+    }
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn too_large_verdicts_follow_bundle_updates_without_member_walks() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap().join("Large.app");
+        let deep = root.join("Contents/Resources/deep");
+        std::fs::create_dir_all(&deep).unwrap();
+        std::fs::create_dir_all(root.join("Contents/MacOS")).unwrap();
+        std::fs::copy("/usr/bin/true", root.join("Contents/MacOS/main")).unwrap();
+        let plist = root.join("Contents/Info.plist");
+        std::fs::write(&plist, "<plist version=\"1.0\"><dict><key>CFBundleIdentifier</key><string>test.opennavo.outline</string><key>CFBundleExecutable</key><string>main</string></dict></plist>").unwrap();
+        let signed = std::process::Command::new("/usr/bin/codesign")
+            .args(["--force", "--sign", "-"])
+            .arg(&root)
+            .output()
+            .unwrap();
+        assert!(signed.status.success());
+        let unchanged = outline(&root);
+        std::fs::write(deep.join("member"), "deep inside").unwrap();
+        assert_eq!(outline(&root), unchanged);
+        // As if its check had timed out: the Unknown is reused while the bundle is unchanged.
+        CACHE.get_or_init(Default::default).lock().unwrap().insert(
+            root.clone(),
+            Cached {
+                fingerprint: [0; 32],
+                at: Instant::now(),
+                info: empty(SignatureStatus::Unknown),
+                outline: Some(unchanged),
+            },
+        );
+        assert_eq!(inspect(&root).unwrap().status, SignatureStatus::Unknown);
+        // An update rewrites its Info.plist: checked again, and the broken seal shows.
+        std::fs::write(
+            &plist,
+            std::fs::read_to_string(&plist)
+                .unwrap()
+                .replace("outline", "changed"),
+        )
+        .unwrap();
+        assert_ne!(outline(&root), unchanged);
+        assert_eq!(inspect(&root).unwrap().status, SignatureStatus::Invalid);
+        // Replacing the whole bundle changes the root itself.
+        let replaced = outline(&root);
+        let staged = root.with_file_name("Staged.app");
+        std::fs::rename(&root, &staged).unwrap();
+        std::fs::create_dir(&root).unwrap();
+        assert_ne!(outline(&root), replaced);
+    }
+    /// Run explicitly: both walks over this Mac's apps, which must print the same.
+    #[test]
+    #[ignore = "real-system fingerprint comparison"]
+    fn walk_fingerprint_real_bundles_perf() {
+        let (_temp, service, _) = super::super::tests::fixture();
+        let guard = service.own_data().unwrap();
+        let mut apps: Vec<_> = std::fs::read_dir("/Applications")
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|e| e == "app"))
+            .collect();
+        apps.sort();
+        let (mut before, mut after, mut compared) = (Duration::ZERO, Duration::ZERO, 0);
+        for app in apps {
+            let started = Instant::now();
+            let old = fingerprint_per_member(&app, &guard);
+            let middle = Instant::now();
+            let new = fingerprint(&app, Some(&guard));
+            let (old_time, new_time) = (middle - started, middle.elapsed());
+            match (old, new) {
+                (Ok(old), Ok(new)) => {
+                    assert_eq!(old, new, "{}", app.display());
+                    compared += 1;
+                    before += old_time;
+                    after += new_time;
+                }
+                (old, new) => assert_eq!(old.is_err(), new.is_err(), "{}", app.display()),
+            }
+        }
+        println!(
+            "walk-fingerprint bundles={compared} per_member_ms={:.0} walk_ms={:.0}",
+            before.as_secs_f64() * 1000.0,
+            after.as_secs_f64() * 1000.0
+        );
+    }
     #[test]
     fn native_worker() {
         if let Some(path) = std::env::var_os("OPENNAVO_TEST_SIGNATURE_PATH") {

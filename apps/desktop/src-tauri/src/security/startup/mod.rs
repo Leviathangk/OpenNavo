@@ -312,6 +312,15 @@ impl<'a> Scanner<'a> {
         std::thread::scope(|scope| {
             for _ in 0..paths.len().min(workers) {
                 scope.spawn(|| {
+                    // Cache hits still walk entire bundles. Let interactive work
+                    // take precedence while these filesystem checks run.
+                    #[cfg(target_os = "macos")]
+                    unsafe {
+                        nix::libc::pthread_set_qos_class_self_np(
+                            nix::libc::qos_class_t::QOS_CLASS_UTILITY,
+                            0,
+                        );
+                    }
                     loop {
                         let index = next.fetch_add(1, Ordering::Relaxed);
                         let Some(path) = paths.get(index) else {
@@ -1205,9 +1214,13 @@ impl Service {
         // when the observed state changed, never merely because a scan finished.
         let changed = startup_changed(&previous, &result);
         self.database.with(|c|{let tx=c.transaction()?;
+            // Write only rows that differ. Deleting and re-inserting all of them (about
+            // 1,100 on a typical Mac) on every five-minute fallback rewrote megabytes.
+            let stored:BTreeMap<String,(String,Option<String>)>={let mut rows=tx.prepare("SELECT id,value,snapshot FROM security_startup")?;rows.query_map([],|r|Ok((r.get(0)?,(r.get(1)?,r.get(2)?))))?.collect::<Result<_,_>>()?};
+            let mut kept=BTreeSet::new();
+            for item in &result.items{if item.state == StartupState::Removed { continue; } let snapshot=Snapshot::capture(Path::new(&item.path)).ok().map(|s|serde_json::to_string(&s)).transpose()?;let value=serde_json::to_string(item)?;kept.insert(item.id.as_str());if stored.get(&item.id).is_some_and(|(v,s)|*v==value&&*s==snapshot){continue;}tx.execute("INSERT INTO security_startup(id,value,snapshot) VALUES(?1,?2,?3) ON CONFLICT(id) DO UPDATE SET value=excluded.value,snapshot=excluded.snapshot",params![item.id,value,snapshot])?;}
             // Preserve categories we could not inspect, rather than treating denial as deletion.
-            for old in previous.values(){if old.state != StartupState::Removed && !result.missing.contains(&old.category){tx.execute("DELETE FROM security_startup WHERE id=?1",[&old.id])?;}}
-            for item in &result.items{if item.state == StartupState::Removed { continue; } let snapshot=Snapshot::capture(Path::new(&item.path)).ok().map(|s|serde_json::to_string(&s)).transpose()?;tx.execute("INSERT INTO security_startup(id,value,snapshot) VALUES(?1,?2,?3) ON CONFLICT(id) DO UPDATE SET value=excluded.value,snapshot=excluded.snapshot",params![item.id,serde_json::to_string(item)?,snapshot])?;}
+            for old in previous.values(){if old.state != StartupState::Removed && !result.missing.contains(&old.category) && !kept.contains(old.id.as_str()){tx.execute("DELETE FROM security_startup WHERE id=?1",[&old.id])?;}}
             tx.commit()?;Ok(())})?;
         self.database
             .set_meta("startup_baseline", &result.scanned_at.to_string())?;
@@ -1716,5 +1729,114 @@ mod switch_tests {
         assert_eq!(switch(helper), Some(StartupAction::Enable));
         assert!(registered_service(&roots, "4.com.example.helper", None).is_ok());
         assert!(registered_service(&roots, "4.com.example.missing", None).is_err());
+    }
+}
+
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+    type Rows = BTreeMap<String, (String, Option<String>)>;
+    fn rows(service: &Service) -> Rows {
+        service
+            .database
+            .with(|c| {
+                let mut rows = c.prepare("SELECT id,value,snapshot FROM security_startup")?;
+                let rows = rows
+                    .query_map([], |r| Ok((r.get(0)?, (r.get(1)?, r.get(2)?))))?
+                    .collect::<Result<_, _>>()?;
+                Ok(rows)
+            })
+            .unwrap()
+    }
+    fn row(rows: &Rows, label: &str) -> Option<(String, (String, Option<String>))> {
+        let label = format!(r#""label":"{label}""#);
+        rows.iter()
+            .find(|(_, (value, _))| value.contains(&label))
+            .map(|(id, row)| (id.clone(), row.clone()))
+    }
+    #[test]
+    fn rescans_write_only_the_rows_that_changed() {
+        let (temp, service, _) = super::super::tests::fixture();
+        let roots = Roots {
+            home: service.home.clone(),
+            root: temp.path().canonicalize().unwrap(),
+            applications: vec![],
+        };
+        let agents = service.home.join("Library/LaunchAgents");
+        std::fs::create_dir_all(&agents).unwrap();
+        let agent = |label: &str| {
+            std::fs::write(
+                agents.join(format!("{label}.plist")),
+                format!(r#"<plist><dict><key>Label</key><string>{label}</string><key>Program</key><string>/usr/bin/true</string><key>RunAtLoad</key><true/></dict></plist>"#),
+            )
+            .unwrap()
+        };
+        agent("org.fixture.kept");
+        agent("org.fixture.removed");
+        service.startup_scan_at(&roots).unwrap();
+        let first = rows(&service);
+        assert!(row(&first, "org.fixture.kept").is_some());
+        assert!(row(&first, "org.fixture.removed").is_some());
+        let changes = || service.database.with(|c| Ok(c.total_changes())).unwrap();
+        let before = changes();
+        service.startup_scan_at(&roots).unwrap();
+        // Only the scan's own meta keys (baseline, scanner, snapshot) are written.
+        assert!(changes() - before <= 3, "{} changes", changes() - before);
+        assert_eq!(rows(&service), first);
+        std::fs::remove_file(agents.join("org.fixture.removed.plist")).unwrap();
+        agent("org.fixture.added");
+        service.startup_scan_at(&roots).unwrap();
+        let last = rows(&service);
+        assert!(row(&last, "org.fixture.removed").is_none());
+        assert!(row(&last, "org.fixture.added").is_some());
+        assert_eq!(
+            row(&last, "org.fixture.kept"),
+            row(&first, "org.fixture.kept")
+        );
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod resident_perf_tests {
+    use super::*;
+    fn cpu_ms(who: i32) -> f64 {
+        let mut usage: nix::libc::rusage = unsafe { std::mem::zeroed() };
+        unsafe { nix::libc::getrusage(who, &mut usage) };
+        let ms = |t: nix::libc::timeval| t.tv_sec as f64 * 1000.0 + t.tv_usec as f64 / 1000.0;
+        ms(usage.ru_utime) + ms(usage.ru_stime)
+    }
+    /// Run explicitly: this machine's real startup sources with the app's own-data guard,
+    /// as the resident watcher scans them. The first pass fills the signature cache; the
+    /// following passes are the steady state of the five-minute fallback.
+    #[test]
+    #[ignore = "real-system resident scan probe"]
+    fn resident_scan_perf() {
+        let (_temp, service, _) = super::super::tests::fixture();
+        let guard = service.own_data().unwrap();
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        let roots = Roots::native(home);
+        let commands = super::super::NativeCommands;
+        let started = std::time::Instant::now();
+        let warm = scan_guarded(&roots, &commands, Some(&guard));
+        println!(
+            "resident-scan warm items={} wall_ms={:.0}",
+            warm.items.len(),
+            started.elapsed().as_secs_f64() * 1000.0
+        );
+        for round in 0..3 {
+            let (own, children) = (
+                cpu_ms(nix::libc::RUSAGE_SELF),
+                cpu_ms(nix::libc::RUSAGE_CHILDREN),
+            );
+            let started = std::time::Instant::now();
+            let snapshot = scan_guarded(&roots, &commands, Some(&guard));
+            println!(
+                "resident-scan round={round} items={} wall_ms={:.0} cpu_ms={:.0} child_cpu_ms={:.0}",
+                snapshot.items.len(),
+                started.elapsed().as_secs_f64() * 1000.0,
+                cpu_ms(nix::libc::RUSAGE_SELF) - own,
+                cpu_ms(nix::libc::RUSAGE_CHILDREN) - children,
+            );
+        }
     }
 }

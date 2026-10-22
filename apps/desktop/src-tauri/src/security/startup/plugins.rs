@@ -540,6 +540,14 @@ impl Scanner<'_> {
     }
     fn proxies(&mut self) {
         let category = StartupCategory::LibraryProxies;
+        let own_data = self.own_data;
+        let mut cache = PROBED
+            .get_or_init(Default::default)
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        // Paths no longer listed fall out with `previous`.
+        let mut previous = std::mem::take(&mut *cache);
+        let mut current = Probes::default();
         // Upstream's lsof set plus direct/weak Mach-O dependencies of process images.
         let mut paths = BTreeSet::new();
         if let Ok(output) = self.commands.run("/usr/sbin/lsof", &["-Fn", "/"]) {
@@ -555,17 +563,26 @@ impl Scanner<'_> {
         }
         if let Ok(output) = self.commands.run("/bin/ps", &["-axo", "comm="]) {
             for executable in output.lines().map(str::trim).filter(|p| p.starts_with('/')) {
-                if proxy_probe_allowed(&self.roots.home, Path::new(executable))
-                    && let Ok(headers) = macho_file(Path::new(executable), self.own_data)
-                {
-                    for (_, dependencies) in headers {
-                        paths.extend(
-                            dependencies
+                let executable = Path::new(executable);
+                if proxy_probe_allowed(&self.roots.home, executable)
+                    && let Some(dependencies) = probe(
+                        executable,
+                        &mut previous.images,
+                        &mut current.images,
+                        || {
+                            Ok(macho_file(executable, own_data)?
                                 .into_iter()
-                                .filter(|p| p.starts_with('/'))
-                                .map(PathBuf::from),
-                        );
-                    }
+                                .flat_map(|(_, dependencies)| dependencies)
+                                .collect())
+                        },
+                    )
+                {
+                    paths.extend(
+                        dependencies
+                            .into_iter()
+                            .filter(|p| p.starts_with('/'))
+                            .map(PathBuf::from),
+                    );
                 }
             }
         }
@@ -573,13 +590,78 @@ impl Scanner<'_> {
             if !proxy_probe_allowed(&self.roots.home, &path) {
                 continue;
             }
-            if let Ok(headers) = macho_file(&path, self.own_data)
-                && headers.iter().any(|(proxy, _)| *proxy)
+            if probe(&path, &mut previous.files, &mut current.files, || {
+                Ok(macho_file(&path, own_data)?.iter().any(|(proxy, _)| *proxy))
+            }) == Some(true)
             {
                 self.add(category, &path, None, None, None);
             }
         }
+        *cache = current;
     }
+}
+/// What the last scan read from a file that has not changed since. lsof lists every file
+/// open on the volume (about 13,000 on a developer's Mac) and ps every process image; a
+/// guarded open of each, on every fallback scan, was most of this probe although nearly
+/// all of them were the same files as last time. A hit opens nothing, so it cannot touch
+/// protected data; new, changed or previously rejected files get the full guarded open.
+struct Probed<T> {
+    identity: [i64; 7],
+    /// None: rejected in this scan only; parent paths or protection state may change.
+    found: Option<T>,
+}
+/// Keyed by a hash of the path, not the path: the identity already names the file.
+type ProbeMap<T> = std::collections::HashMap<u64, Probed<T>>;
+#[derive(Default)]
+struct Probes {
+    images: ProbeMap<Vec<String>>,
+    files: ProbeMap<bool>,
+}
+static PROBED: std::sync::OnceLock<Mutex<Probes>> = std::sync::OnceLock::new();
+fn probe<T: Clone>(
+    path: &Path,
+    previous: &mut ProbeMap<T>,
+    current: &mut ProbeMap<T>,
+    read: impl FnOnce() -> Result<T, AppError>,
+) -> Option<T> {
+    use std::{
+        hash::{Hash, Hasher},
+        os::unix::fs::MetadataExt,
+    };
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    path.hash(&mut hasher);
+    let key = hasher.finish();
+    if let Some(done) = current.get(&key) {
+        return done.found.clone();
+    }
+    // Content changes move ctime, which no unprivileged process can set back.
+    let m = std::fs::symlink_metadata(path).ok()?;
+    let identity = [
+        m.dev() as i64,
+        m.ino() as i64,
+        m.size() as i64,
+        m.mtime(),
+        m.mtime_nsec(),
+        m.ctime(),
+        m.ctime_nsec(),
+    ];
+    let found = match previous.remove(&key) {
+        Some(old) if old.identity == identity && old.found.is_some() => old.found,
+        _ => match read() {
+            Ok(found) => Some(found),
+            Err(error) if error.code == "E_PROTECTED" => None,
+            // Not remembered: an I/O failure may be transient.
+            Err(_) => return None,
+        },
+    };
+    current.insert(
+        key,
+        Probed {
+            identity,
+            found: found.clone(),
+        },
+    );
+    found
 }
 // lsof lists documents and Photos databases as well as code. Reject private data
 // lexically BEFORE metadata/header reads, including the Data volume alias and
@@ -1051,6 +1133,166 @@ mod tests {
                 vec![(true, vec!["/abc".into()])]
             );
         }
+    }
+    /// A thin arm64 Mach-O whose only load command names `library`.
+    fn macho_bytes(filetype: u32, command: u32, library: &Path) -> Vec<u8> {
+        let mut name = library.as_os_str().as_encoded_bytes().to_vec();
+        name.resize((name.len() / 8 + 1) * 8, 0);
+        let size = 24 + name.len() as u32;
+        let mut bytes = vec![];
+        for word in [
+            0xfeedfacf_u32,
+            0x100000c,
+            0,
+            filetype,
+            1,
+            size,
+            0,
+            0,
+            command,
+            size,
+            24,
+            0,
+            0,
+            0,
+        ] {
+            bytes.extend(word.to_le_bytes());
+        }
+        bytes.extend(name);
+        bytes
+    }
+    #[test]
+    fn probes_reread_only_new_or_changed_files() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().canonicalize().unwrap().join("file");
+        std::fs::write(&path, "first").unwrap();
+        let reads = std::cell::Cell::new(0);
+        let mut previous = std::collections::HashMap::new();
+        let round = |previous: &mut std::collections::HashMap<_, _>,
+                     result: Result<u32, AppError>| {
+            let mut current = std::collections::HashMap::new();
+            let read = || {
+                reads.set(reads.get() + 1);
+                result.clone()
+            };
+            let found = probe(&path, previous, &mut current, read);
+            // The same path again in one scan (ps lists an image once per process).
+            assert_eq!(probe(&path, previous, &mut current, read), found);
+            *previous = current;
+            found
+        };
+        assert_eq!(round(&mut previous, Ok(1)), Some(1));
+        assert_eq!(round(&mut previous, Ok(2)), Some(1));
+        assert_eq!(reads.get(), 1);
+        std::fs::write(&path, "second").unwrap();
+        assert_eq!(round(&mut previous, Ok(2)), Some(2));
+        assert_eq!(reads.get(), 2);
+        // A rejection is retried next scan even without file metadata changes.
+        std::fs::write(&path, "third").unwrap();
+        let rejected = AppError::new("E_PROTECTED", "security_own_data");
+        assert_eq!(round(&mut previous, Err(rejected)), None);
+        assert_eq!(reads.get(), 3);
+        assert_eq!(round(&mut previous, Ok(3)), Some(3));
+        assert_eq!(reads.get(), 4);
+        std::fs::write(&path, "fourth").unwrap();
+        let failed = AppError::new("E_UNKNOWN", "io");
+        assert_eq!(round(&mut previous, Err(failed)), None);
+        // Not remembered even within the scan: its repeat was read again.
+        assert_eq!(reads.get(), 6);
+        assert_eq!(round(&mut previous, Ok(4)), Some(4));
+        assert_eq!(reads.get(), 7);
+        std::fs::remove_file(&path).unwrap();
+        assert_eq!(round(&mut previous, Ok(5)), None);
+        assert!(previous.is_empty());
+    }
+    #[test]
+    fn probes_retry_after_a_symlinked_parent_is_restored() {
+        use std::os::unix::fs::MetadataExt;
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let parent = root.join("libraries");
+        let moved = root.join("moved");
+        std::fs::create_dir(&moved).unwrap();
+        let path = parent.join("proxy.dylib");
+        std::fs::write(
+            moved.join("proxy.dylib"),
+            macho_bytes(6, 0x8000001f, Path::new("/usr/lib/libSystem.B.dylib")),
+        )
+        .unwrap();
+        std::os::unix::fs::symlink(&moved, &parent).unwrap();
+        let identity = || {
+            let m = std::fs::symlink_metadata(&path).unwrap();
+            (
+                m.dev(),
+                m.ino(),
+                m.size(),
+                m.mtime(),
+                m.mtime_nsec(),
+                m.ctime(),
+                m.ctime_nsec(),
+            )
+        };
+        let before = identity();
+        assert_eq!(macho_file(&path, None).unwrap_err().code, "E_PROTECTED");
+        let mut previous = ProbeMap::default();
+        let round = |previous: &mut ProbeMap<_>| {
+            let mut current = ProbeMap::default();
+            let found = probe(&path, previous, &mut current, || macho_file(&path, None));
+            *previous = current;
+            found
+        };
+        assert_eq!(round(&mut previous), None);
+        assert_eq!(round(&mut previous), None);
+        std::fs::remove_file(&parent).unwrap();
+        std::fs::rename(&moved, &parent).unwrap();
+        assert_eq!(identity(), before);
+        let expected = Some(vec![(true, vec!["/usr/lib/libSystem.B.dylib".into()])]);
+        assert_eq!(round(&mut previous), expected);
+        assert_eq!(round(&mut previous), expected);
+    }
+    #[test]
+    fn repeated_scans_report_the_same_proxies_and_follow_changes() {
+        use super::super::Commands;
+        struct Listed(PathBuf, PathBuf);
+        impl Commands for Listed {
+            fn run(&self, program: &str, _: &[&str]) -> Result<String, AppError> {
+                Ok(match program {
+                    "/usr/sbin/lsof" => format!("p1\nn{}\nn/dev/null\n", self.0.display()),
+                    "/bin/ps" => format!("{0}\n{0}\n", self.1.display()),
+                    _ => String::new(),
+                })
+            }
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let open = root.join("open.dylib");
+        let linked = root.join("linked.dylib");
+        let image = root.join("image");
+        let proxy = macho_bytes(6, 0x8000001f, Path::new("/usr/lib/libSystem.B.dylib"));
+        std::fs::write(&open, &proxy).unwrap();
+        std::fs::write(&linked, &proxy).unwrap();
+        std::fs::write(&image, macho_bytes(2, 0xc, &linked)).unwrap();
+        let roots = Roots {
+            home: root.join("home"),
+            root: root.join("system"),
+            applications: vec![],
+        };
+        let commands = Listed(open.clone(), image);
+        let proxies = || {
+            scan(&roots, &commands)
+                .items
+                .into_iter()
+                .filter(|item| item.category == StartupCategory::LibraryProxies)
+                .map(|item| PathBuf::from(item.path))
+                .collect::<BTreeSet<_>>()
+        };
+        let both = BTreeSet::from([open.clone(), linked.clone()]);
+        assert_eq!(proxies(), both);
+        assert_eq!(proxies(), both);
+        std::fs::write(&open, b"no longer a library").unwrap();
+        assert_eq!(proxies(), BTreeSet::from([linked.clone()]));
+        std::fs::write(&open, &proxy).unwrap();
+        assert_eq!(proxies(), both);
     }
     #[test]
     fn cron_assignments_are_persistence_too() {

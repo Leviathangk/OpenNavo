@@ -29,6 +29,16 @@ def profile(app_id=APP, host=True):
 
 
 class PreparationTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'darwin', 'macOS identity APIs')
+    def test_own_signing_identity_is_cached_without_caching_api_failures(self):
+        with tempfile.TemporaryDirectory(prefix='opennavo-firewall-own-team-') as folder:
+            binary = Path(folder) / 'own-team-test'
+            subprocess.run(['xcrun', 'clang', '-fobjc-arc', '-fblocks', '-Wall', '-Wextra', '-Werror',
+                            str(fw.SOURCE / 'tests/own_team.m'), '-framework', 'Foundation',
+                            '-framework', 'Security', '-lbsm', '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True, timeout=15)
+            subprocess.run([str(binary), '--unsigned'], check=True, timeout=15)
+
     @unittest.skipUnless(sys.platform == 'darwin', 'macOS SystemExtensions APIs')
     def test_native_missing_service_detection_without_system_operations(self):
         with tempfile.TemporaryDirectory(prefix='opennavo-firewall-missing-') as folder:

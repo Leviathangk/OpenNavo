@@ -138,7 +138,12 @@ pub struct Client<T: Transport> {
     session_started: bool,
     silent: bool,
     desired_manual: std::collections::BTreeMap<u32, u32>,
+    /// The service state as last read; heartbeats reuse it between launchd queries.
+    known: Option<FanHelperState>,
+    ticks: u32,
 }
+/// Heartbeats between launchd queries: about a minute at the five-second tick.
+pub const STATE_EVERY: u32 = 12;
 impl<T: Transport> Client<T> {
     pub fn new(transport: T, support: FanControlSupport, sink: Changed) -> Self {
         Self {
@@ -151,13 +156,21 @@ impl<T: Transport> Client<T> {
             session_started: false,
             silent: false,
             desired_manual: std::collections::BTreeMap::new(),
+            known: None,
+            ticks: 0,
         }
     }
     pub fn allowed(&self) -> bool {
         super::super::manual_allowed(self.support)
     }
-    fn enabled(&self) -> Result<(), AppError> {
-        if self.transport.state() != FanHelperState::Enabled {
+    /// Each SMAppService query makes smd validate OpenNavo's signature again.
+    fn state(&mut self) -> FanHelperState {
+        let state = self.transport.state();
+        self.known = Some(state);
+        state
+    }
+    fn enabled(&mut self) -> Result<(), AppError> {
+        if self.state() != FanHelperState::Enabled {
             Err(AppError::new("E_FAN_HELPER_NOT_ENABLED", "helper"))
         } else {
             Ok(())
@@ -193,27 +206,21 @@ impl<T: Transport> Client<T> {
     }
     fn send(&mut self, request: Request) -> Result<Reply, AppError> {
         self.enabled()?;
+        self.exchange(request)
+    }
+    /// For a caller that has just seen the helper enabled.
+    fn exchange(&mut self, request: Request) -> Result<Reply, AppError> {
         let reply = self.transport.exchange(request)?;
         self.consume(&reply);
         Ok(reply)
     }
     pub fn status(&mut self) -> Result<FanHelperStatus, AppError> {
-        let mut status = self.transport.state();
+        let mut status = self.state();
         if self.support == FanControlSupport::Unsupported {
             status = FanHelperState::Unsupported;
         }
-        if status == FanHelperState::Enabled {
-            // Approved but not answering (it failed to start, or was replaced): say so instead of failing the query.
-            let answer = self.start_session();
-            if let Err(error) = &answer
-                && !self.silent
-            {
-                log::warn!("Fan helper is enabled but not answering: {}", error.code);
-            }
-            self.silent = answer.is_err();
-            if self.silent {
-                status = FanHelperState::Error;
-            }
+        if status == FanHelperState::Enabled && !self.answered() {
+            status = FanHelperState::Error;
         }
         Ok(FanHelperStatus {
             status,
@@ -221,11 +228,59 @@ impl<T: Transport> Client<T> {
             manual_allowed: self.allowed(),
         })
     }
-    fn start_session(&mut self) -> Result<(), AppError> {
-        self.poll()?;
+    /// The background tick: keeps an enabled helper's session alive (its watchdog restores
+    /// automatic control after 15 s without a message) and collects its safety events.
+    /// An answering helper, or none at all, is looked up only every `STATE_EVERY` ticks;
+    /// the tick used to ask launchd three times. A failed exchange, a pending approval or
+    /// a lookup error is read again every tick, as before. Commands and `status` read the
+    /// state themselves, and what they read applies here at once.
+    pub fn heartbeat(&mut self) {
+        if self.support == FanControlSupport::Unsupported {
+            return;
+        }
+        let known = match self.known {
+            Some(FanHelperState::Enabled) => self.known,
+            // Nothing of ours is running: only this App's own install registers the helper.
+            Some(FanHelperState::NotInstalled) if !self.session_started => self.known,
+            _ => None,
+        };
+        let state = match known {
+            Some(state) if !self.ticks.is_multiple_of(STATE_EVERY) => state,
+            _ => self.state(),
+        };
+        self.ticks = self.ticks.wrapping_add(1);
+        if state == FanHelperState::Enabled {
+            self.answered();
+        }
+    }
+    /// Approved but not answering (it failed to start, or was replaced): say so instead of
+    /// failing the query, once, and ask launchd again next time.
+    fn answered(&mut self) -> bool {
+        let answer = self.start_session(false);
+        if let Err(error) = &answer
+            && !self.silent
+        {
+            log::warn!("Fan helper is enabled but not answering: {}", error.code);
+        }
+        self.silent = answer.is_err();
+        if self.silent {
+            self.known = None;
+        }
+        !self.silent
+    }
+    fn start_session(&mut self, checked: bool) -> Result<(), AppError> {
+        let status = Request::Status {
+            after: self.sequence,
+            epoch: self.epoch,
+        };
+        if checked {
+            self.send(status)?;
+        } else {
+            self.exchange(status)?;
+        }
         // A fresh App session always starts in automatic, including a still-running helper.
         if !self.session_started {
-            self.send(Request::Reset {
+            self.exchange(Request::Reset {
                 reason: FanReason::User,
             })?;
             self.session_started = true;
@@ -251,7 +306,7 @@ impl<T: Transport> Client<T> {
         self.status()
     }
     pub fn uninstall(&mut self) -> Result<(), AppError> {
-        match self.transport.state() {
+        match self.state() {
             FanHelperState::NotInstalled => return Ok(()),
             FanHelperState::Enabled => {
                 match self.poll().and_then(|_| self.send(Request::Uninstall)) {
@@ -269,6 +324,7 @@ impl<T: Transport> Client<T> {
             _ => {}
         }
         self.transport.uninstall()?;
+        self.known = None;
         self.session_started = false;
         Ok(())
     }
@@ -279,7 +335,7 @@ impl<T: Transport> Client<T> {
         // The first command must still reset a previous app session. Once started, the command's
         // reply already carries current fans and all unseen safety events; no status round trips.
         if !self.session_started {
-            self.start_session()?;
+            self.start_session(true)?;
         }
         let reply = self.send(Request::SetMode { fan_id: id, mode })?;
         self.remember(&reply.fans);
@@ -288,7 +344,7 @@ impl<T: Transport> Client<T> {
     pub fn speed(&mut self, id: Option<u32>, rpm: u32) -> Result<Vec<FanState>, AppError> {
         self.manual_gate()?;
         if !self.session_started {
-            self.start_session()?;
+            self.start_session(true)?;
         }
         let reply = self.send(Request::SetSpeed { fan_id: id, rpm })?;
         self.remember(&reply.fans);
@@ -365,14 +421,16 @@ pub fn install(app: &tauri::AppHandle, chip: &str, fan_count: usize) {
         }),
     )));
     app.manage(client.clone());
+    // Without fan control (no fans, or an unsupported chip) status() never talks to the helper,
+    // so there is no heartbeat to keep: the loop only made smd re-check our signature each tick.
+    if support == FanControlSupport::Unsupported {
+        return;
+    }
     tauri::async_runtime::spawn(async move {
         loop {
             let handle = client.clone();
             let _ = crate::blocking(move || {
-                let mut client = handle.lock().map_err(|_| unavailable())?;
-                if client.transport.state() == FanHelperState::Enabled {
-                    client.status()?;
-                }
+                handle.lock().map_err(|_| unavailable())?.heartbeat();
                 Ok(())
             })
             .await;

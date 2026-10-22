@@ -707,6 +707,44 @@ describe('Scheduled scans and signature check-up (S2)', () => {
 });
 
 describe('Paste protection (S2)', () => {
+  it('Runs the countdown only for a pending paste and preserves replacement deadlines', async () => {
+    const context = await setup('/security', { tickMs: TICK });
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    try {
+      const store = useSecurityStore();
+      mountIn(context, PasteGuard);
+      expect(vi.getTimerCount()).toBe(0);
+      const pending = {
+        id: 'first',
+        appName: 'Terminal',
+        bundleId: 'com.apple.Terminal',
+        patterns: [],
+        preview: 'fixture',
+        expiresAt: Date.now() + 2000
+      };
+      store.paste = pending;
+      await flushPromises();
+      expect(vi.getTimerCount()).toBe(1);
+      await vi.advanceTimersByTimeAsync(1000);
+      store.paste = { ...pending, id: 'replacement', expiresAt: Date.now() + 3000 };
+      await flushPromises();
+      expect(vi.getTimerCount()).toBe(1);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(store.paste?.id).toBe('replacement');
+      await vi.advanceTimersByTimeAsync(2000);
+      await flushPromises();
+      expect(store.paste).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+      // A delayed IPC event that has already expired must never start a clock.
+      store.paste = { ...pending, expiresAt: Date.now() - 1 };
+      await flushPromises();
+      expect(store.paste).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('Pauses a suspicious paste with Discard focused, and goes away once answered', async () => {
     history.replaceState(null, '', '/?mock=paste-blocked');
     const context = await setup('/security', { tickMs: TICK });

@@ -2,7 +2,7 @@ use opennavo_desktop_lib::{
     AppError,
     monitor::{
         fan::{
-            client::{Client, Transport, register},
+            client::{Client, STATE_EVERY, Transport, register},
             control::{Controller, Reply, Request},
             daemon::Executable,
             hardware::{Delay, Family, Hardware, SmcHardware, encoded, read_fans},
@@ -332,9 +332,12 @@ struct FakeTransport {
     /// The helper is registered but does not answer (crashed at start, killed, replaced).
     down: bool,
     exchanges: usize,
+    /// SMAppService queries (each one makes smd validate the App's signature).
+    reads: Cell<usize>,
 }
 impl Transport for FakeTransport {
     fn state(&self) -> FanHelperState {
+        self.reads.set(self.reads.get() + 1);
         self.state
     }
     fn install(&mut self) -> Result<(), AppError> {
@@ -361,6 +364,7 @@ fn client(state: FanHelperState) -> Client<FakeTransport> {
             now: 0,
             down: false,
             exchanges: 0,
+            reads: Cell::new(0),
         },
         FanControlSupport::Unverified,
         Arc::new(|_| {}),
@@ -379,6 +383,86 @@ fn allowed_is_independent_of_helper_and_approval() {
         client.speed(None, 2000).unwrap_err().code,
         "E_FAN_HELPER_NOT_ENABLED"
     );
+}
+#[test]
+fn heartbeats_ask_launchd_once_a_minute_and_again_after_a_failure() {
+    let mut client = client(FanHelperState::Enabled);
+    client.heartbeat();
+    assert_eq!(client.transport.reads.get(), 1);
+    // Status, then the session reset.
+    assert_eq!(client.transport.exchanges, 2);
+    for _ in 1..STATE_EVERY {
+        client.heartbeat();
+    }
+    // Every tick still reached the helper, without asking launchd again.
+    assert_eq!(client.transport.reads.get(), 1);
+    assert_eq!(client.transport.exchanges, 1 + STATE_EVERY as usize);
+    client.heartbeat();
+    assert_eq!(client.transport.reads.get(), 2);
+    client.transport.down = true;
+    client.heartbeat();
+    assert_eq!(client.transport.reads.get(), 2);
+    // A helper that stopped answering (uninstalled, replaced) is looked up again at once.
+    client.transport.state = FanHelperState::NotInstalled;
+    let exchanges = client.transport.exchanges;
+    client.heartbeat();
+    assert_eq!(client.transport.reads.get(), 3);
+    assert_eq!(client.transport.exchanges, exchanges);
+}
+#[test]
+fn without_a_helper_launchd_is_asked_once_a_minute_and_pending_states_every_tick() {
+    let mut client = client(FanHelperState::NotInstalled);
+    for _ in 0..STATE_EVERY {
+        client.heartbeat();
+    }
+    assert_eq!(client.transport.reads.get(), 1);
+    assert_eq!(client.transport.exchanges, 0);
+    for state in [FanHelperState::RequiresApproval, FanHelperState::Error] {
+        client.transport.state = state;
+        let reads = client.transport.reads.get();
+        client.heartbeat();
+        client.heartbeat();
+        assert_eq!(client.transport.reads.get(), reads + 2, "{state:?}");
+    }
+    assert_eq!(client.transport.exchanges, 0);
+}
+#[test]
+fn approval_seen_by_a_status_query_reaches_the_next_heartbeat() {
+    let mut client = client(FanHelperState::RequiresApproval);
+    client.heartbeat();
+    assert_eq!(client.transport.exchanges, 0);
+    // The user approves in System Settings; the page's status query sees it.
+    client.transport.state = FanHelperState::Enabled;
+    assert_eq!(client.status().unwrap().status, FanHelperState::Enabled);
+    let (reads, exchanges) = (client.transport.reads.get(), client.transport.exchanges);
+    client.heartbeat();
+    assert_eq!(client.transport.reads.get(), reads);
+    assert_eq!(client.transport.exchanges, exchanges + 1);
+}
+#[test]
+fn heartbeats_keep_manual_control_past_the_watchdog_between_state_queries() {
+    let mut client = client(FanHelperState::Enabled);
+    client.mode(None, FanMode::Manual).unwrap();
+    for tick in 1..=3 * u64::from(STATE_EVERY) {
+        client.transport.now = tick * 5000;
+        client.transport.control.watchdog(client.transport.now);
+        client.heartbeat();
+    }
+    let modes = |client: &Client<FakeTransport>| {
+        client
+            .transport
+            .control
+            .hardware
+            .fans
+            .iter()
+            .map(|fan| fan.mode)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(modes(&client), [FanMode::Manual; 2]);
+    // Without heartbeats the helper hands the fans back.
+    client.transport.now += 15000;
+    client.transport.control.watchdog(client.transport.now);
+    assert_eq!(modes(&client), [FanMode::Auto; 2]);
 }
 #[test]
 fn established_control_uses_one_exchange_and_replays_safety_events() {
@@ -521,6 +605,7 @@ fn reconnect_replays_each_safety_reason_once_and_helper_epoch_resets_cursor() {
             now: 0,
             down: false,
             exchanges: 0,
+            reads: Cell::new(0),
         },
         FanControlSupport::Unverified,
         Arc::new(move |c| sink.lock().unwrap().push(c.reason)),
@@ -817,6 +902,7 @@ fn helper_sleep_can_precede_app_callback_without_losing_wake_targets() {
             now: 0,
             down: false,
             exchanges: 0,
+            reads: Cell::new(0),
         },
         FanControlSupport::Unverified,
         Arc::new(move |c| sink.lock().unwrap().push(c.reason)),

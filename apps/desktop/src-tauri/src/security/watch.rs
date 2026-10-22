@@ -1,3 +1,6 @@
+#[cfg(any(target_os = "macos", test))]
+mod downloads;
+
 #[cfg(target_os = "macos")]
 pub fn install(app: &tauri::AppHandle) {
     super::paste::native::install(app);
@@ -145,18 +148,11 @@ pub fn install(app: &tauri::AppHandle) {
             }
             seen.extend(snapshot.items.into_iter().map(|i| i.id));
         }
-        let mut downloads: BTreeMap<PathBuf, (u64, std::time::SystemTime, Instant, bool)> = service
-            .downloads()
-            .into_iter()
-            .filter_map(|p| {
-                let m = files::safe_metadata(&p).ok()?;
-                let modified = m.modified().ok()?;
-                Some((
-                    p,
-                    (m.len(), modified, Instant::now(), modified < watch_started),
-                ))
-            })
-            .collect();
+        let mut downloads = downloads::DownloadWatch::default();
+        for path in downloads.reconcile(service.download_candidates()) {
+            downloads.ready(&path, Some(watch_started), Instant::now());
+        }
+        downloads.finish_poll();
         let mut last_scan = Instant::now();
         let mut pending = false;
         let mut alerts_were_enabled = service
@@ -167,7 +163,7 @@ pub fn install(app: &tauri::AppHandle) {
         let mut last_schedule = Instant::now() - Duration::from_secs(60);
         let mut last_db = Instant::now() - Duration::from_secs(60);
         while !stopped.load(Ordering::Acquire) {
-            if receiver.recv_timeout(Duration::from_secs(1)).is_ok() {
+            if wait_for_change(&receiver, Duration::from_secs(1)) {
                 pending = true;
                 while receiver.try_recv().is_ok() {}
             }
@@ -190,47 +186,30 @@ pub fn install(app: &tauri::AppHandle) {
                 // fallback immediately due. Failed scans also retry at this interval.
                 last_scan = Instant::now();
             }
-            {
-                for path in service.downloads() {
-                    let Ok(meta) = files::safe_metadata(&path) else {
-                        continue;
-                    };
-                    let Ok(modified) = meta.modified() else {
-                        continue;
-                    };
-                    let entry = downloads.entry(path.clone()).or_insert((
-                        meta.len(),
-                        modified,
-                        Instant::now(),
-                        false,
-                    ));
-                    if entry.0 != meta.len() || entry.1 != modified {
-                        *entry = (meta.len(), modified, Instant::now(), false);
-                    }
-                    if entry.3 || entry.2.elapsed() < Duration::from_secs(3) {
-                        continue;
-                    }
-                    if let Ok(Some(token)) = service.recent_download_token(&path) {
-                        if service.download_detected(&path, token.clone()).is_ok() {
-                            entry.3 = service.download_verify(path.clone(), Some(token)).is_ok();
-                        }
-                    } else if settings.av_consent && settings.watch_downloads {
-                        entry.3 = service
-                            .download_verify(path.clone(), None)
-                            .map(|verdict| {
-                                if let Some(signature) =
-                                    verdict.av.as_ref().and_then(|av| av.signature.as_deref())
-                                {
-                                    notify_threat(&path, signature, &settings);
-                                }
-                            })
-                            .is_ok();
-                    }
-                    if !entry.3 {
-                        entry.2 = Instant::now();
-                    }
+            for path in downloads.reconcile(service.download_candidates()) {
+                if !downloads.ready(&path, None, Instant::now()) {
+                    continue;
                 }
+                let verified = if let Ok(Some(token)) = service.recent_download_token(&path) {
+                    service.download_detected(&path, token.clone()).is_ok()
+                        && service.download_verify(path.clone(), Some(token)).is_ok()
+                } else if settings.av_consent && settings.watch_downloads {
+                    service
+                        .download_verify(path.clone(), None)
+                        .map(|verdict| {
+                            if let Some(signature) =
+                                verdict.av.as_ref().and_then(|av| av.signature.as_deref())
+                            {
+                                notify_threat(&path, signature, &settings);
+                            }
+                        })
+                        .is_ok()
+                } else {
+                    false
+                };
+                downloads.finish(&path, verified, Instant::now());
             }
+            downloads.finish_poll();
             if last_schedule.elapsed() >= Duration::from_secs(30) {
                 last_schedule = Instant::now();
                 if settings.av_schedule != AvSchedule::Off {
@@ -258,6 +237,23 @@ pub fn install(app: &tauri::AppHandle) {
 }
 #[cfg(not(target_os = "macos"))]
 pub fn install(_: &tauri::AppHandle) {}
+
+/// A failed FSEvents stream drops its sender. recv_timeout then returns at once,
+/// so keep the polling fallback paced while downloads and schedules still run.
+#[cfg(any(target_os = "macos", test))]
+fn wait_for_change(
+    receiver: &std::sync::mpsc::Receiver<()>,
+    interval: std::time::Duration,
+) -> bool {
+    match receiver.recv_timeout(interval) {
+        Ok(()) => true,
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => false,
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            std::thread::sleep(interval);
+            false
+        }
+    }
+}
 
 // FSEvents may miss a protected cron spool or drop events. Keep a bounded
 // fallback even when no relevant event arrives; never scan with alerts disabled.
@@ -425,6 +421,23 @@ pub(crate) fn startup_relevant(path: &std::path::Path, home: &std::path::Path) -
 #[cfg(test)]
 mod tests {
     use super::{StartupChange, startup_relevant};
+    #[test]
+    fn disconnected_watch_keeps_polling_fallback_paced() {
+        use std::{
+            sync::mpsc,
+            time::{Duration, Instant},
+        };
+        let (sender, receiver) = mpsc::sync_channel(1);
+        sender.send(()).unwrap();
+        assert!(super::wait_for_change(&receiver, Duration::from_secs(1)));
+        drop(sender);
+        let interval = Duration::from_millis(20);
+        let started = Instant::now();
+        for _ in 0..2 {
+            assert!(!super::wait_for_change(&receiver, interval));
+        }
+        assert!(started.elapsed() >= interval * 2);
+    }
     use std::path::Path;
     #[test]
     fn user_sources_are_watched_and_pass_the_event_filter() {
