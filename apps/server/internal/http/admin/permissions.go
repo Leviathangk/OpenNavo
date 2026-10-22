@@ -28,6 +28,7 @@ var Permissions = map[string]string{
 	"GET /admin-api/seo/listings/:token":             "catalog:package:edit",
 	"PUT /admin-api/seo/listings/:token":             "catalog:package:edit",
 	"POST /admin-api/seo/listings/:token/nominate":   "catalog:package:edit",
+	"POST /admin-api/seo/topics/:key/nominate":       "content:article:edit",
 	"PUT /admin-api/seo/listing-baselines/:id":       "catalog:package:edit",
 	"PUT /admin-api/collections/:id/setup-criteria":  "content:collection:edit",
 	"PUT /admin-api/background-items/:label":         "catalog:package:edit",

@@ -50,6 +50,35 @@ fn static_snapshot_uses_sysctl_and_emits_no_synthetic_metrics() {
 }
 
 #[test]
+fn sample_event_carries_availability_without_changing_the_sample_shape() {
+    use opennavo_desktop_lib::events::MonitorSampleEvent;
+    let sample = monitor::engine::empty_sample(&monitor::snapshot(&source()).unwrap().system);
+    let old = serde_json::to_value(&sample).unwrap();
+    let legacy: MonitorSampleEvent = serde_json::from_value(old.clone()).unwrap();
+    assert!(legacy.available.is_none());
+    assert_eq!(serde_json::to_value(legacy).unwrap(), old);
+    for available in [
+        vec![MonitorModule::Cpu],
+        vec![],
+        vec![MonitorModule::Cpu, MonitorModule::Sensors],
+    ] {
+        let event = MonitorSampleEvent {
+            sample: sample.clone(),
+            available: Some(available.clone()),
+        };
+        let mut json = serde_json::to_value(&event).unwrap();
+        assert_eq!(
+            json.as_object_mut().unwrap().remove("available").unwrap(),
+            serde_json::to_value(available).unwrap()
+        );
+        assert_eq!(json, old, "existing sample fields stay at the top level");
+        let decoded: MonitorSampleEvent =
+            serde_json::from_value(serde_json::to_value(event).unwrap()).unwrap();
+        assert!(decoded.available.is_some());
+    }
+}
+
+#[test]
 fn optional_topology_degrades_and_intel_never_claims_efficiency_cores() {
     let mut source = source();
     source.0.remove("hw.perflevel1.physicalcpu");

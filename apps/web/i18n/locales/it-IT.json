@@ -62,7 +62,7 @@
   },
   "analytics": {
     "label": "Impostazioni dei cookie di analisi",
-    "message": "OpenNavo usa un identificatore casuale del browser per contare l’attività giornaliera e può usare cookie di Google Analytics per misurare visite e azioni. Consentire le statistiche?",
+    "message": "Google Analytics usa cookie per misurare visite e azioni principali. Consentire i cookie di Google Analytics?",
     "privacy": "Dettagli sulla privacy",
     "accept": "Consenti",
     "decline": "Non consentire",

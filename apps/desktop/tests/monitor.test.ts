@@ -6,6 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import MenuBarWidget from '@/components/monitor/MenuBarWidget.vue';
 import FanControl from '@/components/monitor/FanControl.vue';
 import MonitorNotifier from '@/components/monitor/MonitorNotifier.vue';
+import MonitorSpark from '@/components/monitor/MonitorSpark.vue';
 import { useMonitorNames } from '@/components/monitor/meta';
 import { useHelperApproval } from '@/components/monitor/useHelperApproval';
 import MonitorSettings from '@/components/settings/MonitorSettings.vue';
@@ -13,10 +14,10 @@ import MonitorProcesses from '@/components/monitor/MonitorProcesses.vue';
 import MonitorPage from '@/pages/MonitorPage.vue';
 import TrayMonitorPage from '@/pages/TrayMonitorPage.vue';
 import { i18n } from '@/i18n';
-import type { FanState, MonitorSample, SensorReading } from '@/ipc/bindings';
+import type { FanState, MonitorModule, MonitorSample, MonitorTrendPoint, SensorReading } from '@/ipc/bindings';
 import { commands, events } from '@/ipc/client';
 import { startLocalState, useSettingsStore } from '@/stores';
-import { HISTORY, MODULES, useMonitorStore } from '@/stores/monitor';
+import { HISTORY, MODULES, TREND_POINTS, useMonitorStore } from '@/stores/monitor';
 import { useToasts } from '@/composables/useToasts';
 import { mockMatchMedia, setup, stub } from './helpers';
 
@@ -61,6 +62,293 @@ afterEach(() => {
   localStorage.removeItem(VIEW_KEY);
 });
 const VIEW_KEY = 'opennavo.monitor.processView';
+
+/** Seed realistic data without leaving the mock sampler running during delayed-response tests. */
+async function fixedStore() {
+  await context();
+  const store = useMonitorStore();
+  await store.subscribe('page', ['cpu']);
+  await store.unsubscribe('page');
+  return store;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
+describe('Monitor concurrency and time regressions', () => {
+  it.each(['different modules', 'same module'] as const)('Preserves queued menu bar edits to %s', async kind => {
+    await context();
+    const store = useMonitorStore();
+    const settings = useSettingsStore();
+    const original = commands.settingsSet;
+    const gate = deferred<void>();
+    const save = vi.spyOn(commands, 'settingsSet').mockImplementationOnce(async next => {
+      await gate.promise;
+      return original(next);
+    });
+    const first = store.setMenuBar('cpu', { enabled: false });
+    const second =
+      kind === 'different modules'
+        ? store.setMenuBar('gpu', { enabled: true })
+        : store.setMenuBar('cpu', { style: 'line' });
+    const third = settings.update('monitorIntervalMs', 1000);
+    await flushPromises();
+    expect(save).toHaveBeenCalledTimes(1);
+    gate.resolve();
+    await Promise.all([first, second, third]);
+    expect(settings.value?.monitorMenuBar.cpu.enabled).toBe(false);
+    if (kind === 'different modules') expect(settings.value?.monitorMenuBar.gpu.enabled).toBe(true);
+    else expect(settings.value?.monitorMenuBar.cpu.style).toBe('line');
+    expect(settings.value?.monitorIntervalMs).toBe(1000);
+    expect(await commands.settingsGet()).toEqual({ status: 'ok', data: settings.value });
+  });
+
+  it('Does not retain a failed menu bar edit in the next queued edit', async () => {
+    await context();
+    const store = useMonitorStore();
+    const gate = deferred<Awaited<ReturnType<typeof commands.settingsSet>>>();
+    vi.spyOn(commands, 'settingsSet').mockImplementationOnce(() => gate.promise);
+    const failed = expect(store.setMenuBar('cpu', { enabled: false })).rejects.toThrow('save failed');
+    const second = store.setMenuBar('cpu', { style: 'line' });
+    gate.reject(new Error('save failed'));
+    await failed;
+    await second;
+    expect(store.item('cpu')).toEqual({ enabled: true, style: 'line' });
+  });
+
+  it('Merges a delayed full snapshot with live samples and keeps live fields at duplicate timestamps', async () => {
+    const store = await fixedStore();
+    const history = store.history.slice();
+    history[HISTORY - 2] = { ...history[HISTORY - 2]!, cpu: { ...history[HISTORY - 2]!.cpu, usage: 0.42 } };
+    const last = history.at(-1)!;
+    const gate = deferred<Awaited<ReturnType<typeof commands.monitorSubscribe>>>();
+    vi.spyOn(commands, 'monitorSubscribe').mockImplementationOnce(() => gate.promise);
+    const pending = store.subscribe('detail', ['cpu']);
+    const updated = { ...last, cpu: { ...last.cpu, usage: 0.87 } };
+    store.applySample(updated);
+    const latest = { ...last, at: last.at + 1000 };
+    store.applySample(latest);
+    gate.resolve({ status: 'ok', data: { system: store.system!, available: store.available, history } });
+    await pending;
+    expect(store.sample).toEqual(latest);
+    expect(store.history).toHaveLength(HISTORY);
+    expect(new Set(store.history.map(entry => entry.at)).size).toBe(HISTORY);
+    expect(store.history.find(entry => entry.at === last.at)?.cpu.usage).toBe(0.87);
+    expect(store.history.find(entry => entry.at === history[HISTORY - 2]!.at)?.cpu.usage).toBe(0.42);
+    expect(store.history.map(entry => entry.at)).toEqual([...history.slice(1).map(entry => entry.at), latest.at]);
+  });
+
+  it.each([1000, 2000, 5000])('Places %d ms samples into one-minute slots with sleep gaps', async interval => {
+    const store = await fixedStore();
+    const base = store.sample!;
+    store.history = Array.from({ length: HISTORY }, (_, index) => ({
+      ...base,
+      at: base.at - (HISTORY - 1 - index) * interval,
+      cpu: { ...base.cpu, usage: index / 100 }
+    }));
+    const slots = store.series(entry => entry.cpu.usage);
+    expect(slots).toHaveLength(HISTORY);
+    expect(slots.filter(value => value != null)).toHaveLength(60000 / interval);
+    expect(slots.at(-1)).toBe(0.59);
+    if (interval > 1000) expect(slots.at(-2)).toBeNull();
+    store.history = [{ ...base, at: base.at - 120000 }, base];
+    expect(store.series(entry => entry.cpu.usage)).toEqual([
+      ...Array.from({ length: HISTORY - 1 }, () => null),
+      base.cpu.usage
+    ]);
+    expect(store.series(() => undefined)).toEqual(Array.from({ length: HISTORY }, () => null));
+  });
+
+  it.each([false, true])('Preserves live trend points during a delayed load (already loaded: %s)', async loaded => {
+    const store = await fixedStore();
+    const points = await commands.monitorTrend();
+    if (points.status !== 'ok') throw new Error('missing fixture');
+    const first = { ...points.data.at(-1)!, at: Math.floor(store.sample!.at / 5000) * 5000 };
+    if (loaded) store.trend = [first];
+    const gate = deferred<Awaited<ReturnType<typeof commands.monitorTrend>>>();
+    vi.spyOn(commands, 'monitorTrend').mockImplementationOnce(() => gate.promise);
+    const pending = store.loadTrend();
+    const latest = { ...store.sample!, at: first.at + 5000, cpu: { ...store.sample!.cpu, usage: 0.83 } };
+    store.applySample(latest);
+    gate.resolve({ status: 'ok', data: [first] });
+    await pending;
+    expect(store.trend?.map(point => point.at)).toEqual([first.at, latest.at]);
+    expect(store.trend?.at(-1)?.cpu).toBe(0.83);
+  });
+
+  it('Ignores an older trend request and trims merged points to the last hour', async () => {
+    const store = await fixedStore();
+    const fixture = await commands.monitorTrend();
+    if (fixture.status !== 'ok') throw new Error('missing fixture');
+    const base: MonitorTrendPoint = { ...fixture.data.at(-1)!, at: Math.floor(store.sample!.at / 5000) * 5000 };
+    const first = deferred<Awaited<ReturnType<typeof commands.monitorTrend>>>();
+    const second = deferred<Awaited<ReturnType<typeof commands.monitorTrend>>>();
+    vi.spyOn(commands, 'monitorTrend')
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+    const older = store.loadTrend();
+    const newer = store.loadTrend();
+    const points = Array.from({ length: TREND_POINTS + 1 }, (_, index) => ({
+      ...base,
+      at: base.at - (TREND_POINTS - index) * 5000,
+      cpu: 0.72
+    }));
+    second.resolve({ status: 'ok', data: points });
+    await newer;
+    first.resolve({ status: 'ok', data: [{ ...base, cpu: 0.11 }] });
+    await older;
+    expect(store.trend).toHaveLength(TREND_POINTS);
+    expect(store.trend?.at(0)?.at).toBe(points[1]!.at);
+    expect(store.trend?.at(-1)?.cpu).toBe(0.72);
+  });
+
+  it('Reloads a full hour of offset live points into 720 server buckets without shortening the history', async () => {
+    const store = await fixedStore();
+    const fixture = await commands.monitorTrend();
+    if (fixture.status !== 'ok') throw new Error('missing fixture');
+    const end = Math.floor(store.sample!.at / 5000) * 5000;
+    const points = Array.from({ length: TREND_POINTS }, (_, index) => ({
+      ...fixture.data.at(-1)!,
+      at: end - (TREND_POINTS - 1 - index) * 5000,
+      cpu: 0.4
+    }));
+    store.trend = points.map(point => ({ ...point, at: point.at + 1500, cpu: 0.9 }));
+    vi.spyOn(commands, 'monitorTrend').mockResolvedValueOnce({ status: 'ok', data: points });
+    await store.loadTrend();
+    expect(store.trend).toEqual(points);
+    expect(store.trendSeries(point => point.cpu)).toEqual(Array.from({ length: TREND_POINTS }, () => 0.4));
+  });
+
+  it('Keeps only changes received during a trend request and merges live readings within the same five-second bucket', async () => {
+    const store = await fixedStore();
+    const fixture = await commands.monitorTrend();
+    if (fixture.status !== 'ok') throw new Error('missing fixture');
+    const at = Math.floor(store.sample!.at / 5000) * 5000;
+    const first = { ...fixture.data.at(-1)!, at, cpu: 0.1 };
+    store.trend = [{ ...first, at: at - 5000 }, first];
+    const gate = deferred<Awaited<ReturnType<typeof commands.monitorTrend>>>();
+    vi.spyOn(commands, 'monitorTrend').mockImplementationOnce(() => gate.promise);
+    const pending = store.loadTrend();
+    store.applySample({ ...store.sample!, at: at + 1500, cpu: { ...store.sample!.cpu, usage: 0.7 } });
+    store.applySample({ ...store.sample!, at: at + 5500, cpu: { ...store.sample!.cpu, usage: 0.8 } });
+    gate.resolve({
+      status: 'ok',
+      data: [
+        { ...first, at: at - 5000, cpu: 0.4 },
+        { ...first, cpu: 0.3 }
+      ]
+    });
+    await pending;
+    expect(store.trend?.map(point => [point.at, point.cpu])).toEqual([
+      [at - 5000, 0.4],
+      [at, 0.7],
+      [at + 5000, 0.8]
+    ]);
+  });
+
+  it('Updates availability atomically with samples, accepts empty lists and tolerates old events', async () => {
+    const store = await fixedStore();
+    const base = store.sample!;
+    const apply = (available?: MonitorModule[] | null) => events.monitorSample.emit({ ...base, available });
+    await apply(['cpu']);
+    expect(store.modules).toEqual(['cpu']);
+    await apply(['cpu', 'gpu', 'fans']);
+    expect(store.modules).toEqual(['cpu', 'gpu', 'sensors']);
+    await apply();
+    await apply(null);
+    expect(store.modules).toEqual(['cpu', 'gpu', 'sensors']);
+    const gate = deferred<Awaited<ReturnType<typeof commands.monitorSubscribe>>>();
+    vi.spyOn(commands, 'monitorSubscribe').mockImplementationOnce(() => gate.promise);
+    const pending = store.subscribe('detail', ['cpu']);
+    await apply([]);
+    gate.resolve({ status: 'ok', data: { system: store.system!, available: ['cpu'], history: [base] } });
+    await pending;
+    expect(store.available).toEqual([]);
+    expect(store.modules).toEqual([]);
+  });
+
+  it('Releases a popover listener that finishes registering after unmount', async () => {
+    const ctx = await context('/monitor?module=cpu');
+    const gate = deferred<() => void>();
+    const stop = vi.fn();
+    vi.spyOn(events.monitorPopover, 'listen').mockImplementationOnce(() => gate.promise);
+    const subscribe = vi.spyOn(useMonitorStore(), 'subscribe');
+    const listener = vi.spyOn(document, 'addEventListener');
+    const wrapper = mountWith(TrayMonitorPage, ctx);
+    wrapper.unmount();
+    listener.mockClear();
+    gate.resolve(stop);
+    await flushPromises();
+    expect(stop).toHaveBeenCalledOnce();
+    expect(subscribe).not.toHaveBeenCalled();
+    expect(listener.mock.calls.some(([name]) => name === 'visibilitychange')).toBe(false);
+  });
+
+  it('Advances page and CPU detail uptime when samples arrive without reloading system info', async () => {
+    const ctx = await context('/monitor?detail=cpu');
+    const store = useMonitorStore();
+    await store.subscribe('page', ['cpu']);
+    await store.unsubscribe('page');
+    const now = Date.now();
+    store.system = { ...store.system!, bootedAt: now - 60000 };
+    store.history = [{ ...store.sample!, at: now }];
+    vi.spyOn(store, 'subscribe').mockResolvedValue();
+    const wrapper = mountWith(MonitorPage, ctx);
+    await flushPromises();
+    const uptime = () =>
+      [...document.querySelectorAll('[data-testid="monitor-detail"] dt')].find(node => node.textContent === '运行时间')
+        ?.nextElementSibling?.textContent;
+    expect(wrapper.text()).toContain('已运行 1分钟');
+    expect(uptime()).toBe('1分钟');
+    store.applySample({ ...store.sample!, at: now + 120000 });
+    await flushPromises();
+    expect(wrapper.text()).toContain('已运行 3分钟');
+    expect(uptime()).toBe('3分钟');
+  });
+});
+
+describe('Monitor sparkline gaps', () => {
+  it.each([1000, 2000, 5000])(
+    'Keeps valid %d ms readings visible without connecting missing seconds',
+    async interval => {
+      const store = await fixedStore();
+      const base = store.sample!;
+      store.history = Array.from({ length: HISTORY }, (_, index) => ({
+        ...base,
+        at: base.at - (HISTORY - 1 - index) * interval
+      }));
+      const wrapper = mount(MonitorSpark, {
+        props: { values: store.series(entry => entry.cpu.usage), color: 'currentColor', max: 1 }
+      });
+      if (interval === 1000) {
+        expect(wrapper.findAll('polyline')).toHaveLength(1);
+        expect(wrapper.find('polyline').attributes('points')?.split(' ')).toHaveLength(HISTORY);
+        expect(wrapper.findAll('circle')).toHaveLength(0);
+      } else {
+        expect(wrapper.findAll('circle')).toHaveLength(60000 / interval);
+        expect(wrapper.findAll('polyline')).toHaveLength(0);
+        expect(wrapper.findAll('polygon')).toHaveLength(0);
+      }
+    }
+  );
+
+  it('Draws each continuous run and isolated point separately across gaps', () => {
+    const wrapper = mount(MonitorSpark, {
+      props: { values: [0.1, 0.2, null, 0.3, null, 0.4, 0.5], color: 'currentColor', max: 1 }
+    });
+    expect(wrapper.findAll('polyline').map(line => line.attributes('points')?.split(' ').length)).toEqual([2, 2]);
+    expect(wrapper.findAll('polygon')).toHaveLength(2);
+    expect(wrapper.findAll('circle')).toHaveLength(1);
+    expect(wrapper.find('circle').attributes('cx')).toBe('150.0');
+  });
+});
 
 describe('Monitor page', () => {
   it('Shows a card per module this Mac has; a card opens its detail with its own menu bar switch', async () => {
@@ -339,6 +627,52 @@ describe('Monitor store', () => {
 });
 
 describe('Fan control', () => {
+  it.each(['success', 'failure'] as const)(
+    'Clears a committed slider draft after %s without interrupting a drag',
+    async result => {
+      const ctx = await context('/monitor', 'fan-helper-ready');
+      const store = useMonitorStore();
+      await store.subscribe('detail', ['sensors']);
+      await store.unsubscribe('detail');
+      await store.setFanMode(null, 'manual');
+      await store.setFanSpeed(null, 2400);
+      const wrapper = mountWith(FanControl, ctx);
+      await flushPromises();
+      const gate = deferred<Awaited<ReturnType<typeof commands.fanSetSpeed>>>();
+      const speed = vi.spyOn(commands, 'fanSetSpeed').mockImplementationOnce(() => gate.promise);
+      const slider = wrapper.find('input[type="range"]');
+      const input = slider.element as HTMLInputElement;
+      const targetLabel = () => input.previousElementSibling?.querySelector('b')?.textContent;
+      input.value = '3000';
+      await slider.trigger('input');
+      await events.fanChanged.emit({ fans: store.fans!.map(fan => ({ ...fan, targetRpm: 2600 })), reason: 'user' });
+      await flushPromises();
+      // Live updates cannot steal the thumb while the user is dragging it.
+      expect(input.value).toBe('3000');
+      expect(targetLabel()).toBe('3,000\u00a0rpm');
+      expect(speed).not.toHaveBeenCalled();
+      await slider.trigger('change');
+      expect(speed).toHaveBeenCalledWith(null, 3000);
+      expect(input.disabled).toBe(true);
+      if (result === 'success') {
+        // The backend's accepted value, including normalization, is authoritative.
+        gate.resolve({ status: 'ok', data: store.fans!.map(fan => ({ ...fan, targetRpm: 2900 })) });
+      } else gate.reject(new Error('fan write failed'));
+      await flushPromises();
+      expect(input.disabled).toBe(false);
+      expect(input.value).toBe(result === 'success' ? '2900' : '2600');
+      expect(targetLabel()).toBe(result === 'success' ? '2,900\u00a0rpm' : '2,600\u00a0rpm');
+      if (result === 'failure') expect(toasts().at(-1)?.tone).toBe('danger');
+      await events.fanChanged.emit({ fans: store.fans!.map(fan => ({ ...fan, targetRpm: 4200 })), reason: 'user' });
+      await flushPromises();
+      expect(input.value).toBe('4200');
+      await click(find(wrapper.element, 'button', '全速'));
+      expect(store.fans?.map(fan => fan.targetRpm)).toEqual([5800, 5800]);
+      expect(input.value).toBe('5800');
+      expect(targetLabel()).toBe('5,800\u00a0rpm');
+    }
+  );
+
   it('Ignores repeated mode clicks while the hardware command is pending and releases busy on failure', async () => {
     const ctx = await context('/monitor', 'fan-helper-ready');
     const store = useMonitorStore();

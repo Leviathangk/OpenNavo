@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CRAWLER_POLICY,
   LOCKED_CRAWLERS,
+  ROBOTS_LIMITED_PATHS,
   ROBOTS_PRIVATE_PATHS,
   buildRobotsTxt,
   type CrawlerPolicy
@@ -108,12 +109,40 @@ describe('robots.txt generation', () => {
         'Crawl-delay: 10',
         ...privateRules,
         'Disallow: /*_payload.json',
-        'Disallow: /*/dependencies',
+        'Disallow: /apps/*/dependencies',
+        'Disallow: /*/apps/*/dependencies',
+        'Disallow: /apps/*/details',
+        'Disallow: /*/apps/*/details',
         '',
         'Sitemap: https://opennavo.example/sitemap_index.xml',
         ''
       ].join('\n')
     );
+  });
+
+  it('Limits only package subpages, without blocking tokens named details or dependencies', () => {
+    // robots wildcards match slashes too; the /apps/ and following token segment are both required.
+    const limited = (path: string) =>
+      ROBOTS_LIMITED_PATHS.some(rule =>
+        new RegExp(
+          `^${rule
+            .split('*')
+            .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+            .join('.*')}`
+        ).test(path)
+      );
+    for (const prefix of ['', '/zh', '/zh-hant', '/de']) {
+      for (const tab of ['details', 'dependencies']) {
+        expect(limited(`${prefix}/apps/editor@11/${tab}`)).toBe(true);
+        expect(limited(`${prefix}/apps/${tab}`)).toBe(false);
+        expect(limited(`${prefix}/apps/${tab}-tool`)).toBe(false);
+        expect(limited(`${prefix}/apps/${tab}-tool/versions`)).toBe(false);
+      }
+      expect(limited(`${prefix}/apps/editor/_payload.json`)).toBe(true);
+    }
+    expect(limited('/articles/dependencies')).toBe(false);
+    const [defaults] = buildRobotsTxt({ crawlers: DEFAULT_CRAWLER_POLICY, indexable: true }).split('\n\n');
+    expect(defaults).toBe(['User-agent: *', ...privateRules].join('\n'));
   });
 
   it('Non-production sites disallow everything', () => {

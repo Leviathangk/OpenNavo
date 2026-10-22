@@ -287,6 +287,24 @@ export function formatReleaseVersion(entry: { version: string; build?: string | 
   return `${display} (${tag.length > 20 ? tag.slice(0, 12) : tag})`;
 }
 
+// What is left of a release title after the version only restates "release notes".
+const GENERIC_RELEASE_TITLE =
+  /^(?:release notes?|release|notes|change ?log|update|what'?s new|build\s*\d+|版本说明|更新说明|发布说明|更新日志|リリースノート|notas de la versi[oó]n|notas de vers[aã]o|примечания к выпуску|versionshinweise|notes de version|note di rilascio)$/i;
+
+/**
+ * A release title worth showing under its version heading, or null when it only restates the app
+ * name and version ("Rectangle 2.0.3", "VS Code 1.143.0 release notes"). Titles without the version,
+ * such as "September 2026", are kept unless they are generic.
+ */
+export function releaseTitleDetail(title: string | null | undefined, version: string): string | null {
+  const text = title?.trim() ?? '';
+  const base = version.replace(/,.*$/, '');
+  const index = text.indexOf(base);
+  const rest = index < 0 ? text : text.slice(index + base.length).replace(/^,[\w.-]*/, '');
+  const detail = rest.replace(/^[\s:：—–\-·|()（）]+|[\s)）]+$/g, '');
+  return detail && !GENERIC_RELEASE_TITLE.test(detail) ? text : null;
+}
+
 /** Version change with spaced arrow, e.g. 1.139.1 → 1.140.0. */
 export function formatVersionChange(from: string, to: string): string {
   return `${formatVersion(from)} → ${formatVersion(to)}`;

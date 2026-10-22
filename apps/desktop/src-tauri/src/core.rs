@@ -22,8 +22,6 @@ pub struct DesktopCore {
     settings_save: RwLock<crate::settings::Save>,
     settings_lock: tokio::sync::Mutex<()>,
     pub settings_changed: tokio::sync::Notify,
-    pub usage_changed: tokio::sync::Notify,
-    pub usage_epoch: AtomicU64,
     pub queue: Arc<TaskQueue>,
     pub data_dir: PathBuf,
     pub cache_dir: PathBuf,
@@ -99,8 +97,6 @@ impl DesktopCore {
             settings_save: RwLock::new(settings_save),
             settings_lock: tokio::sync::Mutex::new(()),
             settings_changed: tokio::sync::Notify::new(),
-            usage_changed: tokio::sync::Notify::new(),
-            usage_epoch: AtomicU64::new(0),
             queue: queue.clone(),
             data_dir,
             cache_dir,
@@ -256,16 +252,7 @@ impl DesktopCore {
             core.queue
                 .security
                 .record_schedule_settings(&saved, chrono::Utc::now().timestamp_millis())?;
-            let mut current = core.settings.write().map_err(poisoned)?;
-            let usage_changed = current.usage_analytics != saved.usage_analytics;
-            *current = saved;
-            if usage_changed {
-                core.usage_epoch.fetch_add(1, Ordering::AcqRel);
-                core.usage_changed.notify_waiters();
-                if !current.usage_analytics {
-                    core.database.set_meta(crate::usage::HISTORY_KEY, "null")?;
-                }
-            }
+            *core.settings.write().map_err(poisoned)? = saved;
             Ok(())
         })
         .await;

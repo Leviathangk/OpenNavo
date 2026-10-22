@@ -534,7 +534,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Record an opted-in anonymous active installation or browser
+         * Record an anonymous active installation or browser
          * @description One daily row per anonymous ID and platform, using Asia/Shanghai. Accepts up to seven days of offline activity. Client activity includes background operation; web activity requires a visible visit.
          */
         post: operations["recordUsageActivity"];
@@ -5808,7 +5808,7 @@ export interface components {
                 bing: string;
             };
             analytics: {
-                /** @default false */
+                /** @default true */
                 usageEnabled: boolean;
                 ga4Enabled: boolean;
                 ga4MeasurementId: string;

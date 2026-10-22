@@ -85,6 +85,7 @@ func DefaultSEOSettings() SEOSettings {
 	s.Identity.Name = "OpenNavo"
 	s.Identity.AlternateNames = []string{}
 	s.Identity.SameAs = []string{"https://github.com/opennavo/OpenNavo", "https://x.com/opennavo"}
+	s.Analytics.UsageEnabled = true
 	s.Analytics.ConsentRegions = append([]string{}, ConsentRegionsDefault...)
 	s.Crawlers.Training = SEOCrawlerRule{Mode: CrawlerModeLimit, DelaySeconds: 10, Bots: []string{"ClaudeBot"}}
 	s.Crawlers.SEOTools = SEOCrawlerRule{Mode: CrawlerModeBlock, DelaySeconds: 10, Bots: []string{"MJ12bot", "SerpstatBot"}}

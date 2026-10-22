@@ -61,11 +61,11 @@ func TestAgentGateProposalRollsBackBusinessAndOutbox(t *testing.T) {
 	require.EqualValues(t, 1, count)
 }
 
-func TestAgentGateAllLegacyWritesRequireExecution(t *testing.T) {
-	// No database is needed: every legacy write must fail before touching it.
+func TestAgentGateNonCatalogWritesRequireExecution(t *testing.T) {
+	// No database is needed: non-catalog writes must fail before touching it.
 	s := &Service{}
 	ctx := domain.WithOperation(context.Background(), &domain.Operation{AgentClientID: 1, AgentTokenID: 2})
-	for _, op := range []string{"FixTranslation", "UpdatePackageMeta", "SetPackagePrice", "SetPackageFactRecords", "AddLinkPackage", "PublishArticle", "WithdrawArticle", "RestoreRevision", "RevertRequest", "UpsertSeoKeywords", "UpdatePackageChangelogSettings"} {
+	for _, op := range []string{"FixTranslation", "AddLinkPackage", "PublishArticle", "WithdrawArticle", "RestoreRevision", "RevertRequest", "UpsertSeoKeywords"} {
 		_, err := s.Execute(ctx, op, Input{})
 		require.Error(t, err, op)
 	}

@@ -112,8 +112,12 @@ function draft(id: number, event: Event) {
 }
 function commit(id: number) {
   const rpm = drafts.value[id];
-  if (rpm == null) return;
-  void attempt(() => store.setFanSpeed(id < 0 ? null : id, rpm));
+  if (rpm == null || busy.value) return;
+  void attempt(() => store.setFanSpeed(id < 0 ? null : id, rpm)).finally(() => {
+    // A completed attempt follows the accepted speed (or the old speed on failure), not its draft.
+    if (drafts.value[id] === rpm)
+      drafts.value = Object.fromEntries(Object.entries(drafts.value).filter(([key]) => Number(key) !== id));
+  });
 }
 const fullSpeed = () =>
   attempt(() => store.setFanSpeed(null, Math.max(...fans.value.map(fan => fan.maxRpm))), {

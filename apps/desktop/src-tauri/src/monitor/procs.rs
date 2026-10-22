@@ -57,28 +57,65 @@ fn executable_path(pid: i32) -> Option<String> {
         unsafe { nix::libc::proc_pidpath(pid, buffer.as_mut_ptr().cast(), buffer.len() as u32) };
     (length > 0).then(|| String::from_utf8_lossy(&buffer[..length as usize]).into_owned())
 }
-/// A process's group never changes while it lives, so the path is read once per (pid, start).
+#[cfg(target_os = "macos")]
+struct CachedGroup {
+    started: u64,
+    own_user: bool,
+    name: Box<str>,
+    executable_uuid: Option<[u8; 16]>,
+    checked_at: std::time::Instant,
+    group: Group,
+}
+// A copied executable can keep its Mach-O UUID when exec moves it to another bundle.
+#[cfg(target_os = "macos")]
+const GROUP_PATH_MAX_AGE: std::time::Duration = std::time::Duration::from_secs(30);
+/// Exec preserves (pid, start), so also check the executable identity already read with rusage.
 #[cfg(target_os = "macos")]
 fn cached_group(
-    cache: &mut std::collections::BTreeMap<u32, (u64, Group)>,
+    cache: &mut std::collections::BTreeMap<u32, CachedGroup>,
     pid: i32,
     started: u64,
     own_user: bool,
     name: &str,
+    executable_uuid: Option<[u8; 16]>,
+    read_path: impl FnOnce(i32) -> Option<String>,
 ) -> Group {
-    if let Some((at, group)) = cache.get(&(pid as u32))
-        && *at == started
+    let executable_uuid = executable_uuid.filter(|uuid| *uuid != [0; 16]);
+    let now = std::time::Instant::now();
+    if let Some(cached) = cache.get(&(pid as u32))
+        && cached.started == started
+        && cached.own_user == own_user
+        && cached.name.as_ref() == name
+        && cached.executable_uuid == executable_uuid
+        && (!own_user
+            || (executable_uuid.is_some()
+                && now.duration_since(cached.checked_at) < GROUP_PATH_MAX_AGE))
     {
-        return group.clone();
+        return cached.group.clone();
     }
     // Other users' executables are not looked at: they are grouped by name like the rest of their entry.
-    let path = if own_user { executable_path(pid) } else { None };
+    let path = if own_user { read_path(pid) } else { None };
     let group = group_for(path.as_deref(), name);
-    cache.insert(pid as u32, (started, group.clone()));
+    if !own_user || (executable_uuid.is_some() && path.is_some()) {
+        cache.insert(
+            pid as u32,
+            CachedGroup {
+                started,
+                own_user,
+                name: name.into(),
+                executable_uuid,
+                checked_at: now,
+                group: group.clone(),
+            },
+        );
+    } else {
+        // An unreadable identity cannot validate an old group; retry transient path failures too.
+        cache.remove(&(pid as u32));
+    }
     group
 }
 #[cfg(target_os = "macos")]
-static GROUPS: std::sync::Mutex<std::collections::BTreeMap<u32, (u64, Group)>> =
+static GROUPS: std::sync::Mutex<std::collections::BTreeMap<u32, CachedGroup>> =
     std::sync::Mutex::new(std::collections::BTreeMap::new());
 #[derive(Clone, Debug)]
 pub struct AppIdentity {
@@ -196,6 +233,7 @@ pub fn list() -> Option<Vec<RawProcess>> {
         let mut cpu_ns = 0;
         let mut child_cpu_ns = None;
         let mut disk_bytes = None;
+        let mut executable_uuid = None;
         // Other users' processes are names only. Never inspect argv, environment or executable arguments.
         if own_user {
             let mut usage = unsafe { std::mem::zeroed::<libc::rusage_info_v2>() };
@@ -207,6 +245,7 @@ pub fn list() -> Option<Vec<RawProcess>> {
                 )
             } == 0
             {
+                executable_uuid = Some(usage.ri_uuid);
                 memory = usage.ri_phys_footprint;
                 disk_bytes = Some((usage.ri_diskio_bytesread, usage.ri_diskio_byteswritten));
                 cpu_ns = cpu_time_ns(usage.ri_user_time.saturating_add(usage.ri_system_time));
@@ -239,7 +278,15 @@ pub fn list() -> Option<Vec<RawProcess>> {
                 .as_ref()
                 .is_some_and(|a| a.path.starts_with("/System/Library/"));
         let started = started(&bsd);
-        let group = cached_group(&mut groups, pid, started, own_user, &name);
+        let group = cached_group(
+            &mut groups,
+            pid,
+            started,
+            own_user,
+            &name,
+            executable_uuid,
+            executable_path,
+        );
         output.push(RawProcess {
             started,
             cpu_ns,
@@ -331,6 +378,130 @@ pub fn quit(_: &RawProcess) -> Result<(), AppError> {
 #[cfg(test)]
 mod tests {
     use super::group_for;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn cached_group_refreshes_after_exec_changes_the_name() {
+        let mut cache = std::collections::BTreeMap::new();
+        let before = super::cached_group(&mut cache, 42, 100, false, "bash", None, |_| {
+            panic!("must not read another user's executable")
+        });
+        let after = super::cached_group(&mut cache, 42, 100, false, "sleep", None, |_| {
+            panic!("must not read another user's executable")
+        });
+
+        assert_eq!(&*before.key, "exe:bash");
+        assert_eq!(&*after.key, "exe:sleep");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn cached_group_refreshes_after_exec_with_the_same_name() {
+        let mut cache = std::collections::BTreeMap::new();
+        let before =
+            super::cached_group(&mut cache, 42, 100, true, "helper", Some([1; 16]), |_| {
+                Some("/Applications/First.app/Contents/MacOS/helper".into())
+            });
+        let after = super::cached_group(&mut cache, 42, 100, true, "helper", Some([2; 16]), |_| {
+            Some("/Applications/Second.app/Contents/MacOS/helper".into())
+        });
+
+        assert_eq!(&*before.key, "app:/Applications/First.app");
+        assert_eq!(&*after.key, "app:/Applications/Second.app");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn cached_group_reuses_a_known_identity_without_reading_the_path() {
+        let mut cache = std::collections::BTreeMap::new();
+        let before =
+            super::cached_group(&mut cache, 42, 100, true, "helper", Some([1; 16]), |_| {
+                Some("/Applications/First.app/Contents/MacOS/helper".into())
+            });
+        let checked_at = cache[&42].checked_at;
+        for _ in 0..10 {
+            let after =
+                super::cached_group(&mut cache, 42, 100, true, "helper", Some([1; 16]), |_| {
+                    panic!("a cache hit must not read the executable path")
+                });
+            assert_eq!(after, before);
+        }
+        // Hits do not postpone the periodic check for a copied binary with the same UUID.
+        assert_eq!(cache[&42].checked_at, checked_at);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn cached_group_rechecks_same_uuid_copies_in_another_bundle() {
+        let mut cache = std::collections::BTreeMap::new();
+        super::cached_group(&mut cache, 42, 100, true, "helper", Some([1; 16]), |_| {
+            Some("/Applications/First.app/Contents/MacOS/helper".into())
+        });
+        cache.get_mut(&42).unwrap().checked_at -= super::GROUP_PATH_MAX_AGE;
+        let after = super::cached_group(&mut cache, 42, 100, true, "helper", Some([1; 16]), |_| {
+            Some("/Applications/Second.app/Contents/MacOS/helper".into())
+        });
+
+        assert_eq!(&*after.key, "app:/Applications/Second.app");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn cached_group_rechecks_unknown_or_zero_uuids_instead_of_reusing_a_bundle() {
+        for uuid in [None, Some([0; 16])] {
+            let mut cache = std::collections::BTreeMap::new();
+            super::cached_group(&mut cache, 42, 100, true, "helper", Some([1; 16]), |_| {
+                Some("/Applications/First.app/Contents/MacOS/helper".into())
+            });
+            for bundle in ["Second", "Third"] {
+                let after = super::cached_group(&mut cache, 42, 100, true, "helper", uuid, |_| {
+                    Some(format!("/Applications/{bundle}.app/Contents/MacOS/helper"))
+                });
+                assert_eq!(&*after.key, format!("app:/Applications/{bundle}.app"));
+                assert!(cache.is_empty());
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn cached_group_retries_an_unreadable_path() {
+        let mut cache = std::collections::BTreeMap::new();
+        let fallback =
+            super::cached_group(&mut cache, 42, 100, true, "helper", Some([1; 16]), |_| None);
+        assert_eq!(&*fallback.key, "exe:helper");
+        let recovered =
+            super::cached_group(&mut cache, 42, 100, true, "helper", Some([1; 16]), |_| {
+                Some("/Applications/First.app/Contents/MacOS/helper".into())
+            });
+        assert_eq!(&*recovered.key, "app:/Applications/First.app");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn cached_group_refreshes_on_pid_reuse_and_ownership_changes() {
+        let mut cache = std::collections::BTreeMap::new();
+        super::cached_group(&mut cache, 42, 100, true, "helper", Some([1; 16]), |_| {
+            Some("/Applications/First.app/Contents/MacOS/helper".into())
+        });
+        let reused =
+            super::cached_group(&mut cache, 42, 200, true, "helper", Some([1; 16]), |_| {
+                Some("/Applications/Second.app/Contents/MacOS/helper".into())
+            });
+        assert_eq!(&*reused.key, "app:/Applications/Second.app");
+
+        let other_user =
+            super::cached_group(&mut cache, 42, 200, false, "helper", Some([1; 16]), |_| {
+                panic!("must not read another user's executable")
+            });
+        assert_eq!(&*other_user.key, "exe:helper");
+        let own_user =
+            super::cached_group(&mut cache, 42, 200, true, "helper", Some([1; 16]), |_| {
+                Some("/Applications/Second.app/Contents/MacOS/helper".into())
+            });
+        assert_eq!(&*own_user.key, "app:/Applications/Second.app");
+    }
+
     #[test]
     fn helpers_join_the_outermost_app_and_other_executables_group_by_name() {
         let helper = "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/1/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)";

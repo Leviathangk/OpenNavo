@@ -72,7 +72,7 @@ async def test_cache_isolation_and_expiry(backend: Backend) -> None:
             CURRENT_TOKEN.reset(marker)
 
     full, readonly = await asyncio.gather(listed("test-only-full"), listed("test-only-read"))
-    assert len(full) == 114 and "package_set_text" not in readonly
+    assert len(full) == 115 and "package_set_text" not in readonly
     assert len(backend.auth.cache) == 2
     assert all("test-only" not in key[0] for key in backend.auth.cache)
     backend.client.http = httpx2.AsyncClient(transport=httpx2.MockTransport(backend.handle))

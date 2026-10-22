@@ -420,7 +420,7 @@
       },
       "usage": {
         "title": "Actividad de usuarios",
-        "hint": "Hora de Shanghái · Hoy es parcial · Instalaciones y navegadores anónimos participantes, no personas. El cliente incluye la ejecución en segundo plano; la web requiere una visita visible. No se eliminan duplicados entre plataformas.",
+        "hint": "Hora de Shanghái · Hoy es parcial · Se cuentan instalaciones y navegadores anónimos, no personas. El cliente incluye actividad en segundo plano; la web requiere una visita visible. No se deduplican plataformas. El país corresponde a la conexión y puede reflejar una VPN o un proxy.",
         "date": "Fecha",
         "desktop": "Actividad diaria del cliente",
         "web": "Actividad diaria web",
@@ -429,10 +429,13 @@
         "versions": "Versiones activas del cliente hoy",
         "version": "Versión",
         "count": "Instalaciones",
-        "empty": "Aún no hay actividad registrada. Activa la recopilación y espera los informes de quienes la hayan aceptado.",
+        "empty": "Aún no hay actividad. Los clientes en ejecución y las visitas válidas envían datos automáticamente.",
         "trend": "Actividad diaria · Últimos 30 días",
         "details": "Detalle diario",
-        "newHint": "Nuevo significa que el identificador se observa por primera vez. Borrar los datos locales o volver tras 90 días de inactividad puede contar como nuevo."
+        "newHint": "Nuevo significa que el identificador se observa por primera vez. Borrar los datos locales o volver tras 90 días de inactividad puede contar como nuevo.",
+        "countries": "Distribución por país hoy",
+        "country": "País",
+        "unknownCountry": "Desconocido"
       }
     },
     "catalog": {

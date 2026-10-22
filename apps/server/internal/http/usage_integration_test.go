@@ -22,7 +22,7 @@ import (
 
 func TestUsageEndpointValidationAndRateLimit(t *testing.T) {
 	st := testutil.NewStore(t)
-	server, err := httpserver.New(config.Config{}, slog.New(slog.NewTextHandler(io.Discard, nil)), st, httpserver.Dependencies{Public: &public.Handler{Catalog: &catalog.PublicService{Store: st}}, Rate: &middleware.RateLimiter{Client: st.Redis}})
+	server, err := httpserver.New(config.Config{UsageCountryTrustedProxies: []string{"192.0.2.0/24"}}, slog.New(slog.NewTextHandler(io.Discard, nil)), st, httpserver.Dependencies{Public: &public.Handler{Catalog: &catalog.PublicService{Store: st}}, Rate: &middleware.RateLimiter{Client: st.Redis}})
 	require.NoError(t, err)
 	valid := map[string]any{"anonymousId": "2a77e45e-1ac2-4d72-b9c2-aaf2a42f8234", "platform": "desktop", "occurredAt": time.Now().UTC().Format(time.RFC3339), "version": "0.1.3", "locale": "en-US"}
 	call := func(body map[string]any) *httptest.ResponseRecorder {
@@ -30,6 +30,7 @@ func TestUsageEndpointValidationAndRateLimit(t *testing.T) {
 		require.NoError(t, e)
 		req := httptest.NewRequest("POST", "/api/v1/usage/activity", strings.NewReader(string(raw)))
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("CF-IPCountry", "JP")
 		reply := httptest.NewRecorder()
 		server.Engine.ServeHTTP(reply, req)
 		return reply
@@ -41,10 +42,15 @@ func TestUsageEndpointValidationAndRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, requested.In(time.FixedZone("Asia/Shanghai", 8*60*60)).Format("2006-01-02"), reply.Header().Get("X-Usage-Day"))
 
-	// The website's collection switch is independent of GA4 and enforced server-side.
+	// First-party web usage is enabled by default, independently of GA4.
 	valid["platform"] = "web"
 	require.Equal(t, 204, call(valid).Code)
 	var webRows int64
+	require.NoError(t, st.DB.Table("usage_daily").Where("platform='web'").Count(&webRows).Error)
+	require.EqualValues(t, 1, webRows)
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{analytics}',COALESCE(settings->'analytics','{}'::jsonb)||'{"usageEnabled":false}'::jsonb) WHERE id=true`).Error)
+	require.NoError(t, st.DB.Exec("DELETE FROM usage_daily WHERE platform='web'").Error)
+	require.Equal(t, 204, call(valid).Code)
 	require.NoError(t, st.DB.Table("usage_daily").Where("platform='web'").Count(&webRows).Error)
 	require.Zero(t, webRows)
 	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{analytics}',COALESCE(settings->'analytics','{}'::jsonb)||'{"usageEnabled":true}'::jsonb) WHERE id=true`).Error)
@@ -65,4 +71,7 @@ func TestUsageEndpointValidationAndRateLimit(t *testing.T) {
 	var count int64
 	require.NoError(t, st.DB.Table("usage_daily").Count(&count).Error)
 	require.EqualValues(t, 2, count)
+	var countries []string
+	require.NoError(t, st.DB.Table("usage_daily").Distinct("country").Pluck("country", &countries).Error)
+	require.Equal(t, []string{"JP"}, countries)
 }

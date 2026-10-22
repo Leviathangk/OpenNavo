@@ -39,6 +39,18 @@ func validateStaging(_ url: URL) throws {
     }
 }
 
+/// Apple reports `installPath` on the failed-status callbacks but clears it on the
+/// removal callback that follows (macOS 27: two failed callbacks with the path,
+/// then the removal with nil). The privileged-install request has to use the last
+/// app path any earlier callback carried.
+struct ObservedInstallPath {
+    private(set) var value: String?
+
+    mutating func observe(_ candidate: String?) {
+        if let candidate, candidate.hasPrefix("/"), candidate.hasSuffix(".app") { value = candidate }
+    }
+}
+
 func emit(_ object: [String: Any]) {
     guard var data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else {
         exit(70)

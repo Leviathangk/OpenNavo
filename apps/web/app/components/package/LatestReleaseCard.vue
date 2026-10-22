@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PublicComponents } from '@opennavo/api';
-import { formatDate, formatReleaseVersion } from '@opennavo/shared';
+import { formatDate, formatReleaseVersion, releaseTitleDetail } from '@opennavo/shared';
 import { displayUrl, OnChip, OnCodeText, OnIcon, parseInline } from '@opennavo/ui';
 
 type ReleaseEntry = PublicComponents['schemas']['ReleaseEntry'];
@@ -12,6 +12,9 @@ const props = defineProps<{ release: ReleaseEntry; total: number; versionsHref: 
 
 const { t, locale } = useI18n();
 const appLocale = computed(() => toAppLocale(locale.value));
+
+// Editorial titles often only repeat the app name and version; show the ones that add to it.
+const titleDetail = computed(() => releaseTitleDetail(props.release.title, props.release.version));
 
 // Take the first highlight per group, up to three lines (mockup).
 const rows = computed(() =>
@@ -52,6 +55,7 @@ const meta = computed(() =>
         >{{ release.publishedAt ? ` · ${meta}` : meta }}</span
       >
     </p>
+    <p v-if="titleDetail" class="m-0 mt-10px text-13px font-600 text-ink-primary">{{ titleDetail }}</p>
     <ul v-if="rows.length" class="m-0 mt-10px flex list-none flex-col gap-8px p-0">
       <li v-for="(row, index) in rows" :key="index" class="flex gap-10px text-13px leading-[1.5] text-ink-secondary">
         <OnChip class="w-58px shrink-0 justify-center">{{ row.area }}</OnChip>

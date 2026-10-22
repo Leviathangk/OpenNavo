@@ -8,7 +8,7 @@ from jsonschema import Draft202012Validator, ValidationError
 from mcp_types import ToolAnnotations
 from pydantic import PrivateAttr
 
-from opennavo_mcp.agent_client import AgentClient, AgentError
+from opennavo_mcp.agent_client import AUTONOMOUS_CATALOG_OPERATIONS, AgentClient, AgentError
 from opennavo_mcp.auth import CURRENT, Authenticator
 from opennavo_mcp.contracts import OPERATIONS, expand, request_schema, snake
 from opennavo_mcp.tools.display import package_display
@@ -156,7 +156,11 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
             schema, _, _ = fields(op)
             headers = OPERATIONS[op]["parameters"].get("header", [])
             properties.update({snake(k): schema["properties"][k] for k in headers})
-            if headers:
+            if headers and op in AUTONOMOUS_CATALOG_OPERATIONS:
+                required.append(
+                    "idempotency_key"
+                )  # task_id/fencing optional, revision from dry run
+            elif headers:
                 required.extend(sorted(metadata))
         required = list(dict.fromkeys(required))
     return {

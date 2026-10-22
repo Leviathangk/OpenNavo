@@ -31,9 +31,17 @@ pub struct Publication {
     pub alerts: Vec<HealthIssue>,
 }
 pub type Sink = Arc<dyn Fn(Publication) + Send + Sync>;
+const PROBE_INTERVAL_MS: u64 = 30_000;
+const PROBE_ATTEMPTS: u8 = 3;
+struct Probe {
+    remaining: u8,
+    next_at: u64,
+}
 struct State {
     engine: Engine,
     capable: Modules,
+    wanted: Modules,
+    probes: BTreeMap<MonitorModule, Probe>,
     views: BTreeMap<(String, MonitorView), Modules>,
     hidden: BTreeSet<String>,
     destroyed: BTreeSet<String>,
@@ -73,28 +81,32 @@ impl Sampler {
         let system = collector.system();
         let probe = collector.collect(&all_modules(), false);
         let engine = Engine::new(system, probe);
+        let mut state = State {
+            capable: engine.available.clone(),
+            wanted: Modules::new(),
+            probes: BTreeMap::new(),
+            engine,
+            views: BTreeMap::new(),
+            hidden: BTreeSet::new(),
+            destroyed: BTreeSet::new(),
+            instances: BTreeMap::new(),
+            next_instance: 0,
+            menu,
+            interval_ms: interval.into(),
+            paused: BTreeSet::new(),
+            generation: 0,
+            menu_at: None,
+            sensors_at: None,
+            fans_at: None,
+            sample_at: None,
+            power_at: None,
+            smart_at: None,
+            core_at: BTreeMap::new(),
+            alerts: super::alerts::AlertTracker::default(),
+        };
+        Self::changed(&mut state);
         Arc::new(Self {
-            state: Mutex::new(State {
-                capable: engine.available.clone(),
-                engine,
-                views: BTreeMap::new(),
-                hidden: BTreeSet::new(),
-                destroyed: BTreeSet::new(),
-                instances: BTreeMap::new(),
-                next_instance: 0,
-                menu,
-                interval_ms: interval.into(),
-                paused: BTreeSet::new(),
-                generation: 0,
-                menu_at: None,
-                sensors_at: None,
-                fans_at: None,
-                sample_at: None,
-                power_at: None,
-                smart_at: None,
-                core_at: BTreeMap::new(),
-                alerts: super::alerts::AlertTracker::default(),
-            }),
+            state: Mutex::new(state),
             collector: Mutex::new(collector),
             notify: Notify::new(),
             started: std::sync::atomic::AtomicBool::new(false),
@@ -225,11 +237,73 @@ impl Sampler {
             processes: visible,
         })
     }
+    fn wanted(state: &State) -> Modules {
+        let mut wanted = state.menu.enabled();
+        wanted.extend(Self::visible_views(state).flat_map(|modules| modules.iter().copied()));
+        if state.alerts.enabled() {
+            wanted.extend([
+                MonitorModule::Cpu,
+                MonitorModule::Memory,
+                MonitorModule::Disk,
+                MonitorModule::Battery,
+                MonitorModule::Sensors,
+            ]);
+        }
+        wanted
+    }
+    fn pending_probes(state: &State) -> impl Iterator<Item = (&MonitorModule, &Probe)> {
+        state.probes.iter().filter(|(module, probe)| {
+            state.paused.is_empty()
+                && state.wanted.contains(module)
+                && !state.capable.contains(module)
+                && probe.remaining > 0
+        })
+    }
+    /// Unknown hardware gets a bounded recovery path, separate from the regular plan.
+    fn tick_plan(state: &State, now: u64) -> Option<Plan> {
+        let retry: Modules = Self::pending_probes(state)
+            .filter(|(_, probe)| now >= probe.next_at)
+            .map(|(module, _)| *module)
+            .collect();
+        let mut plan = Self::plan_for(state);
+        if !retry.is_empty() {
+            plan.get_or_insert(Plan {
+                modules: Modules::new(),
+                interval_ms: PROBE_INTERVAL_MS as u32,
+                processes: false,
+            })
+            .modules
+            .extend(retry);
+        }
+        plan
+    }
+    fn next_delay(state: &State, now: u64) -> Option<u64> {
+        let regular = Self::plan_for(state).map(|plan| u64::from(plan.interval_ms));
+        let retry = Self::pending_probes(state)
+            .map(|(_, probe)| probe.next_at.saturating_sub(now))
+            .min();
+        regular.into_iter().chain(retry).min()
+    }
     pub fn plan(&self) -> Result<Option<Plan>, AppError> {
         let state = self.lock()?;
         Ok(Self::plan_for(&state))
     }
     fn changed(state: &mut State) {
+        let wanted = Self::wanted(state);
+        for module in wanted.difference(&state.wanted) {
+            if !state.capable.contains(module) {
+                // Preserve the cooldown across hide/show and unsubscribe/subscribe churn.
+                state
+                    .probes
+                    .entry(*module)
+                    .or_insert(Probe {
+                        remaining: 0,
+                        next_at: 0,
+                    })
+                    .remaining = PROBE_ATTEMPTS;
+            }
+        }
+        state.wanted = wanted;
         if !state.paused.is_empty()
             || !Self::visible_views(state)
                 .any(|v| v.contains(&MonitorModule::Cpu) || v.contains(&MonitorModule::Gpu))
@@ -469,6 +543,14 @@ impl Sampler {
                 state.paused.remove(&reason)
             };
             if changed {
+                if reason == PauseReason::Sleep && !paused {
+                    // A real wake is a new opportunity for temporarily unavailable drivers.
+                    // Other pause transitions must not repeatedly probe absent hardware.
+                    for probe in state.probes.values_mut() {
+                        probe.remaining = PROBE_ATTEMPTS;
+                        probe.next_at = 0;
+                    }
+                }
                 state.engine.reset();
                 state.sensors_at = None;
                 state.fans_at = None;
@@ -526,6 +608,13 @@ impl Sampler {
         at: i64,
         force_processes: bool,
     ) -> Result<Option<Publication>, AppError> {
+        // Serialize planning through commit, not only native collection: a queued refresh
+        // must see the previous probe's cooldown and any changed demand before reading.
+        // No caller acquires collector while holding state; both guards are local to this tick.
+        let mut collector = self
+            .collector
+            .lock()
+            .map_err(|_| AppError::new("E_UNKNOWN", "monitor_collector"))?;
         let (
             plan,
             generation,
@@ -538,7 +627,7 @@ impl Sampler {
             cached_devices,
         ) = {
             let state = self.lock()?;
-            let Some(plan) = Self::plan_for(&state) else {
+            let Some(plan) = Self::tick_plan(&state, now) else {
                 return Ok(None);
             };
             let due = plan.processes
@@ -624,11 +713,7 @@ impl Sampler {
                 state.engine.latest.disk.devices.clone(),
             )
         };
-        let mut frame = self
-            .collector
-            .lock()
-            .map_err(|_| AppError::new("E_UNKNOWN", "monitor_collector"))?
-            .collect_requested(&read_modules, processes_due, &extras);
+        let mut frame = collector.collect_requested(&read_modules, processes_due, &extras);
         if !read_modules.contains(&MonitorModule::Sensors) {
             frame.sensors = cached_sensors;
         }
@@ -647,9 +732,19 @@ impl Sampler {
         let mut state = self.lock()?;
         if state.sample_at.is_some_and(|last| now < last)
             || state.generation != generation
-            || Self::plan_for(&state).as_ref() != Some(&plan)
+            || Self::tick_plan(&state, now).as_ref() != Some(&plan)
         {
             return Ok(None);
+        }
+        let readable = frame.available();
+        for module in &read_modules {
+            if readable.contains(module) {
+                state.capable.insert(*module);
+                state.probes.remove(module);
+            } else if let Some(probe) = state.probes.get_mut(module) {
+                probe.remaining = probe.remaining.saturating_sub(1);
+                probe.next_at = now.saturating_add(PROBE_INTERVAL_MS);
+            }
         }
         if read_modules.contains(&MonitorModule::Sensors) {
             state.sensors_at = Some(now);
@@ -766,16 +861,14 @@ impl Sampler {
                 let notified = sampler.notify.notified();
                 tokio::pin!(notified);
                 notified.as_mut().enable();
-                let Ok(plan) = sampler.plan() else {
+                let now = sampler.origin.elapsed().as_millis() as u64;
+                let Ok(delay) = sampler.lock().map(|state| Self::next_delay(&state, now)) else {
                     break;
                 };
-                let Some(plan) = plan else {
+                if delay.is_none() {
                     notified.await;
                     continue;
-                };
-                let deadline = tokio::time::Instant::now()
-                    + std::time::Duration::from_millis(u64::from(plan.interval_ms));
-                let now = sampler.origin.elapsed().as_millis() as u64;
+                }
                 let collector = sampler.clone();
                 let publication = crate::blocking(move || {
                     collector.tick(now, chrono::Utc::now().timestamp_millis())
@@ -784,7 +877,17 @@ impl Sampler {
                 if let Ok(Some(publication)) = publication {
                     sink(publication);
                 }
-                tokio::select! {_=tokio::time::sleep_until(deadline)=>{},_=notified=>{}}
+                let Ok(delay) = sampler.lock().map(|state| Self::next_delay(&state, now)) else {
+                    break;
+                };
+                if let Some(delay) = delay {
+                    let remaining = now
+                        .saturating_add(delay)
+                        .saturating_sub(sampler.origin.elapsed().as_millis() as u64);
+                    tokio::select! {_=tokio::time::sleep(std::time::Duration::from_millis(remaining))=>{},_=notified=>{}}
+                } else {
+                    notified.await;
+                }
             }
         });
     }
@@ -797,5 +900,65 @@ pub fn validate_view(window: &str, view: MonitorView) -> Result<(), AppError> {
         Ok(())
     } else {
         Err(AppError::new("E_INVALID_ARG", "monitor_view_window"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    struct Empty;
+    impl Collector for Empty {
+        fn system(&self) -> SystemInfo {
+            SystemInfo {
+                model_name: "Fixture".into(),
+                model_id: "Fixture".into(),
+                chip: "Fixture".into(),
+                performance_cores: None,
+                efficiency_cores: None,
+                logical_cores: 1,
+                gpu_cores: None,
+                memory_bytes: 100,
+                os_version: "Fixture".into(),
+                booted_at: 0,
+            }
+        }
+        fn collect(&mut self, _: &Modules, _: bool) -> Frame {
+            Frame::default()
+        }
+    }
+    #[test]
+    fn probe_deadlines_schedule_the_loop_without_a_regular_plan() {
+        let sampler = Sampler::new(
+            Box::new(Empty),
+            MonitorMenuBar::default(),
+            MonitorIntervalMs::TwoSeconds,
+        );
+        let delay = |now| Sampler::next_delay(&sampler.lock().unwrap(), now);
+        assert!(sampler.plan().unwrap().is_none());
+        assert_eq!(delay(0), Some(0));
+        sampler.tick(0, 0).unwrap();
+        assert_eq!(delay(1), Some(29_999));
+        sampler.pause(PauseReason::Screen, true);
+        assert_eq!(delay(30_000), None);
+        sampler.pause(PauseReason::Screen, false);
+        assert_eq!(delay(30_000), Some(0));
+        sampler.tick(30_000, 30_000).unwrap();
+        assert_eq!(delay(30_000), Some(30_000));
+        sampler.tick(60_000, 60_000).unwrap();
+        assert_eq!(
+            delay(60_000),
+            None,
+            "exhausted hardware probes stop the loop"
+        );
+        sampler.pause(PauseReason::Sleep, true);
+        sampler.pause(PauseReason::Sleep, false);
+        assert_eq!(delay(60_001), Some(0));
+        let mut menu = MonitorMenuBar::default();
+        menu.cpu.enabled = false;
+        menu.memory.enabled = false;
+        sampler
+            .configure(menu, MonitorIntervalMs::TwoSeconds)
+            .unwrap();
+        assert_eq!(delay(60_001), None, "no demand stops pending recovery too");
     }
 }

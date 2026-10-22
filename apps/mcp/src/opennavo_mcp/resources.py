@@ -14,6 +14,19 @@ from opennavo_mcp.geo_routine import GEO_ROUTINE
 GUIDES = {
     "geo-routine": GEO_ROUTINE,
     "seo-routine": """SEO routine — version seo-routine-v1 (2026-10-19)
+Catalog maintenance exception: package metadata/facts and current release notes
+may be edited without a task: omit task_id and fencing. idempotency_key is always
+required (reuse it only for an identical retry); a dry run returns expectedRevision,
+commit with it as expected_revision. A newer revision rejects the commit: read and
+preview again. Evidence is optional; proposal mode does not suppress these edits, a
+disabled action does. Hermes judges source reliability, fact support and wording; an
+agent-asserted proof expires 30 days after checkedAt. Do not wait for task allocation.
+Package/release translations may omit task_id/fencing; source_hash and per-language
+expected_revision remain required. Translation quality is the agent's responsibility.
+Preserve valid/manual content, keep sources and read back changes. A blocked item
+must not prevent unrelated pending items from progressing. Frontend rendering
+issues are separate follow-ups, not reasons to repeat successful content writes.
+The task/evidence rules below apply to other SEO workflows, or optional task tracking.
 GEO 入口：opennavo://guide/geo-routine；未授权不运行。Reading is not authorization.
 0. whoami, then seo_overview: check complete watermarks, action modes, shared quotas,
    costs and breakers. Read opennavo://meta/locales for the current site languages.
@@ -44,14 +57,20 @@ GEO 入口：opennavo://guide/geo-routine；未授权不运行。Reading is not 
    with a reason. Never convert fetch failure to removal or 410. Evidence that
    changes during your lease arrives as pendingEvidence and reopens the task after
    you finish. Once the cause is fixed, seo_task_reopen returns a quarantined or
-   skipped task to the queue (agents: at most 3 times, once per hour); claim it
+   skipped task to the queue (agents: 1 h after the first reopen, doubling to at most
+   24 h; no lifetime limit); claim it
    again with task_ids. Rejections end with (rejected: <rule>).
-7. New listings stay isolated in seo_listing_upsert until identity and content gates
-   pass; an app a person asked for becomes a listing task via seo_listing_nominate
-   (nominating publishes nothing); the download link goes to the official page.
-   New articles reserve their unique entity/intent/locale target. All key claims
-   bind captured evidence and applicable version/region; testing claims need
-   article_test_artifacts_list IDs.
+7. New listings use seo_listing_upsert; the editor decides when to publish after
+   checking sources, duplicates and complete metadata. A human identity baseline is
+   optional; without it identityVerified remains false. Download links use the official page.
+   To correct a published listing, nominate it again with seo_listing_nominate (reason:
+   what is wrong), claim that listing task, capture fresh evidence, then call
+   seo_listing_upsert with action=publish, the candidate's current revision and the
+   complete replacement; its package ID stays unchanged.
+   New articles need a topic task: claim one, or propose your own with seo_topic_nominate
+   (slug, keyword, reason) and claim it. They reserve their unique entity/intent/locale
+   target. Claims and evidence_ids are optional; supplied evidence and explicit test
+   artifacts remain auditable.
 8. Optimization is template-only via seo_snippet_template_propose. The server checks
    samples, stratifies groups and evaluates 14/28-day checkpoints. 42 days without
    a conclusion means inconclusive plus cooldown. Traffic decline alone never
@@ -63,6 +82,19 @@ GEO 入口：opennavo://guide/geo-routine；未授权不运行。Reading is not 
     done/deferred/quarantined, proposals/live actions, experiments, costs and alerts.
 """,
     "daily-routine": """Daily workflow — version daily-routine-v1 (2026-10-19)
+Catalog maintenance exception: package metadata/facts and current release notes
+may be edited without a task: omit task_id and fencing. idempotency_key is always
+required (reuse it only for an identical retry); a dry run returns expectedRevision,
+commit with it as expected_revision. A newer revision rejects the commit: read and
+preview again. Evidence is optional; proposal mode does not suppress these edits, a
+disabled action does. Hermes judges source reliability, fact support and wording; an
+agent-asserted proof expires 30 days after checkedAt. Do not wait for task allocation.
+Package/release translations may omit task_id/fencing; source_hash and per-language
+expected_revision remain required. Translation quality is the agent's responsibility.
+Preserve valid/manual content, keep sources and read back changes. A blocked item
+must not prevent unrelated pending items from progressing. Frontend rendering
+issues are separate follow-ups, not reasons to repeat successful content writes.
+The task/evidence rules below apply to other SEO workflows, or optional task tracking.
 GEO 入口：opennavo://guide/geo-routine；未授权不运行。Reading is not authorization.
 1. Read opennavo://guide/seo-routine; whoami and seo_overview before every hourly run.
 2. seo_task_claim first. Entity leases replace the local scan lock; server priorities
@@ -142,21 +174,15 @@ snapshot of the moment you checked; ::app[token] on its own line embeds the app'
 card, which is not a snapshot. Images must be OpenNavo assets (asset_upload_from_url or
 asset_upload_ticket with kind cover or screenshot) from sources you may use, each with alt text.
 No raw HTML.
-Claims: publishing checks title, summary, body, test_note, seo_title and seo_description, and
-needs at least one claim and a target (topic:<slug> or pkg:<id> with an intent). A sentence
-needs a claim only when it states something a reader could check: a number (version, price,
-date, size, count), money, code, a test or performance result, or a pricing, licence, platform
-(Apple silicon, Intel, macOS release names, "supports/requires macOS") or safety/privacy fact.
-Explanatory sentences need none; headings and table header rows need one only for numbers,
-money, code or tests; each table cell is checked on its own. A claim's text contains the whole
-sentence as the article writes it, in any language and your own words. Its excerpt is a
-verbatim passage of the captured evidence that contains every number, currency sign and code
-literal of the sentence, names the same kind of fact (price, licence, platform, safety) and
-agrees on negation; every line of a code fence must appear in some excerpt. Testing language
-(tested, benchmark, faster, safer, performance, 实测, 更快, 性能 and the like) always needs an
-attested test artifact, even in a disclaimer such as "not tested": write "based on official
-documentation" instead. Agent claims leave packageId empty, because evidence captured under an
-article task belongs to the article, and every article write passes that evidence.
+Claims are optional source annotations, not sentence-by-sentence publication approvals.
+Judge factual accuracy and source support yourself. Paraphrases, translated shortcuts and
+negative statements such as "not tested" do not require literal matches or test artifacts.
+A target (topic:<slug> or pkg:<id> with an intent) is still required. Supplied evidence must
+belong to the article or linked package, be intact and not revoked. Explicit test-artifact
+references must belong to the article/package and match their recorded version and region.
+Do not invent tests or present vendor claims as your own measurements.
+Topic: claim a topic task (seo_task_claim kinds [topic]) or propose one with seo_topic_nominate;
+article_create runs under that lease.
 Flow: article_create (slug, type, title; idempotency_key for retries), article_update and
 article_set_packages with expected_revision from the last read, then article_get and fix every
 code in readiness before article_submit_review, then article_publish with the latest

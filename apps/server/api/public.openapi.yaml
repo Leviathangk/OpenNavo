@@ -8701,7 +8701,7 @@ paths:
     post:
       tags: [usage]
       operationId: recordUsageActivity
-      summary: Record an opted-in anonymous active installation or browser
+      summary: Record an anonymous active installation or browser
       description: One daily row per anonymous ID and platform, using Asia/Shanghai. Accepts up to seven days of offline activity. Client activity includes background operation; web activity requires a visible visit.
       requestBody:
         required: true
@@ -16090,7 +16090,7 @@ components:
           properties:
             usageEnabled:
               type: boolean
-              default: false
+              default: true
             ga4Enabled:
               type: boolean
             ga4MeasurementId:

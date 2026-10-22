@@ -139,12 +139,12 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		// refresh is retried a week later while the article still lacks receipts;
 		// a quarantined one waits for a person.
 		if err := tx.Exec(`UPDATE seo_tasks t SET state='open',next_retry_at=NULL,updated_at=clock_timestamp() FROM articles a JOIN article_revisions r ON r.id=a.published_revision_id
-   WHERE t.kind='article_refresh' AND t.state='skipped' AND t.updated_at<clock_timestamp()-interval '7 days' AND t.entity_key='article:'||a.id AND t.evidence->>'revisionId'=r.id::text AND a.status='published' AND r.claim_evidence='[]'::jsonb`).Error; err != nil {
+   WHERE t.kind='article_refresh' AND t.state='skipped' AND t.updated_at<clock_timestamp()-interval '7 days' AND t.entity_key='article:'||a.id AND t.evidence->>'revisionId'=r.id::text AND a.status='published' AND r.claim_evidence='[]'::jsonb AND r.editorial_reviewed_at IS NULL`).Error; err != nil {
 			return err
 		}
 		if _, err := emit(`SELECT 'article_refresh' kind,'article:'||a.id entity_key,r.source_locale locale,'article-refresh:'||a.id||':'||r.id dedupe_key,8 priority,
    jsonb_build_object('source','legacy_article','articleId',a.id,'slug',a.slug,'revisionId',r.id,'authorId',r.author_id) evidence
-   FROM articles a JOIN article_revisions r ON r.id=a.published_revision_id WHERE a.status='published' AND r.claim_evidence='[]'::jsonb ORDER BY a.id`); err != nil {
+   FROM articles a JOIN article_revisions r ON r.id=a.published_revision_id WHERE a.status='published' AND r.claim_evidence='[]'::jsonb AND r.editorial_reviewed_at IS NULL ORDER BY a.id`); err != nil {
 			return err
 		}
 		if err := s.measurements(ctx, tx); err != nil {

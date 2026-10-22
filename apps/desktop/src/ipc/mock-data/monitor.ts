@@ -474,7 +474,9 @@ export function createMonitorMock({ tickMs, flags, settings, updateSettings }: M
   stopPrevious = stop;
 
   // Seed a full minute so charts are not empty on first open.
-  for (let index = 0; index < HISTORY; index += 1) history.push(sample());
+  const seededAt = Date.now();
+  for (let index = 0; index < HISTORY; index += 1)
+    history.push({ ...sample(), at: seededAt - (HISTORY - 1 - index) * 1000 });
 
   function fanChanged(reason: FanReason) {
     void events.fanChanged.emit({ fans, reason });
@@ -495,7 +497,7 @@ export function createMonitorMock({ tickMs, flags, settings, updateSettings }: M
     },
     /** The last hour at 5-second steps; ten minutes asleep half an hour ago leave a gap, as in Rust (M3). */
     monitor_trend: (): MonitorTrendPoint[] => {
-      const now = Date.now();
+      const now = Math.floor(Date.now() / 5000) * 5000;
       return Array.from({ length: 720 }, (_, index) => {
         const at = now - (719 - index) * 5000;
         const wave = Math.sin(index / 37) * 0.5 + 0.5;

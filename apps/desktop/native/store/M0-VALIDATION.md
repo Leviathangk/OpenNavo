@@ -29,13 +29,27 @@ can install on older systems; it is a real App Store write, not a read-only prob
    `opennavo-store install --adam-ids ADAM_ID --staging STAGING_DIRECTORY`.
 3. Capture JSONL and the exit code. Closing stdin cancels the active operation.
    A 201 result must emit `needsPrivilegedInstall` with an existing hard-linked
-   package and receipt; it must not invoke root itself. If Apple's error-201
-   callback has no `installPath`, this M0 version fails closed with the original
-   Apple domain/code. That case needs a verified package destination resolver
-   before M2 can enable installation.
+   package and receipt; it must not invoke root itself. If no callback ever
+   carried an `installPath`, the helper fails closed with the original Apple
+   domain/code.
+   - Observed on macOS 27 (2026-10-22, a free update that was already owned):
+     installd rejects storedownloadd's connection, so the install fails with
+     `PKInstallErrorDomain` 201 ("无法开始安装。"). Two failed-status callbacks carry
+     `installPath`; the removal callback that follows reports `nil`. The helper
+     therefore remembers the last `.app` path it was given (`ObservedInstallPath`).
+     Before that, the update failed with this raw Apple message and no password
+     dialog, because the privileged request was never built.
+   - The staged files are the package and a `receipt`, both hard-linked from
+     Apple's download folder before it is removed.
 4. Read-only package evidence: `pkgutil --check-signature PACKAGE`. Save the Apple
    chain and package metadata for the M2 verifier fixture. A human-readable
    substring match for “Apple” is insufficient for the privileged security gate.
+   - The real package is a distribution archive: `Distribution`, `Resources/`
+     and one component directory (`Bom`, `PackageInfo`, `Payload`), signed as
+     "signed by Apple for the App Store" by "Apple Mac OS Installer Package
+     Signing" under the Worldwide Developer Relations CA. The M2 gates in
+     `updater/admin.rs` (`apple_package_signature`, `validate_store_package`)
+     match that shape; `tests/store_install.rs` carries the signature text.
 5. **Do not bypass the fixed-action requirement with manual sudo/installer.**
    Once M2's `mas_install_pkg` action passes its temporary-directory/object-change
    tests, Claude schedules the authorized end-to-end run: Apple signature gate,

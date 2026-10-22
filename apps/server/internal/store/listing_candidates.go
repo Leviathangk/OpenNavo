@@ -67,10 +67,13 @@ func (s *Store) ListingBaseline(ctx context.Context, id int64) (*ListingBaseline
 // A name/alias/bundle collision requires resolving the existing entity instead
 // of publishing a second listing. Catalog writers share the same advisory lock.
 func (s *Store) ListingDuplicate(ctx context.Context, in domain.LinkInput) (bool, error) {
+	return s.ListingDuplicateExcept(ctx, in, 0)
+}
+func (s *Store) ListingDuplicateExcept(ctx context.Context, in domain.LinkInput, exceptID int64) (bool, error) {
 	var duplicate bool
-	err := s.DB.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM packages p WHERE p.kind IN ('cask','link') AND
+	err := s.DB.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM packages p WHERE p.kind IN ('cask','link') AND p.id<>? AND
  (lower(p.token)=lower(?) OR lower(p.name)=lower(?) OR EXISTS(SELECT 1 FROM unnest(p.names) n WHERE lower(n)=lower(?))))
- OR EXISTS(SELECT 1 FROM package_aliases WHERE kind IN ('cask','link') AND lower(token)=lower(?))`, in.Token, in.Name, in.Name, in.Token).Scan(&duplicate).Error
+ OR EXISTS(SELECT 1 FROM package_aliases WHERE kind IN ('cask','link') AND package_id<>? AND lower(token)=lower(?))`, exceptID, in.Token, in.Name, in.Name, exceptID, in.Token).Scan(&duplicate).Error
 	if err != nil || duplicate {
 		return duplicate, err
 	}
@@ -78,7 +81,7 @@ func (s *Store) ListingDuplicate(ctx context.Context, in domain.LinkInput) (bool
 		// Homebrew's raw uninstall/artifacts data has several shapes. An exact JSON
 		// string match is intentionally conservative; partial bundle IDs never match.
 		encoded, _ := json.Marshal(bundle)
-		err = s.DB.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM link_apps WHERE ?=ANY(bundle_ids)) OR EXISTS(SELECT 1 FROM packages WHERE kind='cask' AND strpos(raw::text,?)>0)`, bundle, string(encoded)).Scan(&duplicate).Error
+		err = s.DB.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM link_apps WHERE package_id<>? AND ?=ANY(bundle_ids)) OR EXISTS(SELECT 1 FROM packages WHERE id<>? AND kind='cask' AND strpos(raw::text,?)>0)`, exceptID, bundle, exceptID, string(encoded)).Scan(&duplicate).Error
 		if err != nil || duplicate {
 			return duplicate, err
 		}

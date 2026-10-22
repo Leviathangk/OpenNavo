@@ -137,6 +137,58 @@ fn legacy_battery_raw_capacity_time_sentinel_and_absent_temperature() {
     assert_eq!(battery::temperature(Some(65535.0)), None);
 }
 
+#[test]
+fn battery_temperature_is_hundredths_celsius_and_preserves_health_boundaries() {
+    for (raw, celsius) in [
+        (2850.0, 28.5),
+        (3300.0, 33.0),
+        (3999.0, 39.99),
+        (4000.0, 40.0),
+        (4100.0, 41.0),
+    ] {
+        assert_eq!(battery::temperature(Some(raw)), Some(celsius));
+    }
+    for raw in [
+        None,
+        Some(0.0),
+        Some(-1.0),
+        Some(65535.0),
+        Some(f64::NAN),
+        Some(f64::INFINITY),
+    ] {
+        assert_eq!(battery::temperature(raw), None);
+    }
+}
+
+#[test]
+fn battery_temperature_falls_back_to_nested_pack_only_when_primary_is_unreadable() {
+    let pack = serde_json::json!({"BatteryData": {"Temperature": 2850}});
+    for (top, data) in [(None, None), (Some(0.0), None), (Some(65535.0), Some(-1.0))] {
+        assert_eq!(
+            battery::temperature_from_sources(top, data, || pack["BatteryData"]["Temperature"]
+                .as_f64()),
+            Some(28.5)
+        );
+    }
+    assert_eq!(
+        battery::temperature_from_sources(Some(3300.0), Some(4100.0), || panic!(
+            "valid top must skip pack"
+        )),
+        Some(33.0)
+    );
+    assert_eq!(
+        battery::temperature_from_sources(None, Some(4100.0), || panic!(
+            "valid nested primary must skip pack"
+        )),
+        Some(41.0)
+    );
+    assert_eq!(battery::temperature_from_sources(None, None, || None), None);
+    assert_eq!(
+        battery::temperature_from_sources(None, None, || Some(65535.0)),
+        None
+    );
+}
+
 #[cfg(target_os = "macos")]
 mod mac {
     use opennavo_desktop_lib::monitor::{

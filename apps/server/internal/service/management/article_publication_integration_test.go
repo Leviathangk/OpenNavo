@@ -56,14 +56,14 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	}
 	_, err = mutate("SubmitArticleReview", map[string]any{})
 	require.NoError(t, err)
-	// A valid-looking body cannot approve the unrelated persisted revision.
-	_, err = mutate("UpdateArticle", map[string]any{"summary": "It is safer than every other editor."})
+	// Editorial paraphrases do not require a matching claim for each sentence.
+	_, err = mutate("UpdateArticle", map[string]any{"summary": "The guide explains the export workflow in different words."})
 	require.NoError(t, err)
 	_, err = mutate("SubmitArticleReview", map[string]any{})
 	require.NoError(t, err)
 	_, err = mutate("PublishArticle", map[string]any{})
-	require.Error(t, err)
-	require.Nil(t, state().PublishedRevisionID)
+	require.NoError(t, err)
+	require.NotNil(t, state().PublishedRevisionID)
 	_, err = mutate("UpdateArticle", map[string]any{"summary": title})
 	require.NoError(t, err)
 	_, err = mutate("SubmitArticleReview", map[string]any{})
@@ -74,8 +74,8 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	var bound string
 	require.NoError(t, st.DB.Raw("SELECT claim_evidence::text FROM article_revisions WHERE id=?", first).Scan(&bound).Error)
 	require.Contains(t, bound, e.BodyHash)
-	// A source citing a testing claim is still not a real test artifact.
-	testText := "We tested the export task in 10 seconds."
+	// Testing-related prose does not imply an administrator-attested test.
+	testText := "This is not a benchmark; the vendor describes export performance."
 	testEvidence := listingEvidence(t, st, "pkg:81", testText+" Version 1.0 is available in US.", "https://vendor.example.test/release", "official")
 	testClaim := articles.Claim{Text: testText, Kind: "factual", EvidenceID: testEvidence.ID, Excerpt: testEvidence.Excerpt, PackageID: &pkg, AppVersion: "1.0", Region: "US"}
 	nextClaims := append(append([]articles.Claim{}, claims...), testClaim)
@@ -84,8 +84,8 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	_, err = mutate("SubmitArticleReview", map[string]any{})
 	require.NoError(t, err)
 	_, err = mutate("PublishArticle", map[string]any{})
-	require.Error(t, err)
-	require.Equal(t, first, *state().PublishedRevisionID)
+	require.NoError(t, err)
+	require.NotEqual(t, first, *state().PublishedRevisionID)
 	// Only the trusted administrator/runner channel can register actual output.
 	report := articles.TestArtifactInput{PackageID: pkg, AppVersion: "1.0", MacOS: "15.0", Architecture: "arm64", Region: "US", PerformedAt: time.Now().Add(-time.Minute).UTC().Truncate(time.Second), Runner: "isolated-fixture-runner", Command: "fixture-export --count 10", Environment: map[string]string{"machine": "fixture"}, Output: body + " " + testText, Conclusions: []string{title, body, testText}, Attested: true}
 	artifactInput := Input{ID: id, Body: listingBody(t, report)}
@@ -135,7 +135,7 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	// Revert moves the actual online pointer and emits page invalidations.
 	var before int64
 	require.NoError(t, st.DB.Table("content_url_changes").Count(&before).Error)
-	_, err = mutate("RevertArticle", map[string]any{"revisionNumber": 1})
+	_, err = mutate("RevertArticle", map[string]any{"revisionNumber": 2})
 	require.NoError(t, err)
 	require.Equal(t, first, *state().PublishedRevisionID)
 	require.Equal(t, "published", state().Status)
@@ -165,6 +165,12 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	raw, err := json.Marshal(report)
 	require.NoError(t, err)
 	require.NotEmpty(t, raw)
+	// The editor can publish without a mechanical per-sentence claim inventory.
+	draft.Claims = nil
+	disclaimer := "这不是实测，依据官方文档整理。快捷键为 Ctrl - Shift - C。"
+	draft.BodyMarkdown = &disclaimer
+	require.NoError(t, s.validateArticlePublication(ctx, st, state(), second, draft))
+
 }
 
 // A human can start with no evidence/report IDs and complete the entire review

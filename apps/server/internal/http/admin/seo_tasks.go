@@ -30,6 +30,10 @@ func (h *Handler) NominateSeoListing(ctx context.Context, r adminapi.NominateSeo
 	data, err := h.manage(ctx, "NominateSeoListing", r)
 	return response[adminapi.NominateSeoListing200JSONResponse](data, err)
 }
+func (h *Handler) NominateSeoTopic(ctx context.Context, r adminapi.NominateSeoTopicRequestObject) (adminapi.NominateSeoTopicResponseObject, error) {
+	data, err := h.manage(ctx, "NominateSeoTopic", r)
+	return response[adminapi.NominateSeoTopic200JSONResponse](data, err)
+}
 func (h *Handler) CreateSeoEvidence(ctx context.Context, r adminapi.CreateSeoEvidenceRequestObject) (adminapi.CreateSeoEvidenceResponseObject, error) {
 	data, err := h.manage(ctx, "CreateSeoEvidence", r)
 	return response[adminapi.CreateSeoEvidence200JSONResponse](data, err)

@@ -89,7 +89,7 @@ func (s *Service) validateArticlePublication(ctx context.Context, st *store.Stor
 	if err != nil {
 		return err
 	}
-	if len(problems) > 0 || len(d.Claims) == 0 || !articles.ValidClaims(d.Claims) {
+	if len(problems) > 0 || !articles.ValidClaims(d.Claims) {
 		return domain.Validation()
 	}
 	if err := checkArticleReferences(ctx, st, d); err != nil {
@@ -98,13 +98,8 @@ func (s *Service) validateArticlePublication(ctx context.Context, st *store.Stor
 	if err := s.reserveArticleTarget(ctx, st, a.Slug, d); err != nil {
 		return err
 	}
-	for _, text := range []string{d.Title, ptrText(d.Summary), ptrText(d.BodyMarkdown), ptrText(d.TestNote), ptrText(d.SeoTitle), ptrText(d.SeoDescription)} {
-		if !articles.ClaimsCover(text, d.Claims) {
-			return domain.Validation()
-		}
-	}
+	// Editors judge factual coverage and wording; references remain auditable.
 	receipts := []articles.ClaimEvidence{}
-	hasTest := false
 	for _, c := range d.Claims {
 		if c.PackageID != nil && !slices.Contains(d.Packages, *c.PackageID) {
 			return domain.Validation()
@@ -113,15 +108,12 @@ func (s *Service) validateArticlePublication(ctx context.Context, st *store.Stor
 		if err != nil {
 			return err
 		}
-		if !evidenceIntact(e) || !strings.Contains(e.BodyText, articles.NormalizeAssertion(c.Excerpt)) || !strings.Contains(e.Excerpt, articles.NormalizeAssertion(c.Excerpt)) || !evidenceContainsScope(c.Excerpt, c.AppVersion) || !evidenceContainsScope(c.Excerpt, c.Region) {
+		if !evidenceIntact(e) {
 			return domain.Validation()
 		}
 		receipt := articles.ClaimEvidence{EvidenceID: e.ID, SourceURL: e.FinalURL, BodyHash: e.BodyHash, CheckedAt: e.FetchedAt, ValidUntil: e.ValidUntil}
-		needsTest := d.Type == "review" || c.Kind == "test" || articles.TestingClaim(c.Text)
+		needsTest := c.Kind == "test" || c.TestArtifactID != nil
 		if needsTest {
-			if !strings.Contains(articles.NormalizeAssertion(ptrText(d.BodyMarkdown)), articles.NormalizeAssertion(c.Text)) {
-				return domain.Validation()
-			}
 			if c.TestArtifactID == nil || c.PackageID == nil {
 				return domain.Validation()
 			}
@@ -133,29 +125,16 @@ func (s *Service) validateArticlePublication(ctx context.Context, st *store.Stor
 			if artifact.ID == 0 || artifact.ArticleID != a.ID || artifact.PackageID != *c.PackageID || json.Unmarshal(artifact.Payload, &report) != nil || artifact.SHA256 != report.Hash() || !report.Valid(s.now()) || report.AppVersion != c.AppVersion || report.Region != c.Region {
 				return domain.Validation()
 			}
-			conclusion := false
-			for _, value := range report.Conclusions {
-				conclusion = conclusion || articles.NormalizeAssertion(value) == articles.NormalizeAssertion(c.Text)
-			}
-			if !conclusion || !articles.CompleteAssertion(c.Text, report.Output) {
-				return domain.Validation()
-			}
-			hasTest = true
 			receipt.TestArtifactID = c.TestArtifactID
 			receipt.TestArtifactHash = &artifact.SHA256
-		} else if c.TestArtifactID != nil || !articles.Supports(c.Text, c.Excerpt) {
-			return domain.Validation()
 		}
 		receipts = append(receipts, receipt)
-	}
-	if d.Type == "review" && !hasTest {
-		return domain.Validation()
 	}
 	raw, err := json.Marshal(receipts)
 	if err != nil {
 		return err
 	}
-	return st.DB.WithContext(ctx).Exec("UPDATE article_revisions SET claim_evidence=?::jsonb WHERE id=?", string(raw), revisionID).Error
+	return st.DB.WithContext(ctx).Exec("UPDATE article_revisions SET claim_evidence=?::jsonb,editorial_reviewed_at=clock_timestamp() WHERE id=?", string(raw), revisionID).Error
 }
 
 func (s *Service) articleTestArtifacts(ctx context.Context, op string, in Input) (any, error) {

@@ -14,6 +14,10 @@ it('keeps platforms separate, shows today and provides chart data as an accessib
       { date: '2026-10-21', desktop: 12, web: 40, newDesktop: 3, newWeb: 9 },
       { date: '2026-10-22', desktop: 15, web: 50, newDesktop: 2, newWeb: 6 }
     ],
+    countries: [
+      { country: 'JP', desktop: 15, web: 40 },
+      { country: 'ZZ', desktop: 0, web: 10 }
+    ],
     versions: [{ version: '0.1.3', count: 15 }]
   };
   const wrapper = mount(UsageCard, { props: { usage }, global: { components } });
@@ -21,7 +25,13 @@ it('keeps platforms separate, shows today and provides chart data as an accessib
   expect(wrapper.text()).toContain('page.dashboard.usage.web: 50');
   expect(wrapper.findAll('polyline')).toHaveLength(2);
   expect(wrapper.get('summary').text()).toBe('page.dashboard.usage.details');
-  expect(wrapper.findAll('th[scope="row"]').map(row => row.text())).toEqual(['2026-10-22', '2026-10-21', '0.1.3']);
+  expect(wrapper.findAll('th[scope="row"]').map(row => row.text())).toEqual([
+    '2026-10-22',
+    '2026-10-21',
+    '0.1.3',
+    'JP',
+    'page.dashboard.usage.unknownCountry'
+  ]);
   wrapper.unmount();
 });
 it('shows an honest empty state rather than an invented trend', () => {

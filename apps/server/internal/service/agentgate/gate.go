@@ -47,7 +47,8 @@ func RuleFor(operation string) (Rule, bool) {
 		{Rule{"listing", "package", true, false}, "AddLinkPackage UpdateLinkPackage AddTapPackage"},
 		{Rule{"listing", "listing", true, false}, "UpsertSeoListingCandidate"},
 		{Rule{"withdraw", "package", false, false}, "RemoveLinkPackage RemoveTapPackage"},
-		{Rule{"article", "article", true, false}, "CreateArticle UpdateArticle SetArticlePackages SubmitArticleReview PublishArticle RestoreArticle RevertArticle SetArticleSlug SetArticleLocale"},
+		// Article evidence is optional: supplied IDs are still checked for scope and freshness.
+		{Rule{"article", "article", false, false}, "CreateArticle UpdateArticle SetArticlePackages SubmitArticleReview PublishArticle RestoreArticle RevertArticle SetArticleSlug SetArticleLocale"},
 		{Rule{"withdraw", "article", false, false}, "WithdrawArticle"},
 		{Rule{"article", "article_author", true, false}, "CreateArticleAuthor UpdateArticleAuthor"},
 		{Rule{"compensate", "history", true, false}, "RestoreRevision RestoreTrash RevertRequest CompensateSeoAction"},
@@ -92,6 +93,39 @@ func Check(ctx context.Context, tx *gorm.DB, w Write) (Decision, error) {
 	if !ok {
 		return d, reject("unregistered_write")
 	}
+	// Catalog provenance and translation quality are agent decisions, not
+	// lexical or domain-allowlist checks. Keep accounting, circuit breakers and
+	// the operator's per-action switch; proposal mode no longer holds them back.
+	if AutonomousCatalogWrite(w.Operation) || w.Operation == "FixTranslation" && CatalogEntity(w.Entity) {
+		if w.Task.ID > 0 {
+			taskEntity, err := seotasks.CanonicalEntity(ctx, tx, w.Task.EntityKey)
+			if err != nil {
+				return d, err
+			}
+			writeEntity, err := seotasks.CanonicalEntity(ctx, tx, w.Entity)
+			if err != nil {
+				return d, err
+			}
+			if taskEntity != writeEntity {
+				return d, reject("task_entity_mismatch")
+			}
+		}
+		if w.Task.Kind == "fix_fact" && (d.Rule.Action == "maintenance" || d.Rule.Action == "fact_fill") {
+			d.Rule.Action = "fact_fix"
+		}
+		policy, configured, err := actionPolicy(ctx, tx, w.Site, d.Rule.Action)
+		if err != nil {
+			return d, err
+		}
+		if configured && !policy.Enabled {
+			return d, reject("automation_disabled")
+		}
+		d.Policy = Policy{Enabled: true, Mode: "live"}
+		if err := seobudget.Check(ctx, tx, w.Site, d.Rule.Action, false); err != nil {
+			return d, err
+		}
+		return d, nil
+	}
 	taskEntity, err := seotasks.CanonicalEntity(ctx, tx, w.Task.EntityKey)
 	if err != nil {
 		return d, err
@@ -107,21 +141,20 @@ func Check(ctx context.Context, tx *gorm.DB, w Write) (Decision, error) {
 	if w.Task.Kind == "fix_fact" && (d.Rule.Action == "maintenance" || d.Rule.Action == "fact_fill") {
 		d.Rule.Action = "fact_fix"
 	}
-	// Serialize policy reads with tuner updates through the shared site lock.
-	if err := seobudget.Lock(ctx, tx, w.Site); err != nil {
+	var configured bool
+	d.Policy, configured, err = actionPolicy(ctx, tx, w.Site, d.Rule.Action)
+	if err != nil {
 		return d, err
 	}
-	var row struct{ Automation json.RawMessage }
-	if err := tx.WithContext(ctx).Raw("SELECT automation FROM seo_settings LIMIT 1").Scan(&row).Error; err != nil {
-		return d, err
+	ok = configured
+	if d.Rule.Action == "article" || w.Operation == "UpsertSeoListingCandidate" {
+		// Authorized editors decide publication; proposals are not a human
+		// prerequisite. A disabled action still stops the agent.
+		if configured && !d.Policy.Enabled {
+			return d, reject("automation_disabled")
+		}
+		d.Policy, ok = Policy{Enabled: true, Mode: "live"}, true
 	}
-	var settings struct {
-		Actions map[string]Policy `json:"actions"`
-	}
-	if json.Unmarshal(row.Automation, &settings) != nil {
-		return d, reject("automation_unconfigured")
-	}
-	d.Policy, ok = settings.Actions[d.Rule.Action]
 	if !ok || !d.Policy.Enabled || (d.Policy.Mode != "live" && d.Policy.Mode != "proposal") {
 		return d, reject("automation_disabled")
 	}
@@ -140,6 +173,9 @@ func Check(ctx context.Context, tx *gorm.DB, w Write) (Decision, error) {
 		if err != nil {
 			return d, err
 		}
+	}
+	if d.Rule.Action == "article" || w.Operation == "UpsertSeoListingCandidate" {
+		return d, nil // Content semantics belong to the editor, not regexes.
 	}
 	allowTesting := d.Rule.Object == "article" || d.Rule.Object == "translation" && testingClaim.MatchString(w.Source)
 	if err := validateText(w.Body, w.Version, allowTesting); err != nil {
@@ -173,6 +209,27 @@ func Check(ctx context.Context, tx *gorm.DB, w Write) (Decision, error) {
 		}
 	}
 	return d, nil
+}
+
+// actionPolicy reads one action's switch, serialized with tuner updates through
+// the shared site lock. configured is false when the action has no entry;
+// unreadable settings fail closed.
+func actionPolicy(ctx context.Context, tx *gorm.DB, site, action string) (Policy, bool, error) {
+	if err := seobudget.Lock(ctx, tx, site); err != nil {
+		return Policy{}, false, err
+	}
+	var row struct{ Automation json.RawMessage }
+	if err := tx.WithContext(ctx).Raw("SELECT automation FROM seo_settings LIMIT 1").Scan(&row).Error; err != nil {
+		return Policy{}, false, err
+	}
+	var settings struct {
+		Actions map[string]Policy `json:"actions"`
+	}
+	if json.Unmarshal(row.Automation, &settings) != nil {
+		return Policy{}, false, reject("automation_unconfigured")
+	}
+	policy, ok := settings.Actions[action]
+	return policy, ok, nil
 }
 
 var foreignSection = regexp.MustCompile(`(?im)^(?:\s{0,3}#{1,6}\s+|\s*(?:"?heading"?|"?title"?)\s*:\s*"?)([^\n]+)`)

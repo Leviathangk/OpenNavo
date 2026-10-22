@@ -7,6 +7,48 @@ from conftest import Backend, execution_args
 from fastmcp import Client
 
 
+async def test_catalog_write_without_task_or_evidence(backend: Backend) -> None:
+    async with Client(backend.server) as client:
+        result = await client.call_tool(
+            "package_set_text",
+            {
+                "package": 42,
+                "source_locale": "en-US",
+                "summary": "Mac utility",
+                "idempotency_key": "catalog-text-001",
+                "expected_revision": 7,
+            },
+            raise_on_error=False,
+        )
+    assert not result.is_error, result.content
+    req = next(req for name, req in backend.calls if name == "updatePackageText")
+    assert "x-seo-task-id" not in req.headers
+    assert "x-seo-evidence-ids" not in req.headers
+    assert req.headers["idempotency-key"] == "catalog-text-001"
+    assert req.headers["x-seo-expected-revision"] == "7"
+    assert json.loads(req.content) == {"sourceLocale": "en-US", "summary": "Mac utility"}
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        {},  # an unleased catalog edit still needs an idempotency key
+        {"idempotency_key": "catalog-text-002", "task_id": 7},  # a partial lease
+    ],
+)
+async def test_catalog_write_envelope_is_complete(
+    backend: Backend, args: dict[str, object]
+) -> None:
+    async with Client(backend.server) as client:
+        result = await client.call_tool(
+            "package_set_text",
+            {"package": 42, "source_locale": "en-US", "summary": "Mac utility", **args},
+            raise_on_error=False,
+        )
+    assert result.is_error
+    assert not [name for name, _ in backend.calls if name == "updatePackageText"]
+
+
 @pytest.mark.parametrize("missing", ["task_id", "fencing", "idempotency_key", "expected_revision"])
 async def test_business_write_requires_complete_execution(backend: Backend, missing: str) -> None:
     args = execution_args(

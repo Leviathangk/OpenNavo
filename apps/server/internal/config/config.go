@@ -15,6 +15,7 @@ import (
 )
 
 type Config struct {
+	UsageCountryTrustedProxies  []string      `env:"USAGE_COUNTRY_TRUSTED_PROXIES" envSeparator:","`
 	AgentGatewaySecret          string        `env:"AGENT_GATEWAY_SECRET"`
 	AppEnv                      string        `env:"APP_ENV,required"`
 	HTTPAddr                    string        `env:"HTTP_ADDR" envDefault:":8080"`

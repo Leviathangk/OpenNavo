@@ -881,9 +881,6 @@ export default {
       install: '安装 Homebrew'
     },
     privacy: {
-      usageAnalytics: '分享匿名使用统计',
-      usageAnalyticsHint:
-        '默认关闭。每天统计一次此安装，包含后台运行。仅发送随机标识、日期、版本和语言，不上传文件或已安装软件列表。关闭后清除本地标识及待发送记录。',
       crashReports: '发送匿名崩溃报告',
       crashReportsHint: '默认关闭；开启后只上传崩溃时的调用栈',
       appManagement: 'App 管理',

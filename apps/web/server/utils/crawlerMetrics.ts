@@ -33,6 +33,7 @@ const AGENTS = [
   ['meta_externalfetcher', /Meta-ExternalFetcher/i],
   ['meta_externalagent', /Meta-ExternalAgent/i],
   ['meta_preview', /facebookexternalhit|Facebot/i],
+  ['link_preview', /Twitterbot|Slackbot|LinkedInBot|Discordbot|TelegramBot|WhatsApp/i],
   ['mistral_index', /MistralAI-Index/i],
   ['mistral_user', /MistralAI-User/i],
   ['mistral_training', /MistralAI-Training/i],
@@ -115,7 +116,8 @@ export function captureCrawler(event: H3Event, config: BotVerificationConfig): v
 
 /** Called only from afterResponse: cached responses and redirects count their final HTTP status. */
 export function countResponse(counter: RequestCounter, event: H3Event): void {
-  if (event.path.startsWith('/__nuxt_island/') || getHeader(event, 'x-nuxt-og-image')) return;
+  if (!event.context.loadShed && (event.path.startsWith('/__nuxt_island/') || getHeader(event, 'x-nuxt-og-image')))
+    return;
   const identity: CrawlerIdentity =
     event.context.crawlerIdentity ??
     crawlerIdentity(getHeader(event, 'user-agent'), undefined, [], { trustedProxies: '' });

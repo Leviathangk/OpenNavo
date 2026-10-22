@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import { access, readdir, readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -161,7 +162,7 @@ const localePrefixes = {
   'fr-FR': '/fr',
   'it-IT': '/it'
 };
-function pageDecisions(token, locale, locales, notesCount = 0) {
+function pageDecisions(token, locale, locales, notesCount = 0, hasDependencyContent = false) {
   const indexable = locales.includes(locale);
   const decision = (allowed, hreflang = [], canonicalPath = '', reason = '') => ({
     robots: allowed ? 'index, follow' : 'noindex, follow',
@@ -175,8 +176,11 @@ function pageDecisions(token, locale, locales, notesCount = 0) {
   return {
     overview,
     versions: decision(indexable && notesCount >= 3, indexable && notesCount >= 3 ? locales : []),
-    dependencies: decision(false),
-    details: decision(indexable, [], indexable ? `${localePrefixes[locale]}/apps/${token}` : '', 'consolidated'),
+    // Mirror seo.DecidePage: empty dependencies and details consolidate even in an unpublished locale.
+    dependencies: hasDependencyContent
+      ? decision(indexable, indexable ? locales : [], '', indexable ? '' : 'locale_not_ready')
+      : decision(false, [], `${localePrefixes[locale]}/apps/${token}`, 'duplicate_of_overview'),
+    details: decision(false, [], `${localePrefixes[locale]}/apps/${token}`, 'consolidated'),
     alternatives: decision(false),
     uninstall: decision(false),
     troubleshooting: decision(false)
@@ -596,12 +600,20 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         collections: [],
         stats: { casks: 50, formulae: 0, updatedLast24h: 3 }
       };
-    } else if (path === '/api/v1/packages/cask/ordinary-app/dependencies') {
+    } else if (
+      /^\/api\/v1\/packages\/cask\/(ordinary-app|dependency-content-app|reverse-dependency-app)\/dependencies$/.test(
+        path
+      )
+    ) {
       // C2 dependency descriptions count the dependency response rather than repeating the summary.
       data = {
-        dependencies: [],
-        conflicts: [],
-        dependents: [],
+        dependencies: path.includes('/dependency-content-app/')
+          ? [{ kind: 'cask', token: 'ordinary-app', name: 'Ordinary App', type: 'cask', children: [] }]
+          : [],
+        conflictsWith: { casks: [], formulae: [] },
+        dependents: path.includes('/reverse-dependency-app/')
+          ? { count: 1, top: [appSummary('ordinary-app', 'Ordinary App')] }
+          : { count: 0, top: [] },
         dependsOn: { macos: null, arch: [], formulae: [], casks: [] }
       };
     } else if (
@@ -693,6 +705,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         'versioned-app@11',
         'plus-app++',
         'ordinary-app',
+        'dependency-content-app',
+        'reverse-dependency-app',
         'thin-app',
         'font-sample',
         'facts-app',
@@ -747,6 +761,17 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             sourceLocale: 'en-US',
             machineTranslated: false,
             ...(indexing[token] ? { indexing: indexing[token] } : {}),
+            ...(['dependency-content-app', 'reverse-dependency-app'].includes(token)
+              ? {
+                  indexing: { locales: ['en-US', 'zh-CN'], notesCount: 0 },
+                  dependsOn: {
+                    macos: null,
+                    arch: [],
+                    formulae: [],
+                    casks: token === 'dependency-content-app' ? ['ordinary-app'] : []
+                  }
+                }
+              : {}),
             ...(token === 'ordinary-app' ? { articles: [roundupCard(false)] } : {}),
             ...(token === 'facts-app' || token === 'seo-uninstall' ? factsApp : {}),
             ...(token.startsWith('seo-') ? { displayName: 'SEO App', names: ['SEO App'] } : {}),
@@ -946,7 +971,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           data.token,
           query.get('locale') ?? req.headers['accept-language'] ?? 'en-US',
           data.indexing.locales,
-          data.indexing.notesCount
+          data.indexing.notesCount,
+          ['dependency-content-app', 'reverse-dependency-app'].includes(data.token)
         );
     }
     if (path === '/api/v1/sitemap/packages' && data)
@@ -996,25 +1022,26 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   const clock = `data:text/javascript,${encodeURIComponent(
     'const now = Date.now.bind(Date); let offset = 0; process.on("SIGUSR2", () => { offset += 3600000; }); Date.now = () => now() + offset;'
   )}`;
+  const rendererEnv = {
+    ...process.env,
+    NODE_ENV: 'production',
+    HOST: '127.0.0.1',
+    PORT: port,
+    NITRO_HOST: '127.0.0.1',
+    NITRO_PORT: port,
+    NITRO_UNIX_SOCKET: '',
+    NUXT_API_BASE_INTERNAL: apiBase,
+    NUXT_PUBLIC_API_BASE: apiBase,
+    NUXT_REDIS_URL: '',
+    NUXT_LLMS_ENABLED: 'true',
+    NUXT_PUBLIC_SITE_URL: 'https://example.test',
+    NUXT_PUBLIC_I18N_BASE_URL: 'https://example.test',
+    NUXT_PUBLIC_CDN_BASE: 'https://example.test/assets',
+    NUXT_METRICS_PORT: internalPort,
+    NUXT_INTERNAL_SECRET: internalSecret
+  };
   const child = spawn(process.execPath, ['--import', clock, entry], {
-    env: {
-      ...process.env,
-      NODE_ENV: 'production',
-      HOST: '127.0.0.1',
-      PORT: port,
-      NITRO_HOST: '127.0.0.1',
-      NITRO_PORT: port,
-      NITRO_UNIX_SOCKET: '',
-      NUXT_API_BASE_INTERNAL: apiBase,
-      NUXT_PUBLIC_API_BASE: apiBase,
-      NUXT_REDIS_URL: '',
-      NUXT_LLMS_ENABLED: 'true',
-      NUXT_PUBLIC_SITE_URL: 'https://example.test',
-      NUXT_PUBLIC_I18N_BASE_URL: 'https://example.test',
-      NUXT_PUBLIC_CDN_BASE: 'https://example.test/assets',
-      NUXT_METRICS_PORT: internalPort,
-      NUXT_INTERNAL_SECRET: internalSecret
-    },
+    env: rendererEnv,
     stdio: ['ignore', 'pipe', 'pipe']
   });
   let logs = '';
@@ -1050,6 +1077,118 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       }
     });
   });
+  // Optional build-compatibility check: both outputs render against this exact mock API and config.
+  // Only their listening ports differ. No timestamps, nonces or payload fields are normalized away.
+  if (process.env.ONV_COMPARE_ENTRY) {
+    await t.test('cross-build cache identity follows the effective OG signing secret', async () => {
+      const reserved = createPortReservation();
+      reserved.listen(0, '127.0.0.1');
+      await once(reserved, 'listening');
+      const comparePort = String(reserved.address().port);
+      await new Promise(resolve => reserved.close(resolve));
+      const metricsReserved = createPortReservation();
+      metricsReserved.listen(0, '127.0.0.1');
+      await once(metricsReserved, 'listening');
+      const compareMetricsPort = String(metricsReserved.address().port);
+      await new Promise(resolve => metricsReserved.close(resolve));
+      const compare = spawn(process.execPath, ['--import', clock, process.env.ONV_COMPARE_ENTRY], {
+        env: { ...rendererEnv, PORT: comparePort, NITRO_PORT: comparePort, NUXT_METRICS_PORT: compareMetricsPort },
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      let compareLogs = '';
+      const compareExit = once(compare, 'exit');
+      compare.stderr.on('data', chunk => {
+        compareLogs += chunk;
+      });
+      try {
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(
+            () => reject(new Error(`Comparison renderer did not start: ${compareLogs}`)),
+            15000
+          );
+          compare.once('error', error => {
+            clearTimeout(timeout);
+            reject(error);
+          });
+          compare.once('exit', () => {
+            clearTimeout(timeout);
+            reject(new Error(compareLogs));
+          });
+          compare.stdout.on('data', chunk => {
+            compareLogs += chunk;
+            if (compareLogs.includes('Listening on')) {
+              clearTimeout(timeout);
+              resolve();
+            }
+          });
+        });
+        const getBuild = async base => {
+          const response = await fetch(`${base}/cache/build`, {
+            headers: { authorization: `Bearer ${internalSecret}` }
+          });
+          assert.equal(response.status, 200);
+          return (await response.json()).build;
+        };
+        const firstBuild = await getBuild(internal);
+        const secondBuild = await getBuild(`http://127.0.0.1:${compareMetricsPort}`);
+        assert.match(firstBuild, /^[a-f0-9]{64}\.[a-f0-9]{12}$/);
+        assert.equal(firstBuild.split('.')[0], secondBuild.split('.')[0], 'web input identity');
+        if (!rendererEnv.NUXT_OG_IMAGE_SECRET) {
+          assert.notEqual(firstBuild, secondBuild, 'generated signing keys must retire old HTML');
+          return;
+        }
+        assert.equal(firstBuild, secondBuild, 'stable runtime signing key preserves the cache identity');
+        const comparisons = [];
+        for (const path of [
+          '/',
+          '/apps/ordinary-app',
+          '/zh/apps/ordinary-app',
+          '/apps/ordinary-app/details',
+          '/apps/ordinary-app/dependencies'
+        ]) {
+          const first = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+          const second = await fetch(`http://127.0.0.1:${comparePort}${path}`, { headers: { accept: 'text/html' } });
+          assert.equal(first.status, 200, `${path}: ${logs}`);
+          assert.equal(second.status, 200, `${path}: ${compareLogs}`);
+          const digest = html => createHash('sha256').update(html).digest('hex');
+          const firstHtml = await first.text();
+          const secondHtml = await second.text();
+          const ogImage = html => /<meta[^>]*property="og:image"[^>]*content="([^"]*)"/.exec(html)?.[1];
+          assert.match(ogImage(firstHtml) ?? '', /ch_/, `${path}: OG template hash is present`);
+          comparisons.push({
+            path,
+            html: digest(firstHtml) === digest(secondHtml),
+            ogImage: ogImage(firstHtml) === ogImage(secondHtml)
+          });
+          if (firstHtml !== secondHtml) {
+            let offset = 0;
+            while (firstHtml[offset] === secondHtml[offset] && offset < firstHtml.length) offset++;
+            t.diagnostic(
+              JSON.stringify({
+                path,
+                firstDifference: offset,
+                first: firstHtml.slice(Math.max(0, offset - 50), offset + 120),
+                second: secondHtml.slice(Math.max(0, offset - 50), offset + 120)
+              })
+            );
+          }
+        }
+        assert.deepEqual(
+          comparisons,
+          comparisons.map(({ path }) => ({ path, html: true, ogImage: true })),
+          'complete HTML, embedded payloads and og:image URLs must match'
+        );
+      } finally {
+        compare.kill('SIGTERM');
+        const timeout = setTimeout(() => compare.kill('SIGKILL'), 5000);
+        try {
+          await compareExit;
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+    });
+  }
   const invalidatePaths = async (paths, settings = false) => {
     const response = await fetch(`${internal}/cache/invalidate`, {
       method: 'POST',
@@ -1297,6 +1436,45 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         `${app} depth ${depth.get(app)}; reached ${[...depth.keys()].join(' ')}`
       );
   });
+  await t.test('dependency links follow the server decision while old URLs remain accessible', async () => {
+    const get = path => fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+    const dependencyLinks = (html, path) =>
+      [...html.matchAll(/<a\b[^>]*\shref="([^"]+)"/g)].filter(([, href]) => href === path);
+    for (const prefix of ['', '/zh', '/ja']) {
+      const path = `${prefix}/apps/ordinary-app`;
+      const overview = await (await get(path)).text();
+      assert.equal(dependencyLinks(overview, `${path}/dependencies`).length, 0, `${path}: empty dependency tab`);
+      const response = await get(`${path}/dependencies`);
+      assert.equal(response.status, 200, logs);
+      assert.match(response.headers.get('x-robots-tag') ?? '', /noindex/);
+      const html = await response.text();
+      assert.match(html, /<meta name="robots" content="noindex, follow"/);
+      assert.equal(/<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(html)?.[1], `https://example.test${path}`);
+      assert.equal([...html.matchAll(/<link[^>]+hreflang="/g)].length, 0);
+      assert.equal(dependencyLinks(html, `${path}/dependencies`).length, 0);
+    }
+    // Reverse relations are content too, even with no declared dependency or conflict summary.
+    for (const token of ['dependency-content-app', 'reverse-dependency-app']) {
+      for (const prefix of ['', '/zh', '/ja']) {
+        const path = `${prefix}/apps/${token}`;
+        const overview = await (await get(path)).text();
+        assert.equal(
+          dependencyLinks(overview, `${path}/dependencies`).length,
+          token === 'dependency-content-app' ? 2 : 1
+        );
+        const response = await get(`${path}/dependencies`);
+        assert.equal(response.status, 200, logs);
+        const html = await response.text();
+        assert.equal(
+          /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(html)?.[1],
+          `https://example.test${path}/dependencies`
+        );
+        assert.equal(/<meta name="robots" content="[^"]*noindex/.test(html), prefix === '/ja');
+      }
+    }
+    const legacy = await (await get('/apps/versioned-app@11')).text();
+    assert.equal(dependencyLinks(legacy, '/apps/versioned-app@11/dependencies').length, 1, 'older API keeps its tab');
+  });
   await t.test('GA4 never loads from shared HTML and asks consent by region', async () => {
     const html = await (await fetch(`${origin}/apps/ordinary-app`, { headers: { accept: 'text/html' } })).text();
     assert.ok(!html.includes('googletagmanager'), 'GA4 loads only on the client after the consent check');
@@ -1324,24 +1502,24 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const hreflangs = [...overview.matchAll(/<link[^>]+hreflang="([^"]+)"/g)].map(m => m[1]).sort();
     assert.deepEqual(hreflangs, ['en', 'x-default', 'zh', 'zh-Hans']);
     assert.deepEqual(robots(await html('/ja/apps/ordinary-app')), ['noindex, follow']);
-    // Install details are not noindexed: canonical and og:url name the overview, with no alternates.
+    // Install details are consolidated: noindex, canonical to overview, with no alternates.
     const tag = (page, pattern) => pattern.exec(page)?.[1];
     for (const [path, overviewUrl] of [
       ['/apps/ordinary-app/details', 'https://example.test/apps/ordinary-app'],
       ['/zh/apps/ordinary-app/details', 'https://example.test/zh/apps/ordinary-app']
     ]) {
       const details = await html(path);
-      assert.ok(!robots(details).some(value => value.includes('noindex')), `${path}: ${robots(details).join()}`);
+      assert.deepEqual(robots(details), ['noindex, follow'], path);
       assert.equal(tag(details, /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/), overviewUrl, `${path} canonical`);
       assert.equal(tag(details, /<meta[^>]*property="og:url"[^>]*content="([^"]+)"/), overviewUrl, `${path} og:url`);
       assert.equal([...details.matchAll(/<link[^>]+hreflang="/g)].length, 0, `${path} hreflang`);
     }
-    // Where the overview is not indexed, details keep their own canonical and stay noindexed.
+    // Consolidation is independent of the overview's locale readiness.
     const unpublished = await html('/ja/apps/ordinary-app/details');
     assert.deepEqual(robots(unpublished), ['noindex, follow']);
     assert.equal(
       tag(unpublished, /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/),
-      'https://example.test/ja/apps/ordinary-app/details'
+      'https://example.test/ja/apps/ordinary-app'
     );
     // An older API without index decisions uses the site's default open languages.
     const legacy = await html('/apps/versioned-app@11');
@@ -1522,15 +1700,15 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       body: '{"paths":["/"]}'
     });
     assert.equal(unauthorizedProbe.status, 401);
-    // The release check: the build id the worker compares is the one pages are built with.
+    // Release identity combines the page's Nuxt build with its effective OG signing-key fingerprint.
     assert.equal((await fetch(`${internal}/cache/build`)).status, 401);
     const build = await fetch(`${internal}/cache/build`, {
       headers: { authorization: `Bearer ${internalSecret}` }
     });
     assert.equal(build.status, 200);
     const { build: buildId } = await build.json();
-    assert.match(buildId, /^[\w-]{8,}$/);
-    assert.ok((await page()).includes(buildId), 'pages reference the reported build');
+    assert.match(buildId, /^[\w-]{8,}\.[a-f0-9]{12}$/);
+    assert.ok((await page()).includes(buildId.split('.')[0]), 'pages reference the reported Nuxt build');
     const metrics = await (await fetch(`${internal}/metrics`)).text();
     assert.match(
       metrics,
@@ -2578,11 +2756,13 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     [...requestedTokens].sort(),
     [
       ...Object.keys(experimentFixtures).sort(),
+      'dependency-content-app',
       'facts-app',
       'font-sample',
       'guard-app',
       'ordinary-app',
       'plus-app++',
+      'reverse-dependency-app',
       'thin-app',
       'versioned-app@11',
       'wechat'

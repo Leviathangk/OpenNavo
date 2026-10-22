@@ -13,6 +13,7 @@ final class Download: NSObject, CKDownloadQueueObserver {
     var pkg: URL?
     var receipt: URL?
     var terminal = false
+    var installPath = ObservedInstallPath()
     let finish: (Bool) -> Void
 
     init(id: UInt64, staging: URL, finish: @escaping (Bool) -> Void) {
@@ -98,11 +99,12 @@ final class Download: NSObject, CKDownloadQueueObserver {
 
     func handle(_ download: SSDownload, removed: Bool) {
         guard !terminal, download.metadata?.itemIdentifier == id, let status = download.status else { return }
+        installPath.observe(download.installPath)
         do { try retainFiles() } catch { fail(error); return }
         if removed {
             if let error = status.error as NSError? {
                 if error.domain == "PKInstallErrorDomain", error.code == 201,
-                   let pkg, let receipt, let appPath = download.installPath, appPath.hasSuffix(".app") {
+                   let pkg, let receipt, let appPath = installPath.value {
                     emit(["event": "needsPrivilegedInstall", "adamId": id, "pkg": pkg.path,
                           "receipt": receipt.path, "appPath": appPath])
                     end(true)

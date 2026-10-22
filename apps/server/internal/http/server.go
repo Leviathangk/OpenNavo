@@ -63,7 +63,7 @@ func New(cfg config.Config, logger *slog.Logger, ready Readiness, deps ...Depend
 		}
 		requests.WithLabelValues(route, c.Request.Method, strconv.Itoa(c.Writer.Status())).Inc()
 		duration.WithLabelValues(route, c.Request.Method).Observe(time.Since(start).Seconds())
-	}, middleware.CORS(cfg.PublicOrigins(), cfg.AdminOrigins()...))
+	}, middleware.CORS(cfg.PublicOrigins(), cfg.AdminOrigins()...), middleware.UsageCountry(cfg.UsageCountryTrustedProxies))
 	engine.GET("/healthz", func(c *gin.Context) { respond.OK(c, gin.H{"status": "ok"}) })
 	engine.GET("/readyz", func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)

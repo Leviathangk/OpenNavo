@@ -55,7 +55,13 @@ export const ROBOTS_PRIVATE_PATHS = SITE_LOCALES.flatMap(locale =>
 );
 
 // Heavy, low-value responses that rate-limited crawlers also skip.
-export const ROBOTS_LIMITED_PATHS = ['/*_payload.json', '/*/dependencies'];
+export const ROBOTS_LIMITED_PATHS = [
+  '/*_payload.json',
+  '/apps/*/dependencies',
+  '/*/apps/*/dependencies',
+  '/apps/*/details',
+  '/*/apps/*/details'
+];
 
 // Same values as store.DefaultSEOSettings: the policy in place before the settings page.
 // GPTBot, Google-Extended, Applebot-Extended, Meta-ExternalAgent (mixed training/indexing) and

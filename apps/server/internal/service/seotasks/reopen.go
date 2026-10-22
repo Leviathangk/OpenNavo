@@ -18,16 +18,26 @@ type StateError struct{ Reason string }
 
 func (e *StateError) Error() string { return "SEO task state: " + e.Reason }
 
-// An agent may reopen a task it could not finish this many times; after that a
-// person decides. The cooldown keeps a failing fix from looping every run.
+// The cooldown prevents retry loops without permanently exhausting an agent's
+// ability to recover a corrected task: it starts at an hour and doubles with
+// every reopen, up to a day.
 const (
-	AgentReopenLimit    = 3
-	AgentReopenCooldown = time.Hour
+	AgentReopenCooldown    = time.Hour
+	AgentReopenCooldownMax = 24 * time.Hour
 )
 
+// AgentReopenWait is how long after its last reopen an agent waits before
+// reopening a task already reopened `reopens` times: 1 h, 2 h, 4 h ... 24 h.
+func AgentReopenWait(reopens int) time.Duration {
+	wait := AgentReopenCooldown
+	for i := 1; i < reopens && wait < AgentReopenCooldownMax; i++ {
+		wait *= 2
+	}
+	return min(wait, AgentReopenCooldownMax)
+}
+
 // Reopen returns a quarantined or skipped task to the queue once its cause has
-// been fixed. People may always reopen; agents within AgentReopenLimit and
-// AgentReopenCooldown. A translation whose source changed since then is
+// been fixed. People may always reopen; agents wait AgentReopenWait after the last reopen. A translation whose source changed since then is
 // superseded by the task for the current source and is not reopened.
 func (s *Service) Reopen(ctx context.Context, id int64, owner, reason string, person bool) (Task, error) {
 	var out Task
@@ -46,7 +56,7 @@ func (s *Service) Reopen(ctx context.Context, id int64, owner, reason string, pe
 			return &StateError{"not_reopenable"}
 		}
 		var check struct{ Live, Cooling bool }
-		if err := tx.Raw("SELECT ?::timestamptz IS NULL OR ?::timestamptz>clock_timestamp() AS live,coalesce(?::timestamptz>clock_timestamp()-make_interval(secs=>?),false) AS cooling", task.ExpiresAt, task.ExpiresAt, task.ReopenedAt, AgentReopenCooldown.Seconds()).Scan(&check).Error; err != nil {
+		if err := tx.Raw("SELECT ?::timestamptz IS NULL OR ?::timestamptz>clock_timestamp() AS live,coalesce(?::timestamptz>clock_timestamp()-make_interval(secs=>?),false) AS cooling", task.ExpiresAt, task.ExpiresAt, task.ReopenedAt, AgentReopenWait(int(task.ReopenCount)).Seconds()).Scan(&check).Error; err != nil {
 			return err
 		}
 		if !check.Live {
@@ -71,9 +81,6 @@ func (s *Service) Reopen(ctx context.Context, id int64, owner, reason string, pe
 			if source.Hash != task.EvidenceHash {
 				return &StateError{"superseded"}
 			}
-		}
-		if !person && task.ReopenCount >= AgentReopenLimit {
-			return &StateError{"reopen_limit"}
 		}
 		if !person && check.Cooling {
 			return &StateError{"reopen_cooldown"}

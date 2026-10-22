@@ -28,10 +28,15 @@ export const useSettingsStore = defineStore('settings', () => {
     });
   }
 
-  async function update<K extends keyof AppSettings>(key: K, entry: AppSettings[K]) {
+  async function update<K extends keyof AppSettings>(
+    key: K,
+    entry: AppSettings[K] | ((current: AppSettings[K]) => AppSettings[K])
+  ) {
     await serialize(async () => {
       if (!value.value) return;
-      value.value = (await unwrap(commands.settingsSet({ ...value.value, [key]: entry }))) as AppSettings;
+      // Nested edits must also read the latest saved value once their turn starts.
+      const next = typeof entry === 'function' ? entry(value.value[key]) : entry;
+      value.value = (await unwrap(commands.settingsSet({ ...value.value, [key]: next }))) as AppSettings;
     });
   }
 

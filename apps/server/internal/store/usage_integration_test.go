@@ -79,3 +79,23 @@ func TestUsageFastClockAcknowledgementMatchesPersistedMidnightDays(t *testing.T)
 	require.EqualValues(t, 1, report.Days[28].Web)
 	require.EqualValues(t, 1, report.Days[29].Web)
 }
+
+func TestUsageCountryCountsAndLatestObservation(t *testing.T) {
+	st := testutil.NewStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 10, 22, 8, 0, 0, 0, time.UTC)
+	a := store.UsageActivity{AnonymousID: "2a77e45e-1ac2-4d72-b9c2-aaf2a42f8234", Platform: "desktop", OccurredAt: now, Version: "0.1.3", Locale: "en-US", Country: "US"}
+	require.NoError(t, st.RecordUsage(ctx, a, now))
+	a.Country = "JP"
+	a.OccurredAt = now.Add(time.Minute)
+	require.NoError(t, st.RecordUsage(ctx, a, a.OccurredAt))
+	a.Country = "US"
+	a.OccurredAt = now
+	require.NoError(t, st.RecordUsage(ctx, a, now.Add(time.Minute))) // Late retry cannot undo country.
+	a.Platform = "web"
+	a.Country = ""
+	require.NoError(t, st.RecordUsage(ctx, a, now))
+	report, err := st.UsageOverview(ctx, now)
+	require.NoError(t, err)
+	require.Equal(t, []store.UsageCountry{{Country: "JP", Desktop: 1}, {Country: "ZZ", Web: 1}}, report.Countries)
+}

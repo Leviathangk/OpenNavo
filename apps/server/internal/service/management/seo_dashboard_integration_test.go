@@ -41,6 +41,7 @@ func TestSEODashboardOverviewMatchesConcreteContract(t *testing.T) {
 		return dashboardJSON(t, schema, value)
 	}
 	empty := read()
+	require.Equal(t, false, empty["automationReady"])
 	require.Empty(t, empty["breakers"])
 	require.Empty(t, empty["yesterday"].(map[string]any)["actions"])
 	require.NoError(t, st.DB.Exec(`INSERT INTO seo_daily_entities(site,day,action,entity_key,first_request_id)
@@ -60,7 +61,10 @@ func TestSEODashboardOverviewMatchesConcreteContract(t *testing.T) {
  'UpdatePackageMeta','package','pkg:1','{}','{}','{}',0,'{}','fixture','fixture','{}',
  CASE WHEN n=4 THEN now() ELSE (date_trunc('day',now() AT TIME ZONE 'UTC')-interval '1 hour') AT TIME ZONE 'UTC' END,
  CASE WHEN n=1 THEN now() END FROM generate_series(1,4)n`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO seo_gate_events(request_id,owner,operation,rule_version,result,reason,created_at) VALUES('direct-write','fixture','UpdatePackageMeta','fixture','live','validated',(date_trunc('day',now() AT TIME ZONE 'UTC')-interval '1 hour') AT TIME ZONE 'UTC');
+ INSERT INTO seo_data_watermarks(source,complete_through,fresh_through) VALUES('gsc_page',current_date,current_date) ON CONFLICT(source) DO UPDATE SET complete_through=current_date,fresh_through=current_date`).Error)
 	view := read()
+	require.Equal(t, true, view["automationReady"])
 	require.Len(t, view["breakers"], 3, "exclude closed, expired and other-site breakers")
 	for _, raw := range view["budgets"].([]any) {
 		row := raw.(map[string]any)
@@ -77,7 +81,7 @@ func TestSEODashboardOverviewMatchesConcreteContract(t *testing.T) {
 	}
 	actions := view["yesterday"].(map[string]any)["actions"].([]any)
 	require.Equal(t, []any{
-		map[string]any{"operation": "UpdatePackageMeta", "mode": "live", "count": float64(2), "compensated": float64(1)},
+		map[string]any{"operation": "UpdatePackageMeta", "mode": "live", "count": float64(3), "compensated": float64(1)},
 		map[string]any{"operation": "UpdatePackageMeta", "mode": "proposal", "count": float64(1), "compensated": float64(0)},
 	}, actions)
 	for _, raw := range view["actionModes"].([]any) {
@@ -87,6 +91,15 @@ func TestSEODashboardOverviewMatchesConcreteContract(t *testing.T) {
 	}
 	require.NoError(t, seobudget.ProviderRefused(ctx, st.DB, "fixture.example", "fixture-reservation"))
 	read() // The distinct reservation receipt evidence also conforms without a shape change.
+	for _, mutation := range []string{
+		"complete_through=current_date-8",
+		"fresh_through=current_date-8",
+		"updated_at=now()-interval '8 days'",
+	} {
+		require.NoError(t, st.DB.Exec("UPDATE seo_data_watermarks SET complete_through=current_date,fresh_through=current_date,updated_at=now() WHERE source='gsc_page'").Error)
+		require.NoError(t, st.DB.Exec("UPDATE seo_data_watermarks SET "+mutation+" WHERE source='gsc_page'").Error)
+		require.Equal(t, false, read()["automationReady"], mutation)
+	}
 	view["yesterday"].(map[string]any)["madeUpCount"] = 1
 	require.Error(t, schema.VisitJSON(view), "dashboard counters must no longer accept arbitrary fields")
 }

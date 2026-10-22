@@ -62,7 +62,7 @@
   },
   "analytics": {
     "label": "Configuración de cookies de analítica",
-    "message": "OpenNavo usa un identificador aleatorio del navegador para contar la actividad diaria y puede usar cookies de Google Analytics para medir visitas y acciones. ¿Permitir las estadísticas?",
+    "message": "Google Analytics usa cookies para medir visitas y acciones clave. ¿Permitir las cookies de Google Analytics?",
     "privacy": "Detalles de privacidad",
     "accept": "Permitir",
     "decline": "No permitir",

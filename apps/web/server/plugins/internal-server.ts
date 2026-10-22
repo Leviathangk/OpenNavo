@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage } from 'node:http';
 import { RequestCounter, countResponse } from '../utils/crawlerMetrics';
+import { loadShedState } from '../utils/loadShed';
+import { cacheBuildIdentity } from './cache-storage';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const MAX_PATHS = 10000;
@@ -32,6 +34,8 @@ function readJSON(request: IncomingMessage): Promise<unknown> {
 // a new release is live so it purges the long edge-cached pages once. All but /metrics are
 // authenticated with NUXT_INTERNAL_SECRET.
 export default defineNitroPlugin(nitroApp => {
+  nitroApp.hooks.hook('close', () => loadShedState.stop());
+  nitroApp.hooks.hook('afterResponse', event => event.context.releaseLoadShed?.());
   const config = useRuntimeConfig();
   const port = Number(config.metricsPort);
   if (import.meta.dev || !Number.isInteger(port) || port <= 0) return;
@@ -46,12 +50,12 @@ export default defineNitroPlugin(nitroApp => {
     };
     if (request.method === 'GET' && request.url === '/metrics') {
       response.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8' });
-      response.end(counter.render());
+      response.end(counter.render() + loadShedState.render());
       return;
     }
     if (request.method === 'GET' && request.url === '/cache/build') {
       if (!authorized(request.headers.authorization, String(config.internalSecret ?? ''))) return reply(401);
-      return reply(200, { build: config.app.buildId });
+      return reply(200, { build: cacheBuildIdentity(config).build });
     }
     if (request.method === 'POST' && request.url === '/cache/invalidate') {
       if (!authorized(request.headers.authorization, String(config.internalSecret ?? ''))) return reply(401);

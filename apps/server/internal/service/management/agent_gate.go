@@ -38,6 +38,12 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 	if op.Execution == nil {
 		return nil, domain.Validation()
 	}
+	if op.Execution.TaskID == 0 {
+		if agentgate.AutonomousCatalogWrite(name) {
+			return s.executeCatalogEdit(ctx, name, in)
+		}
+		return nil, domain.Validation()
+	}
 	rule, registered := agentgate.RuleFor(name)
 	if !registered {
 		return nil, fail(domain.CodeForbidden)
@@ -93,6 +99,9 @@ func (s *Service) executeAgent(ctx context.Context, name string, in Input) (any,
 		// Own the request copy: provenance normalization must not alter the caller's
 		// payload or change the idempotency hash on a retry.
 		in.Body = cloneAgentBody(in.Body)
+		if agentgate.AutonomousCatalogWrite(name) {
+			capAgentProofs(in.Body)
+		}
 		if err := guardInlineTranslations(ctx, st, name, refs, in); err != nil {
 			return err
 		}

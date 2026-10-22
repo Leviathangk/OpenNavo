@@ -18,20 +18,16 @@ beforeEach(() => {
   vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ requireConsent: true }));
 });
 afterEach(() => vi.unstubAllGlobals());
-it('offers website usage consent independently of whether GA4 is enabled', async () => {
+it('does not show a consent banner for automatic first-party usage alone', async () => {
   const consent = useAnalyticsConsent();
-  expect(consent.enabled.value).toBe(true);
+  expect(consent.enabled.value).toBe(false);
   await consent.start();
-  expect(consent.banner.value).toBe(true);
-  expect(consent.active.value).toBe(false);
-  consent.accept();
-  expect(consent.active.value).toBe(true);
-  expect(window.gtag).toBeUndefined();
-  consent.decline();
-  expect(consent.active.value).toBe(false);
-  expect(localStorage.getItem('onv:analytics-consent')).toBe('denied');
+  expect(consent.banner.value).toBe(false);
+  expect($fetch).not.toHaveBeenCalled();
 });
 it('honors a previously denied choice and asks when the region lookup fails', async () => {
+  settings.value.analytics.ga4Enabled = true;
+  settings.value.analytics.ga4MeasurementId = 'G-TEST123';
   localStorage.setItem('onv:analytics-consent', 'denied');
   const consent = useAnalyticsConsent();
   await consent.start();

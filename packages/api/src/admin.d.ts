@@ -3001,9 +3001,29 @@ export interface paths {
         put?: never;
         /**
          * nominateSeoListing
-         * @description Turn an app a person asked for into a listing task (entity listing:<token>, priority 1000) so an agent can prepare its listing candidate. Nominating publishes nothing; publishing keeps the listing rules. Nominating the same token again returns the open task, or reopens a finished one. Rejections carry `rejected: <rule>` (already_listed, candidate_rejected).
+         * @description Turn an app a person asked for into a listing task (entity listing:<token>, priority 1000) so an agent can prepare its listing candidate. Nominating publishes nothing; publishing keeps the listing rules. Nominating the same token again returns the open task, or reopens a finished one. A published automatic listing can be nominated again to correct it: claim the task and publish the candidate again. Rejections carry `rejected: <rule>` (already_listed for other catalog packages, candidate_rejected).
          */
         post: operations["nominateSeoListing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seo/topics/{key}/nominate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * nominateSeoTopic
+         * @description Propose an article topic. Creates a topic task (entity article:new:<key>, priority 100) that the article workflow claims like a keyword topic; a topic already queued or in progress is returned as is, and a finished nomination is reopened. Nominating publishes nothing; the daily and weekly article limits apply when the article is written. Rejections carry `rejected: <rule>` (article_exists).
+         */
+        post: operations["nominateSeoTopic"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3230,6 +3250,22 @@ export interface components {
             /** @description Official https page of the app, where the agent starts its research. */
             homepage?: string;
             /** @description Who asked for the app and why. */
+            reason: string;
+        };
+        /**
+         * @example {
+         *       "idempotencyKey": "example-00000001",
+         *       "keyword": "batch rename files mac",
+         *       "locale": "en-US",
+         *       "reason": "Recurring question with no guide on the site"
+         *     }
+         */
+        SeoTopicNomination: {
+            idempotencyKey: string;
+            /** @description The search phrase the article answers. */
+            keyword: string;
+            locale?: components["schemas"]["Locale"];
+            /** @description Why the topic is worth an article. The article's source language is locale, en-US by default. */
             reason: string;
         };
         /**
@@ -4086,9 +4122,9 @@ export interface components {
             ref: components["schemas"]["ContentRef"];
             model: string;
             /** Format: int64 */
-            taskId: number;
+            taskId?: number;
             /** Format: int64 */
-            fencing: number;
+            fencing?: number;
             translations: components["schemas"]["BatchTranslationInput"][];
         };
         /**
@@ -4168,7 +4204,10 @@ export interface components {
          */
         TranslationsBatchResult: {
             results: components["schemas"]["BatchTranslationResult"][];
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Zero when catalog translations are written without a task.
+             */
             taskId: number;
             leaseRetained: boolean;
         };
@@ -4867,9 +4906,10 @@ export interface components {
             iconAssetId: number;
             /**
              * Format: int64
+             * @description Optional human identity attestation. Omit or use zero when unavailable; publication does not assert verified identity.
              * @example 1
              */
-            baselinePackageId: number;
+            baselinePackageId?: number;
             /**
              * @example official_page
              * @enum {string}
@@ -5851,6 +5891,8 @@ export interface components {
          *     }
          */
         SeoOverviewActionMode: {
+            /** @description Operations that execute live independently of this action's default policy. Parentheses restrict the entity scope. */
+            liveOperations?: string[];
             /** @example listing */
             action: string;
             /** @example true */
@@ -7393,7 +7435,10 @@ export interface components {
              * @example 0
              */
             targetCount: number;
-            /** @example true */
+            /**
+             * @description At least one search-data source has completeness and freshness dates within the last seven UTC days and was updated within seven days. Does not gate catalog editing.
+             * @example true
+             */
             automationReady: boolean;
             breakers: components["schemas"]["SeoOverviewBreaker"][];
             budgets: components["schemas"]["SeoOverviewBudget"][];
@@ -9217,7 +9262,7 @@ export interface components {
                 bing: string;
             };
             analytics: {
-                /** @default false */
+                /** @default true */
                 usageEnabled: boolean;
                 ga4Enabled: boolean;
                 ga4MeasurementId: string;
@@ -12325,6 +12370,14 @@ export interface components {
                 newWeb: number;
                 /** Format: int64 */
                 newDesktop: number;
+            }[];
+            /** @description Today's active installations/browsers by last observed request country. ZZ means unknown; no raw IP is retained in usage records. */
+            countries?: {
+                country: string;
+                /** Format: int64 */
+                web: number;
+                /** Format: int64 */
+                desktop: number;
             }[];
             /** @description Today's active desktop installations, one most-recent version per installation. */
             versions: {
@@ -19235,6 +19288,11 @@ export interface components {
             affectedUrls: string[];
             /** @description App fact writes only: the evidence still missing or outdated after this write */
             sourceGaps?: components["schemas"]["FactGap"][];
+            /**
+             * Format: int64
+             * @description Unleased catalog edits only: the current revision of the edited objects. Commit with it as X-SEO-Expected-Revision; a newer revision rejects the commit with a conflict.
+             */
+            expectedRevision?: number;
         };
         /**
          * @example {
@@ -26150,13 +26208,13 @@ export interface components {
         };
     };
     parameters: {
-        /** @description Required for Agent business writes; omitted for human admin requests. */
+        /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
         SeoTaskID: number;
-        /** @description Required for Agent business writes; omitted for human admin requests. */
+        /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
         SeoFencing: number;
-        /** @description Required for Agent business writes; omitted for human admin requests. */
+        /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
         SeoExpectedRevision: number;
-        /** @description Required for Agent business writes; omitted for human admin requests. */
+        /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
         SeoIdempotencyKey: string;
         /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
         SeoEvidenceIDs: number[];
@@ -26527,13 +26585,13 @@ export interface operations {
                 "X-Request-Id"?: components["parameters"]["AgentRequestId"];
                 /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
                 "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -26584,13 +26642,13 @@ export interface operations {
                 "X-Request-Id"?: components["parameters"]["AgentRequestId"];
                 /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
                 "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -26912,13 +26970,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -26958,13 +27016,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -27283,13 +27341,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -27375,13 +27433,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -27830,13 +27888,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -27930,13 +27988,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -27995,13 +28053,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28067,13 +28125,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28162,13 +28220,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28223,13 +28281,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28279,13 +28337,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28360,13 +28418,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28423,13 +28481,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28481,13 +28539,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28544,13 +28602,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28677,13 +28735,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28760,13 +28818,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28825,13 +28883,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28872,13 +28930,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -28960,13 +29018,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29014,13 +29072,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29093,13 +29151,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29159,13 +29217,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29219,13 +29277,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29287,13 +29345,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29373,13 +29431,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29476,13 +29534,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29533,13 +29591,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29593,13 +29651,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29649,13 +29707,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29700,13 +29758,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29751,13 +29809,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29802,13 +29860,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29853,13 +29911,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29904,13 +29962,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -29988,13 +30046,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30037,13 +30095,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30127,13 +30185,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30229,13 +30287,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30296,13 +30354,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30343,13 +30401,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30409,13 +30467,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30465,13 +30523,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30551,13 +30609,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30662,13 +30720,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30738,13 +30796,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -30946,13 +31004,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -31195,13 +31253,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -31350,13 +31408,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -31409,13 +31467,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -31470,13 +31528,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -31588,13 +31646,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -31681,13 +31739,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -31740,13 +31798,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -32486,13 +32544,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -32540,13 +32598,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -32669,13 +32727,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -32758,13 +32816,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -32816,13 +32874,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -32890,13 +32948,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -32942,13 +33000,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -33425,13 +33483,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -33541,13 +33599,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -33583,13 +33641,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -33794,13 +33852,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -33853,13 +33911,13 @@ export interface operations {
                 dryRun?: components["parameters"]["DryRun"];
             };
             header?: {
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -33948,13 +34006,13 @@ export interface operations {
                 "X-Request-Id"?: components["parameters"]["AgentRequestId"];
                 /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
                 "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Task-ID"?: components["parameters"]["SeoTaskID"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests. */
                 "X-SEO-Fencing"?: components["parameters"]["SeoFencing"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests. */
                 "X-SEO-Expected-Revision"?: components["parameters"]["SeoExpectedRevision"];
-                /** @description Required for Agent business writes; omitted for human admin requests. */
+                /** @description Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests. */
                 "Idempotency-Key"?: components["parameters"]["SeoIdempotencyKey"];
                 /** @description Server-captured evidence IDs, serialized as comma-separated integers. */
                 "X-SEO-Evidence-IDs"?: components["parameters"]["SeoEvidenceIDs"];
@@ -34039,6 +34097,51 @@ export interface operations {
                  *     }
                  */
                 "application/json": components["schemas"]["SeoListingNomination"];
+            };
+        };
+        responses: {
+            /** @description Business result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoTaskResponse"] | components["schemas"]["BusinessErrorResponse"];
+                };
+            };
+        };
+    };
+    nominateSeoTopic: {
+        parameters: {
+            query?: {
+                /** @description Available for Agent writes; admin also supports previews. Returns expected changes only, without writing business state. */
+                dryRun?: components["parameters"]["DryRun"];
+            };
+            header?: {
+                /** @description Required for internal Agent requests; ignored for admin requests. Only manifest-registered tool names are allowed. */
+                "X-Agent-Tool"?: components["parameters"]["AgentTool"];
+                /** @description Required for internal Agent requests and unique per call; duplicate write request IDs return 1003 without re-execution. */
+                "X-Request-Id"?: components["parameters"]["AgentRequestId"];
+                /** @description Actual MCP client IP trusted only after dual gateway authentication; required for Streamable HTTP. Never forward externally self-reported headers. Used for token IP allowlists. */
+                "X-Agent-Client-IP"?: components["parameters"]["AgentClientIP"];
+            };
+            path: {
+                /** @description Slug the article will be published under. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "idempotencyKey": "example-00000001",
+                 *       "keyword": "batch rename files mac",
+                 *       "locale": "en-US",
+                 *       "reason": "Recurring question with no guide on the site"
+                 *     }
+                 */
+                "application/json": components["schemas"]["SeoTopicNomination"];
             };
         };
         responses: {

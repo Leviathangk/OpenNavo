@@ -124,7 +124,7 @@ func TestListingQuarantineIdentityAndPublication(t *testing.T) {
 	require.NoError(t, err) // Store/purchase-only does not prevent listing.
 }
 
-func TestListingAgentLeaseProposalReplayAndRevision(t *testing.T) {
+func TestListingAgentLiveOverrideReplayAndRevision(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	s := &Service{Store: st}
 	ctx := context.Background()
@@ -143,10 +143,10 @@ func TestListingAgentLeaseProposalReplayAndRevision(t *testing.T) {
 	in := Input{Key: "lease-app", Body: listingBody(t, req)}
 	value, err := s.Execute(domain.WithOperation(ctx, op), "UpsertSeoListingCandidate", in)
 	require.NoError(t, err)
-	require.Equal(t, true, value.(map[string]any)["dryRun"])
+	require.Equal(t, "candidate", value.(map[string]any)["state"])
 	candidate, err := st.ListingCandidate(ctx, in.Key)
 	require.NoError(t, err)
-	require.Nil(t, candidate)
+	require.NotNil(t, candidate)
 	_, err = s.Execute(domain.WithOperation(ctx, op), "UpsertSeoListingCandidate", in)
 	require.NoError(t, err)
 	var count int64
@@ -154,7 +154,7 @@ func TestListingAgentLeaseProposalReplayAndRevision(t *testing.T) {
 	require.EqualValues(t, 1, count)
 	_, err = tasks.Complete(ctx, op.Execution.TaskID, op.Execution.Fencing, seotasks.Owner(1, 2), "done", "")
 	require.NoError(t, err)
-	// A new live action can save the candidate. Old lease/revision writes cannot.
+	// Live override works even with proposal configured. Further writes check revisions.
 	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET automation=jsonb_set(automation,'{actions,listing,mode}','"live"')`).Error)
 	_, err = tasks.Enqueue(ctx, seotasks.NewTask{Kind: "listing", EntityKey: "listing:lease-app", DedupeKey: uuid.NewString(), RuleVersion: "fixture", Evidence: map[string]any{}})
 	require.NoError(t, err)
@@ -165,12 +165,14 @@ func TestListingAgentLeaseProposalReplayAndRevision(t *testing.T) {
 	op.Execution.Fencing = claimed[0].Fencing
 	op.Execution.IdempotencyKey = uuid.NewString()
 	op.RequestID = uuid.NewString()
+	op.Execution.ExpectedRevision = 1
+	in.Body["expectedRevision"] = float64(1)
 	_, err = s.Execute(domain.WithOperation(ctx, op), "UpsertSeoListingCandidate", in)
 	require.NoError(t, err)
 	candidate, err = st.ListingCandidate(ctx, in.Key)
 	require.NoError(t, err)
 	require.NotNil(t, candidate)
-	require.EqualValues(t, 1, candidate.Revision)
+	require.EqualValues(t, 2, candidate.Revision)
 	_, err = s.Execute(domain.WithOperation(ctx, op), "UpsertSeoListingCandidate", in)
 	require.NoError(t, err)
 	in.Body["summary"] = "changed payload"
@@ -192,8 +194,8 @@ func TestListingAgentLeaseProposalReplayAndRevision(t *testing.T) {
 	stillLeased, err := tasks.Get(ctx, claimed[0].ID)
 	require.NoError(t, err)
 	require.Equal(t, "leased", stillLeased.State)
-	op.Execution.ExpectedRevision = 1
-	in.Body["expectedRevision"] = float64(1)
+	op.Execution.ExpectedRevision = 2
+	in.Body["expectedRevision"] = float64(2)
 	_, err = s.Execute(domain.WithOperation(ctx, op), "UpsertSeoListingCandidate", in)
 	require.NoError(t, err)
 	_, err = s.linkOperation(domain.WithOperation(ctx, op), "AddLinkPackage", Input{})
@@ -210,4 +212,62 @@ func TestPublicationMigrationsUpAndDown(t *testing.T) {
 		require.NoError(t, st.DB.Exec(parts[1]).Error, name+" down")
 		require.NoError(t, st.DB.Exec(parts[0]).Error, name+" up")
 	}
+}
+
+func TestListingPublicationWithoutHumanBaseline(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	s := &Service{Store: st}
+	actor := int64(1)
+	ctx := domain.WithOperation(context.Background(), &domain.Operation{ActorID: &actor, Permissions: []string{"*"}, RequestID: uuid.NewString()})
+	require.NoError(t, st.DB.Exec(`INSERT INTO admin_users(id,user_name,password_hash) VALUES(1,'editor','fixture');
+ INSERT INTO categories(id,slug,icon,applies_to) VALUES(80,'editors','lucide:box','cask');
+ INSERT INTO assets(id,kind,storage_key,url,width,height,bytes,sha256,mime) VALUES(80,'icon','icon','https://assets.example.test/icon.png',100,100,1,'hash','image/png')`).Error)
+	homepage := "https://vendor.example.test"
+	e := listingEvidence(t, st, "listing:independent-app", "Independent App is an editor for macOS.", homepage, "reference")
+	req := store.ListingInput{Action: "publish", Link: domain.LinkInput{Token: "independent-app", Name: "Independent App", BundleIDs: []string{"test.example.Independent"}, Homepage: &homepage, Pricing: "unknown", SourceLocale: "en-US"}, Summary: "A paraphrased description of the editor.", CategoryID: 80, IconAssetID: 80, DownloadMode: "not_applicable", EvidenceID: e.ID}
+	result, err := s.Execute(ctx, "UpsertSeoListingCandidate", Input{Key: req.Link.Token, Body: listingBody(t, req)})
+	require.NoError(t, err)
+	view := result.(map[string]any)
+	require.Equal(t, "published", view["state"])
+	require.Equal(t, false, view["identityVerified"])
+	var count int64
+	require.NoError(t, st.DB.Table("package_meta").Where("package_id=?", view["packageId"]).Count(&count).Error)
+	require.EqualValues(t, 1, count)
+	// Published candidates retain their package ID and can be corrected in place.
+	originalID := view["packageId"]
+	require.NoError(t, st.DB.Exec("UPDATE package_meta SET developer='Independent Vendor' WHERE package_id=?", originalID).Error)
+	req.ExpectedRevision = 1
+	req.Link.Name = "Independent App Renamed"
+	homepage = "https://new-vendor.example.test"
+	req.EvidenceID = listingEvidence(t, st, "listing:independent-app", "New vendor details", homepage, "reference").ID
+	result, err = s.Execute(ctx, "UpsertSeoListingCandidate", Input{Key: req.Link.Token, Body: listingBody(t, req)})
+	require.NoError(t, err)
+	view = result.(map[string]any)
+	require.EqualValues(t, 2, view["revision"])
+	require.Equal(t, originalID, view["packageId"])
+	var saved string
+	require.NoError(t, st.DB.Raw("SELECT name FROM packages WHERE id=?", originalID).Scan(&saved).Error)
+	require.Equal(t, req.Link.Name, saved)
+	require.NoError(t, st.DB.Raw("SELECT developer FROM package_meta WHERE package_id=?", originalID).Scan(&saved).Error)
+	require.Equal(t, "Independent Vendor", saved, "publishing without a baseline keeps the known developer")
+	// A stale editor cannot replace the newly published snapshot.
+	_, err = s.Execute(ctx, "UpsertSeoListingCandidate", Input{Key: req.Link.Token, Body: listingBody(t, req)})
+	require.Error(t, err)
+
+	// A late metadata failure rolls back both the identity and candidate snapshot.
+	before, err := st.ListingCandidate(ctx, req.Link.Token)
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Exec(`INSERT INTO assets(id,kind,storage_key,url,width,height,bytes,sha256,mime) VALUES(81,'icon','rollback-icon','https://assets.example.test/rollback.png',100,100,1,'rollback','image/png'); ALTER TABLE package_meta ADD CONSTRAINT fixture_reject_icon CHECK(icon_asset_id<>81)`).Error)
+	req.ExpectedRevision = 2
+	req.Link.Name = "This name must roll back"
+	req.IconAssetID = 81
+	_, err = s.Execute(ctx, "UpsertSeoListingCandidate", Input{Key: req.Link.Token, Body: listingBody(t, req)})
+	require.Error(t, err)
+	after, err := st.ListingCandidate(ctx, req.Link.Token)
+	require.NoError(t, err)
+	require.Equal(t, before.Revision, after.Revision)
+	require.JSONEq(t, string(before.Payload), string(after.Payload))
+	require.NoError(t, st.DB.Raw("SELECT name FROM packages WHERE id=?", originalID).Scan(&saved).Error)
+	require.Equal(t, "Independent App Renamed", saved)
+
 }

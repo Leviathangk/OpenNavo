@@ -42,8 +42,11 @@ const pages: PageMessages = {
   },
   dashboard: {
     usage: {
+      countries: 'Country distribution today',
+      country: 'Country',
+      unknownCountry: 'Unknown',
       title: 'User activity',
-      hint: 'Asia/Shanghai · Today is partial · Opted-in anonymous installations and browsers, not people. Client counts include background operation; web counts require a visible visit. The two platforms are not deduplicated.',
+      hint: 'Asia/Shanghai · Today is partial · Anonymous installations and browsers, not people. Client counts include background operation; web counts require a visible visit. Platforms are not deduplicated. Country is the request location, including VPN/proxy exits.',
       date: 'Date',
       desktop: 'Client DAU',
       web: 'Web DAU',
@@ -52,7 +55,7 @@ const pages: PageMessages = {
       versions: 'Active client versions today',
       version: 'Version',
       count: 'Installations',
-      empty: 'No activity reported yet. Enable collection and allow time for opted-in clients and visitors to report.',
+      empty: 'No activity reported yet. Reports appear after clients run or visitors use the website.',
       trend: 'Daily activity · Last 30 days',
       details: 'Daily counts',
       newHint:

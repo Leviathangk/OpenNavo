@@ -33,7 +33,7 @@ const subtitle = computed(() => {
     chip: system.chip,
     memory: f.bytes(system.memoryBytes),
     os: system.osVersion,
-    uptime: f.span(Math.max(0, (Date.now() - system.bootedAt) / 1000))
+    uptime: f.span(Math.max(0, ((store.sample?.at ?? Date.now()) - system.bootedAt) / 1000))
   });
 });
 

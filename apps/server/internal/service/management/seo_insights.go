@@ -11,6 +11,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/seo"
+	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/seobudget"
 	"github.com/opennavo/opennavo/server/internal/service/seoingest"
 	"github.com/opennavo/opennavo/server/internal/service/seokeywords"
@@ -81,19 +82,49 @@ func (s *Service) seoOverview(ctx context.Context) (any, error) {
 		return nil, err
 	}
 	budgets = append(budgets, costs...)
-	modes, err := s.seoRows(ctx, `SELECT (jsonb_build_object('action',a.key)||a.value)::text FROM seo_settings s CROSS JOIN jsonb_each(s.automation->'actions') a ORDER BY a.key`)
+	modes, err := s.seoRows(ctx, `SELECT (jsonb_build_object('action',a.key)||a.value||CASE WHEN a.key='article' THEN '{"mode":"live"}'::jsonb ELSE '{}'::jsonb END)::text FROM seo_settings s CROSS JOIN jsonb_each(s.automation->'actions') a ORDER BY a.key`)
 	if err != nil {
 		return nil, err
 	}
-	yesterday, err := s.seoRows(ctx, `SELECT jsonb_build_object('operation',operation,'mode',mode,'count',count(*),'compensated',count(*) FILTER(WHERE compensated_at IS NOT NULL))::text FROM seo_actions WHERE created_at>=((clock_timestamp() AT TIME ZONE 'UTC')::date-1)::timestamp AT TIME ZONE 'UTC' AND created_at<(clock_timestamp() AT TIME ZONE 'UTC')::date::timestamp AT TIME ZONE 'UTC' GROUP BY operation,mode ORDER BY operation,mode`)
+	// Report operation-level overrides without misrepresenting other operations
+	// that still use the configured action policy.
+	for _, raw := range modes {
+		mode, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		var overrides []string
+		for _, operation := range strings.Fields("UpdatePackageText UpdatePackageMeta SetPackagePrice SetPackageMacosSupport SetPackageAlternatives UpdatePackageI18n SetPackageCategories SetPackageFactRecords SetPackageIcon DeletePackageIcon AddPackageScreenshot ReorderPackageScreenshots UpdatePackageScreenshot DeletePackageScreenshot UpdatePackageChangelogSettings UpsertReleaseNotes UpdateRelease UpdateReleaseI18n UpsertSeoListingCandidate") {
+			rule, found := agentgate.RuleFor(operation)
+			if found && rule.Action == mode["action"] {
+				overrides = append(overrides, operation)
+			}
+		}
+		if mode["action"] == "translation" {
+			overrides = append(overrides, "FixTranslation (package/release)", "WriteTranslations (package/release)")
+		}
+		if len(overrides) > 0 {
+			mode["liveOperations"] = overrides
+		}
+	}
+	yesterday, err := s.seoRows(ctx, `WITH recorded AS (
+ SELECT operation,mode,created_at,compensated_at FROM seo_actions
+ UNION ALL
+ SELECT operation,result AS mode,created_at,NULL::timestamptz FROM seo_gate_events
+ WHERE task_id IS NULL AND result='live'
+) SELECT jsonb_build_object('operation',operation,'mode',mode,'count',count(*),'compensated',count(*) FILTER(WHERE compensated_at IS NOT NULL))::text FROM recorded WHERE created_at>=((clock_timestamp() AT TIME ZONE 'UTC')::date-1)::timestamp AT TIME ZONE 'UTC' AND created_at<(clock_timestamp() AT TIME ZONE 'UTC')::date::timestamp AT TIME ZONE 'UTC' GROUP BY operation,mode ORDER BY operation,mode`)
 	if err != nil {
+		return nil, err
+	}
+	var automationReady bool
+	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM seo_data_watermarks WHERE source IN ('gsc_page','gsc_query','bing') AND complete_through >= (clock_timestamp() AT TIME ZONE 'UTC')::date-7 AND fresh_through >= (clock_timestamp() AT TIME ZONE 'UTC')::date-7 AND updated_at >= clock_timestamp()-interval '7 days')`).Scan(&automationReady).Error; err != nil {
 		return nil, err
 	}
 	geo, err := s.geoOverview(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"geo": geo, "watermarks": watermarks, "keywordCount": keywordCount, "targetCount": targetCount, "automationReady": true, "breakers": breakers, "budgets": budgets, "actionModes": modes, "yesterday": map[string]any{"actions": yesterday}}, nil
+	return map[string]any{"geo": geo, "watermarks": watermarks, "keywordCount": keywordCount, "targetCount": targetCount, "automationReady": automationReady, "breakers": breakers, "budgets": budgets, "actionModes": modes, "yesterday": map[string]any{"actions": yesterday}}, nil
 }
 
 // seoAlerts reads the audit issue that creates tech_alert work. A task being

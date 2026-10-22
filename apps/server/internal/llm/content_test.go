@@ -7,6 +7,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestContentBrandCountsIgnoreWordSubstrings(t *testing.T) {
+	in := ContentInput{SourceLocale: "en-US", Targets: []string{"zh-CN"},
+		Fields:    map[string]string{"text": "Arc lets you search pages and research topics with arc."},
+		Protected: []string{"Arc", "arc"}}
+	good := "Arc让你使用arc搜索页面并研究主题。"
+	require.NoError(t, ValidateContent(ContentOutput{"zh-CN": {"text": good}}, in))
+	for _, broken := range []string{
+		"让你使用arc搜索页面并研究主题。",
+		"Arc让你搜索页面并研究主题。",
+		"Arc让你使用arc和arc搜索页面并研究主题。",
+		"Arc让你使用search搜索页面并研究主题。",
+	} {
+		require.ErrorContains(t, ValidateContent(ContentOutput{"zh-CN": {"text": broken}}, in), "changed_brand")
+	}
+}
+
+func TestProtectedTermBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		text, term string
+		count      int
+	}{
+		{"search research arc arc", "arc", 2},
+		{"Arc arc ARC", "Arc", 1},
+		{"Arc应用、使用Arc。Arcの設定", "Arc", 3},
+		{"ArcBox _Arc Arc_ Arc2 éArc Arcé Arc\u0301", "Arc", 0},
+		{"(Arc), [Arc] Arc.app", "Arc", 3},
+		{"Visual Studio Code and Visual Studio Codebase", "Visual Studio Code", 1},
+		{"search", "", 0},
+	} {
+		require.Len(t, protectedTermSpans(tc.text, tc.term), tc.count, "%q / %q", tc.text, tc.term)
+	}
+	require.Equal(t, "search and research with", stripLiterals("search and research with arc", []string{"arc"}))
+}
+
 func TestContentValidationProtectsSourceAndLanguage(t *testing.T) {
 	source := "The Orbit app manages files.\n\n```sh\nbrew install --cask orbit\n```\nUse `OPENNAVO_HOME` and [guide](https://example.com/guide), version 1.2.3 at /Applications/Orbit.app."
 	good := "Orbit はファイルを管理するアプリです。\n\n```sh\nbrew install --cask orbit\n```\n`OPENNAVO_HOME` と [ガイド](https://example.com/guide)、バージョン 1.2.3 の /Applications/Orbit.app を使用します。"

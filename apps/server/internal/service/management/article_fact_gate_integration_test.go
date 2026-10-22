@@ -93,7 +93,12 @@ func TestAgentArticleClaimsInOwnWordsPublishInOneDailySlot(t *testing.T) {
 	draft.Claims = wrong
 	changed := summary + "\n\n" + wrong[1].Text
 	draft.BodyMarkdown = &changed
-	require.Error(t, s.validateArticlePublication(ctx, st, a, a.WorkingRevisionID, draft), "a number the excerpt does not contain is rejected")
+	// Claims are the editor's source annotations. Publication checks the cited
+	// evidence itself, not whether the claim's wording or numbers match the excerpt.
+	require.NoError(t, s.validateArticlePublication(ctx, st, a, a.WorkingRevisionID, draft))
+	foreign := listingEvidence(t, st, "pkg:777", "Unrelated vendor notes. "+excerpt, "https://other.example.test/notes", "official")
+	wrong[1].EvidenceID = foreign.ID
+	require.Error(t, s.validateArticlePublication(ctx, st, a, a.WorkingRevisionID, draft), "evidence of an unlinked package is still rejected")
 
 	_, err = agent.write("PublishArticle", id, map[string]any{}, e.ID)
 	require.NoError(t, err)
@@ -140,7 +145,7 @@ func TestLegacyArticleRefreshKeepsUnchangedTranslations(t *testing.T) {
 	// Make it look like an article from before the gate, with a human translation.
 	var hash string
 	require.NoError(t, st.DB.Raw("SELECT source_hash FROM content_translation_sources WHERE entity='article' AND object_key=?", fmt.Sprint(legacy)).Scan(&hash).Error)
-	require.NoError(t, st.DB.Exec("UPDATE article_revisions SET claim_evidence='[]'::jsonb,author_id=NULL WHERE id=?", legacy).Error)
+	require.NoError(t, st.DB.Exec("UPDATE article_revisions SET claim_evidence='[]'::jsonb,author_id=NULL,editorial_reviewed_at=NULL WHERE id=?", legacy).Error)
 	require.NoError(t, st.DB.Exec(`INSERT INTO article_revision_i18n(revision_id,locale,title,summary,body_markdown,status,source_locale,source_hash) VALUES(?,'ja-JP','Export Kit ガイド','Export Kit 2.0 で一括書き出しに対応しました。','Export Kit 2.0 で一括書き出しに対応しました。','manual','en-US',?)`, legacy, hash).Error)
 
 	opportunities := &seoopportunities.Service{DB: st.DB}

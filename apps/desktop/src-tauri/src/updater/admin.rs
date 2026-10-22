@@ -45,13 +45,13 @@ impl Request {
         }
     }
 }
-/// What the password dialog says about a batch: App Store installs are installs, anything else swaps in an update.
+/// What the password dialog says about a batch: putting an App Store app on the Mac is an install, replacing
+/// an app that is already there (App Store or not) is an update.
 /// The app is named only when the whole batch is about one.
 pub fn password_reason(requests: &[Request]) -> (Reason, Option<String>) {
-    let reason = if requests
-        .iter()
-        .all(|r| matches!(r.action, Action::MasInstallPkg { .. }))
-    {
+    let reason = if requests.iter().all(|r| {
+        matches!(&r.action, Action::MasInstallPkg { request } if request.app_snapshot.is_none())
+    }) {
         Reason::Install
     } else {
         Reason::Update
@@ -144,22 +144,23 @@ pub fn validate(request: &Request, home: &Path, data: &Path, uid: u32) -> Result
     }
     Ok(())
 }
-/// pkgutil must validate the cryptographic signature and trust chain. Requiring
-/// Apple's Software Update leaf/issuer additionally rejects third-party Developer
-/// ID Installer certificates that also chain to an Apple root.
+/// pkgutil has already validated the cryptographic signature and trust chain by the time
+/// its output reaches here. App Store downloads are re-signed by Apple's own Mac App Store
+/// installer certificate: pkgutil reports them as "signed by Apple for the App Store", with
+/// "Apple Mac OS Installer Package Signing" as the leaf under the Worldwide Developer
+/// Relations CA. Requiring those names keeps third-party Developer ID installers, which
+/// also chain to an Apple root, and Apple's operating-system packages out.
 pub fn apple_package_signature(output: &str) -> bool {
     let lines: Vec<_> = output.lines().map(str::trim).collect();
-    lines
-        .iter()
-        .any(|l| l.starts_with("Status:") && l.contains("signed by a certificate trusted by macOS"))
-        && lines
-            .iter()
-            .any(|l| *l == "1. Software Update" || *l == "1. Apple Software Update")
-        && lines.iter().any(|l| {
-            l.ends_with("Apple Software Update Certification Authority")
-                || l.ends_with("Apple Software Signing Certification Authority")
-        })
-        && lines.iter().any(|l| l.ends_with("Apple Root CA"))
+    lines.iter().any(|l| {
+        matches!(
+            *l,
+            "Status: signed by Apple for the App Store"
+                | "Status: signed by a certificate trusted by macOS"
+        )
+    }) && lines.contains(&"1. Apple Mac OS Installer Package Signing")
+        && lines.contains(&"2. Apple Worldwide Developer Relations Certification Authority")
+        && lines.contains(&"3. Apple Root CA")
 }
 /// App Store packages may install one app only. Reject distribution packages,
 /// scripts and payload paths outside the expected bundle even with an Apple
@@ -260,9 +261,189 @@ pub fn store_payload_scope(
     }
     Ok(location)
 }
-fn validate_store_payload(
+/// Elements of the `Distribution` file Apple's packager emits for an App Store download.
+/// Nothing that can carry a script belongs here.
+const STORE_DISTRIBUTION_ELEMENTS: &[&str] = &[
+    "installer-gui-script",
+    "pkg-ref",
+    "bundle-version",
+    "bundle",
+    "product",
+    "title",
+    "options",
+    "volume-check",
+    "allowed-os-versions",
+    "os-version",
+    "choices-outline",
+    "line",
+    "choice",
+    "must-close",
+    "app",
+];
+fn store_distribution_element(
+    element: &quick_xml::events::BytesStart<'_>,
+    top_level: bool,
+    location: &Path,
+) -> Result<String, AppError> {
+    use quick_xml::XmlVersion;
+    let invalid = || protected("store_distribution");
+    let name = element.name().as_ref().to_owned();
+    if !STORE_DISTRIBUTION_ELEMENTS.contains(&name.as_str())
+        || top_level != (name == "installer-gui-script")
+    {
+        return Err(invalid());
+    }
+    for attribute in element.attributes() {
+        let attribute = attribute.map_err(|_| invalid())?;
+        let key = attribute.key.as_ref().to_ascii_lowercase();
+        let value = attribute
+            .normalized_value(XmlVersion::Implicit1_0)
+            .map_err(|_| invalid())?;
+        // `require-scripts="false"` only states that the package has none.
+        let no_scripts = key == "require-scripts" && value == "false";
+        // Choice state attributes can hold JavaScript expressions; Apple's packager writes literals.
+        let expression = matches!(
+            key.as_str(),
+            "start_selected"
+                | "start_enabled"
+                | "start_visible"
+                | "selected"
+                | "enabled"
+                | "visible"
+        ) && !matches!(&*value, "true" | "false");
+        if (key.contains("script") && !no_scripts) || expression {
+            return Err(invalid());
+        }
+        if name == "choice" && key == "customlocation" && Path::new(&*value) != location {
+            return Err(invalid());
+        }
+    }
+    Ok(name)
+}
+/// The `Distribution` wrapped around an App Store component package. Installer evaluates
+/// JavaScript from `<script>` elements, `script` attributes and expression attributes, so
+/// the file has to stay declarative. The package it names must be the component that was
+/// checked, and an install location it overrides with must be that component's own.
+pub fn store_distribution_scope(
+    distribution: &[u8],
+    component: &str,
+    location: &Path,
+) -> Result<(), AppError> {
+    use quick_xml::{Reader, XmlVersion, events::Event};
+    let invalid = || protected("store_distribution");
+    if distribution.len() > 1024 * 1024 {
+        return Err(invalid());
+    }
+    let mut reader = Reader::from_reader(distribution);
+    let mut open: Vec<String> = Vec::new();
+    let mut rooted = false;
+    let mut references = Vec::new();
+    loop {
+        let in_reference = open.last().is_some_and(|name| name == "pkg-ref");
+        match reader.read_event().map_err(|_| invalid())? {
+            Event::Start(e) => {
+                if open.is_empty() && std::mem::replace(&mut rooted, true) {
+                    return Err(invalid());
+                }
+                open.push(store_distribution_element(&e, open.is_empty(), location)?);
+            }
+            Event::Empty(e) => {
+                if open.is_empty() {
+                    return Err(invalid());
+                }
+                store_distribution_element(&e, false, location)?;
+            }
+            Event::End(_) => {
+                open.pop();
+            }
+            Event::Text(text) => {
+                let text = text.xml_content(XmlVersion::Implicit1_0);
+                if in_reference && !text.trim().is_empty() {
+                    references.push(text.trim().to_owned());
+                }
+            }
+            // The package it points at must be spelled out plainly.
+            Event::CData(_) | Event::GeneralRef(_) if in_reference => return Err(invalid()),
+            Event::DocType(_) | Event::PI(_) => return Err(invalid()),
+            Event::CData(_) | Event::GeneralRef(_) | Event::Decl(_) | Event::Comment(_) => {}
+            Event::Eof => break,
+        }
+    }
+    if !rooted || !open.is_empty() || references != [format!("#{component}")] {
+        return Err(invalid());
+    }
+    Ok(())
+}
+/// What `pkgutil --expand` leaves of an App Store download: a `Distribution` beside optional
+/// `Resources` and exactly one component directory holding `Bom`, `PackageInfo` and
+/// `Payload`. A bare component package is accepted too.
+struct StoreLayout {
+    /// The component's PackageInfo.
+    info: PathBuf,
+    /// For the distribution form: the file's text and the name of the component it points at.
+    distribution: Option<(Vec<u8>, String)>,
+}
+fn store_layout(expanded: &Path) -> Result<StoreLayout, AppError> {
+    let invalid = || protected("store_package_components");
+    let mut entries = Vec::new();
+    for entry in fs::read_dir(expanded)? {
+        let entry = entry?;
+        let name = entry.file_name().into_string().map_err(|_| invalid())?;
+        let meta = fs::symlink_metadata(entry.path())?;
+        if meta.is_symlink() {
+            return Err(invalid());
+        }
+        entries.push((name, meta.is_dir()));
+    }
+    let named = |wanted: &str| entries.iter().find(|(name, _)| name == wanted);
+    let Some((_, distribution_is_dir)) = named("Distribution") else {
+        if named("Scripts").is_some() {
+            return Err(invalid());
+        }
+        return Ok(StoreLayout {
+            info: expanded.join("PackageInfo"),
+            distribution: None,
+        });
+    };
+    let mut components = entries.iter().filter(|(name, _)| name.ends_with(".pkg"));
+    let (component, true) = components.next().ok_or_else(invalid)? else {
+        return Err(invalid());
+    };
+    if components.next().is_some()
+        || *distribution_is_dir
+        || named("Resources").is_some_and(|(_, is_dir)| !is_dir)
+        || entries.iter().any(|(name, _)| {
+            !matches!(name.as_str(), "Distribution" | "Resources") && name != component
+        })
+    {
+        return Err(invalid());
+    }
+    let directory = expanded.join(component);
+    for entry in fs::read_dir(&directory)? {
+        let entry = entry?;
+        if !matches!(
+            entry.file_name().to_str(),
+            Some("Bom" | "PackageInfo" | "Payload")
+        ) || !fs::symlink_metadata(entry.path())?.is_file()
+        {
+            return Err(invalid());
+        }
+    }
+    let distribution = expanded.join("Distribution");
+    if fs::symlink_metadata(&distribution)?.len() > 1024 * 1024 {
+        return Err(protected("store_package_metadata"));
+    }
+    Ok(StoreLayout {
+        info: directory.join("PackageInfo"),
+        distribution: Some((fs::read(distribution)?, component.clone())),
+    })
+}
+/// Confirms that an Apple-signed App Store package installs the requested app and nothing else.
+/// Call it on a root-owned copy, after the signature check and before the installer runs.
+pub fn validate_store_package(
     pkg: &Path,
-    request: &PrivilegedInstall,
+    app: &Path,
+    bundle: &str,
     work: &Path,
 ) -> Result<(), AppError> {
     let expanded = work.join("expanded");
@@ -275,10 +456,7 @@ fn validate_store_payload(
         ],
         Duration::from_secs(120),
     )?;
-    if expanded.join("Distribution").exists() || expanded.join("Scripts").exists() {
-        return Err(protected("store_package_components"));
-    }
-    let info = expanded.join("PackageInfo");
+    let StoreLayout { info, distribution } = store_layout(&expanded)?;
     let meta = fs::symlink_metadata(&info)?;
     if !meta.is_file() || meta.is_symlink() || meta.len() > 1024 * 1024 {
         return Err(protected("store_package_metadata"));
@@ -288,16 +466,26 @@ fn validate_store_payload(
         &["--payload-files", &pkg.to_string_lossy()],
         Duration::from_secs(120),
     )?;
-    store_payload_scope(
-        &fs::read(info)?,
-        &payload,
+    let location = store_payload_scope(&fs::read(info)?, &payload, app, bundle)?;
+    if let Some((distribution, component)) = distribution {
+        store_distribution_scope(&distribution, &component, &location)?;
+    }
+    Ok(())
+}
+fn validate_store_payload(
+    pkg: &Path,
+    request: &PrivilegedInstall,
+    work: &Path,
+) -> Result<(), AppError> {
+    validate_store_package(
+        pkg,
         &request.app_path,
         request
             .bundle_id
             .as_deref()
             .ok_or_else(|| protected("store_bundle_id"))?,
+        work,
     )
-    .map(|_| ())
 }
 pub(crate) fn private_file_copy(
     source: &Path,

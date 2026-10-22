@@ -376,6 +376,8 @@ func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error)
 		return s.seoTaskControl(ctx, op, in)
 	case "NominateSeoListing":
 		return s.nominateListing(ctx, in)
+	case "NominateSeoTopic":
+		return s.nominateTopic(ctx, in)
 	case "CreateSeoEvidence":
 		return s.captureSeoEvidence(ctx, in)
 	case "ListSeoActions":

@@ -79,12 +79,43 @@ func stripLiterals(s string, protected []string) string {
 	s = b.String()
 	s = commandLines.ReplaceAllString(s, "")
 	for _, p := range protected {
-		if p != "" {
-			s = strings.ReplaceAll(s, p, "")
+		spans := protectedTermSpans(s, p)
+		for i := len(spans) - 1; i >= 0; i-- {
+			s = s[:spans[i][0]] + s[spans[i][1]:]
 		}
 	}
 	return strings.TrimSpace(s)
 }
+
+// Match complete brand names, not substrings such as "arc" in "search".
+// Han and kana prose can adjoin a brand without spaces. Preserve exact case.
+func protectedTermSpans(text, term string) [][2]int {
+	var spans [][2]int
+	if term == "" {
+		return spans
+	}
+	wordRune := func(r rune) bool {
+		return r == '_' || unicode.IsDigit(r) || unicode.IsMark(r) ||
+			(unicode.IsLetter(r) && !unicode.Is(unicode.Han, r) &&
+				!unicode.Is(unicode.Hiragana, r) && !unicode.Is(unicode.Katakana, r))
+	}
+	for offset := 0; offset < len(text); {
+		index := strings.Index(text[offset:], term)
+		if index < 0 {
+			break
+		}
+		start := offset + index
+		end := start + len(term)
+		before, _ := utf8.DecodeLastRuneInString(text[:start])
+		after, _ := utf8.DecodeRuneInString(text[end:])
+		if (start == 0 || !wordRune(before)) && (end == len(text) || !wordRune(after)) {
+			spans = append(spans, [2]int{start, end})
+		}
+		offset = end
+	}
+	return spans
+}
+
 func contentFailure(reason string) error { return &Failure{Reason: reason} }
 
 // ContentViolation names one failed check, so a translator can correct exactly
@@ -185,7 +216,7 @@ func ValidateContent(out ContentOutput, in ContentInput) error {
 				}
 			}
 			for _, term := range in.Protected {
-				if want, got := strings.Count(source, term), strings.Count(target, term); term != "" && want != got {
+				if want, got := len(protectedTermSpans(source, term)), len(protectedTermSpans(target, term)); term != "" && want != got {
 					add(ContentViolation{Rule: "changed_brand", Field: key, Term: Truncate(term, maxViolationText), ExpectedCount: &want, ActualCount: &got})
 				}
 			}

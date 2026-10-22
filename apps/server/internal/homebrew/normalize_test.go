@@ -3,6 +3,7 @@ package homebrew
 import (
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -139,6 +140,73 @@ func TestCanonicalHashIgnoresOnlyVolatileFields(t *testing.T) {
 		_, err := Normalize(example.Kind, json.RawMessage(example.Raw))
 		require.Error(t, err)
 	}
+}
+
+func TestRawHashPreservesLegacyFixtureHashes(t *testing.T) {
+	// Captured from the original RawHash before Ruby address normalization.
+	for token, want := range map[string]string{
+		"apple-hewlett-packard-printer-drivers": "d39abb0a8828ae038a6db7483f1c108e7827c441b99dbe0dfd6cfd708b807554",
+		"artisan":                               "7a716ab27f84cedaf7bd747bc0406d4769950b868256066d71657bb3c7bae256",
+		"raycast":                               "fcff61a8e0e21a21393a4a9650688da4745e7f983be812d305aecc03764025d1",
+		"ripgrep":                               "55221e15b0446c2d3fb04e1795f6b239304e499a607e3a14ebf277265cdbc3d5",
+		"steam":                                 "cbcb990823d310db37a26514e18d5ddc668039a84add613eb591658517c581cb",
+		"visual-studio-code":                    "4e5aea2be4a31b03f3c9ebf1144e558ce0469288e0f238d839b77ff8cfffff3d",
+		"wechat":                                "f74632484a088db199ddb4b4b27f29c5deacabef21d24e39fae779205ccf582c",
+	} {
+		t.Run(token, func(t *testing.T) {
+			got, err := RawHash(fixture(t, token))
+			require.NoError(t, err)
+			require.Equal(t, want, got)
+		})
+	}
+	require.Equal(t, 2, CaskNormalizationVersion, "address cleanup must not trigger catalog renormalization")
+}
+
+func TestRawHashIgnoresRubyObjectAddressesInStringValues(t *testing.T) {
+	for _, raw := range []string{
+		`{"token":"koreader","version":"2026.10","depends_on":{"linux":"#<LinuxRequirement:0x000000012142f910>"}}`,
+		`{"token":"zeal","version":"0.7.2","depends_on":{"arch":[{"type":"intel","bits":64}],"linux":"#<LinuxRequirement:0x000000012142f910>"}}`,
+		`{"token":"nested","variations":{"arm64_sonoma":{"nested":[null,9007199254740993,1.2300,1e+09,true,{"value":"before #<Homebrew::LinuxRequirement:0x000000012142f910> after #<Other:0x000000012142f910>"}]}}}`,
+	} {
+		first, err := RawHash(json.RawMessage(raw))
+		require.NoError(t, err)
+		second, err := RawHash(json.RawMessage(strings.ReplaceAll(raw, "0x000000012142f910", "0xABCDEF0123")))
+		require.NoError(t, err)
+		require.Equal(t, first, second)
+		cleaned, err := RawHash(json.RawMessage(strings.ReplaceAll(raw, ":0x000000012142f910", "")))
+		require.NoError(t, err)
+		require.Equal(t, cleaned, first, "only the object's address is removed")
+		changed, err := RawHash(json.RawMessage(strings.ReplaceAll(raw, "LinuxRequirement", "MacOSRequirement")))
+		require.NoError(t, err)
+		require.NotEqual(t, first, changed, "the requirement class remains meaningful")
+	}
+	raw := json.RawMessage(`{"token":"koreader","depends_on":{"linux":"#<LinuxRequirement:0x123>"}}`)
+	p, err := Normalize("cask", raw)
+	require.NoError(t, err)
+	require.Equal(t, raw, p.Raw, "the original source must remain intact")
+}
+
+func TestRawHashRetainsNonObjectAddressesAndRealChanges(t *testing.T) {
+	for _, raw := range []string{
+		`{"token":"tool","url":"https://example.com/0x123"}`,
+		`{"token":"tool","sha256":"0x123"}`,
+		`{"token":"tool","value":"#<LinuxRequirement:0x123"}`,
+		`{"token":"tool","value":"#<LinuxRequirement:0x123xyz>"}`,
+		`{"token":"tool","value":"LinuxRequirement:0x123"}`,
+		`{"token":"tool","value":"#<LinuxRequirement:0x123 field=value>"}`,
+		`{"token":"tool","#<LinuxRequirement:0x123>":"key"}`,
+	} {
+		first, err := RawHash(json.RawMessage(raw))
+		require.NoError(t, err)
+		second, err := RawHash(json.RawMessage(strings.ReplaceAll(raw, "0x123", "0x456")))
+		require.NoError(t, err)
+		require.NotEqual(t, first, second, raw)
+	}
+	first, err := RawHash(json.RawMessage(`{"token":"tool","version":"1","depends_on":{"linux":"#<LinuxRequirement:0x123>"}}`))
+	require.NoError(t, err)
+	second, err := RawHash(json.RawMessage(`{"token":"tool","version":"2","depends_on":{"linux":"#<LinuxRequirement:0x456>"}}`))
+	require.NoError(t, err)
+	require.NotEqual(t, first, second, "real content changes must still be delivered")
 }
 
 func legacyArtifacts(t *testing.T, raw json.RawMessage) string {

@@ -11,6 +11,23 @@ final class ProtocolTests: XCTestCase {
         XCTAssertEqual(failureCode(NSError(domain: "unverified-private-domain", code: 201)), "E_MAS_ENGINE")
     }
 
+    func testInstallPathSurvivesTheRemovalCallbackThatClearsIt() {
+        var path = ObservedInstallPath()
+        path.observe(nil)
+        XCTAssertNil(path.value)
+        // Failed-status callbacks carry the path; the removal callback reports nil.
+        path.observe("/Applications/Fixture.app")
+        path.observe("/Applications/Fixture.app")
+        path.observe(nil)
+        XCTAssertEqual(path.value, "/Applications/Fixture.app")
+        for ignored in ["", "Fixture.app", "/Applications/Fixture", "/Applications/Folder"] {
+            path.observe(ignored)
+            XCTAssertEqual(path.value, "/Applications/Fixture.app", ignored)
+        }
+        path.observe("/Users/example/Applications/Moved.app")
+        XCTAssertEqual(path.value, "/Users/example/Applications/Moved.app")
+    }
+
     func testRequestRejectsInvalidIdsAndCommands() throws {
         for ids in ["", "0", "-1", "1,", "1,1", "x", "9007199254740992"] {
             XCTAssertThrowsError(try Request(["install", "--adam-ids", ids, "--staging", "/tmp/test"]))

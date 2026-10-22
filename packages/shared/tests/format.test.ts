@@ -12,6 +12,7 @@ import {
   formatSpeed,
   formatTime,
   formatReleaseVersion,
+  releaseTitleDetail,
   formatVersion,
   formatVersionChange
 } from '../src/format';
@@ -138,6 +139,27 @@ describe('Duration and version formatting', () => {
     expect(formatVersion('1.140.0')).toBe('1.140.0');
     expect(formatVersion('')).toBe('');
     expect(formatVersionChange('1.139.1', '1.140.0,123')).toBe('1.139.1 → 1.140.0');
+  });
+
+  it('Shows release titles only when they add to the version', () => {
+    expect(releaseTitleDetail(null, '2.0.3')).toBeNull();
+    expect(releaseTitleDetail(undefined, '2.0.3')).toBeNull();
+    expect(releaseTitleDetail('Rectangle 2.0.3', '2.0.3')).toBeNull();
+    expect(releaseTitleDetail('v2.0.3', '2.0.3')).toBeNull();
+    expect(releaseTitleDetail('Visual Studio Code 1.143.0 release notes', '1.143.0')).toBeNull();
+    expect(releaseTitleDetail('Raycast 2.8.0.0 — Release notes', '2.8.0.0')).toBeNull();
+    expect(releaseTitleDetail('Rectangle 2.0.3 版本说明', '2.0.3')).toBeNull();
+    expect(releaseTitleDetail('Docker Desktop 4.96.0,243774', '4.96.0,243774')).toBeNull();
+    expect(releaseTitleDetail('Docker Desktop 4.96.0,243774', '4.96.0')).toBeNull();
+    expect(releaseTitleDetail('Stats 3.0.22 (Build 812)', '3.0.22')).toBeNull();
+    expect(releaseTitleDetail('Release Notes', '9.1')).toBeNull();
+    expect(releaseTitleDetail('Rectangle 2.0.4: more window shortcuts', '2.0.4')).toBe(
+      'Rectangle 2.0.4: more window shortcuts'
+    );
+    expect(releaseTitleDetail('Raycast 2.7.0.0 — 2.7 feature release', '2.7.0.0')).toBe(
+      'Raycast 2.7.0.0 — 2.7 feature release'
+    );
+    expect(releaseTitleDetail(' September 2026 ', '9.1')).toBe('September 2026');
   });
 
   it('Tags release entries that belong to one build', () => {

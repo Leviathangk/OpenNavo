@@ -7,12 +7,56 @@ use crate::AppError;
 #[cfg(target_os = "macos")]
 use {super::cf, nix::libc};
 
+#[cfg(any(target_os = "macos", test))]
+struct ThermalSource<S> {
+    smc: Option<S>,
+    temperature_keys: Vec<String>,
+    next_open_at: u64,
+    next_keys_at: u64,
+}
+#[cfg(any(target_os = "macos", test))]
+impl<S: super::smc::Smc> ThermalSource<S> {
+    fn new() -> Self {
+        Self {
+            smc: None,
+            temperature_keys: vec![],
+            next_open_at: 0,
+            next_keys_at: 0,
+        }
+    }
+    fn ensure(
+        &mut self,
+        now: u64,
+        sensors: bool,
+        fans: bool,
+        intel: bool,
+        open: impl FnOnce() -> Option<S>,
+    ) {
+        if !sensors && !fans {
+            return;
+        }
+        // The sampler's startup probe may encounter drivers before they are ready.
+        // Retry only requested initialization; successful connections/keys remain cached.
+        if self.smc.is_none() && now >= self.next_open_at {
+            self.next_open_at = now.saturating_add(30_000);
+            self.smc = open();
+        }
+        if sensors
+            && intel
+            && self.temperature_keys.is_empty()
+            && now >= self.next_keys_at
+            && let Some(smc) = &mut self.smc
+        {
+            self.next_keys_at = now.saturating_add(30_000);
+            self.temperature_keys = smc.keys();
+        }
+    }
+}
+
 pub struct NativeCollector {
     system: SystemInfo,
     #[cfg(target_os = "macos")]
-    smc: Option<super::smc::NativeSmc>,
-    #[cfg(target_os = "macos")]
-    temperature_keys: Vec<String>,
+    thermal: ThermalSource<super::smc::NativeSmc>,
     #[cfg(target_os = "macos")]
     power: super::extras::Power,
     network_active: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -49,26 +93,11 @@ impl NativeCollector {
                 .chain(cf::property_services("IOAccelerator", "gpu-core-count"))
                 .find_map(|(_, v)| cf::uint32(v.0).filter(|n| *n > 0 && *n <= 1024));
         }
-        #[cfg(target_os = "macos")]
-        let mut smc = super::smc::NativeSmc::open();
-        #[cfg(target_os = "macos")]
-        let temperature_keys = if !system.chip.starts_with("Apple") {
-            smc.as_mut()
-                .map(|s| {
-                    use super::smc::Smc;
-                    s.keys()
-                })
-                .unwrap_or_default()
-        } else {
-            vec![]
-        };
         let network_active = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         Ok(Self {
             system,
             #[cfg(target_os = "macos")]
-            smc,
-            #[cfg(target_os = "macos")]
-            temperature_keys,
+            thermal: ThermalSource::new(),
             #[cfg(target_os = "macos")]
             power: super::extras::Power::default(),
             network_active: network_active.clone(),
@@ -145,6 +174,13 @@ impl Collector for NativeCollector {
     fn collect(&mut self, modules: &Modules, processes: bool) -> Frame {
         #[cfg(target_os = "macos")]
         {
+            self.thermal.ensure(
+                self.origin.elapsed().as_millis() as u64,
+                modules.contains(&MonitorModule::Sensors),
+                modules.contains(&MonitorModule::Fans),
+                !self.system.chip.starts_with("Apple"),
+                super::smc::NativeSmc::open,
+            );
             objc2::rc::autoreleasepool(|_| Frame {
                 cpu: modules.contains(&MonitorModule::Cpu).then(cpu).flatten(),
                 memory: modules
@@ -173,18 +209,23 @@ impl Collector for NativeCollector {
                     if self.system.chip.starts_with("Apple") {
                         super::sensors::apple_with_smc(
                             &self.system.chip,
-                            self.smc.as_mut().map(|s| s as &mut dyn super::smc::Smc),
+                            self.thermal
+                                .smc
+                                .as_mut()
+                                .map(|s| s as &mut dyn super::smc::Smc),
                         )
                     } else {
-                        self.smc
+                        self.thermal
+                            .smc
                             .as_mut()
-                            .and_then(|s| super::sensors::intel(s, &self.temperature_keys))
+                            .and_then(|s| super::sensors::intel(s, &self.thermal.temperature_keys))
                     }
                 } else {
                     None
                 },
                 fans: if modules.contains(&MonitorModule::Fans) {
-                    self.smc
+                    self.thermal
+                        .smc
                         .as_mut()
                         .and_then(|s| super::fan::hardware::read_fans(s))
                 } else {
@@ -670,8 +711,17 @@ fn battery() -> Option<BatterySample> {
         .unwrap_or(std::ptr::null());
     let data = cf::key(props, "BatteryData");
     let capacity = super::battery::capacity(|k| cf::n(props, k), |k| cf::n(data, k));
-    let temp = super::battery::temperature(
-        cf::n(data, "Temperature").or_else(|| cf::n(props, "Temperature")),
+    let temp = super::battery::temperature_from_sources(
+        cf::n(props, "Temperature"),
+        cf::n(data, "Temperature"),
+        || {
+            cf::named_property_services("AppleSmartBatteryPack", "BatteryData")
+                .iter()
+                .find_map(|(_, data)| {
+                    cf::n(data.0, "Temperature")
+                        .filter(|raw| super::battery::temperature(Some(*raw)).is_some())
+                })
+        },
     );
     let voltage = cf::n(props, "Voltage").map(|v| v / 1000.0);
     let amperage = cf::n(props, "InstantAmperage")
@@ -845,4 +895,72 @@ fn gpu() -> Option<GpuSample> {
         power_watts: None,
         usage: ratio(usage / 100.0),
     })
+}
+
+#[cfg(test)]
+mod thermal_tests {
+    use super::*;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    struct SmcFixture(Arc<AtomicUsize>);
+    impl super::super::smc::Smc for SmcFixture {
+        fn read(&mut self, _: &str) -> Option<super::super::smc::Value> {
+            None
+        }
+        fn write(&mut self, _: &str, _: &[u8]) -> Result<(), AppError> {
+            panic!("read-only source")
+        }
+        fn keys(&mut self) -> Vec<String> {
+            if self.0.fetch_add(1, Ordering::SeqCst) == 0 {
+                vec![]
+            } else {
+                vec!["TC0P".into()]
+            }
+        }
+    }
+    #[test]
+    fn failed_smc_open_recovers_only_when_demanded_after_cooldown() {
+        let mut source = ThermalSource::<SmcFixture>::new();
+        source.ensure(0, false, false, false, || panic!("idle must not open"));
+        source.ensure(0, false, true, false, || None);
+        source.ensure(29_999, true, true, false, || panic!("open cooldown"));
+        source.ensure(30_000, false, false, false, || {
+            panic!("idle must not retry")
+        });
+        let opens = AtomicUsize::new(0);
+        source.ensure(30_000, false, true, false, || {
+            opens.fetch_add(1, Ordering::SeqCst);
+            Some(SmcFixture(Arc::new(AtomicUsize::new(0))))
+        });
+        assert_eq!(opens.load(Ordering::SeqCst), 1);
+        assert!(source.smc.is_some());
+        source.ensure(60_000, true, true, false, || {
+            panic!("cache the connected SMC")
+        });
+        assert!(
+            source.temperature_keys.is_empty(),
+            "Apple must not enumerate Intel keys"
+        );
+    }
+    #[test]
+    fn intel_key_enumeration_retries_without_reopening_and_is_cached_on_success() {
+        let keys = Arc::new(AtomicUsize::new(0));
+        let mut source = ThermalSource::new();
+        source.ensure(0, true, false, true, || Some(SmcFixture(keys.clone())));
+        assert!(source.temperature_keys.is_empty());
+        source.ensure(29_999, true, false, true, || panic!("connection cached"));
+        assert_eq!(keys.load(Ordering::SeqCst), 1);
+        source.ensure(30_000, false, true, true, || {
+            panic!("fan demand does not need keys")
+        });
+        assert_eq!(keys.load(Ordering::SeqCst), 1);
+        source.ensure(30_000, true, false, true, || {
+            panic!("retry keys without reopening")
+        });
+        assert_eq!(source.temperature_keys, ["TC0P"]);
+        source.ensure(60_000, true, false, true, || panic!("connection cached"));
+        assert_eq!(keys.load(Ordering::SeqCst), 2);
+    }
 }

@@ -1,7 +1,7 @@
 # Web image (Nitro Node server, port 3000). Build from the repository root:
 #   docker build -f apps/web/Dockerfile -t opennavo-web .
 # Inject URLs at runtime through NUXT_* environment variables (05 §9); the image contains no environment-specific configuration.
-FROM node:24.19.0-alpine AS build
+FROM node:24.19.0-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS build
 WORKDIR /repo
 RUN corepack enable
 # Dependencies install from the manifests alone, so the layer is reused until
@@ -20,9 +20,9 @@ COPY packages/ui/package.json packages/ui/
 RUN pnpm install --frozen-lockfile --filter "@opennavo/web..." --ignore-scripts
 COPY . .
 RUN pnpm rebuild --filter "@opennavo/web..."
-RUN pnpm --filter @opennavo/web build
+RUN NUXT_BUILD_ID="$(node apps/web/scripts/build-fingerprint.ts)" pnpm --filter @opennavo/web build
 
-FROM node:24.19.0-alpine
+FROM node:24.19.0-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
 # Production only runs Node; package managers and their dependency trees are unnecessary.
 RUN apk upgrade --no-cache && rm -rf /usr/local/lib/node_modules /opt/yarn-* && \
     rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg

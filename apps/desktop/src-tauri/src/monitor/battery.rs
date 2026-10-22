@@ -36,6 +36,19 @@ pub fn remaining_minutes(values: impl IntoIterator<Item = Option<f64>>) -> Optio
         .find(|v| v.is_finite() && *v > 0.0 && *v < 65535.0)
 }
 pub fn temperature(raw: Option<f64>) -> Option<f64> {
-    raw.map(|v| v / 10.0 - 273.15)
-        .filter(|v| v.is_finite() && (-20.0..100.0).contains(v))
+    // IORegistry publishes hundredths of Celsius (not the SBS wire unit of 0.1 K).
+    raw.filter(|v| v.is_finite() && *v > 0.0)
+        .map(|v| v / 100.0)
+        .filter(|v| *v < 100.0)
+}
+/// Older systems expose Temperature on AppleSmartBattery; newer ones may expose only
+/// AppleSmartBatteryPack.BatteryData.Temperature. Do not query the pack if already readable.
+pub fn temperature_from_sources(
+    top: Option<f64>,
+    data: Option<f64>,
+    pack: impl FnOnce() -> Option<f64>,
+) -> Option<f64> {
+    temperature(top)
+        .or_else(|| temperature(data))
+        .or_else(|| temperature(pack()))
 }

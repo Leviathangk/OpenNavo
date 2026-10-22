@@ -94,6 +94,20 @@ func (s *Store) validateTranslationWrite(ctx context.Context, source ContentSour
 	for key, value := range fields {
 		merged[textColumn(key)] = value
 	}
+	// Hermes owns catalog translation quality. Keep schema completeness, storage
+	// limits and source-version checks, but do not compare prose mechanically.
+	if model != "" && (source.Ref.Entity == "package" || source.Ref.Entity == "release") {
+		want, got := content.Flatten(source.Fields), content.Flatten(merged)
+		if len(want) != len(got) {
+			return "", domain.Validation()
+		}
+		for key := range want {
+			if strings.TrimSpace(got[key]) == "" {
+				return "", domain.Validation()
+			}
+		}
+		return model, nil
+	}
 	glossary, protected, err := s.ContentGlossary(ctx)
 	if err != nil {
 		return "", err

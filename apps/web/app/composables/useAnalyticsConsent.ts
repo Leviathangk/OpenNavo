@@ -11,7 +11,7 @@ export function useAnalyticsConsent() {
     return analytics?.ga4Enabled && analytics.ga4MeasurementId ? analytics.ga4MeasurementId : '';
   });
 
-  const enabled = computed(() => Boolean(measurementId.value || settings.value?.analytics.usageEnabled));
+  const enabled = computed(() => Boolean(measurementId.value));
 
   function storedChoice(): ConsentChoice | null {
     try {

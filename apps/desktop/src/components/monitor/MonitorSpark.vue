@@ -32,7 +32,7 @@ const segments = computed(() => {
     run.push(`${((index / (n - 1)) * WIDTH).toFixed(1)},${y(value).toFixed(1)}`);
   });
   if (run.length) runs.push(run);
-  return runs.filter(points => points.length > 1);
+  return runs;
 });
 </script>
 
@@ -47,13 +47,21 @@ const segments = computed(() => {
     :aria-hidden="label ? undefined : 'true'"
   >
     <template v-for="(points, index) in segments" :key="index">
+      <circle
+        v-if="points.length === 1"
+        :cx="points[0]!.split(',')[0]"
+        :cy="points[0]!.split(',')[1]"
+        r="2"
+        :fill="color"
+      />
       <polygon
-        v-if="fill"
+        v-if="fill && points.length > 1"
         :points="`${points[0]!.split(',')[0]},${height} ${points.join(' ')} ${points.at(-1)!.split(',')[0]},${height}`"
         :fill="color"
         fill-opacity="0.14"
       />
       <polyline
+        v-if="points.length > 1"
         :points="points.join(' ')"
         fill="none"
         :stroke="color"

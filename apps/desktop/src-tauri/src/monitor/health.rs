@@ -14,11 +14,19 @@ impl HealthTracker {
         self.hot_since = None;
     }
     pub fn fan_reason(&mut self, reason: FanReason) {
-        if reason == FanReason::Overheat {
-            self.protection = true;
-        } else if matches!(reason, FanReason::User | FanReason::WakeReapplied) {
-            self.protection = false;
-        }
+        self.protection = match reason {
+            FanReason::Overheat => true,
+            // These are helper/control events ending the forced maximum-RPM mode.
+            // A sampler pause (screen/sleep/lock) only calls reset(), not fan_reason().
+            FanReason::User
+            | FanReason::WakeReapplied
+            | FanReason::HeartbeatLost
+            | FanReason::WriteFailed
+            | FanReason::HelperStarted
+            | FanReason::HelperUninstalled
+            | FanReason::AppQuit
+            | FanReason::Sleep => false,
+        };
     }
     pub fn evaluate(
         &mut self,

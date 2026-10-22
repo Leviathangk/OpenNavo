@@ -28,6 +28,9 @@ func (h *Handler) RecordUsageActivity(ctx context.Context, request publicapi.Rec
 		}
 	}
 	activity := store.UsageActivity{AnonymousID: a.AnonymousId.String(), Platform: string(a.Platform), OccurredAt: a.OccurredAt, Version: a.Version, Locale: a.Locale}
+	if c, ok := ctx.(*gin.Context); ok {
+		activity.Country = c.GetString("usageCountry")
+	}
 	now := time.Now()
 	err := h.Catalog.Store.RecordUsage(requestContext(ctx), activity, now)
 	if err != nil {

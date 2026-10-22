@@ -36,7 +36,9 @@ export function useModuleView(
   const chartHeight = computed(() => (detail.value ? 90 : variant() === 'popover' ? 34 : 40));
   const ratio = (part: number, whole: number) => (whole > 0 ? part / whole : null);
 
-  const uptime = computed(() => (sys.value ? f.span(Math.max(0, (Date.now() - sys.value.bootedAt) / 1000)) : ''));
+  const uptime = computed(() =>
+    sys.value ? f.span(Math.max(0, ((s.value?.at ?? Date.now()) - sys.value.bootedAt) / 1000)) : ''
+  );
   const primaryVolume = computed(() => {
     const volumes = s.value?.disk.volumes ?? [];
     return volumes.find(volume => volume.mountPoint === '/') ?? volumes.find(volume => volume.internal) ?? volumes[0];

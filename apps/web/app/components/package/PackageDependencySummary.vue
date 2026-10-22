@@ -62,6 +62,7 @@ const groups = computed(() =>
       </template>
     </dl>
     <NuxtLink
+      v-if="pkg.indexing?.pages?.dependencies?.reason !== 'duplicate_of_overview'"
       :to="localePath(packagePath(pkg.token, 'dependencies'))"
       class="mt-8px inline-flex text-12.5px text-ink-secondary no-underline hover:text-ink-primary"
     >

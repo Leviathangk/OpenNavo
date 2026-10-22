@@ -5,6 +5,7 @@ package catalog
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestCatalogConfirmationKeepsUnchangedFactsVerified(t *testing.T) {
@@ -133,19 +135,76 @@ func TestHomebrewConfirmationKeepsHistoricalVersionObservation(t *testing.T) {
 		require.NoError(t, err)
 		at := first
 		if version == "2" {
-			at = first.Add(24 * time.Hour)
+			at = first.Add(time.Hour)
 		}
-		_, err = st.ApplyCatalogBatchWithLifecycle(ctx, []store.CatalogMutation{{Package: p, Previous: previous}}, at)
-		require.NoError(t, err)
+		require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
+			_, err := (&store.Store{DB: tx}).ApplyCatalogBatchWithLifecycle(ctx, []store.CatalogMutation{{Package: p, Previous: previous}}, at)
+			if err != nil {
+				return err
+			}
+			if previous != nil {
+				var publicChecked, pendingChecked time.Time
+				require.NoError(t, st.DB.Raw("SELECT homebrew_checked_at FROM packages WHERE id=?", previous.ID).Scan(&publicChecked).Error)
+				require.True(t, first.Equal(publicChecked), "public readers retain the old confirmation until commit")
+				require.NoError(t, tx.Raw("SELECT homebrew_checked_at FROM packages WHERE id=?", previous.ID).Scan(&pendingChecked).Error)
+				require.True(t, at.Equal(pendingChecked), "replacement and confirmation must commit together")
+			}
+			return nil
+		}))
 	}
 	row, err := st.CatalogRow(ctx, "cask", "version-confirmation")
 	require.NoError(t, err)
-	for version, at := range map[string]time.Time{"1": first, "2": first.Add(24 * time.Hour)} {
+	for version, at := range map[string]time.Time{"1": first, "2": first.Add(time.Hour)} {
 		requirements, err := st.VersionRequirements(ctx, row.ID, version, time.Now())
 		require.NoError(t, err)
 		require.NotEmpty(t, requirements)
 		require.WithinDuration(t, at, *requirements[0].Evidence.CheckedAt, time.Microsecond)
 	}
+	var checked time.Time
+	require.NoError(t, st.DB.Raw("SELECT homebrew_checked_at FROM packages WHERE id=?", row.ID).Scan(&checked).Error)
+	require.True(t, first.Add(time.Hour).Equal(checked), "a replacement must be confirmed immediately even inside the refresh window")
+}
+
+func TestCatalogRubyAddressUpgradeThenStableSync(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewFactsStore(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	raw := `{"token":"koreader","version":"2026.10","depends_on":{"linux":"#<LinuxRequirement:0x000000012142f910>"}}`
+	p, err := homebrew.Normalize("cask", json.RawMessage(raw))
+	require.NoError(t, err)
+	// This exact raw's hash from before address normalization: migration happens once.
+	p.RawHash = "d2cec577f1d9fc0b91a826598995fb71a848dde255b2a5d37d3cbc00eccac3fe"
+	_, err = st.ApplyCatalogBatchWithLifecycle(ctx, []store.CatalogMutation{{Package: p}}, now.Add(-time.Hour))
+	require.NoError(t, err)
+	source := &testSource{Data: map[string][]string{"cask": {raw}}, Previous: map[string]homebrew.Conditional{}}
+	sync := &Service{Store: st, Source: source, Queue: &testQueue{}, Now: func() time.Time { return now }}
+	stats, err := sync.Run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, stats["kinds"].([]Stats)[0].Updated)
+	var confirmed time.Time
+	require.NoError(t, st.DB.Raw("SELECT homebrew_checked_at FROM packages WHERE token=?", p.Token).Scan(&confirmed).Error)
+	require.True(t, now.Equal(confirmed), "same-version definition changes must also be confirmed immediately")
+	var before, after int64
+	require.NoError(t, st.DB.Table("catalog_changes").Count(&before).Error)
+	require.NoError(t, st.DB.Exec("DELETE FROM package_page_dirty").Error)
+	now = now.Add(15 * time.Minute)
+	source.Data["cask"] = []string{strings.ReplaceAll(raw, "0x000000012142f910", "0x0000000abcdef012")}
+	stats, err = sync.Run(ctx)
+	require.NoError(t, err)
+	require.Zero(t, stats["kinds"].([]Stats)[0].Updated)
+	require.Equal(t, 1, stats["kinds"].([]Stats)[0].Unchanged)
+	require.NoError(t, st.DB.Table("catalog_changes").Count(&after).Error)
+	require.Equal(t, before, after, "address churn must not enqueue cache purges, announcements or desktop changes")
+	var dirty int64
+	require.NoError(t, st.DB.Table("package_page_dirty").Count(&dirty).Error)
+	require.Zero(t, dirty, "address churn must not change page content dates")
+	source.Data["cask"] = []string{strings.ReplaceAll(raw, "2026.10", "2026.11")}
+	stats, err = sync.Run(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, stats["kinds"].([]Stats)[0].Updated)
+	require.Equal(t, 1, stats["kinds"].([]Stats)[0].VersionChanged)
+	require.NoError(t, st.DB.Table("catalog_changes").Count(&after).Error)
+	require.Greater(t, after, before, "real content changes must still reach notification consumers")
 }
 
 func TestHomebrewConfirmationInvalidatesOnlyExpiringProof(t *testing.T) {

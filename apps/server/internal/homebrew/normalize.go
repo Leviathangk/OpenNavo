@@ -14,6 +14,7 @@ import (
 
 var tokenPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9+_.@-]*$`)
 var ignoredFields = []string{"tap_git_head", "generated_date", "analytics", "installed", "installed_time", "outdated", "pinned", "pinned_version"}
+var rubyObjectAddressPattern = regexp.MustCompile(`#<([A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*):0x[0-9a-fA-F]+>`)
 
 func RawHash(raw json.RawMessage) (string, error) {
 	if !json.Valid(raw) {
@@ -31,12 +32,34 @@ func RawHash(raw json.RawMessage) (string, error) {
 	for _, field := range ignoredFields {
 		delete(data, field)
 	}
+	normalizeRubyObjectAddresses(data)
 	canonical, err := json.Marshal(data)
 	if err != nil {
 		return "", fmt.Errorf("encode canonical package: %w", err)
 	}
 	hash := sha256.Sum256(canonical)
 	return hex.EncodeToString(hash[:]), nil
+}
+
+// Homebrew can serialize Ruby requirements as inspect strings containing a
+// process-local address. Keep their class, and leave every other value and key
+// intact so existing hashes (including JSON number spellings) remain compatible.
+func normalizeRubyObjectAddresses(value any) any {
+	switch v := value.(type) {
+	case map[string]any:
+		for key, child := range v {
+			v[key] = normalizeRubyObjectAddresses(child)
+		}
+	case []any:
+		for i, child := range v {
+			v[i] = normalizeRubyObjectAddresses(child)
+		}
+	case string:
+		if strings.Contains(v, "#<") {
+			return rubyObjectAddressPattern.ReplaceAllString(v, "#<${1}>")
+		}
+	}
+	return value
 }
 
 func Normalize(kind string, raw json.RawMessage) (Package, error) {

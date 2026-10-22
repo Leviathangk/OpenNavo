@@ -19787,8 +19787,9 @@ paths:
       description: >-
         Turn an app a person asked for into a listing task (entity listing:<token>, priority 1000) so an
         agent can prepare its listing candidate. Nominating publishes nothing; publishing keeps the listing rules.
-        Nominating the same token again returns the open task, or reopens a finished one. Rejections carry
-        `rejected: <rule>` (already_listed, candidate_rejected).
+        Nominating the same token again returns the open task, or reopens a finished one. A published automatic
+        listing can be nominated again to correct it: claim the task and publish the candidate again. Rejections
+        carry `rejected: <rule>` (already_listed for other catalog packages, candidate_rejected).
       x-permissions:
         - catalog:package:edit
       parameters:
@@ -20106,6 +20107,339 @@ paths:
       x-agent-access:
         permissions:
           - catalog:package:edit
+      servers:
+        - url: http://localhost:8080/admin-api
+        - url: http://api:8080/agent-api
+  /seo/topics/{key}/nominate:
+    post:
+      tags:
+        - seo
+      operationId: nominateSeoTopic
+      summary: nominateSeoTopic
+      description: >-
+        Propose an article topic. Creates a topic task (entity article:new:<key>, priority 100) that the article
+        workflow claims like a keyword topic; a topic already queued or in progress is returned as is, and a finished
+        nomination is reopened. Nominating publishes nothing; the daily and weekly article limits apply when the
+        article is written. Rejections carry `rejected: <rule>` (article_exists).
+      x-permissions:
+        - content:article:edit
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: Slug the article will be published under.
+          schema:
+            type: string
+            maxLength: 100
+            pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+        - $ref: "#/components/parameters/DryRun"
+        - $ref: "#/components/parameters/AgentTool"
+        - $ref: "#/components/parameters/AgentRequestId"
+        - $ref: "#/components/parameters/AgentClientIP"
+      responses:
+        "200":
+          description: Business result
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/SeoTaskResponse"
+                  - $ref: "#/components/schemas/BusinessErrorResponse"
+              examples:
+                dry-run:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                  description: Validated preview; the task is not created.
+                en-US:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                zh-CN:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                ja-JP:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                es-ES:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                pt-BR:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                ru-RU:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                de-DE:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                fr-FR:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                it-IT:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+                zh-Hant:
+                  value:
+                    code: "0000"
+                    msg: ok
+                    data:
+                      id: 1
+                      kind: topic
+                      entityKey: article:new:batch-rename-files-mac
+                      locale: en-US
+                      dedupeKey: nominate-topic:batch-rename-files-mac
+                      priority: 100
+                      evidence:
+                        source: nomination
+                        keyword: batch rename files mac
+                        targetSlug: batch-rename-files-mac
+                        nominatedBy: agent:1:2
+                        reason: Recurring question with no guide on the site
+                      evidenceHash: fixture
+                      ruleVersion: nomination-v1
+                      state: open
+                      fencing: 0
+                      attempts: 0
+                      reopenCount: 0
+                      createdAt: "2026-10-21T00:00:00Z"
+                      updatedAt: "2026-10-21T00:00:00Z"
+      security:
+        - bearerAuth: []
+        - agentToken: []
+          agentGateway: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeoTopicNomination"
+            example:
+              idempotencyKey: example-00000001
+              keyword: batch rename files mac
+              locale: en-US
+              reason: Recurring question with no guide on the site
+      x-agent-access:
+        permissions:
+          - content:article:edit
       servers:
         - url: http://localhost:8080/admin-api
         - url: http://api:8080/agent-api
@@ -21171,7 +21505,7 @@ components:
       name: X-SEO-Task-ID
       in: header
       required: false
-      description: Required for Agent business writes; omitted for human admin requests.
+      description: Required for task-based Agent writes. Omit it together with X-SEO-Fencing for an unleased catalog edit. Omitted for human admin requests.
       schema:
         type: integer
         format: int64
@@ -21181,7 +21515,7 @@ components:
       name: X-SEO-Fencing
       in: header
       required: false
-      description: Required for Agent business writes; omitted for human admin requests.
+      description: Required for task-based Agent writes. Omit it together with X-SEO-Task-ID for an unleased catalog edit. Omitted for human admin requests.
       schema:
         type: integer
         format: int64
@@ -21191,7 +21525,7 @@ components:
       name: X-SEO-Expected-Revision
       in: header
       required: false
-      description: Required for Agent business writes; omitted for human admin requests.
+      description: Required for Agent business writes. An unleased catalog edit may omit it only in a dry run, whose result returns expectedRevision to commit with. Omitted for human admin requests.
       schema:
         type: integer
         format: int64
@@ -21201,7 +21535,7 @@ components:
       name: Idempotency-Key
       in: header
       required: false
-      description: Required for Agent business writes; omitted for human admin requests.
+      description: Required for Agent business writes, including unleased catalog edits; a retry with the same key and request returns the first result. Omitted for human admin requests.
       schema:
         type: string
         maxLength: 200
@@ -21659,6 +21993,35 @@ components:
         name: Example App
         homepage: https://vendor.example.test
         reason: Requested by the site owner
+    SeoTopicNomination:
+      type: object
+      additionalProperties: false
+      properties:
+        idempotencyKey:
+          type: string
+          minLength: 8
+          maxLength: 200
+        keyword:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: The search phrase the article answers.
+        locale:
+          $ref: '#/components/schemas/Locale'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Why the topic is worth an article. The article's source language is locale, en-US by default.
+      required:
+      - idempotencyKey
+      - keyword
+      - reason
+      example:
+        idempotencyKey: example-00000001
+        keyword: batch rename files mac
+        locale: en-US
+        reason: Recurring question with no guide on the site
     SeoTaskDefer:
       type: object
       additionalProperties: false
@@ -22928,8 +23291,6 @@ components:
       required:
         - ref
         - model
-        - taskId
-        - fencing
         - translations
       properties:
         ref:
@@ -23070,9 +23431,10 @@ components:
           items:
             $ref: "#/components/schemas/BatchTranslationResult"
         taskId:
+          description: Zero when catalog translations are written without a task.
           type: integer
           format: int64
-          minimum: 1
+          minimum: 0
           maximum: 1000000000
         leaseRetained:
           type: boolean
@@ -23910,7 +24272,6 @@ components:
         - description
         - categoryId
         - iconAssetId
-        - baselinePackageId
         - downloadMode
         - evidenceId
       properties:
@@ -23948,6 +24309,7 @@ components:
           minimum: 0
           example: 1
         baselinePackageId:
+          description: Optional human identity attestation. Omit or use zero when unavailable; publication does not assert verified identity.
           type: integer
           format: int64
           minimum: 0
@@ -25377,6 +25739,11 @@ components:
       - enabled
       - mode
       properties:
+        liveOperations:
+          description: Operations that execute live independently of this action's default policy. Parentheses restrict the entity scope.
+          type: array
+          items:
+            type: string
         action:
           type: string
           example: listing
@@ -27130,6 +27497,7 @@ components:
           minimum: 0
           example: 0
         automationReady:
+          description: At least one search-data source has completeness and freshness dates within the last seven UTC days and was updated within seven days. Does not gate catalog editing.
           type: boolean
           example: true
         breakers:
@@ -29512,7 +29880,7 @@ components:
           properties:
             usageEnabled:
               type: boolean
-              default: false
+              default: true
             ga4Enabled:
               type: boolean
             ga4MeasurementId:
@@ -32474,6 +32842,22 @@ components:
                 type: integer
                 format: int64
               newDesktop:
+                type: integer
+                format: int64
+        countries:
+          description: Today's active installations/browsers by last observed request country. ZZ means unknown; no raw IP is retained in usage records.
+          type: array
+          items:
+            type: object
+            required: [country, web, desktop]
+            properties:
+              country:
+                type: string
+                pattern: '^[A-Z]{2}$'
+              web:
+                type: integer
+                format: int64
+              desktop:
                 type: integer
                 format: int64
         versions:
@@ -40462,6 +40846,11 @@ components:
           description: 'App fact writes only: the evidence still missing or outdated after this write'
           items:
             $ref: '#/components/schemas/FactGap'
+        expectedRevision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 'Unleased catalog edits only: the current revision of the edited objects. Commit with it as X-SEO-Expected-Revision; a newer revision rejects the commit with a conflict.'
       description: 'Writes no business data, revisions, audit, trash, queues or caches; stores only execution trace logs; proposal mode additionally stores the proposed action.'
     ContentMutationResponse:
       type: object

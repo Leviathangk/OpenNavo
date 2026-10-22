@@ -248,7 +248,7 @@ export const events = {
 	localAppsChanged: makeEvent<LocalAppsEvent>("local-apps:changed"),
 	localeChanged: makeEvent<LocaleEvent>("locale:changed"),
 	monitorPopover: makeEvent<MonitorPopover>("monitor:popover"),
-	monitorSample: makeEvent<MonitorSampleEvent>("monitor:sample"),
+	monitorSample: makeEvent<MonitorSampleEvent_Deserialize>("monitor:sample"),
 	pasteBlocked: makeEvent<PasteBlockedEvent>("paste:blocked"),
 	permissionsChanged: makeEvent<PermissionsChanged>("permissions:changed"),
 	securityChanged: makeEvent<SecurityChangedEvent>("security:changed"),
@@ -1411,7 +1411,17 @@ export type MonitorSample = {
 	health: Health,
 };
 
-export type MonitorSampleEvent = MonitorSample;
+export type MonitorSampleEvent = MonitorSampleEvent_Serialize | MonitorSampleEvent_Deserialize;
+
+export type MonitorSampleEvent_Deserialize = {
+	/**  Older clients and sample fixtures can omit this; live publications include it. */
+	available?: MonitorModule[] | null,
+} & MonitorSample;
+
+export type MonitorSampleEvent_Serialize = {
+	/**  Older clients and sample fixtures can omit this; live publications include it. */
+	available?: MonitorModule[] | null,
+} & MonitorSample;
 
 export type MonitorSnapshot = {
 	system: SystemInfo,
@@ -1772,7 +1782,6 @@ export type Settings = {
 	trayShowCount: boolean,
 	autoCheck: boolean,
 	autoCheckAppUpdates: boolean,
-	usageAnalytics: boolean,
 	avConsent: boolean,
 	avDbCheckHours: number,
 	avKeepResident: boolean,

@@ -119,7 +119,11 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), AppError> {
                 .get_webview_window(window)
                 .is_some_and(|w| w.is_visible().unwrap_or(false))
             {
-                let _ = crate::events::MonitorSampleEvent(p.sample.clone()).emit_to(&ui, window);
+                let _ = crate::events::MonitorSampleEvent {
+                    sample: p.sample.clone(),
+                    available: Some(p.available.iter().copied().collect()),
+                }
+                .emit_to(&ui, window);
             }
         }
         if let (Some(notices), Some(core)) = (

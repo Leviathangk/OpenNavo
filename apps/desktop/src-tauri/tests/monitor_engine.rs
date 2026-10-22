@@ -370,6 +370,344 @@ fn availability_tracks_readable_modules_and_failures_are_isolated() {
     assert!(engine.available.contains(&MonitorModule::Cpu));
     assert!(!engine.available.contains(&MonitorModule::Gpu));
 }
+
+struct RecoveringCollector {
+    calls: Calls,
+    readable: Arc<std::sync::atomic::AtomicBool>,
+}
+impl Collector for RecoveringCollector {
+    fn system(&self) -> SystemInfo {
+        system()
+    }
+    fn collect(&mut self, modules: &Modules, processes: bool) -> Frame {
+        self.calls
+            .lock()
+            .unwrap()
+            .push((modules.clone(), processes));
+        Frame {
+            cpu: (self.readable.load(Ordering::SeqCst) && modules.contains(&MonitorModule::Cpu))
+                .then(|| cpu(self.calls.lock().unwrap().len() as u32)),
+            ..Frame::default()
+        }
+    }
+}
+fn recovering_sampler(
+    menu: MonitorMenuBar,
+) -> (Arc<Sampler>, Calls, Arc<std::sync::atomic::AtomicBool>) {
+    let calls = Arc::new(Mutex::new(vec![]));
+    let readable = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let sampler = Sampler::new(
+        Box::new(RecoveringCollector {
+            calls: calls.clone(),
+            readable: readable.clone(),
+        }),
+        menu,
+        MonitorIntervalMs::TwoSeconds,
+    );
+    (sampler, calls, readable)
+}
+#[test]
+fn startup_probe_failure_recovers_on_subscription_then_samples_normally() {
+    let (sampler, calls, readable) = recovering_sampler(off());
+    readable.store(true, Ordering::SeqCst);
+    assert!(sampler.tick(0, 0).unwrap().is_none());
+    assert_eq!(calls.lock().unwrap().len(), 1, "no demand must not probe");
+    let snapshot = sampler
+        .subscribe_fresh_at("main", MonitorView::Page, [MonitorModule::Cpu].into(), 1, 1)
+        .unwrap();
+    assert!(snapshot.available.contains(&MonitorModule::Cpu));
+    for now in [1000, 2000, 3000] {
+        assert!(
+            sampler
+                .tick(now, now as i64)
+                .unwrap()
+                .unwrap()
+                .available
+                .contains(&MonitorModule::Cpu)
+        );
+    }
+    assert_eq!(calls.lock().unwrap().len(), 5);
+    sampler.unsubscribe("main", MonitorView::Page).unwrap();
+    assert!(sampler.tick(60_000, 60_000).unwrap().is_none());
+    assert_eq!(calls.lock().unwrap().len(), 5);
+}
+#[test]
+fn unsupported_modules_have_bounded_retries_and_sleep_wake_rearms_recovery() {
+    let (sampler, calls, readable) = recovering_sampler(off());
+    let wanted = [MonitorModule::Cpu, MonitorModule::Fans].into();
+    sampler
+        .subscribe("main", MonitorView::Page, wanted)
+        .unwrap();
+    for now in [0, 1000, 29_999, 30_000, 60_000, 90_000, 120_000] {
+        // Repeated subscription refreshes must not replenish the retry budget.
+        sampler
+            .subscribe(
+                "main",
+                MonitorView::Page,
+                [MonitorModule::Cpu, MonitorModule::Fans].into(),
+            )
+            .unwrap();
+        sampler.tick(now, now as i64).unwrap();
+    }
+    assert_eq!(
+        calls.lock().unwrap().len(),
+        4,
+        "startup plus three spaced attempts"
+    );
+    assert!(sampler.plan().unwrap().is_none());
+    sampler.pause(PauseReason::Screen, true);
+    sampler.pause(PauseReason::Screen, false);
+    assert!(sampler.tick(120_500, 120_500).unwrap().is_none());
+    assert_eq!(
+        calls.lock().unwrap().len(),
+        4,
+        "screen changes do not replenish probes"
+    );
+    readable.store(true, Ordering::SeqCst);
+    sampler.pause(PauseReason::Sleep, true);
+    sampler.pause(PauseReason::Screen, true);
+    sampler.pause(PauseReason::Sleep, false);
+    assert!(sampler.tick(121_000, 121_000).unwrap().is_none());
+    assert_eq!(calls.lock().unwrap().len(), 4);
+    sampler.pause(PauseReason::Screen, false);
+    let recovered = sampler.tick(122_000, 122_000).unwrap().unwrap();
+    assert!(recovered.available.contains(&MonitorModule::Cpu));
+    assert!(!recovered.available.contains(&MonitorModule::Fans));
+    sampler.tick(123_000, 123_000).unwrap();
+    assert_eq!(
+        calls.lock().unwrap().last().unwrap().0,
+        [MonitorModule::Cpu].into()
+    );
+}
+#[test]
+fn recovery_waits_for_demand_and_pause_release_and_keeps_cooldown_across_reopen() {
+    let (sampler, calls, readable) = recovering_sampler(off());
+    sampler
+        .subscribe("main", MonitorView::Page, [MonitorModule::Cpu].into())
+        .unwrap();
+    sampler.tick(0, 0).unwrap();
+    sampler.unsubscribe("main", MonitorView::Page).unwrap();
+    sampler.tick(30_000, 30_000).unwrap();
+    assert_eq!(
+        calls.lock().unwrap().len(),
+        2,
+        "pending probes do no work without demand"
+    );
+    sampler
+        .subscribe("main", MonitorView::Page, [MonitorModule::Cpu].into())
+        .unwrap();
+    sampler.pause(PauseReason::Lock, true);
+    sampler.tick(30_001, 30_001).unwrap();
+    assert_eq!(
+        calls.lock().unwrap().len(),
+        2,
+        "pause also stops pending probes"
+    );
+    sampler.pause(PauseReason::Lock, false);
+    sampler.tick(30_002, 30_002).unwrap();
+    assert_eq!(calls.lock().unwrap().len(), 3);
+    sampler.unsubscribe("main", MonitorView::Page).unwrap();
+    sampler
+        .subscribe("main", MonitorView::Page, [MonitorModule::Cpu].into())
+        .unwrap();
+    sampler.tick(30_003, 30_003).unwrap();
+    assert_eq!(
+        calls.lock().unwrap().len(),
+        3,
+        "reopen cannot bypass the cooldown"
+    );
+    readable.store(true, Ordering::SeqCst);
+    assert!(
+        sampler
+            .tick(60_002, 60_002)
+            .unwrap()
+            .unwrap()
+            .available
+            .contains(&MonitorModule::Cpu)
+    );
+    readable.store(false, Ordering::SeqCst);
+    assert!(
+        !sampler
+            .tick(61_002, 61_002)
+            .unwrap()
+            .unwrap()
+            .available
+            .contains(&MonitorModule::Cpu)
+    );
+    readable.store(true, Ordering::SeqCst);
+    assert!(
+        sampler
+            .tick(62_002, 62_002)
+            .unwrap()
+            .unwrap()
+            .available
+            .contains(&MonitorModule::Cpu),
+        "known hardware recovers on its regular cadence"
+    );
+}
+#[test]
+fn sampler_loop_runs_demanded_recovery_without_a_regular_plan() {
+    let (sampler, _, readable) = recovering_sampler(MonitorMenuBar::default());
+    readable.store(true, Ordering::SeqCst);
+    assert!(sampler.plan().unwrap().is_none());
+    let (tx, rx) = std::sync::mpsc::channel();
+    sampler.start(Arc::new(move |p| {
+        let _ = tx.send(p.available);
+    }));
+    let available = rx.recv_timeout(std::time::Duration::from_secs(2));
+    sampler
+        .configure(off(), MonitorIntervalMs::TwoSeconds)
+        .unwrap();
+    assert!(available.unwrap().contains(&MonitorModule::Cpu));
+}
+#[test]
+fn concurrent_recovery_ticks_share_one_probe_budget_and_cooldown() {
+    struct SlowUnavailable(Arc<AtomicUsize>);
+    impl Collector for SlowUnavailable {
+        fn system(&self) -> SystemInfo {
+            system()
+        }
+        fn collect(&mut self, _: &Modules, _: bool) -> Frame {
+            if self.0.fetch_add(1, Ordering::SeqCst) > 0 {
+                // Model a slow native driver while the other refreshes queue behind it.
+                std::thread::sleep(std::time::Duration::from_millis(30));
+            }
+            Frame::default()
+        }
+    }
+    let calls = Arc::new(AtomicUsize::new(0));
+    let sampler = Sampler::new(
+        Box::new(SlowUnavailable(calls.clone())),
+        off(),
+        MonitorIntervalMs::TwoSeconds,
+    );
+    sampler
+        .subscribe("main", MonitorView::Page, [MonitorModule::Fans].into())
+        .unwrap();
+    let start = Arc::new(std::sync::Barrier::new(9));
+    let workers: Vec<_> = (0..8)
+        .map(|_| {
+            let sampler = sampler.clone();
+            let start = start.clone();
+            std::thread::spawn(move || {
+                start.wait();
+                sampler.tick(0, 0).unwrap()
+            })
+        })
+        .collect();
+    start.wait();
+    let published = workers
+        .into_iter()
+        .filter_map(|worker| worker.join().unwrap())
+        .count();
+    assert_eq!(published, 1);
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        2,
+        "startup and only one demanded probe"
+    );
+}
+#[test]
+fn protection_ends_on_each_fan_handback_but_not_sampling_reset() {
+    use opennavo_desktop_lib::monitor::health::HealthTracker;
+    let sample = opennavo_desktop_lib::monitor::engine::empty_sample(&system());
+    for reason in [
+        FanReason::User,
+        FanReason::WakeReapplied,
+        FanReason::HeartbeatLost,
+        FanReason::WriteFailed,
+        FanReason::HelperStarted,
+        FanReason::HelperUninstalled,
+        FanReason::AppQuit,
+        FanReason::Sleep,
+    ] {
+        let mut tracker = HealthTracker::default();
+        tracker.fan_reason(FanReason::Overheat);
+        assert_eq!(
+            tracker.evaluate(&sample, &Modules::new(), 0, 0).level,
+            HealthLevel::Critical
+        );
+        // Engine reset on screen/sleep only restarts sustained-duration counters.
+        tracker.reset();
+        assert_eq!(
+            tracker.evaluate(&sample, &Modules::new(), 1, 0).level,
+            HealthLevel::Critical
+        );
+        tracker.fan_reason(reason);
+        assert_eq!(
+            tracker.evaluate(&sample, &Modules::new(), 2, 0).level,
+            HealthLevel::Good,
+            "{reason:?}"
+        );
+    }
+}
+#[test]
+fn ending_fan_protection_still_reports_a_sustained_high_temperature() {
+    use opennavo_desktop_lib::monitor::health::HealthTracker;
+    let mut sample = opennavo_desktop_lib::monitor::engine::empty_sample(&system());
+    sample.sensors = Some(vec![SensorReading {
+        key: "cpu".into(),
+        name: "CPU".into(),
+        group: SensorGroup::Cpu,
+        celsius: number(98.0),
+    }]);
+    let modules = [MonitorModule::Sensors].into();
+    let mut tracker = HealthTracker::default();
+    tracker.fan_reason(FanReason::Overheat);
+    assert_eq!(
+        tracker.evaluate(&sample, &modules, 0, 0).level,
+        HealthLevel::Critical
+    );
+    tracker.fan_reason(FanReason::HeartbeatLost);
+    assert_eq!(
+        tracker.evaluate(&sample, &modules, 10_000, 0).level,
+        HealthLevel::Attention
+    );
+    sample.sensors.as_mut().unwrap()[0].celsius = number(50.0);
+    assert_eq!(
+        tracker.evaluate(&sample, &modules, 11_000, 0).level,
+        HealthLevel::Good
+    );
+}
+#[test]
+fn decoded_battery_temperature_warns_only_above_forty_celsius() {
+    use opennavo_desktop_lib::monitor::{battery, health::HealthTracker};
+    let mut sample = opennavo_desktop_lib::monitor::engine::empty_sample(&system());
+    let modules = [MonitorModule::Battery].into();
+    let mut tracker = HealthTracker::default();
+    for (raw, hot) in [
+        (2850.0, false),
+        (3300.0, false),
+        (3999.0, false),
+        (4000.0, false),
+        (4100.0, true),
+        (65535.0, false),
+    ] {
+        sample.battery = Some(BatterySample {
+            percent: ratio(0.8),
+            charging: false,
+            on_ac: false,
+            minutes_remaining: None,
+            health_percent: None,
+            cycle_count: None,
+            design_capacity_mah: None,
+            max_capacity_mah: None,
+            temperature_c: battery::temperature(Some(raw)).map(number),
+            voltage_v: None,
+            power_watts: None,
+            adapter_watts: None,
+        });
+        let health = tracker.evaluate(&sample, &modules, 0, 0);
+        assert_eq!(
+            health
+                .issues
+                .iter()
+                .any(|issue| issue.key == HealthIssueKey::BatteryHot),
+            hot,
+            "raw={raw}"
+        );
+    }
+}
 #[test]
 fn health_uses_sustained_monotonic_cpu_threshold_and_exact_disk_boundaries() {
     let mut tracker = opennavo_desktop_lib::monitor::health::HealthTracker::default();

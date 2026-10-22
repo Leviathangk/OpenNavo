@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { ReleaseEntry } from '@opennavo/api';
-import { formatDate, formatReleaseVersion, formatTime } from '@opennavo/shared';
+import { formatDate, formatReleaseVersion, formatTime, releaseTitleDetail } from '@opennavo/shared';
 import OnButton from './OnButton.vue';
 import OnChip from './OnChip.vue';
 import OnCodeText from './OnCodeText.vue';
@@ -136,6 +136,8 @@ const compatibility = computed(() =>
 );
 // Entries for one build show a short build tag; the full build version stays in the tooltip.
 const label = computed(() => formatReleaseVersion(props.entry));
+// Editorial titles often only repeat the app name and version; show the ones that add to it.
+const titleDetail = computed(() => releaseTitleDetail(props.entry.title, props.entry.version));
 const fullVersion = computed(() => (props.entry.build ? props.entry.version : undefined));
 </script>
 
@@ -239,6 +241,7 @@ const fullVersion = computed(() => (props.entry.build ? props.entry.version : un
         </a>
       </div>
       <div v-else :lang="bodyLang">
+        <p v-if="titleDetail" class="m-0 mt-12px text-14px font-semibold text-ink-primary">{{ titleDetail }}</p>
         <p v-if="entry.summary" class="m-0 mt-12px whitespace-pre-line text-13px leading-[1.5] text-ink-secondary">
           {{ entry.summary }}
         </p>

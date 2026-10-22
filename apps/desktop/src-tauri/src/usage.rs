@@ -1,13 +1,9 @@
-//! Opt-in running-installation DAU, including background/menu-bar operation.
+//! Automatic running-installation DAU, including background/menu-bar operation.
 //! Owned by Rust so hidden/suspended WebViews cannot stop the daily tick.
 use crate::{AppError, core::DesktopCore};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::BTreeMap,
-    sync::{Arc, atomic::Ordering},
-    time::Duration,
-};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 pub const HISTORY_KEY: &str = "usage_history_v1";
 const WEEK: i64 = 7 * 86_400_000;
@@ -89,38 +85,18 @@ async fn tick(
     now: DateTime<Utc>,
     version: &str,
 ) -> Result<(), AppError> {
-    let epoch;
     let mut history;
     {
         let settings = core
             .settings
             .read()
             .map_err(|_| AppError::new("E_UNKNOWN", "settings_poisoned"))?;
-        if !settings.usage_analytics {
-            // Also finish clearing history after a crash between saving opt-out and removing the outbox.
-            if core
-                .database
-                .meta(HISTORY_KEY)?
-                .is_some_and(|value| value != "null")
-            {
-                core.database.set_meta(HISTORY_KEY, "null")?;
-            }
-            return Ok(());
-        }
-        epoch = core.usage_epoch.load(Ordering::Acquire);
         history = History::load(core)?;
         history.record(now, version, settings.locale.as_str());
         history.save(core)?;
     }
     for activity in history.pending.clone() {
-        if core.usage_epoch.load(Ordering::Acquire) != epoch {
-            break;
-        }
-        let request = client.post(url).json(&activity).send();
-        let response = tokio::select! {
-            result = request => result?,
-            _ = core.usage_changed.notified() => break,
-        };
+        let response = client.post(url).json(&activity).send().await?;
         if response.status() != reqwest::StatusCode::NO_CONTENT {
             break;
         }
@@ -135,13 +111,6 @@ async fn tick(
             // Older/malformed responses cannot safely acknowledge a client-clock date.
             break;
         };
-        let settings = core
-            .settings
-            .read()
-            .map_err(|_| AppError::new("E_UNKNOWN", "settings_poisoned"))?;
-        if !settings.usage_analytics || core.usage_epoch.load(Ordering::Acquire) != epoch {
-            break;
-        }
         history.acknowledge(&activity, acknowledged_day);
         history.save(core)?;
     }
@@ -175,10 +144,7 @@ pub fn start(core: &Arc<DesktopCore>, version: String) {
             }
             // Errors are deliberately silent; the bounded outbox retries next minute.
             let _ = tick(&core, &client, &url, Utc::now(), &version).await;
-            tokio::select! {
-                _ = tokio::time::sleep(Duration::from_secs(60)) => {},
-                _ = core.usage_changed.notified() => {},
-            }
+            tokio::time::sleep(Duration::from_secs(60)).await;
         }
     });
 }
@@ -234,29 +200,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn opt_out_never_creates_an_identity_or_connects() {
-        let tmp = tempfile::tempdir().unwrap();
-        let core = DesktopCore::open(
-            tmp.path().join("data"),
-            tmp.path().join("cache"),
-            tmp.path().join("askpass"),
-            Arc::new(|_| {}),
-        )
-        .unwrap();
-        assert!(!core.current_settings().unwrap().usage_analytics);
-        tick(
-            &core,
-            &reqwest::Client::new(),
-            "http://127.0.0.1:1/usage/activity",
-            Utc::now(),
-            "0.1.3",
-        )
-        .await
-        .unwrap();
-        assert!(core.database.meta(HISTORY_KEY).unwrap().is_none());
-    }
-    #[tokio::test]
-    async fn background_report_survives_restart_and_opt_out_clears_pending_data() {
+    async fn automatic_background_report_survives_restart_and_legacy_disabled_setting() {
         use std::io::{Read, Write};
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let url = format!("http://{}/usage/activity", listener.local_addr().unwrap());
@@ -304,9 +248,12 @@ mod tests {
             .unwrap()
         };
         let core = open();
-        let mut settings = core.current_settings().unwrap();
-        settings.usage_analytics = true;
-        core.replace_settings(settings).await.unwrap();
+        // Old persisted opt-out is no longer a supported setting.
+        let mut legacy = serde_json::to_value(core.current_settings().unwrap()).unwrap();
+        legacy["usageAnalytics"] = serde_json::json!(false);
+        core.replace_settings(serde_json::from_value(legacy).unwrap())
+            .await
+            .unwrap();
         let now = Utc::now();
         let client = reqwest::Client::new();
         tick(&core, &client, &url, now, "0.1.3").await.unwrap();
@@ -316,17 +263,11 @@ mod tests {
         // The fixture server has closed. A duplicate network attempt would fail this tick.
         tick(&restarted, &client, &url, now, "0.1.3").await.unwrap();
         assert!(History::load(&restarted).unwrap().pending.is_empty());
-        let mut settings = restarted.current_settings().unwrap();
-        settings.usage_analytics = false;
-        restarted.replace_settings(settings).await.unwrap();
-        assert_eq!(
-            restarted.database.meta(HISTORY_KEY).unwrap().as_deref(),
-            Some("null")
-        );
-        tick(&restarted, &client, &url, now, "0.1.3").await.unwrap();
-        assert_eq!(
-            restarted.database.meta(HISTORY_KEY).unwrap().as_deref(),
-            Some("null")
+        assert!(
+            serde_json::to_value(restarted.current_settings().unwrap())
+                .unwrap()
+                .get("usageAnalytics")
+                .is_none()
         );
     }
 }

@@ -206,9 +206,14 @@ pub struct CleanupScanEvent(pub CleanupProgress);
 pub struct CleanupChangedEvent(pub CleanupSummary);
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
-#[serde(transparent)]
 #[tauri_specta(event_name = "monitor:sample")]
-pub struct MonitorSampleEvent(pub MonitorSample);
+pub struct MonitorSampleEvent {
+    #[serde(flatten)]
+    pub sample: MonitorSample,
+    /// Older clients and sample fixtures can omit this; live publications include it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub available: Option<Vec<MonitorModule>>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(transparent)]

@@ -26,6 +26,7 @@ unsafe extern "C" {
 #[link(name = "IOKit", kind = "framework")]
 unsafe extern "C" {
     fn IOServiceMatching(name: *const c_char) -> Ref;
+    fn IOServiceNameMatching(name: *const c_char) -> Ref;
     fn IOServiceGetMatchingServices(port: u32, matching: Ref, iterator: *mut u32) -> i32;
     fn IOIteratorNext(iterator: u32) -> u32;
     fn IOObjectRelease(object: u32) -> i32;
@@ -124,22 +125,35 @@ pub fn boolean(dict: Ref, name: &str) -> Option<bool> {
     unsafe { (CFGetTypeID(value) == CFBooleanGetTypeID()).then(|| CFBooleanGetValue(value)) }
 }
 pub fn services(class: &str) -> Vec<(u64, Owned)> {
-    service_values(class, None)
+    service_values(class, None, false)
 }
 /// Fetch only the requested registry property; avoid copying whole driver dictionaries each tick.
 pub fn property_services(class: &str, property: &str) -> Vec<(u64, Owned)> {
     let Some(key) = string(property) else {
         return vec![];
     };
-    service_values(class, Some(key.0))
+    service_values(class, Some(key.0), false)
 }
-fn service_values(class: &str, key: Option<Ref>) -> Vec<(u64, Owned)> {
+/// Some registry nodes (including AppleSmartBatteryPack) are names, not driver classes.
+pub fn named_property_services(name: &str, property: &str) -> Vec<(u64, Owned)> {
+    let Some(key) = string(property) else {
+        return vec![];
+    };
+    service_values(name, Some(key.0), true)
+}
+fn service_values(class: &str, key: Option<Ref>, by_name: bool) -> Vec<(u64, Owned)> {
     let Ok(name) = CString::new(class) else {
         return vec![];
     };
     let mut iterator = 0;
     // IOServiceGetMatchingServices consumes the matching dictionary, even on failure.
-    let matching = unsafe { IOServiceMatching(name.as_ptr()) };
+    let matching = unsafe {
+        if by_name {
+            IOServiceNameMatching(name.as_ptr())
+        } else {
+            IOServiceMatching(name.as_ptr())
+        }
+    };
     if matching.is_null()
         || unsafe { IOServiceGetMatchingServices(0, matching, &mut iterator) } != 0
     {

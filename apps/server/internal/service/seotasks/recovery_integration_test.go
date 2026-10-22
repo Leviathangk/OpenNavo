@@ -68,7 +68,13 @@ func TestSettledTasksKeepTheirReason(t *testing.T) {
 	require.JSONEq(t, `{"locale":"fr-FR","status":"written","reason":"validated"}`, string(task.Result))
 }
 
-func TestReopenBoundsAgentsButNotPeople(t *testing.T) {
+func TestReopenBacksOffWithoutLifetimeLimit(t *testing.T) {
+	require.Equal(t, time.Hour, seotasks.AgentReopenWait(1))
+	require.Equal(t, 2*time.Hour, seotasks.AgentReopenWait(2))
+	require.Equal(t, 16*time.Hour, seotasks.AgentReopenWait(5))
+	require.Equal(t, 24*time.Hour, seotasks.AgentReopenWait(6))
+	require.Equal(t, 24*time.Hour, seotasks.AgentReopenWait(40))
+
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	svc := &seotasks.Service{DB: st.DB}
@@ -78,18 +84,23 @@ func TestReopenBoundsAgentsButNotPeople(t *testing.T) {
 		_, err := svc.Complete(ctx, id, task.Fencing, "agent:1:2", "quarantined", "validator rejected the fix")
 		require.NoError(t, err)
 	}
+	reopenedAgo := func(d time.Duration) {
+		require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET reopened_at=clock_timestamp()-make_interval(secs=>?) WHERE id=?", d.Seconds(), id).Error)
+	}
 	var state *seotasks.StateError
 	_, err := svc.Reopen(ctx, id, "agent:1:2", "nothing to reopen", false)
 	require.ErrorAs(t, err, &state)
 	require.Equal(t, "not_reopenable", state.Reason)
 
-	for round := 1; round <= seotasks.AgentReopenLimit; round++ {
+	for round := 1; round <= 7; round++ {
 		quarantine()
 		if round > 1 {
+			wait := seotasks.AgentReopenWait(round - 1)
+			reopenedAgo(wait - time.Minute)
 			_, err = svc.Reopen(ctx, id, "agent:1:2", "retry too soon", false)
-			require.ErrorAs(t, err, &state)
+			require.ErrorAs(t, err, &state, "round %d waits %s", round, wait)
 			require.Equal(t, "reopen_cooldown", state.Reason)
-			require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET reopened_at=clock_timestamp()-interval '2 hours' WHERE id=?", id).Error)
+			reopenedAgo(wait + time.Minute)
 		}
 		task, err := svc.Reopen(ctx, id, "agent:1:2", "corrected the version literal", false)
 		require.NoError(t, err)
@@ -98,10 +109,6 @@ func TestReopenBoundsAgentsButNotPeople(t *testing.T) {
 		require.Contains(t, string(task.Result), `"reopenedFrom": "quarantined"`)
 	}
 	quarantine()
-	require.NoError(t, st.DB.Exec("UPDATE seo_tasks SET reopened_at=clock_timestamp()-interval '2 hours' WHERE id=?", id).Error)
-	_, err = svc.Reopen(ctx, id, "agent:1:2", "one more try", false)
-	require.ErrorAs(t, err, &state)
-	require.Equal(t, "reopen_limit", state.Reason)
 	task, err := svc.Reopen(ctx, id, "admin:1", "reviewed by a person", true)
 	require.NoError(t, err)
 	require.Equal(t, "open", task.State)

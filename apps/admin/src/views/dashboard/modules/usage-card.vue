@@ -110,6 +110,25 @@ const points = (platform: 'web' | 'desktop') =>
           </tbody>
         </NTable>
       </section>
+      <section v-if="usage.countries?.length">
+        <h3 class="mb-8px mt-0 text-14px font-600">{{ text('countries') }}</h3>
+        <NTable size="small" class="tabular-nums">
+          <thead>
+            <tr>
+              <th scope="col">{{ text('country') }}</th>
+              <th scope="col">{{ text('desktop') }}</th>
+              <th scope="col">{{ text('web') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in usage.countries" :key="row.country">
+              <th scope="row">{{ row.country === 'ZZ' ? text('unknownCountry') : row.country }}</th>
+              <td>{{ row.desktop }}</td>
+              <td>{{ row.web }}</td>
+            </tr>
+          </tbody>
+        </NTable>
+      </section>
       <NText depth="3" class="text-12px">{{ text('newHint') }}</NText>
     </div>
   </NCard>

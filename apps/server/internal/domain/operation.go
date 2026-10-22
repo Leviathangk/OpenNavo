@@ -14,13 +14,15 @@ type Operation struct {
 }
 
 // AgentExecution is transport-neutral. Lease ownership always comes from the
-// authenticated token in Operation, never from this request envelope.
+// authenticated token in Operation, never from this request envelope. TaskID is
+// zero for an unleased catalog edit, whose preview may omit ExpectedRevision.
 type AgentExecution struct {
-	TaskID           int64   `json:"taskId"`
-	Fencing          int64   `json:"fencing"`
-	IdempotencyKey   string  `json:"idempotencyKey"`
-	ExpectedRevision int64   `json:"expectedRevision"`
-	EvidenceIDs      []int64 `json:"evidenceIds"`
+	TaskID              int64   `json:"taskId"`
+	Fencing             int64   `json:"fencing"`
+	IdempotencyKey      string  `json:"idempotencyKey"`
+	ExpectedRevision    int64   `json:"expectedRevision"`
+	ExpectedRevisionSet bool    `json:"-"`
+	EvidenceIDs         []int64 `json:"evidenceIds"`
 }
 type operationKey struct{}
 

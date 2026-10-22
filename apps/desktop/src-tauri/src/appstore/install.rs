@@ -256,9 +256,19 @@ impl PrivilegedInstall {
         receipt: &Path,
         app_path: &Path,
     ) -> Result<Self, AppError> {
-        if pkg.parent() != Some(staging)
-            || receipt.parent() != Some(staging)
-            || pkg == receipt
+        // The helper builds these paths through URL, which drops a `/private` prefix and
+        // decomposes accented names (a home folder called "José"). Compare where they
+        // resolve to, and keep the spelling that is on disk.
+        let staged = |path: &Path| {
+            path.canonicalize()
+                .ok()
+                .filter(|resolved| resolved.parent() == Some(staging))
+        };
+        let (Some(pkg), Some(receipt)) = (staged(pkg), staged(receipt)) else {
+            return Err(engine("store_artifact_path"));
+        };
+        let (pkg, receipt) = (pkg.as_path(), receipt.as_path());
+        if pkg == receipt
             || app_path.extension().is_none_or(|e| e != "app")
             || !app_path.is_absolute()
         {

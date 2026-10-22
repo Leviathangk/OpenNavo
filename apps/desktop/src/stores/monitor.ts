@@ -9,6 +9,7 @@ import type {
   MonitorMenuBar,
   MonitorModule,
   MonitorSample,
+  MonitorSampleEvent,
   MonitorTrendPoint,
   MonitorView,
   SystemInfo
@@ -28,18 +29,32 @@ export type DisplayModule = keyof MonitorMenuBar;
 export const MODULES: readonly DisplayModule[] = ['cpu', 'gpu', 'memory', 'disk', 'network', 'battery', 'sensors'];
 /** What Rust samples for a module: sensors show the temperatures and the fans. */
 const sampled = (module: MonitorModule): MonitorModule[] => (module === 'sensors' ? ['sensors', 'fans'] : [module]);
-/** Chart history kept in memory: the last 60 seconds (decision 8). */
+/** Raw samples kept in memory; the minute chart maps them to 60 one-second slots. */
 export const HISTORY = 60;
 /** The detail's long chart (M3): one point per 5 seconds over the last hour, kept in memory by Rust. */
 export const TREND_STEP_MS = 5000;
 export const TREND_POINTS = 720;
 const HIDDEN_ITEM: MenuBarItemSetting = { enabled: false, style: 'text' };
 
+/** Later entries win at equal timestamps, so a delayed snapshot cannot replace a live reading. */
+const mergeReadings = <T extends { at: number }>(older: T[], newer: T[]): T[] =>
+  [...new Map([...older, ...newer].map(entry => [entry.at, entry])).values()].sort((a, b) => a.at - b.at);
+const trendBucket = (at: number) => Math.floor(at / TREND_STEP_MS) * TREND_STEP_MS;
+/** Rust returns averages at bucket starts; live readings replace only their own five-second bucket. */
+function mergeTrend(...groups: MonitorTrendPoint[][]) {
+  const entries = groups
+    .flat()
+    .map(point => (point.at === trendBucket(point.at) ? point : { ...point, at: trendBucket(point.at) }));
+  const merged = mergeReadings([], entries).slice(-TREND_POINTS);
+  const end = merged.at(-1)?.at ?? 0;
+  return merged.filter(point => point.at > end - TREND_POINTS * TREND_STEP_MS);
+}
+
 const mean = (values: readonly number[]) =>
   values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 /** A trend point from a live sample, so an open hour chart keeps moving between loads. */
 const trendPoint = (sample: MonitorSample): MonitorTrendPoint => ({
-  at: sample.at,
+  at: trendBucket(sample.at),
   cpu: sample.cpu.usage,
   gpu: sample.gpu?.usage ?? null,
   memory: sample.memory.totalBytes ? sample.memory.usedBytes / sample.memory.totalBytes : null,
@@ -75,21 +90,32 @@ export const useMonitorStore = defineStore('monitor', () => {
   const menuBar = computed(() => settings.value?.monitorMenuBar ?? null);
   const item = (module: DisplayModule) => menuBar.value?.[module] ?? HIDDEN_ITEM;
   const menuBarCount = computed(() => MODULES.filter(module => item(module).enabled).length);
-  /** One value per kept sample, oldest first; null where Rust had no reading yet (first delta, sleep). */
-  const series = (pick: (sample: MonitorSample) => number | null | undefined) =>
-    history.value.map(entry => pick(entry) ?? null);
+  /** One slot per second in the last minute; slower sampling and sleep leave gaps. */
+  function series(pick: (sample: MonitorSample) => number | null | undefined) {
+    const end = sample.value?.at ?? 0;
+    const slots: (number | null)[] = Array.from({ length: HISTORY }, () => null);
+    for (const entry of history.value) {
+      const index = HISTORY - 1 - Math.floor((end - entry.at) / 1000);
+      if (index >= 0 && index < HISTORY) slots[index] = pick(entry) ?? null;
+    }
+    return slots;
+  }
 
   const generations: Partial<Record<MonitorView, number>> = {};
+  let availabilityRevision = 0;
   async function subscribe(view: MonitorView, wanted: MonitorModule[]) {
     const generation = (generations[view] ?? 0) + 1;
     generations[view] = generation;
+    const revision = availabilityRevision;
+    const before = new Map(history.value.map(entry => [entry.at, entry]));
     views.value = { ...views.value, [view]: wanted };
     const snapshot = await unwrap(commands.monitorSubscribe(view, [...new Set(wanted.flatMap(sampled))]));
     if (generations[view] !== generation) return;
     system.value = snapshot.system;
-    available.value = snapshot.available;
-    // Rust keeps one history for all outlets; take it unless this window already holds more.
-    if (snapshot.history.length >= history.value.length) history.value = snapshot.history.slice(-HISTORY);
+    if (availabilityRevision === revision) available.value = snapshot.available;
+    // Refresh cached entries, retaining only readings received while the snapshot was in flight.
+    const live = history.value.filter(entry => before.get(entry.at) !== entry);
+    history.value = mergeReadings(mergeReadings(history.value, snapshot.history), live).slice(-HISTORY);
   }
 
   /** Which modules this Mac has, for screens that show no samples (settings): a module-less subscription, released at once. */
@@ -114,19 +140,27 @@ export const useMonitorStore = defineStore('monitor', () => {
     await unwrap(commands.monitorUnsubscribe(view)).catch(() => undefined);
   }
 
-  function applySample(next: MonitorSample) {
-    history.value = [...history.value.slice(-(HISTORY - 1)), next];
+  function applySample(next: MonitorSampleEvent) {
+    if (next.available != null) {
+      availabilityRevision++;
+      available.value = next.available;
+    }
+    history.value = mergeReadings(history.value, [next]).slice(-HISTORY);
     fanOverride.value = null;
-    const last = trend.value?.at(-1);
-    if (trend.value && (!last || next.at - last.at >= TREND_STEP_MS))
-      trend.value = [
-        ...trend.value.filter(point => point.at > next.at - TREND_POINTS * TREND_STEP_MS),
-        trendPoint(next)
-      ];
+    if (trend.value) trend.value = mergeTrend(trend.value, [trendPoint(next)]);
   }
 
+  let trendGeneration = 0;
   async function loadTrend() {
-    trend.value = await unwrap(commands.monitorTrend());
+    const generation = ++trendGeneration;
+    // Capture live points even while the first history request is still loading.
+    trend.value ??= [];
+    const before = new Map(trend.value.map(point => [trendBucket(point.at), point]));
+    const snapshot = await unwrap(commands.monitorTrend());
+    if (generation !== trendGeneration) return;
+    const live = trend.value.filter(point => before.get(trendBucket(point.at)) !== point);
+    // Server averages replace earlier provisional values, but not live changes made during this request.
+    trend.value = mergeTrend(trend.value, snapshot, live);
   }
   /** One slot per 5 seconds over the last hour, oldest first; null where nothing was sampled (paused, asleep). */
   function trendSeries(pick: (point: MonitorTrendPoint) => number | null) {
@@ -146,12 +180,11 @@ export const useMonitorStore = defineStore('monitor', () => {
   }
 
   async function setMenuBar(module: DisplayModule, patch: Partial<MenuBarItemSetting>) {
-    const current = menuBar.value;
-    if (!current) return;
-    await settings.update('monitorMenuBar', {
+    if (!menuBar.value) return;
+    await settings.update('monitorMenuBar', current => ({
       ...current,
       [module]: { ...current[module], ...patch }
-    });
+    }));
     // With this off, closing the window quits OpenNavo and every item goes with it (§12): offer to keep it running.
     if (patch.enabled && settings.value?.keepInMenuBarOnClose === false) offerKeepInMenuBar();
   }

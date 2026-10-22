@@ -370,18 +370,6 @@ onMounted(async () => {
         <OnCard v-else-if="section === 'privacy'" padding="none">
           <SettingRow
             v-if="settings.value"
-            :label="t('settings.privacy.usageAnalytics')"
-            :hint="t('settings.privacy.usageAnalyticsHint')"
-            label-id="setting-usageAnalytics"
-          >
-            <OnToggle
-              :model-value="settings.value.usageAnalytics"
-              aria-labelledby="setting-usageAnalytics"
-              @update:model-value="value => save('usageAnalytics', value)"
-            />
-          </SettingRow>
-          <SettingRow
-            v-if="settings.value"
             :label="t('settings.privacy.crashReports')"
             :hint="t('settings.privacy.crashReportsHint')"
             label-id="setting-crashReports"

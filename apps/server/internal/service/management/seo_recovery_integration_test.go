@@ -12,6 +12,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func agentOperation(name string) *domain.Operation {
@@ -65,12 +66,61 @@ func TestNominatedAppBecomesAListingTask(t *testing.T) {
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(901,'cask','listed-app','listed-app','homebrew/cask','Listed','1.0','1.0','{}','fixture')`).Error)
 	_, err = nominate("listed-app", request())
 	requireRejected(t, err, "already_listed")
+	// A published automatic listing is corrected through a new listing task.
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(902,'cask','auto-app','auto-app','homebrew/cask','Auto','1.0','1.0','{}','fixture');
+ INSERT INTO seo_listing_candidates(token,state,payload,package_id) VALUES('auto-app','published','{}',902)`).Error)
+	correction, err := nominate("auto-app", request())
+	require.NoError(t, err)
+	require.Equal(t, "listing:auto-app", correction.(seotasks.Task).EntityKey)
+	require.Equal(t, "open", correction.(seotasks.Task).State)
 	require.NoError(t, st.DB.Exec(`INSERT INTO seo_listing_candidates(token,state,payload) VALUES('refused-app','rejected','{}')`).Error)
 	_, err = nominate("refused-app", request())
 	requireRejected(t, err, "candidate_rejected")
 	insecure := request()
 	insecure["homepage"] = "http://skilldeck.example.test"
 	_, err = nominate("other-app", insecure)
+	var app *domain.AppError
+	require.True(t, errors.As(err, &app))
+	require.Equal(t, domain.CodeValidation, app.Code)
+}
+
+// An agent may pick its own article topic: nominating creates the topic task the
+// article workflow claims, and never a second task for a topic already queued.
+func TestNominatedTopicBecomesATopicTask(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &Service{Store: st}
+	nominate := func(slug string) (any, error) {
+		body := map[string]any{"idempotencyKey": uuid.NewString(), "keyword": "batch rename files mac", "reason": "Recurring question with no guide"}
+		return svc.Execute(domain.WithOperation(ctx, agentOperation("nominateSeoTopic")), "NominateSeoTopic", Input{Key: slug, Body: body})
+	}
+	result, err := nominate("batch-rename-files-mac")
+	require.NoError(t, err)
+	task := result.(seotasks.Task)
+	require.Equal(t, "topic", task.Kind)
+	require.Equal(t, "article:new:batch-rename-files-mac", task.EntityKey)
+	require.Equal(t, "en-US", *task.Locale)
+	require.EqualValues(t, 100, task.Priority)
+	require.Contains(t, string(task.Evidence), `"targetSlug": "batch-rename-files-mac"`)
+	again, err := nominate("batch-rename-files-mac")
+	require.NoError(t, err)
+	require.Equal(t, task.ID, again.(seotasks.Task).ID)
+
+	demand, err := (&seotasks.Service{DB: st.DB}).Enqueue(ctx, seotasks.NewTask{Kind: "topic", EntityKey: "article:new:best-mac-launchers", DedupeKey: "demand:1", RuleVersion: "fixture", Evidence: map[string]any{"source": "keywords"}})
+	require.NoError(t, err)
+	queued, err := nominate("best-mac-launchers")
+	require.NoError(t, err)
+	require.Equal(t, demand.ID, queued.(seotasks.Task).ID, "a keyword topic already queued is reused")
+
+	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
+		if err := tx.Exec("INSERT INTO articles(id,slug,working_revision_id) VALUES(901,'written-guide',901)").Error; err != nil {
+			return err
+		}
+		return tx.Exec("INSERT INTO article_revisions(id,article_id,number,source_locale,type) VALUES(901,901,1,'en-US','tutorial')").Error
+	}))
+	_, err = nominate("written-guide")
+	requireRejected(t, err, "article_exists")
+	_, err = nominate("Not A Slug")
 	var app *domain.AppError
 	require.True(t, errors.As(err, &app))
 	require.Equal(t, domain.CodeValidation, app.Code)

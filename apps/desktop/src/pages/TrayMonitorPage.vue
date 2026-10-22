@@ -25,9 +25,10 @@ const fromQuery = () =>
     : null;
 const module = ref<DisplayModule>(fromQuery() ?? 'cpu');
 let stop: (() => void) | undefined;
+let disposed = false;
 
 function subscribe() {
-  if (document.visibilityState === 'hidden') return;
+  if (disposed || document.visibilityState === 'hidden') return;
   void store.subscribe('popover', [module.value]).catch(() => undefined);
 }
 function onVisibility() {
@@ -40,6 +41,10 @@ onMounted(async () => {
     // Fans have no menu bar item of their own; they are shown with the sensors.
     module.value = event.payload === 'fans' ? 'sensors' : event.payload;
   });
+  if (disposed) {
+    stop();
+    return;
+  }
   document.addEventListener('visibilitychange', onVisibility);
   subscribe();
 });
@@ -48,6 +53,7 @@ watch(fromQuery, next => {
   if (next) module.value = next;
 });
 onBeforeUnmount(() => {
+  disposed = true;
   stop?.();
   document.removeEventListener('visibilitychange', onVisibility);
   void store.unsubscribe('popover');

@@ -902,9 +902,6 @@ const messages: MessageSchema = {
       install: 'Install Homebrew'
     },
     privacy: {
-      usageAnalytics: 'Share anonymous usage statistics',
-      usageAnalyticsHint:
-        'Off by default. Counts this installation once per day, including background operation. Sends a random ID, date, app version and language; no files or installed-app list. Turning off clears the local ID and unsent reports.',
       crashReports: 'Send anonymous crash reports',
       crashReportsHint: 'Off by default. Only the stack trace is sent',
       appManagement: 'App Management',

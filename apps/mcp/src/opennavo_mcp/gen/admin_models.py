@@ -740,6 +740,7 @@ class SeoOverviewActionMode(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
+    liveOperations: Annotated[list[str] | None, Field(description="Operations that execute live independently of this action's default policy. Parentheses restrict the entity scope.")] = None
     action: Annotated[str, Field(examples=['listing'])]
     enabled: Annotated[bool, Field(examples=[True])]
     mode: Annotated[Literal['proposal', 'live'], Field(examples=['proposal'])]
@@ -1042,7 +1043,7 @@ class SeoOverview(BaseModel):
     watermarks: list[SeoWatermark]
     keywordCount: Annotated[int, Field(examples=[1], ge=0)]
     targetCount: Annotated[int, Field(examples=[0], ge=0)]
-    automationReady: Annotated[bool, Field(examples=[True])]
+    automationReady: Annotated[bool, Field(description='At least one search-data source has completeness and freshness dates within the last seven UTC days and was updated within seven days. Does not gate catalog editing.', examples=[True])]
     breakers: list[SeoOverviewBreaker]
     budgets: list[SeoOverviewBudget]
     actionModes: list[SeoOverviewActionMode]
@@ -1379,7 +1380,7 @@ class Analytics(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    usageEnabled: bool = False
+    usageEnabled: bool = True
     ga4Enabled: bool
     ga4MeasurementId: Annotated[str, Field(pattern='^(G-[A-Z0-9]{4,16})?$')]
     consentRegions: Annotated[list[ConsentRegion], Field(description='ISO 3166-1 alpha-2 regions where analytics cookies wait for consent.', max_length=60)]
@@ -1591,6 +1592,12 @@ class Day(BaseModel):
     newDesktop: int
 
 
+class Country(BaseModel):
+    country: Annotated[str, Field(pattern='^[A-Z]{2}$')]
+    web: int
+    desktop: int
+
+
 class Version1(BaseModel):
     version: str
     count: int
@@ -1600,6 +1607,7 @@ class UsageOverview(BaseModel):
     timeZone: Literal['Asia/Shanghai']
     asOf: AwareDatetime
     days: list[Day]
+    countries: Annotated[list[Country] | None, Field(description="Today's active installations/browsers by last observed request country. ZZ means unknown; no raw IP is retained in usage records.")] = None
     versions: Annotated[list[Version1], Field(description="Today's active desktop installations, one most-recent version per installation.")]
 
 
@@ -5262,6 +5270,16 @@ class TranslationReadFields(BaseModel):
     coverAlt: Annotated[str | None, Field(description='Article revision cover alt in this translation locale. Empty falls back to English then source.', examples=[None], max_length=300)] = None
 
 
+class SeoTopicNomination(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
+    keyword: Annotated[str, Field(description='The search phrase the article answers.', max_length=200, min_length=1)]
+    locale: Locale | None = None
+    reason: Annotated[str, Field(description="Why the topic is worth an article. The article's source language is locale, en-US by default.", max_length=1000, min_length=1)]
+
+
 class SeoSnippetProposal(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -5378,8 +5396,8 @@ class TranslationsBatchWrite(BaseModel):
     )
     ref: ContentRef
     model: Annotated[str, Field(max_length=160, min_length=1, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')]
-    taskId: Annotated[int, Field(ge=1, le=1000000000)]
-    fencing: Annotated[int, Field(ge=1, le=1000000000)]
+    taskId: Annotated[int | None, Field(ge=1, le=1000000000)] = None
+    fencing: Annotated[int | None, Field(ge=1, le=1000000000)] = None
     translations: Annotated[list[BatchTranslationInput], Field(max_length=10, min_length=1)]
 
 
@@ -5399,7 +5417,7 @@ class TranslationsBatchResult(BaseModel):
         extra='forbid',
     )
     results: list[BatchTranslationResult]
-    taskId: Annotated[int, Field(ge=1, le=1000000000)]
+    taskId: Annotated[int, Field(description='Zero when catalog translations are written without a task.', ge=0, le=1000000000)]
     leaseRetained: bool
 
 
@@ -6462,6 +6480,7 @@ class AgentDryRun(BaseModel):
     changes: Annotated[list[Change1], Field(examples=[[{'object': {'entity': 'package', 'objectKey': '1'}, 'action': 'update', 'before': {'summary': '旧简介'}, 'after': {'summary': '新简介'}}]])]
     affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
     sourceGaps: Annotated[list[FactGap] | None, Field(description='App fact writes only: the evidence still missing or outdated after this write')] = None
+    expectedRevision: Annotated[int | None, Field(description='Unleased catalog edits only: the current revision of the edited objects. Commit with it as X-SEO-Expected-Revision; a newer revision rejects the commit with a conflict.', ge=0)] = None
 
 
 class ContentLocaleState(BaseModel):
@@ -6829,6 +6848,15 @@ class UpdateFeatureInput(BaseModel):
     body: FeatureUpsert
 
 
+class NominateSeoTopicInput(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    key: Annotated[str, Field(max_length=100, pattern='^[a-z0-9]+(-[a-z0-9]+)*$')]
+    dryRun: Annotated[bool, Field(examples=[False])] = False
+    body: SeoTopicNomination
+
+
 class SeoListingWrite(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -6840,7 +6868,7 @@ class SeoListingWrite(BaseModel):
     description: Annotated[str, Field(examples=[''], max_length=100000)]
     categoryId: Annotated[int, Field(examples=[1], ge=0)]
     iconAssetId: Annotated[int, Field(examples=[1], ge=0)]
-    baselinePackageId: Annotated[int, Field(examples=[1], ge=0)]
+    baselinePackageId: Annotated[int | None, Field(description='Optional human identity attestation. Omit or use zero when unavailable; publication does not assert verified identity.', examples=[1], ge=0)] = None
     downloadMode: Annotated[Literal['official_page', 'not_applicable'], Field(examples=['official_page'])]
     evidenceId: Annotated[int, Field(examples=[1], ge=0)]
 

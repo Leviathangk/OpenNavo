@@ -17,6 +17,7 @@ const articleListPaths = Object.keys(localizedRules({ '/articles': true }));
 
 // Web app (05-web.md): SSR, English at the root path, other languages at their manifest prefixes.
 export default defineNuxtConfig({
+  buildId: process.env.NUXT_BUILD_ID || undefined,
   compatibilityDate: '2026-10-01',
   devtools: { enabled: false },
   // Combine site styles into one file (about 10 KB), leaving one render-blocking stylesheet request on first load (05 §8).
@@ -58,6 +59,17 @@ export default defineNuxtConfig({
     // Shared with the Go worker (WEB_INTERNAL_SECRET) to authenticate cache invalidation; empty refuses all.
     internalSecret: '',
     redisUrl: '',
+    // NUXT_LOAD_SHED_* overrides; one SSR thread at ~100ms CPU/render (~10 cold renders/s).
+    // Normal 2–3/s stays below these limits. Reserve the last 48 slots for protected traffic.
+    loadShed: {
+      enabled: true,
+      lowInFlight: 8,
+      mediumInFlight: 16,
+      extremeInFlight: 64,
+      lowLagMs: 50,
+      mediumLagMs: 200,
+      extremeLagMs: 1000
+    },
     public: {
       apiBase: 'http://localhost:8080/api/v1',
       siteUrl: 'http://localhost:3000',

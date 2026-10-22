@@ -33,6 +33,7 @@ TOOLS = (
     tool("seo_listing_get", "catalog:package:edit", "getSeoListingCandidate"),
     tool("seo_listing_upsert", "catalog:package:edit", "upsertSeoListingCandidate", write=True),
     tool("seo_listing_nominate", "catalog:package:edit", "nominateSeoListing", write=True),
+    tool("seo_topic_nominate", "content:article:edit", "nominateSeoTopic", write=True),
     tool("article_test_artifacts_list", "content:article:edit", "listArticleTestArtifacts"),
     tool(
         "seo_automation_set",

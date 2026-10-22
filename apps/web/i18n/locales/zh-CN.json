@@ -62,7 +62,7 @@
   },
   "analytics": {
     "label": "统计 Cookie 设置",
-    "message": "OpenNavo 使用随机浏览器标识统计日活，并可能使用 Google Analytics Cookie 统计访问和关键操作。是否允许统计？",
+    "message": "Google Analytics 使用 Cookie 分析访问和关键操作。是否允许 Google Analytics Cookie？",
     "privacy": "隐私说明",
     "accept": "允许",
     "decline": "不允许",
