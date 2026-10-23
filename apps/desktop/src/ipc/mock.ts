@@ -54,6 +54,7 @@ function defaultSettings(): AppSettings {
     onboardingCompleted: false,
     locale: 'en-US',
     localeMode: 'system',
+    appearance: 'dark',
     launchAtLogin: false,
     keepInMenuBarOnClose: true,
     trayShowCount: true,

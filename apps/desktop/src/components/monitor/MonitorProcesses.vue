@@ -186,7 +186,7 @@ async function activityMonitor() {
       <li
         v-for="entry in list"
         :key="entry.pid"
-        class="group flex items-center gap-10px border-t border-t-solid border-[rgba(255,255,255,0.04)] first:border-t-0"
+        class="group flex items-center gap-10px border-t border-t-solid border-line-subtle first:border-t-0"
         :class="compact ? 'h-34px px-2px' : 'h-40px pl-16px pr-12px'"
       >
         <span class="flex min-w-0 items-center gap-9px" :class="compact ? 'flex-1' : 'w-210px'">
@@ -203,16 +203,16 @@ async function activityMonitor() {
           >
           <span
             v-if="entry.isSelf"
-            class="shrink-0 rounded-[5px] bg-[rgba(255,255,255,0.06)] px-6px text-10.5px leading-18px text-ink-tertiary"
+            class="shrink-0 rounded-[5px] bg-line-subtle px-6px text-10.5px leading-18px text-ink-tertiary"
             >{{ t('monitor.processes.self') }}</span
           >
           <span
             v-if="tag(entry)"
-            class="shrink-0 rounded-[5px] bg-[rgba(255,255,255,0.06)] px-6px text-10.5px leading-18px text-ink-tertiary"
+            class="shrink-0 rounded-[5px] bg-line-subtle px-6px text-10.5px leading-18px text-ink-tertiary"
             >{{ tag(entry) }}</span
           >
         </span>
-        <span v-if="!compact" class="h-6px min-w-48px flex-1 overflow-hidden rounded-[3px] bg-[rgba(255,255,255,0.06)]">
+        <span v-if="!compact" class="h-6px min-w-48px flex-1 overflow-hidden rounded-[3px] bg-line-subtle">
           <i
             class="block h-full rounded-[3px] bg-brand-coral"
             :style="{ width: `${Math.max(2, (metric(entry) / top) * 100)}%` }"

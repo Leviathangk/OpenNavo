@@ -146,7 +146,7 @@ async function purge() {
 
   <section
     v-if="outcome?.skipped.length"
-    class="mt-12px rounded-panel border border-solid border-[rgba(250,178,25,0.25)] bg-status-warning-subtle px-12px py-6px"
+    class="mt-12px rounded-panel border border-solid border-status-warning-border bg-status-warning-subtle px-12px py-6px"
   >
     <h3 class="m-0 flex items-center gap-6px py-6px text-12.5px font-600 text-status-warning">
       <OnIcon name="triangle-alert" :size="14" />{{ t('cleanup.result.skippedTitle') }}
@@ -154,7 +154,7 @@ async function purge() {
     <div
       v-for="item in outcome.skipped"
       :key="item.itemId"
-      class="flex items-center gap-10px border-t border-t-solid border-[rgba(250,178,25,0.15)] py-8px"
+      class="flex items-center gap-10px border-t border-t-solid border-status-warning-border py-8px"
     >
       <div class="min-w-0 flex-1">
         <div class="truncate font-mono text-11.5px text-ink-primary" :title="item.path || undefined">

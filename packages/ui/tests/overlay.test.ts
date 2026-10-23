@@ -324,6 +324,27 @@ describe('OnMenu', () => {
 
   const menu = () => document.body.querySelector<HTMLElement>('[role="menu"]');
 
+  it('Renders choice items as radio items with the current one checked, still reachable by keyboard', async () => {
+    const choices = [
+      { key: 'system', label: '跟随系统', checked: true },
+      { key: 'light', label: '浅色', checked: false },
+      { key: 'dark', label: '深色', checked: false }
+    ];
+    const wrapper = track(mount(OnMenu, { props: { items: choices, label: '外观' }, attachTo: document.body }));
+    await wrapper.get('button').trigger('pointerdown');
+    await wrapper.get('button').trigger('click');
+    await nextTick();
+    const radios = Array.from(menu()?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? []);
+    expect(radios.map(item => item.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false']);
+    expect(radios[0]?.querySelector('svg, .on-icon, [aria-hidden]')).not.toBeNull();
+    key(document.activeElement, { key: 'ArrowDown' });
+    key(document.activeElement, { key: 'ArrowDown' });
+    expect(document.activeElement?.textContent).toContain('浅色');
+    (document.activeElement as HTMLElement).click();
+    await nextTick();
+    expect(wrapper.emitted('select')).toEqual([['light']]);
+  });
+
   it('Opens on click without preselecting an item, cycles past disabled items, then closes and restores focus after selection', async () => {
     const wrapper = track(mount(OnMenu, { props: { items }, attachTo: document.body }));
     const trigger = wrapper.get('button');

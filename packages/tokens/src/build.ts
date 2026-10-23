@@ -6,7 +6,10 @@ export type JsonObject = { [key: string]: Json };
 export interface CssVariable {
   /** For example, --on-surface-card-alt. */
   name: string;
+  /** Default (dark) theme value. */
   value: string;
+  /** Light theme value, present only when it differs from the dark value. */
+  light?: string;
   /** Path within tokens.json, e.g. ['color', 'surface', 'cardAlt']. */
   path: string[];
   desc?: string;
@@ -86,10 +89,10 @@ export function variableName(path: string[]): string {
 export function collectCssVariables(source: JsonObject): CssVariable[] {
   const variables: CssVariable[] = [];
 
-  const visit = (node: Json, path: string[], desc?: string) => {
+  const visit = (node: Json, path: string[], desc?: string, light?: Json) => {
     if (isObject(node) && 'value' in node) {
       const description = typeof node.desc === 'string' ? node.desc : undefined;
-      visit(node.value as Json, path, description);
+      visit(node.value as Json, path, description, node.light);
       return;
     }
     if (isObject(node)) {
@@ -102,7 +105,26 @@ export function collectCssVariables(source: JsonObject): CssVariable[] {
     const value = formatValue(node, path);
     // Placeholder templates such as detailGlow's {accent} are available only as TS functions.
     if (value.includes('{')) return;
-    variables.push({ name: variableName(path), value, path, ...(desc ? { desc } : {}) });
+    const lightValue = light === undefined ? undefined : formatValue(light, path);
+    variables.push({
+      name: variableName(path),
+      value,
+      ...(lightValue !== undefined && lightValue !== value ? { light: lightValue } : {}),
+      path,
+      ...(desc ? { desc } : {})
+    });
+    // Color arrays (gradients) also expose each stop, e.g. --on-brand-logo-core-gradient-1, for SVG stop-color.
+    if (path[0] === 'color' && Array.isArray(node)) {
+      node.forEach((stop, index) => {
+        const lightStop = Array.isArray(light) ? String(light[index]) : undefined;
+        variables.push({
+          name: `${variableName(path)}-${index + 1}`,
+          value: String(stop),
+          ...(lightStop !== undefined && lightStop !== String(stop) ? { light: lightStop } : {}),
+          path: [...path, String(index + 1)]
+        });
+      });
+    }
   };
 
   for (const [group, node] of Object.entries(source)) {
@@ -112,8 +134,24 @@ export function collectCssVariables(source: JsonObject): CssVariable[] {
   return variables;
 }
 
+function themeBlock(
+  selector: string,
+  scheme: 'dark' | 'light',
+  entries: Array<[string, string]>,
+  indent = ''
+): string[] {
+  return [
+    `${indent}${selector} {`,
+    `${indent}  color-scheme: ${scheme};`,
+    ...entries.map(([name, value]) => `${indent}  ${name}: ${value};`),
+    `${indent}}`
+  ];
+}
+
+// Dark is the default theme. Light follows prefers-color-scheme unless the page sets data-theme='dark';
+// data-theme on html or any element forces a theme for that subtree (08 §3.7).
 export function renderCss(variables: CssVariable[]): string {
-  const lines = [`/* ${HEADER} */`, ':root {'];
+  const lines = [`/* ${HEADER} */`, ':root {', '  color-scheme: dark;', ''];
   let previousGroup = '';
   for (const variable of variables) {
     const group = variable.name.split('-')[3] ?? '';
@@ -123,6 +161,24 @@ export function renderCss(variables: CssVariable[]): string {
     lines.push(`  ${variable.name}: ${variable.value};`);
   }
   lines.push('}', '');
+
+  // Only themed tokens are repeated; spacing, type, radii and motion are the same in both themes.
+  const themed = variables.filter(variable => variable.light !== undefined);
+  const light = themed.map(variable => [variable.name, variable.light ?? variable.value] as [string, string]);
+  const dark = themed.map(variable => [variable.name, variable.value] as [string, string]);
+  lines.push(
+    "/* Light theme: follows the system (prefers-color-scheme) unless the page sets data-theme='dark'. */",
+    '@media (prefers-color-scheme: light) {',
+    ...themeBlock(":root:not([data-theme='dark'])", 'light', light, '  '),
+    '}',
+    '',
+    "/* data-theme='light' forces the light theme on the page (html) or on a subtree. */",
+    ...themeBlock("[data-theme='light']", 'light', light),
+    '',
+    "/* data-theme='dark' forces the dark theme, also for a subtree inside a light page. */",
+    ...themeBlock("[data-theme='dark']", 'dark', dark),
+    ''
+  );
   for (const [language, name] of [
     ['ja', 'sans-ja'],
     ['zh', 'sans-zh']
@@ -133,18 +189,24 @@ export function renderCss(variables: CssVariable[]): string {
   return lines.join('\n');
 }
 
-/** Remove { value, desc } wrappers to obtain raw runtime values. */
-export function unwrap(node: Json): Json {
+/** Remove { value, light, desc } wrappers to obtain raw runtime values for one theme. */
+export function unwrap(node: Json, theme: 'dark' | 'light' = 'dark'): Json {
   if (isObject(node)) {
-    if ('value' in node) return unwrap(node.value as Json);
+    if ('value' in node) return unwrap((theme === 'light' && 'light' in node ? node.light : node.value) as Json, theme);
     const result: JsonObject = {};
     for (const [key, value] of Object.entries(node)) {
       if (key === 'desc') continue;
-      result[key] = unwrap(value);
+      result[key] = unwrap(value, theme);
     }
     return result;
   }
   return node;
+}
+
+function hasLight(node: Json | undefined): boolean {
+  if (!isObject(node)) return false;
+  if ('value' in node) return 'light' in node;
+  return Object.values(node).some(hasLight);
 }
 
 function literal(value: Json): string {
@@ -154,12 +216,22 @@ function literal(value: Json): string {
 export function renderTokensTs(source: JsonObject, variables: CssVariable[]): string {
   const groups = Object.keys(source).filter(group => group !== 'meta');
   const blocks = groups.map(group => `export const ${group} = ${literal(unwrap(source[group] ?? null))} as const;`);
+  const lightTheme = Object.fromEntries(
+    groups.filter(group => hasLight(source[group])).map(group => [group, unwrap(source[group] ?? null, 'light')])
+  );
   const names = variables.map(variable => `  | '${variable.name.slice('--on-'.length)}'`).join('\n');
   const detailGlow = String(unwrap(child(source.effect, 'detailGlow')));
 
   return `/* ${HEADER} */
 
 ${blocks.join('\n\n')}
+
+/** Theme names; dark is the default and the values above. */
+export const themeNames = ['dark', 'light'] as const;
+export type ThemeName = (typeof themeNames)[number];
+
+/** Light theme values of the themed groups; tokens without a light value repeat the dark value. */
+export const lightTheme = ${literal(lightTheme)} as const;
 
 /** All CSS variable names without the --on- prefix. */
 export type TokenVariable =

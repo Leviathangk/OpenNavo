@@ -42,7 +42,7 @@ describe('OnSegmented', () => {
     const radios = wrapper.findAll('[role="radio"]');
     expect(radios.map(radio => radio.attributes('aria-checked'))).toEqual(['false', 'true', 'false']);
     expect(radios.map(radio => radio.attributes('tabindex'))).toEqual(['-1', '0', '-1']);
-    expect(radios[1]?.classes()).toContain('bg-surface-raised');
+    expect(radios[1]?.classes()).toContain('bg-component-segment-active');
     expect(radios[1]?.text()).toBe('App 38');
     expect(radios[1]?.findAll('[style]').map(dot => dot.attributes('style'))).toEqual([
       'background-color: var(--on-chart-series1);',

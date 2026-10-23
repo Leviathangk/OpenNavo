@@ -1,8 +1,5 @@
 /* Global @opennavo/ui base styles; import after @opennavo/tokens/tokens.css in web/desktop entries. */
-:root {
-  color-scheme: dark;
-}
-
+/* color-scheme comes from @opennavo/tokens/tokens.css with each theme; never set it here, it would override light. */
 html {
   font-family: var(--on-font-family-sans);
   font-feature-settings: var(--on-font-feature-settings);
@@ -10,11 +7,25 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--on-text-primary);
+  /* The canvas shows in overscroll and below short pages; transparent windows reset it on their own html. */
+  background-color: var(--on-surface-page);
   text-autospace: normal;
+}
+
+/* A data-theme subtree re-resolves text color; inherited color was computed with the page theme. */
+[data-theme] {
+  color: var(--on-text-primary);
 }
 
 body {
   margin: 0;
+}
+
+/* applyThemePreference sets this for one frame: colors switch together instead of each control fading. */
+[data-theme-switching] *,
+[data-theme-switching] *::before,
+[data-theme-switching] *::after {
+  transition: none !important;
 }
 
 /* Reduced motion (08 §5): disable animation/translation transitions, retaining only very brief changes. */

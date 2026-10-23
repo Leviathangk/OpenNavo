@@ -351,6 +351,10 @@ pub fn run() {
                 }
                 commands::settings::refresh_system(window.app_handle());
             }
+            // macOS switched between light and dark while the appearance follows the system.
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::ThemeChanged(_)) {
+                settings::sync_main_background(window.app_handle());
+            }
             if window.label() == "main"
                 && let tauri::WindowEvent::CloseRequested { api, .. } = event
             {
@@ -412,6 +416,9 @@ pub fn run() {
             core.install_settings_save(save)?;
             app.manage(core.clone());
             app.manage(std::sync::Arc::new(guide::Guide::default()));
+            // Tauri builds the config-defined main window before this closure runs. Apply the saved appearance before
+            // lifecycle can show that window, so a forced light or dark start never flashes the other theme.
+            settings::apply_appearance(app.handle(), core.current_settings()?.appearance);
             lifecycle::install(app.handle(), hidden);
             let notifications = notifications::NativeNotifications::new(app.handle().clone());
             let weak = std::sync::Arc::downgrade(&notifications);

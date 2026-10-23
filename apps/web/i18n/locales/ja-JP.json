@@ -23,7 +23,11 @@
     "about": "概要",
     "feedback": "フィードバック",
     "apps": "すべてのアプリ",
-    "az": "A–Z 一覧"
+    "az": "A–Z 一覧",
+    "themeLabel": "外観",
+    "themeSystem": "システムに合わせる",
+    "themeLight": "ライト",
+    "themeDark": "ダーク"
   },
   "sidebar": {
     "appLabel": "Macクライアント",

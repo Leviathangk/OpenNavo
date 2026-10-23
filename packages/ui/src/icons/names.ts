@@ -69,7 +69,10 @@ export const UI_ICONS = [
   'newspaper',
   'rss',
   'brick-wall-fire',
-  'ban'
+  'ban',
+  'sun',
+  'moon',
+  'sun-moon'
 ] as const;
 
 /** Category icons (03 §5.3 seed categories). */

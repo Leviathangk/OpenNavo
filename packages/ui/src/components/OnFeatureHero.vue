@@ -88,9 +88,10 @@ const floats = computed<FloatIcon[]>(() =>
   })
 );
 
+// A custom accent glow is softened in light mode; filter composes with the breathing opacity animation.
 const glowStyle = computed(() => {
   const gradient = heroGlowGradient(props.glowColor);
-  return gradient ? { background: gradient } : undefined;
+  return gradient ? { background: gradient, filter: 'opacity(var(--on-effect-accent-glow-opacity))' } : undefined;
 });
 
 const heading = computed(() => `h${props.headingLevel}`);

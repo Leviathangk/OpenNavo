@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { OnIcon, OnLogo } from '@opennavo/ui';
 
-// Landing footer (08 §10.14): brand/copy, locale selector on mobile only (the top bar carries it from sm up), two
-// link groups that flow down two short columns from sm up. From lg up the brand sits beside the links and the language
-// links share one row with the copyright, so the footer stays about as tall as the brand block.
+// Landing footer (08 §10.14): brand/copy, theme and locale selectors on mobile only (the top bar carries them from sm
+// up), two link groups that flow down two short columns from sm up. From lg up the brand sits beside the links and the
+// language links share one row with the copyright, so the footer stays about as tall as the brand block.
 const { t } = useI18n();
 const localePath = useLocalePath();
 const year = new Date().getFullYear();
@@ -24,7 +24,10 @@ const consent = useAnalyticsConsent();
           <OnLogo wordmark />
         </NuxtLink>
         <p class="m-0 text-13px leading-[1.65] text-ink-secondary">{{ t('footer.tagline') }}</p>
-        <span class="sm:hidden"><LanguageSwitch align="start" /></span>
+        <div class="flex items-center gap-2px sm:hidden">
+          <LanguageSwitch align="start" />
+          <ThemeSwitch align="start" />
+        </div>
       </div>
       <nav
         class="grid grid-cols-2 gap-x-48px gap-y-24px sm:grid-cols-[repeat(2,max-content)] lg:gap-x-80px"

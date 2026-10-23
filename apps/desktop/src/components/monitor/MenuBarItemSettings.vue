@@ -48,7 +48,7 @@ async function update(patch: { enabled?: boolean; style?: MenuBarStyle }) {
         :label-id="`monitor-menubar-${module}`"
       >
         <!-- A flex box, so the item's baseline cannot add a line's height above it. -->
-        <span class="flex rounded-[7px] border border-solid border-line-default bg-[rgba(38,38,40,0.96)] px-6px py-2px">
+        <span class="flex rounded-[7px] border border-solid border-line-default bg-component-menu-bar-bg px-6px py-2px">
           <MenuBarWidget :module="module" />
         </span>
         <OnToggle

@@ -1,4 +1,6 @@
 import { packageSitemaps } from './shared/utils/sitemapBuckets';
+import { THEME_STORAGE_KEY } from './shared/utils/theme';
+import { themeBootScript } from '@opennavo/ui/theme';
 // The website serves every site locale (L1): the six app languages plus de, fr, it and zh-Hant.
 import { SITE_LOCALES as LOCALES, LOCALE_METADATA, DEFAULT_LOCALE } from '@opennavo/shared/locales';
 
@@ -98,7 +100,11 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/icon-512.png' },
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }
       ],
-      meta: [{ name: 'color-scheme', content: 'dark' }]
+      // Both themes (08 §3.7): pages are served dark (server/plugins/theme.ts) and this blocking head script applies
+      // a saved choice before first paint. Never set data-theme here: the client renders app.head too and would
+      // undo the saved choice after hydration.
+      meta: [{ name: 'color-scheme', content: 'dark light' }],
+      script: [{ innerHTML: themeBootScript(THEME_STORAGE_KEY), tagPosition: 'head', tagPriority: 'critical' }]
     }
   },
   // Generate short route codes from manifest prefixes; API requests still use full locale codes.

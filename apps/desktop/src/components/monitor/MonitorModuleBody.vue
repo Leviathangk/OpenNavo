@@ -138,7 +138,7 @@ const ranges = computed(() => [
       <div class="grid grid-cols-[minmax(0,max-content)_1fr_auto] items-center gap-x-10px gap-y-7px text-12px">
         <div v-for="fan in fans" :key="fan.id" class="contents" data-testid="monitor-fan">
           <span class="max-w-160px truncate text-ink-tertiary">{{ fanName(fan) }}</span>
-          <span class="h-6px overflow-hidden rounded-[3px] bg-[rgba(255,255,255,0.06)]">
+          <span class="h-6px overflow-hidden rounded-[3px] bg-line-subtle">
             <i
               class="block h-full rounded-[3px]"
               :style="{

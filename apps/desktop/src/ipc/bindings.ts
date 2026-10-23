@@ -340,6 +340,9 @@ export type AppStoreChangeReason = "installed" | "updates" | "region";
 
 export type AppStoreEvent = AppStoreChange;
 
+/**  Window appearance: follow macOS, or keep every OpenNavo window light or dark. */
+export type Appearance = "system" | "light" | "dark";
+
 export type AvDatabaseStatus = {
 	daily: number | null,
 	main: number | null,
@@ -1777,6 +1780,7 @@ export type Settings = {
 	onboardingCompleted: boolean,
 	localeMode: LocaleMode,
 	locale: Locale,
+	appearance: Appearance,
 	launchAtLogin: boolean,
 	keepInMenuBarOnClose: boolean,
 	trayShowCount: boolean,

@@ -18,6 +18,8 @@ export interface OnMenuItem {
   disabled?: boolean;
   /** Divider before this item. */
   separator?: boolean;
+  /** Choice menus (theme, language): a defined value makes the item a radio item; true shows a check. */
+  checked?: boolean;
 }
 
 export interface OnMenuProps {
@@ -58,7 +60,7 @@ const label = computed(() => props.label ?? messages.value.menu.more);
 
 const trigger = () => root.value?.querySelector<HTMLElement>('[aria-haspopup="menu"]') ?? null;
 const enabledItems = () =>
-  Array.from(menu.value?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? []);
+  Array.from(menu.value?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([disabled])') ?? []);
 
 // Teleport menu to body and position by trigger to avoid card overflow clipping; open upward if space below is insufficient.
 function place() {
@@ -202,7 +204,8 @@ onBeforeUnmount(() => {
           <div v-if="item.separator && index > 0" role="separator" class="mx-4px my-4px h-1px bg-line-subtle"></div>
           <button
             type="button"
-            role="menuitem"
+            :role="item.checked === undefined ? 'menuitem' : 'menuitemradio'"
+            :aria-checked="item.checked === undefined ? undefined : item.checked ? 'true' : 'false'"
             tabindex="-1"
             :disabled="item.disabled"
             class="m-0 box-border flex h-32px w-full items-center gap-8px rounded-small border-none bg-transparent px-10px font-sans text-13px outline-none transition-colors duration-fast ease-standard enabled:hover:bg-component-item-active focus:bg-component-item-active disabled:cursor-not-allowed disabled:text-ink-disabled"
@@ -213,6 +216,7 @@ onBeforeUnmount(() => {
             <OnIcon v-if="item.icon" :name="item.icon" :size="16" :class="item.danger ? '' : 'text-ink-secondary'" />
             <span class="min-w-0 flex-1 truncate text-left">{{ item.label }}</span>
             <kbd v-if="item.shortcut" class="font-sans text-11px text-ink-tertiary">{{ item.shortcut }}</kbd>
+            <OnIcon v-if="item.checked" name="check" :size="14" class="text-ink-secondary" />
           </button>
         </template>
       </div>

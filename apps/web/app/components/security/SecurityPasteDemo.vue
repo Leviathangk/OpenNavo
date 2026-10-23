@@ -21,7 +21,7 @@ const { t } = useI18n();
       </p>
     </div>
     <div
-      class="absolute inset-x-16px top-46px flex flex-col gap-8px rounded-panel border border-solid border-line-default bg-surface-raised px-14px py-12px shadow-popover"
+      class="absolute inset-x-16px top-46px flex flex-col gap-8px rounded-panel border border-solid border-line-default bg-surface-popover px-14px py-12px shadow-popover"
     >
       <span class="flex items-center gap-8px text-12.5px font-600 text-ink-primary">
         <span

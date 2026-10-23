@@ -123,7 +123,7 @@ const tiles = computed(() => [
 
     <section
       v-if="result.skipped.length"
-      class="rounded-panel border border-solid border-[rgba(250,178,25,0.25)] bg-status-warning-subtle px-12px py-6px"
+      class="rounded-panel border border-solid border-status-warning-border bg-status-warning-subtle px-12px py-6px"
     >
       <h4 class="m-0 flex items-center gap-6px py-6px text-12.5px font-600 text-status-warning">
         <OnIcon name="triangle-alert" :size="14" />{{ t('uninstall.result.skippedTitle') }}
@@ -131,7 +131,7 @@ const tiles = computed(() => [
       <div
         v-for="item in result.skipped"
         :key="item.path"
-        class="border-t border-t-solid border-[rgba(250,178,25,0.15)] py-8px"
+        class="border-t border-t-solid border-status-warning-border py-8px"
       >
         <div class="truncate font-mono text-11.5px text-ink-primary" :title="item.path">
           {{ displayPath(item.path) }}
@@ -140,7 +140,7 @@ const tiles = computed(() => [
           {{ t(`uninstall.skipReasons.${item.reason}`) }}
         </div>
       </div>
-      <p class="m-0 border-t border-t-solid border-[rgba(250,178,25,0.15)] py-8px text-12px text-ink-tertiary">
+      <p class="m-0 border-t border-t-solid border-status-warning-border py-8px text-12px text-ink-tertiary">
         {{ t('uninstall.result.skippedHint') }}
       </p>
     </section>

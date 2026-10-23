@@ -129,7 +129,7 @@ const restoreLast = () => attempt(() => store.restoreLastFans(), { title: t('mon
 <template>
   <div
     class="flex flex-col gap-10px rounded-panel border border-solid border-line-subtle p-12px"
-    :class="props.compact ? 'bg-[rgba(255,255,255,0.03)]' : 'bg-surface-card'"
+    :class="props.compact ? 'bg-surface-card-alt' : 'bg-surface-card'"
     data-testid="fan-control"
     :aria-busy="busy"
   >
@@ -195,7 +195,7 @@ const restoreLast = () => attempt(() => store.restoreLastFans(), { title: t('mon
     <!-- Until the helper answers, the next step is offered right here: install it, allow it, or reinstall it. -->
     <div
       v-else-if="status === 'requires_approval'"
-      class="flex items-start gap-10px rounded-default border border-solid border-[rgba(102,164,250,0.25)] bg-status-info-subtle px-12px py-10px text-12.5px text-ink-secondary"
+      class="flex items-start gap-10px rounded-default border border-solid border-status-info-border bg-status-info-subtle px-12px py-10px text-12.5px text-ink-secondary"
     >
       <OnIcon name="info" :size="15" class="mt-2px shrink-0 text-status-info" />
       <div class="min-w-0">
@@ -213,7 +213,7 @@ const restoreLast = () => attempt(() => store.restoreLastFans(), { title: t('mon
     </div>
     <div
       v-else-if="status === 'not_installed' || status === 'error'"
-      class="flex items-start gap-10px rounded-default border border-solid border-[rgba(102,164,250,0.25)] bg-status-info-subtle px-12px py-10px text-12.5px text-ink-secondary"
+      class="flex items-start gap-10px rounded-default border border-solid border-status-info-border bg-status-info-subtle px-12px py-10px text-12.5px text-ink-secondary"
       data-testid="fan-helper-offer"
     >
       <OnIcon

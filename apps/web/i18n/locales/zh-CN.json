@@ -23,7 +23,11 @@
     "about": "关于",
     "feedback": "反馈",
     "apps": "全部应用",
-    "az": "A–Z 索引"
+    "az": "A–Z 索引",
+    "themeLabel": "外观",
+    "themeSystem": "跟随系统",
+    "themeLight": "浅色",
+    "themeDark": "深色"
   },
   "sidebar": {
     "appLabel": "Mac 客户端",

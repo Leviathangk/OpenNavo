@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { buildArtifacts, collectCssVariables } from '../src/build.ts';
 import type { JsonObject } from '../src/build.ts';
 import { blendOver, contrastRatio } from '../src/contrast.ts';
-import { color } from '../dist/tokens.ts';
+import { color, lightTheme } from '../dist/tokens.ts';
 import { adminColors, naiveDarkOverrides, naiveLightOverrides } from '../dist/naive-theme.ts';
 import { presetOpenNavo } from '../dist/uno-preset.ts';
 
@@ -201,5 +201,116 @@ describe('Locale font stacks', () => {
     );
     expect(css).toContain(':lang(zh) { --on-font-family-sans: "Inter Variable", Inter, "PingFang SC"');
     expect(naiveDarkOverrides.common?.fontFamily).toBe('var(--on-font-family-sans)');
+  });
+});
+
+// Light theme (08 §3.7): the same rules as dark, checked against the light surfaces.
+const light = lightTheme.color;
+const lightSurfaces = [light.surface.base, light.surface.card, light.surface.raised, light.surface.sidebar];
+
+describe('Light theme contrast', () => {
+  it.each([
+    ['text.primary', light.text.primary],
+    ['text.secondary', light.text.secondary],
+    ['text.tertiary', light.text.tertiary],
+    ['text.accent', light.text.accent],
+    ['brand.salmon', light.brand.salmon],
+    ['status.success', light.status.success],
+    ['status.warning', light.status.warning],
+    ['status.danger', light.status.danger],
+    ['status.info', light.status.info]
+  ])('Meets 4.5 for %s on base, card, raised and sidebar', (_name, foreground) => {
+    for (const background of lightSurfaces) expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ['success', light.status.success, light.status.successSubtle],
+    ['warning', light.status.warning, light.status.warningSubtle],
+    ['danger', light.status.danger, light.status.dangerSubtle],
+    ['info', light.status.info, light.status.infoSubtle],
+    ['salmon', light.brand.salmon, light.accent.salmonSubtle],
+    ['coral text', light.text.accent, light.accent.coralSubtle]
+  ])('Meets 4.5 for %s badges on translucent backgrounds', (_name, text, subtle) => {
+    for (const surface of [light.surface.base, light.surface.card, light.surface.cardAlt]) {
+      expect(contrastRatio(text, blendOver(subtle, surface))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('Keeps button text readable in every state', () => {
+    const { button } = light;
+    for (const background of [button.primaryBg, button.primaryHover, button.primaryPressed]) {
+      expect(contrastRatio(button.primaryText, background)).toBeGreaterThanOrEqual(4.5);
+    }
+    for (const background of [button.secondaryBg, button.secondaryHover, button.secondaryPressed]) {
+      expect(contrastRatio(button.secondaryText, background)).toBeGreaterThanOrEqual(4.5);
+    }
+    for (const background of [button.accentBg, button.accentHover, button.accentPressed]) {
+      expect(contrastRatio(button.accentText, background)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrastRatio(light.text.inverse, light.status.success)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('Keeps graphics and the focus ring at 3:1 against light surfaces', () => {
+    for (const background of [light.surface.card, light.surface.base]) {
+      expect(contrastRatio(light.brand.coral, background)).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(light.chart.series1, background)).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(light.chart.series2, background)).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(light.chart.series3, background)).toBeGreaterThanOrEqual(3);
+    }
+    expect(lightTheme.shadow.focusRing).toContain(light.brand.coral);
+  });
+
+  it('Keeps text on coral fills and terminal tiles readable', () => {
+    expect(contrastRatio(light.text.onAccent, light.brand.coral)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(light.component.cliIconText, light.component.cliIconFrom)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(light.component.monoText, light.surface.inset)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('Keeps the lightbox caption readable over pages of either theme, in dark-theme text', () => {
+    // The scrim stays dark in both themes, so the lightbox renders in the dark theme (data-theme='dark').
+    for (const page of [color.surface.page, color.surface.card, light.surface.page, light.surface.card]) {
+      const backdrop = blendOver(color.component.lightboxScrim, page);
+      expect(contrastRatio(color.text.secondary, backdrop)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(color.text.tertiary, backdrop)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe('Theme CSS', () => {
+  const css = buildArtifacts(source)['tokens.css'];
+  const themed = variables.filter(item => item.light !== undefined);
+
+  it('Defaults to dark and switches to light by media query or data-theme', () => {
+    expect(css).toMatch(/^:root \{\n  color-scheme: dark;/m);
+    expect(css).toContain(
+      "@media (prefers-color-scheme: light) {\n  :root:not([data-theme='dark']) {\n    color-scheme: light;"
+    );
+    expect(css).toContain("[data-theme='light'] {\n  color-scheme: light;");
+    expect(css).toContain("[data-theme='dark'] {\n  color-scheme: dark;");
+  });
+
+  it('Repeats only themed tokens, with their light values', () => {
+    const block = css.slice(css.indexOf("[data-theme='light'] {"), css.indexOf("[data-theme='dark'] {"));
+    for (const item of themed) expect(block).toContain(`  ${item.name}: ${item.light};`);
+    expect(block).not.toContain('--on-space-');
+    expect(block).not.toContain('--on-radius-');
+    expect(block).not.toContain('--on-typography-');
+    expect(variable('--on-surface-card')).toBe('#1A1A1A');
+    expect(themed.find(item => item.name === '--on-surface-card')?.light).toBe('#FFFFFF');
+  });
+
+  it('Exposes gradient stops for SVG stop-color in both themes', () => {
+    expect(variable('--on-brand-logo-core-gradient-1')).toBe('#FFF6D6');
+    expect(themed.find(item => item.name === '--on-brand-logo-core-gradient-1')?.light).toBe(
+      color.brand.logoCoreGradientOnLight[0]
+    );
+    expect(variable('--on-brand-logo-gradient-3')).toBe(color.brand.logoGradient[2]);
+  });
+
+  it('Gives every light value the same shape as its dark value', () => {
+    for (const item of themed) {
+      const kind = (value: string) => (value.startsWith('#') ? 'hex' : value.startsWith('rgba(') ? 'rgba' : 'other');
+      if (item.path[0] === 'color') expect(kind(item.light ?? ''), item.name).not.toBe('other');
+    }
   });
 });

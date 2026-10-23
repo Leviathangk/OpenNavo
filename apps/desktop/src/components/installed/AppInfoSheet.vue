@@ -187,7 +187,7 @@ const partialNote = computed(() =>
 
       <section
         v-if="adoptable"
-        class="rounded-big border border-solid border-[rgba(102,164,250,0.25)] bg-status-info-subtle px-16px py-14px"
+        class="rounded-big border border-solid border-status-info-border bg-status-info-subtle px-16px py-14px"
       >
         <h3 class="m-0 mb-4px flex items-center gap-7px text-13.5px font-600 text-status-info">
           <OnIcon name="sparkles" :size="14" />{{ t('appInfo.adoptTitle') }}

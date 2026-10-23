@@ -103,11 +103,12 @@ const glow = computed(() => ({ background: detailGlow(props.accent ?? undefined)
 </template>
 
 <style>
-/* Upper-right accent glow (mockup .dhead .bgglow). */
+/* Upper-right accent glow (mockup .dhead .bgglow), softened on light backgrounds. */
 .on-detail-glow {
   right: -80px;
   top: -140px;
   width: 520px;
   height: 420px;
+  opacity: var(--on-effect-accent-glow-opacity);
 }
 </style>

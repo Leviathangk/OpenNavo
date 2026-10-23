@@ -153,6 +153,14 @@ export { architectures, displayUrl, installTrend, monthlyInstalls } from './util
 export type { InstallTrend, MonthlyRow } from './utils/package';
 export { commandBreak } from './utils/command';
 export { heroGlowGradient } from './utils/glow';
+export {
+  THEME_PREFERENCES,
+  applyThemePreference,
+  isThemePreference,
+  resolveTheme,
+  themeBootScript
+} from './utils/theme';
+export type { ThemePreference } from './utils/theme';
 export { parseHighlight } from './utils/highlight';
 export { classifyLogLine } from './utils/log';
 export type { LogLineKind } from './utils/log';

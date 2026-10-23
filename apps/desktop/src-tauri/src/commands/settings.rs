@@ -20,8 +20,12 @@ pub async fn settings_set(
         .replace_settings_with(settings, Some(change))
         .await?;
     let persisted = result.clone();
+    let ui = handle.clone();
     handle
-        .run_on_main_thread(move || crate::settings::apply_apple_languages(&persisted))
+        .run_on_main_thread(move || {
+            crate::settings::apply_apple_languages(&persisted);
+            crate::settings::apply_appearance(&ui, persisted.appearance);
+        })
         .map_err(|e| AppError::new("E_UNKNOWN", "apple_languages").with_detail(e.to_string()))?;
     crate::tray::refresh(&handle);
     crate::monitor::refresh_settings(&handle);

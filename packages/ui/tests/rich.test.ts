@@ -265,6 +265,15 @@ describe('OnScreenshotGallery', () => {
     expect(wrapper.get('button span').attributes('aria-hidden')).toBe('true');
   });
 
+  it('Renders caption chips and the lightbox in the dark theme, as their backgrounds stay dark in both themes', async () => {
+    const wrapper = mount(OnScreenshotGallery, { props: { items: shots }, attachTo: document.body });
+    expect(wrapper.get('button span').attributes('data-theme')).toBe('dark');
+    await wrapper.get('button').trigger('click');
+    await nextTick();
+    expect(dialog()?.dataset.theme).toBe('dark');
+    wrapper.unmount();
+  });
+
   it('Moves focus into the lightbox, cycles with arrow keys, and closes with Escape while restoring focus', async () => {
     const wrapper = mount(OnScreenshotGallery, { props: { items: shots }, attachTo: document.body });
     const thumbs = wrapper.findAll('button');

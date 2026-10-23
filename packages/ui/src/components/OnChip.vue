@@ -27,7 +27,7 @@ const FILLED: Record<Exclude<OnChipTone, 'outline'>, string> = {
   danger: 'bg-status-danger-subtle text-status-danger',
   info: 'bg-status-info-subtle text-status-info',
   accent: 'bg-accent-salmon-subtle text-brand-salmon',
-  coral: 'bg-accent-coral-subtle text-brand-coral'
+  coral: 'bg-accent-coral-subtle text-ink-accent'
 };
 
 const OUTLINED: Record<Exclude<OnChipTone, 'outline'>, string> = {
@@ -37,7 +37,7 @@ const OUTLINED: Record<Exclude<OnChipTone, 'outline'>, string> = {
   danger: 'on-chip-tinted-border text-status-danger',
   info: 'on-chip-tinted-border text-status-info',
   accent: 'on-chip-tinted-border text-brand-salmon',
-  coral: 'on-chip-tinted-border text-brand-coral'
+  coral: 'on-chip-tinted-border text-ink-accent'
 };
 
 const classes = computed(() => {

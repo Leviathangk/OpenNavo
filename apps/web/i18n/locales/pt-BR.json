@@ -23,7 +23,11 @@
     "about": "Sobre",
     "feedback": "Feedback",
     "apps": "Todos os apps",
-    "az": "Índice A–Z"
+    "az": "Índice A–Z",
+    "themeLabel": "Aparência",
+    "themeSystem": "Igual ao sistema",
+    "themeLight": "Claro",
+    "themeDark": "Escuro"
   },
   "sidebar": {
     "appLabel": "App para Mac",

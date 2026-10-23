@@ -96,7 +96,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
         >
           {{ item.label }}
         </OnNavItem>
-        <LanguageSwitch align="start" class="self-start" />
+        <div class="flex items-center gap-2px self-start">
+          <LanguageSwitch align="start" />
+          <ThemeSwitch align="start" />
+        </div>
       </div>
     </div>
   </div>

@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./markdown": "./src/markdown.ts",
+    "./theme": "./src/utils/theme.ts",
     "./base.css": "./src/styles/base.css",
     "./system-fonts.css": "./src/styles/system-fonts.css"
   },

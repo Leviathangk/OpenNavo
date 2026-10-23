@@ -23,7 +23,11 @@
     "about": "Acerca de",
     "feedback": "Comentarios",
     "apps": "Todas las apps",
-    "az": "Índice A–Z"
+    "az": "Índice A–Z",
+    "themeLabel": "Apariencia",
+    "themeSystem": "Igual que el sistema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro"
   },
   "sidebar": {
     "appLabel": "Cliente para Mac",

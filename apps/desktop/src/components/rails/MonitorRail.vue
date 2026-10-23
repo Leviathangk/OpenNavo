@@ -44,7 +44,7 @@ async function toggle(module: DisplayModule, enabled: boolean) {
     <OnRailSection :title="t('monitor.rail.menuBar')" :subtitle="t('monitor.rail.menuBarSub')">
       <OnCard padding="md" class="flex flex-col gap-4px">
         <div
-          class="mb-8px flex min-h-30px flex-wrap items-center justify-end gap-x-2px gap-y-4px rounded-[8px] border border-solid border-line-default bg-[rgba(38,38,40,0.96)] px-6px py-4px"
+          class="mb-8px flex min-h-30px flex-wrap items-center justify-end gap-x-2px gap-y-4px rounded-[8px] border border-solid border-line-default bg-component-menu-bar-bg px-6px py-4px"
           data-testid="monitor-menubar-preview"
         >
           <MenuBarWidget v-for="module in shown" :key="module" :module="module" class="mx-6px" />

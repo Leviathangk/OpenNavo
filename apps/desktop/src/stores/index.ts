@@ -1,4 +1,5 @@
 import { watch } from 'vue';
+import { applyThemePreference } from '@opennavo/ui';
 import { useStateSubscriptions } from './stateSubscriptions';
 import { events } from '@/ipc/client';
 import { useCatalogStore } from './catalog';
@@ -144,6 +145,15 @@ export function startLocalState() {
         (next, previous) => {
           if (previous.some(item => item !== undefined)) void updates.loadStatus().catch(() => undefined);
         }
+      )
+    );
+
+    // Appearance: Rust sets the native appearance for every window; the main window also mirrors the choice as
+    // data-theme, so it switches at once (and in browser mock mode, where there is no native appearance).
+    await register(
+      watch(
+        () => settings.value?.appearance,
+        appearance => applyThemePreference(appearance ?? 'dark')
       )
     );
 

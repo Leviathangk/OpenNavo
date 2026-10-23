@@ -53,6 +53,15 @@ fn tolerant_locale<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<
         .unwrap_or_else(|_| crate::settings::system_locale()))
 }
 
+// An appearance this build does not know (saved by a newer one) or any non-string value defaults to dark, so every
+// other setting still loads.
+fn tolerant_appearance<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Appearance, D::Error> {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).unwrap_or_default())
+}
+
 // Source languages the client does not know use the existing English fallback.
 pub(crate) fn app_source_locale<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
@@ -76,6 +85,15 @@ pub enum LocaleMode {
     #[default]
     System,
     Manual,
+}
+/// Window appearance: follow macOS, or keep every OpenNavo window light or dark.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Appearance {
+    System,
+    Light,
+    #[default]
+    Dark,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
 pub struct LocaleChanged {
@@ -533,6 +551,7 @@ pub struct Settings {
     pub onboarding_completed: bool,
     pub locale_mode: LocaleMode,
     pub locale: Locale,
+    pub appearance: Appearance,
     pub launch_at_login: bool,
     pub keep_in_menu_bar_on_close: bool,
     pub tray_show_count: bool,
@@ -586,6 +605,8 @@ struct SettingsInput {
     pub locale_mode: Option<LocaleMode>,
     #[serde(deserialize_with = "tolerant_locale")]
     pub locale: Locale,
+    #[serde(deserialize_with = "tolerant_appearance")]
+    pub appearance: Appearance,
     pub launch_at_login: bool,
     pub keep_in_menu_bar_on_close: bool,
     pub tray_show_count: bool,
@@ -639,6 +660,7 @@ impl Default for SettingsInput {
             locale_mode: None,
             onboarding_completed: None,
             locale: value.locale,
+            appearance: value.appearance,
             launch_at_login: value.launch_at_login,
             keep_in_menu_bar_on_close: value.keep_in_menu_bar_on_close,
             tray_show_count: value.tray_show_count,
@@ -700,6 +722,7 @@ impl From<SettingsInput> for Settings {
             // A missing key means pre-upgrade settings; avoid sending existing users through onboarding again.
             onboarding_completed: value.onboarding_completed.unwrap_or(true),
             locale: value.locale,
+            appearance: value.appearance,
             launch_at_login: value.launch_at_login,
             keep_in_menu_bar_on_close: value.keep_in_menu_bar_on_close,
             tray_show_count: value.tray_show_count,
@@ -935,6 +958,7 @@ impl Default for Settings {
             onboarding_completed: false,
             locale_mode: LocaleMode::System,
             locale: Locale::EnUs,
+            appearance: Appearance::Dark,
             launch_at_login: false,
             keep_in_menu_bar_on_close: true,
             tray_show_count: true,

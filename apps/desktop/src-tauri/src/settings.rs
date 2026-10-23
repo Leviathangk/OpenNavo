@@ -267,6 +267,58 @@ pub fn apply_apple_languages(settings: &Settings) {
 #[cfg(not(target_os = "macos"))]
 pub fn apply_apple_languages(_: &Settings) {}
 
+// The main window's native background, shown before the page paints and in the overscroll area:
+// `color.surface.base` in packages/tokens/tokens.json (`light` and `value`). tauri.conf.json keeps the dark value for the
+// moment before settings load.
+const MAIN_BACKGROUND_LIGHT: tauri::window::Color = tauri::window::Color(0xF8, 0xF8, 0xF8, 0xFF);
+const MAIN_BACKGROUND_DARK: tauri::window::Color = tauri::window::Color(0x13, 0x13, 0x13, 0xFF);
+
+// The appearance last handed to macOS; every settings save calls apply_appearance, which only acts on a change.
+static APPLIED_APPEARANCE: std::sync::Mutex<Option<crate::model::Appearance>> =
+    std::sync::Mutex::new(None);
+
+/// Sets the app-wide appearance, which every window and web view inherits (the pages follow prefers-color-scheme), then
+/// matches the main window's native background. Call on the main thread; repeating the current value does nothing.
+pub fn apply_appearance(app: &tauri::AppHandle, appearance: crate::model::Appearance) {
+    use crate::model::Appearance;
+    {
+        let mut applied = APPLIED_APPEARANCE
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if *applied == Some(appearance) {
+            return;
+        }
+        *applied = Some(appearance);
+    }
+    app.set_theme(match appearance {
+        Appearance::System => None,
+        Appearance::Light => Some(tauri::Theme::Light),
+        Appearance::Dark => Some(tauri::Theme::Dark),
+    });
+    sync_main_background(app);
+}
+
+/// Paints the main window's native background for its effective theme. Call on the main thread whenever that theme can
+/// change: after `apply_appearance` sets it, and when macOS switches while the preference follows the system. On the main
+/// thread `set_theme` refreshes each window's cached theme before returning, so `theme()` already reports the new one.
+pub fn sync_main_background(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let color = match window.theme() {
+        Ok(tauri::Theme::Light) => MAIN_BACKGROUND_LIGHT,
+        Ok(_) => MAIN_BACKGROUND_DARK,
+        Err(error) => {
+            log::warn!("Main window theme unavailable: {error}");
+            return;
+        }
+    };
+    if let Err(error) = window.set_background_color(Some(color)) {
+        log::warn!("Main window background unchanged: {error}");
+    }
+}
+
 /// App state owns the notification token and unregisters it on the main thread at exit; no system-preference polling.
 #[cfg(target_os = "macos")]
 pub fn install_locale_observer(app: &tauri::AppHandle) {
@@ -323,3 +375,27 @@ pub fn install_locale_observer(app: &tauri::AppHandle) {
 }
 #[cfg(not(target_os = "macos"))]
 pub fn install_locale_observer(_: &tauri::AppHandle) {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_backgrounds_match_the_surface_base_token() {
+        let tokens: serde_json::Value =
+            serde_json::from_str(include_str!("../../../../packages/tokens/tokens.json")).unwrap();
+        let base = &tokens["color"]["surface"]["base"];
+        for (color, key) in [
+            (super::MAIN_BACKGROUND_LIGHT, "light"),
+            (super::MAIN_BACKGROUND_DARK, "value"),
+        ] {
+            let tauri::window::Color(red, green, blue, alpha) = color;
+            assert_eq!(alpha, 0xFF, "the main window background is opaque");
+            let token = base[key]
+                .as_str()
+                .unwrap_or_else(|| panic!("color.surface.base.{key} is missing"));
+            assert!(
+                token.eq_ignore_ascii_case(&format!("#{red:02X}{green:02X}{blue:02X}")),
+                "color.surface.base.{key} is {token}; update the main window background to match"
+            );
+        }
+    }
+}

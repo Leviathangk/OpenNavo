@@ -15,7 +15,8 @@ export const theme = {
       "chip": "var(--on-surface-chip)",
       "control": "var(--on-surface-control)",
       "inset": "var(--on-surface-inset)",
-      "overlay": "var(--on-surface-overlay)"
+      "overlay": "var(--on-surface-overlay)",
+      "popover": "var(--on-surface-popover)"
     },
     "ink": {
       "primary": "var(--on-text-primary)",
@@ -23,7 +24,8 @@ export const theme = {
       "tertiary": "var(--on-text-tertiary)",
       "disabled": "var(--on-text-disabled)",
       "inverse": "var(--on-text-inverse)",
-      "on-accent": "var(--on-text-on-accent)"
+      "on-accent": "var(--on-text-on-accent)",
+      "accent": "var(--on-text-accent)"
     },
     "line": {
       "subtle": "var(--on-border-subtle)",
@@ -49,7 +51,11 @@ export const theme = {
       "danger": "var(--on-status-danger)",
       "danger-subtle": "var(--on-status-danger-subtle)",
       "info": "var(--on-status-info)",
-      "info-subtle": "var(--on-status-info-subtle)"
+      "info-subtle": "var(--on-status-info-subtle)",
+      "success-border": "var(--on-status-success-border)",
+      "warning-border": "var(--on-status-warning-border)",
+      "danger-border": "var(--on-status-danger-border)",
+      "info-border": "var(--on-status-info-border)"
     },
     "button": {
       "primary-bg": "var(--on-button-primary-bg)",
@@ -108,7 +114,10 @@ export const theme = {
       "cli-icon-from": "var(--on-component-cli-icon-from)",
       "cli-icon-to": "var(--on-component-cli-icon-to)",
       "cli-icon-text": "var(--on-component-cli-icon-text)",
-      "letter-icon-text": "var(--on-component-letter-icon-text)"
+      "letter-icon-text": "var(--on-component-letter-icon-text)",
+      "segment-active": "var(--on-component-segment-active)",
+      "menu-bar-bg": "var(--on-component-menu-bar-bg)",
+      "menu-bar-text": "var(--on-component-menu-bar-text)"
     },
     "macos": {
       "close": "var(--on-macos-close)",
@@ -135,7 +144,9 @@ export const theme = {
     "float-icon": "var(--on-shadow-float-icon)",
     "app-icon": "var(--on-shadow-app-icon)",
     "icon-text": "var(--on-shadow-icon-text)",
-    "focus-ring": "var(--on-shadow-focus-ring)"
+    "focus-ring": "var(--on-shadow-focus-ring)",
+    "segment": "var(--on-shadow-segment)",
+    "knob": "var(--on-shadow-knob)"
   },
   "fontFamily": {
     "sans": "var(--on-font-family-sans)",

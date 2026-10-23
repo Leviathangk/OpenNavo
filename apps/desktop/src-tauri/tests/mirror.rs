@@ -339,6 +339,63 @@ fn settings_round_trip_in_every_language() {
     }
 }
 
+#[test]
+fn appearance_round_trips_and_unknown_values_default_to_dark() {
+    assert_eq!(Settings::default().appearance, Appearance::Dark);
+    for (appearance, code) in [
+        (Appearance::System, "system"),
+        (Appearance::Light, "light"),
+        (Appearance::Dark, "dark"),
+    ] {
+        let settings = Settings {
+            appearance,
+            ..Settings::default()
+        };
+        let json = serde_json::to_value(&settings).unwrap();
+        assert_eq!(json["appearance"], code);
+        assert_eq!(serde_json::from_value::<Settings>(json).unwrap(), settings);
+    }
+    // Settings saved before the preference existed default to dark.
+    let legacy: Settings = serde_json::from_str(r#"{"includeGreedy":false}"#).unwrap();
+    assert_eq!(legacy.appearance, Appearance::Dark);
+    assert!(!legacy.include_greedy);
+    // A value from a newer build, or a malformed one, never stops the other settings from loading.
+    for value in [
+        serde_json::json!("auto"),
+        serde_json::json!("Dark"),
+        serde_json::json!(""),
+        serde_json::json!(null),
+        serde_json::json!(1),
+        serde_json::json!(true),
+        serde_json::json!(["dark"]),
+        serde_json::json!({"mode": "dark"}),
+    ] {
+        let parsed: Settings = serde_json::from_value(serde_json::json!({
+            "appearance": value, "includeGreedy": false, "checkTime": "10:30"
+        }))
+        .unwrap();
+        assert_eq!(parsed.appearance, Appearance::Dark, "{value}");
+        assert!(!parsed.include_greedy);
+        assert_eq!(parsed.check_time, "10:30");
+    }
+    // The same holds for the startup load, which rewrites the file with the fallback.
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("settings.json");
+    std::fs::write(
+        &path,
+        r#"{"appearance":"auto","includeGreedy":false,"checkTime":"10:30"}"#,
+    )
+    .unwrap();
+    let loaded = settings::load(&path).unwrap();
+    assert_eq!(loaded.appearance, Appearance::Dark);
+    assert!(!loaded.include_greedy);
+    assert_eq!(loaded.check_time, "10:30");
+    let file: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    assert_eq!(file["appearance"], "dark");
+    std::fs::write(&path, r#"{"appearance":"light"}"#).unwrap();
+    assert_eq!(settings::load(&path).unwrap().appearance, Appearance::Light);
+}
+
 fn custom() -> MirrorInput {
     MirrorInput {
         key: "custom-local".into(),

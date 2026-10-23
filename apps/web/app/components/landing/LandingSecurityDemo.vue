@@ -199,7 +199,7 @@ const protection = computed(() =>
                 <div class="flex items-center gap-10px">
                   <span
                     class="grid h-22px w-22px shrink-0 place-items-center rounded-full"
-                    :class="done ? 'bg-status-success-subtle text-status-success' : 'text-brand-coral'"
+                    :class="done ? 'bg-status-success-subtle text-status-success' : 'text-ink-accent'"
                   >
                     <OnIcon
                       :name="done ? 'check' : 'loader-circle'"
@@ -266,7 +266,7 @@ const protection = computed(() =>
               </div>
 
               <div
-                class="landing-security-toast absolute bottom-20px right-20px flex items-center gap-10px rounded-panel border border-solid border-line-default bg-surface-raised px-14px py-10px shadow-toast"
+                class="landing-security-toast absolute bottom-20px right-20px flex items-center gap-10px rounded-panel border border-solid border-line-default bg-surface-popover px-14px py-10px shadow-toast"
                 :class="step === QUARANTINED ? 'opacity-100' : 'opacity-0'"
               >
                 <span

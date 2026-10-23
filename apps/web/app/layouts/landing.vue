@@ -37,9 +37,12 @@ const items = computed(() =>
       :link-as="NuxtLink"
       @search="palette.open.value = true"
     >
-      <!-- Mobile cannot fit language names; language selection moves to the footer. -->
+      <!-- Mobile cannot fit language names; theme and language selection move to the footer. -->
       <template #extra>
-        <span class="hidden sm:inline-flex"><LanguageSwitch /></span>
+        <div class="hidden items-center gap-2px sm:flex">
+          <ThemeSwitch />
+          <LanguageSwitch />
+        </div>
       </template>
     </OnTopNav>
     <main>

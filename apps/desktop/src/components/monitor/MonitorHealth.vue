@@ -94,8 +94,8 @@ function actions(issue: HealthIssue) {
       class="flex items-start gap-10px rounded-big border border-solid px-14px py-12px text-13px text-ink-secondary"
       :class="
         health.level === 'critical'
-          ? 'border-[rgba(240,82,82,0.25)] bg-status-danger-subtle'
-          : 'border-[rgba(250,178,25,0.25)] bg-status-warning-subtle'
+          ? 'border-status-danger-border bg-status-danger-subtle'
+          : 'border-status-warning-border bg-status-warning-subtle'
       "
       role="status"
     >
@@ -126,7 +126,7 @@ function actions(issue: HealthIssue) {
     </section>
     <section
       v-else
-      class="flex items-center gap-10px rounded-big border border-solid border-[rgba(63,207,108,0.2)] bg-status-success-subtle px-14px py-12px text-13px text-ink-secondary"
+      class="flex items-center gap-10px rounded-big border border-solid border-status-success-border bg-status-success-subtle px-14px py-12px text-13px text-ink-secondary"
       role="status"
     >
       <OnIcon name="check" :size="16" class="shrink-0 text-status-success" />

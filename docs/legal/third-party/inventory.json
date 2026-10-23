@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "lockDigests": {
-    "pnpm-lock.yaml": "314b6de9a6acd82e2f839929c89b98e872f958e77e1730cf853535e65d733d9a",
-    "apps/server/go.mod": "050c75d83f7ecfb606c5f2e2ac355d84102d221aefa3dd250d4e18268af70ad6",
+    "pnpm-lock.yaml": "b827db50eb63062d2a53f0ce5f6939635a249f6a0328affb04b3b25e0be011d8",
+    "apps/server/go.mod": "b251df646037969fa8aea7013a3b0e9f3394d3af6b9e3b98d4455179aa60c116",
     "apps/server/go.sum": "d0383bdc83d8992b2c966db97eabf88db8baa3c886792290cac525e6f5228c5e",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
     "apps/desktop/src-tauri/Cargo.lock": "e68ee8f8254068d4996af4517485dedb8b25ea4c4926e80a2ab00f622e3e3f4c",
@@ -47641,14 +47641,14 @@
     {
       "ecosystem": "npm",
       "name": "dompurify",
-      "version": "3.4.16",
+      "version": "3.4.17",
       "license": "(MPL-2.0 OR Apache-2.0)",
-      "url": "https://www.npmjs.com/package/dompurify/v/3.4.16",
+      "url": "https://www.npmjs.com/package/dompurify/v/3.4.17",
       "scope": "runtime-candidate",
       "evidence": {
         "source": "npm package.json",
-        "url": "https://registry.npmjs.org/dompurify/3.4.16",
-        "lockIntegrity": "sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ=="
+        "url": "https://registry.npmjs.org/dompurify/3.4.17",
+        "lockIntegrity": "sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w=="
       },
       "licenseFiles": [
         {

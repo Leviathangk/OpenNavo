@@ -430,7 +430,7 @@ async function refreshInstalled() {
           variant="ghost"
           size="sm"
           icon="hourglass"
-          :class="filters.unusedOnly ? '!border-brand-coral !bg-accent-coral-subtle !text-brand-coral' : ''"
+          :class="filters.unusedOnly ? '!border-brand-coral !bg-accent-coral-subtle !text-ink-accent' : ''"
           :aria-pressed="filters.unusedOnly"
           :title="t('library.unusedHint', { days: UNUSED_DAYS })"
           @click="filters.showUnused(!filters.unusedOnly)"
@@ -470,7 +470,7 @@ async function refreshInstalled() {
             <span class="min-w-0">
               <button
                 type="button"
-                class="m-0 block max-w-full cursor-pointer truncate rounded-tiny border-none bg-transparent p-0 text-left font-sans text-13px font-600 text-ink-primary outline-none transition-colors duration-fast ease-standard underline-offset-3 hover:text-brand-coral hover:underline focus-visible:text-brand-coral focus-visible:shadow-focus-ring"
+                class="m-0 block max-w-full cursor-pointer truncate rounded-tiny border-none bg-transparent p-0 text-left font-sans text-13px font-600 text-ink-primary outline-none transition-colors duration-fast ease-standard underline-offset-3 hover:text-ink-accent hover:underline focus-visible:text-ink-accent focus-visible:shadow-focus-ring"
                 @click.stop="sheetId = row.id"
               >
                 {{ nameOf(row) }}

@@ -20,7 +20,7 @@ const f = useMonitorFormat();
 const MIN_USAGE = 0.1;
 /** Shares under this stay out of the legend. */
 const MIN_SHARE = 0.005;
-const SYSTEM = 'rgba(255,255,255,0.32)';
+const SYSTEM = 'var(--on-chart-deemphasis)';
 
 const parts = computed(() => {
   const breakdown = store.sample?.cpuBreakdown;
@@ -96,7 +96,7 @@ const dot = (key: string) => segments.value.find(segment => segment.key === key)
     data-testid="monitor-cpu-breakdown"
   >
     <div
-      class="flex h-6px overflow-hidden rounded-[3px] bg-[rgba(255,255,255,0.06)]"
+      class="flex h-6px overflow-hidden rounded-[3px] bg-line-subtle"
       role="img"
       :aria-label="t('monitor.processes.breakdown.title')"
     >

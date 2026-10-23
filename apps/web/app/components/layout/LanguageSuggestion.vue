@@ -51,7 +51,7 @@ function dismiss() {
     role="status"
     aria-live="polite"
     data-testid="language-suggestion"
-    class="fixed bottom-16px left-16px right-16px z-50 mx-auto flex max-w-560px flex-wrap items-center gap-12px rounded-default border border-line-default bg-surface-raised p-16px shadow-popover"
+    class="fixed bottom-16px left-16px right-16px z-50 mx-auto flex max-w-560px flex-wrap items-center gap-12px rounded-default border border-line-default bg-surface-popover p-16px shadow-popover"
   >
     <p class="min-w-0 flex-1 basis-200px text-14px text-ink-primary">
       {{ copy.message }}
@@ -60,7 +60,7 @@ function dismiss() {
       <button
         type="button"
         :disabled="busy"
-        class="rounded-default text-14px text-brand-coral focus-visible:shadow-focus-ring"
+        class="rounded-default text-14px text-ink-accent focus-visible:shadow-focus-ring"
         @click="accept"
       >
         {{ copy.switch }}

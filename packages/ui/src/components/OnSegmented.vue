@@ -57,7 +57,7 @@ async function onKeydown(event: KeyboardEvent) {
       :class="[
         size === 'sm' ? 'h-24px px-10px text-12px' : 'h-28px px-13px text-12.5px',
         option.value === modelValue
-          ? 'bg-surface-raised text-ink-primary'
+          ? 'bg-component-segment-active text-ink-primary shadow-segment'
           : 'bg-transparent text-ink-secondary hover:text-ink-primary'
       ]"
       @click="select(option.value)"

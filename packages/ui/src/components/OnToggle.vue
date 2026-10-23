@@ -30,7 +30,7 @@ function toggle() {
     @click="toggle"
   >
     <span
-      class="absolute left-2px top-2px h-14px w-14px rounded-full transition-transform duration-fast ease-standard"
+      class="absolute left-2px top-2px h-14px w-14px rounded-full shadow-knob transition-transform duration-fast ease-standard"
       :class="modelValue ? 'translate-x-12px bg-component-toggle-knob-on' : 'bg-component-toggle-knob'"
       aria-hidden="true"
     ></span>

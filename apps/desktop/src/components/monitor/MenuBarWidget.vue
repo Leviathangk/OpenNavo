@@ -220,7 +220,7 @@ const fontStyle = (font: Font): CSSProperties => ({
 
 <template>
   <span
-    class="relative inline-grid h-22px shrink-0 text-[#E6E6E6]"
+    class="relative inline-grid h-22px shrink-0 text-component-menu-bar-text"
     role="img"
     :aria-label="`${t(`monitor.modules.${module}`)} ${value}`"
     :data-style="style"

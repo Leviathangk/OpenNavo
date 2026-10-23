@@ -49,8 +49,15 @@ const shift = computed(() => {
         <linearGradient v-if="!star" :id="`${id}-outer`" x1="0" y1="0" x2="1" y2="1">
           <stop v-for="stop in LOGO.outerGradient" :key="stop.offset" :offset="stop.offset" :stop-color="stop.color" />
         </linearGradient>
+        <!-- Polaris follows the theme: warm white on dark, LOGO.innerGradientOnLight's amber on light (tokens). -->
         <linearGradient :id="`${id}-inner`" x1="0" y1="0" x2="1" y2="1">
-          <stop v-for="stop in LOGO.innerGradient" :key="stop.offset" :offset="stop.offset" :stop-color="stop.color" />
+          <stop
+            v-for="(stop, index) in LOGO.innerGradient"
+            :key="stop.offset"
+            :offset="stop.offset"
+            :stop-color="stop.color"
+            :style="{ stopColor: `var(--on-brand-logo-core-gradient-${index + 1}, ${stop.color})` }"
+          />
         </linearGradient>
       </defs>
       <path v-if="!star" :fill="`url(#${id}-outer)`" :d="geometry.outerPath" />

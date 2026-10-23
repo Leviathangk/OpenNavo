@@ -12,7 +12,8 @@ export const color = {
     "chip": "#2A2A2A",
     "control": "#2B2B2B",
     "inset": "#111111",
-    "overlay": "rgba(28, 28, 28, 0.92)"
+    "overlay": "rgba(28, 28, 28, 0.92)",
+    "popover": "#262626"
   },
   "border": {
     "subtle": "rgba(255, 255, 255, 0.07)",
@@ -26,7 +27,8 @@ export const color = {
     "tertiary": "#8F8F8F",
     "disabled": "#5C5C5C",
     "inverse": "#141414",
-    "onAccent": "#1B0A05"
+    "onAccent": "#1B0A05",
+    "accent": "#FF7356"
   },
   "brand": {
     "coral": "#FF7356",
@@ -59,7 +61,11 @@ export const color = {
     "danger": "#FF5D51",
     "dangerSubtle": "rgba(255, 93, 81, 0.10)",
     "info": "#66A4FA",
-    "infoSubtle": "rgba(102, 164, 250, 0.10)"
+    "infoSubtle": "rgba(102, 164, 250, 0.10)",
+    "successBorder": "rgba(63, 207, 108, 0.20)",
+    "warningBorder": "rgba(250, 178, 25, 0.25)",
+    "dangerBorder": "rgba(255, 93, 81, 0.25)",
+    "infoBorder": "rgba(102, 164, 250, 0.25)"
   },
   "button": {
     "primaryBg": "#EBEBEB",
@@ -116,7 +122,10 @@ export const color = {
     "cliIconFrom": "#2A2A2A",
     "cliIconTo": "#1B1B1B",
     "cliIconText": "#E2E2E2",
-    "letterIconText": "#FFFFFF"
+    "letterIconText": "#FFFFFF",
+    "segmentActive": "#262626",
+    "menuBarBg": "rgba(38, 38, 40, 0.96)",
+    "menuBarText": "#E6E6E6"
   },
   "macos": {
     "close": "#FF5F57",
@@ -295,7 +304,9 @@ export const shadow = {
   "floatIcon": "0 18px 30px rgba(0, 0, 0, 0.55)",
   "appIcon": "inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 1px 2px rgba(0, 0, 0, 0.40)",
   "iconText": "0 1px 2px rgba(0, 0, 0, 0.30)",
-  "focusRing": "0 0 0 2px #131313, 0 0 0 4px #FF7356"
+  "focusRing": "0 0 0 2px #131313, 0 0 0 4px #FF7356",
+  "segment": "0 0 #0000",
+  "knob": "0 0 #0000"
 } as const;
 
 export const motion = {
@@ -360,7 +371,178 @@ export const effect = {
     "dasharray": "2 6"
   },
   "detailGlow": "radial-gradient(closest-side, {accent}73, {accent}2E 55%, transparent)",
-  "backdropBlur": 20
+  "backdropBlur": 20,
+  "accentGlowOpacity": "1"
+} as const;
+
+/** Theme names; dark is the default and the values above. */
+export const themeNames = ['dark', 'light'] as const;
+export type ThemeName = (typeof themeNames)[number];
+
+/** Light theme values of the themed groups; tokens without a light value repeat the dark value. */
+export const lightTheme = {
+  "color": {
+    "surface": {
+      "page": "#F2F2F2",
+      "base": "#F8F8F8",
+      "sidebar": "#F1F1F1",
+      "rail": "#F5F5F5",
+      "card": "#FFFFFF",
+      "cardAlt": "#F5F5F5",
+      "raised": "#EDEDED",
+      "chip": "#EBEBEB",
+      "control": "#FFFFFF",
+      "inset": "#F0F0F0",
+      "overlay": "rgba(255, 255, 255, 0.94)",
+      "popover": "#FFFFFF"
+    },
+    "border": {
+      "subtle": "rgba(0, 0, 0, 0.08)",
+      "default": "rgba(0, 0, 0, 0.13)",
+      "strong": "rgba(0, 0, 0, 0.22)",
+      "sidebar": "#E5E5E5"
+    },
+    "text": {
+      "primary": "#1A1A1A",
+      "secondary": "#575757",
+      "tertiary": "#6B6B6B",
+      "disabled": "#A6A6A6",
+      "inverse": "#FFFFFF",
+      "onAccent": "#1B0A05",
+      "accent": "#B83A15"
+    },
+    "brand": {
+      "coral": "#EE5533",
+      "salmon": "#A74C1B",
+      "violet": "#5B5BD6",
+      "glowCore": "#CDCDFF",
+      "logoGradient": [
+        "#FFB347",
+        "#FF7356",
+        "#FF4E3A"
+      ],
+      "logoCoreGradient": [
+        "#FFB347",
+        "#FF8F3F"
+      ],
+      "logoCoreGradientOnLight": [
+        "#FFB347",
+        "#FF8F3F"
+      ]
+    },
+    "accent": {
+      "coralSubtle": "rgba(238, 85, 51, 0.10)",
+      "salmonSubtle": "rgba(167, 76, 27, 0.10)"
+    },
+    "status": {
+      "success": "#187733",
+      "successSubtle": "rgba(24, 119, 51, 0.10)",
+      "warning": "#965A00",
+      "warningSubtle": "rgba(150, 90, 0, 0.10)",
+      "danger": "#C22B21",
+      "dangerSubtle": "rgba(194, 43, 33, 0.10)",
+      "info": "#1564CD",
+      "infoSubtle": "rgba(21, 100, 205, 0.10)",
+      "successBorder": "rgba(24, 119, 51, 0.24)",
+      "warningBorder": "rgba(150, 90, 0, 0.24)",
+      "dangerBorder": "rgba(194, 43, 33, 0.24)",
+      "infoBorder": "rgba(21, 100, 205, 0.24)"
+    },
+    "button": {
+      "primaryBg": "#1F1F1F",
+      "primaryHover": "#333333",
+      "primaryPressed": "#0A0A0A",
+      "primaryText": "#FFFFFF",
+      "secondaryBg": "#EBEBEB",
+      "secondaryHover": "#E0E0E0",
+      "secondaryPressed": "#D6D6D6",
+      "secondaryText": "#1A1A1A",
+      "accentBg": "#EE5533",
+      "accentHover": "#F46546",
+      "accentPressed": "#E24A28",
+      "accentText": "#1B0A05",
+      "disabledBg": "#F0F0F0",
+      "disabledText": "#A6A6A6"
+    },
+    "chart": {
+      "series1": "#6A61E8",
+      "series2": "#D9572E",
+      "series3": "#168A62",
+      "emphasis": "#D0602A",
+      "deemphasis": "#CFCFCF",
+      "grid": "#EBEBEB",
+      "axis": "#D6D6D6"
+    },
+    "component": {
+      "searchBg": "#FFFFFF",
+      "cardHover": "#FAFAFA",
+      "toggleTrack": "#D9D9D9",
+      "toggleKnob": "#FFFFFF",
+      "toggleKnobOn": "#FFFFFF",
+      "tabIndicator": "#1A1A1A",
+      "navActive": "#E3E3E3",
+      "heroBg": "#F4F3FD",
+      "captionBg": "rgba(0, 0, 0, 0.55)",
+      "topNavScrolled": "rgba(242, 242, 242, 0.85)",
+      "scrim": "rgba(0, 0, 0, 0.30)",
+      "lightboxScrim": "rgba(0, 0, 0, 0.88)",
+      "modalBg": "#FFFFFF",
+      "toastBg": "rgba(255, 255, 255, 0.94)",
+      "itemActive": "rgba(0, 0, 0, 0.06)",
+      "runningBorder": "rgba(238, 85, 51, 0.40)",
+      "logHeading": "#1A1A1A",
+      "logSuccess": "#187733",
+      "monoText": "#333333",
+      "timelineLine": "#D6D6D6",
+      "timelineDot": "#C4C4C4",
+      "sourceMeta": "#B0B0B0",
+      "collectionFrom": "#F1EEFB",
+      "collectionTo": "#FFFFFF",
+      "collectionRing": "#F8F7FD",
+      "detailHeaderBg": "#FFFFFF",
+      "cliIconFrom": "#2A2A2A",
+      "cliIconTo": "#1B1B1B",
+      "cliIconText": "#E2E2E2",
+      "letterIconText": "#FFFFFF",
+      "segmentActive": "#FFFFFF",
+      "menuBarBg": "rgba(246, 246, 246, 0.96)",
+      "menuBarText": "#1F1F1F"
+    },
+    "macos": {
+      "close": "#FF5F57",
+      "minimize": "#FEBC2E",
+      "zoom": "#28C840"
+    },
+    "admin": {
+      "primaryLight": "#D04528",
+      "primaryDark": "#FF7356",
+      "layoutDark": "#131313",
+      "containerDark": "#1A1A1A"
+    }
+  },
+  "shadow": {
+    "window": "0 40px 100px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.16)",
+    "popover": "0 12px 40px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04)",
+    "modal": "0 24px 64px rgba(0, 0, 0, 0.16)",
+    "toast": "0 10px 30px rgba(0, 0, 0, 0.12)",
+    "floatIcon": "0 14px 28px rgba(0, 0, 0, 0.16)",
+    "appIcon": "inset 0 0 0 0.5px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.12)",
+    "iconText": "0 1px 2px rgba(0, 0, 0, 0.30)",
+    "focusRing": "0 0 0 2px #FFFFFF, 0 0 0 4px #EE5533",
+    "segment": "0 1px 2px rgba(0, 0, 0, 0.10), 0 0 0 0.5px rgba(0, 0, 0, 0.08)",
+    "knob": "0 1px 2px rgba(0, 0, 0, 0.22), 0 0 0 0.5px rgba(0, 0, 0, 0.08)"
+  },
+  "effect": {
+    "heroGlow": "radial-gradient(circle, rgba(205, 205, 255, 0.95) 0%, rgba(135, 135, 245, 0.78) 14%, rgba(92, 92, 220, 0.50) 32%, rgba(64, 64, 190, 0.20) 52%, transparent 70%)",
+    "coverGlow": "radial-gradient(circle, rgba(170, 170, 255, 0.55) 0%, rgba(110, 110, 235, 0.35) 16%, rgba(80, 80, 214, 0.18) 34%, rgba(60, 60, 180, 0.06) 52%, transparent 66%)",
+    "ring": {
+      "stroke": "rgba(0, 0, 0, 0.10)",
+      "dasharray": "2 6"
+    },
+    "detailGlow": "radial-gradient(closest-side, {accent}73, {accent}2E 55%, transparent)",
+    "backdropBlur": 20,
+    "accentGlowOpacity": "0.5"
+  }
 } as const;
 
 /** All CSS variable names without the --on- prefix. */
@@ -376,6 +558,7 @@ export type TokenVariable =
   | 'surface-control'
   | 'surface-inset'
   | 'surface-overlay'
+  | 'surface-popover'
   | 'border-subtle'
   | 'border-default'
   | 'border-strong'
@@ -386,13 +569,21 @@ export type TokenVariable =
   | 'text-disabled'
   | 'text-inverse'
   | 'text-on-accent'
+  | 'text-accent'
   | 'brand-coral'
   | 'brand-salmon'
   | 'brand-violet'
   | 'brand-glow-core'
   | 'brand-logo-gradient'
+  | 'brand-logo-gradient-1'
+  | 'brand-logo-gradient-2'
+  | 'brand-logo-gradient-3'
   | 'brand-logo-core-gradient'
+  | 'brand-logo-core-gradient-1'
+  | 'brand-logo-core-gradient-2'
   | 'brand-logo-core-gradient-on-light'
+  | 'brand-logo-core-gradient-on-light-1'
+  | 'brand-logo-core-gradient-on-light-2'
   | 'accent-coral-subtle'
   | 'accent-salmon-subtle'
   | 'status-success'
@@ -403,6 +594,10 @@ export type TokenVariable =
   | 'status-danger-subtle'
   | 'status-info'
   | 'status-info-subtle'
+  | 'status-success-border'
+  | 'status-warning-border'
+  | 'status-danger-border'
+  | 'status-info-border'
   | 'button-primary-bg'
   | 'button-primary-hover'
   | 'button-primary-pressed'
@@ -454,6 +649,9 @@ export type TokenVariable =
   | 'component-cli-icon-to'
   | 'component-cli-icon-text'
   | 'component-letter-icon-text'
+  | 'component-segment-active'
+  | 'component-menu-bar-bg'
+  | 'component-menu-bar-text'
   | 'macos-close'
   | 'macos-minimize'
   | 'macos-zoom'
@@ -546,6 +744,8 @@ export type TokenVariable =
   | 'shadow-app-icon'
   | 'shadow-icon-text'
   | 'shadow-focus-ring'
+  | 'shadow-segment'
+  | 'shadow-knob'
   | 'motion-duration-fast'
   | 'motion-duration-base'
   | 'motion-duration-slow'
@@ -583,7 +783,8 @@ export type TokenVariable =
   | 'effect-cover-glow'
   | 'effect-ring-stroke'
   | 'effect-ring-dasharray'
-  | 'effect-backdrop-blur';
+  | 'effect-backdrop-blur'
+  | 'effect-accent-glow-opacity';
 
 /** Reference a token CSS variable, e.g. tokenVar('surface-card') → var(--on-surface-card). */
 export function tokenVar(name: TokenVariable): string {

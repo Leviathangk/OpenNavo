@@ -75,6 +75,13 @@ const languageItems = computed(() => [
   ...DESKTOP_LOCALES.map(code => ({ key: code, label: LOCALE_METADATA[code].name }))
 ]);
 
+// Appearance: System follows macOS; Rust applies it to every window (NSApp appearance) and the main window mirrors it.
+const appearances = computed(() => [
+  { value: 'system' as const, label: t('settings.general.appearanceSystem') },
+  { value: 'light' as const, label: t('settings.general.appearanceLight') },
+  { value: 'dark' as const, label: t('settings.general.appearanceDark') }
+]);
+
 const section = computed<Section>(() => (route.params.section as Section | undefined) || 'general');
 const sections: Section[] = [
   'general',
@@ -246,6 +253,15 @@ onMounted(async () => {
                   </OnButton>
                 </template>
               </OnMenu>
+            </SettingRow>
+            <SettingRow :label="t('settings.general.appearance')" label-id="setting-appearance">
+              <OnSegmented
+                :model-value="settings.value.appearance"
+                :options="appearances"
+                size="sm"
+                :aria-label="t('settings.general.appearance')"
+                @update:model-value="value => save('appearance', value)"
+              />
             </SettingRow>
             <SettingRow
               v-for="item in general"

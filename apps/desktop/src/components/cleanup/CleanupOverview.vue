@@ -40,7 +40,7 @@ const last = computed(() => {
     class="flex items-center gap-20px rounded-big border border-solid border-line-subtle bg-surface-card px-24px py-22px"
   >
     <span
-      class="grid h-60px w-60px shrink-0 place-items-center rounded-[17px] bg-accent-coral-subtle text-brand-coral"
+      class="grid h-60px w-60px shrink-0 place-items-center rounded-[17px] bg-accent-coral-subtle text-ink-accent"
       aria-hidden="true"
     >
       <OnIcon name="eraser" :size="28" />

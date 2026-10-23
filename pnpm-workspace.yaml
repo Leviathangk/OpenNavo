@@ -72,6 +72,7 @@ shamefullyHoist: true
 
 # Target exact vulnerable transitive versions; avoid unrelated major upgrades.
 overrides:
+  'dompurify@<3.4.17': 3.4.17
   'micromatch@4.0.7': 4.0.8
   'fflate@0.7.3': 0.7.5
   'simple-git@3.36.0': 4.0.2

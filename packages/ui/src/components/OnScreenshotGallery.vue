@@ -111,8 +111,10 @@ const navButton =
             height="200"
             class="block h-full w-full object-cover"
           />
+          <!-- The caption chip and the lightbox stay dark in both themes, so they render in the dark theme. -->
           <span
             v-if="item.caption"
+            data-theme="dark"
             class="absolute bottom-9px left-10px rounded-tiny bg-component-caption-bg px-7px py-2px text-10.5px text-ink-primary"
             aria-hidden="true"
           >
@@ -125,6 +127,7 @@ const navButton =
     <Teleport v-if="active && current !== null" to="body">
       <div
         ref="dialog"
+        data-theme="dark"
         class="fixed inset-0 z-modal box-border flex items-center justify-center bg-component-lightbox-scrim font-sans"
         role="dialog"
         aria-modal="true"

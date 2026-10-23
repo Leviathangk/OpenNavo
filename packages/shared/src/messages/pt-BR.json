@@ -91,7 +91,7 @@
   "toast": {
     "region": "Notificações",
     "view": "Ver",
-    "close": "Desativar notificações"
+    "close": "Fechar notificação"
   },
   "menu": {
     "more": "Mais ações"
