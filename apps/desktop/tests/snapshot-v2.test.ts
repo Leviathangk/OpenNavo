@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { LOCALES } from '@opennavo/shared';
+import { DESKTOP_LOCALES } from '@opennavo/shared';
 import { catalogBaseSnapshot, catalogSnapshotInfo, catalogTextPacks } from '@/ipc/mock-data/snapshot';
 import { catalogItems } from '@/ipc/mock-data/fixtures';
 import { searchCatalog } from '@/ipc/mock-data/catalog';
 
 describe('Snapshot v2 browser fixtures', () => {
-  it('Base data excludes localized text; metadata and six language packs share cursors', () => {
+  it('Base data excludes localized text; metadata and every language pack share cursors', () => {
     expect(catalogSnapshotInfo.formatVersion).toBe(2);
     expect(catalogSnapshotInfo.itemCount).toBe(catalogBaseSnapshot.items.length);
     expect(catalogBaseSnapshot.items.length).toBeGreaterThan(0);
@@ -19,7 +19,7 @@ describe('Snapshot v2 browser fixtures', () => {
       expect(category.sourceLocale).toBe('zh-CN');
       expect(category).not.toHaveProperty('name');
     }
-    for (const locale of LOCALES) {
+    for (const locale of DESKTOP_LOCALES) {
       const pack = catalogTextPacks[locale];
       expect(pack).toMatchObject({ formatVersion: 2, locale, cursor: catalogBaseSnapshot.cursor });
       expect(catalogSnapshotInfo.textPacks[locale]).toMatchObject({
@@ -39,7 +39,7 @@ describe('Snapshot v2 browser fixtures', () => {
       expect(Object.values(item.summary)).not.toContain(null);
     }
   });
-  it('Sparse six-language text is searchable and names follow current locale rather than fixed Chinese/English', () => {
+  it('Sparse localized text is searchable and names follow current locale rather than fixed Chinese/English', () => {
     const original = catalogItems[0]!;
     const fixture = { ...original, token: 'locale-test', displayName: { 'ja-JP': 'テスト専用' } };
     catalogItems.push(fixture);

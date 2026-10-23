@@ -19,6 +19,12 @@ import (
 
 const botHeader = "X-OpenNavo-Verified-Bot"
 
+// What reached the upstream: the bot verdict and the edge country, both of which only Cloudflare may set.
+type forwarded struct {
+	Bot     []string `json:"bot"`
+	Country []string `json:"country"`
+}
+
 // Run via verify-bot-ingress.py: real Caddy and upstream sockets live entirely in a
 // --network none container. Only upstream destinations and (for trusted-peer cases)
 // the Cloudflare ranges are replaced. All production routes/header handlers remain.
@@ -32,7 +38,7 @@ func TestVerifiedBotIngress(t *testing.T) {
 		if r.URL.Query().Get("status") == "429" {
 			w.WriteHeader(http.StatusTooManyRequests)
 		}
-		_ = json.NewEncoder(w).Encode(r.Header.Values(botHeader))
+		_ = json.NewEncoder(w).Encode(forwarded{r.Header.Values(botHeader), r.Header.Values("CF-IPCountry")})
 	}))
 	defer upstream.Close()
 	for _, scenario := range []struct {
@@ -74,6 +80,7 @@ func TestVerifiedBotIngress(t *testing.T) {
 						// Neither forwarding header is allowed to turn a direct peer into Cloudflare.
 						request.Header.Set("X-Forwarded-For", "173.245.48.1")
 						request.Header.Set("CF-Connecting-IP", "173.245.48.1")
+						request.Header.Set("CF-IPCountry", "US")
 						for i, value := range values {
 							name := botHeader
 							if i%2 == 1 {
@@ -85,7 +92,7 @@ func TestVerifiedBotIngress(t *testing.T) {
 						if err != nil {
 							t.Fatal(err)
 						}
-						var actual []string
+						var actual forwarded
 						err = json.NewDecoder(response.Body).Decode(&actual)
 						response.Body.Close()
 						if err != nil {
@@ -98,12 +105,16 @@ func TestVerifiedBotIngress(t *testing.T) {
 						if response.StatusCode != status {
 							t.Fatalf("final status = %d, want %d", response.StatusCode, status)
 						}
-						var expected []string
+						var expected forwarded
 						if scenario.flag == "true" && scenario.simulateCF && peer == "127.0.0.2" {
-							expected = values
+							expected.Bot = values
+						}
+						// The country passes from Cloudflare whatever the bot flag says, and never from anyone else.
+						if scenario.simulateCF && peer == "127.0.0.2" {
+							expected.Country = []string{"US"}
 						}
 						if !reflect.DeepEqual(actual, expected) {
-							t.Fatalf("peer=%s %s%s input=%q got=%q want=%q", peer, route.host, route.path, values, actual, expected)
+							t.Fatalf("peer=%s %s%s input=%q got=%+v want=%+v", peer, route.host, route.path, values, actual, expected)
 						}
 					}
 				}

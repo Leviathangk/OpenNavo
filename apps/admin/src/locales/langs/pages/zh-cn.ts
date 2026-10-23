@@ -36,7 +36,9 @@ const pages = {
       country: '国家',
       unknownCountry: '未知',
       title: '用户活跃',
-      hint: '北京时间 · 今日数据截至当前 · 统计匿名安装和浏览器，不代表人数。客户端包含后台运行；网页需有效访问。两端不做跨端去重。国家按请求出口识别，可能受 VPN 或代理影响。',
+      hint: '统计匿名安装和浏览器，不代表人数。客户端包含后台运行；网页需有效访问。两端不做跨端去重。国家按请求出口识别，可能受 VPN 或代理影响。',
+      asOf: '北京时间 · 今日截至 {time}',
+      yesterday: '昨日 {value}',
       date: '日期',
       desktop: '客户端日活',
       web: '网页日活',
@@ -46,7 +48,7 @@ const pages = {
       version: '版本',
       count: '安装数',
       empty: '暂未收到活跃数据。客户端运行或网页有效访问后会自动上报。',
-      trend: '每日活跃趋势 · 近 30 天',
+      trend: '每日活跃趋势 · {start} 至 {end}',
       details: '每日明细',
       newHint: '新增指首次观察到此标识。清除本地数据，或超过 90 天未活跃后回访，可能计为新增。'
     },
@@ -100,6 +102,10 @@ const pages = {
       yesterday: '昨日（UTC）',
       count: '执行数',
       compensated: '补偿数',
+      action: '动作',
+      operation: '操作',
+      mode: '模式',
+      usage: '用量',
       alerts: '最近 5 条未解决告警',
       noAlerts: '暂无未解决告警',
       origin: '源站',
@@ -117,12 +123,14 @@ const pages = {
     disabledHint: '弃用 {deprecated} · 隐藏 {hidden}',
     coverage: '覆盖率',
     coverageHint: '全部有效 App（含字体），不含停用、隐藏和已移除项',
-    sixLocaleContentHint: '六种语言的简介与介绍均齐全且未过期；语言回退不计入。',
+    localeContentHint:
+      '六语指最初的 6 种语言：英语、简体中文、日语、西班牙语、葡萄牙语和俄语；十语指网站和客户端的全部 10 种语言，另含德语、法语、意大利语和繁体中文。每种语言的简介与介绍都须齐全且未过期，语言回退不计入。',
     coverageItems: {
       primaryCategory: '主分类',
       icon: '图标',
       latestVersionNotes: '最新版本更新说明',
-      sixLocaleContent: '六语内容完整度'
+      sixLocaleContent: '六语内容完整度',
+      siteLocaleContent: '十语内容完整度'
     },
     sync: '同步健康',
     syncItems: { catalog: '目录同步', analytics: '安装量同步', snapshot: '客户端快照' },
@@ -131,7 +139,6 @@ const pages = {
     failed24h: '近 24 小时失败任务',
     viewJobs: '任务中心',
     snapshotInfo: '游标 {cursor} · {count} 个包',
-    todo: '待办',
     feedbackOpen: '未处理反馈',
     viewFeedback: '用户反馈',
     hermes: {

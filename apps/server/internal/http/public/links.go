@@ -12,7 +12,7 @@ func (h *Handler) GetCatalogLinks(ctx context.Context, request publicapi.GetCata
 	if h.Snapshot == nil {
 		return nil, domain.Internal(nil)
 	}
-	data, err := h.Snapshot.Links(requestContext(ctx))
+	data, err := h.Snapshot.Links(domain.WithAllCatalogLocales(requestContext(ctx), request.Params.Locales != nil && *request.Params.Locales == "all"))
 	if err != nil {
 		return nil, err
 	}

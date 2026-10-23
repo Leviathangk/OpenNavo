@@ -20,6 +20,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/store"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
 
@@ -724,14 +725,38 @@ func (s *PublicService) Lookup(ctx context.Context, items []publicapi.PackageRef
 	return out, nil
 }
 
+// SitemapPageSize is the largest sitemap page, the size the web server reads. Bigger pages cost seconds of
+// database work and only an internal caller needs them.
+const SitemapPageSize = 500
+
+// sitemapLoads coalesces concurrent requests for one sitemap page into a single computation.
+var sitemapLoads singleflight.Group
+
 // Sitemap pages indexable casks and links in id order (WP3). Under an enforced index policy only eligible
 // apps and their published languages are listed; otherwise the long-standing rule applies (listed,
-// still offered by Homebrew, all six languages). Apps paused only by the 90-day rule are listed in
-// both cases. Records can be fewer than size: total counts candidates.
+// still offered by Homebrew, every site language). Apps paused only by the 90-day rule are listed in
+// both cases. Records can be fewer than size: total counts candidates. Pages are cached compressed for 10
+// minutes; catalog changes clear them with the other package caches.
 func (s *PublicService) Sitemap(ctx context.Context, group string, current, size int) (SitemapPage, error) {
-	if !ValidPage(current, size, 5000) || (group != "" && group != "apps" && group != "fonts") {
+	if !ValidPage(current, size, SitemapPageSize) || (group != "" && group != "apps" && group != "fonts") {
 		return SitemapPage{}, domain.Validation()
 	}
+	key := fmt.Sprintf("c:pkg:sitemap:%s:%d:%d", group, current, size)
+	// The computation outlives a caller that disconnects, so the page still reaches the cache for the next one.
+	result, err, _ := sitemapLoads.Do(fmt.Sprintf("%p|%s", s.Store, key), func() (any, error) {
+		loadCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+		defer cancel()
+		return cache.ReadThroughCompressed(loadCtx, s.Cache, key, 10*time.Minute, func(ctx context.Context) (SitemapPage, error) {
+			return s.sitemap(ctx, group, current, size)
+		})
+	})
+	if err != nil {
+		return SitemapPage{}, err
+	}
+	return result.(SitemapPage), nil
+}
+
+func (s *PublicService) sitemap(ctx context.Context, group string, current, size int) (SitemapPage, error) {
 	policy, err := s.Store.IndexPolicy(ctx)
 	if err != nil {
 		return SitemapPage{}, err
@@ -739,9 +764,6 @@ func (s *PublicService) Sitemap(ctx context.Context, group string, current, size
 	rows, total, err := s.Store.SitemapIndexRows(ctx, group, current, size)
 	out := SitemapPage{Current: current, Size: size, Total: total, Records: []publicapi.SitemapEntry{}}
 	if err != nil {
-		return out, err
-	}
-	if err = s.Store.PopulatePageNotes(ctx, rows, 1); err != nil {
 		return out, err
 	}
 	if err := s.Store.PopulateIntentEligibility(ctx, rows, policy, s.WebBaseURL); err != nil {
@@ -754,6 +776,20 @@ func (s *PublicService) Sitemap(ctx context.Context, group string, current, size
 	states, err := s.Store.PageStates(ctx, ids)
 	if err != nil {
 		return out, err
+	}
+	// The page-state job stores the first versions page's notes facts; only apps it has not reached yet are counted
+	// here, from every release in every language.
+	if missing := fillStoredNotes(rows, states); len(missing) > 0 {
+		subset := make([]store.IndexRow, len(missing))
+		for j, i := range missing {
+			subset[j] = rows[i]
+		}
+		if err := s.Store.PopulatePageNotes(ctx, subset, 1); err != nil {
+			return out, err
+		}
+		for j, i := range missing {
+			rows[i].NotesPages = subset[j].NotesPages
+		}
 	}
 	dates := map[int64]map[string]map[string]time.Time{}
 	for _, state := range states {
@@ -805,6 +841,34 @@ func (s *PublicService) Sitemap(ctx context.Context, group string, current, size
 		})
 	}
 	return out, err
+}
+
+// fillStoredNotes copies the first versions page's stored notes facts into rows and returns the positions of rows
+// that lack them in some language.
+func fillStoredNotes(rows []store.IndexRow, states []store.PageState) []int {
+	stored := map[int64]map[string]seo.NotesFacts{}
+	for _, state := range states {
+		if state.PageKind != "versions" || state.PageNumber != 1 || state.NotesChars == nil || state.NotesHasSource == nil {
+			continue
+		}
+		if stored[state.PackageID] == nil {
+			stored[state.PackageID] = map[string]seo.NotesFacts{}
+		}
+		stored[state.PackageID][state.Locale] = seo.NotesFacts{Chars: *state.NotesChars, HasSource: *state.NotesHasSource}
+	}
+	missing := []int{}
+	for i := range rows {
+		facts := stored[rows[i].ID]
+		if len(facts) < len(seo.Locales) {
+			missing = append(missing, i)
+			continue
+		}
+		if rows[i].NotesPages == nil {
+			rows[i].NotesPages = map[int]map[string]seo.NotesFacts{}
+		}
+		rows[i].NotesPages[1] = facts
+	}
+	return missing
 }
 
 // indexing is the WP11 decision for one cask's pages, plus the Homebrew commit time of its current

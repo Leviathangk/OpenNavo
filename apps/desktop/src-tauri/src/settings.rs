@@ -102,6 +102,20 @@ pub fn match_locale(languages: &[&str]) -> crate::model::Locale {
     for language in languages {
         let normalized = language.trim().to_ascii_lowercase().replace('_', "-");
         let prefix = normalized.split('-').next().unwrap_or("");
+        // Chinese picks its script first: Traditional for zh-Hant and the Taiwan, Hong Kong and Macao regions.
+        if prefix == "zh" {
+            let traditional = normalized == "zh-hant"
+                || normalized.starts_with("zh-hant-")
+                || ["zh-tw", "zh-hk", "zh-mo"].contains(&normalized.as_str())
+                || ["-tw", "-hk", "-mo"].iter().any(|region| {
+                    normalized.ends_with(region) && !normalized.starts_with("zh-hans")
+                });
+            return if traditional {
+                crate::model::Locale::ZhHant
+            } else {
+                crate::model::Locale::ZhCn
+            };
+        }
         for metadata in crate::locales_gen::LOCALE_METADATA {
             if metadata.hreflang.split('-').next() == Some(prefix) {
                 return metadata.code;
@@ -205,6 +219,10 @@ pub fn apple_language(locale: crate::model::Locale) -> &'static str {
         EsEs => "es",
         PtBr => "pt-BR",
         RuRu => "ru",
+        DeDe => "de",
+        FrFr => "fr",
+        ItIt => "it",
+        ZhHant => "zh-Hant",
     }
 }
 #[cfg(target_os = "macos")]

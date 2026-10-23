@@ -64,11 +64,19 @@ func TestLocaleManifestGeneratedConstantsAndBothContractsAgree(t *testing.T) {
 			actual[index] = value.(string)
 		}
 		require.Equal(t, codes, actual, name)
+		// AppLocale is the Mac client's language set (client release notes): the desktop surface.
 		app := spec.Components.Schemas["AppLocale"].Value.Enum
-		require.Len(t, app, len(i18n.Locales))
-		for index, locale := range i18n.Locales {
+		require.Len(t, app, len(i18n.DesktopLocales))
+		for index, locale := range i18n.DesktopLocales {
 			require.Equal(t, string(locale), app[index])
 		}
+		require.Equal(t, surfaceLocaleCodes(t, "desktop"), func() []string {
+			out := []string{}
+			for _, locale := range i18n.DesktopLocales {
+				out = append(out, string(locale))
+			}
+			return out
+		}())
 	}
 }
 

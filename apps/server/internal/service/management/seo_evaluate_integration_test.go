@@ -110,20 +110,28 @@ func TestEvaluateSEOIncompleteWindowAndTrafficDeclineNeverRollback(t *testing.T)
 	require.Zero(t, count)
 }
 
-func TestMissingDesktopReleaseTranslationsUseAppLocales(t *testing.T) {
+func TestMissingDesktopReleaseTranslationsUseDesktopLocales(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	svc := &Service{Store: st}
-	require.NoError(t, st.DB.Exec("INSERT INTO desktop_releases(id,version,artifacts,source_locale) VALUES(901,'1.0','[]','en-US')").Error)
-	require.NoError(t, st.DB.Exec(`INSERT INTO desktop_release_i18n(desktop_release_id,locale,notes,status,source_locale)
-SELECT 901,locale,'Release notes','manual','en-US' FROM unnest(ARRAY['en-US','zh-CN','ja-JP','es-ES','pt-BR','ru-RU']) locale`).Error)
-	for _, locale := range []string{"", "de-DE"} {
+	missing := func(locale string) any {
+		t.Helper()
 		result, err := svc.Execute(ctx, "ListTranslations", Input{Params: map[string]any{"entity": "desktop_release", "status": "missing", "locale": locale}})
 		require.NoError(t, err)
-		require.Zero(t, result.(map[string]any)["total"])
+		return result.(map[string]any)["total"]
+	}
+	require.NoError(t, st.DB.Exec("INSERT INTO desktop_releases(id,version,artifacts,source_locale) VALUES(901,'1.0','[]','en-US')").Error)
+	// Notes written in the original six languages: the client's four newer languages are still missing.
+	require.NoError(t, st.DB.Exec(`INSERT INTO desktop_release_i18n(desktop_release_id,locale,notes,status,source_locale)
+SELECT 901,locale,'Release notes','manual','en-US' FROM unnest(ARRAY['en-US','zh-CN','ja-JP','es-ES','pt-BR','ru-RU']) locale`).Error)
+	require.EqualValues(t, 1, missing(""))
+	require.EqualValues(t, 1, missing("de-DE"))
+	require.Zero(t, missing("ja-JP"))
+	require.NoError(t, st.DB.Exec(`INSERT INTO desktop_release_i18n(desktop_release_id,locale,notes,status,source_locale)
+SELECT 901,locale,'Release notes','manual','en-US' FROM unnest(ARRAY['de-DE','fr-FR','it-IT','zh-Hant']) locale`).Error)
+	for _, locale := range []string{"", "de-DE", "zh-Hant"} {
+		require.Zero(t, missing(locale), locale)
 	}
 	require.NoError(t, st.DB.Exec("DELETE FROM desktop_release_i18n WHERE desktop_release_id=901 AND locale='ja-JP'").Error)
-	result, err := svc.Execute(ctx, "ListTranslations", Input{Params: map[string]any{"entity": "desktop_release", "status": "missing"}})
-	require.NoError(t, err)
-	require.EqualValues(t, 1, result.(map[string]any)["total"])
+	require.EqualValues(t, 1, missing(""))
 }

@@ -33,7 +33,7 @@ Homebrew は Mac にソフトウェアをインストールする信頼性の高
 
 - **Web 版**：App の閲覧・検索・比較、各バージョンの更新内容の確認、インストールコマンドのコピーができます。
 - **macOS クライアント**：Web 版のすべての機能に加え、自分の Mac の Homebrew でインストール・更新を実行し、入手元を問わず App を丸ごとアンインストールし、キャッシュや残りファイルを慎重に片付け、メニューバーで Mac の状態を監視し、操作を記録します。
-- **多言語対応**：ウェブサイトは English、简体中文、繁體中文、日本語、Español、Português (Brasil)、Русский、Deutsch、Français、Italiano の 10 言語に対応しています。macOS クライアントと管理画面は、そのうち English、简体中文、日本語、Español、Português (Brasil)、Русский の 6 言語に対応しています。App の紹介と更新内容は自動翻訳されます。いつでも原文に切り替えられます。
+- **多言語対応**：ウェブサイトは English、简体中文、繁體中文、日本語、Español、Português (Brasil)、Русский、Deutsch、Français、Italiano の 10 言語に対応しています。macOS クライアントも同じ 10 言語に対応し、管理画面はそのうち English、简体中文、日本語、Español、Português (Brasil)、Русский の 6 言語に対応しています。App の紹介と更新内容は自動翻訳されます。いつでも原文に切り替えられます。
 - **アカウント不要**：登録もログインも必要ありません。開くだけで使えます。
 
 [opennavo.com](https://opennavo.com/ja) は、このリポジトリのコードで動いています。
@@ -183,7 +183,7 @@ make dev-desktop       # macOS クライアント（Tauri）
 make lint test
 ```
 
-OpenAPI の検証、Go / TypeScript / Rust / Python の静的検査と単体テスト、各インターフェースの対応言語すべての文言の完全性チェック（ウェブサイトは 10 言語、macOS クライアントと管理画面は 6 言語）を実行します。ブラウザの E2E テストは `make e2e` で実行できます。
+OpenAPI の検証、Go / TypeScript / Rust / Python の静的検査と単体テスト、各インターフェースの対応言語すべての文言の完全性チェック（ウェブサイトと macOS クライアントは 10 言語、管理画面は 6 言語）を実行します。ブラウザの E2E テストは `make e2e` で実行できます。
 
 > [!IMPORTANT]
 > 開発・テスト中に自分のコンピュータで実際の `brew install`、`upgrade`、`uninstall`、`cleanup`、`update` を実行しないでください。クライアントの書き込み操作はモック brew でテストします。`OPENNAVO_BREW_PATH` に `apps/desktop/src-tauri/tests/fake-brew/brew` を指定してください。
@@ -204,7 +204,7 @@ Issue と Pull Request を歓迎します。作業前に以下をご確認くだ
 - **契約を先に定義**：API の変更はまず `apps/server/api/*.openapi.yaml` に反映し、`make gen` の後で実装を変更します。生成ファイルを手で編集しないでください。
 - **デザイントークン**：色・角丸などは `packages/tokens/tokens.json` を使い、コンポーネントに色を直接記述しないでください。
 - **データベース**：新しいマイグレーションファイルを追加し、既存のファイルは変更しないでください。
-- **文言**：ユーザー向けのテキストは言語ファイルに入れ、各画面の対応言語すべて（ウェブサイトは 10 言語、macOS クライアントと管理画面は 6 言語）を用意してください。`make lint` が完全性を検証します。
+- **文言**：ユーザー向けのテキストは言語ファイルに入れ、各画面の対応言語すべて（ウェブサイトと macOS クライアントは 10 言語、管理画面は 6 言語）を用意してください。`make lint` が完全性を検証します。
 - **コミットメッセージ**：[Conventional Commits](https://www.conventionalcommits.org/en/) に従います。例：`feat(desktop): …`、`fix(server): …`。
 - コミット前に `make lint test` が通ることを確認してください。
 

@@ -38,7 +38,7 @@ func TestPublicRequestResourceAndContractBounds(t *testing.T) {
 		{"/packages/cask/test/dependencies?depth=4", ""},
 		{"/packages/cask/test/related?limit=13", ""},
 		{"/catalog/changes?since=0&limit=1001", ""},
-		{"/sitemap/packages?size=5001", ""},
+		{"/sitemap/packages?size=501", ""},
 		{"/feedback", `{"type":"other","platform":"web","content":"` + strings.Repeat("中", 2001) + `"}`},
 		{"/feedback", `{"type":"other","platform":"web","content":"有效反馈内容","contact":"` + strings.Repeat("a", 201) + `"}`},
 		{"/packages/lookup", `{"items":[` + strings.Repeat(`{"kind":"cask","token":"test"},`, 500) + `{"kind":"cask","token":"test"}]}`},

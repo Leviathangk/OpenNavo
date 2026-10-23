@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PackageSummary } from '@opennavo/api';
-import { LOCALES, formatCount } from '@opennavo/shared';
+import { DESKTOP_LOCALES, formatCount } from '@opennavo/shared';
 import { OnAppIcon, OnButton, OnIcon } from '@opennavo/ui';
 
 // App store (08 §10.14): the store right under the hero, ahead of security — title with the catalog count, live
@@ -36,8 +36,8 @@ const stats = computed(() =>
   [
     { key: 'apps', value: props.count },
     { key: 'updated', value: props.updated },
-    // The Mac app's languages; the website itself has more (SITE_LOCALES).
-    { key: 'languages', value: LOCALES.length }
+    // The Mac app's languages.
+    { key: 'languages', value: DESKTOP_LOCALES.length }
   ].filter(stat => stat.value > 0)
 );
 

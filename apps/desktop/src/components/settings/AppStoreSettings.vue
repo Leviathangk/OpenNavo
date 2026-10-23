@@ -20,8 +20,29 @@ const mas = useMasStore();
 const toasts = useToasts();
 const { errorText } = usePackageState();
 
-// Storefronts people in OpenNavo's six languages use most; any other comes from Auto.
-const COMMON = ['cn', 'hk', 'tw', 'us', 'jp', 'gb', 'de', 'fr', 'es', 'br', 'pt', 'ru', 'ca', 'au', 'sg', 'kr'];
+// Storefronts people in OpenNavo's languages use most; any other comes from Auto.
+const COMMON = [
+  'cn',
+  'hk',
+  'tw',
+  'us',
+  'jp',
+  'gb',
+  'de',
+  'at',
+  'ch',
+  'fr',
+  'be',
+  'it',
+  'es',
+  'br',
+  'pt',
+  'ru',
+  'ca',
+  'au',
+  'sg',
+  'kr'
+];
 
 onMounted(() => void mas.loadStatus().catch(() => undefined));
 

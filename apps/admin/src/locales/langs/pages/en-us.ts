@@ -46,7 +46,9 @@ const pages: PageMessages = {
       country: 'Country',
       unknownCountry: 'Unknown',
       title: 'User activity',
-      hint: 'Asia/Shanghai · Today is partial · Anonymous installations and browsers, not people. Client counts include background operation; web counts require a visible visit. Platforms are not deduplicated. Country is the request location, including VPN/proxy exits.',
+      hint: 'Anonymous installations and browsers, not people. Client counts include background operation; web counts require a visible visit. Platforms are not deduplicated. Country is the request location, including VPN/proxy exits.',
+      asOf: 'Asia/Shanghai · Today through {time}',
+      yesterday: 'Yesterday {value}',
       date: 'Date',
       desktop: 'Client DAU',
       web: 'Web DAU',
@@ -56,7 +58,7 @@ const pages: PageMessages = {
       version: 'Version',
       count: 'Installations',
       empty: 'No activity reported yet. Reports appear after clients run or visitors use the website.',
-      trend: 'Daily activity · Last 30 days',
+      trend: 'Daily activity · {start} to {end}',
       details: 'Daily counts',
       newHint:
         'New means first observed with this ID. Clearing local data or returning after 90 days without activity may count as new.'
@@ -111,6 +113,10 @@ const pages: PageMessages = {
       yesterday: 'Yesterday (UTC)',
       count: 'Actions',
       compensated: 'Compensated',
+      action: 'Action',
+      operation: 'Operation',
+      mode: 'Mode',
+      usage: 'Usage',
       alerts: 'Latest 5 unresolved alerts',
       noAlerts: 'No unresolved alerts',
       origin: 'Origin',
@@ -128,13 +134,14 @@ const pages: PageMessages = {
     disabledHint: '{deprecated} deprecated · {hidden} hidden',
     coverage: 'Coverage',
     coverageHint: 'All eligible apps, including fonts; excludes disabled, hidden or removed items',
-    sixLocaleContentHint:
-      'Summaries and descriptions must be complete and current in all six languages. Language fallbacks do not count.',
+    localeContentHint:
+      'Six languages are the original six: English, Simplified Chinese, Japanese, Spanish, Portuguese and Russian. Ten languages are every language of the site and the desktop app, adding German, French, Italian and Traditional Chinese. Each language needs a complete, current summary and description. Language fallbacks do not count.',
     coverageItems: {
       primaryCategory: 'Primary category',
       icon: 'Icon',
       latestVersionNotes: 'Latest version notes',
-      sixLocaleContent: 'Complete in six languages'
+      sixLocaleContent: 'Complete in six languages',
+      siteLocaleContent: 'Complete in ten languages'
     },
     sync: 'Sync health',
     syncItems: { catalog: 'Catalog sync', analytics: 'Install stats', snapshot: 'Desktop snapshot' },
@@ -143,7 +150,6 @@ const pages: PageMessages = {
     failed24h: 'Failed jobs, last 24 h',
     viewJobs: 'Jobs',
     snapshotInfo: 'Cursor {cursor} · {count} package | Cursor {cursor} · {count} packages',
-    todo: 'To do',
     feedbackOpen: 'Open feedback',
     viewFeedback: 'Feedback',
     hermes: {

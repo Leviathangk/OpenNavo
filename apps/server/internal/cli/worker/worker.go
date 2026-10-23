@@ -70,7 +70,12 @@ func run(ctx context.Context) error {
 	handlers["analytics:sync"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return analytics.Run(ctx) }
 	handlers["seo:pages"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) {
 		count, err := st.RefreshPackagePageStates(ctx, 100)
-		return map[string]any{"packages": count}, err
+		if err != nil {
+			return map[string]any{"packages": count}, err
+		}
+		// Versions pages written before their notes facts were stored get them a few hundred apps per run.
+		notes, err := st.BackfillPageNotes(ctx, 200)
+		return map[string]any{"packages": count, "notesBackfilled": notes}, err
 	}
 	seoData := seoingest.New(st, cfg)
 	handlers["seo:gsc"] = func(ctx context.Context, _ jobs.Payload) (map[string]any, error) { return seoData.GSC(ctx) }

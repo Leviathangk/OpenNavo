@@ -442,7 +442,7 @@ export interface paths {
         };
         /**
          * Full external software links catalog
-         * @description Independent of the legacy snapshot and changes protocol. Send If-None-Match to reuse the cached full catalog.
+         * @description Independent of the legacy snapshot and changes protocol. Send If-None-Match to reuse the cached full catalog. Link notes keep the original six languages unless locales=all.
          */
         get: operations["getCatalogLinks"];
         put?: never;
@@ -460,7 +460,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Latest catalog snapshot metadata */
+        /**
+         * Latest catalog snapshot metadata
+         * @description textPacks lists the original six languages, the same as the CDN latest.json; with locales=all it lists a pack for every desktop language. The base file is shared, so its sourceLocale values stay within the original six.
+         */
         get: operations["getCatalogSnapshot"];
         put?: never;
         post?: never;
@@ -479,7 +482,7 @@ export interface paths {
         };
         /**
          * Incremental catalog changes
-         * @description Preserve existing cursors, pagination and 410/1201 semantics. Each upsert carries complete sparse six-language text; missing keys clear translations. Every new-server delta response, including empty pages, provides complete categories and categoryNames views, replaced together within the page transaction; missing entries represent removal or clearing. Both fields remain optional for compatibility: when both are absent in old responses, retain local categories. Categories add no package cursor and do not change pagination. Expired cursors return HTTP 410 with code 1201.
+         * @description Preserve existing cursors, pagination and 410/1201 semantics. Each upsert carries complete sparse text in the original six languages, or in every desktop language with locales=all; missing keys clear translations. Every new-server delta response, including empty pages, provides complete categories and categoryNames views, replaced together within the page transaction; missing entries represent removal or clearing. Both fields remain optional for compatibility: when both are absent in old responses, retain local categories. Categories add no package cursor and do not change pagination. Expired cursors return HTTP 410 with code 1201.
          */
         get: operations["listCatalogChanges"];
         put?: never;
@@ -570,7 +573,7 @@ export interface paths {
         };
         /**
          * Sitemap data for the web server
-         * @description Indexable apps in stable id order. Under an enforced index policy only eligible apps and their published languages are listed; otherwise every listed app in all six languages.
+         * @description Indexable apps in stable id order. Under an enforced index policy only eligible apps and their published languages are listed; otherwise every listed app in every site language. The web server reads it over the internal network in pages of 500; the public API host does not serve it. Pages are cached for up to 10 minutes.
          */
         get: operations["listSitemapPackages"];
         put?: never;
@@ -2081,11 +2084,11 @@ export interface components {
          */
         Locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
         /**
-         * @description Application UI and client release-note language; content APIs use Locale.
+         * @description Mac client language (the desktop locales), used for client release notes; content APIs use Locale.
          * @example en-US
          * @enum {string}
          */
-        AppLocale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU";
+        AppLocale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
         /**
          * @description Casks only. The formula enum remains for old-request compatibility; explicit requests return 404. Historical data is not deleted.
          * @example cask
@@ -5039,7 +5042,7 @@ export interface components {
             item?: components["schemas"]["CatalogItem"] | null;
         };
         /**
-         * @description Preserve existing cursors, pagination and 410/1201 semantics. Each upsert carries complete sparse six-language text; missing keys clear translations. Every new-server delta response, including empty pages, provides complete categories and categoryNames views, replaced together within the page transaction; missing entries represent removal or clearing. Both fields remain optional for compatibility: when both are absent in old responses, retain local categories. Categories add no package cursor and do not change pagination.
+         * @description Preserve existing cursors, pagination and 410/1201 semantics. Each upsert carries complete sparse text in the original six languages, or in every desktop language with locales=all; missing keys clear translations. Every new-server delta response, including empty pages, provides complete categories and categoryNames views, replaced together within the page transaction; missing entries represent removal or clearing. Both fields remain optional for compatibility: when both are absent in old responses, retain local categories. Categories add no package cursor and do not change pagination.
          * @example {
          *       "changes": [
          *         {
@@ -8503,6 +8506,8 @@ export interface components {
         AuthorSlugPath: string;
         Current: number;
         Size: number;
+        /** @description all returns text in every desktop language; the ten-language client sends it. Without it responses keep the original six languages (en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU), because older clients reject other language keys. */
+        CatalogLocales: "all";
     };
     requestBodies: never;
     headers: never;
@@ -9289,7 +9294,10 @@ export interface operations {
     };
     getCatalogLinks: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description all returns text in every desktop language; the ten-language client sends it. Without it responses keep the original six languages (en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU), because older clients reject other language keys. */
+                locales?: components["parameters"]["CatalogLocales"];
+            };
             header?: {
                 "If-None-Match"?: string;
             };
@@ -9323,7 +9331,10 @@ export interface operations {
     };
     getCatalogSnapshot: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description all returns text in every desktop language; the ten-language client sends it. Without it responses keep the original six languages (en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU), because older clients reject other language keys. */
+                locales?: components["parameters"]["CatalogLocales"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -9352,6 +9363,8 @@ export interface operations {
             query: {
                 since: number;
                 limit?: number;
+                /** @description all returns text in every desktop language; the ten-language client sends it. Without it responses keep the original six languages (en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU), because older clients reject other language keys. */
+                locales?: components["parameters"]["CatalogLocales"];
             };
             header?: never;
             path?: never;

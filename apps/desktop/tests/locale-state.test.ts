@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
-import type { Locale } from '@opennavo/shared';
+import type { DesktopLocale as Locale } from '@opennavo/shared';
 import { commands, events, unwrap } from '@/ipc/client';
 import { installMockIpc } from '@/ipc/mock';
 import { startAppLocale } from '@/composables/startAppLocale';

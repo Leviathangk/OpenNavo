@@ -43,7 +43,7 @@ func (s *Service) Links(ctx context.Context) (CatalogLinks, error) {
 			return err
 		}
 		for i, item := range items {
-			link := desktopLink(packages[i].Link)
+			link := desktopLink(packages[i].Link, domain.AllCatalogLocales(ctx))
 			if link == nil {
 				continue
 			}
@@ -67,14 +67,14 @@ func (s *Service) Links(ctx context.Context) (CatalogLinks, error) {
 	return result, nil
 }
 
-// The unversioned desktop endpoint retains the original five-price, six-locale
-// contract. Unknown prices cannot be truthfully represented in that contract.
-func desktopLink(input *publicapi.LinkInfo) *publicapi.LinkInfo {
+// The desktop endpoint retains the original five-price contract; unknown prices cannot be truthfully represented in
+// it. Notes keep the original six languages unless the client asked for every desktop language (locales=all).
+func desktopLink(input *publicapi.LinkInfo, allLocales bool) *publicapi.LinkInfo {
 	if input == nil || !slices.Contains([]string{"free", "paid", "freemium", "subscription", "open_source"}, string(input.Pricing)) {
 		return nil
 	}
 	out := *input
-	if input.Notes != nil {
+	if input.Notes != nil && !allLocales {
 		notes := *input.Notes
 		notes.DeDE, notes.FrFR, notes.ItIT, notes.ZhHant = nil, nil, nil, nil
 		out.Notes = &notes

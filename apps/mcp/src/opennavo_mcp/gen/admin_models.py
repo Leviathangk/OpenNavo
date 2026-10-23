@@ -1439,8 +1439,8 @@ class Locale(RootModel[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-
     root: Annotated[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT', 'zh-Hant'], Field(description='Supported language; without locale, match Accept-Language by q value and ultimately default to en-US.', examples=['en-US'])]
 
 
-class AppLocale(RootModel[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU']]):
-    root: Annotated[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'], Field(description='Application UI and client release-note language; content APIs use Locale.', examples=['en-US'])]
+class AppLocale(RootModel[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT', 'zh-Hant']]):
+    root: Annotated[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT', 'zh-Hant'], Field(description='Mac client language (the desktop locales), used for client release notes; content APIs use Locale.', examples=['en-US'])]
 
 
 class PackageKind(RootModel[Literal['cask', 'formula', 'link']]):
@@ -1612,7 +1612,7 @@ class UsageOverview(BaseModel):
 
 
 class Packages(BaseModel):
-    casks: Annotated[int, Field(description='Non-font Cask apps, excluding disabled and removed packages.', examples=[40])]
+    casks: Annotated[int, Field(description='Non-font apps (Homebrew Casks and link apps), excluding disabled and removed packages.', examples=[40])]
     formulae: Annotated[int, Field(examples=[20])]
     fonts: Annotated[int, Field(description='Font Casks, excluding disabled and removed packages.', examples=[3])]
     libraries: Annotated[int, Field(examples=[3])]
@@ -1625,7 +1625,8 @@ class Coverage(BaseModel):
     primaryCategory: Ratio
     icon: Ratio
     latestVersionNotes: Annotated[Ratio, Field(description='Valid apps and fonts whose current build shows non-hidden editorial release notes (its own or the shared note of its base version); excludes historical versions and old upstream notes.')]
-    sixLocaleContent: Annotated[Ratio, Field(description='Valid apps and fonts with actual nonempty summaries and introductions in all six languages, status source/machine/manual, and source language/hash matching current source text. Excludes fallback, queued, failed and stale content.')]
+    sixLocaleContent: Annotated[Ratio, Field(description='Valid apps and fonts with actual nonempty summaries and introductions in all six app languages (the original six; the admin UI and server messages use them), status source/machine/manual, and source language/hash matching current source text. Excludes fallback, queued, failed and stale content.')]
+    siteLocaleContent: Annotated[Ratio, Field(description='Same rule as sixLocaleContent across all ten website languages: the six app languages plus de-DE, fr-FR, it-IT and zh-Hant. The desktop client uses the same ten.')]
 
 
 class Jobs(BaseModel):
@@ -2517,6 +2518,10 @@ class DesktopReleaseI18nMap(BaseModel):
     es_ES: Annotated[DesktopReleaseI18n | None, Field(alias='es-ES')] = None
     pt_BR: Annotated[DesktopReleaseI18n | None, Field(alias='pt-BR')] = None
     ru_RU: Annotated[DesktopReleaseI18n | None, Field(alias='ru-RU')] = None
+    de_DE: Annotated[DesktopReleaseI18n | None, Field(alias='de-DE')] = None
+    fr_FR: Annotated[DesktopReleaseI18n | None, Field(alias='fr-FR')] = None
+    it_IT: Annotated[DesktopReleaseI18n | None, Field(alias='it-IT')] = None
+    zh_Hant: Annotated[DesktopReleaseI18n | None, Field(alias='zh-Hant')] = None
 
 
 class DesktopReleaseI18nViewMap(BaseModel):
@@ -2529,6 +2534,10 @@ class DesktopReleaseI18nViewMap(BaseModel):
     es_ES: Annotated[DesktopReleaseI18nView | None, Field(alias='es-ES')] = None
     pt_BR: Annotated[DesktopReleaseI18nView | None, Field(alias='pt-BR')] = None
     ru_RU: Annotated[DesktopReleaseI18nView | None, Field(alias='ru-RU')] = None
+    de_DE: Annotated[DesktopReleaseI18nView | None, Field(alias='de-DE')] = None
+    fr_FR: Annotated[DesktopReleaseI18nView | None, Field(alias='fr-FR')] = None
+    it_IT: Annotated[DesktopReleaseI18nView | None, Field(alias='it-IT')] = None
+    zh_Hant: Annotated[DesktopReleaseI18nView | None, Field(alias='zh-Hant')] = None
 
 
 class MirrorI18n(BaseModel):
@@ -6054,7 +6063,7 @@ class UserInfoResponseResult(RootModel[UserInfoResponse | BusinessErrorResponse]
 class DashboardOverview(BaseModel):
     usage: UsageOverview | None = None
     packages: Packages
-    coverage: Annotated[Coverage, Field(description='All four coverage metrics use all valid Cask apps, including fonts, as denominator, excluding disabled, hidden and removed packages.')]
+    coverage: Annotated[Coverage, Field(description='All coverage metrics use all valid apps (Homebrew Casks and link apps), including fonts, as denominator, excluding disabled, hidden and removed packages.')]
     feedbackOpen: Annotated[int, Field(examples=[1])]
     jobs: Jobs
     snapshot: Snapshot
@@ -6991,7 +7000,7 @@ class CategoryTreeResponseResult(RootModel[CategoryTreeResponse | BusinessErrorR
 
 
 class DashboardOverviewResponseResult(RootModel[DashboardOverviewResponse | BusinessErrorResponse]):
-    root: Annotated[DashboardOverviewResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'packages': {'casks': 40, 'formulae': 0, 'fonts': 3, 'libraries': 0, 'hidden': 1, 'deprecated': 1, 'disabled': 1}, 'coverage': {'primaryCategory': {'done': 1, 'total': 1}, 'icon': {'done': 1, 'total': 1}, 'latestVersionNotes': {'done': 1, 'total': 1}, 'sixLocaleContent': {'done': 1, 'total': 1}}, 'feedbackOpen': 1, 'jobs': {'failed24h': 1, 'lastCatalogSyncAt': None, 'lastAnalyticsSyncAt': None, 'lastSnapshotAt': None}, 'snapshot': {'cursor': 1, 'itemCount': 60, 'url': None}, 'hermes': {'date': '2026-10-07', 'timeZone': 'UTC', 'writes': 300, 'translations': 180, 'failures': 2}}}])]
+    root: Annotated[DashboardOverviewResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'packages': {'casks': 40, 'formulae': 0, 'fonts': 3, 'libraries': 0, 'hidden': 1, 'deprecated': 1, 'disabled': 1}, 'coverage': {'primaryCategory': {'done': 1, 'total': 1}, 'icon': {'done': 1, 'total': 1}, 'latestVersionNotes': {'done': 1, 'total': 1}, 'sixLocaleContent': {'done': 1, 'total': 1}, 'siteLocaleContent': {'done': 1, 'total': 1}}, 'feedbackOpen': 1, 'jobs': {'failed24h': 1, 'lastCatalogSyncAt': None, 'lastAnalyticsSyncAt': None, 'lastSnapshotAt': None}, 'snapshot': {'cursor': 1, 'itemCount': 60, 'url': None}, 'hermes': {'date': '2026-10-07', 'timeZone': 'UTC', 'writes': 300, 'translations': 180, 'failures': 2}}}])]
 
 
 class DesktopReleasePageResponseResult(RootModel[DesktopReleasePageResponse | BusinessErrorResponse]):

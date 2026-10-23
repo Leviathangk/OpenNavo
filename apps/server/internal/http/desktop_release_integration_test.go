@@ -149,7 +149,7 @@ func TestDesktopReleaseContractsCIManifestRollbackAndCompensation(t *testing.T) 
 	server.Engine.ServeHTTP(w, r)
 	testutil.ValidateResponse(t, pspec, "/api/v1", r, w)
 	require.Equal(t, 404, w.Code)
-	// Execute the real CI registration script to prevent drift between the six-language contract and JavaScript request body.
+	// Execute the real CI registration script to prevent drift between the ten-language contract and JavaScript request body.
 	apiServer := httptest.NewServer(server.Engine)
 	t.Cleanup(apiServer.Close)
 	dir := t.TempDir()

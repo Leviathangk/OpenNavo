@@ -33,7 +33,7 @@ Homebrew is a reliable way to install software on a Mac, but the command line is
 
 - **Web**: Browse, search, and compare apps, read release notes for each version, and copy installation commands.
 - **macOS app**: Everything available on the web, plus installation and updates through Homebrew on your own Mac, thorough uninstallation of apps from any source, a careful cleanup of caches and leftovers, a system monitor in the menu bar, and a record of every operation.
-- **Languages**: The website supports ten languages: English, 简体中文, 繁體中文, 日本語, Español, Português (Brasil), Русский, Deutsch, Français, and Italiano. The macOS app and the admin console use six of them: English, 简体中文, 日本語, Español, Português (Brasil), and Русский. App descriptions and release notes are translated automatically, with the original text always available.
+- **Languages**: The website supports ten languages: English, 简体中文, 繁體中文, 日本語, Español, Português (Brasil), Русский, Deutsch, Français, and Italiano. The macOS app uses all ten; the admin console uses six of them: English, 简体中文, 日本語, Español, Português (Brasil), and Русский. App descriptions and release notes are translated automatically, with the original text always available.
 - **No account required**: No sign-up or login. Just open it and start browsing.
 
 [opennavo.com](https://opennavo.com/) runs the code in this repository.
@@ -185,7 +185,7 @@ For frontend-only work, you can use mocks without starting the backend: `make mo
 make lint test
 ```
 
-Includes OpenAPI validation, static checks and unit tests for Go / TypeScript / Rust / Python, and completeness checks for every interface language (ten on the website, six in the macOS app and admin). Browser end-to-end tests are available through `make e2e`.
+Includes OpenAPI validation, static checks and unit tests for Go / TypeScript / Rust / Python, and completeness checks for every interface language (ten on the website and in the macOS app, six in the admin). Browser end-to-end tests are available through `make e2e`.
 
 > [!IMPORTANT]
 > During development and testing, do not actually run `brew install`, `upgrade`, `uninstall`, `cleanup`, or `update` on your computer. Test desktop write operations with the fake brew by setting `OPENNAVO_BREW_PATH` to `apps/desktop/src-tauri/tests/fake-brew/brew`.
@@ -203,7 +203,7 @@ Issues and pull requests are welcome. See [CONTRIBUTING.md](.github/CONTRIBUTING
 - **Contracts first**: Change `apps/server/api/*.openapi.yaml` before implementation and run `make gen`. Do not edit generated files by hand.
 - **Design tokens**: Use `packages/tokens/tokens.json` for colors, radii, and other tokens. Do not hardcode colors in components.
 - **Database**: Add new migration files; do not modify existing migrations.
-- **Text**: Put all user-facing text in locale files and provide every language of that surface: ten for the website, six for the macOS app and admin. `make lint` checks completeness.
+- **Text**: Put all user-facing text in locale files and provide every language of that surface: ten for the website and the macOS app, six for the admin. `make lint` checks completeness.
 - **Commit messages**: Follow [Conventional Commits](https://www.conventionalcommits.org/en/), for example `feat(desktop): …` or `fix(server): …`.
 - Ensure `make lint test` passes before committing.
 

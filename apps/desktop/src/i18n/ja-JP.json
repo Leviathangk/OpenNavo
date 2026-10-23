@@ -77,7 +77,7 @@
     "monitor": "システムモニタ",
     "security": "ウイルススキャン",
     "securityBadge": "確認が必要な項目が{count}件あります",
-    "firewall": "App ファイアウォール",
+    "firewall": "ファイアウォール",
     "firewallBadge": "{count} 件の接続が確認を待っています"
   },
   "env": {

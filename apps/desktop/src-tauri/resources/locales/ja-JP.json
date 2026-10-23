@@ -60,5 +60,11 @@
   "monitorAlert.temperature.title": "CPUの温度が高すぎます",
   "monitorAlert.temperature.body": "CPUの温度が{temp}です。クリックしてプロセスやファンを確認できます。",
   "monitorAlert.disk_smart.title": "ディスクに異常が報告されています",
-  "monitorAlert.disk_smart.body": "「{name}」のSMART状態に異常があります。早めにバックアップしてください。"
+  "monitorAlert.disk_smart.body": "「{name}」のSMART状態に異常があります。早めにバックアップしてください。",
+  "security.pasteBlocked": "不審な貼り付けを停止しました",
+  "security.scanFinished": "ウイルススキャンが完了しました",
+  "security.threatsFound": "脅威が見つかりました",
+  "security.signatureChanged": "App の署名が変更されました",
+  "security.downloadThreat": "ダウンロードしたファイルに脅威",
+  "security.newStartupItem": "新しい起動項目"
 }

@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { LOCALES, LOCALE_METADATA, formatCount, formatDate } from '@opennavo/shared';
+import { DESKTOP_LOCALES, LOCALE_METADATA, formatCount, formatDate } from '@opennavo/shared';
 
-// Six-language demo (12 §1): flip language names, showing the same date/catalog count formatted with Intl.
+// Language demo (12 §1): flip through the Mac app's language names, showing the same date/catalog count formatted with Intl.
 // Representative frame uses current locale; fixed UTC date keeps SSR/browser output identical.
 const props = defineProps<{ count: number | null }>();
 
 const SAMPLE_DATE = Date.UTC(2026, 9, 8);
-const DURATIONS = LOCALES.map(() => 1600);
+const DURATIONS = DESKTOP_LOCALES.map(() => 1600);
 
 const { locale } = useI18n();
 const root = ref<HTMLElement>();
 const step = useDemoLoop(
   root,
   DURATIONS,
-  Math.max(0, (LOCALES as readonly string[]).indexOf(toAppLocale(locale.value)))
+  Math.max(0, (DESKTOP_LOCALES as readonly string[]).indexOf(toAppLocale(locale.value)))
 );
 
 const items = computed(() =>
-  LOCALES.map((code, index) => ({
+  DESKTOP_LOCALES.map((code, index) => ({
     code,
     name: LOCALE_METADATA[code].name,
     offset: index - step.value,

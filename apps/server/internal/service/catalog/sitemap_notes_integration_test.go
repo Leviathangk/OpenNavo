@@ -1,0 +1,73 @@
+//go:build integration
+
+package catalog_test
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/seo"
+	"github.com/opennavo/opennavo/server/internal/service/catalog"
+	"github.com/opennavo/opennavo/server/internal/testutil"
+	"github.com/stretchr/testify/require"
+)
+
+// Sitemap pages read the versions-page notes facts the page-state job stored instead of recounting every
+// release, and count live only for apps whose facts are missing.
+func TestSitemapUsesStoredNotesFactsAndCountsMissingOnesLive(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	ctx := context.Background()
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en)
+ VALUES(902,'cask','notes-sitemap','notes-sitemap','homebrew/cask','Notes Sitemap','3','3','{}','fixture','Useful fixture application')`).Error)
+	for _, locale := range seo.Locales {
+		require.NoError(t, st.DB.Exec(`INSERT INTO package_i18n(package_id,locale,source_locale,summary,description,status,source_hash,source)
+ VALUES(902,?,'en-US','Useful fixture application','Complete fixture description','machine',repeat('a',64),'rule')`, locale).Error)
+	}
+	for _, version := range []string{"1", "2", "3"} {
+		require.NoError(t, st.DB.Exec(`INSERT INTO package_versions(package_id,version,version_base) VALUES(902,?,?)`, version, version).Error)
+		require.NoError(t, st.DB.Exec(`INSERT INTO releases(package_id,source,source_key,version,body_markdown,source_url,source_locale)
+ VALUES(902,'manual',?,?,?,'https://vendor.example/notes','en-US')`, version, version, strings.Repeat("Improved sync reliability for large libraries. ", 4)).Error)
+	}
+	svc := &catalog.PublicService{Store: st}
+	versions := func() publicapi.PageDecision {
+		t.Helper()
+		page, err := svc.Sitemap(ctx, "apps", 1, 100)
+		require.NoError(t, err)
+		require.Len(t, page.Records, 1)
+		for _, locale := range *page.Records[0].Locales {
+			if locale.Locale == "en-US" {
+				return locale.Pages.Versions
+			}
+		}
+		t.Fatal("English is not listed")
+		return publicapi.PageDecision{}
+	}
+	live := versions()
+	require.Equal(t, "index, follow", string(live.Robots), "English notes pass the thin-page rule")
+	count, err := st.RefreshPackagePageStates(ctx, 100)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	require.Equal(t, live, versions(), "stored facts give the same verdict as a live count")
+	// With facts stored, the sitemap does not recount: blanking the notes changes nothing until the job runs.
+	require.NoError(t, st.DB.Exec("UPDATE releases SET body_markdown='' WHERE package_id=902").Error)
+	require.Equal(t, live, versions())
+	// Without them it counts live and sees the blank notes.
+	require.NoError(t, st.DB.Exec("UPDATE package_page_state SET notes_chars=NULL,notes_has_source=NULL WHERE package_id=902").Error)
+	thin := versions()
+	require.Equal(t, "noindex, follow", string(thin.Robots))
+	require.Equal(t, "thin_notes_page", string(thin.Reason))
+	// The next refresh stores the new facts.
+	count, err = st.RefreshPackagePageStates(ctx, 100)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	require.Equal(t, thin, versions())
+}
+
+// Pages above SitemapPageSize are rejected rather than computed.
+func TestSitemapRejectsPagesAboveTheLimit(t *testing.T) {
+	svc := &catalog.PublicService{}
+	_, err := svc.Sitemap(context.Background(), "apps", 1, catalog.SitemapPageSize+1)
+	require.Error(t, err)
+}

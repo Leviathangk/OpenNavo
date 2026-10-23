@@ -33,7 +33,7 @@ O Homebrew é uma forma confiável de instalar software no Mac, mas a linha de c
 
 - **Web**: Navegue, pesquise e compare apps, consulte as notas de cada versão e copie comandos de instalação.
 - **App para macOS**: Todos os recursos da web, além de instalação e atualização pelo Homebrew do seu Mac, desinstalação completa de apps de qualquer origem, limpeza cuidadosa de caches e restos, monitoramento do Mac na barra de menus e um registro de cada operação.
-- **Idiomas**: O site oferece dez idiomas: English, 简体中文, 繁體中文, 日本語, Español, Português (Brasil), Русский, Deutsch, Français e Italiano. O app para macOS e o painel de administração usam seis deles: English, 简体中文, 日本語, Español, Português (Brasil) e Русский. Descrições e notas de versão são traduzidas automaticamente, e você pode consultar o texto original a qualquer momento.
+- **Idiomas**: O site oferece dez idiomas: English, 简体中文, 繁體中文, 日本語, Español, Português (Brasil), Русский, Deutsch, Français e Italiano. O app para macOS usa os dez, e o painel de administração usa seis deles: English, 简体中文, 日本語, Español, Português (Brasil) e Русский. Descrições e notas de versão são traduzidas automaticamente, e você pode consultar o texto original a qualquer momento.
 - **Sem conta**: Não é preciso se cadastrar nem fazer login. Basta abrir e começar a usar.
 
 [opennavo.com](https://opennavo.com/pt) usa o código deste repositório.
@@ -183,7 +183,7 @@ Para alterações apenas no frontend, não é necessário iniciar o backend: `ma
 make lint test
 ```
 
-Inclui validação de OpenAPI, análise estática e testes unitários de Go / TypeScript / Rust / Python, além da verificação de integridade dos textos em todos os idiomas de cada interface (dez no site e seis no app para macOS e no painel de administração). Os testes de ponta a ponta no navegador estão disponíveis com `make e2e`.
+Inclui validação de OpenAPI, análise estática e testes unitários de Go / TypeScript / Rust / Python, além da verificação de integridade dos textos em todos os idiomas de cada interface (dez no site e no app para macOS, e seis no painel de administração). Os testes de ponta a ponta no navegador estão disponíveis com `make e2e`.
 
 > [!IMPORTANT]
 > Durante o desenvolvimento e os testes, não execute de verdade `brew install`, `upgrade`, `uninstall`, `cleanup` nem `update` no seu computador. Teste as operações de escrita do cliente com o brew simulado: configure `OPENNAVO_BREW_PATH` como `apps/desktop/src-tauri/tests/fake-brew/brew`.
@@ -204,7 +204,7 @@ Issues e pull requests são bem-vindas. Antes de começar:
 - **Contratos primeiro**: Altere `apps/server/api/*.openapi.yaml` antes da implementação e execute `make gen`. Não edite arquivos gerados manualmente.
 - **Tokens de design**: Use `packages/tokens/tokens.json` para cores, raios e outros valores. Não escreva cores diretamente nos componentes.
 - **Banco de dados**: Adicione novas migrações; não altere as existentes.
-- **Textos**: Coloque todo texto destinado ao usuário nos arquivos de idiomas, com versões em todos os idiomas da interface correspondente: dez para o site e seis para o app para macOS e o painel de administração. `make lint` verifica a integridade.
+- **Textos**: Coloque todo texto destinado ao usuário nos arquivos de idiomas, com versões em todos os idiomas da interface correspondente: dez para o site e o app para macOS, e seis para o painel de administração. `make lint` verifica a integridade.
 - **Mensagens de commit**: Siga [Conventional Commits](https://www.conventionalcommits.org/en/), por exemplo `feat(desktop): …` ou `fix(server): …`.
 - Verifique se `make lint test` passa antes de fazer um commit.
 

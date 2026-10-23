@@ -1888,7 +1888,7 @@
       "points": {
         "about": "Beschreibungen, Screenshots und Installationsdetails – schon vor der Installation",
         "deps": "Abhängigkeiten, Konflikte und Installationsorte auf einen Blick",
-        "languages": "Sechs Sprachen; fehlt eine Übersetzung, erscheint Englisch oder das Original"
+        "languages": "Zehn Sprachen; fehlt eine Übersetzung, erscheint Englisch oder das Original"
       }
     },
     "install": {
@@ -1993,8 +1993,8 @@
         "body": "Suchen Sie nach englischem oder chinesischem Namen, Pinyin oder gängigen Aliasnamen. Die Eingabe „vscode“ findet Visual Studio Code."
       },
       "languages": {
-        "title": "Sechs Sprachen",
-        "body": "Die Oberfläche gibt es auf Englisch, vereinfachtem Chinesisch, Japanisch, Spanisch, Portugiesisch und Russisch – Datums- und Zahlenformate passen sich an."
+        "title": "Zehn Sprachen",
+        "body": "Die Oberfläche gibt es auf Englisch, vereinfachtem und traditionellem Chinesisch, Japanisch, Spanisch, Portugiesisch, Russisch, Deutsch, Französisch und Italienisch – Datums- und Zahlenformate passen sich an."
       },
       "privacy": {
         "title": "Kein Konto nötig",

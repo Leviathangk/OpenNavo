@@ -1888,7 +1888,7 @@
       "points": {
         "about": "Descriptions, screenshots, and install details before you install",
         "deps": "Dependencies, conflicts, and install locations at a glance",
-        "languages": "Six languages, falling back to English or the original when a translation is missing"
+        "languages": "Ten languages, falling back to English or the original when a translation is missing"
       }
     },
     "install": {
@@ -1993,8 +1993,8 @@
         "body": "Search by English name, Chinese name, pinyin, or common aliases. Typing vscode finds Visual Studio Code."
       },
       "languages": {
-        "title": "Six languages",
-        "body": "The interface speaks English, Simplified Chinese, Japanese, Spanish, Portuguese, and Russian, with dates and numbers to match."
+        "title": "Ten languages",
+        "body": "The interface speaks English, Simplified and Traditional Chinese, Japanese, Spanish, Portuguese, Russian, German, French, and Italian, with dates and numbers to match."
       },
       "privacy": {
         "title": "No account needed",

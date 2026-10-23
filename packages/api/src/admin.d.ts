@@ -11027,6 +11027,10 @@ export interface components {
          *           "sixLocaleContent": {
          *             "done": 1,
          *             "total": 1
+         *           },
+         *           "siteLocaleContent": {
+         *             "done": 1,
+         *             "total": 1
          *           }
          *         },
          *         "feedbackOpen": 1,
@@ -11973,11 +11977,11 @@ export interface components {
          */
         Locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
         /**
-         * @description Application UI and client release-note language; content APIs use Locale.
+         * @description Mac client language (the desktop locales), used for client release notes; content APIs use Locale.
          * @example en-US
          * @enum {string}
          */
-        AppLocale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU";
+        AppLocale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
         /**
          * @description Manages Casks only; formula remains an enum for historical data. Admin lists exclude Formula and details return business code 1002 (HTTP 200); explicit public formula requests return HTTP 404.
          * @example cask
@@ -12419,6 +12423,10 @@ export interface components {
          *         "sixLocaleContent": {
          *           "done": 1,
          *           "total": 1
+         *         },
+         *         "siteLocaleContent": {
+         *           "done": 1,
+         *           "total": 1
          *         }
          *       },
          *       "feedbackOpen": 1,
@@ -12446,7 +12454,7 @@ export interface components {
             usage?: components["schemas"]["UsageOverview"];
             packages: {
                 /**
-                 * @description Non-font Cask apps, excluding disabled and removed packages.
+                 * @description Non-font apps (Homebrew Casks and link apps), excluding disabled and removed packages.
                  * @example 40
                  */
                 casks: number;
@@ -12466,14 +12474,16 @@ export interface components {
                 /** @example 1 */
                 disabled: number;
             };
-            /** @description All four coverage metrics use all valid Cask apps, including fonts, as denominator, excluding disabled, hidden and removed packages. */
+            /** @description All coverage metrics use all valid apps (Homebrew Casks and link apps), including fonts, as denominator, excluding disabled, hidden and removed packages. */
             coverage: {
                 primaryCategory: components["schemas"]["Ratio"];
                 icon: components["schemas"]["Ratio"];
                 /** @description Valid apps and fonts whose current build shows non-hidden editorial release notes (its own or the shared note of its base version); excludes historical versions and old upstream notes. */
                 latestVersionNotes: components["schemas"]["Ratio"];
-                /** @description Valid apps and fonts with actual nonempty summaries and introductions in all six languages, status source/machine/manual, and source language/hash matching current source text. Excludes fallback, queued, failed and stale content. */
+                /** @description Valid apps and fonts with actual nonempty summaries and introductions in all six app languages (the original six; the admin UI and server messages use them), status source/machine/manual, and source language/hash matching current source text. Excludes fallback, queued, failed and stale content. */
                 sixLocaleContent: components["schemas"]["Ratio"];
+                /** @description Same rule as sixLocaleContent across all ten website languages: the six app languages plus de-DE, fr-FR, it-IT and zh-Hant. The desktop client uses the same ten. */
+                siteLocaleContent: components["schemas"]["Ratio"];
             };
             /** @example 1 */
             feedbackOpen: number;
@@ -15839,6 +15849,10 @@ export interface components {
          *           "sixLocaleContent": {
          *             "done": 1,
          *             "total": 1
+         *           },
+         *           "siteLocaleContent": {
+         *             "done": 1,
+         *             "total": 1
          *           }
          *         },
          *         "feedbackOpen": 1,
@@ -18851,6 +18865,10 @@ export interface components {
             "es-ES"?: components["schemas"]["DesktopReleaseI18n"];
             "pt-BR"?: components["schemas"]["DesktopReleaseI18n"];
             "ru-RU"?: components["schemas"]["DesktopReleaseI18n"];
+            "de-DE"?: components["schemas"]["DesktopReleaseI18n"];
+            "fr-FR"?: components["schemas"]["DesktopReleaseI18n"];
+            "it-IT"?: components["schemas"]["DesktopReleaseI18n"];
+            "zh-Hant"?: components["schemas"]["DesktopReleaseI18n"];
         };
         /**
          * @example {
@@ -18911,6 +18929,10 @@ export interface components {
             "es-ES"?: components["schemas"]["DesktopReleaseI18nView"];
             "pt-BR"?: components["schemas"]["DesktopReleaseI18nView"];
             "ru-RU"?: components["schemas"]["DesktopReleaseI18nView"];
+            "de-DE"?: components["schemas"]["DesktopReleaseI18nView"];
+            "fr-FR"?: components["schemas"]["DesktopReleaseI18nView"];
+            "it-IT"?: components["schemas"]["DesktopReleaseI18nView"];
+            "zh-Hant"?: components["schemas"]["DesktopReleaseI18nView"];
         };
         /**
          * @example {

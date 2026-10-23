@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { LOCALES, LOCALE_METADATA, formatRelativeTime } from '@opennavo/shared';
+import { DESKTOP_LOCALES, LOCALE_METADATA, formatRelativeTime } from '@opennavo/shared';
 import {
   OnModal,
   OnAboutContent,
@@ -72,7 +72,7 @@ const followSystemLabel = computed(() =>
 );
 const languageItems = computed(() => [
   { key: 'system', label: followSystemLabel.value },
-  ...LOCALES.map(code => ({ key: code, label: LOCALE_METADATA[code].name }))
+  ...DESKTOP_LOCALES.map(code => ({ key: code, label: LOCALE_METADATA[code].name }))
 ]);
 
 const section = computed<Section>(() => (route.params.section as Section | undefined) || 'general');
@@ -97,7 +97,7 @@ function selectLanguage(value: string) {
     void settings.setLanguage('system');
     return;
   }
-  const locale = LOCALES.find(code => code === value);
+  const locale = DESKTOP_LOCALES.find(code => code === value);
   if (locale) void settings.setLanguage(locale);
 }
 

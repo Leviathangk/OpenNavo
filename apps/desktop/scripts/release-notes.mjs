@@ -3,11 +3,11 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
-// Client release notes follow the app locales; site-only languages (de, fr, it, zh-Hant) are not shipped in the app.
+// Client release notes cover every language the Mac client ships in (the desktop locales).
 export const RELEASE_NOTE_LOCALES = JSON.parse(
   readFileSync(new URL('../../../packages/shared/src/locales.json', import.meta.url), 'utf8')
 )
-  .locales.filter(locale => locale.surfaces.includes('app'))
+  .locales.filter(locale => locale.surfaces.includes('desktop'))
   .map(locale => locale.code);
 
 export function validateNotes(notes, version, locale) {

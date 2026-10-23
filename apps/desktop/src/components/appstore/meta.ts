@@ -1,4 +1,4 @@
-import type { Locale } from '@opennavo/shared';
+import type { DesktopLocale as Locale } from '@opennavo/shared';
 
 /** Storefront name in the interface language, e.g. us → 美国 / United States; falls back to the code. */
 export function masRegionName(country: string, locale: Locale): string {

@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import os
+import subprocess
 from pathlib import Path
 import tarfile
 import tempfile
@@ -33,6 +34,29 @@ def payload():
     data = archive()
     return {'sha': 'a' * 40, 'run_id': '123', 'images': {kind: 'ghcr.io/example/opennavo-' + kind + '@sha256:' + 'b' * 64 for kind in ['server', 'web', 'mcp']},
             'admin_archive': base64.b64encode(data).decode(), 'admin_sha256': hashlib.sha256(data).hexdigest()}
+
+
+def prepare_on_host(root, api_environment):
+    """Prepare a release on a minimal existing host and return the deployment and its candidate overlay."""
+    directory = Path(root)
+    for name in ['deploy', 'releases', 'assets']:
+        (directory / name).mkdir()
+    (directory / 'admin.caddy').write_text(':8081 {}')
+    services = {kind: kind + '_previous' for kind in ['api', 'web', 'mcp', 'admin']}
+    (directory / 'deploy/github-state.json').write_text(json.dumps({'services': services}))
+    overlay = {'services': {name: {'environment': {}, 'networks': {}} for name in services.values()}}
+    overlay['services'][services['api']]['environment'] = dict(api_environment)
+    overlay['services'][services['web']]['volumes'] = [{'source': str(directory / 'assets'), 'target': '/app/.output/public/_nuxt'}]
+    overlay['services'][services['admin']]['volumes'] = [
+        {'source': str(directory / 'admin.caddy'), 'target': '/etc/caddy/Caddyfile'},
+        {'source': str(directory / 'admin'), 'target': '/srv/admin'}]
+    (directory / 'deploy/rolling.compose.json').write_text(json.dumps(overlay))
+    (directory / 'current-release.env').write_text('SERVER_IMAGE=old\n')
+    (directory / 'live.caddy').write_text('reverse_proxy web_previous:3000\n')
+    obj = deploy.Deployment({'root': root, 'caddy_file': 'live.caddy', 'compose_file': 'compose.yml', 'project': 'fixture'}, payload())
+    with patch.object(deploy, 'command', return_value='fixture-container'):
+        obj.prepare(archive())
+    return obj, json.loads((obj.directory / 'rolling.compose.json').read_text())
 
 
 class DeployTests(unittest.TestCase):
@@ -68,12 +92,129 @@ class DeployTests(unittest.TestCase):
                 with patch.object(deploy, 'command', return_value='fixture-container'):
                     obj.prepare(archive())
                 candidate = json.loads((obj.directory / 'rolling.compose.json').read_text())
+                self.assertEqual(candidate['services'][obj.services['web']]['environment']['NUXT_IMAGE_REDIS_URL'], 'redis://image-cache:6379/0')
+                self.assertNotIn('volumes', candidate['services']['image-cache'])
+                self.assertNotIn('ports', candidate['services']['image-cache'])
                 expected_host = 'web-default-' + obj.release if use_alias else obj.services['web']
                 self.assertEqual(candidate['services']['worker']['environment'], {
                     'WEB_INTERNAL_URL': 'http://' + expected_host + ':9091',
                     'WEB_INTERNAL_SECRET': '${WEB_INTERNAL_SECRET}', 'OTHER_SETTING': 'unchanged'})
                 self.assertEqual(json.loads(rolling.read_text()), overlay)
                 self.assertEqual(candidate['services'][services['web']], overlay['services'][services['web']])
+
+    def test_prepare_gives_an_old_api_service_the_usage_country_proxy_and_keeps_host_values(self):
+        # A host provisioned before the setting gets the same value as a fresh install from the base compose.
+        default = '${CADDY_PROXY_IP:-172.30.80.2}'
+        base = Path(__file__).with_name('docker-compose.prod.yml').read_text()
+        self.assertIn('USAGE_COUNTRY_TRUSTED_PROXIES: ' + default + '\n', base)
+        for environment, expected in [({}, default), ({'USAGE_COUNTRY_TRUSTED_PROXIES': '192.0.2.10'}, '192.0.2.10'),
+                                      ({'USAGE_COUNTRY_TRUSTED_PROXIES': ''}, '')]:
+            with self.subTest(environment=environment), tempfile.TemporaryDirectory() as root:
+                obj, candidate = prepare_on_host(root, {'TRUSTED_PROXIES': '172.30.80.2', **environment})
+                self.assertEqual(candidate['services'][obj.services['api']]['environment'],
+                                 {'TRUSTED_PROXIES': '172.30.80.2', 'USAGE_COUNTRY_TRUSTED_PROXIES': expected})
+                # The rollback service stays exactly as it ran.
+                self.assertEqual(candidate['services']['api_previous']['environment'],
+                                 {'TRUSTED_PROXIES': '172.30.80.2', **environment})
+
+    def test_monitoring_targets_preserves_other_jobs_and_follows_release_and_rollback(self):
+        source = """global:
+  scrape_interval: 15s
+rule_files: [/etc/prometheus/rules.yml]
+scrape_configs:
+  - job_name: api
+    static_configs:
+      - targets: ['api_old:9090']
+  - job_name: custom
+    static_configs:
+      - targets: ['custom:1234']
+        labels: {purpose: custom}
+"""
+        after = deploy.monitoring_targets(source, {'api': 'api_new', 'web': 'web_new'})
+        self.assertIn("targets: ['api_new:9090']", after)
+        self.assertIn("targets: ['web_new:9091']", after)
+        self.assertIn("targets: ['custom:1234']\n        labels: {purpose: custom}", after)
+        self.assertEqual(after.count('job_name: web'), 1)
+        self.assertEqual(deploy.monitoring_targets(after, {'api': 'api_new', 'web': 'web_new'}), after)
+        restored = deploy.monitoring_targets(after, {'api': 'api_old', 'web': 'web_old'})
+        self.assertNotIn('api_new', restored)
+        self.assertIn("targets: ['web_old:9091']", restored)
+        with self.assertRaises(ValueError):
+            deploy.monitoring_targets(source.replace('    static_configs:', '    relabel_configs:', 1), {'api': 'a', 'web': 'b'})
+        with self.assertRaises(ValueError):
+            deploy.monitoring_targets(source, {'api': 'a\nmalicious', 'web': 'b'})
+
+    def test_monitoring_health_checks_dns_identity_and_all_replicas(self):
+        def target(job, service, ip, health='up', dns=True):
+            port = 9090 if job == 'api' else 9091
+            return {'labels': {'job': job}, 'health': health,
+                    'discoveredLabels': {'job': job, '__meta_dns_name': service} if dns else {'job': job},
+                    'scrapeUrl': f'http://{ip if dns else service}:{port}/metrics'}
+
+        good = [target('api', 'api_new', '172.20.0.2'), target('web', 'web_new', '172.20.0.3')]
+        cases = [
+            ('dns IP targets', good, 0),
+            ('static targets', [target('api', 'api_new', '', dns=False), target('web', 'web_new', '', dns=False)], 0),
+            ('multiple replicas', good + [target('web', 'web_new', '172.20.0.4')], 0),
+            ('unhealthy replica', good + [target('web', 'web_new', '172.20.0.4', 'down')], 1),
+            ('old release', [target('api', 'api_old', '172.20.0.2'), good[1]], 1),
+            ('missing job', good[:1], 1),
+            ('stale replica', good + [target('web', 'web_old', '172.20.0.4')], 1),
+            ('static unhealthy replica', [target('api', 'api_new', '', dns=False),
+                                          target('web', 'web_new', '', dns=False),
+                                          target('web', 'web_new', '', 'down', dns=False)], 1),
+            ('wrong port', [dict(good[0], scrapeUrl='http://172.20.0.2:9091/metrics'), good[1]], 1),
+        ]
+        for name, targets, expected in cases:
+            with self.subTest(name=name):
+                # Execute the actual deployed Node script; only HTTP and retry timing are replaced.
+                prelude = ('globalThis.fetch = async () => ({json: async () => (' +
+                           json.dumps({'status': 'success', 'data': {'activeTargets': targets}}) +
+                           ')}); globalThis.setTimeout = (callback) => { callback(); };\n')
+                result = subprocess.run(['node', '--input-type=module', '-e', prelude + deploy.MONITORING_HEALTH_SCRIPT,
+                                         json.dumps({'api': 'api_new:9090', 'web': 'web_new:9091'})],
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, expected, result.stderr)
+
+    def test_monitoring_default_dns_config_release_and_rollback(self):
+        source = Path(__file__).with_name('prometheus').joinpath('prometheus.yml').read_text()
+        after = deploy.monitoring_targets(source, {'api': 'api_new', 'web': 'web_new'})
+        expected = source.replace('names: [api]', 'names: [api_new]').replace('names: [web]', 'names: [web_new]')
+        self.assertEqual(after, expected)
+        self.assertEqual(deploy.monitoring_targets(after, {'api': 'api_new', 'web': 'web_new'}), after)
+        self.assertEqual(deploy.monitoring_targets(after, {'api': 'api', 'web': 'web'}), source)
+
+    def test_monitoring_validation_or_scrape_failure_restores_config_without_leaking_it(self):
+        for failure in ['validate', 'scrape', None]:
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as root:
+                directory = Path(root)
+                config = directory / 'prometheus.yml'
+                original = "global:\n  scrape_interval: 15s\nscrape_configs:\n  - job_name: api\n    static_configs:\n      - targets: ['api_old:9090']\n"
+                config.write_text(original)
+                inode = config.stat().st_ino
+                obj = object.__new__(deploy.Deployment)
+                obj.directory, obj.config = directory, {'project': 'example-prod'}
+                def command(args):
+                    if args[1] == 'ps': return 'monitor'
+                    if args[1] == 'inspect':
+                        return json.dumps([{'Mounts': [{'Source': str(config), 'Destination': '/etc/prometheus/prometheus.yml', 'Type': 'bind'}]}])
+                    if 'promtool' in args:
+                        self.assertIn('web_new:9091', config.read_text())
+                        if failure == 'validate': raise RuntimeError('validation failed')
+                    if 'node' in args and failure == 'scrape': raise RuntimeError('scrape failed')
+                    return ''
+                with patch.object(deploy, 'command', side_effect=command) as run:
+                    if failure:
+                        with self.assertRaises(RuntimeError):
+                            obj.update_monitoring({'api': 'api_new', 'web': 'web_new'})
+                        self.assertEqual(config.read_text(), original)
+                    else:
+                        obj.update_monitoring({'api': 'api_new', 'web': 'web_new'})
+                        self.assertIn('web_new:9091', config.read_text())
+                        self.assertTrue(any('node' in call.args[0] for call in run.call_args_list))
+                    self.assertEqual(config.stat().st_ino, inode)
+                    self.assertEqual((directory / 'before-prometheus.yml').read_text(), original)
+                    self.assertTrue(any(call.args[0][:3] == ['docker', 'kill', '--signal=HUP'] for call in run.call_args_list))
 
     def test_cleanup_stops_previous_release_and_removes_only_older_app_containers(self):
         obj = object.__new__(deploy.Deployment)
@@ -116,11 +257,12 @@ class DeployTests(unittest.TestCase):
         obj.state = {'sha': obj.payload['sha'], 'services': {'api': 'api_live'}, 'previous': previous}
         events = []
         obj.verify = lambda: events.append('verify')
+        obj.update_monitoring = lambda services: events.append('monitoring')
         obj.cleanup = lambda state: events.append(('cleanup', state))
         obj.prune = lambda state: events.append(('prune', state))
         obj.apply(archive())
         self.assertEqual(obj.services, obj.state['services'])
-        self.assertEqual(events, ['verify', ('cleanup', previous), ('prune', previous)])
+        self.assertEqual(events, ['verify', 'monitoring', ('cleanup', previous), ('prune', previous)])
 
     def test_prune_keeps_recent_live_previous_and_mounted_release_snapshots(self):
         with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as outside:
@@ -290,7 +432,7 @@ class DeployTests(unittest.TestCase):
             directory = Path(root)
             obj = object.__new__(deploy.Deployment)
             obj.config = {}
-            obj.state = {'sha': 'c' * 40}
+            obj.state = {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in ['api', 'web', 'admin', 'mcp']}}
             obj.payload = payload()
             obj.directory = directory
             obj.state_path = directory / 'state.json'
@@ -308,6 +450,7 @@ class DeployTests(unittest.TestCase):
             obj.backup = lambda: events.append('backup')
             obj.compose = lambda *args, **kwargs: events.append(args)
             obj.reload = lambda: events.append('reload')
+            obj.update_monitoring = lambda services: events.append(('monitoring', services))
             obj.cleanup = lambda _: events.append('cleanup')
             obj.prune = lambda _: events.append('prune')
             def fail(): raise RuntimeError('route check failed')
@@ -328,16 +471,26 @@ class DeployTests(unittest.TestCase):
             self.assertNotIn('cleanup', events)
             self.assertNotIn('prune', events)
 
+            # Even if monitoring cannot recover, rollback must stop failed candidates.
+            events.clear()
+            def fail_monitoring(_): raise RuntimeError('monitoring unavailable')
+            obj.update_monitoring = fail_monitoring
+            with self.assertRaisesRegex(RuntimeError, 'monitoring unavailable'):
+                obj.rollback()
+            self.assertIn(('stop', *obj.services.values()), events)
+            self.assertEqual(obj.live_caddy.read_text(), 'old')
+
             # A successful retry must persist the verified release before cleanup.
             obj.state['previous'] = {'sha': 'd' * 40}
             (directory / 'release.env').write_text('new-env')
             (directory / 'rolling.compose.json').write_text('{}')
             events.clear()
             obj.verify = lambda: events.append('verify')
+            obj.update_monitoring = lambda services: events.append('monitoring')
             def cleanup(previous):
                 state = json.loads(obj.state_path.read_text())
                 self.assertEqual(state['sha'], obj.payload['sha'])
-                self.assertEqual(state['previous'], {'sha': 'c' * 40})
+                self.assertEqual(state['previous'], {'sha': 'c' * 40, 'services': {k: k + '_previous' for k in ['api', 'web', 'admin', 'mcp']}})
                 self.assertEqual(previous, state['previous'])
                 events.append('cleanup')
             obj.cleanup = cleanup

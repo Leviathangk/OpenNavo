@@ -80,7 +80,8 @@ func (h *Handler) ListCatalogChanges(ctx context.Context, request publicapi.List
 	if h.Snapshot == nil {
 		return nil, domain.Internal(nil)
 	}
-	data, err := h.Snapshot.Changes(domain.WithLinks(requestContext(ctx), false), request.Params.Since, fallback(request.Params.Limit, 500))
+	ctx = domain.WithAllCatalogLocales(domain.WithLinks(requestContext(ctx), false), request.Params.Locales != nil && *request.Params.Locales == "all")
+	data, err := h.Snapshot.Changes(ctx, request.Params.Since, fallback(request.Params.Limit, 500))
 	return response[publicapi.ListCatalogChanges200JSONResponse](data, err)
 }
 
@@ -88,7 +89,8 @@ func (h *Handler) GetCatalogSnapshot(ctx context.Context, request publicapi.GetC
 	if h.Snapshot == nil {
 		return nil, domain.Internal(nil)
 	}
-	data, err := h.Snapshot.Latest(domain.WithLinks(requestContext(ctx), false))
+	ctx = domain.WithAllCatalogLocales(domain.WithLinks(requestContext(ctx), false), request.Params.Locales != nil && *request.Params.Locales == "all")
+	data, err := h.Snapshot.Latest(ctx)
 	return response[publicapi.GetCatalogSnapshot200JSONResponse](data, err)
 }
 
@@ -307,7 +309,7 @@ func (h *Handler) ListSitemapPackages(ctx context.Context, request publicapi.Lis
 	if request.Params.Group != nil {
 		group = string(*request.Params.Group)
 	}
-	data, err := h.Catalog.Sitemap(requestContext(ctx), group, fallback(request.Params.Current, 1), fallback(request.Params.Size, 5000))
+	data, err := h.Catalog.Sitemap(requestContext(ctx), group, fallback(request.Params.Current, 1), fallback(request.Params.Size, catalog.SitemapPageSize))
 	return response[publicapi.ListSitemapPackages200JSONResponse](data, err)
 }
 

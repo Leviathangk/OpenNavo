@@ -77,7 +77,7 @@
     "monitor": "Monitor",
     "security": "Buscar virus",
     "securityBadge": "{count} elemento requiere atención | {count} elementos requieren atención",
-    "firewall": "Cortafuegos de apps",
+    "firewall": "Cortafuegos",
     "firewallBadge": "{count} conexión espera respuesta | {count} conexiones esperan respuesta"
   },
   "env": {

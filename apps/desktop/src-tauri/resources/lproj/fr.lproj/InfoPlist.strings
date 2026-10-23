@@ -1,0 +1,2 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+"NSAppleEventsUsageDescription" = "OpenNavo utilise System Events uniquement lorsque vous supprimez ou restaurez un ancien élément d’ouverture.";

@@ -31506,6 +31506,9 @@ components:
             sixLocaleContent:
               done: 1
               total: 1
+            siteLocaleContent:
+              done: 1
+              total: 1
           feedbackOpen: 1
           jobs:
             failed24h: 1
@@ -32332,8 +32335,12 @@ components:
         - es-ES
         - pt-BR
         - ru-RU
+        - de-DE
+        - fr-FR
+        - it-IT
+        - zh-Hant
       example: en-US
-      description: Application UI and client release-note language; content APIs use Locale.
+      description: Mac client language (the desktop locales), used for client release notes; content APIs use Locale.
     PackageKind:
       type: string
       enum:
@@ -32880,7 +32887,7 @@ components:
           properties:
             casks:
               type: integer
-              description: 'Non-font Cask apps, excluding disabled and removed packages.'
+              description: 'Non-font apps (Homebrew Casks and link apps), excluding disabled and removed packages.'
               example: 40
             formulae:
               type: integer
@@ -32903,12 +32910,13 @@ components:
               example: 1
         coverage:
           type: object
-          description: 'All four coverage metrics use all valid Cask apps, including fonts, as denominator, excluding disabled, hidden and removed packages.'
+          description: 'All coverage metrics use all valid apps (Homebrew Casks and link apps), including fonts, as denominator, excluding disabled, hidden and removed packages.'
           required:
             - primaryCategory
             - icon
             - latestVersionNotes
             - sixLocaleContent
+            - siteLocaleContent
           properties:
             primaryCategory:
               $ref: '#/components/schemas/Ratio'
@@ -32919,7 +32927,11 @@ components:
               allOf:
                 - $ref: '#/components/schemas/Ratio'
             sixLocaleContent:
-              description: 'Valid apps and fonts with actual nonempty summaries and introductions in all six languages, status source/machine/manual, and source language/hash matching current source text. Excludes fallback, queued, failed and stale content.'
+              description: 'Valid apps and fonts with actual nonempty summaries and introductions in all six app languages (the original six; the admin UI and server messages use them), status source/machine/manual, and source language/hash matching current source text. Excludes fallback, queued, failed and stale content.'
+              allOf:
+                - $ref: '#/components/schemas/Ratio'
+            siteLocaleContent:
+              description: 'Same rule as sixLocaleContent across all ten website languages: the six app languages plus de-DE, fr-FR, it-IT and zh-Hant. The desktop client uses the same ten.'
               allOf:
                 - $ref: '#/components/schemas/Ratio'
         feedbackOpen:
@@ -32987,6 +32999,9 @@ components:
             done: 1
             total: 1
           sixLocaleContent:
+            done: 1
+            total: 1
+          siteLocaleContent:
             done: 1
             total: 1
         feedbackOpen: 1
@@ -36970,6 +36985,9 @@ components:
             sixLocaleContent:
               done: 1
               total: 1
+            siteLocaleContent:
+              done: 1
+              total: 1
           feedbackOpen: 1
           jobs:
             failed24h: 1
@@ -40236,6 +40254,14 @@ components:
           $ref: '#/components/schemas/DesktopReleaseI18n'
         ru-RU:
           $ref: '#/components/schemas/DesktopReleaseI18n'
+        de-DE:
+          $ref: '#/components/schemas/DesktopReleaseI18n'
+        fr-FR:
+          $ref: '#/components/schemas/DesktopReleaseI18n'
+        it-IT:
+          $ref: '#/components/schemas/DesktopReleaseI18n'
+        zh-Hant:
+          $ref: '#/components/schemas/DesktopReleaseI18n'
       example:
         zh-CN:
           notes: 改善体验与稳定性。
@@ -40254,6 +40280,14 @@ components:
         pt-BR:
           $ref: '#/components/schemas/DesktopReleaseI18nView'
         ru-RU:
+          $ref: '#/components/schemas/DesktopReleaseI18nView'
+        de-DE:
+          $ref: '#/components/schemas/DesktopReleaseI18nView'
+        fr-FR:
+          $ref: '#/components/schemas/DesktopReleaseI18nView'
+        it-IT:
+          $ref: '#/components/schemas/DesktopReleaseI18nView'
+        zh-Hant:
           $ref: '#/components/schemas/DesktopReleaseI18nView'
       example:
         en-US:
@@ -48979,6 +49013,9 @@ components:
               done: 1
               total: 1
             sixLocaleContent:
+              done: 1
+              total: 1
+            siteLocaleContent:
               done: 1
               total: 1
           feedbackOpen: 1

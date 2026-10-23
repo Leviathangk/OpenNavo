@@ -21,6 +21,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	httpserver "github.com/opennavo/opennavo/server/internal/http"
 	"github.com/opennavo/opennavo/server/internal/http/public"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -95,6 +96,7 @@ func TestDesktopFixturesMatchSeedAndProductionSerialization(t *testing.T) {
 		"catalog.json.gz":    compressed,
 		"latest.json":        objects["snapshots/latest.json"],
 		"snapshot.json":      call("/catalog/snapshot", 200),
+		"snapshot-all.json":  call("/catalog/snapshot?locales=all", 200),
 		"changes-page.json":  call("/catalog/changes?since=60&limit=3", 200),
 		"changes-final.json": call("/catalog/changes?since=63&limit=3", 200),
 		"changes-empty.json": call("/catalog/changes?since=64&limit=3", 200),
@@ -174,10 +176,10 @@ func TestDesktopFixturesMatchSeedAndProductionSerialization(t *testing.T) {
 	require.Equal(t, files["changes-empty.json"], compact.Bytes())
 	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error { return (&store.Store{DB: tx, Redis: st.Redis}).RemoveLinkApp(ctx, linkID) }))
 	require.Equal(t, files["changes-empty.json"], call("/catalog/changes?since=64&limit=3", 200))
-	for _, locale := range []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU"} {
+	for _, locale := range i18n.DesktopLocales {
 		for key, data := range objects {
-			if strings.HasPrefix(key, "snapshots/text-v2-"+locale+"-") {
-				files["text-"+locale+".json.gz"] = data
+			if strings.HasPrefix(key, "snapshots/text-v2-"+string(locale)+"-") {
+				files["text-"+string(locale)+".json.gz"] = data
 			}
 		}
 	}

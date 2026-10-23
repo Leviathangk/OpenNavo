@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshSixLocaleContent(t *testing.T) {
+func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshLocaleContent(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewFactsStore(t)
 	password, err := seed.HashPassword("dashboard-test-password")
@@ -40,6 +40,9 @@ func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshSixLocaleContent(t *tes
  SELECT CASE WHEN n=1006 THEN 'formula' ELSE 'cask' END,'coverage-'||n,'coverage-'||n,
  CASE WHEN n=1006 THEN 'homebrew/core' ELSE 'homebrew/cask' END,'Coverage '||n,'1','1',1007-n,'{}',repeat('a',64)
  FROM generate_series(1,1006) n`).Error)
+	// A link app (outside Homebrew) counts like any Cask app.
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash,source_locale)
+ VALUES('link','coverage-link','coverage-link','','Coverage Link','','','{}','','en-US')`).Error)
 	var packages []struct {
 		ID    int64
 		Token string
@@ -123,14 +126,14 @@ func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshSixLocaleContent(t *tes
 		}
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
 		require.Equal(t, "0000", response.Code)
-		require.Len(t, response.Data.Coverage, 4)
+		require.Len(t, response.Data.Coverage, 5)
 		require.NotContains(t, response.Data.Coverage, "zhSummary")
 		return response.Data
 	}
 	coverage := func() map[string]adminapi.Ratio { return overview().Coverage }
 	counts := overview().Packages
-	// Counts include hidden and deprecated apps, but never fonts, disabled apps or removed apps.
-	require.Equal(t, 1002, counts.Casks)
+	// Counts include hidden and deprecated apps and link apps, but never fonts, disabled apps or removed apps.
+	require.Equal(t, 1003, counts.Casks)
 	require.Equal(t, 1, counts.Fonts)
 	require.Equal(t, 1, counts.Disabled)
 	t.Run("disabled app leaves app count", func(t *testing.T) {
@@ -142,12 +145,13 @@ func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshSixLocaleContent(t *tes
 		require.NoError(t, st.DB.Exec("UPDATE packages SET disabled=false WHERE id=?", tailID).Error)
 	})
 	got := coverage()
-	for _, key := range []string{"primaryCategory", "icon", "latestVersionNotes", "sixLocaleContent"} {
+	for _, key := range []string{"primaryCategory", "icon", "latestVersionNotes", "sixLocaleContent", "siteLocaleContent"} {
 		require.Contains(t, got, key)
-		require.Equal(t, 1002, got[key].Total, key)
+		require.Equal(t, 1003, got[key].Total, key)
 	}
 	require.Equal(t, 3, got["latestVersionNotes"].Done)
 	require.Equal(t, 3, got["sixLocaleContent"].Done)
+	require.Equal(t, 3, got["siteLocaleContent"].Done)
 	require.Equal(t, 1, got["primaryCategory"].Done)
 	require.Equal(t, 1, got["icon"].Done)
 	for _, tc := range []struct{ name, exclude, restore string }{
@@ -187,9 +191,27 @@ func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshSixLocaleContent(t *tes
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			require.NoError(t, st.DB.Exec(tc.query, tailID).Error)
-			require.Equal(t, 2, coverage()["sixLocaleContent"].Done)
+			got := coverage()
+			require.Equal(t, 2, got["sixLocaleContent"].Done)
+			require.Equal(t, 2, got["siteLocaleContent"].Done)
 			complete(tailID, "zh-CN")
-			require.Equal(t, 3, coverage()["sixLocaleContent"].Done)
+			got = coverage()
+			require.Equal(t, 3, got["sixLocaleContent"].Done)
+			require.Equal(t, 3, got["siteLocaleContent"].Done)
+		})
+	}
+	// Languages outside the app set count toward the ten-language row but never the six app languages.
+	for _, tc := range []struct{ name, query string }{
+		{"missing site-only language", "DELETE FROM package_i18n WHERE package_id=? AND locale='de-DE'"},
+		{"outdated site-only translation", "UPDATE package_i18n SET source_hash='old' WHERE package_id=? AND locale='zh-Hant'"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, st.DB.Exec(tc.query, tailID).Error)
+			got := coverage()
+			require.Equal(t, 3, got["sixLocaleContent"].Done)
+			require.Equal(t, 2, got["siteLocaleContent"].Done)
+			complete(tailID, "zh-CN")
+			require.Equal(t, 3, coverage()["siteLocaleContent"].Done)
 		})
 	}
 	t.Run("current version changes", func(t *testing.T) {
@@ -197,7 +219,7 @@ func TestDashboardCoverageAllEligibleAppsAndFontsAndFreshSixLocaleContent(t *tes
 		require.Equal(t, 2, coverage()["latestVersionNotes"].Done)
 	})
 	t.Run("empty eligible catalog", func(t *testing.T) {
-		require.NoError(t, st.DB.Exec("UPDATE packages SET disabled=true WHERE kind='cask'").Error)
+		require.NoError(t, st.DB.Exec("UPDATE packages SET disabled=true WHERE kind IN ('cask','link')").Error)
 		packages := overview().Packages
 		require.Zero(t, packages.Casks)
 		require.Zero(t, packages.Fonts)

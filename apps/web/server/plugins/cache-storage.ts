@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import redisDriver from 'unstorage/drivers/redis';
 
-import { boundedCache, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
+import { boundedCache, IMAGE_CACHE_TTL_SECONDS, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
 
 interface CacheBuildConfig {
   app: { buildId: string };
@@ -44,4 +44,22 @@ export default defineNitroPlugin(() => {
       })
     )
   );
+  // A more-specific mount keeps large image buffers out of the page/API cache pool.
+  // Empty preserves compatibility for local installations until an image cache is provisioned.
+  if (config.imageRedisUrl) {
+    useStorage().mount(
+      'cache:nuxt-og-image',
+      boundedCache(
+        redisDriver({
+          url: config.imageRedisUrl,
+          base: `${cacheBuildIdentity(config).namespace}:nuxt-og-image`,
+          ttl: IMAGE_CACHE_TTL_SECONDS,
+          maxRetriesPerRequest: 1,
+          connectTimeout: 1000,
+          commandTimeout: 1000
+        }),
+        'nuxt-og-image:'
+      )
+    );
+  }
 });

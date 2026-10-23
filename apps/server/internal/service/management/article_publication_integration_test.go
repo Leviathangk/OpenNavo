@@ -275,13 +275,12 @@ func TestArticlePackageReplacementIsAtomicAtLimit(t *testing.T) {
 		})})
 		return err
 	}
-	// A failed target check must not partially unlink any apps.
-	require.Error(t, update(a.Revision, newIDs, map[string]any{"entityKey": "pkg:1", "intent": "download"}))
+	// The server still enforces the 50-app ceiling, and a rejected replacement must not partially unlink any apps.
+	// (Edits no longer reserve their SEO target, so a target outside the list is not a failure path any more.)
+	require.Error(t, update(a.Revision, append(append([]int64{}, oldIDs...), 51), nil))
 	after, draft := read()
 	require.Equal(t, a.Revision, after.Revision)
 	require.Equal(t, oldIDs, draft.Packages)
-	// The server still enforces the 50-app ceiling.
-	require.Error(t, update(a.Revision, append(append([]int64{}, oldIDs...), 51), nil))
 	require.NoError(t, update(a.Revision, newIDs, map[string]any{"entityKey": "pkg:51", "intent": "download"}))
 	after, draft = read()
 	require.Equal(t, newIDs, draft.Packages)

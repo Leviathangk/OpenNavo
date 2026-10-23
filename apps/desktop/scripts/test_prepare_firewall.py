@@ -224,7 +224,7 @@ class PreparationTests(unittest.TestCase):
                 self.assertEqual(embedded_app.stat().st_mode & 0o777, 0o644)
                 self.assertEqual((contents / 'embedded.provisionprofile').stat().st_mode & 0o777, 0o644)
                 self.assertEqual((contents / 'MacOS/OpenNavoFirewall').stat().st_mode & 0o777, 0o755)
-                self.assertEqual(len(list((contents / 'Resources').glob('*.lproj'))), 6)
+                self.assertEqual(len(list((contents / 'Resources').glob('*.lproj'))), 10)
                 self.assertTrue(any('--strict' in c.args[0] for c in run.call_args_list))
                 verification = next(c.args[0] for c in run.call_args_list if '-R' in c.args[0])
                 self.assertTrue(verification[verification.index('-R') + 1].startswith('='))

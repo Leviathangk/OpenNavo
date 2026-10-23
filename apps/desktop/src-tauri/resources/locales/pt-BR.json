@@ -60,5 +60,11 @@
   "monitorAlert.temperature.title": "A CPU está muito quente",
   "monitorAlert.temperature.body": "A CPU está a {temp}. Clique para ver os processos ou ajustar as ventoinhas.",
   "monitorAlert.disk_smart.title": "Um disco está relatando problemas",
-  "monitorAlert.disk_smart.body": "“{name}” indica falha no status SMART. Faça um backup o quanto antes."
+  "monitorAlert.disk_smart.body": "“{name}” indica falha no status SMART. Faça um backup o quanto antes.",
+  "security.pasteBlocked": "Colagem suspeita pausada",
+  "security.scanFinished": "Verificação de vírus concluída",
+  "security.threatsFound": "Ameaças encontradas",
+  "security.signatureChanged": "A assinatura do app mudou",
+  "security.downloadThreat": "Ameaça em um download",
+  "security.newStartupItem": "Novo item de inicialização"
 }

@@ -305,7 +305,7 @@ func (s *Service) translations(ctx context.Context, in Input) (any, error) {
 			locales := []string{}
 			for _, code := range i18n.SiteLocales {
 				locale := string(code)
-				if entity == "desktop_release" && !i18n.ValidApp(locale) {
+				if entity == "desktop_release" && !i18n.ValidDesktop(locale) {
 					continue
 				}
 				if requested := text(in.Params, "locale"); requested == "" || requested == locale {
@@ -352,7 +352,7 @@ func (s *Service) translations(ctx context.Context, in Input) (any, error) {
 			}
 			if locale := text(in.Params, "locale"); locale != "" {
 				locales = []string{}
-				if entity != "desktop_release" || i18n.ValidApp(locale) {
+				if entity != "desktop_release" || i18n.ValidDesktop(locale) {
 					locales = []string{locale}
 				}
 			}

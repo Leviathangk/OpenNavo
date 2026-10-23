@@ -5,7 +5,8 @@ import redisDriver from 'unstorage/drivers/redis';
 vi.mock('unstorage/drivers/redis', () => ({ default: vi.fn(() => ({ name: 'redis' })) }));
 vi.mock('../server/utils/boundedCache', () => ({
   boundedCache: (driver: unknown) => driver,
-  PAGE_CACHE_TTL_SECONDS: 3600
+  PAGE_CACHE_TTL_SECONDS: 3600,
+  IMAGE_CACHE_TTL_SECONDS: 21600
 }));
 vi.stubGlobal('defineNitroPlugin', (plugin: unknown) => plugin);
 const { cacheBuildIdentity, default: mountCache } = await import('../server/plugins/cache-storage');
@@ -62,4 +63,24 @@ it('mounts Redis under the same key identity and preserves bounded-cache setting
     })
   );
   expect(mount).toHaveBeenCalledWith('cache', { name: 'redis' });
+});
+
+it('mounts image buffers in a separate Redis process while retaining the build identity', () => {
+  const runtime = {
+    ...config(),
+    redisUrl: 'redis://pages.example/0',
+    imageRedisUrl: 'redis://images.example/0'
+  };
+  const mount = vi.fn();
+  vi.stubGlobal('useRuntimeConfig', () => runtime);
+  vi.stubGlobal('useStorage', () => ({ mount }));
+  mountCache({} as never);
+  expect(mount.mock.calls.map(([path]) => path)).toEqual(['cache', 'cache:nuxt-og-image']);
+  expect(redisDriver).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      url: runtime.imageRedisUrl,
+      ttl: 21600,
+      base: `${cacheBuildIdentity(runtime).namespace}:nuxt-og-image`
+    })
+  );
 });

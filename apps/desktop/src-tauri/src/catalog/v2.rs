@@ -7,13 +7,13 @@ use std::path::PathBuf;
 mod site_locale_compatibility {
     use super::*;
 
+    // The server may publish languages this build does not know (a newer client's); they are skipped rather than
+    // rejected, and never add downloads.
     #[test]
-    fn site_languages_do_not_expand_desktop_downloads() {
+    fn unknown_languages_do_not_expand_desktop_downloads() {
         let mut packs = serde_json::Map::new();
-        for code in [
-            "en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU", "de-DE", "fr-FR", "it-IT",
-            "zh-Hant",
-        ] {
+        let known = crate::locales_gen::LOCALES.map(|locale| locale.as_str());
+        for code in known.into_iter().chain(["ko-KR"]) {
             packs.insert(
                 code.into(),
                 serde_json::json!({
@@ -34,13 +34,16 @@ mod site_locale_compatibility {
             assert_eq!(info.text_packs[&locale].locale, locale);
         }
         let category: SnapshotCategory = serde_json::from_value(serde_json::json!({
-            "slug": "tools", "parent": null, "sourceLocale": "de-DE",
-            "name": {"en-US": "Tools", "de-DE": "Werkzeuge", "zh-Hant": "工具"},
+            "slug": "tools", "parent": null, "sourceLocale": "ko-KR",
+            "name": {"en-US": "Tools", "ko-KR": "도구", "zh-Hant": "工具"},
             "icon": "lucide:box", "sort": 0, "hiddenByDefault": false, "appliesTo": "cask"
         }))
         .unwrap();
         assert_eq!(category.source_locale, Locale::EnUs);
-        assert_eq!(category.name.0.len(), 1);
+        assert_eq!(
+            category.name.0.keys().copied().collect::<HashSet<_>>(),
+            HashSet::from([Locale::EnUs, Locale::ZhHant])
+        );
         let base = Snapshot {
             format_version: 2,
             cursor: 1,
@@ -54,7 +57,7 @@ mod site_locale_compatibility {
         );
         let changes: Changes = serde_json::from_value(serde_json::json!({
             "changes": [], "nextCursor": 1, "hasMore": false,
-            "categoryNames": {"en-US": {"tools": "Tools"}, "de-DE": {"tools": "Werkzeuge"}}
+            "categoryNames": {"en-US": {"tools": "Tools"}, "ko-KR": {"tools": "도구"}}
         }))
         .unwrap();
         assert_eq!(changes.category_names.unwrap().len(), 1);
@@ -136,22 +139,24 @@ pub fn read_gzip<T: serde::de::DeserializeOwned>(
     }
     serde_json::from_slice(&raw).map_err(|e| protocol("snapshot_json").with_detail(e.to_string()))
 }
-pub fn read_base(path: &Path, info: &SnapshotInfo) -> Result<Snapshot, AppError> {
-    if info.format_version != 2
-        || info.cursor < 0
-        || info.text_packs.len() != crate::locales_gen::LOCALES.len()
-    {
-        return Err(protocol("snapshot_metadata"));
+// A server need not publish every language this build knows (an older or rolled-back one publishes six): English is
+// required, a language without a pack falls back to it, and every published pack must belong to this snapshot.
+pub fn check_packs(info: &SnapshotInfo) -> Result<(), AppError> {
+    if !info.text_packs.contains_key(&Locale::EnUs) {
+        return Err(protocol("missing_text_pack"));
     }
-    for locale in crate::locales_gen::LOCALES {
-        let pack = info
-            .text_packs
-            .get(&locale)
-            .ok_or_else(|| protocol("missing_text_pack"))?;
-        if pack.locale != locale || pack.cursor != info.cursor || pack.version <= 0 {
+    for (locale, pack) in &info.text_packs {
+        if pack.locale != *locale || pack.cursor != info.cursor || pack.version <= 0 {
             return Err(protocol("text_pack_metadata"));
         }
     }
+    Ok(())
+}
+pub fn read_base(path: &Path, info: &SnapshotInfo) -> Result<Snapshot, AppError> {
+    if info.format_version != 2 || info.cursor < 0 {
+        return Err(protocol("snapshot_metadata"));
+    }
+    check_packs(info)?;
     let raw: serde_json::Value = read_gzip(path, &info.sha256, info.bytes)?;
     for field in ["items", "categories"] {
         for item in raw
@@ -196,6 +201,13 @@ pub fn needed(base: &Snapshot, locale: Locale) -> HashSet<Locale> {
     needed.extend(base.items.iter().map(|v| v.source_locale));
     needed.extend(base.categories.iter().map(|v| v.source_locale));
     needed
+}
+// The needed languages the server publishes a pack for; check_packs guarantees English is among them.
+pub fn needed_packs(base: &Snapshot, info: &SnapshotInfo, locale: Locale) -> HashSet<Locale> {
+    needed(base, locale)
+        .into_iter()
+        .filter(|locale| info.text_packs.contains_key(locale))
+        .collect()
 }
 pub fn read_pack(path: &Path, info: &TextPackInfo) -> Result<TextPack, AppError> {
     let pack: TextPack = read_gzip(path, &info.sha256, info.bytes)?;
@@ -344,7 +356,7 @@ pub fn import(
         return Err(protocol("snapshot_mismatch"));
     }
     let supplied: HashSet<_> = packs.iter().map(|p| p.locale).collect();
-    if !needed(&base, locale).is_subset(&supplied)
+    if !needed_packs(&base, info, locale).is_subset(&supplied)
         || packs.iter().any(|p| {
             p.cursor != base.cursor
                 || info

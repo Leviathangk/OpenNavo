@@ -14,14 +14,14 @@ func fixture() Plan {
 	for _, code := range []string{"ja-JP", "es-ES", "pt-BR", "ru-RU"} {
 		translations[code] = map[string]string{"a": "manual-a", "b": "manual-b"}
 	}
-	return Plan{Targets: map[string]Target{"native": {Source: source, English: map[string]string{"a": "Open", "b": "Close"}, Translations: translations, Hashes: map[string]string{"a": Hash(source["a"]), "b": Hash(source["b"])}}}}
+	return Plan{Targets: map[string]Target{"server": {Source: source, English: map[string]string{"a": "Open", "b": "Close"}, Translations: translations, Hashes: map[string]string{"a": Hash(source["a"]), "b": Hash(source["b"])}}}}
 }
 func TestIncrementalAndManualPreservation(t *testing.T) {
 	plan := fixture()
 	require.Empty(t, Batches(plan))
-	target := plan.Targets["native"]
+	target := plan.Targets["server"]
 	target.Source["a"] = "打开应用"
-	plan.Targets["native"] = target
+	plan.Targets["server"] = target
 	batches := Batches(plan)
 	require.Len(t, batches, 1)
 	require.Equal(t, map[string]string{"a": "打开应用"}, batches[0].Source)
@@ -32,15 +32,15 @@ func TestIncrementalAndManualPreservation(t *testing.T) {
 	}, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, 1, calls)
-	for _, fields := range result["native"] {
+	for _, fields := range result["server"] {
 		require.Equal(t, "manual-b", fields["b"])
 	}
-	require.Equal(t, Hash("打开"), plan.Targets["native"].Hashes["a"], "Update the lock only after a successful writeback")
+	require.Equal(t, Hash("打开"), plan.Targets["server"].Hashes["a"], "Update the lock only after a successful writeback")
 }
 func TestValidationFailurePreservesSuccessfulKeys(t *testing.T) {
 	for _, value := range []string{"Открыть {different}", "Открыть {count}"} {
 		t.Run(value, func(t *testing.T) {
-			plan := Plan{Targets: map[string]Target{"native": {Source: map[string]string{"a": "打开 {count}"}, English: map[string]string{"a": "Open {count} | Open {count}"}}}}
+			plan := Plan{Targets: map[string]Target{"server": {Source: map[string]string{"a": "打开 {count}"}, English: map[string]string{"a": "Open {count} | Open {count}"}}}}
 			result, err := Run(context.Background(), plan, func(_ context.Context, b Batch) (map[string]map[string]string, error) {
 				values := map[string]map[string]string{"ja-JP": {"a": "開く {count}"}, "es-ES": {"a": "Abre la aplicación {count} | Abre la aplicación {count}"}, "pt-BR": {"a": "Abra o aplicativo {count} | Abra o aplicativo {count}"}, "ru-RU": {"a": value}}
 				selected := map[string]map[string]string{}
@@ -50,18 +50,18 @@ func TestValidationFailurePreservesSuccessfulKeys(t *testing.T) {
 				return selected, nil
 			}, nil, nil)
 			require.Error(t, err)
-			require.NotContains(t, result["native"]["ru-RU"], "a")
+			require.NotContains(t, result["server"]["ru-RU"], "a")
 			for _, code := range []string{"ja-JP", "es-ES", "pt-BR"} {
-				require.Contains(t, result["native"][code], "a")
+				require.Contains(t, result["server"][code], "a")
 			}
 		})
 	}
 }
 func TestSmallAndLargeBatches(t *testing.T) {
 	plan := fixture()
-	target := plan.Targets["native"]
+	target := plan.Targets["server"]
 	target.Translations["ja-JP"]["a"] = ""
-	plan.Targets["native"] = target
+	plan.Targets["server"] = target
 	require.Len(t, Batches(plan), 1)
 	for i := 0; i < 45; i++ {
 		target.Source[fmt.Sprint(i)] = "新键"
@@ -71,9 +71,9 @@ func TestSmallAndLargeBatches(t *testing.T) {
 
 func TestMissingLocaleDoesNotOverwriteOtherManualTranslations(t *testing.T) {
 	plan := fixture()
-	target := plan.Targets["native"]
+	target := plan.Targets["server"]
 	delete(target.Translations["ja-JP"], "a")
-	plan.Targets["native"] = target
+	plan.Targets["server"] = target
 	batches := Batches(plan)
 	require.Len(t, batches, 1)
 	require.Equal(t, []string{"ja-JP"}, batches[0].Locales)
@@ -81,14 +81,14 @@ func TestMissingLocaleDoesNotOverwriteOtherManualTranslations(t *testing.T) {
 		return map[string]map[string]string{"ja-JP": {"a": "開きます"}}, nil
 	}, nil, nil)
 	require.NoError(t, err)
-	require.Equal(t, "manual-a", result["native"]["ru-RU"]["a"])
+	require.Equal(t, "manual-a", result["server"]["ru-RU"]["a"])
 }
 
 func TestPluralReferenceChangesPlan(t *testing.T) {
 	plan := fixture()
-	target := plan.Targets["native"]
+	target := plan.Targets["server"]
 	target.English["a"] = "One update | Updates"
-	plan.Targets["native"] = target
+	plan.Targets["server"] = target
 	batches := Batches(plan)
 	require.Len(t, batches, 3) // Japanese remains other and is not retranslated.
 	for _, b := range batches {
@@ -110,7 +110,7 @@ func TestPluralReferenceChangesPlan(t *testing.T) {
 
 func TestPartialFailureRetryAndResume(t *testing.T) {
 	plan := fixture()
-	target := plan.Targets["native"]
+	target := plan.Targets["server"]
 	delete(target.Translations["ja-JP"], "a")
 	delete(target.Translations["es-ES"], "a")
 	calls := 0
@@ -124,12 +124,12 @@ func TestPartialFailureRetryAndResume(t *testing.T) {
 		}
 		return map[string]map[string]string{"es-ES": {"a": "Abrir {bad}"}}, nil
 	}, nil, nil)
-	require.ErrorContains(t, err, "native/es-ES/a")
+	require.ErrorContains(t, err, "server/es-ES/a")
 	require.Equal(t, 3, calls)
-	require.Equal(t, "開きます", result["native"]["ja-JP"]["a"])
-	require.NotContains(t, result["native"]["es-ES"], "a")
-	target.Translations = result["native"]
-	plan.Targets["native"] = target
+	require.Equal(t, "開きます", result["server"]["ja-JP"]["a"])
+	require.NotContains(t, result["server"]["es-ES"], "a")
+	target.Translations = result["server"]
+	plan.Targets["server"] = target
 	batches := Batches(plan)
 	require.Len(t, batches, 1)
 	require.Equal(t, []string{"es-ES"}, batches[0].Locales)
@@ -149,28 +149,28 @@ func TestValidationDiagnostics(t *testing.T) {
 
 func TestValidationRetryCanRecover(t *testing.T) {
 	plan := fixture()
-	delete(plan.Targets["native"].Translations["ja-JP"], "a")
+	delete(plan.Targets["server"].Translations["ja-JP"], "a")
 	calls := 0
 	result, err := Run(context.Background(), plan, func(_ context.Context, b Batch) (map[string]map[string]string, error) {
 		calls++
 		if calls == 1 {
-			return nil, Invalid("invalid schema: native/ja-JP/a")
+			return nil, Invalid("invalid schema: server/ja-JP/a")
 		}
 		require.Contains(t, b.RetryReason, "invalid schema")
 		return map[string]map[string]string{"ja-JP": {"a": "開きます"}}, nil
 	}, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, 2, calls)
-	require.Equal(t, "開きます", result["native"]["ja-JP"]["a"])
+	require.Equal(t, "開きます", result["server"]["ja-JP"]["a"])
 }
 
 func TestCompletedLocaleSurvivesSourceHashChange(t *testing.T) {
 	plan := fixture()
-	target := plan.Targets["native"]
+	target := plan.Targets["server"]
 	target.Source["a"] = "新的源文"
 	target.Translations["ja-JP"]["a"] = "新しい文章"
 	target.LocaleHashes = map[string]map[string]string{"ja-JP": {"a": Hash(target.Source["a"])}}
-	plan.Targets["native"] = target
+	plan.Targets["server"] = target
 	batches := Batches(plan)
 	require.Len(t, batches, 3)
 	for _, b := range batches {
@@ -181,17 +181,17 @@ func TestCompletedLocaleSurvivesSourceHashChange(t *testing.T) {
 
 func TestStopErrorDoesNotRetryOrCallRemainingBatches(t *testing.T) {
 	plan := fixture()
-	delete(plan.Targets["native"].Translations["ja-JP"], "a")
-	delete(plan.Targets["native"].Translations["es-ES"], "a")
+	delete(plan.Targets["server"].Translations["ja-JP"], "a")
+	delete(plan.Targets["server"].Translations["es-ES"], "a")
 	calls := 0
 	result, err := Run(context.Background(), plan, func(context.Context, Batch) (map[string]map[string]string, error) {
 		calls++
 		return nil, &StopError{Reason: "gateway quota rejected"}
 	}, nil, nil)
-	require.ErrorContains(t, err, "native/ja-JP/a")
-	require.ErrorContains(t, err, "native/es-ES/a")
+	require.ErrorContains(t, err, "server/ja-JP/a")
+	require.ErrorContains(t, err, "server/es-ES/a")
 	require.Equal(t, 1, calls)
-	require.Equal(t, "manual-b", result["native"]["ja-JP"]["b"])
+	require.Equal(t, "manual-b", result["server"]["ja-JP"]["b"])
 }
 
 func TestTechnicalTermsAreNotProtectedBrands(t *testing.T) {

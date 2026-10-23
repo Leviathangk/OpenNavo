@@ -50,7 +50,7 @@ func (s *Service) translationsSource(ctx context.Context, in Input) (any, error)
 	values := []store.TranslationValue{}
 	for _, code := range i18n.SiteLocales {
 		locale := string(code)
-		if ref.Entity == "desktop_release" && !i18n.ValidApp(locale) {
+		if ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale) {
 			continue
 		}
 		value, err := s.Store.TranslationValue(ctx, ref, locale)

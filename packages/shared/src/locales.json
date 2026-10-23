@@ -10,7 +10,7 @@
       "formatLocale": "en-US",
       "style": "Use clear, concise American English. Preserve product names and technical literals.",
       "pluralCategories": ["one", "other"],
-      "surfaces": ["site", "app"]
+      "surfaces": ["site", "app", "desktop"]
     },
     {
       "code": "zh-CN",
@@ -20,7 +20,7 @@
       "formatLocale": "zh-CN",
       "style": "使用简洁自然的简体中文，保留品牌名与技术字面量。",
       "pluralCategories": ["other"],
-      "surfaces": ["site", "app"]
+      "surfaces": ["site", "app", "desktop"]
     },
     {
       "code": "ja-JP",
@@ -30,7 +30,7 @@
       "formatLocale": "ja-JP",
       "style": "自然で簡潔なです・ます体を使い、製品名と技術的な文字列を保持してください。",
       "pluralCategories": ["other"],
-      "surfaces": ["site", "app"]
+      "surfaces": ["site", "app", "desktop"]
     },
     {
       "code": "es-ES",
@@ -40,7 +40,7 @@
       "formatLocale": "es-ES",
       "style": "Usa español internacional neutro, claro y conciso. Conserva las marcas y los literales técnicos.",
       "pluralCategories": ["one", "other"],
-      "surfaces": ["site", "app"]
+      "surfaces": ["site", "app", "desktop"]
     },
     {
       "code": "pt-BR",
@@ -50,7 +50,7 @@
       "formatLocale": "pt-BR",
       "style": "Use português brasileiro claro e conciso. Preserve marcas e literais técnicos.",
       "pluralCategories": ["one", "other"],
-      "surfaces": ["site", "app"]
+      "surfaces": ["site", "app", "desktop"]
     },
     {
       "code": "ru-RU",
@@ -60,7 +60,7 @@
       "formatLocale": "ru-RU",
       "style": "Используйте ясный и краткий русский язык. Сохраняйте названия продуктов и технические литералы.",
       "pluralCategories": ["one", "few", "many", "other"],
-      "surfaces": ["site", "app"]
+      "surfaces": ["site", "app", "desktop"]
     },
     {
       "code": "de-DE",
@@ -70,7 +70,7 @@
       "formatLocale": "de-DE",
       "style": "Verwende klares, prägnantes Deutsch in der Sie-Form. Behalte Produktnamen und technische Literale bei.",
       "pluralCategories": ["one", "other"],
-      "surfaces": ["site"]
+      "surfaces": ["site", "desktop"]
     },
     {
       "code": "fr-FR",
@@ -80,7 +80,7 @@
       "formatLocale": "fr-FR",
       "style": "Utilisez un français clair et concis, en vouvoyant. Conservez les noms de produits et les littéraux techniques.",
       "pluralCategories": ["one", "other"],
-      "surfaces": ["site"]
+      "surfaces": ["site", "desktop"]
     },
     {
       "code": "it-IT",
@@ -90,7 +90,7 @@
       "formatLocale": "it-IT",
       "style": "Usa un italiano chiaro e conciso. Mantieni i nomi dei prodotti e i letterali tecnici.",
       "pluralCategories": ["one", "other"],
-      "surfaces": ["site"]
+      "surfaces": ["site", "desktop"]
     },
     {
       "code": "zh-Hant",
@@ -101,7 +101,7 @@
       "formatLocale": "zh-TW",
       "style": "使用簡潔自然的繁體中文（台灣常用詞彙），保留品牌名與技術字面量。",
       "pluralCategories": ["other"],
-      "surfaces": ["site"]
+      "surfaces": ["site", "desktop"]
     }
   ]
 }

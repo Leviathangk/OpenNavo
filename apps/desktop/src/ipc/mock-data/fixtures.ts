@@ -1,8 +1,8 @@
 // Local-state fixtures for browser mode (pnpm dev:web) and component tests: catalog from backend sync fixtures (catalog.json, 60 seed-e2e packages).
 // Installed/history scenarios follow mockups 05/06 (updatable, pinned, self-updated, dependency, failed update).
 import catalog from './catalog.json';
-import { LOCALES } from '@opennavo/shared';
-import type { Locale } from '@opennavo/shared';
+import { DESKTOP_LOCALES } from '@opennavo/shared';
+import type { DesktopLocale as Locale } from '@opennavo/shared';
 import type { EnvInfo, InstalledItem, Kind, StorageSummary, Task } from '../bindings';
 import type { LocalItem } from '../client';
 
@@ -19,7 +19,7 @@ export interface SnapshotCategory {
 
 // Old fixtures contain only Chinese/English and allow null; IPC v2 emits sparse strings without inventing missing translations.
 const sparse = (text: Record<string, string | null>) =>
-  Object.fromEntries(LOCALES.flatMap(locale => (text[locale]?.trim() ? [[locale, text[locale]]] : [])));
+  Object.fromEntries(DESKTOP_LOCALES.flatMap(locale => (text[locale]?.trim() ? [[locale, text[locale]]] : [])));
 export const catalogItems: LocalItem[] = (catalog.items as unknown as LocalItem[]).map(item => ({
   ...item,
   sourceLocale: 'en-US',

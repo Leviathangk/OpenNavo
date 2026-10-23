@@ -13,11 +13,14 @@ defineOptions({ name: 'CoverageCard' });
 
 const props = defineProps<{ coverage: DataOf<'getDashboardOverview'>['coverage'] }>();
 
-const keys = ['primaryCategory', 'icon', 'latestVersionNotes', 'sixLocaleContent'] as const;
+const keys = ['primaryCategory', 'icon', 'latestVersionNotes', 'sixLocaleContent', 'siteLocaleContent'] as const;
 
+// A metric the API does not return yet (e.g. the admin deploys before the API) is skipped instead of breaking the page.
 const rows = computed(() =>
-  keys.map(key => {
-    const { done, total } = props.coverage[key];
+  keys.flatMap(key => {
+    const ratio = props.coverage[key] as (typeof props.coverage)[typeof key] | undefined;
+    if (!ratio) return [];
+    const { done, total } = ratio;
     return {
       key,
       label: $t(`page.dashboard.coverageItems.${key}`),
@@ -43,6 +46,6 @@ const rows = computed(() =>
         </NText>
       </li>
     </ul>
-    <NText depth="3" class="mt-12px block text-12px">{{ $t('page.dashboard.sixLocaleContentHint') }}</NText>
+    <NText depth="3" class="mt-12px block text-12px">{{ $t('page.dashboard.localeContentHint') }}</NText>
   </NCard>
 </template>

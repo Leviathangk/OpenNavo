@@ -2,7 +2,8 @@
 // output, package results and the output of failing tests (and of tests still
 // running when a package times out). Writes each top-level test's elapsed
 // seconds to the JSON file named on the command line, so the next full run can
-// balance its shards (go-shard.mjs).
+// balance its shards (go-shard.mjs). Exits 1 when a test or package failed, so
+// the pipeline fails even where the shell does not set pipefail.
 //
 //   go test -json ... | node go-test-log.mjs DURATIONS.json
 import { writeFileSync } from 'node:fs';
@@ -14,8 +15,10 @@ export const MODULE = 'github.com/opennavo/opennavo/server/';
 export function createLog(write) {
   const durations = {};
   const buffers = new Map();
-  return {
+  const log = {
     durations,
+    /** A test or a whole package (build error, panic, timeout) failed. */
+    failed: false,
     line(text) {
       let event;
       try {
@@ -25,6 +28,7 @@ export function createLog(write) {
         return;
       }
       const { Action: action, Package: pkg = '', Test: test, Output: output = '', Elapsed: elapsed } = event;
+      if (action === 'fail' || action === 'build-fail') log.failed = true;
       if (action === 'build-output') return write(output);
       if (!test) {
         if (action === 'output') write(output);
@@ -48,6 +52,7 @@ export function createLog(write) {
       buffers.clear();
     }
   };
+  return log;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -55,4 +60,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   for await (const text of createInterface({ input: process.stdin, crlfDelay: Infinity })) log.line(text);
   log.end();
   if (process.argv[2]) writeFileSync(process.argv[2], JSON.stringify(log.durations));
+  if (log.failed) process.exitCode = 1;
 }

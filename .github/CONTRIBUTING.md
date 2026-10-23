@@ -35,7 +35,7 @@ Run Cargo commands from `apps/desktop/src-tauri/` so Rustup selects the pinned t
 - Add migrations instead of rewriting applied migrations. Keep application and migration database roles separate.
 - Use `packages/tokens/tokens.json` for visual tokens and regenerate derived artifacts.
 - English is the default for documentation, source comments, errors, and developer tooling. Preserve explicit localized product content and multilingual fixtures. New product content defaults to English; existing Chinese-authored content retains explicit `zh-CN` metadata.
-- Keep user-facing copy in locale catalogs, with all six languages. `tooling/scripts/gen-locales.mjs` generates shared locale metadata from `packages/shared/src/locales.json`. Translation locks record explicit source content; do not reset them merely to change the authoring default.
+- Keep user-facing copy in locale catalogs, with every language of that surface: ten for the website and the macOS app, six for the admin. `tooling/scripts/gen-locales.mjs` generates shared locale metadata from `packages/shared/src/locales.json`. Translation locks record explicit source content; do not reset them merely to change the authoring default.
 - `make i18n-sync` may call a configured translation provider. Do not invoke it implicitly during offline checks or use external AI services to translate repository comments.
 - Retain upstream copyright notices and license texts. Dependency changes require regenerating the inventory and notices described in [THIRD_PARTY.md](../docs/legal/THIRD_PARTY.md).
 

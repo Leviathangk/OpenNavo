@@ -3,20 +3,16 @@ use super::*;
 use tauri::Manager;
 use tauri_plugin_notification::NotificationExt;
 use tauri_specta::Event;
-fn localized<'a>(app: &tauri::AppHandle, texts: [&'a str; 6]) -> &'a str {
+// Notification titles live in the native string tables with the other system notifications.
+fn localized(app: &tauri::AppHandle, key: &str) -> String {
     let locale = app
         .try_state::<Arc<crate::core::DesktopCore>>()
         .and_then(|c| c.current_settings().ok())
         .map(|s| s.locale)
         .unwrap_or(crate::model::Locale::EnUs);
-    texts[match locale {
-        crate::model::Locale::EnUs => 0,
-        crate::model::Locale::ZhCn => 1,
-        crate::model::Locale::JaJp => 2,
-        crate::model::Locale::EsEs => 3,
-        crate::model::Locale::PtBr => 4,
-        crate::model::Locale::RuRu => 5,
-    }]
+    crate::native_i18n::text(locale, key)
+        .or_else(|_| crate::native_i18n::text(crate::model::Locale::EnUs, key))
+        .unwrap_or_default()
 }
 pub fn paste_blocked(app: &tauri::AppHandle, data: PasteBlocked) -> tauri::Result<()> {
     let app = app.clone();
@@ -37,17 +33,7 @@ pub fn paste_blocked(app: &tauri::AppHandle, data: PasteBlocked) -> tauri::Resul
                 let _ = window.unminimize();
                 let _ = window.set_focus();
             }
-            let title = localized(
-                &handle,
-                [
-                    "Suspicious paste paused",
-                    "已暂停可疑命令粘贴",
-                    "不審な貼り付けを停止しました",
-                    "Pegado sospechoso detenido",
-                    "Colagem suspeita pausada",
-                    "Подозрительная вставка приостановлена",
-                ],
-            );
+            let title = localized(&handle, "security.pasteBlocked");
             let _ = handle
                 .notification()
                 .builder()
@@ -64,44 +50,14 @@ pub fn scan_finished(app: &tauri::AppHandle, data: &AvScanResult) {
         return;
     }
     let title = if data.findings.is_empty() {
-        localized(
-            app,
-            [
-                "Virus scan finished",
-                "病毒扫描已完成",
-                "ウイルススキャンが完了しました",
-                "Análisis antivirus finalizado",
-                "Verificação de vírus concluída",
-                "Проверка на вирусы завершена",
-            ],
-        )
+        localized(app, "security.scanFinished")
     } else {
-        localized(
-            app,
-            [
-                "Threats found",
-                "发现威胁",
-                "脅威が見つかりました",
-                "Se encontraron amenazas",
-                "Ameaças encontradas",
-                "Обнаружены угрозы",
-            ],
-        )
+        localized(app, "security.threatsFound")
     };
     let _ = app.notification().builder().title(title).show();
 }
 pub fn signatures(app: &tauri::AppHandle, data: &AppSignaturesChanged) {
-    let title = localized(
-        app,
-        [
-            "App signature changed",
-            "App 签名发生变化",
-            "App の署名が変更されました",
-            "La firma de la app ha cambiado",
-            "A assinatura do app mudou",
-            "Подпись приложения изменилась",
-        ],
-    );
+    let title = localized(app, "security.signatureChanged");
     let body = data
         .apps
         .iter()

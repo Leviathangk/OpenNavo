@@ -57,6 +57,9 @@ services:
       CACHE_REDIS_URL: redis://web-cache:6379/1
       AGENT_GATEWAY_SECRET: ${AGENT_GATEWAY_SECRET:?Configure shared API/MCP gateway secret}
       TRUSTED_PROXIES: ${CADDY_PROXY_IP:-172.30.80.2},${SSR_PROXY_SUBNET:-172.30.81.0/24}
+      # Usage stats take the country from CF-IPCountry only on requests Caddy forwarded (Caddy drops it from
+      # peers outside Cloudflare). Without this every country is unknown.
+      USAGE_COUNTRY_TRUSTED_PROXIES: ${CADDY_PROXY_IP:-172.30.80.2}
       # Collect garbage before the container limit; image uploads otherwise ended in OOM kills.
       GOMEMLIMIT: 900MiB
     networks:
@@ -146,6 +149,7 @@ services:
       # Where share images read icons inside the Docker network; empty fetches them from the CDN.
       NUXT_CDN_BASE_INTERNAL: ${CDN_BASE_URL_INTERNAL:-}
       NUXT_REDIS_URL: redis://web-cache:6379/0
+      NUXT_IMAGE_REDIS_URL: redis://image-cache:6379/0
       NUXT_OG_IMAGE_SECRET: ${NUXT_OG_IMAGE_SECRET:?Set a stable OG image signing secret}
       # Internal port: crawler counters for Prometheus and page-cache invalidation for the worker.
       NUXT_METRICS_PORT: '9091'
@@ -157,6 +161,7 @@ services:
     depends_on:
       api: {condition: service_healthy}
       web-cache: {condition: service_healthy}
+      image-cache: {condition: service_healthy}
   web-cache:
     # Disposable page cache must not share memory with sessions, rate limits, or Asynq queues.
     image: ${REDIS_IMAGE:-opennavo-redis:local}
@@ -165,6 +170,21 @@ services:
     deploy:
       resources:
         limits: {memory: 1G}
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
+  image-cache:
+    # Image buffers cannot evict HTML/API entries; no persistence or published port.
+    image: ${REDIS_IMAGE:-opennavo-redis:local}
+    restart: unless-stopped
+    command: ['redis-server', '--save', '', '--appendonly', 'no', '--maxmemory', '384mb', '--maxmemory-policy', 'allkeys-lru']
+    deploy:
+      resources:
+        limits: {memory: 512M}
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 30s

@@ -30,14 +30,14 @@ func TestPublicRateScopesAndForwardedIPCannotBypassQuota(t *testing.T) {
 	engine := gin.New()
 	require.NoError(t, engine.SetTrustedProxies(nil))
 	engine.Use(middleware.RateLimit(middleware.RateLimiter{Client: st.Redis}))
-	for _, path := range []string{"/api/v1/search", "/api/v1/search/suggest", "/api/v1/feedback"} {
+	for _, path := range []string{"/api/v1/search", "/api/v1/search/suggest", "/api/v1/feedback", "/api/v1/sitemap/packages"} {
 		engine.Any(path, func(c *gin.Context) { respond.OK(c, gin.H{}) })
 	}
 	for _, sample := range []struct {
 		path  string
 		quota int
 		scope string
-	}{{"/api/v1/search", 60, "search"}, {"/api/v1/search/suggest", 120, "suggest"}, {"/api/v1/feedback", 5, "feedback"}} {
+	}{{"/api/v1/search", 60, "search"}, {"/api/v1/search/suggest", 120, "suggest"}, {"/api/v1/feedback", 5, "feedback"}, {"/api/v1/sitemap/packages", 30, "sitemap"}} {
 		for index := 0; index <= sample.quota; index++ {
 			if index == sample.quota {
 				// Fix the quota at exhausted to prevent slow CI from replenishing it between iterations and making assertions speed-dependent.

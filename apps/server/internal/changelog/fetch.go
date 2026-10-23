@@ -110,6 +110,9 @@ func (f *Fetcher) commits(ctx context.Context, p Candidate, s FetchSource) (Fetc
 		s.LastModified = ""
 	}
 	entries, result, err := f.commitPages(ctx, repo, params, s)
+	if err != nil && s.Since == nil && serverError(err) {
+		entries, result, err = f.windowedCommits(ctx, repo, params, s)
+	}
 	if err != nil {
 		return out, err
 	}
@@ -188,6 +191,40 @@ func (f *Fetcher) commitPages(ctx context.Context, repo string, params url.Value
 	}
 	return nil, FetchResult{}, last
 }
+
+// GitHub answers 500 for some homebrew-cask file histories at every page size: the history crosses a very large
+// commit (the 2023 move of casks into letter directories, or a later bulk edit) that GitHub cannot list. A window
+// that starts after that commit reads fine, so a failed full read retries with shrinking windows and keeps the
+// first one that works. The versions found there are enough to date the current version.
+var historyWindows = []time.Duration{3 * 365 * 24 * time.Hour, 2 * 365 * 24 * time.Hour, 365 * 24 * time.Hour,
+	180 * 24 * time.Hour, 90 * 24 * time.Hour, 30 * 24 * time.Hour}
+
+func (f *Fetcher) windowedCommits(ctx context.Context, repo string, params url.Values, source FetchSource) ([]commitEntry, FetchResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	source.ETag, source.LastModified = "", ""
+	var last error
+	for _, window := range historyWindows {
+		params.Set("since", time.Now().Add(-window).UTC().Format(time.RFC3339))
+		entries, result, err := f.commitPageSize(ctx, repo, params, source, 100)
+		if err == nil {
+			// A window's validators must not stand in for the full history's.
+			result.ETag, result.LastModified, result.NotModified = "", "", false
+			return entries, result, nil
+		}
+		last = err
+		if !serverError(err) || ctx.Err() != nil {
+			break
+		}
+	}
+	return nil, FetchResult{}, last
+}
+
+func serverError(err error) bool {
+	var status *StatusError
+	return errors.As(err, &status) && status.Status >= 500 && status.Status <= 599
+}
+
 func (f *Fetcher) commitPageSize(ctx context.Context, repo string, params url.Values, source FetchSource, size int) ([]commitEntry, FetchResult, error) {
 	result := FetchResult{Versions: []BrewVersion{}}
 	entries := []commitEntry{}

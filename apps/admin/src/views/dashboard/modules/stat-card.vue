@@ -15,7 +15,7 @@ defineProps<{ label: string; value: number; hint?: string }>();
   <NCard :bordered="false" size="small" class="card-wrapper h-full">
     <div class="flex-col gap-4px">
       <NText depth="2" class="text-13px">{{ label }}</NText>
-      <span class="text-28px font-600 tabular-nums">{{ formatCount(value, { locale: formattingLocale }) }}</span>
+      <span class="text-28px font-600">{{ formatCount(value, { locale: formattingLocale }) }}</span>
       <NText depth="3" class="min-h-18px text-12px">{{ hint }}</NText>
     </div>
   </NCard>

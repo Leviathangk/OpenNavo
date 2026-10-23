@@ -5,6 +5,7 @@ import { isPagePath } from './canonicalUrl';
 
 export const LOAD_SHED_DEFAULTS = {
   enabled: true,
+  imageInFlight: 2,
   lowInFlight: 8,
   mediumInFlight: 16,
   extremeInFlight: 64,
@@ -59,6 +60,7 @@ export function loadShedConfig(input: Record<string, unknown> = {}): LoadShedCon
   const config = { ...LOAD_SHED_DEFAULTS };
   config.enabled = input.enabled !== false && input.enabled !== 'false';
   for (const key of [
+    'imageInFlight',
     'lowInFlight',
     'mediumInFlight',
     'extremeInFlight',
@@ -111,6 +113,8 @@ export function shouldShed(tier: LoadShedTier, level: LoadShedLevel): boolean {
 
 export class LoadShedState {
   inFlight = 0;
+  imageInFlight = 0;
+  private readonly imageAdmissions = new WeakSet<object>();
   lagMs = 0;
   private readonly counts = new Map<string, number>();
   private stopMonitor?: () => void;
@@ -144,11 +148,26 @@ export class LoadShedState {
   track(event: H3Event) {
     const { req, res } = event.node;
     this.inFlight += 1;
+    const image = event.path.startsWith('/_og/');
+    const admission = { request: req };
+    if (image) {
+      this.imageInFlight += 1;
+      this.imageAdmissions.add(admission);
+      // Nitro localFetch forwards only _platform into the child event context.
+      // Keep this process-local capability out of HTTP headers.
+      event.context.ogAdmission = admission;
+      // eslint-disable-next-line no-underscore-dangle -- Nitro’s server-only context forwarding API.
+      event.context._platform = { ...event.context._platform, ogAdmission: admission };
+    }
     let released = false;
     const release = () => {
       if (released) return;
       released = true;
       this.inFlight -= 1;
+      if (image) {
+        this.imageInFlight -= 1;
+        this.imageAdmissions.delete(admission);
+      }
       res.removeListener('finish', release);
       res.removeListener('close', release);
       res.removeListener('error', release);
@@ -165,7 +184,21 @@ export class LoadShedState {
     if (req.aborted || res.destroyed || res.writableEnded) release();
   }
 
-  reject(agent: AgentLabel, level: Exclude<LoadShedLevel, 'normal'>) {
+  admittedImageChild(event: H3Event): boolean {
+    const admission = event.context.ogAdmission;
+    if (
+      !event.path.startsWith('/__nuxt_island/') ||
+      !admission ||
+      !this.imageAdmissions.has(admission) ||
+      admission.request === event.node.req
+    )
+      return false;
+    // The child's afterResponse must not release the still-running parent image request.
+    event.context.releaseLoadShed = undefined;
+    return true;
+  }
+
+  reject(agent: AgentLabel, level: Exclude<LoadShedLevel, 'normal'> | 'image_capacity') {
     const key = `${agent}\u0000${loadShedTier(agent)}\u0000${level}`;
     this.counts.set(key, (this.counts.get(key) ?? 0) + 1);
   }
@@ -175,6 +208,9 @@ export class LoadShedState {
       '# HELP opennavo_web_in_flight Admitted in-flight origin page/render requests.',
       '# TYPE opennavo_web_in_flight gauge',
       `opennavo_web_in_flight ${this.inFlight}`,
+      '# HELP opennavo_web_image_in_flight Admitted image requests including cache lookups.',
+      '# TYPE opennavo_web_image_in_flight gauge',
+      `opennavo_web_image_in_flight ${this.imageInFlight}`,
       '# HELP opennavo_web_event_loop_delay_seconds Recent event-loop delay used for load shedding.',
       '# TYPE opennavo_web_event_loop_delay_seconds gauge',
       `opennavo_web_event_loop_delay_seconds ${this.lagMs / 1000}`,
@@ -193,10 +229,14 @@ export const loadShedState = new LoadShedState();
 
 export function shedRequest(event: H3Event, config: LoadShedConfig, state = loadShedState): Promise<void> | undefined {
   if (!config.enabled || !loadShedPath(event.path)) return;
+  if (state.admittedImageChild(event)) return;
   state.start();
   const agent = agentLabel(getHeader(event, 'user-agent'));
-  const level = loadShedLevel(state.inFlight, state.lagMs, config);
-  if (level !== 'normal' && shouldShed(loadShedTier(agent), level)) {
+  const level =
+    event.path.startsWith('/_og/') && state.imageInFlight >= config.imageInFlight
+      ? 'image_capacity'
+      : loadShedLevel(state.inFlight, state.lagMs, config);
+  if (level === 'image_capacity' || (level !== 'normal' && shouldShed(loadShedTier(agent), level))) {
     state.reject(agent, level);
     event.context.loadShed = true;
     setResponseStatus(event, 503);

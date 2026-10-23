@@ -58,11 +58,15 @@ func PendingReason(target Target, key, code string) string {
 	return ""
 }
 
-// TargetLocales is the interface language contract shared with the Node exporter.
+// TargetLocales is the interface language contract shared with the Node exporter: the website and shared UI strings
+// cover every site locale, the Mac client (desktop, native) every desktop locale, admin and server the app locales.
 func TargetLocales(name string) []string {
 	codes := i18n.Locales[:]
-	if name == "web" || name == "shared" {
+	switch name {
+	case "web", "shared":
 		codes = i18n.SiteLocales[:]
+	case "desktop", "native":
+		codes = i18n.DesktopLocales[:]
 	}
 	out := make([]string, 0, len(codes))
 	for _, code := range codes {

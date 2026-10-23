@@ -13,8 +13,8 @@ import (
 
 func TestResumeAfterInterruptedRunRequestsOnlyRemainingBatch(t *testing.T) {
 	plan := fixture()
-	delete(plan.Targets["native"].Translations["ja-JP"], "a")
-	delete(plan.Targets["native"].Translations["es-ES"], "a")
+	delete(plan.Targets["server"].Translations["ja-JP"], "a")
+	delete(plan.Targets["server"].Translations["es-ES"], "a")
 	cache := ResumeCache{Directory: t.TempDir()}
 	ctx, cancel := context.WithCancel(context.Background())
 	firstCalls := 0
@@ -33,8 +33,8 @@ func TestResumeAfterInterruptedRunRequestsOnlyRemainingBatch(t *testing.T) {
 	// Ignore the first result to simulate interruption before either language packs or output were written.
 	resumed, notices, err := cache.Restore(plan, DefaultBrands, nil)
 	require.NoError(t, err)
-	require.Contains(t, notices, "Cache restored: native/ja-JP/a")
-	require.NotContains(t, plan.Targets["native"].Translations["ja-JP"], "a")
+	require.Contains(t, notices, "Cache restored: server/ja-JP/a")
+	require.NotContains(t, plan.Targets["server"].Translations["ja-JP"], "a")
 	secondCalls := 0
 	result, err := Run(context.Background(), resumed, func(_ context.Context, b Batch) (map[string]map[string]string, error) {
 		secondCalls++
@@ -43,21 +43,21 @@ func TestResumeAfterInterruptedRunRequestsOnlyRemainingBatch(t *testing.T) {
 	}, DefaultBrands, nil, cache.Save)
 	require.NoError(t, err)
 	require.Equal(t, 1, secondCalls)
-	require.Equal(t, "開きます", result["native"]["ja-JP"]["a"])
-	require.Equal(t, "Abre la aplicación", result["native"]["es-ES"]["a"])
+	require.Equal(t, "開きます", result["server"]["ja-JP"]["a"])
+	require.Equal(t, "Abre la aplicación", result["server"]["es-ES"]["a"])
 }
 
 func TestResumeInvalidatesSourceEnglishAndRevalidatesTranslation(t *testing.T) {
 	for _, change := range []string{"source", "english", "literal", "brand", "plural", "language", "glossary"} {
 		t.Run(change, func(t *testing.T) {
 			plan := fixture()
-			target := plan.Targets["native"]
+			target := plan.Targets["server"]
 			target.Source["a"] = "OpenNavo 打开 {count}"
 			target.English["a"] = "OpenNavo open {count}"
 			delete(target.Translations["ja-JP"], "a")
-			plan.Targets["native"] = target
+			plan.Targets["server"] = target
 			cache := ResumeCache{Directory: t.TempDir()}
-			b := Batch{Target: "native", Locales: []string{"ja-JP"}, Source: map[string]string{"a": target.Source["a"]}, English: map[string]string{"a": target.English["a"]}}
+			b := Batch{Target: "server", Locales: []string{"ja-JP"}, Source: map[string]string{"a": target.Source["a"]}, English: map[string]string{"a": target.English["a"]}}
 			require.NoError(t, cache.Save(b, map[string]map[string]string{"ja-JP": {"a": "OpenNavo を開きます {count}"}}))
 			var glossary map[string]map[string]string
 			if change == "source" {
@@ -70,7 +70,7 @@ func TestResumeInvalidatesSourceEnglishAndRevalidatesTranslation(t *testing.T) {
 				glossary = map[string]map[string]string{"打开": {"ja-JP": "起動します"}}
 			}
 			if change == "literal" || change == "brand" || change == "plural" || change == "language" {
-				raw, err := os.ReadFile(cache.path("native"))
+				raw, err := os.ReadFile(cache.path("server"))
 				require.NoError(t, err)
 				var saved resumeFile
 				require.NoError(t, json.Unmarshal(raw, &saved))
@@ -88,27 +88,27 @@ func TestResumeInvalidatesSourceEnglishAndRevalidatesTranslation(t *testing.T) {
 				saved.Entries["ja-JP"]["a"] = entry
 				raw, err = json.Marshal(saved)
 				require.NoError(t, err)
-				require.NoError(t, os.WriteFile(cache.path("native"), raw, 0600))
+				require.NoError(t, os.WriteFile(cache.path("server"), raw, 0600))
 			}
-			plan.Targets["native"] = target
+			plan.Targets["server"] = target
 			restored, _, err := cache.Restore(plan, DefaultBrands, glossary)
 			require.NoError(t, err)
-			require.NotContains(t, restored.Targets["native"].Translations["ja-JP"], "a")
+			require.NotContains(t, restored.Targets["server"].Translations["ja-JP"], "a")
 		})
 	}
 }
 
 func TestResumeInvalidatesOnlyChangedKey(t *testing.T) {
 	plan := fixture()
-	target := plan.Targets["native"]
+	target := plan.Targets["server"]
 	target.Translations["ja-JP"] = map[string]string{}
-	plan.Targets["native"] = target
+	plan.Targets["server"] = target
 	cache := ResumeCache{Directory: t.TempDir()}
-	require.NoError(t, cache.Save(Batch{Target: "native", Locales: []string{"ja-JP"}, Source: target.Source, English: target.English}, map[string]map[string]string{"ja-JP": {"a": "開きます", "b": "閉じます"}}))
+	require.NoError(t, cache.Save(Batch{Target: "server", Locales: []string{"ja-JP"}, Source: target.Source, English: target.English}, map[string]map[string]string{"ja-JP": {"a": "開きます", "b": "閉じます"}}))
 	target.English["a"] = "Launch"
 	resumed, _, err := cache.Restore(plan, DefaultBrands, nil)
 	require.NoError(t, err)
-	require.Equal(t, "閉じます", resumed.Targets["native"].Translations["ja-JP"]["b"])
+	require.Equal(t, "閉じます", resumed.Targets["server"].Translations["ja-JP"]["b"])
 	batches := Batches(resumed)
 	require.Len(t, batches, 1)
 	require.Equal(t, map[string]string{"a": "打开"}, batches[0].Source)
@@ -120,7 +120,7 @@ func TestResumeConcurrentBatchesMergeAtomically(t *testing.T) {
 	errors := make(chan error, 2)
 	for _, key := range []string{"a", "b"} {
 		workers.Go(func() {
-			b := Batch{Target: "native", Locales: []string{"ja-JP"}, Source: map[string]string{key: "打开"}, English: map[string]string{key: "Open"}}
+			b := Batch{Target: "server", Locales: []string{"ja-JP"}, Source: map[string]string{key: "打开"}, English: map[string]string{key: "Open"}}
 			errors <- cache.Save(b, map[string]map[string]string{"ja-JP": {key: "開きます"}})
 		})
 	}
@@ -129,10 +129,10 @@ func TestResumeConcurrentBatchesMergeAtomically(t *testing.T) {
 	for err := range errors {
 		require.NoError(t, err)
 	}
-	saved, err := cache.read("native")
+	saved, err := cache.read("server")
 	require.NoError(t, err)
 	require.Len(t, saved.Entries["ja-JP"], 2)
-	stat, err := os.Stat(cache.path("native"))
+	stat, err := os.Stat(cache.path("server"))
 	require.NoError(t, err)
 	require.EqualValues(t, 0600, stat.Mode().Perm())
 	temporary, err := filepath.Glob(filepath.Join(cache.Directory, ".resume-*"))
@@ -144,7 +144,7 @@ func TestResumeConcurrentBatchesMergeAtomically(t *testing.T) {
 
 func TestRejectedBatchIsNeverPersisted(t *testing.T) {
 	plan := fixture()
-	delete(plan.Targets["native"].Translations["ja-JP"], "a")
+	delete(plan.Targets["server"].Translations["ja-JP"], "a")
 	cache := ResumeCache{Directory: t.TempDir()}
 	calls := 0
 	_, err := Run(context.Background(), plan, func(context.Context, Batch) (map[string]map[string]string, error) {

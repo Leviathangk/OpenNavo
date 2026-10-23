@@ -26,6 +26,31 @@ test('prints what plain go test prints and records top-level durations', () => {
   assert.match(text, /FAIL\tgithub.com/);
   assert.match(text, /go: downloading/);
   assert.doesNotMatch(text, /=== RUN   TestPass/, 'passing tests stay quiet');
+  assert.equal(log.failed, true);
+});
+
+test('fails only when a test or package failed', () => {
+  const passing = createLog(() => {});
+  passing.line(event('pass', { Test: 'TestPass', Elapsed: 1 }));
+  passing.line(event('pass', { Elapsed: 1 }));
+  passing.line(event('skip', { Test: 'TestSkip' }));
+  passing.end();
+  assert.equal(passing.failed, false);
+  // A package that does not build fails without any failing test.
+  const broken = createLog(() => {});
+  broken.line(JSON.stringify({ ImportPath: `${MODULE}internal/http`, Action: 'build-output', Output: 'syntax error\n' }));
+  broken.line(JSON.stringify({ ImportPath: `${MODULE}internal/http`, Action: 'build-fail' }));
+  broken.line(event('fail', { Elapsed: 0 }));
+  broken.end();
+  assert.equal(broken.failed, true);
+});
+
+test('the command exits 1 when a test failed, so a pipe without pipefail still fails', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const script = new URL('./go-test-log.mjs', import.meta.url).pathname;
+  const run = input => spawnSync(process.execPath, [script], { input, encoding: 'utf8' }).status;
+  assert.equal(run(`${event('pass', { Test: 'TestPass', Elapsed: 1 })}\n`), 0);
+  assert.equal(run(`${event('fail', { Test: 'TestFail', Elapsed: 1 })}\n${event('fail', { Elapsed: 1 })}\n`), 1);
 });
 
 test('a test still running when the package dies shows its output', () => {

@@ -26,11 +26,11 @@ async function decode(key: string, value: Awaited<ReturnType<Driver['getItem']>>
 }
 
 // Bound actual Redis retention, including callers that supply their own TTL.
-export function boundedCache(driver: Driver): Driver {
+export function boundedCache(driver: Driver, namespace = ''): Driver {
   return {
     ...driver,
     async getItem(key, options) {
-      return decode(key, await driver.getItem(key, options));
+      return decode(namespace + key, await driver.getItem(key, options));
     },
     // Redis exposes MGET; it must decode the same way as individual reads.
     getItems: driver.getItems
@@ -38,7 +38,7 @@ export function boundedCache(driver: Driver): Driver {
           Promise.all(
             (await driver.getItems!(items, options)).map(async ({ key, value }) => ({
               key,
-              value: await decode(key, value)
+              value: await decode(namespace + key, value)
             }))
           )
       : undefined,
@@ -49,7 +49,7 @@ export function boundedCache(driver: Driver): Driver {
         await driver.removeItem?.(key, options);
         return;
       }
-      const ceiling = key.startsWith('nuxt-og-image:') ? IMAGE_CACHE_TTL_SECONDS : PAGE_CACHE_TTL_SECONDS;
+      const ceiling = (namespace + key).startsWith('nuxt-og-image:') ? IMAGE_CACHE_TTL_SECONDS : PAGE_CACHE_TTL_SECONDS;
       const requested = options?.ttl;
       const ttl =
         typeof requested === 'number' && Number.isFinite(requested) && requested > 0

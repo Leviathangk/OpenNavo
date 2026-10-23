@@ -5,10 +5,14 @@ import vm from 'node:vm';
 import ts from 'typescript';
 export const read = path => JSON.parse(readFileSync(path, 'utf8'));
 export const manifest = read('packages/shared/src/locales.json');
-// web and shared strings ship on the website, so they cover every site locale; the other targets are app surfaces.
+// web and shared strings ship on the website, so they cover every site locale; the Mac client's strings (desktop,
+// native) cover the desktop locales; admin and server strings cover the app locales.
 const SITE_TARGETS = new Set(['web', 'shared']);
+const DESKTOP_TARGETS = new Set(['desktop', 'native']);
 export const targetLocales = name =>
-  SITE_TARGETS.has(name) ? manifest.locales : manifest.locales.filter(locale => locale.surfaces.includes('app'));
+  SITE_TARGETS.has(name)
+    ? manifest.locales
+    : manifest.locales.filter(locale => locale.surfaces.includes(DESKTOP_TARGETS.has(name) ? 'desktop' : 'app'));
 /** Locales a target needs translated files for: everything except the zh-CN source and the en-US authoring text. */
 export const translatedCodes = name =>
   targetLocales(name)
@@ -186,7 +190,7 @@ export function writeResult(plan, result, partial = false) {
   // Separators follow fixed locale punctuation rules; do not let the model translate commas into enumeration commas.
   if (plan.targets.native)
     for (const [code, values] of Object.entries(result.native ?? {})) {
-      if ('separator' in values) values.separator = ['zh-CN', 'ja-JP'].includes(code) ? '、' : ', ';
+      if ('separator' in values) values.separator = ['zh-CN', 'zh-Hant', 'ja-JP'].includes(code) ? '、' : ', ';
     }
   // Go returns only keys that pass batch validation; still reject extra keys, invalid placeholders, and invalid plurals before writing.
   for (const [name, target] of Object.entries(plan.targets))

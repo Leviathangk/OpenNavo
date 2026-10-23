@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +66,8 @@ func TestCommitFallbackFailureIsAtomicAndBounded(t *testing.T) {
 	result, err := f.Fetch(context.Background(), Candidate{Token: "sample"}, FetchSource{Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/s/sample.rb"}})
 	require.Error(t, err)
 	require.Empty(t, result.Versions)
-	require.Equal(t, 4, calls)
+	// Three page sizes, then one request per shrinking history window.
+	require.Equal(t, 4+len(historyWindows), calls)
 	category, status := Failure(err)
 	require.Equal(t, "upstream_server_error", category)
 	require.Equal(t, 502, status)
@@ -105,4 +107,44 @@ func TestCommitSmallestFallbackAndDeduplication(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Versions, 1)
 	require.Equal(t, 4, calls)
+}
+
+// GitHub answers 500 for some file histories that cross a huge commit; a window starting after it reads fine.
+func TestCommitHistoryServerErrorRetriesShrinkingWindows(t *testing.T) {
+	f := NewFetcher("test")
+	var windows []time.Time
+	f.HTTP.Client.Transport = roundTrip(func(r *http.Request) (*http.Response, error) {
+		since := r.URL.Query().Get("since")
+		if since == "" {
+			return reply(500, `{"message":"Server Error"}`), nil
+		}
+		start, err := time.Parse(time.RFC3339, since)
+		require.NoError(t, err)
+		windows = append(windows, start)
+		require.Equal(t, "100", r.URL.Query().Get("per_page"))
+		require.Empty(t, r.Header.Get("If-None-Match"))
+		require.Empty(t, r.Header.Get("If-Modified-Since"))
+		// The offending commit is 18 months old: only windows starting after it succeed.
+		if start.Before(time.Now().Add(-18 * 30 * 24 * time.Hour)) {
+			return reply(500, `{"message":"Server Error"}`), nil
+		}
+		response := reply(200, `[{"sha":"aaaa","commit":{"message":"sample 2.0","committer":{"date":"2026-09-01T00:00:00Z"}}},{"sha":"bbbb","commit":{"message":"sample 1.9"}}]`)
+		response.Header.Set("ETag", "window-etag")
+		return response, nil
+	})
+	result, err := f.Fetch(context.Background(), Candidate{Token: "sample"}, FetchSource{Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/t/sample.rb"}, ETag: "old"})
+	require.NoError(t, err)
+	require.Len(t, result.Versions, 2)
+	require.Equal(t, "2.0", result.Versions[0].Version)
+	require.Empty(t, result.ETag, "a window's validator never stands in for the full history's")
+	require.Len(t, windows, 3, "3 years and 2 years fail, 1 year succeeds")
+	require.True(t, windows[0].Before(windows[1]) && windows[1].Before(windows[2]))
+
+	// An incremental read (since already set) does not widen into windows.
+	calls := 0
+	f.HTTP.Client.Transport = roundTrip(func(*http.Request) (*http.Response, error) { calls++; return reply(500, ""), nil })
+	since := time.Now().Add(-48 * time.Hour)
+	_, err = f.Fetch(context.Background(), Candidate{Token: "sample"}, FetchSource{Type: "homebrew_commits", Config: map[string]any{"repo": "Homebrew/homebrew-cask", "path": "Casks/t/sample.rb"}, Since: &since})
+	require.Error(t, err)
+	require.Equal(t, 3, calls)
 }

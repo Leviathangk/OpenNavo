@@ -114,7 +114,7 @@ func (s *Store) ReadContentSource(ctx context.Context, ref content.Ref) (Content
 	where, args = textWhere(ref)
 	locales := []string{}
 	for _, code := range i18n.SiteLocales {
-		if ref.Entity != "desktop_release" || i18n.ValidApp(string(code)) {
+		if ref.Entity != "desktop_release" || i18n.ValidDesktop(string(code)) {
 			locales = append(locales, string(code))
 		}
 	}
@@ -186,7 +186,7 @@ func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref)
 	}
 	for _, code := range i18n.SiteLocales {
 		locale := string(code)
-		if locale == source.SourceLocale || (ref.Entity == "desktop_release" && !i18n.ValidApp(locale)) {
+		if locale == source.SourceLocale || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
 			continue
 		}
 		var fresh bool

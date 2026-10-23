@@ -33,7 +33,7 @@ Homebrew 是 Mac 上装软件最可靠的方式，但命令行不适合每个人
 
 - **网页端**：任何人都能浏览、搜索、比较 App，查看每个版本的更新说明，复制安装命令。
 - **macOS 客户端**：在网页端的全部能力之上，调用你电脑上的 Homebrew 完成安装与更新，彻底卸载任何来源的 App，谨慎清理缓存和残留，在菜单栏监控电脑状态，并记录每一次操作。
-- **多种语言**：网站支持十种语言：English、简体中文、繁體中文、日本語、Español、Português (Brasil)、Русский、Deutsch、Français、Italiano；macOS 客户端和管理后台使用其中六种：English、简体中文、日本語、Español、Português (Brasil)、Русский。App 介绍与更新说明自动翻译，随时可以切回原文。
+- **多种语言**：网站支持十种语言：English、简体中文、繁體中文、日本語、Español、Português (Brasil)、Русский、Deutsch、Français、Italiano；macOS 客户端同样支持这十种，管理后台使用其中六种：English、简体中文、日本語、Español、Português (Brasil)、Русский。App 介绍与更新说明自动翻译，随时可以切回原文。
 - **无需账号**：不用注册，也不用登录，打开就能用。
 
 [opennavo.com](https://opennavo.com/zh) 运行的就是这个仓库的代码。
@@ -183,7 +183,7 @@ make dev-desktop       # macOS 客户端（Tauri）
 make lint test
 ```
 
-包含 OpenAPI 校验、Go / TypeScript / Rust / Python 的静态检查与单元测试，以及各界面语言的文案完整性检查（网站十种，macOS 客户端和后台六种）。浏览器端到端测试见 `make e2e`。
+包含 OpenAPI 校验、Go / TypeScript / Rust / Python 的静态检查与单元测试，以及各界面语言的文案完整性检查（网站和 macOS 客户端十种，后台六种）。浏览器端到端测试见 `make e2e`。
 
 > [!IMPORTANT]
 > 开发与测试时不要在自己的电脑上真实执行 `brew install`、`upgrade`、`uninstall`、`cleanup` 或 `update`。客户端的写操作测试使用模拟 brew：把 `OPENNAVO_BREW_PATH` 指向 `apps/desktop/src-tauri/tests/fake-brew/brew`。
@@ -204,7 +204,7 @@ make lint test
 - **契约优先**：接口变更先改 `apps/server/api/*.openapi.yaml`，执行 `make gen` 后再改实现；生成文件不要手改。
 - **设计令牌**：颜色、圆角等取自 `packages/tokens/tokens.json`，组件中不写颜色字面量。
 - **数据库**：只追加新的迁移文件，不修改已有迁移。
-- **文案**：面向用户的文字全部进语言包，并提供该端的全部语言：网站十种，macOS 客户端和后台六种；`make lint` 会检查完整性。
+- **文案**：面向用户的文字全部进语言包，并提供该端的全部语言：网站和 macOS 客户端十种，后台六种；`make lint` 会检查完整性。
 - **提交信息**：使用 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/)，例如 `feat(desktop): …`、`fix(server): …`。
 - 提交前确保 `make lint test` 通过。
 

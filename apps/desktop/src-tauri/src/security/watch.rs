@@ -94,14 +94,8 @@ pub fn install(app: &tauri::AppHandle) {
         // A threat in a finished download: the app may be in the background, so the
         // system notification is what tells the user; the window offers the scan.
         let notify_threat = |path: &Path, signature: &str, settings: &Settings| {
-            let title = match settings.locale {
-                crate::model::Locale::ZhCn => "下载的文件有威胁",
-                crate::model::Locale::JaJp => "ダウンロードしたファイルに脅威",
-                crate::model::Locale::EsEs => "Amenaza en una descarga",
-                crate::model::Locale::PtBr => "Ameaça em um download",
-                crate::model::Locale::RuRu => "Угроза в загруженном файле",
-                _ => "Threat in a download",
-            };
+            let title = crate::native_i18n::text(settings.locale, "security.downloadThreat")
+                .unwrap_or_default();
             let name = path
                 .file_name()
                 .map(|n| n.to_string_lossy())
@@ -113,31 +107,26 @@ pub fn install(app: &tauri::AppHandle) {
                 .body(format!("{name} · {signature}"))
                 .show();
         };
-        let notify_startup =
-            |snapshot: &StartupSnapshot, seen: &BTreeSet<String>, settings: &Settings| {
-                let added: Vec<_> = snapshot
-                    .items
+        let notify_startup = |snapshot: &StartupSnapshot,
+                              seen: &BTreeSet<String>,
+                              settings: &Settings| {
+            let added: Vec<_> = snapshot
+                .items
+                .iter()
+                .filter(|i| i.is_new && !seen.contains(&i.id))
+                .collect();
+            if !added.is_empty() {
+                let title = crate::native_i18n::text(settings.locale, "security.newStartupItem")
+                    .unwrap_or_default();
+                let body = added
                     .iter()
-                    .filter(|i| i.is_new && !seen.contains(&i.id))
-                    .collect();
-                if !added.is_empty() {
-                    let title = match settings.locale {
-                        crate::model::Locale::ZhCn => "发现新启动项",
-                        crate::model::Locale::JaJp => "新しい起動項目",
-                        crate::model::Locale::EsEs => "Nuevo elemento de inicio",
-                        crate::model::Locale::PtBr => "Novo item de inicialização",
-                        crate::model::Locale::RuRu => "Новый элемент автозапуска",
-                        _ => "New startup item",
-                    };
-                    let body = added
-                        .iter()
-                        .take(3)
-                        .map(|i| i.name.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    let _ = app.notification().builder().title(title).body(body).show();
-                }
-            };
+                    .take(3)
+                    .map(|i| i.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let _ = app.notification().builder().title(title).body(body).show();
+            }
+        };
         if service.settings.read().is_ok_and(|s| s.startup_alerts)
             && let Ok(snapshot) = service.startup_scan()
         {

@@ -1,5 +1,5 @@
 use opennavo_desktop_lib::{
-    model::Locale,
+    locales_gen::LOCALES,
     monitor::{
         alerts::{AlertTracker, content, route},
         types::*,
@@ -89,7 +89,7 @@ fn info_disabled_and_upgrade_during_key_cooldown_never_notify() {
     assert!(tracker.evaluate(&critical, 5).is_empty());
 }
 #[test]
-fn notification_routes_and_six_language_placeholders_are_resolved() {
+fn notification_routes_and_placeholders_are_resolved_in_every_language() {
     assert_eq!(route(HealthIssueKey::DiskLow), "/cleanup");
     for key in [
         HealthIssueKey::CpuBusy,
@@ -99,14 +99,7 @@ fn notification_routes_and_six_language_placeholders_are_resolved() {
     ] {
         assert_eq!(route(key), "/monitor");
     }
-    for locale in [
-        Locale::ZhCn,
-        Locale::EnUs,
-        Locale::JaJp,
-        Locale::EsEs,
-        Locale::PtBr,
-        Locale::RuRu,
-    ] {
+    for locale in LOCALES {
         for key in [
             HealthIssueKey::CpuBusy,
             HealthIssueKey::MemoryPressure,

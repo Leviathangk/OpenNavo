@@ -71,6 +71,9 @@ func RateLimit(limiter RateLimiter, loggers ...*slog.Logger) gin.HandlerFunc {
 			count, scope = 30, "lookup"
 		case "/api/v1/usage/activity":
 			count, scope = 60, "usage"
+		case "/api/v1/sitemap/packages":
+			// The web server rebuilds its snapshot from about 20 pages every half hour.
+			count, scope = 30, "sitemap"
 		case "/api/v1/feedback":
 			count, window, scope = 5, time.Hour, "feedback"
 		}

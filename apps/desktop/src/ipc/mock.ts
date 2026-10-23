@@ -2,8 +2,8 @@
 // ?mock=no-brew simulates a Mac without Homebrew; ?mock=first-run starts with fresh settings (onboarding). See installMockIpc for other switches.
 import type { invoke } from '@tauri-apps/api/core';
 import { mockIPC, mockWindows } from '@tauri-apps/api/mocks';
-import { LOCALES, matchLocale } from '@opennavo/shared';
-import type { Locale } from '@opennavo/shared';
+import { DESKTOP_LOCALES, matchLocale } from '@opennavo/shared';
+import type { DesktopLocale as Locale } from '@opennavo/shared';
 import type {
   AppInfo,
   CatalogStatus,
@@ -228,8 +228,8 @@ export function installMockIpc(
   const params = new URLSearchParams(typeof location === 'undefined' ? '' : location.search);
   const systemLocale =
     options.systemLocale ??
-    LOCALES.find(code => code === params.get('mock-system-locale')) ??
-    matchLocale(typeof navigator === 'undefined' ? [] : navigator.languages);
+    DESKTOP_LOCALES.find(code => code === params.get('mock-system-locale')) ??
+    matchLocale(typeof navigator === 'undefined' ? [] : navigator.languages, DESKTOP_LOCALES);
   const persistSettings = options.persistSettings ?? import.meta.env.MODE !== 'test';
   const storageKey = 'ONV_DESKTOP_mock_settings';
   // fresh means new settings; as in Rust, old settings missing onboardingCompleted count as onboarded (06 §11).

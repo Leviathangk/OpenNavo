@@ -10,7 +10,7 @@ func TestTargetLanguagePlanning(t *testing.T) {
 	for _, name := range []string{"web", "shared", "desktop", "native", "admin", "server"} {
 		t.Run(name, func(t *testing.T) {
 			count := 6
-			if name == "web" || name == "shared" {
+			if name == "web" || name == "shared" || name == "desktop" || name == "native" {
 				count = 10
 			}
 			require.Len(t, TargetLocales(name), count)

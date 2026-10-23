@@ -8,7 +8,10 @@ fn apple_language_mapping_matches_bundle_localizations() {
     let declared = plist.as_dictionary().unwrap()["CFBundleLocalizations"]
         .as_array()
         .unwrap();
-    assert_eq!(declared.len(), 6);
+    assert_eq!(
+        declared.len(),
+        opennavo_desktop_lib::locales_gen::LOCALES.len()
+    );
     for (locale, code) in [
         (Locale::EnUs, "en"),
         (Locale::ZhCn, "zh-Hans"),
@@ -16,6 +19,10 @@ fn apple_language_mapping_matches_bundle_localizations() {
         (Locale::EsEs, "es"),
         (Locale::PtBr, "pt-BR"),
         (Locale::RuRu, "ru"),
+        (Locale::DeDe, "de"),
+        (Locale::FrFr, "fr"),
+        (Locale::ItIt, "it"),
+        (Locale::ZhHant, "zh-Hant"),
     ] {
         assert_eq!(settings::apple_language(locale), code);
         assert!(declared.iter().any(|v| v.as_string() == Some(code)));
@@ -72,7 +79,7 @@ fn integer_plural_zero_one_two_many_and_punctuation() {
         let separator = native_i18n::text(locale, "separator").unwrap();
         assert_eq!(
             separator,
-            if [Locale::ZhCn, Locale::JaJp].contains(&locale) {
+            if [Locale::ZhCn, Locale::ZhHant, Locale::JaJp].contains(&locale) {
                 "、"
             } else {
                 ", "
@@ -80,7 +87,13 @@ fn integer_plural_zero_one_two_many_and_punctuation() {
         );
     }
     assert_eq!(native_i18n::plural_index(Locale::EnUs, 0), 1);
+    assert_eq!(native_i18n::plural_index(Locale::DeDe, 0), 1);
+    assert_eq!(native_i18n::plural_index(Locale::ItIt, 1), 0);
+    // French and Portuguese treat zero as singular.
     assert_eq!(native_i18n::plural_index(Locale::PtBr, 0), 0);
+    assert_eq!(native_i18n::plural_index(Locale::FrFr, 0), 0);
+    assert_eq!(native_i18n::plural_index(Locale::FrFr, 2), 1);
+    assert_eq!(native_i18n::plural_index(Locale::ZhHant, 2), 0);
     for (count, index) in [
         (1, 0),
         (2, 1),
@@ -97,7 +110,7 @@ fn integer_plural_zero_one_two_many_and_punctuation() {
 }
 
 #[test]
-fn six_language_menu_labels_and_askpass_env() {
+fn menu_labels_and_askpass_env_in_every_language() {
     use opennavo_desktop_lib::brew::env::construct;
     for locale in opennavo_desktop_lib::locales_gen::LOCALES {
         for key in [
@@ -220,5 +233,5 @@ fn bundle_ships_a_localized_usage_description_for_every_declared_language() {
             assert_eq!(text, base);
         }
     }
-    assert_eq!(seen.len(), 6);
+    assert_eq!(seen.len(), opennavo_desktop_lib::locales_gen::LOCALES.len());
 }

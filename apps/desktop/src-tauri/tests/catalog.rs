@@ -300,16 +300,32 @@ async fn sync_http_snapshot_delta_expiry_cdn_and_headers() {
         assert!(request.to_lowercase().contains("x-client-version:"));
         let path = request.split_whitespace().nth(1).unwrap();
         recorded.lock().unwrap().push(path.to_owned());
-        if path == "/api/catalog/snapshot" && matches!(control.load(Ordering::Relaxed), 2 | 6) {
+        if path == "/api/catalog/snapshot?locales=all"
+            && matches!(control.load(Ordering::Relaxed), 2 | 6)
+        {
             return (503, b"{}".to_vec());
         }
-        if path == "/api/catalog/snapshot" || path == "/latest.json" {
-            let mut info: serde_json::Value =
+        if path == "/api/catalog/snapshot?locales=all" || path == "/latest.json" {
+            // The API lists every language's pack; the CDN copy keeps the original six.
+            let mut info: serde_json::Value = if path == "/latest.json" {
                 serde_json::from_slice(&std::fs::read(fixtures().join("v2/latest.json")).unwrap())
-                    .unwrap();
+                    .unwrap()
+            } else {
+                let response: serde_json::Value = serde_json::from_slice(
+                    &std::fs::read(fixtures().join("v2/snapshot-all.json")).unwrap(),
+                )
+                .unwrap();
+                response["data"].clone()
+            };
             info["url"] = format!("{url}/catalog.gz").into();
-            for locale in ["en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU"] {
-                info["textPacks"][locale]["url"] = format!("{url}/text-{locale}.json.gz").into();
+            let locales: Vec<String> = info["textPacks"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect();
+            for locale in locales {
+                info["textPacks"][&locale]["url"] = format!("{url}/text-{locale}.json.gz").into();
             }
             if control.load(Ordering::Relaxed) == 4 {
                 info["textPacks"]["ja-JP"]["sha256"] = "0".repeat(64).into();
@@ -336,7 +352,7 @@ async fn sync_http_snapshot_delta_expiry_cdn_and_headers() {
                 std::fs::read(fixtures().join("v2").join(path.trim_start_matches('/'))).unwrap(),
             );
         }
-        if path == "/api/catalog/links" {
+        if path == "/api/catalog/links?locales=all" {
             // A separate source with its own protocol: an empty, valid catalog keeps it out of what this test measures.
             return (
                 200,
@@ -425,12 +441,12 @@ async fn sync_http_snapshot_delta_expiry_cdn_and_headers() {
     assert!(
         paths
             .iter()
-            .any(|p| p == "/api/catalog/changes?since=60&limit=500")
+            .any(|p| p == "/api/catalog/changes?since=60&limit=500&locales=all")
     );
     assert!(
         paths
             .iter()
-            .any(|p| p == "/api/catalog/changes?since=63&limit=500")
+            .any(|p| p == "/api/catalog/changes?since=63&limit=500&locales=all")
     );
     assert!(!service.is_syncing());
     assert_eq!(events.lock().unwrap().len(), 5);
@@ -448,7 +464,7 @@ async fn sync_http_snapshot_delta_expiry_cdn_and_headers() {
     service.sync_text().await.unwrap();
     assert_eq!(
         *requests.lock().unwrap(),
-        vec!["/api/catalog/snapshot", "/text-ja-JP.json.gz"]
+        vec!["/api/catalog/snapshot?locales=all", "/text-ja-JP.json.gz"]
     );
     assert_eq!(db.meta("snapshot_sha256").unwrap(), old_hash);
     assert_eq!(db.meta("catalog_cursor").unwrap(), old_cursor);

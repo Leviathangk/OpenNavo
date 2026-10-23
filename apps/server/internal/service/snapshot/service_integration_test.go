@@ -16,7 +16,9 @@ import (
 	"time"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/opennavo/opennavo/server/seeds"
@@ -213,6 +215,20 @@ func TestV2SparsePacksCategoryChangesAndInterruptedPublication(t *testing.T) {
 	require.NoError(t, json.Unmarshal(manifest, &packs))
 	require.Len(t, packs, 6)
 	require.NotContains(t, packs, "de-DE")
+	// The CDN copy keeps the same six packs for every client; the API lists all ten for locales=all.
+	var published struct {
+		TextPacks map[string]json.RawMessage `json:"textPacks"`
+	}
+	require.NoError(t, json.Unmarshal(objects.memoryObjects["snapshots/latest.json"], &published))
+	require.Len(t, published.TextPacks, 6)
+	all, err := svc.Latest(domain.WithAllCatalogLocales(ctx, true))
+	require.NoError(t, err)
+	manifest, err = json.Marshal(all.TextPacks)
+	require.NoError(t, err)
+	packs = map[string]json.RawMessage{}
+	require.NoError(t, json.Unmarshal(manifest, &packs))
+	require.Len(t, packs, len(i18n.DesktopLocales))
+	require.Contains(t, packs, "zh-Hant")
 	spec, err := publicapi.GetSpec()
 	require.NoError(t, err)
 	for key, data := range objects.memoryObjects {
@@ -227,7 +243,7 @@ func TestV2SparsePacksCategoryChangesAndInterruptedPublication(t *testing.T) {
 		var value map[string]any
 		require.NoError(t, json.Unmarshal(raw, &value))
 		schema := "CatalogTextPack"
-		if strings.HasPrefix(key, "snapshots/base-v2-") {
+		if strings.HasPrefix(key, "snapshots/base-v2-") || strings.HasPrefix(key, "snapshots/modern-base-v2-") {
 			schema = "CatalogBaseSnapshot"
 			entry := value["items"].([]any)[0].(map[string]any)
 			require.NotContains(t, entry, "displayName")

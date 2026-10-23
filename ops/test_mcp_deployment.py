@@ -67,6 +67,13 @@ class MCPDeploymentTests(unittest.TestCase):
         self.assertIn('header_up -X-Agent-Gateway-Key', text)
         self.assertIn('header_up -X-Agent-Client-IP', text)
 
+    def test_caddy_hides_internal_sitemap_feed(self):
+        text = (ROOT / 'caddy/Caddyfile').read_text()
+        api = text[text.index('{$API_DOMAIN} {'):text.index('{$ADMIN_DOMAIN} {')]
+        # Only the web server reads the package sitemap feed, over api-ssr; the public API host answers 404 before proxying.
+        self.assertIn('@internalSitemap path /api/v1/sitemap/packages\n\thandle @internalSitemap {\n\t\trespond 404', api)
+        self.assertLess(api.index('handle @internalSitemap {'), api.index('handle @public {'))
+
     def test_monitoring_requires_exactly_six_current_schedules(self):
         def responses(count):
             values = [

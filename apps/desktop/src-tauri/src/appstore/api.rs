@@ -381,6 +381,10 @@ fn language(locale: Locale) -> &'static str {
         Locale::PtBr => "pt_br",
         Locale::RuRu => "ru_ru",
         Locale::EnUs => "en_us",
+        Locale::DeDe => "de_de",
+        Locale::FrFr => "fr_fr",
+        Locale::ItIt => "it_it",
+        Locale::ZhHant => "zh_tw",
     }
 }
 fn retry_after(value: Option<&str>, now: i64) -> i64 {

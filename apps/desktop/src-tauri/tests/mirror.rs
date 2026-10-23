@@ -310,14 +310,18 @@ async fn login_state_rolls_back_when_settings_save_fails() {
 }
 
 #[test]
-fn six_language_settings_round_trip() {
+fn settings_round_trip_in_every_language() {
     for (system, locale) in [
         ("zh_Hans_CN", Locale::ZhCn),
         ("ja-JP", Locale::JaJp),
         ("es-ES", Locale::EsEs),
         ("pt_BR", Locale::PtBr),
         ("ru-RU", Locale::RuRu),
-        ("de-DE", Locale::EnUs),
+        ("de-DE", Locale::DeDe),
+        ("fr_CA", Locale::FrFr),
+        ("it-IT", Locale::ItIt),
+        ("zh_Hant_TW", Locale::ZhHant),
+        ("nl-NL", Locale::EnUs),
     ] {
         assert_eq!(settings::locale(Some(system)), locale);
         let input = format!(r#"{{"locale":"{}"}}"#, locale.as_str());

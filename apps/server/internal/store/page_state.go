@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
@@ -18,6 +20,9 @@ type PageState struct {
 	Locale, PageKind, ContentHash string
 	PageNumber                    int
 	ContentModifiedAt             time.Time
+	// Versions pages only: the notes facts the sitemap's thin-page rule reads (nil until computed).
+	NotesChars     *int
+	NotesHasSource *bool
 }
 
 // stableContent strips persistence metadata, never public evidence dates or version dates.
@@ -132,7 +137,7 @@ func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, e
 					if err != nil {
 						return err
 					}
-					entries, err := st.TimelineEntries(ctx, row.ID, locale)
+					entries, notes, err := st.timelineWithNotes(ctx, row.ID, locale)
 					if err != nil {
 						return err
 					}
@@ -161,32 +166,37 @@ func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, e
 						value := row.FirstSeenAt
 						baseline = &value
 					}
-					save := func(kind string, page int, input any) error {
+					save := func(kind string, page int, input any, facts *seo.NotesFacts) error {
 						hash, err := pageContentHash(input)
 						if err != nil {
 							return err
 						}
-						return tx.Exec(`INSERT INTO package_page_state(package_id,locale,page_kind,page_number,content_hash,content_modified_at)
-       VALUES(?,?,?,?,?,?) ON CONFLICT(package_id,locale,page_kind,page_number) DO UPDATE SET
-       content_hash=EXCLUDED.content_hash,content_checked_at=now(),
+						var chars *int
+						var source *bool
+						if facts != nil {
+							chars, source = &facts.Chars, &facts.HasSource
+						}
+						return tx.Exec(`INSERT INTO package_page_state(package_id,locale,page_kind,page_number,content_hash,content_modified_at,notes_chars,notes_has_source)
+       VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(package_id,locale,page_kind,page_number) DO UPDATE SET
+       content_hash=EXCLUDED.content_hash,content_checked_at=now(),notes_chars=EXCLUDED.notes_chars,notes_has_source=EXCLUDED.notes_has_source,
        content_modified_at=CASE WHEN package_page_state.content_hash<>EXCLUDED.content_hash
        THEN GREATEST(package_page_state.content_modified_at+interval '1 microsecond',?)
-       ELSE package_page_state.content_modified_at END`, row.ID, locale, kind, page, hash, baseline, job.ChangedAt).Error
+       ELSE package_page_state.content_modified_at END`, row.ID, locale, kind, page, hash, baseline, chars, source, job.ChangedAt).Error
 					}
 					latest := entries[:min(1, len(entries))]
-					if err := save("overview", 1, []any{overview, shots, latest}); err != nil {
+					if err := save("overview", 1, []any{overview, shots, latest}, nil); err != nil {
 						return err
 					}
-					if err := save("details", 1, overview); err != nil {
+					if err := save("details", 1, overview, nil); err != nil {
 						return err
 					}
-					if err := save("dependencies", 1, deps); err != nil {
+					if err := save("dependencies", 1, deps, nil); err != nil {
 						return err
 					}
-					pages := max(1, (len(entries)+seo.VersionsPageSize-1)/seo.VersionsPageSize)
+					pages := len(notes)
 					for page := 1; page <= pages; page++ {
 						start := min(len(entries), (page-1)*seo.VersionsPageSize)
-						if err := save("versions", page, entries[start:min(len(entries), start+seo.VersionsPageSize)]); err != nil {
+						if err := save("versions", page, entries[start:min(len(entries), start+seo.VersionsPageSize)], &notes[page-1]); err != nil {
 							return err
 						}
 					}
@@ -195,7 +205,7 @@ func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, e
 						return err
 					}
 					for page := pages + 1; page <= previousPages; page++ {
-						if err := save("versions", page, []any{}); err != nil {
+						if err := save("versions", page, []any{}, &seo.NotesFacts{}); err != nil {
 							return err
 						}
 					}
@@ -216,8 +226,47 @@ func (s *Store) PageStates(ctx context.Context, ids []int64) ([]PageState, error
 	if len(ids) == 0 {
 		return rows, nil
 	}
-	err := s.DB.WithContext(ctx).Raw("SELECT * FROM package_page_state WHERE package_id IN ? ORDER BY package_id,locale,page_kind,page_number", ids).Scan(&rows).Error
+	err := s.DB.WithContext(ctx).Raw(`SELECT package_id,locale,page_kind,page_number,content_hash,content_modified_at,notes_chars,notes_has_source
+ FROM package_page_state WHERE package_id IN ? ORDER BY package_id,locale,page_kind,page_number`, ids).Scan(&rows).Error
 	return rows, err
+}
+
+// BackfillPageNotes stores the notes facts of versions pages written before they were recorded, a few packages per
+// run, reading only each package's timeline (much lighter than a full page-state refresh). It returns the
+// number of packages filled; zero means none are missing.
+func (s *Store) BackfillPageNotes(ctx context.Context, limit int) (int, error) {
+	var ids []int64
+	if err := s.DB.WithContext(ctx).Raw(`SELECT DISTINCT package_id FROM package_page_state
+ WHERE page_kind='versions' AND notes_chars IS NULL ORDER BY package_id LIMIT ?`, min(max(limit, 1), 500)).Scan(&ids).Error; err != nil {
+		return 0, err
+	}
+	for _, id := range ids {
+		for _, locale := range seo.Locales {
+			_, notes, err := s.timelineWithNotes(ctx, id, locale)
+			if err != nil {
+				return 0, err
+			}
+			// Pages beyond the current timeline are empty; a later refresh rewrites them anyway.
+			if err := s.DB.WithContext(ctx).Exec(`UPDATE package_page_state SET
+ notes_chars=CASE WHEN page_number<=? THEN (?::int[])[page_number] ELSE 0 END,
+ notes_has_source=CASE WHEN page_number<=? THEN (?::boolean[])[page_number] ELSE false END
+ WHERE package_id=? AND locale=? AND page_kind='versions' AND notes_chars IS NULL`,
+				len(notes), pageNotesArray(notes, func(f seo.NotesFacts) string { return strconv.Itoa(f.Chars) }),
+				len(notes), pageNotesArray(notes, func(f seo.NotesFacts) string { return strconv.FormatBool(f.HasSource) }),
+				id, locale).Error; err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(ids), nil
+}
+
+func pageNotesArray(pages []seo.NotesFacts, value func(seo.NotesFacts) string) string {
+	parts := make([]string, len(pages))
+	for i, page := range pages {
+		parts[i] = value(page)
+	}
+	return "{" + strings.Join(parts, ",") + "}"
 }
 
 // Page hashes describe pre-merge content and must be recomputed for the survivor.

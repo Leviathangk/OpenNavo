@@ -1236,7 +1236,7 @@ export type LocalAppsChangedReason = "startup" | "refresh" |
 
 export type LocalAppsEvent = LocalAppsChanged;
 
-export type Locale = "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU";
+export type Locale = "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
 
 export type LocaleChanged = {
 	locale: Locale,

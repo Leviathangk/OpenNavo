@@ -47,7 +47,7 @@ func run() error {
 	input := flag.String("input", "", "Input exported by Node")
 	output := flag.String("output", "", "Validated output")
 	dry := flag.Bool("dry-run", false, "List pending translation keys only")
-	replay := flag.Bool("replay", false, "Replay language rules for existing six-language text offline, without gateway calls or writes")
+	replay := flag.Bool("replay", false, "Replay language rules for each target's existing text offline, without gateway calls or writes")
 	maximum := flag.Int("max-requests", 0, "Maximum requests; 0 means unlimited")
 	flag.Parse()
 	if *input == "" || *output == "" || *maximum < 0 || flag.NArg() != 0 {
@@ -66,7 +66,7 @@ func run() error {
 		failures := []string{}
 		for _, name := range keysOfTargets(plan.Targets) {
 			target := plan.Targets[name]
-			for _, code := range []string{"zh-CN", "en-US", "ja-JP", "es-ES", "pt-BR", "ru-RU"} {
+			for _, code := range interfacesync.TargetLocales(name) {
 				fields := target.Translations[code]
 				switch code {
 				case "zh-CN":

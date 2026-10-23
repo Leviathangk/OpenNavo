@@ -18,10 +18,13 @@ const (
 	AuthoringLocale            = enUS
 )
 
-// Locales are the app surfaces: admin UI, native menus, server messages and client release notes.
+// Locales are the app surfaces: admin UI and server messages. The website indexes them without verified translations.
 var Locales = [...]LocaleCode{enUS, zhCN, jaJP, esES, ptBR, ruRU}
 
-// SiteLocales are the website and content locales (a superset of Locales).
+// DesktopLocales are the Mac client's languages: its UI, native menus, downloaded catalog data and release notes.
+var DesktopLocales = [...]LocaleCode{enUS, zhCN, jaJP, esES, ptBR, ruRU, deDE, frFR, itIT, zhHant}
+
+// SiteLocales are the website and content locales (a superset of Locales and DesktopLocales).
 var SiteLocales = [...]LocaleCode{enUS, zhCN, jaJP, esES, ptBR, ruRU, deDE, frFR, itIT, zhHant}
 
 type LocaleMetadata struct {
@@ -30,14 +33,14 @@ type LocaleMetadata struct {
 }
 
 var Metadata = map[LocaleCode]LocaleMetadata{
-	enUS:   {"English", "", "en", "en-US", "Use clear, concise American English. Preserve product names and technical literals.", []string{"one", "other"}, []string{}, []string{"site", "app"}},
-	zhCN:   {"简体中文", "/zh", "zh-Hans", "zh-CN", "使用简洁自然的简体中文，保留品牌名与技术字面量。", []string{"other"}, []string{}, []string{"site", "app"}},
-	jaJP:   {"日本語", "/ja", "ja", "ja-JP", "自然で簡潔なです・ます体を使い、製品名と技術的な文字列を保持してください。", []string{"other"}, []string{}, []string{"site", "app"}},
-	esES:   {"Español", "/es", "es", "es-ES", "Usa español internacional neutro, claro y conciso. Conserva las marcas y los literales técnicos.", []string{"one", "other"}, []string{}, []string{"site", "app"}},
-	ptBR:   {"Português (Brasil)", "/pt", "pt-BR", "pt-BR", "Use português brasileiro claro e conciso. Preserve marcas e literais técnicos.", []string{"one", "other"}, []string{}, []string{"site", "app"}},
-	ruRU:   {"Русский", "/ru", "ru", "ru-RU", "Используйте ясный и краткий русский язык. Сохраняйте названия продуктов и технические литералы.", []string{"one", "few", "many", "other"}, []string{}, []string{"site", "app"}},
-	deDE:   {"Deutsch", "/de", "de", "de-DE", "Verwende klares, prägnantes Deutsch in der Sie-Form. Behalte Produktnamen und technische Literale bei.", []string{"one", "other"}, []string{}, []string{"site"}},
-	frFR:   {"Français", "/fr", "fr", "fr-FR", "Utilisez un français clair et concis, en vouvoyant. Conservez les noms de produits et les littéraux techniques.", []string{"one", "other"}, []string{}, []string{"site"}},
-	itIT:   {"Italiano", "/it", "it", "it-IT", "Usa un italiano chiaro e conciso. Mantieni i nomi dei prodotti e i letterali tecnici.", []string{"one", "other"}, []string{}, []string{"site"}},
-	zhHant: {"繁體中文", "/zh-hant", "zh-Hant", "zh-TW", "使用簡潔自然的繁體中文（台灣常用詞彙），保留品牌名與技術字面量。", []string{"other"}, []string{"zh-TW", "zh-HK"}, []string{"site"}},
+	enUS:   {"English", "", "en", "en-US", "Use clear, concise American English. Preserve product names and technical literals.", []string{"one", "other"}, []string{}, []string{"site", "app", "desktop"}},
+	zhCN:   {"简体中文", "/zh", "zh-Hans", "zh-CN", "使用简洁自然的简体中文，保留品牌名与技术字面量。", []string{"other"}, []string{}, []string{"site", "app", "desktop"}},
+	jaJP:   {"日本語", "/ja", "ja", "ja-JP", "自然で簡潔なです・ます体を使い、製品名と技術的な文字列を保持してください。", []string{"other"}, []string{}, []string{"site", "app", "desktop"}},
+	esES:   {"Español", "/es", "es", "es-ES", "Usa español internacional neutro, claro y conciso. Conserva las marcas y los literales técnicos.", []string{"one", "other"}, []string{}, []string{"site", "app", "desktop"}},
+	ptBR:   {"Português (Brasil)", "/pt", "pt-BR", "pt-BR", "Use português brasileiro claro e conciso. Preserve marcas e literais técnicos.", []string{"one", "other"}, []string{}, []string{"site", "app", "desktop"}},
+	ruRU:   {"Русский", "/ru", "ru", "ru-RU", "Используйте ясный и краткий русский язык. Сохраняйте названия продуктов и технические литералы.", []string{"one", "few", "many", "other"}, []string{}, []string{"site", "app", "desktop"}},
+	deDE:   {"Deutsch", "/de", "de", "de-DE", "Verwende klares, prägnantes Deutsch in der Sie-Form. Behalte Produktnamen und technische Literale bei.", []string{"one", "other"}, []string{}, []string{"site", "desktop"}},
+	frFR:   {"Français", "/fr", "fr", "fr-FR", "Utilisez un français clair et concis, en vouvoyant. Conservez les noms de produits et les littéraux techniques.", []string{"one", "other"}, []string{}, []string{"site", "desktop"}},
+	itIT:   {"Italiano", "/it", "it", "it-IT", "Usa un italiano chiaro e conciso. Mantieni i nomi dei prodotti e i letterali tecnici.", []string{"one", "other"}, []string{}, []string{"site", "desktop"}},
+	zhHant: {"繁體中文", "/zh-hant", "zh-Hant", "zh-TW", "使用簡潔自然的繁體中文（台灣常用詞彙），保留品牌名與技術字面量。", []string{"other"}, []string{"zh-TW", "zh-HK"}, []string{"site", "desktop"}},
 }

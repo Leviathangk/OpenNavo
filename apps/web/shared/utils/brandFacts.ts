@@ -1,4 +1,4 @@
-import { APP_LOCALES, BRAND, SITE_LOCALES } from '@opennavo/shared';
+import { BRAND, DESKTOP_LOCALES, SITE_LOCALES } from '@opennavo/shared';
 
 /**
  * What OpenNavo says about itself, the same on the homepage, in its structured data, in the README's
@@ -12,8 +12,8 @@ export const BRAND_FACTS = {
   repository: BRAND.repository,
   /** Languages the website is translated into; settings decide which of them are open. */
   siteLanguages: SITE_LOCALES.length,
-  /** Languages of the Mac client (and the admin). */
-  appLanguages: APP_LOCALES.length,
+  /** Languages of the Mac client; the admin keeps the original six. */
+  desktopLanguages: DESKTOP_LOCALES.length,
   /** Message key of the one-sentence definition every surface shows unchanged. */
   definitionKey: 'landing.about.definition'
 } as const;

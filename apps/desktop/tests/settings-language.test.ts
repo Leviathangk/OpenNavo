@@ -10,7 +10,7 @@ import { setup } from './helpers';
 vi.mock('@/composables/useClientConfig', () => ({ fetchClientConfig: async () => null }));
 
 describe('Language settings menu', () => {
-  it('System first, then six native language names; save manual/system modes separately', async () => {
+  it('System first, then every native language name; save manual/system modes separately', async () => {
     const { pinia, router } = await setup('/settings/general');
     const settings = useSettingsStore();
     await settings.load();
@@ -20,7 +20,19 @@ describe('Language settings menu', () => {
       await flushPromises();
       const menu = wrapper.findComponent(OnMenu);
       const items = menu.props('items');
-      expect(items.map(item => item.key)).toEqual(['system', 'en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU']);
+      expect(items.map(item => item.key)).toEqual([
+        'system',
+        'en-US',
+        'zh-CN',
+        'ja-JP',
+        'es-ES',
+        'pt-BR',
+        'ru-RU',
+        'de-DE',
+        'fr-FR',
+        'it-IT',
+        'zh-Hant'
+      ]);
       expect(items[0]?.label).toBe('跟随系统（当前：简体中文）');
       expect(items.map(item => item.label)).toEqual([
         '跟随系统（当前：简体中文）',
@@ -29,13 +41,22 @@ describe('Language settings menu', () => {
         '日本語',
         'Español',
         'Português (Brasil)',
-        'Русский'
+        'Русский',
+        'Deutsch',
+        'Français',
+        'Italiano',
+        '繁體中文'
       ]);
       expect(wrapper.text()).toContain('系统对话框重启后切换语言。');
       menu.vm.$emit('select', 'ru-RU');
       await flushPromises();
       expect(settings.value).toMatchObject({ locale: 'ru-RU', localeMode: 'manual' });
       expect(i18n.global.locale.value).toBe('ru-RU');
+      menu.vm.$emit('select', 'zh-Hant');
+      await flushPromises();
+      expect(settings.value).toMatchObject({ locale: 'zh-Hant', localeMode: 'manual' });
+      expect(i18n.global.locale.value).toBe('zh-Hant');
+      expect(wrapper.text()).toContain('重新啟動後，系統對話框才會切換語言。');
       menu.vm.$emit('select', 'system');
       await flushPromises();
       expect(settings.value?.localeMode).toBe('system');

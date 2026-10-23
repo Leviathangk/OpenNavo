@@ -2,12 +2,20 @@
 :root {
   --on-font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --on-font-family-sans-zh: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --on-font-family-sans-zh-hant: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
   --on-font-family-sans-ja: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
   --on-font-family-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
 :lang(zh) {
   --on-font-family-sans: var(--on-font-family-sans-zh);
+}
+
+/* Traditional Chinese glyph shapes; this rule comes after :lang(zh) so it wins at equal specificity. */
+:lang(zh-Hant),
+:lang(zh-TW),
+:lang(zh-HK) {
+  --on-font-family-sans: var(--on-font-family-sans-zh-hant);
 }
 
 :lang(ja) {

@@ -29,7 +29,8 @@ func TestStaticContractExamplesConformAndHaveAbsoluteLinks(t *testing.T) {
 			})
 		}
 		require.NoError(t, spec.Validate(context.Background()))
-		for name, locales := range map[string][]i18n.LocaleCode{"Locale": i18n.SiteLocales[:], "AppLocale": i18n.Locales[:]} {
+		// AppLocale is the Mac client's language set (client release notes).
+		for name, locales := range map[string][]i18n.LocaleCode{"Locale": i18n.SiteLocales[:], "AppLocale": i18n.DesktopLocales[:]} {
 			values := make([]any, 0, len(locales))
 			for _, locale := range locales {
 				values = append(values, string(locale))

@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validate, loadTarget, flatten, inflate } from './interface-i18n.mjs';
+import { validate, loadTarget, flatten, inflate, translatedCodes } from './interface-i18n.mjs';
+// The Mac client's native strings are translated into every desktop language except the zh-CN and en-US sources.
+const NATIVE = translatedCodes('native');
 test('Admin export includes the expanded page object', () => {
   const target = loadTarget('admin');
   assert.ok(flatten(target.source)['page.shared.i18n.sourceLocale']);
@@ -35,7 +37,7 @@ test('Failed writes persist nothing; successful writes update selected targets a
     fs.mkdirSync('tooling/i18n', { recursive: true });
     const folder = 'apps/desktop/src-tauri/resources/locales';
     fs.mkdirSync(folder, { recursive: true });
-    for (const code of ['zh-CN', 'en-US', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'])
+    for (const code of ['zh-CN', 'en-US', ...NATIVE])
       fs.writeFileSync(`${folder}/${code}.json`, JSON.stringify({ key: code === 'zh-CN' ? '打开' : `manual-${code}` }));
     const lock = {
       version: 2,
@@ -85,7 +87,11 @@ test('Offline validation rejects invalid keys, placeholders, and plurals', async
       'ja-JP': '{count} 更新',
       'es-ES': '{count} actualización | {count} actualizaciones',
       'pt-BR': '{count} atualização | {count} atualizações',
-      'ru-RU': '{count} обновление | {count} обновления | {count} обновлений | {count} обновления'
+      'ru-RU': '{count} обновление | {count} обновления | {count} обновлений | {count} обновления',
+      'de-DE': '{count} Update | {count} Updates',
+      'fr-FR': '{count} mise à jour | {count} mises à jour',
+      'it-IT': '{count} aggiornamento | {count} aggiornamenti',
+      'zh-Hant': '{count} 個更新'
     };
     for (const [code, value] of Object.entries(texts))
       fs.writeFileSync(`${folder}/${code}.json`, JSON.stringify({ key: value }));
@@ -119,7 +125,7 @@ test('Offline validation rejects invalid keys, placeholders, and plurals', async
   }
 });
 
-test('Partial success persists; lock completes only keys translated into all four languages, and source changes allow per-language resumption', async () => {
+test('Partial success persists; lock completes only keys translated into every language, and source changes allow per-language resumption', async () => {
   const fs = await import('node:fs');
   const { exportPlan, writeResult, hash } = await import('./interface-i18n.mjs');
   const root = process.cwd();
@@ -131,7 +137,7 @@ test('Partial success persists; lock completes only keys translated into all fou
     fs.mkdirSync(folder, { recursive: true });
     fs.writeFileSync(`${folder}/zh-CN.json`, JSON.stringify({ key: '新的源文', keep: '保留' }));
     fs.writeFileSync(`${folder}/en-US.json`, JSON.stringify({ key: 'New source', keep: 'Keep' }));
-    for (const code of ['ja-JP', 'es-ES', 'pt-BR', 'ru-RU'])
+    for (const code of NATIVE)
       fs.writeFileSync(`${folder}/${code}.json`, JSON.stringify({ key: 'Old', keep: `manual-${code}` }));
     fs.writeFileSync(
       'tooling/i18n/i18n.lock.json',
@@ -155,8 +161,13 @@ test('Partial success persists; lock completes only keys translated into all fou
     writeResult(plan, result, true);
     assert.equal(JSON.parse(fs.readFileSync(`${folder}/ja-JP.json`)).key, '新しい文章');
     assert.equal(JSON.parse(fs.readFileSync(`${folder}/es-ES.json`)).key, undefined);
-    assert.equal(JSON.parse(fs.readFileSync('tooling/i18n/i18n.lock.json')).targets.native.sources.key, hash('旧的源文'));
-    assert.deepEqual(JSON.parse(fs.readFileSync('tooling/i18n/i18n.lock.json')).targets.web, { sources: { untouched: 'yes' } });
+    assert.equal(
+      JSON.parse(fs.readFileSync('tooling/i18n/i18n.lock.json')).targets.native.sources.key,
+      hash('旧的源文')
+    );
+    assert.deepEqual(JSON.parse(fs.readFileSync('tooling/i18n/i18n.lock.json')).targets.web, {
+      sources: { untouched: 'yes' }
+    });
     const next = exportPlan(['native']);
     assert.equal(next.targets.native.localeHashes['ja-JP'].key, hash('新的源文'));
     assert.equal(next.targets.native.translations['es-ES'].key, undefined);
@@ -189,20 +200,24 @@ test('Native separators follow fixed locale rules and leave other target locks u
     fs.mkdirSync(folder, { recursive: true });
     fs.writeFileSync(`${folder}/zh-CN.json`, JSON.stringify({ separator: '、' }));
     fs.writeFileSync(`${folder}/en-US.json`, JSON.stringify({ separator: ', ' }));
-    for (const code of ['ja-JP', 'es-ES', 'pt-BR', 'ru-RU'])
-      fs.writeFileSync(`${folder}/${code}.json`, JSON.stringify({ separator: '、' }));
+    for (const code of NATIVE) fs.writeFileSync(`${folder}/${code}.json`, JSON.stringify({ separator: '、' }));
     fs.writeFileSync(
       'tooling/i18n/i18n.lock.json',
       JSON.stringify({ version: 2, targets: { web: { sources: { untouched: 'yes' } } } })
     );
     const plan = exportPlan(['native']);
     const result = {
-      native: Object.fromEntries(['ja-JP', 'es-ES', 'pt-BR', 'ru-RU'].map(code => [code, { separator: '、' }]))
+      native: Object.fromEntries(NATIVE.map(code => [code, { separator: '、' }]))
     };
     writeResult(plan, result, true);
-    for (const code of ['ja-JP', 'es-ES', 'pt-BR', 'ru-RU'])
-      assert.equal(JSON.parse(fs.readFileSync(`${folder}/${code}.json`)).separator, code === 'ja-JP' ? '、' : ', ');
-    assert.deepEqual(JSON.parse(fs.readFileSync('tooling/i18n/i18n.lock.json')).targets.web, { sources: { untouched: 'yes' } });
+    for (const code of NATIVE)
+      assert.equal(
+        JSON.parse(fs.readFileSync(`${folder}/${code}.json`)).separator,
+        ['ja-JP', 'zh-Hant'].includes(code) ? '、' : ', '
+      );
+    assert.deepEqual(JSON.parse(fs.readFileSync('tooling/i18n/i18n.lock.json')).targets.web, {
+      sources: { untouched: 'yes' }
+    });
   } finally {
     process.chdir(root);
     fs.rmSync(directory, { recursive: true, force: true });

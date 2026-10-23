@@ -13,13 +13,17 @@ func Valid(value string) bool {
 	return ok
 }
 
-// ValidApp limits UI/error messages and client release notes to app locales.
+// ValidApp limits admin UI and server messages to app locales; the website also indexes these without verified
+// translations.
 func ValidApp(value string) bool { return slices.Contains(Locales[:], LocaleCode(value)) }
 
-// ContentLocales keeps client release notes on the app language contract.
+// ValidDesktop limits client release notes and the catalog data the Mac client downloads to its languages.
+func ValidDesktop(value string) bool { return slices.Contains(DesktopLocales[:], LocaleCode(value)) }
+
+// ContentLocales keeps client release notes on the desktop language contract.
 func ContentLocales(entity string) []LocaleCode {
 	if entity == "desktop_release" {
-		return Locales[:]
+		return DesktopLocales[:]
 	}
 	return SiteLocales[:]
 }

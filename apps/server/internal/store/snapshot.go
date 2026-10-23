@@ -12,6 +12,7 @@ import (
 )
 
 type SnapshotRecord struct {
+	ModernBase              *publicapi.CatalogSnapshotInfo `gorm:"-"`
 	ID                      int64
 	FormatVersion           int
 	Seq                     int64
@@ -50,6 +51,13 @@ func (s *Store) LatestSnapshot(ctx context.Context) (SnapshotRecord, error) {
 			err = gorm.ErrRecordNotFound
 		}
 	}
+	if err == nil {
+		var row struct{ Value json.RawMessage }
+		err = s.DB.WithContext(ctx).Raw("SELECT value FROM app_config WHERE key=?", "catalog.snapshotModernBase:"+r.SHA256).Scan(&row).Error
+		if err == nil && len(row.Value) > 0 {
+			err = json.Unmarshal(row.Value, &r.ModernBase)
+		}
+	}
 	return r, err
 }
 func (s *Store) CatalogBounds(ctx context.Context) (low, high int64, err error) {
@@ -80,6 +88,15 @@ func (s *Store) SnapshotCategories(ctx context.Context) ([]SnapshotCategory, err
 }
 func (s *Store) SaveSnapshot(ctx context.Context, r SnapshotRecord) error {
 	return s.WithTx(ctx, func(tx *gorm.DB) error {
+		if r.ModernBase != nil {
+			raw, err := json.Marshal(r.ModernBase)
+			if err != nil {
+				return err
+			}
+			if err = tx.WithContext(ctx).Exec("INSERT INTO app_config(key,value,description) VALUES(?,?::jsonb,'Internal immutable modern snapshot metadata') ON CONFLICT(key) DO NOTHING", "catalog.snapshotModernBase:"+r.SHA256, string(raw)).Error; err != nil {
+				return err
+			}
+		}
 		if r.TextPacks != nil {
 			raw, err := json.Marshal(r.TextPacks)
 			if err != nil {

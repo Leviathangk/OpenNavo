@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { matchLocale } from '../src/locale';
-import { SITE_LOCALES } from '../src/locales.gen';
+import { DESKTOP_LOCALES, SITE_LOCALES } from '../src/locales.gen';
 import { readFileSync } from 'node:fs';
 
-const sharedCases: { name: string; languages: string[]; expected: string }[] = JSON.parse(
+// `expected` is the app match; `desktop` is the Mac client's where its ten languages give a different answer.
+const sharedCases: { name: string; languages: string[]; expected: string; desktop?: string }[] = JSON.parse(
   readFileSync(new URL('../../../apps/server/testdata/locale_cases.json', import.meta.url), 'utf8')
 );
 
 describe('Locale matching', () => {
   it.each(sharedCases)('Uses the shared $name field', ({ languages, expected }) => {
     expect(matchLocale(languages)).toBe(expected);
+  });
+  it.each(sharedCases)('Uses the shared $name field for the desktop', ({ languages, expected, desktop }) => {
+    expect(matchLocale(languages, DESKTOP_LOCALES)).toBe(desktop ?? expected);
   });
   it.each([
     [['en-US'], 'en-US'],

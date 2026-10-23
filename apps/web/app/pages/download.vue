@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ApiError, unwrap } from '@opennavo/api';
-import { APP_LOCALES, LOCALE_METADATA, formatBytes, formatDate, formatVersion } from '@opennavo/shared';
+import { DESKTOP_LOCALES, LOCALE_METADATA, formatBytes, formatDate, formatVersion } from '@opennavo/shared';
 import { OnButton, OnChip, OnIcon, OnInstallCommand, OnKeyValueList, useUiMessages } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
 import { decorative } from '~/utils/decorative';
@@ -174,7 +174,7 @@ useSchemaOrg(
         description: t(BRAND_FACTS.definitionKey),
         license: `https://spdx.org/licenses/${BRAND_FACTS.license}.html`,
         isAccessibleForFree: true,
-        inLanguage: APP_LOCALES.map(code => LOCALE_METADATA[code].hreflang),
+        inLanguage: DESKTOP_LOCALES.map(code => LOCALE_METADATA[code].hreflang),
         downloadUrl: dmg.value.url,
         url: `${siteUrl}${localePath('/download')}`,
         image: `${siteUrl}/icon-512.png`,

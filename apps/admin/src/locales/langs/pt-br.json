@@ -320,12 +320,13 @@
       "disabledHint": "{deprecated} obsoletos · {hidden} ocultos",
       "coverage": "Cobertura",
       "coverageHint": "Todos os apps elegíveis, incluindo fontes; exclui itens desativados, ocultos ou removidos",
-      "sixLocaleContentHint": "Os resumos e as descrições devem estar completos e atualizados nos seis idiomas. Fallbacks de idioma não contam.",
+      "localeContentHint": "Os seis idiomas são os seis originais: inglês, chinês simplificado, japonês, espanhol, português e russo. Os dez são todos os idiomas do site e do app para desktop, que incluem também alemão, francês, italiano e chinês tradicional. Cada idioma precisa de um resumo e uma descrição completos e atualizados. Fallbacks de idioma não contam.",
       "coverageItems": {
         "primaryCategory": "Categoria principal",
         "icon": "Ícone",
         "latestVersionNotes": "Notas da versão mais recente",
-        "sixLocaleContent": "Conteúdo completo em seis idiomas"
+        "sixLocaleContent": "Conteúdo completo em seis idiomas",
+        "siteLocaleContent": "Conteúdo completo em dez idiomas"
       },
       "sync": "Status da sincronização",
       "syncItems": {
@@ -346,7 +347,6 @@
       "failed24h": "Tarefas com falha nas últimas 24 h",
       "viewJobs": "Tarefas",
       "snapshotInfo": "Cursor {cursor} · {count} pacote | Cursor {cursor} · {count} pacotes",
-      "todo": "A fazer",
       "feedbackOpen": "Feedback em aberto",
       "viewFeedback": "Feedback dos usuários",
       "hermes": {
@@ -379,6 +379,10 @@
         "yesterday": "Ontem (UTC)",
         "count": "Ações",
         "compensated": "Compensadas",
+        "action": "Ação",
+        "operation": "Operação",
+        "mode": "Modo",
+        "usage": "Uso",
         "alerts": "Últimos 5 alertas não resolvidos",
         "noAlerts": "Nenhum alerta não resolvido",
         "origin": "Origem",
@@ -420,7 +424,9 @@
       },
       "usage": {
         "title": "Atividade de usuários",
-        "hint": "Horário de Xangai · Hoje é parcial · Contam-se instalações e navegadores anônimos, não pessoas. O cliente inclui atividade em segundo plano; a web exige visita visível. Não há deduplicação entre plataformas. O país reflete a conexão, inclusive VPN ou proxy.",
+        "hint": "Contam-se instalações e navegadores anônimos, não pessoas. O cliente inclui atividade em segundo plano; a web exige visita visível. Não há deduplicação entre plataformas. O país reflete a conexão, inclusive VPN ou proxy.",
+        "asOf": "Horário de Xangai · Hoje até {time}",
+        "yesterday": "Ontem {value}",
         "date": "Data",
         "desktop": "Atividade diária do cliente",
         "web": "Atividade diária da web",
@@ -430,7 +436,7 @@
         "version": "Versão",
         "count": "Instalações",
         "empty": "Nenhuma atividade recebida. Clientes em execução e visitas válidas enviam dados automaticamente.",
-        "trend": "Atividade diária · Últimos 30 dias",
+        "trend": "Atividade diária · De {start} a {end}",
         "details": "Detalhes por dia",
         "newHint": "Novo significa a primeira observação do identificador. Limpar dados locais ou retornar após 90 dias sem atividade pode contar como novo.",
         "countries": "Distribuição por país hoje",

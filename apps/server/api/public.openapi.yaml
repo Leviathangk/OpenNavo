@@ -7109,8 +7109,9 @@ paths:
         - desktop
       operationId: getCatalogLinks
       summary: Full external software links catalog
-      description: Independent of the legacy snapshot and changes protocol. Send If-None-Match to reuse the cached full catalog.
+      description: Independent of the legacy snapshot and changes protocol. Send If-None-Match to reuse the cached full catalog. Link notes keep the original six languages unless locales=all.
       parameters:
+        - $ref: '#/components/parameters/CatalogLocales'
         - name: If-None-Match
           in: header
           schema:
@@ -7195,6 +7196,9 @@ paths:
         - desktop
       operationId: getCatalogSnapshot
       summary: 'Latest catalog snapshot metadata'
+      description: 'textPacks lists the original six languages, the same as the CDN latest.json; with locales=all it lists a pack for every desktop language. The base file is shared, so its sourceLocale values stay within the original six.'
+      parameters:
+        - $ref: '#/components/parameters/CatalogLocales'
       responses:
         '200':
           description: OK
@@ -7561,7 +7565,7 @@ paths:
         - desktop
       operationId: listCatalogChanges
       summary: 'Incremental catalog changes'
-      description: 'Preserve existing cursors, pagination and 410/1201 semantics. Each upsert carries complete sparse six-language text; missing keys clear translations. Every new-server delta response, including empty pages, provides complete categories and categoryNames views, replaced together within the page transaction; missing entries represent removal or clearing. Both fields remain optional for compatibility: when both are absent in old responses, retain local categories. Categories add no package cursor and do not change pagination. Expired cursors return HTTP 410 with code 1201.'
+      description: 'Preserve existing cursors, pagination and 410/1201 semantics. Each upsert carries complete sparse text in the original six languages, or in every desktop language with locales=all; missing keys clear translations. Every new-server delta response, including empty pages, provides complete categories and categoryNames views, replaced together within the page transaction; missing entries represent removal or clearing. Both fields remain optional for compatibility: when both are absent in old responses, retain local categories. Categories add no package cursor and do not change pagination. Expired cursors return HTTP 410 with code 1201.'
       parameters:
         - name: since
           in: query
@@ -7579,6 +7583,7 @@ paths:
             maximum: 1000
             default: 500
             example: 1
+        - $ref: '#/components/parameters/CatalogLocales'
       responses:
         '200':
           description: OK
@@ -8820,7 +8825,7 @@ paths:
         - catalog
       operationId: listSitemapPackages
       summary: 'Sitemap data for the web server'
-      description: 'Indexable apps in stable id order. Under an enforced index policy only eligible apps and their published languages are listed; otherwise every listed app in all six languages.'
+      description: 'Indexable apps in stable id order. Under an enforced index policy only eligible apps and their published languages are listed; otherwise every listed app in every site language. The web server reads it over the internal network in pages of 500; the public API host does not serve it. Pages are cached for up to 10 minutes.'
       parameters:
         - $ref: '#/components/parameters/Current'
         - name: group
@@ -8835,8 +8840,8 @@ paths:
           schema:
             type: integer
             minimum: 1
-            maximum: 5000
-            default: 5000
+            maximum: 500
+            default: 500
             example: 24
       responses:
         '200':
@@ -9613,6 +9618,11 @@ components:
       name: size
       in: query
       schema: { type: integer, minimum: 1, maximum: 100, default: 24, example: 24 }
+    CatalogLocales:
+      name: locales
+      in: query
+      description: 'all returns text in every desktop language; the ten-language client sends it. Without it responses keep the original six languages (en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU), because older clients reject other language keys.'
+      schema: { type: string, enum: [all], example: all }
 
   responses:
     Error:
@@ -11753,8 +11763,12 @@ components:
         - es-ES
         - pt-BR
         - ru-RU
+        - de-DE
+        - fr-FR
+        - it-IT
+        - zh-Hant
       example: en-US
-      description: Application UI and client release-note language; content APIs use Locale.
+      description: Mac client language (the desktop locales), used for client release notes; content APIs use Locale.
     PackageKind:
       type: string
       enum:
@@ -15399,7 +15413,7 @@ components:
             developer-tools: 开发工具
           ja-JP:
             developer-tools: 開発ツール
-      description: 'Preserve existing cursors, pagination and 410/1201 semantics. Each upsert carries complete sparse six-language text; missing keys clear translations. Every new-server delta response, including empty pages, provides complete categories and categoryNames views, replaced together within the page transaction; missing entries represent removal or clearing. Both fields remain optional for compatibility: when both are absent in old responses, retain local categories. Categories add no package cursor and do not change pagination.'
+      description: 'Preserve existing cursors, pagination and 410/1201 semantics. Each upsert carries complete sparse text in the original six languages, or in every desktop language with locales=all; missing keys clear translations. Every new-server delta response, including empty pages, provides complete categories and categoryNames views, replaced together within the page transaction; missing entries represent removal or clearing. Both fields remain optional for compatibility: when both are absent in old responses, retain local categories. Categories add no package cursor and do not change pagination.'
     PackageRef:
       type: object
       required:

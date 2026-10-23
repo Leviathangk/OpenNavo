@@ -43,6 +43,24 @@ func (s *Service) now() time.Time {
 func info(r store.SnapshotRecord) publicapi.CatalogSnapshotInfo {
 	return publicapi.CatalogSnapshotInfo{FormatVersion: r.FormatVersion, Cursor: r.Seq, ItemCount: r.ItemCount, Url: r.URL, Sha256: r.SHA256, Bytes: r.Bytes, CreatedAt: r.CreatedAt.UTC(), TextPacks: r.TextPacks}
 }
+
+func modernInfo(r store.SnapshotRecord) publicapi.CatalogSnapshotInfo {
+	if r.ModernBase != nil {
+		return *r.ModernBase
+	}
+	return info(r)
+}
+
+// legacyInfo lists only the original six text packs: clients up to 0.1.13 reject any other language key, which would
+// stop their catalog sync. latest.json and requests without locales=all get it.
+func legacyInfo(value publicapi.CatalogSnapshotInfo) publicapi.CatalogSnapshotInfo {
+	if value.TextPacks != nil {
+		packs := *value.TextPacks
+		packs.DeDE, packs.FrFR, packs.ItIT, packs.ZhHant = nil, nil, nil, nil
+		value.TextPacks = &packs
+	}
+	return value
+}
 func nonnil[T any](v []T) []T {
 	if v == nil {
 		return []T{}
@@ -118,7 +136,10 @@ func (s *Service) Latest(ctx context.Context) (publicapi.CatalogSnapshotInfo, er
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return publicapi.CatalogSnapshotInfo{}, &domain.AppError{Code: domain.CodeUpstreamUnavailable, HTTPStatus: 503}
 	}
-	return info(r), err
+	if domain.AllCatalogLocales(ctx) {
+		return modernInfo(r), err
+	}
+	return legacyInfo(info(r)), err
 }
 func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 	var stats map[string]any
@@ -131,13 +152,14 @@ func (s *Service) Build(ctx context.Context) (map[string]any, error) {
 			stats = map[string]any{"skipped": true, "cursor": bundle.Info.Cursor}
 			return nil
 		}
-		// Publish latest only after the base object and all six language objects are readable; intermediate failures never touch the previous latest.
+		// Publish latest only after the base object and every language object are readable; intermediate failures never touch the previous latest.
 		for _, file := range bundle.Files {
 			if err = s.Objects.Put(ctx, file.Key, file.Data, "application/gzip"); err != nil {
 				return err
 			}
 		}
-		metadata, err := json.Marshal(bundle.Info)
+		// Every client version reads the CDN copy, so it keeps the legacy six packs; the API lists the rest.
+		metadata, err := json.Marshal(legacyInfo(info(bundle.Record)))
 		if err != nil {
 			return err
 		}
@@ -248,7 +270,7 @@ func (s *Service) Changes(ctx context.Context, since int64, limit int) (publicap
 		if err != nil {
 			return err
 		}
-		structure, names, err := categoryData(categories)
+		structure, names, err := categoryData(categories, catalogLocales(ctx))
 		if err != nil {
 			return err
 		}

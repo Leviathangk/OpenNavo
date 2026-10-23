@@ -9,9 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/opennavo/opennavo/server/gen/publicapi"
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
@@ -36,7 +38,29 @@ func localized(values map[string]*string) (publicapi.LocalizedNullableString, er
 	err = json.Unmarshal(raw, &out)
 	return out, err
 }
+
+// legacyLocales is the catalog wire contract of clients released before the Mac app had ten languages (up to 0.1.16).
+// Clients up to 0.1.13 reject unknown language keys and source languages, so changes, links and snapshot metadata
+// carry the other desktop languages only for requests that ask with locales=all. A separate legacy base and CDN
+// latest.json keep to the six; modern metadata points to the base with original source languages.
+var legacyLocales = []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU"}
+
+func legacySource(locale publicapi.Locale) publicapi.Locale {
+	if slices.Contains(legacyLocales, string(locale)) {
+		return locale
+	}
+	return "en-US"
+}
+
+func catalogLocales(ctx context.Context) func(string) bool {
+	if domain.AllCatalogLocales(ctx) {
+		return i18n.ValidDesktop
+	}
+	return func(locale string) bool { return slices.Contains(legacyLocales, locale) }
+}
+
 func catalogItems(ctx context.Context, view *store.Store, packages []store.PublicPackage) ([]publicapi.CatalogItem, error) {
+	allowed := catalogLocales(ctx)
 	ids := make([]int64, 0, len(packages))
 	for _, p := range packages {
 		ids = append(ids, p.ID)
@@ -54,7 +78,7 @@ func catalogItems(ctx context.Context, view *store.Store, packages []store.Publi
 		}
 	}
 	for _, text := range texts {
-		if !i18n.ValidApp(text.Locale) {
+		if !allowed(text.Locale) {
 			continue
 		}
 		if text.DisplayName != nil {
@@ -67,7 +91,7 @@ func catalogItems(ctx context.Context, view *store.Store, packages []store.Publi
 	result := make([]publicapi.CatalogItem, 0, len(packages))
 	for _, p := range packages {
 		// Read structure from the same view; never copy negotiated English fallback text into other language maps.
-		if !i18n.ValidApp(p.SourceLocale) {
+		if !allowed(p.SourceLocale) {
 			p.SourceLocale = "en-US"
 		}
 		p.I18n.DisplayName = names[p.ID]["zh-CN"]
@@ -89,11 +113,13 @@ func catalogItems(ctx context.Context, view *store.Store, packages []store.Publi
 	}
 	return result, nil
 }
-func categoryData(categories []store.SnapshotCategory) ([]publicapi.CatalogBaseCategory, map[string]map[string]string, error) {
+func categoryData(categories []store.SnapshotCategory, allowed func(string) bool) ([]publicapi.CatalogBaseCategory, map[string]map[string]string, error) {
 	result := make([]publicapi.CatalogBaseCategory, 0, len(categories))
 	names := map[string]map[string]string{}
 	for _, locale := range supportedLocales() {
-		names[locale] = map[string]string{}
+		if allowed(locale) {
+			names[locale] = map[string]string{}
+		}
 	}
 	for _, category := range categories {
 		raw, err := json.Marshal(category)
@@ -104,7 +130,7 @@ func categoryData(categories []store.SnapshotCategory) ([]publicapi.CatalogBaseC
 		if err = json.Unmarshal(raw, &base); err != nil {
 			return nil, nil, err
 		}
-		if !i18n.ValidApp(string(base.SourceLocale)) {
+		if !allowed(string(base.SourceLocale)) {
 			base.SourceLocale = publicapi.Locale("en-US")
 		}
 		result = append(result, base)
@@ -151,7 +177,8 @@ func (s *Service) bundle(ctx context.Context, allowSkip bool) (Bundle, bool, err
 		if previous.TextPacks != nil {
 			version = max(version, previous.TextPacks.EnUS.Version+1)
 		}
-		if allowSkip && previous.ID != 0 && now.Sub(previous.CreatedAt) < 24*time.Hour && cursor <= previous.Seq {
+		// A snapshot missing a desktop language's text pack (published before that language existed) is rebuilt.
+		if allowSkip && previous.ID != 0 && now.Sub(previous.CreatedAt) < 24*time.Hour && cursor <= previous.Seq && previous.ModernBase != nil && packsCover(previous.ModernBase.TextPacks) {
 			analytics, err := view.LastAnalytics(ctx)
 			if err != nil {
 				return err
@@ -161,7 +188,7 @@ func (s *Service) bundle(ctx context.Context, allowSkip bool) (Bundle, bool, err
 				return err
 			}
 			if !analytics.After(previous.CreatedAt) && !classification.At.After(previous.CreatedAt) {
-				result.Info = info(previous)
+				result.Info = modernInfo(previous)
 				skip = true
 				return nil
 			}
@@ -170,7 +197,7 @@ func (s *Service) bundle(ctx context.Context, allowSkip bool) (Bundle, bool, err
 		if err != nil {
 			return err
 		}
-		items, err := catalogItems(ctx, view, packages)
+		items, err := catalogItems(domain.WithAllCatalogLocales(ctx, true), view, packages)
 		if err != nil {
 			return err
 		}
@@ -178,7 +205,7 @@ func (s *Service) bundle(ctx context.Context, allowSkip bool) (Bundle, bool, err
 		if err != nil {
 			return err
 		}
-		baseCategories, names, err := categoryData(categories)
+		baseCategories, names, err := categoryData(categories, i18n.ValidDesktop)
 		if err != nil {
 			return err
 		}
@@ -239,7 +266,7 @@ func (s *Service) bundle(ctx context.Context, allowSkip bool) (Bundle, bool, err
 		}
 		hash := sha256.Sum256(data)
 		digest := hex.EncodeToString(hash[:])
-		key := fmt.Sprintf("snapshots/base-v2-%d-%s.json.gz", cursor, digest[:12])
+		key := fmt.Sprintf("snapshots/modern-base-v2-%d-%s.json.gz", cursor, digest[:12])
 		result.Files = append([]File{{key, data}}, result.Files...)
 		raw, err := json.Marshal(metadata)
 		if err != nil {
@@ -250,7 +277,30 @@ func (s *Service) bundle(ctx context.Context, allowSkip bool) (Bundle, bool, err
 			return err
 		}
 		result.Record = store.SnapshotRecord{FormatVersion: 2, Seq: cursor, ItemCount: len(items), StorageKey: key, URL: s.Objects.URL(key), SHA256: digest, Bytes: int64(len(data)), CreatedAt: now, TextPacks: &manifest}
-		result.Info = info(result.Record)
+		// Publish a compatibility projection separately; never falsify modern source locales.
+		for i := range base.Items {
+			base.Items[i].SourceLocale = legacySource(base.Items[i].SourceLocale)
+		}
+		for i := range base.Categories {
+			base.Categories[i].SourceLocale = legacySource(base.Categories[i].SourceLocale)
+		}
+		legacyData, err := compress(base)
+		if err != nil {
+			return err
+		}
+		legacyHash := sha256.Sum256(legacyData)
+		legacyDigest := hex.EncodeToString(legacyHash[:])
+		legacyKey := fmt.Sprintf("snapshots/base-v2-%d-%s.json.gz", cursor, legacyDigest[:12])
+		result.Files = append(result.Files, File{legacyKey, legacyData})
+		// The old reader knows only catalog_snapshots and snapshotManifest. Keep both
+		// legacy-safe so a backend rollback cannot expose new source locales or pack keys.
+		modern := info(result.Record)
+		result.Record.StorageKey = legacyKey
+		result.Record.URL, result.Record.SHA256, result.Record.Bytes = s.Objects.URL(legacyKey), legacyDigest, int64(len(legacyData))
+		result.Record.TextPacks = legacyInfo(modern).TextPacks
+		result.Record.ModernBase = &modern
+		result.Info = modern
+
 		return nil
 	})
 	return result, skip, err
@@ -262,10 +312,31 @@ func (s *Service) BuildLocal(ctx context.Context) (Bundle, error) {
 	return bundle, err
 }
 
-// v2 is the six-language desktop wire contract, independent of website languages.
+// packsCover reports whether a published snapshot has a text pack for every desktop language.
+func packsCover(packs *publicapi.CatalogTextPacks) bool {
+	if packs == nil {
+		return false
+	}
+	raw, err := json.Marshal(packs)
+	if err != nil {
+		return false
+	}
+	var present map[string]json.RawMessage
+	if json.Unmarshal(raw, &present) != nil {
+		return false
+	}
+	for _, locale := range supportedLocales() {
+		if value, ok := present[locale]; !ok || string(value) == "null" {
+			return false
+		}
+	}
+	return true
+}
+
+// v2 snapshots publish a text pack for every desktop language, independent of website languages.
 func supportedLocales() []string {
-	out := make([]string, 0, len(i18n.Locales))
-	for _, locale := range i18n.Locales {
+	out := make([]string, 0, len(i18n.DesktopLocales))
+	for _, locale := range i18n.DesktopLocales {
 		out = append(out, string(locale))
 	}
 	return out

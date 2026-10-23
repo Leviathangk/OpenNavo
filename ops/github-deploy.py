@@ -23,6 +23,29 @@ import tempfile
 import time
 import urllib.request
 
+# DNS targets expose IP scrape URLs; the discovered DNS name identifies the release.
+# Require every replica of each job to be healthy, not just one matching endpoint.
+MONITORING_HEALTH_SCRIPT = """const base = 'http://prometheus:9090/api/v1/targets';
+const expected = JSON.parse(process.argv[1]);
+for(let i=0;i<30;i++) {
+  try {
+    const d=await fetch(base,{signal:AbortSignal.timeout(3000)}).then(r=>r.json());
+    if(d.status==='success' && Object.entries(expected).every(([job,address])=>{
+      const targets=d.data.activeTargets.filter(t=>(t.discoveredLabels?.job ?? t.labels.job)===job);
+      const wanted=new URL('http://'+address+'/metrics');
+      return targets.length>0 && targets.every(t=>{
+        const actual=new URL(t.scrapeUrl);
+        const dnsName=t.discoveredLabels?.__meta_dns_name;
+        const identity=dnsName===undefined ? actual.host===wanted.host : dnsName===wanted.hostname;
+        return identity && t.health==='up' && actual.protocol===wanted.protocol &&
+          actual.port===wanted.port && actual.pathname===wanted.pathname && !actual.search;
+      });
+    })) process.exit(0);
+  } catch {}
+  await new Promise(r=>setTimeout(r,2000));
+}
+process.exit(1);"""
+
 MAX_ARCHIVE = 40 * 1024 * 1024
 RELEASE_NAME = re.compile(r'gh-[0-9a-f]{12}-[0-9]{1,20}-[0-9]{1,4}')
 # Each release snapshot holds that deployment's pre-migration database dump.
@@ -103,6 +126,56 @@ def update_env(source, updates):
     return '\n'.join(lines) + '\n'
 
 
+def monitoring_targets(source, services):
+    """Replace only simple API/web scrape jobs; preserve globals, rules and unrelated jobs.
+
+    Refuse unfamiliar layouts rather than silently discard relabeling/auth settings.
+    The host configuration remains operator-owned; no credentials enter release logs.
+    """
+    targets = {kind: name + ':' + ('9090' if kind == 'api' else '9091')
+               for kind, name in services.items() if kind in ('api', 'web')}
+    if set(targets) != {'api', 'web'} or any(not re.fullmatch(r'[A-Za-z0-9_-]+:[0-9]+', t) for t in targets.values()):
+        raise ValueError('invalid monitoring services')
+    start = re.search(r'^scrape_configs:\s*\n', source, re.M)
+    if not start:
+        raise ValueError('monitoring requires a block scrape_configs section')
+    end = re.search(r'^[A-Za-z_][A-Za-z0-9_]*:', source[start.end():], re.M)
+    finish = start.end() + end.start() if end else len(source)
+    body = source[start.end():finish]
+    jobs = list(re.finditer(r'^  - job_name: *[\'"]?([\w-]+)[\'"]? *\n', body, re.M))
+    if not jobs or body[:jobs[0].start()].strip():
+        raise ValueError('unsupported monitoring job layout')
+    blocks, seen = [], set()
+    for i, job in enumerate(jobs):
+        block = body[job.start():jobs[i + 1].start() if i + 1 < len(jobs) else len(body)]
+        name = job.group(1)
+        if name in targets:
+            if name in seen:
+                raise ValueError('duplicate monitoring job')
+            # Support the repository DNS layout without removing replica discovery,
+            # honor_labels, refresh intervals or comments. Reject unfamiliar layouts.
+            clean = re.sub(r'^ *#.*\n', '', block, flags=re.M)
+            header = r"  - job_name: *['\"]?" + name + r"['\"]? *\n"
+            static = header + r"    static_configs: *\n      - targets: *\[[^\n]*\] *\n\s*"
+            dns = (header + r"(?:    honor_labels: (?:true|false) *\n)?"
+                   r"    dns_sd_configs: *\n      - names: *\[[^\n]*\] *\n"
+                   r"        type: A *\n        port: " + ('9090' if name == 'api' else '9091') +
+                   r" *\n        refresh_interval: [0-9]+[smh] *\n\s*")
+            if re.fullmatch(dns, clean):
+                block = re.sub(r'(      - names: *)\[[^\n]*\]',
+                               lambda m: m[1] + '[' + services[name] + ']', block)
+            elif re.fullmatch(static, clean):
+                block = re.sub(r'(      - targets: *)\[[^\n]*\]',
+                               lambda m: m[1] + "['" + targets[name] + "']", block)
+            else:
+                raise ValueError('unsupported API/web monitoring job; review host config')
+            seen.add(name)
+        blocks.append(block)
+    for name in targets.keys() - seen:
+        blocks.append(f"  - job_name: {name}\n    static_configs:\n      - targets: ['{targets[name]}']\n")
+    return source[:start.end()] + ''.join(blocks) + source[finish:]
+
+
 class Deployment:
     def __init__(self, config, payload):
         self.config, self.payload = config, payload
@@ -170,6 +243,20 @@ class Deployment:
         if 'WEB_INTERNAL_URL' in worker_env:
             for old, replacement in {**self.aliases, self.state['services']['web']: self.services['web']}.items():
                 worker_env['WEB_INTERNAL_URL'] = worker_env['WEB_INTERNAL_URL'].replace(old, replacement)
+        # Disposable isolated OG storage. Also provision it on existing hosts whose base compose
+        # predates this service; no ports/volumes and no changes to business Redis.
+        overlay['services'].setdefault('image-cache', {
+            'image': '${REDIS_IMAGE:-registry.hub.docker.com/library/redis:8}',
+            'restart': 'unless-stopped',
+            'command': ['redis-server', '--save', '', '--appendonly', 'no', '--maxmemory', '384mb', '--maxmemory-policy', 'allkeys-lru'],
+            'deploy': {'resources': {'limits': {'memory': '512M'}}},
+            'healthcheck': {'test': ['CMD', 'redis-cli', 'ping'], 'interval': '10s', 'timeout': '3s', 'retries': 3}})
+        overlay['services'][self.services['web']].setdefault('environment', {})['NUXT_IMAGE_REDIS_URL'] = 'redis://image-cache:6379/0'
+        # Usage stats read CF-IPCountry only from these peers. The new API copies the previous release's
+        # service, so an overlay that predates the setting gets the base compose value; a host value, even
+        # an empty one, is kept.
+        overlay['services'][self.services['api']].setdefault('environment', {}).setdefault(
+            'USAGE_COUNTRY_TRUSTED_PROXIES', '${CADDY_PROXY_IP:-172.30.80.2}')
         write_private(self.directory / 'rolling.compose.json', overlay)
         (self.directory / 'release.env').write_text(update_env(self.env.read_text(), {
             'SERVER_IMAGE': self.payload['images']['server'], 'WEB_IMAGE': self.payload['images']['web'],
@@ -222,6 +309,42 @@ class Deployment:
             raise RuntimeError('database backup archive validation failed')
         print('Database backup created and archive validated.', flush=True)
 
+    def update_monitoring(self, services):
+        # Find the optional installed monitor by Compose labels, not a release-specific name.
+        ids = command(['docker', 'ps', '-q', '--filter',
+                       'label=com.docker.compose.project=' + self.config['project'],
+                       '--filter', 'label=com.docker.compose.service=prometheus']).splitlines()
+        if not ids:
+            print('No running Prometheus service; monitoring update skipped.', flush=True)
+            return
+        if len(ids) != 1:
+            raise RuntimeError('expected one Prometheus instance')
+        monitor = json.loads(command(['docker', 'inspect', ids[0]]))[0]
+        mount = next((m for m in monitor['Mounts'] if m['Destination'] == '/etc/prometheus/prometheus.yml'), None)
+        if not mount or mount['Type'] != 'bind':
+            raise RuntimeError('monitoring config must be a host bind mount')
+        path = Path(mount['Source'])
+        before = path.read_text()
+        after = monitoring_targets(before, services)
+        backup = self.directory / 'before-prometheus.yml'
+        if self.directory.is_dir() and not backup.exists():
+            backup.write_text(before)
+            backup.chmod(0o600)
+        try:
+            # Preserve the inode of the existing read-only container bind mount.
+            path.write_text(after)
+            command(['docker', 'exec', ids[0], 'promtool', 'check', 'config', '/etc/prometheus/prometheus.yml'])
+            command(['docker', 'kill', '--signal=HUP', ids[0]])
+            # Verify ingestion, not just YAML syntax. The web image already contains Node.
+            web = self.config['project'] + '-' + services['web'] + '-1'
+            command(['docker', 'exec', web, 'node', '--input-type=module', '-e', MONITORING_HEALTH_SCRIPT,
+                     json.dumps({k: services[k] + (':9090' if k == 'api' else ':9091') for k in ('api', 'web')})])
+        except Exception:
+            path.write_text(before)
+            command(['docker', 'kill', '--signal=HUP', ids[0]])
+            raise
+        print('API and web monitoring targets updated and healthy.', flush=True)
+
     def reload(self):
         command(['docker', 'exec', self.config['caddy_container'], 'caddy', 'validate', '--config', '/etc/caddy/Caddyfile'])
         command(['docker', 'kill', '--signal=USR1', self.config['caddy_container']])
@@ -247,7 +370,11 @@ class Deployment:
         self.rolling.write_bytes((self.directory / 'before-rolling.json').read_bytes())
         self.reload()
         self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker', candidate=False)
-        self.compose('stop', *self.services.values())
+        try:
+            self.update_monitoring(self.state['services'])
+        finally:
+            # Monitoring failure must not leave failed candidates consuming resources.
+            self.compose('stop', *self.services.values())
         print('Previous routes and worker restored; database was not rolled back.', flush=True)
 
     def cleanup(self, previous):
@@ -332,6 +459,7 @@ class Deployment:
         if self.state.get('sha') == self.payload['sha']:
             self.services = self.state['services']
             self.verify()
+            self.update_monitoring(self.services)
             self.cleanup(self.state.get('previous', {}))
             self.prune(self.state.get('previous', {}))
             print('This source revision is already deployed.'); return
@@ -358,6 +486,7 @@ class Deployment:
             self.compose('run', '--rm', '--no-deps', 'migrate', 'up')
             self.compose('run', '--rm', '--no-deps', 'db-permissions')
         with phase('Starting candidates'):
+            self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '120', 'image-cache')
             self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '240', *self.services.values())
         print('All candidates healthy; switching routes.', flush=True)
         try:
@@ -370,6 +499,7 @@ class Deployment:
                 self.rolling.write_bytes((self.directory / 'rolling.compose.json').read_bytes())
                 self.compose('up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'worker', candidate=False)
                 self.verify()
+                self.update_monitoring(self.services)
         except Exception:
             self.rollback()
             raise

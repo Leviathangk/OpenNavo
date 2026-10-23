@@ -1,5 +1,17 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { NAlert, NButton, NCard, NDrawer, NDrawerContent, NProgress, NSkeleton, NSpin, NTag, NText } from 'naive-ui';
+import {
+  NAlert,
+  NButton,
+  NCard,
+  NDrawer,
+  NDrawerContent,
+  NProgress,
+  NSkeleton,
+  NSpin,
+  NTable,
+  NTag,
+  NText
+} from 'naive-ui';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DataOf, Schemas } from '../src/typings/api/opennavo';
 import { formatDateTime } from '../src/utils/opennavo';
@@ -12,7 +24,7 @@ vi.mock('@/hooks/business/auth', () => ({
 }));
 vi.mock('@/store/modules/app', () => ({ useAppStore: () => ({ locale: 'en-US' }) }));
 vi.mock('@/locales', () => ({ $t: (key: string) => key }));
-const components = { NAlert, NButton, NCard, NDrawer, NDrawerContent, NProgress, NSkeleton, NSpin, NTag, NText };
+const components = { NAlert, NButton, NCard, NDrawer, NDrawerContent, NProgress, NSkeleton, NSpin, NTable, NTag, NText };
 const summary = (): DataOf<'getSeoOverview'> => ({
   geo: null,
   keywordCount: 1234,
@@ -73,8 +85,6 @@ describe('SEO dashboard card', () => {
       'page.dashboard.seo.disabled',
       '2026-10-16',
       'UpdatePackageMeta',
-      'page.dashboard.seo.count 12',
-      'page.dashboard.seo.compensated 1',
       'page.dashboard.seo.origin',
       'page.dashboard.seo.edge',
       'page.dashboard.seo.lastSeen',
@@ -85,6 +95,31 @@ describe('SEO dashboard card', () => {
     expect(wrapper.text()).not.toContain('canonical-5');
     expect(wrapper.text()).not.toContain('canonical-6');
     expect(wrapper.findAllComponents(NProgress)[0]!.props('percentage')).toBe(15);
+    // Modes and budgets share one row per action; actions without one of them show a dash.
+    const row = (name: string) =>
+      wrapper
+        .findAll('tr')
+        .find(tr => tr.find('th[scope="row"]').exists() && tr.get('th[scope="row"]').text() === name)!
+        .findAll('td')
+        .map(cell => cell.text());
+    expect(row('listing')).toEqual(['proposal', 'page.dashboard.seo.day3 / 20']);
+    expect(row('metadata')).toEqual(['livepage.dashboard.seo.disabled', '—']);
+    expect(row('paid_research')).toEqual(['—', 'page.dashboard.seo.month$0.250001 / $15.00']);
+    expect(row('UpdatePackageMeta')).toEqual(['live', '12', '1']);
+    wrapper.unmount();
+  });
+  it('Lists yesterday busiest operations first', async () => {
+    const data = summary();
+    data.yesterday.actions = [
+      { operation: 'AddPackageScreenshot', mode: 'live', count: 1, compensated: 0 },
+      { operation: 'WriteTranslations', mode: 'live', count: 1559, compensated: 0 },
+      { operation: 'SetPackagePrice', mode: 'proposal', count: 122, compensated: 2 }
+    ];
+    api.overview.mockResolvedValue({ data });
+    const wrapper = mount(SeoCard, { global: { components } });
+    await flushPromises();
+    const operations = wrapper.findAll('th[scope="row"]').map(cell => cell.text());
+    expect(operations.slice(-3)).toEqual(['WriteTranslations', 'SetPackagePrice', 'AddPackageScreenshot']);
     wrapper.unmount();
   });
   it('Shows open breaker type, scope, reason and start time', async () => {

@@ -1033,6 +1033,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     NUXT_API_BASE_INTERNAL: apiBase,
     NUXT_PUBLIC_API_BASE: apiBase,
     NUXT_REDIS_URL: '',
+    NUXT_IMAGE_REDIS_URL: '',
     NUXT_LLMS_ENABLED: 'true',
     NUXT_PUBLIC_SITE_URL: 'https://example.test',
     NUXT_PUBLIC_I18N_BASE_URL: 'https://example.test',
@@ -2520,6 +2521,86 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const rendered = await fetch((await image('/ru/categories/utilities')).replace('https://example.test', origin));
     assert.equal(rendered.status, 200, logs);
     assert.equal(rendered.headers.get('content-type'), 'image/png');
+  });
+  await t.test('an admitted OG image completes its internal island at a one-request limit', async () => {
+    const imageReservation = createPortReservation();
+    imageReservation.listen(0, '127.0.0.1');
+    await once(imageReservation, 'listening');
+    const imagePort = String(imageReservation.address().port);
+    let metricsReservation;
+    let metricsPort;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      metricsReservation = createPortReservation();
+      metricsPort = String(30000 + ((Number(imagePort) + attempt) % 10000));
+      metricsReservation.listen(Number(metricsPort), '0.0.0.0');
+      try {
+        await once(metricsReservation, 'listening');
+        break;
+      } catch (error) {
+        if (error.code !== 'EADDRINUSE' || attempt === 99) throw error;
+      }
+    }
+    await new Promise(resolve => imageReservation.close(resolve));
+    await new Promise(resolve => metricsReservation.close(resolve));
+    const limited = spawn(process.execPath, [entry], {
+      env: {
+        ...rendererEnv,
+        PORT: imagePort,
+        NITRO_PORT: imagePort,
+        NUXT_METRICS_PORT: metricsPort,
+        NUXT_LOAD_SHED_IMAGE_IN_FLIGHT: '1',
+        NUXT_LOAD_SHED_LOW_IN_FLIGHT: '1',
+        NUXT_LOAD_SHED_MEDIUM_IN_FLIGHT: '1',
+        NUXT_LOAD_SHED_EXTREME_IN_FLIGHT: '1',
+        NUXT_LOAD_SHED_LOW_LAG_MS: '60000',
+        NUXT_LOAD_SHED_MEDIUM_LAG_MS: '60000',
+        NUXT_LOAD_SHED_EXTREME_LAG_MS: '60000'
+      },
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    const ended = once(limited, 'exit');
+    let output = '';
+    limited.stderr.on('data', chunk => {
+      output += chunk;
+    });
+    try {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(output || 'image test startup timeout')), 15000);
+        limited.once('error', error => {
+          clearTimeout(timer);
+          reject(error);
+        });
+        limited.once('exit', () => {
+          clearTimeout(timer);
+          reject(new Error(output));
+        });
+        limited.stdout.on('data', chunk => {
+          output += chunk;
+          if (output.includes('Listening on')) {
+            clearTimeout(timer);
+            resolve();
+          }
+        });
+      });
+      const page = await (await fetch(`http://127.0.0.1:${imagePort}/apps/ordinary-app`)).text();
+      const imageUrl = /<meta property="og:image" content="([^"]+)"/.exec(page)?.[1]?.replaceAll('&amp;', '&');
+      assert.ok(imageUrl, output);
+      const response = await fetch(imageUrl.replace('https://example.test', `http://127.0.0.1:${imagePort}`), {
+        headers: { 'user-agent': 'PerplexityBot' }
+      });
+      assert.equal(response.status, 200, output);
+      assert.equal(response.headers.get('content-type'), 'image/png');
+      assert.ok((await response.arrayBuffer()).byteLength > 1000);
+      const metrics = await (await fetch(`http://127.0.0.1:${metricsPort}/metrics`)).text();
+      assert.match(metrics, /opennavo_web_image_in_flight 0/);
+      assert.match(metrics, /opennavo_web_in_flight 0/);
+      assert.ok(!metrics.includes('level="extreme"'), metrics);
+    } finally {
+      limited.kill('SIGTERM');
+      const timer = setTimeout(() => limited.kill('SIGKILL'), 5000);
+      await ended;
+      clearTimeout(timer);
+    }
   });
   await t.test('article lists paginate with real links and keep filters out of the index', async () => {
     const page = async path => {

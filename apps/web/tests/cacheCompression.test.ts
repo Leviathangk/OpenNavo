@@ -131,3 +131,19 @@ describe('compressed bounded page cache', () => {
     });
   });
 });
+
+it('isolates image eviction from page entries and retains the image TTL after submounting', async () => {
+  const pages = memoryDriver();
+  const images = memoryDriver();
+  const writes = vi.spyOn(images, 'setItem');
+  const storage = createStorage();
+  storage.mount('cache', boundedCache(pages));
+  storage.mount('cache:nuxt-og-image', boundedCache(images, 'nuxt-og-image:'));
+  await storage.setItem('cache:nitro:routes:page', { body: 'page' });
+  await storage.setItem('cache:nuxt-og-image:6:image', { value: 'image' });
+  expect(writes).toHaveBeenCalledWith('6:image', expect.any(String), expect.objectContaining({ ttl: 21600 }));
+  expect(await pages.getKeys()).toEqual(['nitro:routes:page']);
+  await images.clear!(); // Represents eviction/expiry in the independent image cache.
+  expect(await storage.getItem('cache:nitro:routes:page')).toEqual({ body: 'page' });
+  expect(await storage.getItem('cache:nuxt-og-image:6:image')).toBeNull();
+});

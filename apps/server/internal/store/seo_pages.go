@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/seo"
 )
 
@@ -93,27 +94,59 @@ func (s *Store) PopulatePageNotes(ctx context.Context, rows []IndexRow, page int
 			if err != nil {
 				return err
 			}
-			metrics := seo.NotesFacts{}
-			start := len(entries)
-			if page-1 <= len(entries)/seo.VersionsPageSize {
-				start = min(len(entries), (page-1)*seo.VersionsPageSize)
-			}
-			for _, entry := range entries[start:min(len(entries), start+seo.VersionsPageSize)] {
-				if entry.Id == nil {
-					continue
-				}
-				r := byID[*entry.Id]
-				if r.Source != "editorial" && entry.Translation.Status == "source" {
-					r = r.originalNotes()
-				}
-				notes := releaseNotesFacts(r, locale)
-				if notes.HasSource {
-					metrics.Chars += notes.Chars
-					metrics.HasSource = true
-				}
-			}
-			rows[i].NotesPages[page][locale] = metrics
+			rows[i].NotesPages[page][locale] = pageNotesFacts(entries, byID, page, locale)
 		}
 	}
 	return nil
+}
+
+// pageNotesFacts counts the notes on one versions page (seo.VersionsPageSize timeline entries) the way the page
+// shows them. byID holds the timeline's releases in the same language.
+func pageNotesFacts(entries []publicapi.ReleaseEntry, byID map[int64]TimelineRelease, page int, locale string) seo.NotesFacts {
+	metrics := seo.NotesFacts{}
+	start := len(entries)
+	if page-1 <= len(entries)/seo.VersionsPageSize {
+		start = min(len(entries), (page-1)*seo.VersionsPageSize)
+	}
+	for _, entry := range entries[start:min(len(entries), start+seo.VersionsPageSize)] {
+		if entry.Id == nil {
+			continue
+		}
+		r := byID[*entry.Id]
+		if r.Source != "editorial" && entry.Translation.Status == "source" {
+			r = r.originalNotes()
+		}
+		notes := releaseNotesFacts(r, locale)
+		if notes.HasSource {
+			metrics.Chars += notes.Chars
+			metrics.HasSource = true
+		}
+	}
+	return metrics
+}
+
+// timelineWithNotes is one package's timeline in one language plus the notes facts of every versions page, so
+// the page-state job can store what PopulatePageNotes would otherwise recompute for whole sitemap pages.
+func (s *Store) timelineWithNotes(ctx context.Context, id int64, locale string) ([]publicapi.ReleaseEntry, []seo.NotesFacts, error) {
+	versions, err := s.TimelineVersions(ctx, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	releases, err := s.TimelineReleases(ctx, id, locale)
+	if err != nil {
+		return nil, nil, err
+	}
+	entries, err := TimelineEntries(versions, releases)
+	if err != nil {
+		return nil, nil, err
+	}
+	byID := make(map[int64]TimelineRelease, len(releases))
+	for _, r := range releases {
+		byID[r.ID] = r
+	}
+	pages := make([]seo.NotesFacts, max(1, (len(entries)+seo.VersionsPageSize-1)/seo.VersionsPageSize))
+	for i := range pages {
+		pages[i] = pageNotesFacts(entries, byID, i+1, locale)
+	}
+	return entries, pages, nil
 }

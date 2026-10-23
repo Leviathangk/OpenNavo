@@ -81,9 +81,7 @@ INSERT INTO article_revisions(id,article_id,number,source_locale,type,published_
 	}
 }
 
-func targetCount(ref content.Ref) int {
-	if ref.Entity == "desktop_release" {
-		return 5
-	}
+// Every content type, client release notes included, is translated from its source into the other nine languages.
+func targetCount(content.Ref) int {
 	return 9
 }

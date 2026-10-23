@@ -59,10 +59,13 @@ export default defineNuxtConfig({
     // Shared with the Go worker (WEB_INTERNAL_SECRET) to authenticate cache invalidation; empty refuses all.
     internalSecret: '',
     redisUrl: '',
+    // Separate Redis process: database numbers do not isolate eviction or memory.
+    imageRedisUrl: '',
     // NUXT_LOAD_SHED_* overrides; one SSR thread at ~100ms CPU/render (~10 cold renders/s).
     // Normal 2–3/s stays below these limits. Reserve the last 48 slots for protected traffic.
     loadShed: {
       enabled: true,
+      imageInFlight: 2,
       lowInFlight: 8,
       mediumInFlight: 16,
       extremeInFlight: 64,

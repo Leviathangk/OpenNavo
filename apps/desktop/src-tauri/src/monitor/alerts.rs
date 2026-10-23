@@ -103,6 +103,10 @@ fn localized(locale: Locale, value: f64, kind: u32) -> String {
             Locale::EsEs => c"es-ES",
             Locale::PtBr => c"pt-BR",
             Locale::RuRu => c"ru-RU",
+            Locale::DeDe => c"de-DE",
+            Locale::FrFr => c"fr-FR",
+            Locale::ItIt => c"it-IT",
+            Locale::ZhHant => c"zh-TW",
         };
         let raw = unsafe { on_monitor_format(locale.as_ptr(), value, kind) };
         if !raw.is_null() {

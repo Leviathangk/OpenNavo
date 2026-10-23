@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -33,6 +35,33 @@ func ReadThrough[T any](ctx context.Context, backend Backend, key string, ttl ti
 	if backend != nil {
 		if data, encodeErr := json.Marshal(value); encodeErr == nil {
 			_ = backend.Save(ctx, key, data, ttl)
+		}
+	}
+	return value, nil
+}
+
+// ReadThroughCompressed is ReadThrough for values above a backend's entry limit (Redis keeps at most 512 KiB):
+// entries hold gzip-compressed JSON, which shrinks repetitive payloads such as sitemap pages by over 10×.
+func ReadThroughCompressed[T any](ctx context.Context, backend Backend, key string, ttl time.Duration, load func(context.Context) (T, error)) (T, error) {
+	if backend != nil {
+		if data, err := backend.Load(ctx, key); err == nil {
+			if reader, err := gzip.NewReader(bytes.NewReader(data)); err == nil {
+				var cached T
+				if json.NewDecoder(reader).Decode(&cached) == nil {
+					return cached, nil
+				}
+			}
+		}
+	}
+	value, err := load(ctx)
+	if err != nil {
+		return value, err
+	}
+	if backend != nil {
+		var buffer bytes.Buffer
+		writer := gzip.NewWriter(&buffer)
+		if json.NewEncoder(writer).Encode(value) == nil && writer.Close() == nil {
+			_ = backend.Save(ctx, key, buffer.Bytes(), ttl)
 		}
 	}
 	return value, nil

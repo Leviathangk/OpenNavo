@@ -1,6 +1,6 @@
 import type { PublicComponents } from '@opennavo/api';
-import { LOCALES } from '@opennavo/shared';
-import type { Locale } from '@opennavo/shared';
+import { DESKTOP_LOCALES } from '@opennavo/shared';
+import type { DesktopLocale as Locale } from '@opennavo/shared';
 import { catalogCategories, catalogCursor, catalogItems } from './fixtures';
 
 type Schema = PublicComponents['schemas'];
@@ -61,7 +61,7 @@ function textPack(locale: Locale): Schema['CatalogTextPack'] {
   };
 }
 
-export const catalogTextPacks = Object.fromEntries(LOCALES.map(locale => [locale, textPack(locale)])) as Record<
+export const catalogTextPacks = Object.fromEntries(DESKTOP_LOCALES.map(locale => [locale, textPack(locale)])) as Record<
   Locale,
   Schema['CatalogTextPack']
 >;
@@ -75,7 +75,7 @@ export const catalogSnapshotInfo: Schema['CatalogSnapshotInfo'] = {
   sha256: '0'.repeat(64),
   bytes: 0,
   textPacks: Object.fromEntries(
-    LOCALES.map(locale => [
+    DESKTOP_LOCALES.map(locale => [
       locale,
       {
         locale,

@@ -63,35 +63,24 @@ const stats = computed(() => {
 <template>
   <NSpin :show="loading && !overview">
     <div class="flex-col gap-16px">
-      <NGrid :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-        <NGi v-for="item in stats" :key="item.key" span="24 s:12 m:6">
-          <StatCard :label="item.label" :value="item.value" :hint="item.hint" />
-        </NGi>
-        <NGi v-if="overview?.hermes" span="24 s:12 m:6">
-          <HermesCard :hermes="overview.hermes" />
-        </NGi>
-      </NGrid>
+      <!-- Five headline cards: 3 + 2 rows on medium screens (Hermes spans two), one row on wide screens. -->
+      <div v-if="overview" class="grid grid-cols-1 gap-16px sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+        <StatCard v-for="item in stats" :key="item.key" :label="item.label" :value="item.value" :hint="item.hint" />
+        <TodoCard :feedback-open="overview.feedbackOpen" />
+        <HermesCard v-if="overview.hermes" :hermes="overview.hermes" class="sm:col-span-2 2xl:col-span-1" />
+      </div>
       <NAlert v-if="failed" type="error" role="alert" :title="$t('page.dashboard.seo.loadFailed')">
         <NButton :loading="loading" @click="load">{{ $t('page.dashboard.seo.retry') }}</NButton>
       </NAlert>
       <UsageCard v-if="overview?.usage" :usage="overview.usage" />
+      <div v-if="overview" class="grid grid-cols-1 gap-16px lg:grid-cols-3">
+        <CoverageCard :coverage="overview.coverage" class="lg:col-span-2" />
+        <SyncCard :jobs="overview.jobs" :snapshot="overview.snapshot" />
+      </div>
       <SeoCard />
-      <template v-if="overview">
-        <NGrid :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-          <NGi span="24 m:16">
-            <CoverageCard :coverage="overview.coverage" />
-          </NGi>
-          <NGi span="24 m:8">
-            <SyncCard :jobs="overview.jobs" :snapshot="overview.snapshot" />
-          </NGi>
-          <NGi span="24 m:8">
-            <TodoCard :feedback-open="overview.feedbackOpen" />
-          </NGi>
-        </NGrid>
-        <NText v-if="refreshedAt" depth="3" tag="p" class="m-0 text-right text-12px">
-          {{ $t('page.dashboard.refreshedAt', { time: dayjs(refreshedAt).format('HH:mm:ss') }) }}
-        </NText>
-      </template>
+      <NText v-if="overview && refreshedAt" depth="3" tag="p" class="m-0 text-right text-12px">
+        {{ $t('page.dashboard.refreshedAt', { time: dayjs(refreshedAt).format('HH:mm:ss') }) }}
+      </NText>
     </div>
   </NSpin>
 </template>

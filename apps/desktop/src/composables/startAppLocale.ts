@@ -1,7 +1,7 @@
 import { i18n } from '@/i18n';
 import { commands, events, unwrap } from '@/ipc/client';
 import type { Ref } from 'vue';
-import type { Locale } from '@opennavo/shared';
+import type { DesktopLocale as Locale } from '@opennavo/shared';
 
 /** Both windows read only the effective language; tray does not read full settings. */
 export async function startAppLocale(current: Ref<Locale> = i18n.global.locale, root = document.documentElement) {

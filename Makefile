@@ -65,7 +65,7 @@ test-web: ## Run frontend tests only
 build-web: ## Build frontend only
 	@node tooling/scripts/workspace.mjs build-web
 
-i18n-sync: ## Incrementally sync four interface languages (ARGS="--targets native,server --dry-run")
+i18n-sync: ## Incrementally sync interface translations: four languages, eight for the desktop app (ARGS="--targets native,server --dry-run")
 	@node tooling/scripts/workspace.mjs i18n-sync $(ARGS)
 
 .PHONY: gen-mcp lint-mcp test-mcp build-mcp dev-mcp

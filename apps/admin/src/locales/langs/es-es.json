@@ -320,12 +320,13 @@
       "disabledHint": "Obsoletos {deprecated} · ocultos {hidden}",
       "coverage": "Cobertura",
       "coverageHint": "Todas las apps válidas, incluidas las fuentes; excluye elementos desactivados, ocultos o eliminados",
-      "sixLocaleContentHint": "Los resúmenes y las descripciones deben estar completos y actualizados en los seis idiomas. Los idiomas alternativos no cuentan.",
+      "localeContentHint": "Los seis idiomas son los seis originales: inglés, chino simplificado, japonés, español, portugués y ruso. Los diez son todos los idiomas del sitio web y de la app de escritorio, que añaden alemán, francés, italiano y chino tradicional. Cada idioma necesita un resumen y una descripción completos y actualizados. Los idiomas alternativos no cuentan.",
       "coverageItems": {
         "primaryCategory": "Categoría principal",
         "icon": "Icono",
         "latestVersionNotes": "Notas de la versión más reciente",
-        "sixLocaleContent": "Contenido completo en seis idiomas"
+        "sixLocaleContent": "Contenido completo en seis idiomas",
+        "siteLocaleContent": "Contenido completo en diez idiomas"
       },
       "sync": "Estado de sincronización",
       "syncItems": {
@@ -346,7 +347,6 @@
       "failed24h": "Tareas fallidas en las últimas 24 h",
       "viewJobs": "Tareas",
       "snapshotInfo": "Cursor {cursor} · {count} paquete | Cursor {cursor} · {count} paquetes",
-      "todo": "Pendientes",
       "feedbackOpen": "Comentarios pendientes",
       "viewFeedback": "Comentarios",
       "hermes": {
@@ -379,6 +379,10 @@
         "yesterday": "Ayer (UTC)",
         "count": "Acciones",
         "compensated": "Compensadas",
+        "action": "Acción",
+        "operation": "Operación",
+        "mode": "Modo",
+        "usage": "Uso",
         "alerts": "Últimas 5 alertas sin resolver",
         "noAlerts": "No hay alertas sin resolver",
         "origin": "Origen",
@@ -420,7 +424,9 @@
       },
       "usage": {
         "title": "Actividad de usuarios",
-        "hint": "Hora de Shanghái · Hoy es parcial · Se cuentan instalaciones y navegadores anónimos, no personas. El cliente incluye actividad en segundo plano; la web requiere una visita visible. No se deduplican plataformas. El país corresponde a la conexión y puede reflejar una VPN o un proxy.",
+        "hint": "Se cuentan instalaciones y navegadores anónimos, no personas. El cliente incluye actividad en segundo plano; la web requiere una visita visible. No se deduplican plataformas. El país corresponde a la conexión y puede reflejar una VPN o un proxy.",
+        "asOf": "Hora de Shanghái · Hoy hasta las {time}",
+        "yesterday": "Ayer {value}",
         "date": "Fecha",
         "desktop": "Actividad diaria del cliente",
         "web": "Actividad diaria web",
@@ -430,7 +436,7 @@
         "version": "Versión",
         "count": "Instalaciones",
         "empty": "Aún no hay actividad. Los clientes en ejecución y las visitas válidas envían datos automáticamente.",
-        "trend": "Actividad diaria · Últimos 30 días",
+        "trend": "Actividad diaria · Del {start} al {end}",
         "details": "Detalle diario",
         "newHint": "Nuevo significa que el identificador se observa por primera vez. Borrar los datos locales o volver tras 90 días de inactividad puede contar como nuevo.",
         "countries": "Distribución por país hoy",

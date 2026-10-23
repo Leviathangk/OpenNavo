@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createI18n } from 'vue-i18n';
-import { LOCALES, LOCALE_METADATA, pluralRules } from '@opennavo/shared';
+import { DESKTOP_LOCALES, LOCALE_METADATA, pluralRules } from '@opennavo/shared';
 import enUS from '../src/i18n/en-US';
 import zhCN from '../src/i18n/zh-CN';
 
 describe('vue-i18n plural integration', () => {
-  it.each(LOCALES)('%s preserves formatted interpolation and selects categories using raw counts', locale => {
+  it.each(DESKTOP_LOCALES)('%s preserves formatted interpolation and selects categories using raw counts', locale => {
     const i18n = createI18n({
       legacy: false,
       locale,

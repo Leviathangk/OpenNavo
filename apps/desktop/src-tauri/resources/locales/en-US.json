@@ -60,5 +60,11 @@
   "monitorAlert.temperature.title": "CPU is very hot",
   "monitorAlert.temperature.body": "CPU temperature is {temp}. Click to check processes or adjust the fans.",
   "monitorAlert.disk_smart.title": "A disk is reporting problems",
-  "monitorAlert.disk_smart.body": "“{name}” reports a failing SMART status. Back it up soon."
+  "monitorAlert.disk_smart.body": "“{name}” reports a failing SMART status. Back it up soon.",
+  "security.pasteBlocked": "Suspicious paste paused",
+  "security.scanFinished": "Virus scan finished",
+  "security.threatsFound": "Threats found",
+  "security.signatureChanged": "App signature changed",
+  "security.downloadThreat": "Threat in a download",
+  "security.newStartupItem": "New startup item"
 }

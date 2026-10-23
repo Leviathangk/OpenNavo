@@ -24,6 +24,12 @@ class VerifiedBotConfigTests(unittest.TestCase):
                 self.assertEqual(services['web']['environment']['NUXT_TRUSTED_PROXIES'], env['CADDY_PROXY_IP'])
                 self.assertFalse(services['web'].get('ports'))
 
+    def test_usage_country_trusts_only_caddy(self):
+        env = verification.environment()
+        services = json.loads(verification.compose('config', '--format', 'json', env=env).stdout)['services']
+        # The API takes CF-IPCountry only from Caddy, which drops it from peers outside Cloudflare.
+        self.assertEqual(services['api']['environment']['USAGE_COUNTRY_TRUSTED_PROXIES'], env['CADDY_PROXY_IP'])
+
 
 if __name__ == '__main__':
     unittest.main()

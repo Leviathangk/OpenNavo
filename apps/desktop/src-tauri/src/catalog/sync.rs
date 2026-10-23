@@ -101,7 +101,9 @@ impl CatalogService {
         crate::blocking(move || super::status(&database, syncing)).await
     }
     async fn metadata(&self, client: &reqwest::Client) -> Result<SnapshotInfo, AppError> {
-        let url = format!("{}/catalog/snapshot", self.base);
+        // locales=all lists a text pack for every language this build knows. The CDN latest.json fallback lists the
+        // original six only; the other languages then fall back to English until the API answers again.
+        let url = format!("{}/catalog/snapshot?locales=all", self.base);
         validate_url(&url)?;
         let api = async {
             let response = client.get(&url).send().await?;
@@ -177,11 +179,8 @@ impl CatalogService {
         let info = metadata.clone();
         let base = crate::blocking(move || super::v2::read_base(&read_path, &info)).await?;
         let mut paths = Vec::new();
-        for locale in super::v2::needed(&base, locale) {
-            let pack = metadata
-                .text_packs
-                .get(&locale)
-                .ok_or_else(|| super::protocol("missing_text_pack"))?;
+        for locale in super::v2::needed_packs(&base, metadata, locale) {
+            let pack = &metadata.text_packs[&locale];
             paths.push((
                 locale,
                 self.download(&pack.url, &pack.sha256, pack.bytes).await?,
@@ -229,13 +228,10 @@ impl CatalogService {
         .await?;
         let mut packs = Vec::new();
         for locale in needed {
-            let info = metadata
-                .text_packs
-                .get(&locale)
-                .ok_or_else(|| super::protocol("missing_text_pack"))?;
-            if info.locale != locale || info.cursor != metadata.cursor || info.version <= 0 {
-                return Err(super::protocol("text_pack_metadata"));
-            }
+            // prune_cache checked every published pack; a language without one falls back to English.
+            let Some(info) = metadata.text_packs.get(&locale) else {
+                continue;
+            };
             let old = self
                 .database
                 .meta(&format!("text_version:{}", locale.as_str()))?
@@ -258,10 +254,7 @@ impl CatalogService {
         .await
     }
     async fn prune_cache(&self, metadata: &SnapshotInfo) -> Result<(), AppError> {
-        if metadata.format_version != 2
-            || metadata.cursor < 0
-            || metadata.text_packs.len() != crate::locales_gen::LOCALES.len()
-        {
+        if metadata.format_version != 2 || metadata.cursor < 0 {
             return Err(protocol("snapshot_metadata"));
         }
         let mut keep = HashSet::new();
@@ -283,15 +276,7 @@ impl CatalogService {
             validate_url(url)?;
             keep.insert(format!("{}.json.gz", sha.to_ascii_lowercase()));
         }
-        for locale in crate::locales_gen::LOCALES {
-            let pack = metadata
-                .text_packs
-                .get(&locale)
-                .ok_or_else(|| protocol("missing_text_pack"))?;
-            if pack.locale != locale || pack.cursor != metadata.cursor || pack.version <= 0 {
-                return Err(protocol("text_pack_metadata"));
-            }
-        }
+        super::v2::check_packs(metadata)?;
         let mut entries = match tokio::fs::read_dir(&self.cache).await {
             Ok(entries) => entries,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
@@ -386,7 +371,8 @@ impl CatalogService {
         result
     }
     async fn sync_links(&self, force: bool) -> Result<u32, AppError> {
-        let url = format!("{}/catalog/links", self.base);
+        // locales=all: notes in every desktop language (older clients get the original six).
+        let url = format!("{}/catalog/links?locales=all", self.base);
         validate_url(&url)?;
         let mut request = self.client()?.get(url);
         // `links_etag` is the catalog's own tag and says which content the local rows hold. `links_validator` is the
@@ -467,7 +453,7 @@ impl CatalogService {
         for _ in 0..10_000 {
             let before = status.cursor;
             let url = format!(
-                "{}/catalog/changes?since={}&limit=500",
+                "{}/catalog/changes?since={}&limit=500&locales=all",
                 self.base, status.cursor
             );
             validate_url(&url)?;
@@ -603,20 +589,21 @@ mod tests {
                 }
                 let request = String::from_utf8(request).unwrap();
                 // Compressing in front of the API rewrites the tag: the header never equals the catalog's own.
-                let (status, headers, body) = if request.starts_with("GET /catalog/links ") {
-                    links_requests += 1;
-                    seen.lock().unwrap().push(header(&request, "if-none-match"));
-                    match links_requests {
-                        1 => ("503 Unavailable", "", ""),
-                        2 => ("200 OK", "ETag: W/\"recovered-gzip\"\r\n", links.as_str()),
-                        _ => ("304 Not Modified", "ETag: W/\"recovered-gzip\"\r\n", ""),
-                    }
-                } else if request.starts_with("GET /catalog/snapshot ") {
-                    ("200 OK", "", metadata.as_str())
-                } else {
-                    assert!(request.starts_with("GET /catalog/changes?"));
-                    ("200 OK", "", changes.as_str())
-                };
+                let (status, headers, body) =
+                    if request.starts_with("GET /catalog/links?locales=all ") {
+                        links_requests += 1;
+                        seen.lock().unwrap().push(header(&request, "if-none-match"));
+                        match links_requests {
+                            1 => ("503 Unavailable", "", ""),
+                            2 => ("200 OK", "ETag: W/\"recovered-gzip\"\r\n", links.as_str()),
+                            _ => ("304 Not Modified", "ETag: W/\"recovered-gzip\"\r\n", ""),
+                        }
+                    } else if request.starts_with("GET /catalog/snapshot?locales=all ") {
+                        ("200 OK", "", metadata.as_str())
+                    } else {
+                        assert!(request.starts_with("GET /catalog/changes?"));
+                        ("200 OK", "", changes.as_str())
+                    };
                 write!(
                     stream,
                     "HTTP/1.1 {status}\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -726,7 +713,7 @@ mod tests {
                     request.push(byte[0]);
                 }
                 let request = String::from_utf8(request).unwrap();
-                assert!(request.starts_with("GET /catalog/links "));
+                assert!(request.starts_with("GET /catalog/links?locales=all "));
                 assert_eq!(
                     header(&request, "if-none-match").as_deref(),
                     expected,
@@ -894,7 +881,7 @@ mod tests {
                     request.push(b[0]);
                 }
                 let request = String::from_utf8(request).unwrap().to_lowercase();
-                assert!(request.starts_with("get /catalog/links "));
+                assert!(request.starts_with("get /catalog/links?locales=all "));
                 if index > 0 {
                     assert!(request.contains("if-none-match: \"one\""));
                 }
@@ -942,8 +929,11 @@ mod tests {
     fn cache_build(cache: &std::path::Path, generation: i64) -> SnapshotInfo {
         let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../../apps/server/testdata/desktop/v2");
-        let mut info: SnapshotInfo =
-            serde_json::from_slice(&std::fs::read(fixtures.join("latest.json")).unwrap()).unwrap();
+        // What the API returns for locales=all: a pack for every desktop language.
+        let response: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(fixtures.join("snapshot-all.json")).unwrap())
+                .unwrap();
+        let mut info: SnapshotInfo = serde_json::from_value(response["data"].clone()).unwrap();
         let encode = |name: &str, version: Option<i64>| {
             let mut raw = String::new();
             flate2::read::GzDecoder::new(std::fs::File::open(fixtures.join(name)).unwrap())
@@ -1050,6 +1040,49 @@ mod tests {
         assert_eq!(service.text(&info).await.unwrap(), 0);
     }
 
+    // An older or rolled-back server publishes only the original six packs: German still syncs, with English text.
+    #[tokio::test]
+    async fn a_language_without_a_published_pack_falls_back_to_english() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        std::fs::create_dir(&cache).unwrap();
+        let mut info = cache_build(&cache, 1);
+        info.text_packs.remove(&Locale::DeDe);
+        let db = Database::open(&temp.path().join("catalog.db")).unwrap();
+        let settings = Arc::new(RwLock::new(Settings {
+            locale: Locale::DeDe,
+            ..Settings::default()
+        }));
+        let service = CatalogService::new(
+            db.clone(),
+            String::new(),
+            String::new(),
+            cache,
+            settings,
+            Arc::new(|_| {}),
+        );
+        let _lock = service.lock.lock().await;
+        assert_eq!(service.snapshot(&info).await.unwrap(), 40);
+        assert_eq!(service.text(&info).await.unwrap(), 0);
+        assert!(db.meta("text_version:de-DE").unwrap().is_none());
+        let item = super::super::get(&db, Kind::Cask, "visual-studio-code")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            item.display_name
+                .fallback(Locale::DeDe, item.source_locale)
+                .unwrap(),
+            "Visual Studio Code"
+        );
+        // English is the fallback for every language, so a snapshot without it is still rejected.
+        let mut english = info.clone();
+        english.text_packs.remove(&Locale::EnUs);
+        assert_eq!(
+            service.snapshot(&english).await.unwrap_err().message,
+            "missing_text_pack"
+        );
+    }
+
     #[tokio::test]
     async fn cache_retains_only_current_build_for_snapshot_and_language_sync() {
         let temp = tempfile::tempdir().unwrap();
@@ -1070,6 +1103,8 @@ mod tests {
             Arc::new(|_| {}),
         );
         let _lock = service.lock.lock().await;
+        // The base file, one pack per language, and the unrelated file and directory left alone.
+        let files = crate::locales_gen::LOCALES.len() + 3;
         for generation in 1..=12 {
             let old_files = std::fs::read_dir(&cache)
                 .unwrap()
@@ -1090,7 +1125,7 @@ mod tests {
             for pack in info.text_packs.values() {
                 assert!(cache.join(format!("{}.json.gz", pack.sha256)).is_file());
             }
-            assert_eq!(std::fs::read_dir(&cache).unwrap().count(), 9);
+            assert_eq!(std::fs::read_dir(&cache).unwrap().count(), files);
             assert_eq!(std::fs::read_to_string(&unrelated).unwrap(), "keep");
             assert!(directory.is_dir());
             let cursor = db.meta("catalog_cursor").unwrap();
@@ -1098,7 +1133,7 @@ mod tests {
             let mut invalid = info.clone();
             invalid.sha256 = "invalid".into();
             assert!(service.prune_cache(&invalid).await.is_err());
-            assert_eq!(std::fs::read_dir(&cache).unwrap().count(), 9);
+            assert_eq!(std::fs::read_dir(&cache).unwrap().count(), files);
             std::fs::write(cache.join(format!("{}.json.gz", info.sha256)), "bad").unwrap();
             assert_eq!(
                 service.snapshot(&info).await.unwrap_err().code,

@@ -51,8 +51,8 @@ func TestStructuredPluralSchemaAndDecode(t *testing.T) {
 }
 func TestPerKeyRetryAndInterruptResume(t *testing.T) {
 	plan := fixture()
-	delete(plan.Targets["native"].Translations["ja-JP"], "a")
-	delete(plan.Targets["native"].Translations["ja-JP"], "b")
+	delete(plan.Targets["server"].Translations["ja-JP"], "a")
+	delete(plan.Targets["server"].Translations["ja-JP"], "b")
 	cache := ResumeCache{Directory: t.TempDir()}
 	ctx, cancel := context.WithCancel(context.Background())
 	calls := 0
@@ -61,7 +61,7 @@ func TestPerKeyRetryAndInterruptResume(t *testing.T) {
 		if calls == 2 {
 			require.Equal(t, map[string]string{"b": "关闭"}, b.Source)
 			require.Contains(t, b.RetryReason, "changed literal")
-			files, readErr := cache.read("native")
+			files, readErr := cache.read("server")
 			require.NoError(t, readErr)
 			require.Equal(t, "開きます", files.Entries["ja-JP"]["a"].Translation)
 			cancel()
@@ -69,8 +69,8 @@ func TestPerKeyRetryAndInterruptResume(t *testing.T) {
 		}
 		return map[string]map[string]string{"ja-JP": {"a": "開きます", "b": "閉じます {bad}"}}, nil
 	}, nil, nil, cache.Save)
-	require.ErrorContains(t, err, "native/ja-JP/b")
-	require.NotContains(t, err.Error(), "native/ja-JP/a")
+	require.ErrorContains(t, err, "server/ja-JP/b")
+	require.NotContains(t, err.Error(), "server/ja-JP/a")
 	restored, _, err := cache.Restore(plan, nil, nil)
 	require.NoError(t, err)
 	calls = 0
@@ -81,13 +81,13 @@ func TestPerKeyRetryAndInterruptResume(t *testing.T) {
 	}, nil, nil, cache.Save)
 	require.NoError(t, err)
 	require.Equal(t, 1, calls)
-	require.Equal(t, "開きます", result["native"]["ja-JP"]["a"])
+	require.Equal(t, "開きます", result["server"]["ja-JP"]["a"])
 	// A bad cache entry in a historical batch does not invalidate successful keys.
-	require.NoError(t, cache.Save(Batch{Target: "native", Locales: []string{"ja-JP"}, Source: plan.Targets["native"].Source, English: plan.Targets["native"].English}, map[string]map[string]string{"ja-JP": {"a": "開きます", "b": "閉じます {bad}"}}))
+	require.NoError(t, cache.Save(Batch{Target: "server", Locales: []string{"ja-JP"}, Source: plan.Targets["server"].Source, English: plan.Targets["server"].English}, map[string]map[string]string{"ja-JP": {"a": "開きます", "b": "閉じます {bad}"}}))
 	restored, _, err = cache.Restore(plan, nil, nil)
 	require.NoError(t, err)
-	require.Equal(t, "開きます", restored.Targets["native"].Translations["ja-JP"]["a"])
-	require.Empty(t, restored.Targets["native"].Translations["ja-JP"]["b"])
+	require.Equal(t, "開きます", restored.Targets["server"].Translations["ja-JP"]["a"])
+	require.Empty(t, restored.Targets["server"].Translations["ja-JP"]["b"])
 	encoded, err := json.Marshal(result)
 	require.NoError(t, err)
 	require.NotEmpty(t, encoded)

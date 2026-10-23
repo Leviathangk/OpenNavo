@@ -118,15 +118,17 @@ func (s *Service) queryInsights(ctx context.Context, op string, in Input, curren
 	return map[string]any{"current": current, "size": size, "records": rows, "total": total}, err
 }
 func (s *Service) dashboard(ctx context.Context) (any, error) {
-	// All four metrics share the valid-app-and-font set; six-language coverage counts actual current-source content, never display fallback.
+	// All metrics share the valid-app-and-font set (Homebrew Casks and link apps). Language coverage counts actual
+	// current-source content, never display fallback:
+	// sixLocaleContent covers the six app languages, siteLocaleContent every website language.
 	raw, err := s.Store.JSONRow(ctx, `
 WITH eligible AS (
  SELECT p.id,p.source_locale FROM packages p
  LEFT JOIN package_meta m ON m.package_id=p.id
- WHERE p.kind='cask' AND p.removed_at IS NULL
+ WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL
  AND NOT (p.disabled OR p.stale_disabled) AND NOT COALESCE(m.hidden,false)
-), complete_content AS (
- SELECT e.id FROM eligible e
+), current_content AS (
+ SELECT e.id,count(*) FILTER(WHERE i.locale IN ?) app_locales,count(*) site_locales FROM eligible e
  JOIN content_translation_sources s ON s.entity='package' AND s.object_key=e.id::text
  AND s.source_locale=e.source_locale
  JOIN package_i18n original ON original.package_id=e.id AND original.locale=e.source_locale
@@ -136,7 +138,7 @@ WITH eligible AS (
  AND i.status IN ('source','machine','manual') AND i.source_hash=s.source_hash
  AND i.summary ~ '[^[:space:]]' AND i.description ~ '[^[:space:]]'
  AND s.fields=jsonb_build_object('display_name',original.display_name,'summary',original.summary,'description',original.description)
- GROUP BY e.id HAVING count(*)=?
+ GROUP BY e.id
 )
 SELECT jsonb_build_object(
  'packages',(SELECT jsonb_build_object(
@@ -145,7 +147,7 @@ SELECT jsonb_build_object(
   'hidden',count(*) FILTER(WHERE m.hidden),'deprecated',count(*) FILTER(WHERE p.deprecated),
   'disabled',count(*) FILTER(WHERE p.disabled OR p.stale_disabled))
   FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id
-  WHERE p.kind='cask' AND p.removed_at IS NULL),
+  WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL),
  'coverage',jsonb_build_object(
   'primaryCategory',jsonb_build_object(
    'done',(SELECT count(DISTINCT e.id) FROM eligible e JOIN package_categories c ON c.package_id=e.id AND c.is_primary),
@@ -157,7 +159,8 @@ SELECT jsonb_build_object(
    'done',(SELECT count(*) FROM eligible e JOIN packages p ON p.id=e.id
     WHERE `+store.EditorialNoteSQL(currentBuild, "p.id", "p.version_base")+` IS NOT NULL),
    'total',(SELECT count(*) FROM eligible)),
-  'sixLocaleContent',jsonb_build_object('done',(SELECT count(*) FROM complete_content),'total',(SELECT count(*) FROM eligible))),
+  'sixLocaleContent',jsonb_build_object('done',(SELECT count(*) FROM current_content WHERE app_locales=?),'total',(SELECT count(*) FROM eligible)),
+  'siteLocaleContent',jsonb_build_object('done',(SELECT count(*) FROM current_content WHERE site_locales=?),'total',(SELECT count(*) FROM eligible))),
  'feedbackOpen',(SELECT count(*) FROM feedback WHERE status='open'),
  'jobs',jsonb_build_object(
   'failed24h',(SELECT count(*) FROM sync_runs WHERE status IN ('failed','partial') AND started_at>now()-interval '1 day'),
@@ -166,7 +169,7 @@ SELECT jsonb_build_object(
   'lastSnapshotAt',(SELECT max(created_at) FROM catalog_snapshots)),
  'snapshot',COALESCE((SELECT jsonb_build_object('cursor',seq,'itemCount',item_count,'url',url)
   FROM catalog_snapshots ORDER BY created_at DESC,id DESC LIMIT 1),jsonb_build_object('cursor',0,'itemCount',0))
-) AS data`, i18n.SiteLocales[:], len(i18n.SiteLocales))
+) AS data`, i18n.Locales[:], i18n.SiteLocales[:], len(i18n.Locales), len(i18n.SiteLocales))
 	if err != nil {
 		return nil, err
 	}

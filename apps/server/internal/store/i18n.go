@@ -41,14 +41,14 @@ func (s *Store) WriteLocalized(ctx context.Context, entity string, id, secondary
 		return nil
 	}
 	values, ok := raw.(map[string]any)
-	if !ok || !i18n.Valid(source) || (entity == "desktop_release" && !i18n.ValidApp(source)) || len(values) == 0 {
+	if !ok || !i18n.Valid(source) || (entity == "desktop_release" && !i18n.ValidDesktop(source)) || len(values) == 0 {
 		return domain.Validation()
 	}
 	if _, ok := values[source].(map[string]any); !ok {
 		return domain.Validation()
 	}
 	for locale, value := range values {
-		if !i18n.Valid(locale) || (entity == "desktop_release" && !i18n.ValidApp(locale)) {
+		if !i18n.Valid(locale) || (entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
 			return domain.Validation()
 		}
 		if value == nil && locale != source && (entity == "collection" || entity == "feature") {
@@ -124,7 +124,7 @@ func (s *Store) TextSourceLocale(ctx context.Context, entity string, id int64, l
 	} else if entity != "package" {
 		return "", domain.Validation()
 	}
-	if !i18n.Valid(locale) || (entity == "desktop_release" && !i18n.ValidApp(locale)) {
+	if !i18n.Valid(locale) || (entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
 		return "", domain.Validation()
 	}
 	var source string

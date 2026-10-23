@@ -60,5 +60,11 @@
   "monitorAlert.temperature.title": "CPU 温度过高",
   "monitorAlert.temperature.body": "CPU 温度 {temp}，点开查看进程或调整风扇。",
   "monitorAlert.disk_smart.title": "磁盘报告异常",
-  "monitorAlert.disk_smart.body": "「{name}」的 SMART 状态异常，请尽快备份。"
+  "monitorAlert.disk_smart.body": "「{name}」的 SMART 状态异常，请尽快备份。",
+  "security.pasteBlocked": "已暂停可疑命令粘贴",
+  "security.scanFinished": "病毒扫描已完成",
+  "security.threatsFound": "发现威胁",
+  "security.signatureChanged": "App 签名发生变化",
+  "security.downloadThreat": "下载的文件有威胁",
+  "security.newStartupItem": "发现新启动项"
 }

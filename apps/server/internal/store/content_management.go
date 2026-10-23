@@ -77,7 +77,7 @@ func ValidateContentFields(entity string, fields map[string]any) error {
 	return nil
 }
 func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale string, fields map[string]any, source bool) error {
-	if !ref.Valid() || !i18n.Valid(locale) || (ref.Entity == "desktop_release" && !i18n.ValidApp(locale)) {
+	if !ref.Valid() || !i18n.Valid(locale) || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
 		return domain.Validation()
 	}
 	if err := ValidateContentFields(ref.Entity, fields); err != nil {

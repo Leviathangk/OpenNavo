@@ -220,6 +220,9 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter opennavo --ignore-scripts
       - name: go test
         working-directory: apps/server
+        # An explicit bash shell runs with -o pipefail: without it the step took the log filter's exit status and
+        # reported failing integration tests as passing.
+        shell: bash
         env:
           PATTERN: ${{ fromJSON(needs.integration-plan.outputs.patterns)[matrix.shard] }}
         run: go test -race -tags=integration -timeout 25m -json -run "$PATTERN" ./... | node ../../.github/scripts/go-test-log.mjs "$RUNNER_TEMP/durations-${{ matrix.shard }}.json"

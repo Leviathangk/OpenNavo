@@ -281,3 +281,64 @@ Existing separate `server-v*`, `web-v*`, and `mcp-v*` workflows remain available
 for image distribution. Their tag publications and desktop tag publications now
 require successful CI for the exact source commit. Manual build-only runs do not
 publish packages. Repository changes are not deployed merely by pushing `main`.
+
+### Isolating share-image load and keeping release metrics current
+
+The web service uses `NUXT_REDIS_URL` for HTML and
+`NUXT_IMAGE_REDIS_URL` for the `cache:nuxt-og-image` submount. Production
+Compose provides a separate `image-cache` Redis process (384 MiB eviction
+budget, 512 MiB container limit, no persistence or published port). Redis
+database numbers alone do not isolate memory. Empty `NUXT_IMAGE_REDIS_URL`
+retains the previous shared-cache behavior for existing local installations.
+The rolling receiver also provisions this disposable service before starting
+new web candidates and passes its URL into the candidate environment. Existing
+image entries in the page pool expire naturally within six hours; no broad
+cache flush is needed. Plan for up to 512 MiB additional container memory.
+
+`NUXT_LOAD_SHED_IMAGE_IN_FLIGHT` defaults to 2 per web process. It bounds
+admitted image requests, including cache reads; excess requests receive an
+uncached 503 with Retry-After and the `image_capacity` metric label. The bound
+is not a CPU quota or a separate renderer process. Already-admitted image
+requests pass a server-only capability to their internal island rendering
+calls, which do not reserve a second request slot or release their parent's
+slot. Direct external island requests remain subject to admission controls.
+Image request concurrency is exported as `opennavo_web_image_in_flight`.
+
+Install the updated `ops/github-deploy.py` receiver on the deployment host as
+part of rollout; updating application images alone does not update the host
+receiver. It discovers the running Prometheus container by Compose labels,
+updates simple static API/web scrape jobs to the selected release, preserves
+other jobs and global/rule configuration, validates with promtool, hot reloads,
+and waits for both targets to be UP. Failure restores the prior config, and
+route rollback also points monitoring back to the previous services. Same-SHA
+retries repair monitoring before retiring old containers. Unfamiliar API/web
+scrape job layouts are rejected for operator review instead of silently losing
+custom authentication, relabeling, or discovery settings. Prometheus must share
+the default network with the application services; its config must be a host
+bind mount at `/etc/prometheus/prometheus.yml`. Each release stores a private
+`before-prometheus.yml` snapshot; the bind-mounted file is updated in place.
+A host without a running Prometheus service is explicitly reported and skipped.
+
+### Usage countries on existing hosts
+
+The API counts a usage report under its `CF-IPCountry` country only when the
+connection comes from an address in `USAGE_COUNTRY_TRUSTED_PROXIES`; any other
+report counts as unknown. Production Compose sets Caddy's fixed proxy address.
+The receiver builds each API candidate from the previous release's service in
+the rolling overlay, so a host provisioned before this setting would go on
+counting every country as unknown. When the copied service lacks the variable,
+the receiver adds the base Compose value `${CADDY_PROXY_IP:-172.30.80.2}`. A
+value already set on the host, including an empty one, is kept. Install the
+updated receiver first: the setting arrives with the next deployment of a new
+revision, not with a retry of the deployed one. After that deployment, check
+that the admin dashboard lists real countries rather than only unknown.
+
+Trusting Caddy is only safe while nothing but Cloudflare can set the header.
+The bundled Caddyfile removes `CF-IPCountry` from connections whose peer is
+outside Cloudflare's ranges. Deployments keep the host's live Caddyfile and
+change only service names and the release header, so apply Caddyfile changes
+on the host by hand. The filter matches the connection peer. If another reverse
+proxy such as Nginx sits in front of Caddy, that proxy is the peer of every
+request, and the unchanged filter would remove every country. In that layout,
+remove the header at the outer proxy for peers outside Cloudflare, or admit
+only Cloudflare at the origin firewall.

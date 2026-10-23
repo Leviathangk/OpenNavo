@@ -45,7 +45,15 @@ where
         .collect()
 }
 
-// Website-only source languages use the existing English fallback on the six-language client.
+// A language saved by a newer build that this one does not know falls back to the system language, so every other
+// setting still loads (for example after a downgrade).
+fn tolerant_locale<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Locale, D::Error> {
+    let code = String::deserialize(deserializer)?;
+    Ok(serde_json::from_value(serde_json::Value::String(code))
+        .unwrap_or_else(|_| crate::settings::system_locale()))
+}
+
+// Source languages the client does not know use the existing English fallback.
 pub(crate) fn app_source_locale<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Locale, D::Error> {
@@ -576,6 +584,7 @@ pub struct Settings {
 struct SettingsInput {
     pub onboarding_completed: Option<bool>,
     pub locale_mode: Option<LocaleMode>,
+    #[serde(deserialize_with = "tolerant_locale")]
     pub locale: Locale,
     pub launch_at_login: bool,
     pub keep_in_menu_bar_on_close: bool,
@@ -984,6 +993,10 @@ impl Locale {
             Self::EsEs => "es-ES",
             Self::PtBr => "pt-BR",
             Self::RuRu => "ru-RU",
+            Self::DeDe => "de-DE",
+            Self::FrFr => "fr-FR",
+            Self::ItIt => "it-IT",
+            Self::ZhHant => "zh-Hant",
         }
     }
 }

@@ -60,5 +60,11 @@
   "monitorAlert.temperature.title": "ЦП сильно нагрелся",
   "monitorAlert.temperature.body": "Температура ЦП — {temp}. Нажмите, чтобы проверить процессы или настроить вентиляторы.",
   "monitorAlert.disk_smart.title": "Диск сообщает о проблемах",
-  "monitorAlert.disk_smart.body": "Диск «{name}» сообщает о сбое по SMART. Сделайте резервную копию как можно скорее."
+  "monitorAlert.disk_smart.body": "Диск «{name}» сообщает о сбое по SMART. Сделайте резервную копию как можно скорее.",
+  "security.pasteBlocked": "Подозрительная вставка приостановлена",
+  "security.scanFinished": "Проверка на вирусы завершена",
+  "security.threatsFound": "Обнаружены угрозы",
+  "security.signatureChanged": "Подпись приложения изменилась",
+  "security.downloadThreat": "Угроза в загруженном файле",
+  "security.newStartupItem": "Новый элемент автозапуска"
 }

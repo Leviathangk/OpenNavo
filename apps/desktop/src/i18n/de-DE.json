@@ -1,0 +1,2899 @@
+{
+  "articles": {
+    "viewTranslation": "Übersetzung ansehen",
+    "title": "Artikel",
+    "subtitle": "Empfehlungen, Tests, Anleitungen und Übersichten zu Mac-Apps",
+    "all": "Alle",
+    "typesLabel": "Artikeltyp",
+    "types": {
+      "recommendation": "empfohlen",
+      "review": "Test",
+      "tutorial": "Anleitung",
+      "roundup": "Sammlungen",
+      "news": "Neuigkeiten"
+    },
+    "emptyTitle": "Noch keine Artikel",
+    "emptyDescription": "Veröffentlichte Artikel erscheinen hier.",
+    "readingTime": "{minutes} Min. Lesezeit",
+    "published": "Veröffentlicht am {date}",
+    "updated": "Aktualisiert am {date}",
+    "editorial": "OpenNavo-Redaktion",
+    "machineTranslated": "KI-übersetzt",
+    "viewOriginal": "Original ansehen",
+    "sourceText": "Diesen Artikel gibt es noch nicht in Ihrer Sprache, daher wird unten das Original angezeigt.",
+    "testNote": "So haben wir getestet:",
+    "toc": "Verzeichnis",
+    "sources": "Quellen",
+    "appCardNote": "Aktuelle Katalogdaten: Version und Installationen folgen dem Katalog und können vom Stand beim Verfassen abweichen.",
+    "mentionedApps": "Apps in diesem Artikel",
+    "related": "Verwandte Artikel",
+    "withdrawnTitle": "Dieser Artikel wurde zurückgezogen",
+    "withdrawnBody": "Er ist möglicherweise veraltet oder nicht mehr zutreffend und daher nicht mehr verfügbar. Sehen Sie sich gern unsere anderen Artikel an.",
+    "backToList": "Alle Artikel ansehen"
+  },
+  "brewfile": {
+    "installTitle": "Apps aus der Liste installieren",
+    "title": "Meine Liste",
+    "description": "Apps zur Liste hinzufügen, dann gemeinsam installieren oder exportieren. Die Liste bleibt auf diesem Gerät.",
+    "count": "{count} Eintrag | {count} Einträge",
+    "emptyTitle": "Ihre Liste ist leer",
+    "emptyDescription": "Wählen Sie „Zur Liste hinzufügen“ auf der Detailseite einer App oder im Menü einer installierten App.",
+    "browse": "Apps entdecken",
+    "fileTitle": "Erstellt von OpenNavo",
+    "download": "Brewfile exportieren",
+    "moveUp": "{name} nach oben verschieben",
+    "moveDown": "{name} nach unten verschieben",
+    "remove": "{name} aus der Liste entfernen",
+    "add": "Zur Liste hinzufügen",
+    "inList": "Bereits in der Liste",
+    "removeShort": "Aus Liste entfernen",
+    "added": "Zur Liste hinzugefügt",
+    "full": "Die Liste fasst höchstens 200 Apps. Entfernen Sie zuerst einige Apps.",
+    "saveFailed": "Liste konnte nicht gespeichert oder gelesen werden. Prüfen Sie den lokalen Speicher und versuchen Sie es erneut.",
+    "install": "{count} Apps installieren",
+    "installHint": "Bereits installierte, gerade installierte und nicht verfügbare Apps werden übersprungen.",
+    "copy": "Brewfile kopieren",
+    "exported": "Brewfile exportiert"
+  },
+  "app": {
+    "name": "OpenNavo"
+  },
+  "nav": {
+    "browse": "Stöbern",
+    "lists": "Listen",
+    "tools": "Werkzeuge",
+    "mine": "Bibliothek",
+    "discover": "Entdecken",
+    "categories": "Kategorien",
+    "rankings": "Ranglisten",
+    "recent": "Neueste Updates",
+    "installed": "Installiert",
+    "updates": "Updates",
+    "history": "Update-Verlauf",
+    "settings": "Einstellungen",
+    "updatesBadge": "{count} Update verfügbar | {count} Updates verfügbar",
+    "cleanup": "Aufräumen",
+    "cleanupBadge": "{count} defektes Hintergrundobjekt wird weiterhin geladen | {count} defekte Hintergrundobjekte werden weiterhin geladen",
+    "monitor": "Systemmonitor",
+    "security": "Virenscan",
+    "securityBadge": "{count} Eintrag erfordert Aufmerksamkeit | {count} Einträge erfordern Aufmerksamkeit",
+    "firewall": "App-Firewall",
+    "firewallBadge": "{count} Verbindung wartet auf Bestätigung | {count} Verbindungen warten auf Bestätigung"
+  },
+  "env": {
+    "label": "Homebrew",
+    "checking": "Wird geprüft…",
+    "checkingHint": "Homebrew-Umgebung auf diesem Mac wird gelesen",
+    "ready": "Homebrew ist bereit",
+    "noBrew": "Homebrew nicht installiert",
+    "noBrewHint": "Zum Installieren klicken",
+    "version": "{version} · {arch}",
+    "mirrors": {
+      "official": "Offizielle Quelle",
+      "tuna": "TUNA-Spiegel (Tsinghua)",
+      "ustc": "USTC-Spiegel",
+      "aliyun": "Alibaba Cloud-Spiegel"
+    }
+  },
+  "toolbar": {
+    "back": "Zurück",
+    "forward": "Vorwärts",
+    "search": "{count} App durchsuchen | {count} Apps durchsuchen",
+    "searchShort": "Apps suchen",
+    "taskRunning": "{action} {name}",
+    "taskScanning": "Installationspaket für {name} wird gescannt",
+    "taskQueued": "{count} weiterer Auftrag wartet | {count} weitere Aufträge warten"
+  },
+  "rail": {
+    "title": "Übersicht",
+    "subtitle": "Homebrew auf diesem Mac",
+    "installed": "Installiert",
+    "updates": "Updates",
+    "updatesHint": "Download ca. {size}",
+    "updatesNone": "Alles ist aktuell",
+    "disk": "Speicherbelegung",
+    "diskHint": "Davon {size} Cache",
+    "lastCheck": "Letzte Prüfung",
+    "lastCheckAuto": "Täglich um {time}",
+    "lastCheckManual": "Automatische Prüfung aus",
+    "never": "Noch nicht geprüft",
+    "weeklyTop": "Top der Woche",
+    "weeklyTopHint": "App-Installationen der letzten 30 Tage"
+  },
+  "common": {
+    "empty": "Noch keine Inhalte",
+    "refreshFailed": "Einige Inhalte konnten nicht geladen werden. Zuvor geladene Inhalte bleiben erhalten.",
+    "notFound": "Dieser Inhalt ist nicht verfügbar oder wurde entfernt",
+    "loadMore": "Mehr laden",
+    "viewAll": "Alle ansehen",
+    "viewRankings": "Ranglisten ansehen",
+    "retry": "Erneut versuchen",
+    "loading": "Wird geladen…",
+    "more": "Weitere Aktionen",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "count": "{count} App | {count} Apps"
+  },
+  "offline": {
+    "title": "OpenNavo-Dienst nicht erreichbar",
+    "description": "Das lokale Verzeichnis wird angezeigt. Screenshots, Versionsverlauf und Sammlungen benötigen eine Internetverbindung."
+  },
+  "discover": {
+    "featured": "Auswahl der Woche",
+    "viewDetails": "Details ansehen",
+    "allCategories": "Alle",
+    "categoriesLabel": "Kategorien",
+    "popularApps": "Beliebte Apps",
+    "popularAppsHint": "Homebrew-Installationen der letzten 30 Tage",
+    "recentlyUpdated": "Neueste Updates",
+    "recentlyUpdatedHint": "Apps mit neuen Versionen",
+    "collections": "Sammlungen",
+    "installCollection": "Sammlung installieren",
+    "collectionCount": "{title} · {count} App | {title} · {count} Apps"
+  },
+  "categories": {
+    "title": "Kategorien",
+    "subtitle": "{count} Kategorie nach Einsatzzweck | {count} Kategorien nach Einsatzzweck",
+    "packages": "{count} App | {count} Apps",
+    "empty": "Noch keine Pakete in dieser Kategorie",
+    "sortLabel": "Sortieren",
+    "sorts": {
+      "popular": "Beliebt",
+      "updated": "Neueste Updates",
+      "name": "Name"
+    }
+  },
+  "rankings": {
+    "title": "Ranglisten",
+    "subtitle": "Offizielle Homebrew-Installationsstatistik, täglich aktualisiert",
+    "periodLabel": "Zeitraum",
+    "periods": {
+      "installs30d": "30 Tage",
+      "installs90d": "90 Tage",
+      "installs365d": "1 Jahr"
+    },
+    "noStats": "Noch keine Statistik"
+  },
+  "recent": {
+    "title": "Neueste Updates",
+    "subtitle": "Apps mit neuen Versionen, neueste zuerst"
+  },
+  "search": {
+    "title": "Suchen",
+    "results": "{count} Ergebnis für „{q}“ | {count} Ergebnisse für „{q}“",
+    "empty": "Keine Ergebnisse für „{q}“",
+    "emptyHint": "Versuchen Sie ein anderes Stichwort, den englischen Namen oder ein Pinyin-Kürzel",
+    "alias": "Auch bekannt als: {name}",
+    "prompt": "Name, Einsatzzweck oder Befehl zum Suchen eingeben",
+    "catalogIncomplete": "Drittanbieter-Apps konnten nicht synchronisiert werden. Suchergebnisse sind möglicherweise unvollständig.",
+    "catalogEmpty": "Keine Ergebnisse für „{q}“ im Verzeichnis",
+    "sources": {
+      "label": "Ergebnisquelle",
+      "all": "Alle",
+      "catalog": "Verzeichnis"
+    }
+  },
+  "appStore": {
+    "title": "App Store",
+    "badge": "App Store",
+    "get": "Laden",
+    "getIn": "{name} im App Store laden",
+    "free": "Kostenlos",
+    "fromApple": "Von Apple · Store: {region}",
+    "fromAppleNoRegion": "Von Apple",
+    "rating": "{rating} · {count} Bewertung | {rating} · {count} Bewertungen",
+    "rateLimited": "Zu viele App Store-Suchen. Versuchen Sie es in einer Minute erneut.",
+    "offline": "App Store nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "searchFailed": "App Store-Suche fehlgeschlagen. Versuchen Sie es später erneut.",
+    "empty": "Keine Ergebnisse für „{q}“ im App Store",
+    "emptyHint": "Versuchen Sie ein anderes Stichwort oder ändern Sie die App Store-Region in den Einstellungen",
+    "showAll": "{count} Ergebnis anzeigen | Alle {count} Ergebnisse anzeigen",
+    "requiresOs": "macOS {version} oder neuer",
+    "installedVersion": "{version} installiert",
+    "headerMeta": "Download über den App Store · Anmeldung mit Apple ID erforderlich",
+    "viewInStore": "Im App Store ansehen",
+    "alsoTitle": "Auch erhältlich bei",
+    "whatsNew": "Neu in {version}",
+    "whatsNewDated": "Neu in {version} · {date}",
+    "about": "Beschreibung",
+    "info": {
+      "seller": "Entwickler",
+      "version": "Version",
+      "size": "Größe",
+      "requires": "Systemvoraussetzungen",
+      "category": "Kategorie",
+      "region": "Store-Region",
+      "bundleId": "Bundle ID"
+    },
+    "privacyNote": "Ihr Mac ruft diese Informationen direkt von Apple ab. Sie werden nicht über die Server von OpenNavo übertragen.",
+    "notInRegion": "Diese App ist im Store für {region} nicht verfügbar",
+    "notInRegionHint": "Sie wurde möglicherweise entfernt oder ist nur in anderen Regionen erhältlich.",
+    "settings": {
+      "region": "Store-Region",
+      "regionHint": "Bestimmt Suchergebnisse, Preise und Verfügbarkeit. Automatisch wird die Region des App Store-Kontos verwendet, ersatzweise die Systemregion",
+      "auto": "Automatisch",
+      "autoDetected": "Automatisch ({region})",
+      "search": "App Store-Ergebnisse in der Suche anzeigen",
+      "searchHint": "Apple wird erst nach Ende der Eingabe durchsucht, höchstens 15-mal pro Minute",
+      "updates": "Nach App Store-Updates suchen",
+      "updatesHint": "Neue Versionen von App Store-Apps unter „Aktualisieren“ anzeigen",
+      "privacy": "Suche, Details und Update-Prüfungen verbinden diesen Mac direkt mit Apple, ohne die Server von OpenNavo zu nutzen."
+    }
+  },
+  "collections": {
+    "title": "Sammlungen",
+    "subtitle": "Kuratierte App-Sammlungen auf einmal installieren",
+    "empty": "Noch keine Sammlungen",
+    "items": "{count} App | {count} Apps",
+    "install": "Sammlung installieren",
+    "installTitle": "„{title}“ installieren",
+    "installDescription": "{count} Paket wird installiert. Bereits installierte Pakete werden übersprungen. | {count} Pakete werden nacheinander installiert. Bereits installierte Pakete werden übersprungen.",
+    "installConfirm": "Installieren",
+    "allInstalled": "Alle Pakete dieser Sammlung sind installiert",
+    "installed": "Installiert",
+    "queued": "{count} zur Warteschlange hinzugefügt | {count} zur Warteschlange hinzugefügt",
+    "offline": "Sammlungen benötigen eine Internetverbindung"
+  },
+  "package": {
+    "link": {
+      "chip": "Website-Download",
+      "chipGithub": "GitHub",
+      "meta": "Downloads von {source} · OpenNavo hostet keine Installationsdateien",
+      "notHosted": "OpenNavo hostet keine Installationsdateien; Downloads kommen direkt vom Entwickler.",
+      "homepage": "Website",
+      "downloadTitle": "Download",
+      "officialDownload": "Auf der Website herunterladen",
+      "release": "{version} · veröffentlicht {time}",
+      "recommended": "empfohlen",
+      "download": "Download",
+      "allFiles": "Alle Dateien auf GitHub",
+      "filtered": "Für diesen Mac ({chip}) gefiltert",
+      "others": "Weitere Installationsdateien ({count})",
+      "githubReleases": "Von GitHub herunterladen",
+      "teamId": "Entwicklersignatur",
+      "pricingLabel": "Preis",
+      "adopted": "Diese App ist jetzt in Homebrew enthalten und lässt sich mit einem Klick installieren",
+      "arch": {
+        "arm64": "Apple silicon",
+        "x86_64": "Intel",
+        "universal": "Universal"
+      },
+      "pricing": {
+        "free": "Kostenlos",
+        "paid": "Kostenpflichtig",
+        "freemium": "Kostenlos mit kostenpflichtigen Funktionen",
+        "subscription": "Abonnement",
+        "open_source": "Kostenlos und Open Source"
+      },
+      "verdict": {
+        "verifying": "{file} wird geprüft…",
+        "checked": "{file} geprüft: {details}",
+        "title": "{file} geprüft",
+        "view": "Anzeigen",
+        "open": "Installationspaket öffnen",
+        "reveal": "Im Finder anzeigen",
+        "who": "{signer} ({team})",
+        "teamMatch": "Signatur von {who} entspricht der Registrierung",
+        "teamMismatch": "Signatur von {who} stimmt nicht mit dem registrierten Entwickler überein",
+        "signed": "Entwicklersignatur von {who}",
+        "unsigned": "nicht vom Entwickler signiert",
+        "zip": "Archiv nicht entpackt; macOS prüft die Signatur der enthaltenen App beim ersten Öffnen",
+        "invalid": "Ungültige Signatur",
+        "notarized": "Von Apple notarisiert",
+        "notNotarized": "Nicht von Apple notarisiert",
+        "clean": "Keine Bedrohungen in der Virendatenbank gefunden",
+        "threat": "{name} gefunden",
+        "threatQuarantined": "{name} gefunden und in Quarantäne verschoben",
+        "notScanned": "Nicht auf Viren gescannt",
+        "skipped": "Kein Virenscan: {reason}",
+        "modified": "Dateien wurden nach dem Signieren geändert; mögliche Manipulation"
+      }
+    },
+    "arch": {
+      "arm64": "Apple silicon",
+      "x86_64": "Intel"
+    },
+    "autoUpdates": "Integrierte Updates",
+    "disabled": "Deaktiviert",
+    "deprecated": "Veraltet",
+    "homepage": "Website",
+    "fromTap": "Aus",
+    "thirdPartyTap": "Drittanbieter-Tap",
+    "stats": {
+      "label": "Statistik",
+      "installs30d": "Installationen (30 Tage)",
+      "rank": "{kind}: Platz {rank}",
+      "installs365d": "Installationen (1 Jahr)",
+      "total365": "Letzte 365 Tage",
+      "latest": "Neueste Version",
+      "size": "Downloadgröße",
+      "cadence": "Update-Rhythmus",
+      "releases30d": "{count} Version in 30 Tagen | {count} Versionen in 30 Tagen"
+    },
+    "cadence": {
+      "daily": "Täglich",
+      "weekly": "Wöchentlich",
+      "biweekly": "Alle 2 Wochen",
+      "monthly": "Monatlich",
+      "irregular": "Unregelmäßig"
+    },
+    "tabs": {
+      "label": "Bereiche der Detailseite",
+      "overview": "Übersicht",
+      "versions": "Versionsverlauf",
+      "dependencies": "Abhängigkeiten",
+      "details": "Installationsdetails"
+    },
+    "disabledNotice": "Homebrew hat dieses Paket deaktiviert: {reason}",
+    "deprecatedNotice": "Homebrew hat dieses Paket als veraltet markiert: {reason}",
+    "staleNotice": "Seit mehr als 90 Tagen gibt es keine neue Version, daher empfiehlt und installiert OpenNavo diese App vorerst nicht mehr. Homebrew bietet sie weiterhin an.",
+    "noReason": "kein Grund angegeben",
+    "replacement": "Stattdessen {token} verwenden",
+    "release": {
+      "new": "Neu",
+      "title": "Neu in {version}",
+      "translated": "Übersetzt",
+      "source": {
+        "github_release": "Aus GitHub Releases",
+        "sparkle": "Aus dem Update-Feed der App",
+        "webpage": "Von der offiziellen Update-Seite",
+        "manual": "Manuell zusammengestellt",
+        "editorial": "OpenNavo-Redaktion",
+        "homebrew": "Aus Homebrew-Commits"
+      },
+      "viewAll": "Alle {count} Version ansehen | Alle {count} Versionen ansehen",
+      "noNotes": "Für diese Version gibt es keine eigenen Versionshinweise.",
+      "emptyTitle": "Noch kein Versionsverlauf",
+      "prerelease": "Vorabversion",
+      "filterLabel": "Versionen filtern",
+      "filterAll": "Alle {count} | Alle {count}",
+      "filterWithNotes": "Mit Hinweisen {count} | Mit Hinweisen {count}",
+      "filterMine": "Von mir installiert {count} | Von mir installiert {count}",
+      "languageLabel": "Textsprache",
+      "languageTranslated": "Deutsch",
+      "languageOriginal": "Original",
+      "mineEmpty": "Keine der geladenen Versionen wurde von Ihnen installiert",
+      "count30d": "30 Tage",
+      "count30dUnit": "Version | Versionen",
+      "cadenceHint": {
+        "daily": "Neue Versionen fast täglich",
+        "weekly": "Neue Versionen etwa wöchentlich",
+        "biweekly": "Neue Versionen etwa alle zwei Wochen",
+        "monthly": "Neue Versionen etwa monatlich",
+        "irregular": "Kein fester Rhythmus"
+      },
+      "brewLabel": "In Homebrew aufgenommen",
+      "brewSync": "≈ Zeitgleich",
+      "brewLater": "{time} später",
+      "brewEarlier": "{time} früher",
+      "brewHint": "{earlier}/{compared} vor dem Upstream-Release",
+      "lagMinutes": "{n} Min.",
+      "lagHours": "{n} Std.",
+      "lagDays": "{n} Tag | {n} Tage",
+      "sourcesTitle": "Quellen",
+      "sourceInfo": {
+        "webpage": {
+          "title": "Offizielle Update-Seite",
+          "body": "Das Wichtigste von der Seite mit den Versionshinweisen des Entwicklers"
+        },
+        "github_release": {
+          "title": "GitHub Releases",
+          "body": "Versionshinweise und Veröffentlichungsdaten auf GitHub"
+        },
+        "sparkle": {
+          "title": "Update-Feed der App",
+          "body": "Der Sparkle-Appcast, über den die App nach Updates sucht"
+        },
+        "manual": {
+          "title": "Manuell zusammengestellt",
+          "body": "Von der Redaktion aus offiziellen Ankündigungen zusammengestellt"
+        },
+        "editorial": {
+          "title": "OpenNavo-Redaktion",
+          "body": "Versionshinweise, die OpenNavo auf Basis offizieller Angaben verfasst"
+        },
+        "homebrew": {
+          "title": "Homebrew-Commits",
+          "body": "Versionsänderungen im Homebrew-Repository, aus denen das Aufnahmedatum hervorgeht"
+        },
+        "local": {
+          "title": "Lokaler Verlauf",
+          "body": "Jede Installation und Aktualisierung durch Sie in OpenNavo"
+        }
+      },
+      "localUpgrade": "Am {time} mit OpenNavo von {from} auf diese Version aktualisiert · Dauer: {duration}",
+      "localInstall": "Am {time} mit OpenNavo installiert · Dauer: {duration}",
+      "notify": "Über neue Versionen benachrichtigen",
+      "notifyHint": "Für alle Apps · Systemmitteilung und Menüleisten-Badge",
+      "pin": "Aktuelle Version fixieren",
+      "pinHint": "Entspricht brew pin; bei „Alle aktualisieren“ übersprungen",
+      "pinHintSelfUpdate": "Entspricht brew pin; {name} kann sich dennoch selbst aktualisieren"
+    },
+    "monthly": {
+      "title": "Monatliche Installationen",
+      "d30": "30 Tage",
+      "avg90": "Ø 90 Tage",
+      "avg365": "Ø 1 Jahr",
+      "full": "{count} Installation | {count} Installationen",
+      "trend": {
+        "rising": "Die Installationen nehmen zu",
+        "slowing": "Die Installationen flachen ab; die meisten bisherigen Nutzer aktualisieren über die App selbst",
+        "steady": "Die Installationen sind stabil"
+      }
+    },
+    "related": "Ähnliche Apps",
+    "screenshots": "Screenshots",
+    "caveats": "Hinweise",
+    "info": {
+      "homepage": "Website",
+      "binaries": "Befehle",
+      "autoUpdates": "Updates",
+      "autoYes": "Aktualisiert sich selbst (auto_updates)",
+      "autoNo": "Über Homebrew aktualisiert",
+      "uninstall": "Beim Deinstallieren",
+      "arch": "Architektur",
+      "license": "Lizenz"
+    },
+    "deps": {
+      "macos": "Systemvoraussetzungen",
+      "formulae": "Benötigte Befehlszeilentools",
+      "casks": "Benötigte Apps",
+      "emptyTitle": "Keine Abhängigkeiten",
+      "emptyDescription": "Bei der Installation wird nichts anderes mitinstalliert.",
+      "runtime": "Laufzeitabhängigkeiten",
+      "build": "Build-Abhängigkeiten",
+      "other": "Sonstige:",
+      "type": {
+        "runtime": "Laufzeit",
+        "build": "Build",
+        "test": "Test",
+        "optional": "optional",
+        "recommended": "empfohlen",
+        "usesFromMacos": "von macOS",
+        "cask": "App"
+      },
+      "conflicts": "Konflikte",
+      "dependents": "Von {count} Paket benötigt | Von {count} Paketen benötigt"
+    },
+    "details": {
+      "tap": "Tap",
+      "names": "Auch bekannt als",
+      "location": "Installationsort",
+      "pkgs": "Installationspakete",
+      "kegOnly": "keg-only",
+      "kegOnlyValue": "Nicht in /opt/homebrew verlinkt; muss manuell zum PATH hinzugefügt werden",
+      "download": "Download-URL",
+      "source": "Homebrew-Definition",
+      "repo": "Quellcode"
+    },
+    "installed": "{version} installiert",
+    "installedSelfUpdated": "{version} installiert (von der App selbst aktualisiert)",
+    "installedAt": "Installiert am {date}",
+    "updateTo": "Auf {version} aktualisieren",
+    "open": "Öffnen",
+    "getNeedsBrew": "Zuerst Homebrew installieren",
+    "actions": {
+      "label": "Weitere Aktionen",
+      "uninstall": "Deinstallieren",
+      "reinstall": "Neu installieren",
+      "pin": "Version fixieren",
+      "unpin": "Fixierung aufheben",
+      "reveal": "Im Finder anzeigen",
+      "copyCommand": "brew-Befehl kopieren",
+      "web": "Im Web ansehen"
+    },
+    "commandCopied": "brew-Befehl kopiert",
+    "offline": "Für Screenshots und weitere Informationen mit dem Internet verbinden",
+    "notFound": "Dieses Paket ist nicht im lokalen Verzeichnis",
+    "pinned": "Fixiert",
+    "localSince": "Am {date} auf diese Version aktualisiert"
+  },
+  "library": {
+    "title": "Installiert",
+    "summary": "{count} App · {size} | {count} Apps · {size}",
+    "summaryCount": "{count} Eintrag | {count} Einträge",
+    "filterPlaceholder": "Nach Name oder Bundle ID filtern…",
+    "scanProgress": {
+      "running": "Speicherbelegung wird berechnet",
+      "done": "Speicherbelegung berechnet",
+      "partial": "Abgeschlossen, bei einigen Apps fehlgeschlagen",
+      "completed": "{completed} / {total} abgeschlossen",
+      "scope": "App, App-Daten und Caches",
+      "retrying": "{count} warten auf erneuten Versuch",
+      "failed": "Bei {count} Apps fehlgeschlagen; Gründe siehe Liste"
+    },
+    "retryFootprint": "Zum Neuberechnen der Speicherbelegung dieser App klicken",
+    "recalculate": "Belegung neu berechnen",
+    "refresh": "Neu laden",
+    "empty": "Keine deinstallierbaren Apps gefunden",
+    "emptyFiltered": "Keine passenden Einträge",
+    "columns": {
+      "name": "Name",
+      "version": "Version",
+      "size": "Speicherbelegung",
+      "status": "Status",
+      "actions": "Aktionen",
+      "lastUsed": "Zuletzt geöffnet"
+    },
+    "status": {
+      "installed": "Installiert",
+      "latest": "Aktuell",
+      "outdated": "Update verfügbar",
+      "pinned": "Fixiert",
+      "selfUpdated": "Aktuell (von der App selbst aktualisiert)",
+      "running": "Aktualisierung {percent}",
+      "runningUnknown": "In Bearbeitung",
+      "queued": "Wartet",
+      "unknown": "Unbekannt",
+      "uninstalling": "Deinstallation {percent}",
+      "protected": "Diese App",
+      "managed": "Verwaltet",
+      "adoptable": "Übernehmbar"
+    },
+    "storage": {
+      "title": "Speicher",
+      "total": "Insgesamt {size}",
+      "caption": "Speicherbelegung",
+      "cache": "Download-Cache",
+      "homebrew": "Homebrew",
+      "others": "Andere Apps"
+    },
+    "backup": {
+      "title": "Sicherung & Migration",
+      "description": "Exportieren Sie Ihre Homebrew-Apps als Brewfile und stellen Sie sie auf einem neuen Mac mit einem Klick wieder her.",
+      "export": "Exportieren",
+      "restore": "Wiederherstellen",
+      "exported": "{count} Paket exportiert | {count} Pakete exportiert"
+    },
+    "restore": {
+      "title": "Aus Brewfile wiederherstellen",
+      "summary": "{ready} installierbar · {installed} installiert · {unsupported} noch nicht unterstützt",
+      "install": "{count} installieren | {count} installieren",
+      "status": {
+        "ready": "Installierbar",
+        "installed": "Installiert",
+        "skipped": "Keine Aktion nötig",
+        "unsupported": "Noch nicht unterstützt",
+        "invalid": "Ungültig",
+        "not_found": "Nicht gefunden"
+      }
+    },
+    "health": {
+      "title": "Systemprüfung",
+      "ok": "brew doctor hat keine Probleme gefunden",
+      "warnings": "{count} Warnung | {count} Warnungen",
+      "run": "Prüfung starten",
+      "running": "Wird geprüft…"
+    },
+    "adoptableHint": "Diese App ist in Homebrew verfügbar. Übernehmen Sie sie, um sie in OpenNavo zu aktualisieren.",
+    "sources": {
+      "all": "Alle",
+      "homebrew": "Homebrew",
+      "app_store": "App Store",
+      "other": "Sonstige",
+      "direct": "Manuell installiert",
+      "pkg": "PKG-Installation"
+    },
+    "sourceFilter": "Nach Quelle filtern",
+    "unused": "Lange ungenutzt",
+    "unusedHint": "Seit über {days} Tagen nicht geöffnet",
+    "running": "Läuft",
+    "self": "Die derzeit verwendete App",
+    "systemNote": "Integrierte Apps wie Safari und Mail sind durch macOS geschützt und werden hier nicht angezeigt.",
+    "selectAll": "Alle auswählen",
+    "selectRow": "{name} auswählen",
+    "batch": {
+      "selected": "{count} App ausgewählt | {count} Apps ausgewählt",
+      "size": "Apps belegen {size} · Zugehörige Dateien werden im nächsten Schritt gescannt",
+      "clear": "Auswahl aufheben",
+      "uninstall": "Auswahl deinstallieren"
+    },
+    "menu": {
+      "info": "Informationen",
+      "adopt": "Mit Homebrew übernehmen",
+      "detail": "In OpenNavo ansehen"
+    },
+    "unusedCard": {
+      "title": "Ungenutzte Apps",
+      "description": "{count} App wurde seit über {days} Tagen nicht geöffnet und belegt {size}. | {count} Apps wurden seit über {days} Tagen nicht geöffnet und belegen {size}.",
+      "show": "Nur diese Apps anzeigen",
+      "all": "Alle Apps anzeigen",
+      "none": "Jede App wurde in den letzten {days} Tagen geöffnet."
+    }
+  },
+  "updates": {
+    "title": "Updates",
+    "summary": "{count} Update verfügbar · Download ca. {size} | {count} Updates verfügbar · Download ca. {size}",
+    "summaryNone": "Alles ist aktuell",
+    "lastCheck": "Zuletzt geprüft: {time}",
+    "check": "Nach Updates suchen",
+    "checking": "Wird geprüft…",
+    "updateAll": "Alle aktualisieren",
+    "changelog": "Neuerungen",
+    "update": "Aktualisieren",
+    "pinned": "Fixiert, wird nicht aktualisiert",
+    "patch": "Patch",
+    "empty": "Alle Apps sind aktuell",
+    "emptyHint": "Neue Versionen werden hier angezeigt",
+    "source": {
+      "homebrew": "Homebrew",
+      "mas": "App Store",
+      "sparkle": "Update-Quelle der App",
+      "electron": "Update-Quelle der App",
+      "github": "GitHub",
+      "vendor": "Entwickler-Website",
+      "msupdate": "Microsoft AutoUpdate"
+    },
+    "badge": {
+      "critical": "Wichtiges Update",
+      "beta": "Betaversion",
+      "major": "Hauptversion",
+      "teamMismatch": "Abweichende Signatur"
+    },
+    "hint": {
+      "relaunch": "Auf {version} aktualisiert; nach erneutem Öffnen wirksam",
+      "informational": "Diese Version auf der Entwickler-Website ansehen oder herunterladen",
+      "running": "App läuft; vor dem Update werden Sie zum Beenden aufgefordert",
+      "admin": "Administratorpasswort für das Update erforderlich",
+      "skipped": "{version} übersprungen",
+      "teamMismatch": "Die erwartete Entwicklersignatur stimmt nicht mit der installierten App überein. OpenNavo installiert dieses Update nicht"
+    },
+    "actions": {
+      "skip": "Diese Version überspringen",
+      "unskip": "{version} nicht mehr überspringen",
+      "beta": "Betaversionen erhalten",
+      "stable": "Nur stabile Versionen",
+      "unignoreApp": "Diese App wieder prüfen",
+      "ignoreApp": "Diese App nicht mehr prüfen",
+      "relaunch": "Erneut öffnen",
+      "view": "Anzeigen"
+    },
+    "toast": {
+      "skipped": "{name} {version} übersprungen",
+      "unskipped": "Updates für {name} werden wieder angezeigt",
+      "beta": "{name} erhält jetzt Betaversionen",
+      "stable": "{name} erhält nur stabile Versionen",
+      "unignoredApp": "{name} wird wieder auf Updates geprüft",
+      "ignoredApp": "{name} wird nicht mehr auf Updates geprüft"
+    },
+    "notes": {
+      "title": "Neu in {name} {version}"
+    },
+    "masSignedOut": "Beim letzten App Store-Update konnte der Kontostatus nicht bestätigt werden. Versuchen Sie es erneut oder schließen Sie das Update im App Store ab.",
+    "failedSources": "Einige Prüfungen für {sources} konnten nicht abgeschlossen werden. Verfügbare Ergebnisse werden weiterhin angezeigt.",
+    "checkFailures": {
+      "summary": "Einige Apps oder Update-Quellen konnten nicht geprüft werden. Verfügbare Ergebnisse werden weiterhin angezeigt.",
+      "details": "Prüfdetails anzeigen",
+      "rulesUnavailable": "Update-Regeln konnten nicht neu geladen werden. Soweit möglich wurden zwischengespeicherte Regeln verwendet; Prüfungen ohne verfügbare Regeln blieben unvollständig.",
+      "rateLimited": "Zu viele Anfragen beim Update-Server. Versuchen Sie es später erneut.",
+      "invalidUrl": "Die Update-Adresse ist ungültig. Der App-Entwickler muss die Update-Konfiguration korrigieren.",
+      "network": "Update-Server nicht erreichbar. Versuchen Sie es später erneut.",
+      "failed": "Die Update-Prüfung konnte nicht abgeschlossen werden."
+    },
+    "openAppStore": "App Store öffnen",
+    "major": {
+      "titleOne": "Neue Hauptversion für {name}",
+      "title": "{count} neue Hauptversion | {count} neue Hauptversionen",
+      "body": "Eine neue Hauptversion kann die Oberfläche ändern, erneut Berechtigungen anfordern oder ältere Dateien nicht mehr öffnen. Trotzdem aktualisieren?",
+      "others": "Andere Updates werden in jedem Fall ausgeführt.",
+      "skip": "Später",
+      "confirm": "Weiter aktualisieren"
+    },
+    "filter": {
+      "label": "Quelle",
+      "all": "Alle {count}",
+      "homebrew": "Homebrew {count}",
+      "mas": "App Store {count}",
+      "other": "Andere Quellen {count}"
+    },
+    "meta": {
+      "from": "Von {host}",
+      "teamMatch": "Team ID stimmt überein"
+    },
+    "sources": {
+      "title": "Quellen prüfen",
+      "subtitle": "Deaktivierte Quellen werden nicht geprüft",
+      "homebrew": "Homebrew",
+      "homebrewHint": "Führt brew outdated aus",
+      "mas": "App Store",
+      "masHint": "Dieser Mac fragt direkt bei Apple an",
+      "sparkle": "Update-Quellen der Apps",
+      "sparkleHint": "Entwicklersignatur und Notarisierung werden vor der Installation geprüft",
+      "electron": "Electron-Update-Quellen",
+      "electronHint": "Prüft sha512 und Signatur vor der Installation",
+      "github": "GitHub Releases",
+      "githubHint": "Prüft Datei-Prüfsumme und Entwicklersignatur",
+      "vendor": "Entwickler-Websites",
+      "vendorHint": "Prüft die Entwicklersignatur nach von OpenNavo gepflegten Regeln"
+    },
+    "queued": "{count} zur Warteschlange hinzugefügt | {count} zur Warteschlange hinzugefügt",
+    "history": {
+      "recheck": "Erneut prüfen",
+      "title": "Update-Verlauf",
+      "subtitle": "Dieser Mac · {count} Vorgang in 30 Tagen | Dieser Mac · {count} Vorgänge in 30 Tagen",
+      "filterLabel": "Ergebnis",
+      "all": "Alle",
+      "succeeded": "Erfolgreich",
+      "failed": "Fehlgeschlagen",
+      "today": "Heute · {date}",
+      "yesterday": "Gestern · {date}",
+      "viewLog": "Protokoll anzeigen",
+      "retry": "Erneut versuchen",
+      "undo": "Rückgängig",
+      "purge": "Endgültig löschen",
+      "canceled": "Abgebrochen",
+      "batch": "{action} {count} {kind} | {action} {count} {kind}",
+      "empty": "Noch kein Update-Verlauf",
+      "rollback": "Zurücksetzen"
+    },
+    "month": {
+      "title": "Diesen Monat",
+      "since": "Seit {date}",
+      "updated": "Aktualisiert",
+      "updatedUnit": "Mal",
+      "successRate": "Erfolgsquote",
+      "successHint": "{count} fehlgeschlagen | {count} fehlgeschlagen"
+    },
+    "auto": {
+      "title": "Automatische Updates",
+      "subtitle": "Planmäßig vom Hintergrundassistenten ausgeführt",
+      "check": "Täglich um {time} prüfen",
+      "checkHint": "brew update + outdated",
+      "casks": "App-Updates automatisch installieren",
+      "casksHint": "Wenn deaktiviert, erhalten Sie nur eine Mitteilung",
+      "greedy": "Selbst aktualisierende Apps einbeziehen",
+      "greedyHint": "Entspricht --greedy"
+    },
+    "mirror": {
+      "switch": "Wechseln",
+      "latency": "Alles über Spiegel · {ms} ms"
+    },
+    "next": {
+      "today": "Heute um {time}",
+      "tomorrow": "Morgen um {time}",
+      "title": "Nächste Prüfung",
+      "text": "{time}. Ist der Mac im Ruhezustand, wird die Prüfung nach dem Aufwachen nachgeholt.",
+      "off": "Automatische Prüfungen sind deaktiviert. Aktivieren Sie sie in den Einstellungen."
+    },
+    "log": {
+      "title": "Protokoll für {name}",
+      "empty": "Kein Protokoll"
+    },
+    "rollback": {
+      "title": "{name} auf {version} zurücksetzen?",
+      "body": "Stellt die vor dem Update aufbewahrte Version {version} wieder her. Falls {name} läuft, wird die App zuerst regulär beendet und danach wieder geöffnet.",
+      "skip": "{version} wird nicht mehr angeboten. Erst bei einer neueren Version erhalten Sie wieder einen Hinweis.",
+      "confirm": "Zurücksetzen",
+      "notQuit": "{name} wurde nicht beendet und daher nicht zurückgesetzt. Beenden Sie die App und versuchen Sie es erneut."
+    }
+  },
+  "history": {
+    "clear": "Verlauf leeren",
+    "clearDescription": "Gesamten Update-Verlauf leeren? Dies kann nicht rückgängig gemacht werden. Installierte Apps und laufende Aufgaben bleiben unberührt.",
+    "clearNote": "Rückgängig machbare Deinstallationen und Bereinigungen sowie zurücksetzbare Updates bleiben erhalten.",
+    "cleared": "Update-Verlauf geleert",
+    "clearedKept": "Geleert. {count} rückgängig machbarer oder zurücksetzbarer Eintrag bleibt erhalten. | Geleert. {count} rückgängig machbare oder zurücksetzbare Einträge bleiben erhalten.",
+    "title": "Update-Verlauf",
+    "subtitle": "Alle Installationen, Updates und Deinstallationen auf diesem Mac",
+    "search": "Nach Name filtern",
+    "exportCsv": "CSV exportieren",
+    "exported": "{count} Eintrag exportiert | {count} Einträge exportiert",
+    "empty": "Noch keine Einträge",
+    "duration": "{time}"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "sections": {
+      "general": "Allgemein",
+      "mirrors": "Download-Quelle",
+      "homebrew": "Homebrew",
+      "appstore": "App Store",
+      "privacy": "Datenschutz",
+      "about": "Über uns",
+      "cleanup": "Bereinigung",
+      "monitor": "Systemmonitor",
+      "security": "Sicherheit"
+    },
+    "general": {
+      "followSystem": "Systemsprache (aktuell: {language})",
+      "systemDialogsRestartHint": "Starten Sie OpenNavo neu, um die Sprache der Systemdialoge zu ändern.",
+      "language": "Sprache",
+      "launchAtLogin": "Bei Anmeldung starten",
+      "launchAtLoginHint": "Startet nur mit dem Menüleistensymbol",
+      "keepInMenuBar": "Nach Schließen des Fensters in der Menüleiste bleiben",
+      "trayShowCount": "Anzahl verfügbarer Updates in der Menüleiste anzeigen",
+      "notifyUpdates": "Über verfügbare Updates benachrichtigen",
+      "zapByDefault": "Zugehörige Dateien beim Deinstallieren bereinigen",
+      "zapByDefaultHint": "App-Daten, Caches, Einstellungen und weitere Dateien werden vor dem Löschen zur Bestätigung aufgelistet",
+      "updates": "Nach Updates suchen",
+      "autoCheck": "Täglich nach Updates suchen",
+      "checkTime": "Prüfzeit",
+      "runBrewUpdate": "Homebrew-Index vor der Prüfung aktualisieren",
+      "runBrewUpdateHint": "brew update",
+      "uninstall": "Deinstallieren",
+      "deleteMode": "Löschmethode",
+      "deleteModeHint": "In den Papierkorb verschieben ist rückgängig machbar; direktes Löschen gibt sofort Speicher frei"
+    },
+    "customMirrors": {
+      "add": "Eigene Quelle hinzufügen",
+      "edit": "Eigene Quelle bearbeiten",
+      "delete": "Eigene Quelle löschen",
+      "actions": "„{name}“ verwalten",
+      "local": "Nur auf diesem Mac",
+      "localHint": "Eigene Quellen werden nur auf diesem Mac gespeichert, nie hochgeladen oder synchronisiert.",
+      "fallback": "Leere Adressen verwenden die offizielle Quelle.",
+      "officialFallback": "Offizielle Quelle verwenden",
+      "name": "Name",
+      "apiDomain": "API-Adresse",
+      "bottleDomain": "Bottle-Adresse",
+      "brewGitRemote": "brew-Git-Repository-Adresse",
+      "coreGitRemote": "core-Git-Repository-Adresse",
+      "advanced": "Erweitert · Git-Repositories",
+      "check": "Verbindung prüfen",
+      "probeHint": "Prüft nur die Erreichbarkeit der Adressen. Erfolgreiche Downloads sind damit nicht garantiert.",
+      "untested": "Noch nicht geprüft",
+      "success": "Adressen erreichbar",
+      "failure": "Verbindung fehlgeschlagen",
+      "checkFailed": "Nicht erreichbar: {fields}",
+      "save": "Änderungen speichern",
+      "saveAndUse": "Speichern und verwenden",
+      "nameRequired": "Geben Sie einen Namen ein.",
+      "nameInvalid": "Der Name darf höchstens 120 Zeichen und keine Steuerzeichen enthalten.",
+      "urlInvalid": "Geben Sie eine HTTP- oder HTTPS-Adresse ohne Zugangsdaten oder Fragment ein.",
+      "apiQueryInvalid": "API-Adressen dürfen keine Abfrageparameter enthalten. Geben Sie eine Basisadresse ohne ? ein.",
+      "addressRequired": "Geben Sie mindestens eine eigene Adresse ein.",
+      "deleteConfirm": "„{name}“ von diesem Mac löschen?",
+      "deleteActive": "Diese Quelle wird verwendet. Nach dem Löschen wird die offizielle Quelle genutzt.",
+      "limit": "Sie können bis zu {count} eigene Quellen speichern."
+    },
+    "mirrors": {
+      "title": "Download-Quelle",
+      "description": "Gilt für API-Metadaten, Bottle-Binärpakete und die Git-Repositories von brew selbst.",
+      "copyEnv": "Terminal-Variablen kopieren",
+      "envCopied": "Kopiert. In Terminal oder die Shell-Konfiguration einfügen",
+      "envHint": "Gilt nur für brew-Aufrufe durch OpenNavo. Kopieren Sie diese Variablen, um dieselbe Quelle im Terminal zu nutzen."
+    },
+    "homebrew": {
+      "path": "brew-Pfad",
+      "auto": "Automatisch erkennen",
+      "version": "Version",
+      "prefix": "Installationspräfix",
+      "analytics": "Anonyme Statistiken an Homebrew senden",
+      "analyticsFollow": "Einstellung von brew übernehmen",
+      "analyticsOff": "Aus (HOMEBREW_NO_ANALYTICS=1)",
+      "missing": "Homebrew nicht gefunden",
+      "install": "Homebrew installieren"
+    },
+    "privacy": {
+      "crashReports": "Anonyme Absturzberichte senden",
+      "crashReportsHint": "Standardmäßig aus; nur der Aufrufstapel beim Absturz wird gesendet",
+      "appManagement": "App-Verwaltung",
+      "appManagementHint": "Zum Aktualisieren und Deinstallieren von Apps erforderlich",
+      "fullDiskAccess": "Festplattenvollzugriff",
+      "fullDiskAccessHint": "Zum Ermitteln der Speicherbelegung, Deinstallieren und Wiederherstellen aus dem Papierkorb erforderlich",
+      "enable": "Ein",
+      "waiting": "Warten auf Aktivierung…",
+      "granted": "Ein",
+      "denied": "Aus",
+      "unknown": "Prüfung nicht möglich",
+      "clearSearch": "Letzte Suchen löschen"
+    },
+    "about": {
+      "openSource": "Open-Source-Danksagungen",
+      "view": "Anzeigen",
+      "draft": "Zur Prüfung",
+      "version": "Version {version}",
+      "website": "Website",
+      "feedback": "Problem melden",
+      "privacy": "Datenschutzhinweise",
+      "catalog": "Lokales Verzeichnis: {count} Paket, synchronisiert {time} | Lokales Verzeichnis: {count} Pakete, synchronisiert {time}",
+      "sync": "Jetzt synchronisieren"
+    },
+    "saved": "Gespeichert"
+  },
+  "mirrors": {
+    "official": "Offizielle Quelle",
+    "probe": "Erneut messen",
+    "probing": "Wird gemessen…",
+    "fastest": "Am schnellsten",
+    "recommended": "empfohlen",
+    "unavailable": "Nicht verfügbar",
+    "configFailed": "Spiegelliste derzeit nicht verfügbar. Die offizielle Quelle und eigene lokale Quellen bleiben nutzbar.",
+    "slowOfficial": "Die offizielle Quelle antwortet langsam ({official}). {name} benötigt nur {latency}.",
+    "failedOfficial": "Offizielle Quelle nicht erreichbar. {name} antwortet in {latency}.",
+    "useSuggested": "{name} verwenden",
+    "selectedFailed": "Geschwindigkeitstest der gewählten Quelle fehlgeschlagen. Installationen könnten scheitern."
+  },
+  "welcome": {
+    "title": "Willkommen bei OpenNavo",
+    "subtitle": "Zuerst prüfen wir diesen Mac. Das dauert nur wenige Sekunden.",
+    "checks": "Systemprüfung",
+    "checking": "Wird geprüft…",
+    "detectFailed": "Prüfung nicht abgeschlossen.",
+    "redetect": "Erneut prüfen",
+    "macos": "macOS {version} · {arch}",
+    "macosOk": "Anforderungen erfüllt",
+    "clt": "Xcode-Befehlszeilentools",
+    "cltOk": "Installiert",
+    "cltMissing": "Wird zusammen mit Homebrew installiert",
+    "homebrew": "Homebrew",
+    "homebrewOk": "{version} · {prefix}",
+    "homebrewMissing": "Nicht gefunden. {prefix} ist leer",
+    "source": {
+      "title": "Download-Quelle",
+      "official": "Offizielle Quelle",
+      "mirror": "Anderer Spiegel",
+      "mirrorMissing": "Spiegelliste derzeit nicht verfügbar",
+      "retry": "Erneut versuchen",
+      "hint": "Auch spätere Installationen und Updates verwenden diese Quelle. Unter Einstellungen → Download-Quelle können Sie einen anderen Spiegel wählen.",
+      "hintBrew": "OpenNavo nutzt diese Quelle für App-Installationen und Updates. Spiegelvariablen aus dem Terminal werden nicht gelesen."
+    },
+    "install": "Homebrew installieren",
+    "passwordHint": "Die Installation benötigt Ihr Administratorpasswort in einem Systemdialog. OpenNavo speichert es nicht.",
+    "skip": "Überspringen und umsehen",
+    "failed": {
+      "title": "Homebrew nicht installiert",
+      "E_SUDO": "Kein Administratorpasswort eingegeben. Die Installation wurde abgebrochen.",
+      "E_DOWNLOAD": "Installationsskript konnte nicht geladen werden. Versuchen Sie eine andere Download-Quelle.",
+      "viewLog": "Protokoll anzeigen",
+      "logTitle": "Homebrew-Installationsprotokoll"
+    },
+    "permissions": {
+      "title": "Berechtigungen",
+      "required": "Erforderlich",
+      "optional": "optional",
+      "enable": "Ein",
+      "waiting": "Warten auf Aktivierung…",
+      "granted": "Ein",
+      "confirm": "Ist aktiviert",
+      "startHint": "Aktivieren Sie „App-Verwaltung“ und „Festplattenvollzugriff“, um zu beginnen.",
+      "appManagement": {
+        "title": "OpenNavo darf Apps verwalten",
+        "body": "Zum Aktualisieren und Deinstallieren von Apps erforderlich.",
+        "enable": "App-Verwaltung aktivieren"
+      },
+      "fullDiskAccess": {
+        "title": "Festplattenvollzugriff",
+        "body": "Zum Ermitteln der Speicherbelegung, Deinstallieren und Wiederherstellen aus dem Papierkorb erforderlich.",
+        "enable": "Festplattenvollzugriff aktivieren"
+      }
+    },
+    "done": "Loslegen",
+    "arch": {
+      "arm64": "Apple silicon",
+      "x86_64": "Intel"
+    }
+  },
+  "permission": {
+    "relaunch": {
+      "body": "In den Systemeinstellungen aktiviert. Öffnen Sie OpenNavo erneut, damit die Änderung wirksam wird.",
+      "action": "Erneut öffnen",
+      "pending": "Nach erneutem Öffnen wirksam",
+      "busy": "Aufgaben laufen; nach Abschluss erneut öffnen"
+    },
+    "guide": {
+      "appManagement": "App-Verwaltung",
+      "fullDiskAccess": "Festplattenvollzugriff",
+      "dragTitle": "Ziehen Sie OpenNavo in die Liste oben",
+      "plusTitle": "Klicken Sie unter der Liste auf „+“ und wählen Sie OpenNavo",
+      "toggleHint": "Ist OpenNavo bereits aufgeführt, aktivieren Sie einfach den Schalter daneben.",
+      "dragLabel": "OpenNavo-Symbol ziehen",
+      "close": "Schließen",
+      "done": {
+        "appManagement": "OpenNavo darf jetzt Apps verwalten",
+        "fullDiskAccess": "Festplattenvollzugriff aktiviert"
+      },
+      "doneHint": "Falls macOS „Beenden & erneut öffnen“ anbietet, klicken Sie darauf."
+    },
+    "prompt": {
+      "appManagement": {
+        "title": "OpenNavo muss Apps verwalten dürfen",
+        "body": "macOS hat OpenNavo daran gehindert, die folgenden Apps zu ändern. Aktivieren Sie „App-Verwaltung“ und versuchen Sie es erneut."
+      },
+      "fullDiskAccess": {
+        "title": "Festplattenvollzugriff erforderlich",
+        "body": "Die folgenden Apps wurden entfernt, ihre Daten jedoch nicht. Zum Löschen ist Festplattenvollzugriff erforderlich. Aktivieren Sie ihn und versuchen Sie es erneut, um die Deinstallation abzuschließen."
+      },
+      "enable": "Ein",
+      "waiting": "Warten auf Aktivierung…",
+      "retry": "Erneut versuchen",
+      "retryAll": "Alle erneut versuchen",
+      "later": "Später"
+    }
+  },
+  "fullDiskGate": {
+    "title": "Zuerst Festplattenvollzugriff aktivieren",
+    "body": "„Installiert“ liest die App-Daten in Ihrer Library, um die Speicherbelegung genau zu berechnen, alle zugehörigen Dateien zu finden und Deinstallationen aus dem Papierkorb rückgängig zu machen.",
+    "points": {
+      "footprint": "Genaue Speicherbelegung jeder App einschließlich Daten und Caches",
+      "leftovers": "Alle zugehörigen Dateien finden, einschließlich Container und Gruppencontainer",
+      "undo": "Deinstallation aus dem Papierkorb rückgängig machen"
+    },
+    "row": "Erlauben Sie OpenNavo den Zugriff in den Systemeinstellungen. Diese Seite fährt automatisch fort.",
+    "unknown": "macOS hat den Berechtigungsstatus nicht gemeldet. Falls bereits aktiviert:",
+    "privacy": "Alles wird nur auf diesem Mac gelesen. Keine Dateien oder Pfade werden hochgeladen."
+  },
+  "deeplink": {
+    "installTitle": "{name} installieren?",
+    "installDescription": "Eine Webseite möchte diese App auf Ihrem Mac installieren. Nach Bestätigung wird der folgende Befehl ausgeführt; beim Abbrechen passiert nichts.",
+    "installConfirm": "Installieren",
+    "formulaUnsupported": "OpenNavo führt nur Apps (Homebrew Cask). Dieser Link verweist auf ein Befehlszeilentool.",
+    "preview": {
+      "invalid": "Dieser Link lässt sich nicht öffnen",
+      "invalidBody": "Die Parameter fehlen oder sind ungültig. OpenNavo hat keine Aktion ausgeführt.",
+      "startup": {
+        "looking": "{label} wird auf diesem Mac gesucht…",
+        "found": "{count} Startobjekt mit Kennung {label} gefunden | {count} Startobjekte mit Kennung {label} gefunden",
+        "foundBody": "Dies ist eine über einen Link geöffnete Vorschau; nichts wurde geändert. Mehrere Programme können dieselbe Kennung nutzen oder vortäuschen. Prüfen Sie Signatur, Speicherort und zugehörige App, bevor Sie das Objekt deaktivieren oder entfernen.",
+        "view": "{name} ansehen",
+        "notFound": "Kein Startobjekt mit Kennung {label} auf diesem Mac",
+        "notFoundBody": "Es ist möglicherweise nicht installiert oder macOS verweigert OpenNavo den Zugriff auf seinen Speicherort. Nichts wurde geändert."
+      },
+      "scan": {
+        "looking": "{token} wird auf diesem Mac gesucht…",
+        "title": "{name} scannen",
+        "body": "Vorschau über einen Webseitenlink: OpenNavo hat diese App auf Ihrem Mac gefunden. Der Scan beginnt erst, wenn Sie „Diese App scannen“ wählen.",
+        "action": "Diese App scannen",
+        "notFound": "{token} auf diesem Mac nicht gefunden",
+        "notFoundBody": "OpenNavo kann nur auf diesem Mac installierte Apps scannen. Es wurde keine Aktion ausgeführt."
+      },
+      "uninstall": {
+        "title": "Deinstallation von {name} ansehen",
+        "body": "Dies ist eine über einen Link geöffnete Vorschau; nichts wurde entfernt. „Deinstallieren“ zeigt zunächst die zu entfernenden Inhalte. Erst Ihre Bestätigung startet den Vorgang.",
+        "several": "{count} Apps auf diesem Mac entsprechen {token}. Wählen Sie eine zur Prüfung:",
+        "view": "{name} ansehen",
+        "notFound": "{token} auf diesem Mac nicht gefunden",
+        "notFoundBody": "Die App wurde möglicherweise bereits deinstalliert oder so installiert, dass OpenNavo sie nicht zuordnen kann. Es wurde keine Aktion ausgeführt.",
+        "permission": "Aktivieren Sie Festplattenvollzugriff, um die Deinstallation von {token} anzusehen."
+      }
+    }
+  },
+  "tray": {
+    "available": "{count} Update verfügbar | {count} Updates verfügbar",
+    "upToDate": "Alles ist auf dem neuesten Stand",
+    "upToDateHint": "Neue Versionen werden hier angezeigt",
+    "running": {
+      "upgrade": "{name} wird aktualisiert",
+      "install": "{name} wird installiert",
+      "uninstall": "{name} wird deinstalliert",
+      "other": "{name} wird bearbeitet"
+    },
+    "queued": "{count} weitere Aufgabe wartet | {count} weitere Aufgaben warten",
+    "update": "Aktualisieren",
+    "updateAll": "Alle aktualisieren ({count}) | Alle aktualisieren ({count})",
+    "more": "{count} weiterer Eintrag in OpenNavo | {count} weitere Einträge in OpenNavo",
+    "open": "OpenNavo öffnen",
+    "settings": "Einstellungen",
+    "queuedToast": "Zur Warteschlange hinzugefügt"
+  },
+  "quit": {
+    "title": "{n} Aufgabe ist noch nicht abgeschlossen | {n} Aufgaben sind noch nicht abgeschlossen",
+    "description": "Beenden unterbricht die laufende Installation. Abgeschlossene Aufgaben bleiben unberührt.",
+    "confirm": "Trotzdem beenden",
+    "cancel": "Weiter ausführen"
+  },
+  "restore": {
+    "title": "{n} Aufgabe blieb zuletzt unvollständig | {n} Aufgaben blieben zuletzt unvollständig",
+    "description": "Fortsetzen führt sie in der ursprünglichen Reihenfolge aus; Verwerfen bricht sie ab.",
+    "resume": "Fortsetzen",
+    "discard": "Verwerfen"
+  },
+  "updater": {
+    "autoCheck": "Automatisch nach OpenNavo-Updates suchen",
+    "autoCheckHint": "Prüft nach dem Start, höchstens einmal täglich erfolgreich.",
+    "foundTitle": "Neue Version verfügbar",
+    "foundDescription": "OpenNavo {version} steht zum Download bereit",
+    "versionChange": "Aktuelle Version {current} → Neue Version {next}",
+    "notesTitle": "Neuerungen",
+    "noNotes": "Für diese Version gibt es keine Versionshinweise.",
+    "fullNotes": "Alle Versionshinweise ansehen",
+    "later": "Später",
+    "restartHint": "Nach der Installation ist ein Neustart erforderlich. Laufende Aufgaben können Sie vorher abschließen.",
+    "readyTitle": "Update bereit",
+    "downloadingUnknown": "Update wird heruntergeladen…",
+    "installFailed": "Download oder Installation fehlgeschlagen. Versuchen Sie es erneut.",
+    "viewUpdate": "Update ansehen",
+    "previewHint": "Entwicklungsvorschau: Download und Installation werden simuliert; kein echtes Update. Neustarten schließt nur die Vorschau, die erneut geöffnet werden kann.",
+    "previewNotes": "- Kompaktere ausgewählte Sammlungen zeigen mehr Apps\n- OpenNavo sucht jetzt täglich automatisch nach neuen Versionen\n- Bekannte Probleme behoben und Bedienung verbessert",
+    "previewFailure": "Downloadfehler simulieren",
+    "title": "Client-Updates",
+    "current": "Aktuelle Version {version}",
+    "check": "Nach Updates suchen",
+    "latest": "Sie haben die neueste Version",
+    "available": "Neue Version {version}",
+    "install": "Laden und installieren",
+    "downloading": "Download {percent}",
+    "installed": "Installiert; nach Neustart wirksam",
+    "restart": "Neu starten",
+    "busy": "Aufgaben laufen; nach Abschluss neu starten",
+    "failed": "Update-Prüfung fehlgeschlagen"
+  },
+  "palette": {
+    "placeholder": "Apps oder Aktionen suchen",
+    "apps": "App",
+    "actions": "Aktionen",
+    "navigation": "Gehe zu",
+    "open": "Öffnen",
+    "install": "Installieren",
+    "update": "{name} aktualisieren",
+    "reveal": "{name} im Finder anzeigen",
+    "viewAll": "Alle Ergebnisse für „{q}“ anzeigen",
+    "goTo": "Zu {page}",
+    "installedVersion": "{version} installiert",
+    "updatable": "Update verfügbar",
+    "copied": "{command} kopiert"
+  },
+  "tasks": {
+    "ops": {
+      "install": "Installieren",
+      "upgrade": "Aktualisieren",
+      "uninstall": "Deinstallieren",
+      "reinstall": "Neu installieren",
+      "pin": "Version fixieren",
+      "unpin": "Fixierung aufheben",
+      "cleanup": "Cache bereinigen",
+      "update": "Homebrew aktualisieren",
+      "install_homebrew": "Homebrew installieren",
+      "remove_leftovers": "Reste bereinigen",
+      "clean": "Speicher aufräumen",
+      "av_db_update": "Virendatenbank aktualisieren",
+      "rollback": "Zurücksetzen"
+    },
+    "running": {
+      "install": "{name} wird installiert",
+      "upgrade": "{name} wird aktualisiert",
+      "uninstall": "{name} wird deinstalliert",
+      "reinstall": "{name} wird neu installiert",
+      "pin": "{name} wird fixiert",
+      "unpin": "Fixierung von {name} wird aufgehoben",
+      "cleanup": "Cache wird bereinigt",
+      "update": "Homebrew wird aktualisiert",
+      "install_homebrew": "Homebrew wird installiert",
+      "remove_leftovers": "Reste werden bereinigt: {name}",
+      "clean": "Mac wird bereinigt",
+      "av_db_update": "Virendatenbank wird aktualisiert",
+      "rollback": "{name} wird zurückgesetzt"
+    },
+    "phases": {
+      "preparing": "Vorbereitung",
+      "fetching": "Informationen abrufen",
+      "downloading": "Download",
+      "scanning": "Installationspaket scannen",
+      "installing": "Installation",
+      "linking": "Verknüpfen",
+      "cleaning": "Bereinigung",
+      "uninstalling": "Deinstallieren",
+      "updating": "Index aktualisieren",
+      "finishing": "Abschließen"
+    },
+    "step": "Schritt {index} von {count}: {phase} | Schritt {index} von {count}: {phase}",
+    "remaining": "Noch etwa {time}",
+    "queue": "Wartet",
+    "oneAtATime": "brew führt jeweils nur eine Aufgabe aus",
+    "triggers": {
+      "manual": "Manuell",
+      "schedule": "Automatisch",
+      "deeplink": "Von Webseite",
+      "bundle": "Stapel",
+      "retry": "Erneut versuchen"
+    },
+    "succeeded": "{name}: {action} abgeschlossen",
+    "failed": "{name}: {action} fehlgeschlagen"
+  },
+  "errors": {
+    "E_STARTUP_PROTECTED": "Dieses Objekt gehört zu macOS und kann hier nicht geändert werden",
+    "E_AV_CONSENT": "Stimmen Sie zuerst dem Download der Virendatenbank zu",
+    "E_AV_NOT_READY": "Virendatenbank noch nicht geladen. Laden Sie sie zuerst unter „Virenscan“ herunter",
+    "E_AV_ENGINE": "Scan-Engine konnte nicht starten. Versuchen Sie es später erneut",
+    "E_AV_SCAN_FAILED": "Scan nicht abgeschlossen. Starten Sie ihn erneut",
+    "E_AV_DB_RATE_LIMITED": "Zu häufige Datenbank-Updates wurden vom offiziellen Server vorübergehend begrenzt. Ein neuer Versuch erfolgt später automatisch",
+    "E_AV_DB_UPDATE": "Virendatenbank konnte nicht aktualisiert werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut",
+    "E_RESTORE_CONFLICT": "Am ursprünglichen Ort existiert bereits eine gleichnamige Datei. Nichts wurde wiederhergestellt",
+    "E_MAS_NOT_SIGNED_IN": "App Store-Kontostatus konnte nicht bestätigt werden. Versuchen Sie es erneut oder schließen Sie den Vorgang im App Store ab",
+    "E_MAS_NOT_OWNED": "Dieses Konto hat die App noch nicht bezogen. Klicken Sie im App Store auf „Laden“",
+    "E_MAS_PAID": "Kaufen Sie kostenpflichtige Apps im App Store",
+    "E_MAS_OTHER_ACCOUNT": "Diese App wurde mit einem anderen Apple-Konto gekauft. Aktualisieren Sie sie im App Store",
+    "E_MAS_REGION": "Diese App ist in der aktuellen Store-Region nicht verfügbar",
+    "E_MAS_RATE_LIMITED": "Zu viele App Store-Anfragen. Versuchen Sie es in einer Minute erneut",
+    "E_UPDATE_INTEGRITY": "Integritätsprüfung des Downloads fehlgeschlagen. Update nicht installiert",
+    "E_UPDATE_TEAM_MISMATCH": "Die Entwicklersignatur der neuen Version weicht ab. Nicht installiert",
+    "E_UPDATE_NOT_NOTARIZED": "Die neue Version ist nicht von Apple notarisiert. Nicht installiert",
+    "E_UPDATE_ARCH": "Die neue Version unterstützt den Chip dieses Mac nicht",
+    "E_UPDATE_MIN_OS": "Die neue Version benötigt eine neuere macOS-Version",
+    "E_UPDATE_FEED": "Update-Quelle konnte nicht gelesen werden. Versuchen Sie es später erneut",
+    "E_UPDATE_DMG_LICENSE": "Dieses Installationspaket verlangt die Zustimmung zu einer Lizenz. Installieren Sie diese Version manuell",
+    "E_UPDATE_SWAP": "Ersetzen der App fehlgeschlagen. Die vorherige Version wurde wiederhergestellt",
+    "E_ADMIN_CANCELED": "Administratorautorisierung abgebrochen",
+    "E_NOT_IMPLEMENTED": "Diese Funktion ist noch nicht verfügbar",
+    "E_DOWNLOAD_UNSAFE": "Dieses Installationspaket hat die Prüfung nicht bestanden. Öffnen wurde blockiert",
+    "E_MAS_ENGINE": "App Store-Download-Komponente fehlgeschlagen. Schließen Sie den Vorgang im App Store ab",
+    "E_MAS_HELPER_MISSING": "Dieser OpenNavo-App fehlt die App Store-Download-Komponente. Installieren Sie OpenNavo vollständig neu oder schließen Sie den Vorgang im App Store ab",
+    "E_NOT_INSTALLABLE": "Diese App kann nur von ihrer Website geladen und nicht mit Homebrew installiert werden",
+    "E_LINK_URL": "Diese Download-Adresse ist für die App nicht registriert und wurde nicht geöffnet",
+    "E_APP_RUNNING": "App läuft. Update verschoben; beenden Sie die App und versuchen Sie es erneut",
+    "E_APP_QUIT_FAILED": "App wurde nicht beendet. Update verschoben; speichern Sie Ihre Arbeit, beenden Sie die App und versuchen Sie es erneut",
+    "E_APP_CHECK_FAILED": "Laufstatus der App nicht prüfbar. Update verschoben; laden Sie die Liste installierter Apps neu und versuchen Sie es erneut",
+    "actionFailed": "Vorgang nicht abgeschlossen",
+    "E_BREW_NOT_FOUND": "Installieren Sie zuerst Homebrew",
+    "E_INVALID_ARG": "Ungültiger Parameter",
+    "E_CHECKSUM": "Download unterbrochen: SHA-256-Prüfsumme stimmt nicht überein",
+    "E_DOWNLOAD": "Download fehlgeschlagen. Prüfen Sie das Netzwerk oder wechseln Sie die Download-Quelle",
+    "E_APP_EXISTS": "Am Installationsort existiert bereits eine gleichnamige App. Vorgang nicht abgeschlossen; siehe Protokoll. Ein erneuter Installationsversuch prüft dies nochmals und fragt nach einer Übernahmebestätigung",
+    "E_NOT_FOUND": "Dieses Paket wurde in Homebrew nicht gefunden",
+    "E_DISABLED": "Homebrew hat dieses Paket deaktiviert",
+    "E_LOCKED": "Ein anderer Homebrew-Prozess läuft. Automatischer Wiederholungsversuch in Kürze",
+    "E_PERMISSION": "Keine Berechtigung zum Ändern dieser App. Erlauben Sie dies in den Systemeinstellungen",
+    "E_FULL_DISK_ACCESS": "Zum Löschen von App-Daten ist Festplattenvollzugriff erforderlich",
+    "E_SUDO": "Administratorpasswort erforderlich",
+    "E_MACOS_VERSION": "Die macOS-Version erfüllt die Anforderungen nicht",
+    "E_REQUIRED_BY": "Andere Pakete benötigen dieses Paket. Deinstallation nicht möglich",
+    "E_CONFLICT": "Konflikt mit einem installierten Paket",
+    "E_INTERRUPTED": "Aufgabe unterbrochen",
+    "E_TIMEOUT": "Seit längerer Zeit keine Antwort",
+    "E_UNKNOWN": "Vorgang fehlgeschlagen. Details im Protokoll",
+    "E_NETWORK": "OpenNavo-Dienst nicht erreichbar",
+    "E_PROTECTED": "Diese App ist geschützt und kann nicht deinstalliert werden",
+    "E_APP_MANAGEMENT": "Erlauben Sie OpenNavo zuerst die App-Verwaltung",
+    "E_UNINSTALL_INCOMPLETE": "App noch vorhanden. Deinstallation unvollständig; prüfen Sie das Protokoll und versuchen Sie es erneut",
+    "E_PLAN_EXPIRED": "Dateien wurden geändert. Scannen Sie erneut",
+    "E_SCAN_CANCELED": "Scan abgebrochen",
+    "E_RESTORE_UNAVAILABLE": "Einige Dateien sind nicht mehr im Papierkorb und konnten nicht wiederhergestellt werden",
+    "E_TRASH_FAILED": "Verschieben in den Papierkorb fehlgeschlagen",
+    "E_MONITOR_UNAVAILABLE": "Systeminformationen dieses Mac konnten nicht gelesen werden",
+    "E_FAN_UNSUPPORTED": "Der Chip dieses Mac unterstützt noch keine Lüftersteuerung",
+    "E_FAN_HELPER_NOT_ENABLED": "Lüfter-Hilfsprogramm noch nicht installiert oder zugelassen",
+    "E_FAN_HELPER_UNSIGNED": "Diese OpenNavo-Version ist nicht offiziell signiert, etwa eine Entwicklungsversion. Das Lüfter-Hilfsprogramm kann nicht installiert werden. Verwenden Sie das offizielle Installationspaket",
+    "E_FAN_HELPER_UNAVAILABLE": "Lüfter-Hilfsprogramm nicht erreichbar. Versuchen Sie es später erneut",
+    "E_FAN_WRITE_FAILED": "Lüftereinstellung konnte nicht geändert werden",
+    "E_FAN_NO_MANUAL_SPEED": "Noch keine vorherige manuelle Drehzahl vorhanden",
+    "E_FAN_UNAUTHORIZED": "Signaturprüfung des Lüfter-Hilfsprogramms fehlgeschlagen. Installieren Sie OpenNavo neu",
+    "E_FAN_SENSOR_UNAVAILABLE": "Temperatur nicht lesbar. Manuelle Steuerung aus Sicherheitsgründen gesperrt",
+    "E_INSTALL_THREAT": "Bedrohung im Installationspaket gefunden. Installation gestoppt",
+    "E_INSTALL_SCAN": "Scan vor der Installation nicht abgeschlossen. Nichts installiert. Versuchen Sie es später erneut oder deaktivieren Sie den Scan unter Einstellungen → Sicherheit",
+    "E_PASTE_EXPIRED": "Dieser Einfügevorgang ist abgelaufen und wurde verworfen",
+    "E_ACCESSIBILITY_DENIED": "Erlauben Sie OpenNavo in den Systemeinstellungen den Zugriff auf Bedienungshilfen",
+    "E_VT_DISABLED": "VirusTotal-Abfrage deaktiviert",
+    "E_VT_KEY_REQUIRED": "Tragen Sie zuerst Ihren VirusTotal API-Schlüssel in den Einstellungen ein",
+    "E_VT_KEY_INVALID": "VirusTotal API-Schlüssel ungültig. Prüfen Sie ihn und geben Sie ihn erneut ein",
+    "E_VT_RATE_LIMITED": "Zu viele VirusTotal-Abfragen. Die öffentliche API erlaubt 4 pro Minute. Versuchen Sie es später erneut",
+    "E_VT_UNAVAILABLE": "VirusTotal derzeit nicht erreichbar. Versuchen Sie es später erneut",
+    "E_KEYCHAIN": "Schlüsselbund konnte nicht gelesen oder aktualisiert werden",
+    "E_AUTOMATION_DENIED": "Erlauben Sie OpenNavo unter Systemeinstellungen → Datenschutz & Sicherheit → Automation die Steuerung von System Events",
+    "E_STARTUP_CHANGED": "Ein anderes Programm hat dieses Startobjekt gerade geändert. Laden Sie neu und versuchen Sie es erneut",
+    "E_LOGIN_ITEM_EXISTS": "Diese App wird bereits bei der Anmeldung geöffnet",
+    "E_ROLLBACK_UNAVAILABLE": "Die aufbewahrte Version fehlt oder die App wurde inzwischen geändert. Zurücksetzen nicht möglich",
+    "E_ROLLBACK_INTEGRITY": "Signaturprüfung der aufbewahrten Version fehlgeschlagen. Nichts zurückgesetzt",
+    "E_FW_NOT_BUNDLED": "Diese Version enthält keine Firewall-Komponente. Verwenden Sie die offizielle OpenNavo-Version",
+    "E_FW_NOT_IN_APPLICATIONS": "Verschieben Sie OpenNavo zuerst in den Ordner „Programme“ und öffnen Sie es erneut",
+    "E_FW_ACTIVATION": "macOS hat die Installation der Systemerweiterung nicht abgeschlossen. Versuchen Sie es erneut",
+    "E_FW_CONSENT_DENIED": "Netzwerkinhaltsfilterung nicht erlaubt. Firewall bleibt aus",
+    "E_FW_DISCONNECTED": "Firewall-Komponente antwortet nicht. Versuchen Sie es gleich erneut",
+    "E_FW_RULE_INVALID": "Ungültige Regel. Prüfen Sie Programm, Adresse und Port",
+    "E_FW_UNKNOWN_ALERT": "Diese Verbindung wurde bereits behandelt",
+    "E_FW_BLOCKLIST_URL": "Nur https-Adressen oder Dateien auf diesem Mac werden unterstützt",
+    "E_FW_BLOCKLIST_FETCH": "Sperrliste konnte nicht geladen werden. Prüfen Sie Adresse und Verbindung",
+    "E_FW_BLOCKLIST_FORMAT": "Keine nutzbaren Domains oder IPs in der Datei gefunden",
+    "E_FW_BLOCKLIST_TOO_LARGE": "Sperrliste zu groß: höchstens 50 MB und 1 Million Einträge"
+  },
+  "installConfirm": {
+    "title": "Vorhandenes {name} übernehmen?",
+    "description": "Am Installationsort existiert bereits eine App. Bestätigen Sie, um die Verwaltung durch Homebrew zu versuchen. Nach der Übernahme können Sie sie über OpenNavo aktualisieren und deinstallieren.",
+    "matchHint": "Die vorhandene App muss mit dem Installationspaket übereinstimmen. Andernfalls scheitert die Übernahme; nichts wird zwangsweise überschrieben.",
+    "confirm": "Übernahme bestätigen",
+    "blockedTitle": "{name} derzeit nicht installierbar",
+    "blockedDescription": "Installationsort oder vorhandene App konnten nicht geprüft werden. Keine Installation oder Übernahme ausgeführt. Prüfen Sie App und Installationsdetails und versuchen Sie es erneut."
+  },
+  "tapConfirm": {
+    "title": "{name} aus Drittanbieter-Tap installieren?",
+    "description": "{name} ist nicht im offiziellen Homebrew-Repository. Es wird vom Autor des folgenden Taps gepflegt und wurde nicht von Homebrew geprüft.",
+    "hint": "Bei der ersten Installation lädt Homebrew diesen Tap von GitHub und vertraut der App. Spiegel gelten dafür nicht. Fahren Sie nur fort, wenn Sie dem Autor vertrauen.",
+    "confirm": "Weiter installieren"
+  },
+  "runningApps": {
+    "title": "Apps laufen",
+    "description": "Speichern Sie Ihre Arbeit, bevor Sie die App für das Update beenden.",
+    "batchDescription": "Diese Apps laufen. Speichern Sie Ihre Arbeit. Sie können diese Apps überspringen oder beenden und gemeinsam aktualisieren.",
+    "later": "Später",
+    "skip": "Diese Apps überspringen",
+    "quit": "Beenden und aktualisieren",
+    "quitAll": "Apps beenden und aktualisieren",
+    "reopen": "Nach erfolgreichem Update erneut öffnen",
+    "quitHint": "Bleibt eine App geöffnet oder brechen Sie das Beenden ab, wird ihr Update verschoben. Apps werden nicht zwangsweise beendet.",
+    "deferred": "Verschoben"
+  },
+  "page": {
+    "comingSoon": "Diese Seite wird in einer späteren Aufgabe ergänzt."
+  },
+  "appInfo": {
+    "title": "Kurz erklärt",
+    "open": "Öffnen",
+    "reveal": "Im Finder anzeigen",
+    "detail": "In OpenNavo ansehen",
+    "appStore": "App Store-Seite",
+    "adoptTitle": "Mit Homebrew verwalten",
+    "adoptBody": "Homebrew führt {name}. Nach der Übernahme können Sie die App in OpenNavo mit einem Klick aktualisieren und beim Deinstallieren umfassendere Bereinigungsregeln nutzen.",
+    "adopt": "Mit Homebrew übernehmen",
+    "footprint": "Speicherbelegung",
+    "estimate": "Geschätzt",
+    "footprintCaption": "Speicheraufteilung",
+    "appBytes": "App",
+    "dataBytes": "App-Daten",
+    "cacheBytes": "Caches",
+    "footprintIncomplete": "Ohne Festplattenvollzugriff werden einige Daten nicht mitgezählt.",
+    "footprintPartial": "Einige Dateien sind nicht lesbar. Die tatsächliche Belegung kann höher sein.",
+    "fields": {
+      "path": "Speicherort",
+      "bundleId": "Bundle ID",
+      "version": "Version",
+      "vendor": "Entwickler",
+      "arch": "Architektur",
+      "source": "Quelle",
+      "updater": "Update-Methode",
+      "installedAt": "Installiert am",
+      "lastUsed": "Zuletzt geöffnet"
+    },
+    "updaterNone": "OpenNavo kann diese App noch nicht aktualisieren",
+    "arch": {
+      "arm64": "Apple silicon",
+      "x86_64": "Intel",
+      "universal": "Universal"
+    },
+    "protected": {
+      "self": "OpenNavo kann sich nicht selbst deinstallieren. Verschieben Sie es im Finder in den Papierkorb.",
+      "system": "Dies ist Teil von macOS und kann nicht deinstalliert werden.",
+      "managed": "Diese App wird vom Administrator verwaltet und kann hier nicht deinstalliert werden."
+    },
+    "uninstall": "Deinstallieren",
+    "unknown": "Unbekannt"
+  },
+  "uninstall": {
+    "title": "{name} deinstallieren?",
+    "titleMany": "{count} App deinstallieren? | {count} Apps deinstallieren?",
+    "runningTitle": "{name} wird deinstalliert",
+    "runningTitleMany": "{count} App wird deinstalliert | {count} Apps werden deinstalliert",
+    "doneTitle": "Deinstallation abgeschlossen",
+    "failedTitle": "Scan nicht abgeschlossen",
+    "command": "Führt {command} aus und entfernt anschließend die unten ausgewählten zugehörigen Dateien.",
+    "scanning": "Zugehörige Dateien werden gesucht…",
+    "checked": "{checked} / {total} Speicherorte geprüft",
+    "selection": "{selected} von {total} ausgewählt · {size}",
+    "admin": "{count} Eintrag benötigt Ihr Administratorpasswort | {count} Einträge benötigen Ihr Administratorpasswort",
+    "sharedKept": "{count} gemeinsam genutzter Eintrag bleibt erhalten | {count} gemeinsam genutzte Einträge bleiben erhalten",
+    "selectAll": "Alle auswählen",
+    "onlyApp": "Nur App löschen",
+    "recommended": "Empfohlene Auswahl",
+    "groups": {
+      "app": "App",
+      "app_data": "App-Daten",
+      "caches": "Caches",
+      "preferences": "Einstellungen & Fensterstatus",
+      "logs": "Protokolle & Absturzberichte",
+      "background": "Hintergrundobjekt",
+      "cli": "Befehlszeilen-Verknüpfungen",
+      "plugins": "Plug-ins, Treiber & Erweiterungen",
+      "receipts": "Installationsbelege",
+      "maybe": "Möglicherweise zugehörig · Bitte prüfen"
+    },
+    "groupHints": {
+      "app_data": "Application Support · Containers · Group Containers",
+      "caches": "Caches · HTTPStorages · Temporäre Dateien",
+      "preferences": "Preferences · Saved Application State · Cookies",
+      "logs": "Logs · DiagnosticReports",
+      "background": "LaunchAgents · LaunchDaemons · Privilegierte Hilfsprogramme",
+      "cli": "Symbolische Verknüpfungen in die App",
+      "plugins": "Internet Plug-Ins · Audio · Gemeinsame Komponenten",
+      "receipts": "pkgutil-Installationsbelege",
+      "maybe": "Nur ähnlicher Name, standardmäßig nicht ausgewählt"
+    },
+    "itemCount": "{count} Eintrag | {count} Einträge",
+    "unselected": "Nicht ausgewählt · {size}",
+    "files": "{count} Datei | {count} Dateien",
+    "link": "Verknüpfung",
+    "reveal": "Im Finder anzeigen",
+    "required": "Wird immer entfernt",
+    "adminHint": "Im Systemordner; Administratorpasswort erforderlich",
+    "shared": "Gemeinsam genutzt",
+    "sharedWith": "Auch von {names} genutzt; bleibt standardmäßig erhalten",
+    "reasons": {
+      "app_bundle": "App",
+      "brew_uninstall": "Homebrew-Deinstallationsschritt",
+      "zap_rule": "Homebrew-Regel",
+      "bundle_id": "Bundle ID",
+      "app_group": "App Group",
+      "launchd": "Hintergrunddienst",
+      "symlink": "Verweist in die App",
+      "pkg_receipt": "Installationsbeleg",
+      "team_id": "Gleicher Entwickler",
+      "name_exact": "Gleicher Name",
+      "name_similar": "Ähnlicher Name"
+    },
+    "reasonHints": {
+      "app_bundle": "Die App selbst",
+      "brew_uninstall": "brew uninstall verarbeitet dies immer; Abwahl nicht möglich",
+      "zap_rule": "Aus der manuell gepflegten zap-Liste von Homebrew Cask",
+      "bundle_id": "Dateiname entspricht der Bundle ID der App oder einer ihrer Komponenten",
+      "app_group": "In der App-Signatur deklarierter gemeinsamer Container",
+      "launchd": "Eine launchd-Konfiguration startet ein Programm in dieser App",
+      "symlink": "Verknüpft in die App und wird nach der Deinstallation ungültig",
+      "pkg_receipt": "Laut pkgutil vom Installationspaket dieser App geschrieben",
+      "team_id": "Entwicklerordner mit derselben Team ID der Signatur",
+      "name_exact": "Ordnername entspricht genau dem App-Namen",
+      "name_similar": "Nur ähnlicher Name, standardmäßig nicht ausgewählt"
+    },
+    "phases": {
+      "preparing": "App wird beendet",
+      "uninstalling": "App wird entfernt",
+      "cleaning": "Zugehörige Dateien werden entfernt",
+      "finishing": "Verlauf wird gespeichert"
+    },
+    "notices": {
+      "rescanned": "Dateien wurden geändert und erneut gescannt.",
+      "appManagement": "Erlauben Sie OpenNavo zuerst die App-Verwaltung, um Apps zu löschen, die nicht mit Homebrew installiert wurden.",
+      "incomplete": "Ohne Festplattenvollzugriff konnte {count} Speicherort nicht geprüft werden: {paths}. Aktivieren Sie ihn für eine gründlichere Bereinigung. | Ohne Festplattenvollzugriff konnten {count} Speicherorte nicht geprüft werden: {paths}. Aktivieren Sie ihn für eine gründlichere Bereinigung.",
+      "running": "{names} läuft und wird vor der Deinstallation beendet. | {names} laufen und werden vor der Deinstallation beendet.",
+      "siblings": "Apps aus demselben Homebrew-Paket ({cask}) werden ebenfalls deinstalliert: {names}.",
+      "brewSudo": "Die Homebrew-Deinstallation kann Ihr Administratorpasswort separat anfordern.",
+      "personal": {
+        "chat_history": "Die App-Daten von {name} enthalten Chats, Bilder und Dateien (ca. {size}). Sichern Sie diese zuvor in der App, wenn Sie sie behalten möchten.",
+        "documents": "Die App-Daten von {name} enthalten Ihre Dokumente und Projekte (ca. {size}). Speichern oder exportieren Sie diese zuvor, wenn Sie sie behalten möchten.",
+        "media": "Die App-Daten von {name} enthalten Fotos, Audio oder Video (ca. {size}). Exportieren Sie diese zuvor, wenn Sie sie behalten möchten.",
+        "browser_profile": "Die App-Daten von {name} enthalten Lesezeichen, Verlauf und Erweiterungen (ca. {size}). Bei angemeldetem Konto können sie nach der Neuinstallation synchronisiert werden.",
+        "vm_disk": "Die App-Daten von {name} enthalten virtuelle Festplatten, Images und Volumes (ca. {size}). Nach dem Löschen müssen sie erneut geladen werden.",
+        "other": "Die App-Daten von {name} können persönliche Inhalte enthalten (ca. {size}). Sichern Sie diese zuvor, wenn Sie sie behalten möchten."
+      },
+      "uninstaller": "{name} hat ein offizielles Deinstallationsprogramm, das auch Lizenzen und gemeinsame Komponenten entfernt."
+    },
+    "mode": {
+      "label": "Löschmethode",
+      "trash": "In den Papierkorb",
+      "delete": "Sofort löschen",
+      "deleteWarning": "Löschen kann nicht rückgängig gemacht werden"
+    },
+    "confirm": "Deinstallieren",
+    "confirmClean": "Deinstallieren & bereinigen · {size}",
+    "confirmDelete": "Deinstallieren & endgültig löschen · {size}",
+    "confirmMany": "{count} App deinstallieren · {size} | {count} Apps deinstallieren · {size}",
+    "cancel": "Abbrechen",
+    "retry": "Erneut scannen",
+    "scanFailed": "Scan nicht abgeschlossen: {reason}",
+    "background": "Im Hintergrund fortsetzen",
+    "backgroundHint": "Schließen dieses Fensters unterbricht den Vorgang nicht. Sie werden nach Abschluss benachrichtigt.",
+    "log": "Protokoll anzeigen",
+    "hideLog": "Protokoll ausblenden",
+    "waiting": "Wartet",
+    "batch": {
+      "meta": "App + {count} zugehöriger Eintrag | App + {count} zugehörige Einträge",
+      "admin": "Administratorpasswort erforderlich",
+      "exclude": "Von dieser Deinstallation ausschließen",
+      "include": "In diese Deinstallation aufnehmen",
+      "skipped": "Nicht deinstallieren"
+    },
+    "result": {
+      "titleOne": "{name} deinstalliert",
+      "titleMany": "{count} App deinstalliert | {count} Apps deinstalliert",
+      "heroTrash": "Die Dateien sind im Papierkorb. Bis zum Leeren können Sie den Vorgang rückgängig machen.",
+      "heroDelete": "Die Dateien wurden endgültig gelöscht.",
+      "freed": "Freigebbarer Speicher",
+      "freedNow": "Freigegebener Speicher",
+      "freedHint": "Nach Leeren des Papierkorbs",
+      "freedNowHint": "Jetzt verfügbar",
+      "moved": "Im Papierkorb",
+      "deleted": "Gelöscht",
+      "countHint": "Einschließlich App",
+      "skipped": "Übersprungen",
+      "skippedNone": "Keine Probleme",
+      "skippedSee": "Gründe siehe unten",
+      "skippedTitle": "Diese Einträge konnten nicht entfernt werden",
+      "skippedHint": "Sie können diese später unter „Speicher aufräumen“ bereinigen.",
+      "failed": "{name} nicht deinstalliert: {reason}",
+      "quitFailed": "Die App wurde nicht beendet und wartet möglicherweise auf das Speichern Ihrer Änderungen. Speichern oder schließen Sie sie und versuchen Sie es erneut.",
+      "finished": "Abgeschlossen",
+      "notFinished": "Nicht abgeschlossen",
+      "retry": "Erneut deinstallieren",
+      "undo": "Deinstallation rückgängig",
+      "purge": "Diese Dateien endgültig löschen",
+      "done": "Fertig",
+      "brewNote": "Beim Rückgängigmachen werden die Dateien einer Homebrew-App wiederhergestellt, ihr Homebrew-Eintrag jedoch nicht. Die App wird dann als „Manuell installiert · Übernehmbar“ angezeigt."
+    },
+    "skipReasons": {
+      "in_use": "Datei wird verwendet",
+      "permission": "Keine Berechtigung",
+      "admin_canceled": "Kein Administratorpasswort angegeben",
+      "missing": "Datei nicht mehr vorhanden",
+      "changed": "Seit dem Scan geändert; sicherheitshalber übersprungen",
+      "protected": "Geschützter Speicherort",
+      "running": "App läuft",
+      "tool_unavailable": "Werkzeug läuft nicht; öffnen und erneut versuchen"
+    },
+    "toasts": {
+      "done": "{name} deinstalliert",
+      "doneMany": "{count} App deinstalliert | {count} Apps deinstalliert",
+      "doneBody": "{count} Eintrag im Papierkorb · {size} freigebbar | {count} Einträge im Papierkorb · {size} freigebbar",
+      "deletedBody": "{count} Eintrag gelöscht · {size} freigegeben | {count} Einträge gelöscht · {size} freigegeben",
+      "undo": "Rückgängig",
+      "undone": "Deinstallation rückgängig gemacht",
+      "undoneBody": "{count} Eintrag wiederhergestellt | {count} Einträge wiederhergestellt",
+      "undoMissing": "{count} Datei konnte nicht wiederhergestellt werden | {count} Dateien konnten nicht wiederhergestellt werden",
+      "purged": "Endgültig gelöscht, {size} freigegeben",
+      "needsFullDisk": "Zum Lesen des Papierkorbs ist Festplattenvollzugriff erforderlich."
+    }
+  },
+  "cleanup": {
+    "title": "Speicher aufräumen",
+    "rescan": "Erneut scannen",
+    "subtitle": {
+      "idle": "Caches, Protokolle und Reste gelöschter Apps finden und vor dem Bereinigen prüfen",
+      "scanning": "Scan läuft; liest nur und löscht nichts",
+      "review": "{size} freigebbar · Scan: {time}",
+      "running": "Bereinigung läuft. Sie können diese Seite verlassen",
+      "done": "Bereinigung abgeschlossen",
+      "failed": "Scan nicht abgeschlossen"
+    },
+    "overview": {
+      "title": "Wie viel Speicher kann dieser Mac freigeben?",
+      "titleAgain": "Scannen Sie gelegentlich erneut",
+      "body": "Der Scan liest nur und dauert etwa 30 Sekunden. Ergebnisse haben drei Risikostufen; nur regenerierbare und ausreichend alte Einträge sind vorausgewählt.",
+      "scan": "Scan starten",
+      "never": "Noch nie gescannt",
+      "lastScan": "Letzter Scan: {time}",
+      "lastResult": "Letzter Scan ({time}): Noch {size} bereinigbar"
+    },
+    "risks": {
+      "rebuildable": "Regenerierbar",
+      "review": "Prüfen",
+      "personal": "Persönliche Dateien"
+    },
+    "riskHints": {
+      "rebuildable": "Sofort gelöscht und Speicher freigegeben; werden bei Bedarf neu erstellt",
+      "review": "Nur alte Einträge vorausgewählt; vor dem Bereinigen prüfen",
+      "personal": "Nur aufgelistet, nie vorausgewählt; Ihre Auswahl kommt in den Papierkorb"
+    },
+    "categories": {
+      "app_caches": "App-Caches",
+      "logs": "Protokolle & Diagnoseberichte",
+      "browser_caches": "Browser-Caches",
+      "dev_caches": "Entwickler-Caches",
+      "homebrew": "Homebrew-Downloads & alte Versionen",
+      "temp": "Temporäre Dateien",
+      "leftovers": "Reste gelöschter Apps",
+      "installers": "Alte Installationsprogramme",
+      "project_artifacts": "Projekt-Build-Dateien",
+      "trash": "Papierkorb",
+      "device_backups": "iPhone- und iPad-Backups & Xcode-Archive",
+      "large_files": "Große und alte Dateien",
+      "docker": "Freigebbarer Docker-Speicher"
+    },
+    "categoryHints": {
+      "app_caches": "Von Apps erstellte Caches; werden nach dem Löschen automatisch neu erstellt",
+      "logs": "App-Protokolle und Absturzberichte, die älter als 7 Tage sind",
+      "browser_caches": "Nur Caches; Verlauf, Cookies, Passwörter und Erweiterungen bleiben erhalten",
+      "dev_caches": "Werden beim nächsten Build oder Installieren erneut erstellt oder geladen",
+      "homebrew": "Entspricht brew cleanup: alte Versionen und Download-Caches",
+      "temp": "Seit 3 Tagen unveränderte, nicht geöffnete temporäre Dateien",
+      "leftovers": "Die App ist nicht mehr auf diesem Mac, diese Dateien sind geblieben",
+      "installers": "dmg- und pkg-Dateien in Downloads und auf dem Schreibtisch; für installierte Apps vorausgewählt",
+      "project_artifacts": "node_modules, target, build usw. in seit 30 Tagen unveränderten Projekten; durch Installation der Abhängigkeiten oder erneuten Build wiederherstellbar",
+      "trash": "Auswählen leert den Papierkorb unwiderruflich",
+      "device_backups": "Nach Leeren des Papierkorbs können Backups keine Geräte mehr wiederherstellen und Archive keine Absturzprotokolle mehr auflösen",
+      "large_files": "Dateien über 1 GB, seit 90 Tagen nicht geöffnet",
+      "docker": "Mit Docker-Bereinigungsbefehlen gelöscht, nie vorausgewählt; Volumes werden nur angezeigt, nicht bereinigt"
+    },
+    "scan": {
+      "starting": "Scan wird vorbereitet",
+      "scanning": "{name} wird gescannt",
+      "found": "{size} gefunden",
+      "readOnly": "Nur Lesezugriff; nichts wird gelöscht",
+      "cancel": "Abbrechen"
+    },
+    "summary": {
+      "reclaimable": "Freigebbar",
+      "excludesPersonal": "Ohne persönliche Dateien",
+      "selected": "{count} Eintrag ausgewählt | {count} Einträge ausgewählt",
+      "breakdown": "{delete} löschen · {trash} in den Papierkorb",
+      "onlyRebuildable": "Nur regenerierbare",
+      "recommended": "Empfohlene Auswahl",
+      "inUse": "Weitere {size} in Verwendung"
+    },
+    "notices": {
+      "rescanned": "Ergebnisse aktualisiert. Bitte bestätigen Sie erneut.",
+      "services": "{count} Hintergrundobjekt gelöschter Apps ({names}) wird beim Start weiterhin geladen. Es verursacht nur Fehler und Stromverbrauch; Bereinigung empfohlen. | {count} Hintergrundobjekte gelöschter Apps ({names}) werden beim Start weiterhin geladen. Sie verursachen nur Fehler und Stromverbrauch; Bereinigung empfohlen.",
+      "incomplete": "Ohne Festplattenvollzugriff wurden diese Speicherorte nicht geprüft: {paths}. Aktivieren Sie ihn, um mehr zu finden."
+    },
+    "category": {
+      "atLeast": "Mindestens {size}",
+      "selected": "{size} ausgewählt",
+      "none": "Nichts ausgewählt",
+      "allSkipped": "Alle übersprungen",
+      "skipped": "{count} Eintrag übersprungen, nur zur Ansicht | {count} Einträge übersprungen, nur zur Ansicht",
+      "lastModified": "Zuletzt geändert: {time}",
+      "servicesLoading": "{count} Hintergrundobjekt wird beim Start weiterhin geladen | {count} Hintergrundobjekte werden beim Start weiterhin geladen",
+      "inUse": "{size} in Verwendung"
+    },
+    "skipReasons": {
+      "running": "Läuft; zum Bereinigen beenden",
+      "in_use": "In Verwendung",
+      "busy": "Werkzeug läuft",
+      "recent": "Kürzlich geändert",
+      "git_tracked": "Enthält von Git erfasste Dateien",
+      "protected": "Geschützt",
+      "permission": "Keine Berechtigung",
+      "tool_stopped": "Läuft nicht; öffnen und erneut scannen, um freigebbaren Speicher zu sehen",
+      "volumes": "Volumes können Datenbanken und andere Daten enthalten; nur angezeigt, nie bereinigt"
+    },
+    "reasons": {
+      "orphan_service": "Hintergrunddienst",
+      "installer_installed": "Installiert",
+      "device_support_latest": "Neueste Version",
+      "device_support_latestHint": "Bleibt standardmäßig erhalten. Nach dem Entfernen bereitet Xcode es beim nächsten Anschließen des Geräts erneut vor; das dauert einige Minuten.",
+      "tool_download_cache": "Erneuter Download nötig",
+      "tool_download_cacheHint": "Regenerierbar, aber beim nächsten Build oder Test erneut zu laden. Das kann lange dauern und viel Datenvolumen verbrauchen; daher nicht vorausgewählt.",
+      "docker_images": "Ungenutzte Images",
+      "docker_imagesHint": "Von keinem Container genutzte Images. Werden bei Bedarf erneut geladen oder erstellt.",
+      "docker_build_cache": "Build-Cache",
+      "docker_build_cacheHint": "Der nächste Image-Build dauert länger; das Ergebnis bleibt gleich.",
+      "docker_containers": "Gestoppte Container",
+      "docker_containersHint": "Änderungen innerhalb dieser Container werden ebenfalls gelöscht; Volumes bleiben erhalten."
+    },
+    "item": {
+      "command": "Befehl",
+      "admin": "Administratorpasswort erforderlich",
+      "reveal": "Im Finder anzeigen",
+      "protect": "Immer behalten",
+      "keptOpen": "{count} verwendete Datei bleibt erhalten | {count} verwendete Dateien bleiben erhalten"
+    },
+    "footer": {
+      "selected": "{count} Eintrag ausgewählt · {size} | {count} Einträge ausgewählt · {size}",
+      "both": "{delete} unwiderruflich löschen; {trash} rückgängig machbar in den Papierkorb verschieben",
+      "deleteOnly": "{size} unwiderruflich löschen",
+      "trashOnly": "Alles rückgängig machbar in den Papierkorb verschieben",
+      "nothing": "Noch nichts ausgewählt",
+      "clean": "{size} bereinigen"
+    },
+    "confirm": {
+      "title": "{size} bereinigen?",
+      "count": "Insgesamt {count} Eintrag | Insgesamt {count} Einträge",
+      "delete": "{size} endgültig löschen: Caches, Protokolle, Entwickler-Caches und ähnliche regenerierbare Dateien. Nicht rückgängig machbar.",
+      "trash": "{size} in den Papierkorb verschieben: Reste gelöschter Apps und ähnliche Dateien. Danach rückgängig machbar.",
+      "emptyTrash": "Sie haben den Papierkorb ausgewählt: Sein gesamter Inhalt wird unwiderruflich gelöscht.",
+      "admin": "Darunter ist {count} systemweites Hintergrundobjekt; Ihr Administratorpasswort wird einmal angefordert. | Darunter sind {count} systemweite Hintergrundobjekte; Ihr Administratorpasswort wird einmal angefordert.",
+      "cancel": "Abbrechen",
+      "clean": "Bereinigen"
+    },
+    "run": {
+      "title": "Bereinigung läuft",
+      "delete": "Wird gelöscht",
+      "trash": "Wird in den Papierkorb verschoben",
+      "command": "{command} wird ausgeführt",
+      "hint": "Bereinigung läuft als Aufgabe in der Warteschlange. Verlassen dieser Seite unterbricht sie nicht. Sie werden nach Abschluss benachrichtigt."
+    },
+    "result": {
+      "title": "{size} freigegeben",
+      "failedTitle": "Bereinigung nicht abgeschlossen",
+      "trashPending": "Weitere {size} sind im Papierkorb und werden beim Leeren freigegeben. Bis dahin können Sie den Vorgang rückgängig machen.",
+      "rebuilds": "Regenerierbare Dateien werden bei Bedarf automatisch neu erstellt.",
+      "freed": "Freigegeben",
+      "freedHint": "Sofort verfügbar",
+      "trashed": "Im Papierkorb",
+      "trashedHint": "{count} Eintrag · nach Leeren freigegeben | {count} Einträge · nach Leeren freigegeben",
+      "trashedNone": "Diesmal keine",
+      "restored": "Rückgängig gemacht und wiederhergestellt",
+      "skipped": "Übersprungen",
+      "skippedCount": "{count} Eintrag | {count} Einträge",
+      "skippedHint": "Gründe siehe unten",
+      "skippedNone": "Keine Probleme",
+      "skippedTitle": "Nicht bereinigt",
+      "free": "Verfügbarer Speicher",
+      "undo": "Verschieben rückgängig machen",
+      "purge": "Diese Dateien endgültig löschen",
+      "done": "Fertig"
+    },
+    "toasts": {
+      "protected": "Zur Schutzliste hinzugefügt",
+      "protectedBody": "Wird bei künftigen Scans übersprungen",
+      "undo": "Rückgängig",
+      "restored": "Rückgängig gemacht",
+      "restoredBody": "{count} Eintrag am ursprünglichen Ort | {count} Einträge am ursprünglichen Ort",
+      "purged": "Endgültig gelöscht",
+      "purgedBody": "Weitere {size} freigegeben",
+      "done": "Bereinigung abgeschlossen",
+      "doneBody": "{size} freigegeben",
+      "view": "Anzeigen"
+    },
+    "failed": {
+      "title": "Scan nicht abgeschlossen"
+    },
+    "rail": {
+      "disk": "Festplatte",
+      "diskSub": "{name} · Insgesamt {size}",
+      "free": "{size} verfügbar",
+      "diskUnknown": "Speicherplatz derzeit nicht lesbar.",
+      "used": "Belegt",
+      "reclaimable": "Bereinigbar",
+      "available": "Verfügbar",
+      "last": "Letzter Scan",
+      "lastScan": "{time} · {size} freigebbar",
+      "lastNone": "Noch keine Scans. Jede Bereinigung wird im Aufgabenverlauf erfasst und kann dort eingesehen werden.",
+      "history": "Aufgabenverlauf ansehen",
+      "protected": "Schutzliste",
+      "protectedCount": "{count} Eintrag | {count} Einträge",
+      "protectedBody": "Dateien und Apps dieser Liste erscheinen nie in Ergebnissen. Passwortmanager, VPNs, KI-Tools, virtuelle Maschinen und ähnliche Kategorien sind bereits geschützt.",
+      "manage": "Verwalten"
+    },
+    "entry": {
+      "title": "Speicher aufräumen",
+      "description": "Caches, Protokolle und Reste gelöschter Apps finden und vor dem Bereinigen prüfen.",
+      "found": "{size} freigebbar · Scan: {time}.",
+      "active": "{count} Hintergrundobjekt einer gelöschten App wird beim Start weiterhin geladen | {count} Hintergrundobjekte gelöschter Apps werden beim Start weiterhin geladen",
+      "scan": "Scan starten",
+      "open": "Bereinigen"
+    },
+    "settings": {
+      "rebuildable": "Regenerierbare Dateien",
+      "rebuildableHint": "Caches, Protokolle und Entwickler-Caches werden sofort gelöscht, um Speicher freizugeben",
+      "fixed": "Festgelegt",
+      "deleteMode": "Zu prüfende Dateien",
+      "deleteModeHint": "Reste gelöschter Apps usw.: Papierkorb erlaubt Rückgängigmachen; direktes Löschen gibt sofort Speicher frei",
+      "protected": "Schutzliste",
+      "added": "Am {date} hinzugefügt",
+      "remove": "Entfernen",
+      "add": "Ordner hinzufügen…",
+      "empty": "Noch keine Einträge. „Immer behalten“ in Bereinigungsergebnissen fügt Einträge hier hinzu.",
+      "always": "Schlüsselbunde, Passwortmanager, VPN- und Proxy-Tools, KI-Tools, Festplattendateien virtueller Maschinen und Container, Browserverlauf und Cookies sowie iCloud Drive sind immer geschützt und müssen nicht hinzugefügt werden."
+    },
+    "groups": {
+      "deviceSupport": "Xcode-Geräteunterstützung · {platform}",
+      "temp": "Temporärer Systemordner",
+      "trash": "Einträge im Papierkorb",
+      "installers": "Downloads und Schreibtisch",
+      "xcodeArchive": "Xcode-Archive",
+      "deviceBackup": "Gerätebackup",
+      "deviceBackupModel": "Gerätebackup · {model}"
+    },
+    "skipReasonsBy": {
+      "running": "{names} läuft; nach Beenden bereinigbar",
+      "in_use": "Von {names} verwendet",
+      "busy": "{names} ist aktiv"
+    }
+  },
+  "monitor": {
+    "title": "Systemmonitor",
+    "subtitle": "{model} · {chip} · {memory} Arbeitsspeicher · macOS {os} · Laufzeit {uptime}",
+    "subtitleLoading": "Informationen zu diesem Mac werden gelesen",
+    "menuBarButton": "Menüleiste · {count} Eintrag | Menüleiste · {count} Einträge",
+    "waiting": "Wird gelesen…",
+    "modules": {
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "memory": "Arbeitsspeicher",
+      "disk": "Festplatte",
+      "network": "Netzwerk",
+      "battery": "Batterie",
+      "sensors": "Sensoren",
+      "fans": "Lüfter"
+    },
+    "moduleHints": {
+      "cpu": "Auslastung",
+      "gpu": "Auslastung",
+      "memory": "Belegter Anteil",
+      "disk": "Verfügbarer Speicher",
+      "network": "Upload- und Downloadrate",
+      "battery": "Ladestand",
+      "sensors": "Heißester Sensor"
+    },
+    "intro": {
+      "title": "Systemmonitor ist in Ihrer Menüleiste",
+      "body": "CPU und Arbeitsspeicher haben jeweils einen Menüleisteneintrag. Klicken Sie darauf für Details. Aktivieren Sie im Systemmonitor beliebig viele weitere Messwerte oder deaktivieren Sie sie in den Einstellungen.",
+      "view": "Anzeigen"
+    },
+    "health": {
+      "good": "Alles in Ordnung",
+      "goodBody": "CPU, Arbeitsspeicher, Festplatte und Batterie im Normalbereich",
+      "goodBodyNoBattery": "CPU, Arbeitsspeicher und Festplatte im Normalbereich",
+      "attention": "{count} Punkt erfordert Aufmerksamkeit | {count} Punkte erfordern Aufmerksamkeit",
+      "critical": "{count} Punkt erfordert baldiges Handeln | {count} Punkte erfordern baldiges Handeln",
+      "issues": {
+        "cpuBusy": "CPU seit 3 Minuten über 85%",
+        "memoryPressure": "Hoher Speicherdruck",
+        "memoryCritical": "Kritischer Speicherdruck; Apps können langsamer werden oder vom System beendet werden",
+        "diskLow": "Nur noch {size} auf der Festplatte",
+        "batteryHealth": "Batteriezustand nur {percent}",
+        "batteryHot": "Batterietemperatur {temp}",
+        "temperature": "CPU-Temperatur {temp}",
+        "uptime": "Seit {count} Tag nicht neu gestartet | Seit {count} Tagen nicht neu gestartet",
+        "diskSmart": "„{name}“ meldet einen fehlerhaften SMART-Status. Sichern Sie Ihre Daten bald"
+      },
+      "actions": {
+        "processes": "Prozesse ansehen",
+        "cleanup": "Speicher aufräumen",
+        "fans": "Lüfter anpassen"
+      }
+    },
+    "cpu": {
+      "split": "Benutzer {user} · System {system}",
+      "load": "Last",
+      "loadLong": "Last (1, 5, 15 Minuten)",
+      "coresLabel": "Kerne",
+      "cores": "{p} Leistungs- + {e} Effizienzkerne",
+      "performanceLegend": "{count} Leistungskerne (orange)",
+      "efficiencyLegend": "{count} Effizienzkerne (violett)",
+      "uptime": "Laufzeit",
+      "power": "Leistungsaufnahme"
+    },
+    "gpu": {
+      "cores": "{chip} · GPU mit {count} Kernen",
+      "model": "Modell",
+      "noProcesses": "macOS meldet keine GPU-Auslastung pro Prozess. Daher werden keine Prozesse angezeigt.",
+      "power": "Leistungsaufnahme"
+    },
+    "memory": {
+      "summary": "{used} / {total} · Speicherdruck: {pressure}",
+      "pressure": {
+        "normal": "OK",
+        "warning": "Hoch",
+        "critical": "Kritisch"
+      },
+      "app": "App-Speicher",
+      "wired": "Reserviert",
+      "compressed": "Komprimiert",
+      "cached": "Dateien im Cache",
+      "swap": "Auslagerung"
+    },
+    "disk": {
+      "volume": "{name} · Insgesamt {total}",
+      "read": "Lesen",
+      "write": "Schreiben",
+      "readAt": "Lesen {value}",
+      "writeAt": "Schreiben {value}",
+      "volumes": "Volumes",
+      "internal": "Intern",
+      "external": "Extern",
+      "volumeFree": "{kind} · {free} von {total} frei",
+      "cleanup": "Letzter Scan: {size} freigebbar · Speicher aufräumen",
+      "cleanupNever": "Speicher aufräumen",
+      "devices": "Laufwerke",
+      "smartLabel": "SMART-Status",
+      "smart": {
+        "verified": "Überprüft",
+        "failing": "Fehlerhaft",
+        "unsupported": "Nicht unterstützt"
+      },
+      "wear": "Verschleiß",
+      "powerOn": "Betriebsstunden",
+      "written": "Geschriebene Daten",
+      "temperature": "Temperatur"
+    },
+    "network": {
+      "down": "Download",
+      "up": "Upload",
+      "interface": "Schnittstelle",
+      "localIp": "Lokale IP",
+      "totalDown": "Seit Start heruntergeladen",
+      "totalUp": "Seit Start hochgeladen",
+      "link": "{kind} ({name})",
+      "kinds": {
+        "wifi": "Wi-Fi",
+        "ethernet": "Ethernet",
+        "vpn": "VPN",
+        "other": "Sonstige"
+      },
+      "privacy": "Öffentliche IP und Wi-Fi-Name werden nicht angezeigt: Erstere erfordert einen externen Server, Letzterer Standortzugriff."
+    },
+    "battery": {
+      "charging": "Wird geladen",
+      "chargingTime": "Wird geladen · Voll in {time}",
+      "onAc": "Am Stromnetz",
+      "onBattery": "Batteriebetrieb",
+      "onBatteryTime": "Batteriebetrieb · Noch {time}",
+      "health": "Zustand",
+      "cycles": "Ladezyklen",
+      "designCapacity": "Auslegungskapazität",
+      "maxCapacity": "Maximale Kapazität",
+      "temperature": "Temperatur",
+      "voltage": "Spannung",
+      "power": "Leistung",
+      "adapter": "Netzteil"
+    },
+    "sensors": {
+      "hottest": "{name} · Aktuell am heißesten",
+      "temperatures": "Temperaturen",
+      "note": "Sensoren von Apple-Chips erfassen Wärmezonen, keine einzelnen Kerne.",
+      "names": {
+        "cpuPerformance": "CPU-Leistungskerne",
+        "cpuEfficiency": "CPU-Effizienzkerne",
+        "cpu": "CPU",
+        "gpu": "GPU",
+        "soc": "Chips",
+        "ssd": "SSD",
+        "battery": "Batterie"
+      }
+    },
+    "fans": {
+      "control": "Steuerung",
+      "auto": "Automatisch",
+      "manual": "Manuell",
+      "modeAuto": "Automatisch · Systemsteuerung",
+      "modeManual": "Manuell · {rpm}",
+      "all": "Alle Lüfter",
+      "min": "Min. {rpm}",
+      "max": "Max. {rpm}",
+      "range": "Min. {min} · Max. {max}",
+      "rangeLabel": "Drehzahlbereich",
+      "single": "Lüfter",
+      "left": "Linker Lüfter",
+      "right": "Rechter Lüfter",
+      "numbered": "Lüfter {n}",
+      "sync": "Alle Lüfter synchronisieren",
+      "full": "Volle Drehzahl",
+      "restore": "Zurück zu automatisch",
+      "restoreLast": "Letzte manuelle Drehzahl",
+      "autoNote": "Das System regelt die Lüfter nach Temperatur. Wählen Sie „Manuell“, um die Drehzahl selbst festzulegen.",
+      "helperTitle": "Manuelle Lüftersteuerung benötigt ein Hilfsprogramm",
+      "helperBody": "Es steuert nur Lüfter, läuft mit Systemrechten im Hintergrund und nimmt nur Befehle von OpenNavo an. Erlauben Sie es nach der Installation unter „Anmeldeobjekte & Erweiterungen“. Möglicherweise wird einmal Ihr Administratorpasswort benötigt.",
+      "install": "Hilfsprogramm installieren",
+      "approvalTitle": "Noch ein Schritt",
+      "approvalBody": "Erlauben Sie OpenNavo unter Systemeinstellungen → Allgemein → Anmeldeobjekte & Erweiterungen die Hintergrundausführung und klicken Sie auf „Ist erlaubt“.",
+      "recheck": "Ist erlaubt",
+      "brokenTitle": "Lüfter-Hilfsprogramm antwortet nicht",
+      "brokenBody": "Es ist installiert, aber für OpenNavo nicht erreichbar. Eine Neuinstallation behebt dies meist.",
+      "reinstall": "Hilfsprogramm neu installieren",
+      "unsupported": "Der Chip dieses Mac unterstützt noch keine Lüftersteuerung. Nur Drehzahlen werden angezeigt.",
+      "safety": "Wenn OpenNavo beendet wird, abstürzt oder 15 Sekunden nicht antwortet, der Mac schläft oder ein Schreibfehler auftritt, übernimmt das System die Lüftersteuerung. Bei 95 °C über 10 Sekunden laufen manuell gesteuerte Lüfter mit voller Drehzahl. Ausschalten ist nicht möglich; das Minimum entspricht der Systemvorgabe.",
+      "reasons": {
+        "user": "Sie haben die Lüfter angepasst",
+        "app_quit": "OpenNavo wurde beendet",
+        "heartbeat_lost": "OpenNavo antwortet nicht",
+        "sleep": "Mac im Ruhezustand",
+        "wake_reapplied": "Manuelle Drehzahl nach Aufwachen wieder angewendet",
+        "overheat": "Temperatur 10 Sekunden lang bei 95 °C",
+        "write_failed": "Schreiben der Lüftereinstellung fehlgeschlagen",
+        "helper_started": "Hilfsprogramm neu gestartet",
+        "helper_uninstalled": "Hilfsprogramm deinstalliert"
+      },
+      "toasts": {
+        "manual": "Lüfter auf manuell gestellt",
+        "manualBody": "Bei Beenden von OpenNavo oder Ruhezustand wieder automatisch; bei anhaltender Überhitzung volle Drehzahl",
+        "auto": "Lüfter wieder unter Systemsteuerung",
+        "full": "Lüfter auf volle Drehzahl gestellt",
+        "reverted": "Lüfter wieder automatisch",
+        "ready": "Lüfter-Hilfsprogramm bereit",
+        "readyBody": "Wählen Sie „Manuell“, um die Drehzahl selbst festzulegen"
+      }
+    },
+    "processes": {
+      "topCpu": "Prozesse mit höchster CPU-Last",
+      "topMemory": "Prozesse mit höchster Speicherbelegung",
+      "byCpu": "CPU",
+      "byMemory": "Arbeitsspeicher",
+      "sortBy": "Sortieren nach",
+      "system": "System",
+      "background": "Hintergrund",
+      "quit": "Beenden",
+      "quitTitle": "{name} beenden?",
+      "quitBody": "Wie ⌘Q in {name}; die App fragt selbst nach ungespeicherten Änderungen.",
+      "quitDone": "{name} zum Beenden aufgefordert",
+      "activityMonitor": "In Aktivitätsanzeige öffnen",
+      "activityValue": "Aktivitätsanzeige: {value}",
+      "topDisk": "Prozesse mit meisten Festplattenzugriffen",
+      "topNetwork": "Prozesse mit höchstem Datenverkehr",
+      "diskSplit": "Lesen {read} · Schreiben {write}",
+      "scaleCpu": "Anteil am gesamten Mac · 1 Kern ≈ {percent}",
+      "cores": "≈{value} Kerne",
+      "self": "Diese App",
+      "view": "Gruppieren nach",
+      "viewProcess": "Prozess",
+      "viewApp": "Apps",
+      "breakdown": {
+        "title": "Verteilung der CPU-Auslastung",
+        "rest": "Weitere Prozesse ({count})",
+        "restAny": "Weitere Prozesse",
+        "finished": "Beendete kurzlebige Prozesse",
+        "finishedFrom": "Hauptsächlich von {names}",
+        "other": "System- und root-Prozesse",
+        "hintRest": "Noch laufende Prozesse, die oben nicht aufgeführt sind.",
+        "hintFinished": "Diese Prozesse endeten zwischen zwei Messungen und können nicht einzeln aufgeführt werden. Gezeigt wird die von ihren Elternprozessen erfasste CPU-Zeit.",
+        "hintOther": "OpenNavo kann die CPU-Nutzung von Kernel-, root- und anderen Benutzerprozessen nicht lesen. Dies ist die gesamte Auslastung abzüglich der obigen Werte."
+      }
+    },
+    "detail": {
+      "open": "Details zu {name} ansehen",
+      "minuteAgo": "Vor 60 Sekunden",
+      "now": "Jetzt",
+      "range60": "Letzte 60 Sekunden",
+      "range1h": "Letzte Stunde",
+      "rangeLabel": "Diagrammzeitraum",
+      "hourAgo": "Vor 1 Stunde"
+    },
+    "menuBar": {
+      "title": "Menüleiste",
+      "show": "In Menüleiste anzeigen",
+      "showHint": "Eigener Eintrag; klicken Sie für Details darunter",
+      "style": "Stil",
+      "styleHint": "Darstellung in der Menüleiste",
+      "styles": {
+        "text": "Zwei Zeilen",
+        "value": "Nur Wert",
+        "line": "Minikurve",
+        "bars": "Balken"
+      },
+      "on": "Menüleiste",
+      "onHint": "In der Menüleiste sichtbar",
+      "added": "„{name}“ zur Menüleiste hinzugefügt",
+      "addedBody": "Klicken Sie darauf, um die Details darunter zu sehen",
+      "removed": "„{name}“ aus der Menüleiste entfernt",
+      "keepTitle": "Menüleisteneinträge verschwinden beim Schließen des Fensters",
+      "keepBody": "Das Schließen des Hauptfensters beendet derzeit OpenNavo. Aktivieren Sie „Nach Schließen des Fensters in der Menüleiste bleiben“, damit Messwerte sichtbar bleiben.",
+      "keepAction": "Auch aktivieren"
+    },
+    "popover": {
+      "open": "In OpenNavo ansehen",
+      "settings": "Menüleisteneinstellungen"
+    },
+    "rail": {
+      "menuBar": "Menüleiste",
+      "menuBarSub": "Jeder Messwert einzeln; klicken für Details · Unbegrenzt",
+      "empty": "Noch keine Messwerte in der Menüleiste",
+      "crowded": "Bei vielen Einträgen können einige hinter der Kameraaussparung verschwinden. Versuchen Sie „Nur Wert“.",
+      "refresh": "Aktualisierung jede {count} Sekunde · Mit ⌘ ziehen zum Sortieren | Aktualisierung alle {count} Sekunden · Mit ⌘ ziehen zum Sortieren",
+      "adjustFans": "Lüfter anpassen",
+      "privacy": "Daten bleiben auf diesem Mac",
+      "privacyBody": "Keine Netzwerkverbindung, keine Uploads, kein gespeicherter Verlauf; Kurven bleiben nur im Arbeitsspeicher."
+    },
+    "settings": {
+      "menuBar": "Menüleiste",
+      "interval": "Aktualisierungsrate",
+      "intervalHint": "Schneller verbraucht mehr Strom; pausiert bei ausgeschaltetem Bildschirm und im Ruhezustand",
+      "seconds": "{count} Sekunde | {count} Sekunden",
+      "notVisible": "Nach Aktivierung nicht sichtbar?",
+      "notVisibleHint": "Ab macOS 26 müssen Sie OpenNavo unter Systemeinstellungen → Menüleiste erlauben. Bei vielen Einträgen können einige hinter der Kameraaussparung verschwinden",
+      "openSettings": "Systemeinstellungen öffnen",
+      "menuBarNote": "Jeder Messwert hat einen eigenen Menüleisteneintrag, ohne Begrenzung. CPU und Arbeitsspeicher sind standardmäßig aktiv. Klicken Sie auf einen Eintrag, um Details darunter zu sehen.",
+      "helper": "Hilfsprogramm",
+      "helperHint": "{status}. Nur zur Lüftersteuerung; Temperaturen und Drehzahlen werden auch ohne Installation angezeigt",
+      "helperStatus": {
+        "unsupported": "Dieser Mac hat keine Lüfter",
+        "not_installed": "Nicht installiert",
+        "requires_approval": "Wartet auf Erlaubnis unter „Anmeldeobjekte & Erweiterungen“",
+        "enabled": "Ein",
+        "error": "Hilfsprogramm fehlerhaft; Neuinstallation möglich"
+      },
+      "install": "Installieren",
+      "reinstall": "Neu installieren",
+      "uninstall": "Deinstallieren",
+      "autoRestore": "An Systemsteuerung zurückgeben",
+      "autoRestoreHint": "Bei Beenden, Absturz, 15 Sekunden ohne Antwort, Ruhezustand oder Schreibfehler automatisch; manuelle Lüfter laufen nach 10 Sekunden bei 95 °C mit voller Drehzahl",
+      "always": "Immer aktiv",
+      "relaunch": "Beim erneuten Öffnen von OpenNavo",
+      "relaunchHint": "Lüfter starten automatisch; in den Sensordetails können Sie die letzte manuelle Drehzahl wiederherstellen",
+      "privacy": "Alle Messwerte werden nur auf diesem Mac berechnet und angezeigt. Keine Netzwerkverbindung, Uploads oder gespeicherten Verläufe. Öffentliche IP und Wi-Fi-Name werden nicht angezeigt.",
+      "alerts": "Hinweise",
+      "alertsHint": "Bei Problemen benachrichtigen, höchstens einmal pro Stunde für dasselbe Problem. Wenn aktiv, wird auch ohne Menüleisteneinträge in größeren Abständen im Hintergrund geprüft"
+    }
+  },
+  "security": {
+    "title": "Sicherheit",
+    "subtitle": "Systemprüfung, Virenscans, Startobjekte und Schutz. Die Ergebnisse bleiben auf diesem Mac",
+    "tabs": {
+      "label": "Sicherheit",
+      "overview": "Übersicht",
+      "scan": "Virenscan",
+      "startup": "Startobjekte",
+      "protection": "Schutz",
+      "quarantine": "Quarantäne"
+    },
+    "overview": {
+      "attention": "{count} Punkt sollte geprüft werden | {count} Punkte sollten geprüft werden",
+      "newStartup": "{count} neues Startobjekt | {count} neue Startobjekte",
+      "openThreats": "{count} unbehandelte Bedrohung | {count} unbehandelte Bedrohungen",
+      "allGood": "Alles in Ordnung",
+      "allGoodHint": "Systemschutz aktiv; keine unbehandelten Bedrohungen oder neuen Startobjekte",
+      "viewStartup": "Startobjekte ansehen",
+      "postureTitle": "Systemprüfung",
+      "postureHint": "Nur Lesezugriff; für Änderungen wird der entsprechende Bereich der Systemeinstellungen geöffnet",
+      "openSettings": "Einstellungen öffnen",
+      "scheduleOff": "Geplanter Scan: aus",
+      "scheduleDaily": "Geplanter Scan: täglich um {time}",
+      "scheduleWeekly": "Geplanter Scan: jeden {day} um {time}"
+    },
+    "postureState": {
+      "ok": "OK",
+      "warn": "Prüfen",
+      "bad": "Risiko",
+      "info": "Hinweis",
+      "unknown": "Unbekannt"
+    },
+    "posture": {
+      "sip": {
+        "title": "Systemintegritätsschutz (SIP)",
+        "ok": "Ein",
+        "bad": "Systemintegritätsschutz deaktiviert",
+        "unknown": "Nicht lesbar"
+      },
+      "ssv": {
+        "title": "Signiertes Systemvolume",
+        "ok": "Systemvolume signiert und versiegelt",
+        "bad": "Systemvolume nicht versiegelt",
+        "unknown": "Nicht lesbar"
+      },
+      "gatekeeper": {
+        "title": "Gatekeeper",
+        "ok": "Nur verifizierte Apps dürfen ausgeführt werden",
+        "bad": "Gatekeeper deaktiviert; Apps aus beliebigen Quellen können ausgeführt werden",
+        "unknown": "Nicht lesbar"
+      },
+      "filevault": {
+        "title": "FileVault-Festplattenverschlüsselung",
+        "ok": "Ein",
+        "bad": "FileVault deaktiviert; bei Verlust des Mac könnten Daten gelesen werden",
+        "unknown": "Nicht lesbar"
+      },
+      "firewall": {
+        "title": "Firewall",
+        "ok": "Ein",
+        "bad": "Firewall deaktiviert (blockiert nur eingehende Verbindungen; in öffentlichen Netzwerken empfohlen)",
+        "unknown": "Nicht lesbar"
+      },
+      "xprotect": {
+        "title": "XProtect (integrierter Schutz von Apple)",
+        "ok": "Aktuell",
+        "bad": "XProtect seit über 30 Tagen nicht aktualisiert",
+        "unknown": "Version nicht lesbar",
+        "detail": "Version {version} · Aktualisiert {time}"
+      },
+      "updates": {
+        "title": "Automatische Sicherheitsupdates",
+        "ok": "Ein",
+        "bad": "Sicherheitsmaßnahmen und Systemdateien werden nicht automatisch installiert",
+        "unknown": "Nicht lesbar"
+      },
+      "screenlock": {
+        "title": "Bildschirmsperre",
+        "ok": "Passwort sofort nach Aufwachen erforderlich",
+        "bad": "Passwort nicht sofort nach Aufwachen erforderlich",
+        "unknown": "Nicht lesbar"
+      },
+      "autologin": {
+        "title": "Automatische Anmeldung",
+        "ok": "Aus",
+        "bad": "Automatische Anmeldung aktiv; beim Start kein Passwort nötig",
+        "unknown": "Nicht lesbar"
+      },
+      "guest": {
+        "title": "Gastbenutzer",
+        "ok": "Aus",
+        "bad": "Gastbenutzer aktiviert",
+        "unknown": "Nicht lesbar"
+      },
+      "sharing": {
+        "title": "Freigabedienste",
+        "ok": "Keine Remote-Freigabedienste aktiv",
+        "bad": "Remote-Freigabedienste aktiv",
+        "unknown": "Nicht lesbar",
+        "detail": "Aktiv: {services}",
+        "services": {
+          "ssh": "Entfernte Anmeldung",
+          "files": "Dateifreigabe",
+          "screen": "Bildschirmfreigabe",
+          "remote": "Entfernte Verwaltung"
+        }
+      }
+    },
+    "engine": {
+      "title": "Virendatenbank",
+      "setUp": "Virendatenbank laden",
+      "db": "Virendatenbank {version} · Aktualisiert {time}",
+      "downloading": "Virendatenbank wird geladen…",
+      "noDb": "Virendatenbank noch nicht geladen",
+      "lastScan": "Letzter {kind}: {date}, {count} Bedrohung gefunden | Letzter {kind}: {date}, {count} Bedrohungen gefunden",
+      "neverScanned": "Noch keine Scans",
+      "consentTitle": "Zuerst offizielle Virendatenbank laden",
+      "consentBody": "Virenscans verwenden die ClamAV-Engine und ihre offizielle Virendatenbank. Diese wird direkt von den offiziellen ClamAV-Servern geladen, ohne OpenNavo zu durchlaufen.",
+      "consentSize": "Der erste Download umfasst etwa 113 MB, danach nur Änderungen. Auf der Festplatte werden etwa 170 MB belegt.",
+      "consentMemory": "Beim Scannen belegt die Engine etwa 1.1 GB Arbeitsspeicher und beendet sich nach 5 Minuten Leerlauf.",
+      "consentSource": "Standardmäßig alle 4 Stunden auf Updates prüfen, innerhalb der Anfragelimits der offiziellen Server.",
+      "consentCoverage": "ClamAV erkennt Mac-spezifische Schadsoftware nur teilweise. OpenNavo prüft daher auch Signaturen, Notarisierung und Startobjekte und zeigt den Status von Apple XProtect an.",
+      "download": "Zustimmen und laden",
+      "downloadFailed": "Virendatenbank konnte nicht geladen werden",
+      "rateLimited": "Datenbank-Updates vom offiziellen Server vorübergehend begrenzt. Später erfolgt ein automatischer Wiederholungsversuch"
+    },
+    "scan": {
+      "forceLabel": "Alle Dateien erneut prüfen",
+      "forceHint": "Frühere saubere Ergebnisse nicht wiederverwenden. Beim Komplettscan sind in diesem Modus bis zu 5 Minuten pro Datei erlaubt.",
+      "performanceHint": "Komplettscans nutzen bis zu zwei Scan-Prozesse und mehr Arbeitsspeicher. Standardmäßig sind 60 Sekunden pro Datei vorgesehen; längere Prüfungen werden als unvollständig gemeldet.",
+      "cacheSummary": "Für {count} Dateien wurden nach Prüfung von Inhalt und Virendatenbankversion frühere saubere Ergebnisse wiederverwendet.",
+      "denied": "Kein Lesezugriff auf {folders}; diese Ordner wurden nicht gescannt. Erlauben Sie OpenNavo den Zugriff unter Systemeinstellungen → Datenschutz & Sicherheit → Dateien & Ordner",
+      "folders": {
+        "downloads": "Downloads",
+        "desktop": "Schreibtisch",
+        "documents": "Dokumente"
+      },
+      "quick": {
+        "title": "Schnellscan",
+        "duration": "Meist wenige Minuten; länger bei großen Installationspaketen in Downloads oder auf dem Schreibtisch",
+        "body": "Von Startobjekten gestartete Programme, Downloads, Schreibtisch, temporäre Ordner und in den letzten 7 Tagen installierte Apps",
+        "action": "Schnellscan"
+      },
+      "full": {
+        "title": "Komplettscan",
+        "duration": "Kann über eine Stunde dauern",
+        "body": "Der ganze Mac, ausgenommen Systemvolume, nicht geladene iCloud-Dateien, Time Machine und Netzwerkvolumes",
+        "action": "Komplettscan starten"
+      },
+      "custom": {
+        "title": "Benutzerdefinierter Scan",
+        "duration": "Je nach Auswahl",
+        "body": "Ordner oder ein externes Laufwerk auswählen",
+        "action": "Auswählen und scannen"
+      },
+      "failed": "Scan nicht gestartet",
+      "running": "{kind} läuft · {count} Dateien geprüft ({size})",
+      "state": {
+        "done": "Scan abgeschlossen · {count} Dateien geprüft · {time}",
+        "canceled": "Scan abgebrochen · {count} Dateien geprüft",
+        "failed": "Scan unterbrochen · {count} Dateien geprüft"
+      },
+      "progressLabel": "Scan-Fortschritt",
+      "skipped": {
+        "dataless": "{count} nicht geladene iCloud-Datei übersprungen | {count} nicht geladene iCloud-Dateien übersprungen",
+        "tooLarge": "{count} Datei überschreitet das Scan-Limit und wurde nicht vollständig gescannt | {count} Dateien überschreiten das Scan-Limit und wurden nicht vollständig gescannt",
+        "unreadable": "{count} Datei nicht lesbar (keine Berechtigung, verschlüsselt oder Format nicht unterstützt) | {count} Dateien nicht lesbar (keine Berechtigung, verschlüsselt oder Format nicht unterstützt)",
+        "excluded": "{count} Datei ausgeschlossen | {count} Dateien ausgeschlossen"
+      }
+    },
+    "findings": {
+      "title": "Gefundene Bedrohung ({count}) | Gefundene Bedrohungen ({count})",
+      "quarantine": "Isolieren",
+      "quarantined": "{name} in Quarantäne verschoben",
+      "reveal": "Im Finder anzeigen",
+      "trust": "Dieser Datei vertrauen",
+      "delete": "Löschen",
+      "more": "Weitere Aktionen für {name}",
+      "status": {
+        "open": "Ausstehend",
+        "quarantined": "Isoliert",
+        "deleted": "Gelöscht",
+        "trusted": "Vertrauenswürdig"
+      },
+      "none": "Keine Bedrohungen gefunden",
+      "noneHint": "Im Scan-Bereich wurden keine von der Virendatenbank erkennbaren Bedrohungen gefunden"
+    },
+    "startup": {
+      "summary": "{count} Startobjekt von Drittanbietern | {count} Startobjekte von Drittanbietern",
+      "notRead": "Startobjekte noch nicht gelesen",
+      "untrusted": "Davon {count} nicht signiert oder nicht notarisiert | Davon {count} nicht signiert oder nicht notarisiert",
+      "missing": "Nicht vollständig geprüft: {categories}. Einige Daten konnten nicht gelesen oder ausgewertet werden.",
+      "grant": "Zugriff erlauben",
+      "btmUnknown": "Das Format der Hintergrundobjekt-Datenbank dieses Mac wurde nicht erkannt. Einige Anmeldeobjekte fehlen möglicherweise",
+      "new": "Neu",
+      "toggle": "{name} aktivieren",
+      "openSettings": "In Systemeinstellungen verwalten",
+      "none": "Keine Startobjekte",
+      "noneHint": "Mit macOS gelieferte Objekte werden hier nicht angezeigt",
+      "noApps": "Keine Apps starten automatisch",
+      "others": "{count} weiterer Eintrag | {count} weitere Einträge",
+      "othersHint": "Befehlszeilentools, Skripte, Erweiterungen und Plug-ins",
+      "items": "{count} Eintrag | {count} Einträge",
+      "stateMixed": "{count} aktiviert | {count} aktiviert",
+      "add": "Anmeldeobjekt hinzufügen",
+      "addHint": "Die gewählte App öffnet sich bei Ihrer Anmeldung auf diesem Mac",
+      "addSearch": "Apps suchen",
+      "addEmpty": "Keine Apps zum Hinzufügen",
+      "adding": "Wird hinzugefügt…",
+      "added": "Hinzugefügt; {name} öffnet sich bei der Anmeldung",
+      "refreshing": "Startobjekte werden geprüft…",
+      "removed": "{name} entfernt. Wiederherstellung aus Quarantäne möglich",
+      "removeTitle": "„{name}“ entfernen?",
+      "removeBody": "Das Objekt wird deaktiviert und seine Konfigurationsdatei in Quarantäne verschoben. Von dort können Sie es wiederherstellen.",
+      "removeBodyAdmin": "Das Objekt wird deaktiviert und seine Konfigurationsdatei in Quarantäne verschoben. Wiederherstellung bleibt möglich. Dieses systemweite Objekt benötigt einmal Ihr Administratorpasswort.",
+      "remove": "Entfernen",
+      "enable": "Aktivieren",
+      "disable": "Deaktivieren",
+      "keep": "Behalten",
+      "scan": "Mit Virendatenbank scannen",
+      "adminHint": "Dieses Objekt gilt systemweit. Zum Deaktivieren oder Entfernen ist einmal Ihr Administratorpasswort erforderlich.",
+      "riskHigh": "Hohes Risiko",
+      "avClean": "Keine Bedrohungen gefunden",
+      "avThreat": "Als {name} erkannt",
+      "avNotScanned": "Noch nicht gescannt",
+      "category": {
+        "launch_items": "Hintergrunddienst",
+        "btm": "Hintergrundobjekt",
+        "login_items": "Anmeldeobjekte",
+        "cron": "Geplante Aufgabe",
+        "browser_extensions": "Browsererweiterung",
+        "kexts": "Kernel-Erweiterung",
+        "system_extensions": "Systemerweiterung",
+        "app_extensions": "App-Erweiterung",
+        "auth_plugins": "Autorisierungs-Plug-in",
+        "dir_services_plugins": "Verzeichnisdienst-Plug-in",
+        "spotlight": "Spotlight-Importer",
+        "quicklook": "Quick-Look-Plug-in",
+        "dock_tiles": "Dock-Plug-in",
+        "library_inserts": "Bibliotheksinjektion",
+        "library_proxies": "Bibliotheks-Proxy",
+        "login_hooks": "Anmelde-Hook",
+        "periodic": "Periodisches Skript",
+        "startup_scripts": "Startskript",
+        "shell_config": "Shell-Konfiguration",
+        "event_rules": "Ereignisregel"
+      },
+      "scope": {
+        "user": "Aktueller Benutzer",
+        "system": "Gesamter Mac"
+      },
+      "state": {
+        "running": "Läuft",
+        "loaded": "Geladen",
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert",
+        "unknown": "Unbekannt",
+        "removed": "Entfernt"
+      },
+      "trust": {
+        "apple": "Apple",
+        "known": "Bekannter Entwickler",
+        "unknown": "Nicht bestätigbar",
+        "untrusted": "Nicht signiert oder nicht notarisiert"
+      },
+      "trigger": {
+        "at_load": "Beim Start",
+        "keep_alive": "Dauerhaft aktiv",
+        "interval": "Regelmäßig",
+        "calendar": "Nach Zeitplan",
+        "watch_paths": "Bei Dateiänderungen",
+        "events": "Bei Ereignissen"
+      },
+      "fields": {
+        "category": "Art",
+        "scope": "Geltungsbereich",
+        "path": "Speicherort",
+        "program": "Programm",
+        "owner": "Zugehörige App",
+        "signature": "Signatur",
+        "team": "Team ID",
+        "state": "Status",
+        "triggers": "Ausführung",
+        "firstSeen": "Erstmals erkannt",
+        "av": "Virendatenbank-Ergebnis"
+      },
+      "restore": "Wiederherstellen",
+      "restored": "{name} wiederhergestellt",
+      "removedBackup": "{name} entfernt; hier wiederherstellbar",
+      "removeBodyBackup": "Vor dem Entfernen wird eine Sicherung erstellt. Danach können Sie das Objekt in der Startobjektliste wiederherstellen."
+    },
+    "signature": {
+      "apple": "Von Apple signiert",
+      "appStore": "Vom App Store signiert",
+      "notarized": "Notarisiert",
+      "notNotarized": "Gültige Signatur, nicht notarisiert",
+      "adhoc": "Ad-hoc-Signatur; Entwickler nicht bestätigbar",
+      "unsigned": "Nicht signiert",
+      "invalid": "Ungültige Signatur",
+      "notCode": "Keine Programmdatei; Signatur nicht anwendbar",
+      "unknown": "Signatur nicht prüfbar",
+      "modified": "Gültige Signatur, aber Dateien nach dem Signieren geändert"
+    },
+    "quarantine": {
+      "summary": "{count} Datei, {size} | {count} Dateien, {size}",
+      "empty": "Quarantäne ist leer",
+      "emptyHint": "Isolierte Bedrohungen und entfernte Startobjekte bleiben hier und können jederzeit wiederhergestellt werden",
+      "reason": {
+        "startup": "Entferntes Startobjekt",
+        "user": "Manuell isoliert"
+      },
+      "restore": "Wiederherstellen",
+      "restored": "{name} wiederhergestellt",
+      "delete": "Endgültig löschen",
+      "deleteTitle": "„{name}“ endgültig löschen?",
+      "deleteBody": "Dies kann nicht rückgängig gemacht werden."
+    },
+    "protection": {
+      "title": "Schutz",
+      "startupAlerts": {
+        "title": "Hinweise zu Startobjekten",
+        "body": "Meldet neue Startobjekte, Anmeldeobjekte oder Hintergrunddienste sofort mit Signatur und zugehöriger App. Der Hinweis erfolgt nachträglich und verhindert den ersten Start nicht."
+      },
+      "watchDownloads": {
+        "title": "Neue Downloads scannen",
+        "body": "Überwacht den Downloads-Ordner und scannt neue Dateien nach Abschluss des Downloads mit der Virendatenbank. Bei Installationspaketen werden auch Signatur und Notarisierung geprüft."
+      },
+      "needsDb": "Zuerst Virendatenbank laden",
+      "waiting": "{stage} · Wartet auf Apple-Genehmigung",
+      "later": {
+        "realtime": {
+          "title": "Neue Startobjekte blockieren",
+          "body": "Erkennt, welches Programm ein Startobjekt hinzugefügt hat, und deaktiviert es sofort. Benötigt die Endpoint Security-Berechtigung von Apple."
+        },
+        "exec": {
+          "title": "Nicht notarisierte Programme bestätigen",
+          "body": "Fragt vor dem ersten Start eines heruntergeladenen, nicht notarisierten Programms. Benötigt die Endpoint Security-Berechtigung."
+        },
+        "ransomware": {
+          "title": "Ransomware-Schutz",
+          "body": "Pausiert Programme, die in kurzer Zeit viele verschlüsselt wirkende Dateien schreiben, und fragt nach Ihrem Vorgehen. Benötigt die Endpoint Security-Berechtigung."
+        }
+      },
+      "eventsTitle": "Letzte Aktivitäten",
+      "noEvents": "Noch keine Einträge",
+      "events": {
+        "startup_added": "Neues Startobjekt: {name}",
+        "startup_removed": "Startobjekt entfernt: {name}",
+        "download_threat": "Bedrohung im Download: {name}",
+        "download_unsigned": "Nicht signiertes Installationspaket geladen: {name}",
+        "scan_threat": "Scan fand Bedrohung: {name}",
+        "scheduled_scan_skipped": "Geplanter Scan übersprungen: {name}",
+        "signature_changed": "Entwicklersignatur geändert: {name}",
+        "install_threat": "Installation gestoppt, Bedrohung gefunden: {name}",
+        "paste_blocked": "Verdächtiges Einfügen pausiert: {name}"
+      },
+      "installThreatUnnamed": "Installation gestoppt, Bedrohung gefunden"
+    },
+    "toasts": {
+      "startupAdded": "{count} neues Startobjekt | {count} neue Startobjekte",
+      "startupAddedBody": "{name} · {signer}",
+      "review": "Anzeigen",
+      "threats": "Scan fand {count} Bedrohung | Scan fand {count} Bedrohungen",
+      "clean": "Scan abgeschlossen, keine Bedrohungen gefunden",
+      "view": "Anzeigen",
+      "signatureChanged": "Entwicklersignatur bei {count} App geändert | Entwicklersignatur bei {count} Apps geändert",
+      "signatureChangedBody": "{names}: Von einem anderen Entwickler als zuvor signiert; möglicherweise wurde die App ersetzt",
+      "installThreat": "Bedrohung im Installationspaket gefunden; Installation gestoppt"
+    },
+    "rail": {
+      "engine": "Scan-Engine",
+      "version": "Version",
+      "engineVersion": "ClamAV {version}",
+      "database": "Virendatenbank",
+      "noDatabase": "Nicht geladen",
+      "size": "Größe",
+      "engineState": "Engine",
+      "running": "Läuft · {size}",
+      "idle": "Läuft nicht",
+      "protection": "Schutz",
+      "on": "Ein",
+      "off": "Aus",
+      "limitsTitle": "Funktionsumfang",
+      "limits": "Die Virendatenbank erkennt Mac-spezifische Schadsoftware nur teilweise. Bis Apple die Berechtigung erteilt, melden Hinweise Startobjekte nur nachträglich und blockieren nichts. Dies ergänzt den integrierten macOS-Schutz, ersetzt ihn aber nicht. Normale Dateien über 100 MB und Installationspakete über 1 GB oder entpackt über 2 GB werden nicht vollständig gescannt."
+    },
+    "avSkipped": {
+      "no_database": "Virendatenbank noch nicht geladen",
+      "no_consent": "Download der Virendatenbank noch nicht genehmigt",
+      "excluded": "Ordner vom Scan ausgeschlossen",
+      "too_large": "Scan-Limit überschritten",
+      "unreadable": "Nicht lesbar (keine Berechtigung, verschlüsselt oder Format nicht unterstützt)"
+    },
+    "installScan": {
+      "clean": "Vor Installation {count} Datei gescannt, keine Bedrohungen | Vor Installation {count} Dateien gescannt, keine Bedrohungen",
+      "skipped": "Scan vor Installation nicht abgeschlossen: {reason}",
+      "skippedPartial": "Vor Installation {count} Datei geprüft, aber Scan unvollständig: {reason} | Vor Installation {count} Dateien geprüft, aber Scan unvollständig: {reason}",
+      "threat": "Vor Installation gefunden: {names}"
+    },
+    "settings": {
+      "interval": "Prüfintervall der Virendatenbank",
+      "intervalHint": "Zuerst Version prüfen, nur bei neuer Version Änderungen laden. Offizieller Mindestabstand: 1 Stunde",
+      "everyHours": "Jede {count} Stunde | Alle {count} Stunden",
+      "resident": "Scan-Engine geladen halten",
+      "residentHint": "Download-Scans starten schneller, belegen aber dauerhaft etwa 1.1 GB Arbeitsspeicher. Wenn deaktiviert, beendet sich die Engine nach 5 Minuten Leerlauf",
+      "watchDownloadsHint": "Überwacht den Downloads-Ordner; benötigt die Virendatenbank",
+      "startupAlertsHint": "Benachrichtigt über neue Startobjekte",
+      "exclusions": "Scan-Ausnahmen",
+      "exclusionsHint": "Diese Ordner werden bei jedem Scan übersprungen",
+      "addExclusion": "Ordner hinzufügen",
+      "removeExclusion": "Entfernen",
+      "choose": "Auswählen…",
+      "beforeInstall": "Scan vor der Installation",
+      "beforeInstallHint": "Von Homebrew geladene Installationsdateien werden vor der Installation gescannt. Bei Bedrohungen wird die Installation gestoppt. Benötigt die Virendatenbank. Später während der Installation geladene Inhalte, etwa durch Quellcode-Builds oder Installationsskripte, werden nicht gescannt",
+      "schedule": {
+        "title": "Geplante Scans",
+        "frequency": "Automatischer Schnellscan",
+        "hint": "Schnellscan zur festgelegten Zeit, nur bei geöffnetem OpenNavo. Weckt den Mac nicht und wird im Batteriebetrieb übersprungen",
+        "off": "Aus",
+        "daily": "Täglich",
+        "weekly": "Wöchentlich",
+        "weekday": "Wochentag",
+        "time": "Uhrzeit",
+        "next": "Nächster Scan: {time}",
+        "skipped": "Zuletzt übersprungen: {reason}",
+        "reason": {
+          "no_database": "Virendatenbank noch nicht geladen",
+          "no_consent": "Download der Virendatenbank noch nicht genehmigt",
+          "on_battery": "Mac war im Batteriebetrieb",
+          "busy": "Ein anderer Scan lief",
+          "error": "Scan konnte nicht starten"
+        }
+      },
+      "optional": {
+        "title": "Zusatzfunktionen",
+        "hint": "Standardmäßig aus; bei Bedarf aktivieren"
+      },
+      "paste": {
+        "title": "Einfügeschutz",
+        "hint": "Pausiert verdächtige „Laden und ausführen“-Befehle, die mit ⌘V in ein Terminal eingefügt werden, und fragt nach. Unterstützt Terminal, iTerm2, Warp, kitty, Alacritty, Ghostty, WezTerm, Hyper und Tabby. Einfügen per Menü oder Rechtsklick wird nicht geprüft. Prüfung nur lokal; eingefügter Text wird nie gespeichert",
+        "needsAccess": "Zugriff auf Bedienungshilfen erforderlich",
+        "needsAccessHint": "Nach Erlaubnis kann OpenNavo Befehle vor dem Einfügen in Terminal prüfen",
+        "grant": "Zugriff erlauben"
+      },
+      "virusTotal": {
+        "title": "VirusTotal-Abfrage",
+        "hint": "Fragt mit Ihrem eigenen API-Schlüssel die SHA-256-Prüfsumme einer Datei bei VirusTotal ab. Nur auf Ihren Klick wird der Hash gesendet; Dateien werden nie hochgeladen",
+        "key": "API-Schlüssel",
+        "keySaved": "Im Schlüsselbund gespeichert",
+        "keyHint": "Registrieren Sie sich auf virustotal.com. Ihren API-Schlüssel finden Sie im Profil",
+        "removeKey": "Schlüssel entfernen",
+        "placeholder": "API-Schlüssel einfügen",
+        "saveKey": "Speichern",
+        "terms": "Die öffentliche VirusTotal-API erlaubt 4 Abfragen pro Minute und nur private, nicht kommerzielle Nutzung. Für geschäftliche Nutzung benötigen Sie eine eigene kommerzielle VirusTotal-Lizenz. OpenNavo fragt nie automatisch ab und lädt keine Dateien hoch."
+      }
+    },
+    "signatures": {
+      "title": "Signaturprüfung installierter Apps",
+      "never": "Signaturen installierter Apps noch nicht geprüft",
+      "summaryIssues": "{count} Apps geprüft, {issues} App mit Problemen | {count} Apps geprüft, {issues} Apps mit Problemen",
+      "summaryClean": "{count} App geprüft; Signatur und Notarisierung in Ordnung | {count} Apps geprüft; Signaturen und Notarisierung in Ordnung",
+      "issue": {
+        "invalid": "Ungültige Signatur",
+        "unsigned": "Nicht signiert",
+        "adhoc": "Ad-hoc-Signatur",
+        "not_notarized": "Nicht notarisiert",
+        "team_changed": "Entwickler geändert",
+        "unreadable": "Signatur nicht lesbar",
+        "modified": "Nach Signierung geändert"
+      },
+      "check": "Signaturen prüfen",
+      "recheck": "Erneut prüfen",
+      "viewAll": "Alle {count} ansehen",
+      "dialog": {
+        "title": "Apps mit Signaturproblemen",
+        "hint": "Ein Signaturproblem bedeutet nicht immer ein Risiko: Manche Apps verursachen es beim Aktualisieren oder Schreiben von Caches. Prüfen Sie bei Unsicherheit die App im Finder oder laden Sie sie erneut von ihrer Website. Nicht mehr benötigte Apps können Sie hier deinstallieren.",
+        "uninstallSelected": "Auswahl deinstallieren ({count})",
+        "empty": "Keine Signaturprobleme mehr",
+        "missing": "Diese App wurde nicht gefunden. Sie wurde möglicherweise bereits deinstalliert."
+      },
+      "hint": {
+        "invalid": "Signaturprüfung fehlgeschlagen: Dateien in der App wurden nach dem Signieren geändert, hinzugefügt oder entfernt, oder die Signatur ist beschädigt.",
+        "modified": "Die Signatur selbst ist gültig, aber einige enthaltene Komponenten wurden nach dem Signieren geändert.",
+        "unsigned": "Keine Signatur; das System kann den Entwickler nicht bestätigen.",
+        "adhoc": "Nur eine Ad-hoc-Signatur ohne Entwickleridentität. Das System kann den Entwickler nicht bestätigen.",
+        "not_notarized": "Vom Entwickler signiert, aber nicht von Apple notarisiert.",
+        "team_changed": "Ein anderer Entwickler hat die App signiert als bei der letzten Prüfung. Seien Sie aufmerksam, wenn Sie sie nicht neu installiert haben.",
+        "unreadable": "Signatur diesmal nicht lesbar. Prüfen Sie später erneut."
+      }
+    },
+    "paste": {
+      "title": "Einfügen in „{app}“ pausiert",
+      "body": "Dieser Befehl scheint ein Programm herunterzuladen und auszuführen. Verwerfen Sie ihn, wenn Sie ihn nicht bewusst ausführen wollten.",
+      "bodyUnchecked": "Dieser Text ist zu lang für eine vollständige Prüfung. Erlauben Sie das Einfügen nur, wenn Sie es bewusst veranlasst haben.",
+      "pattern": {
+        "pipe_to_interpreter": "Leitet einen Download direkt zur Ausführung an eine Shell weiter",
+        "download_execute": "Führt eine Datei direkt nach dem Download aus",
+        "encoded_command": "Enthält einen codierten Befehl",
+        "remove_quarantine": "Entfernt das macOS-Quarantänekennzeichen und umgeht Sicherheitsprüfungen",
+        "too_long": "Zu lang für eine vollständige Prüfung"
+      },
+      "expires": "Wird in {seconds} s automatisch verworfen",
+      "allow": "Einmal erlauben",
+      "discard": "Verwerfen"
+    },
+    "virusTotal": {
+      "lookup": "Bei VirusTotal abfragen",
+      "malicious": "VirusTotal: {count} Engine meldet Schadsoftware | VirusTotal: {count} Engines melden Schadsoftware",
+      "suspicious": "VirusTotal: {count} Engine stuft die Datei als verdächtig ein | VirusTotal: {count} Engines stufen die Datei als verdächtig ein",
+      "clean": "VirusTotal: keine Engine schlägt an",
+      "notFound": "VirusTotal hat keinen Eintrag für diese Datei",
+      "engines": "Von {total} Engines geprüft",
+      "analyzed": "Analysiert {time}",
+      "hashOnly": "Nur der SHA-256-Wert der Datei wurde gesendet; die Datei wurde nicht hochgeladen",
+      "report": "Bericht ansehen"
+    },
+    "downloadThreat": {
+      "title": "Bedrohung im Download: {file}",
+      "body": "{signature} · Scannen Sie die Datei, um sie in Quarantäne zu verschieben",
+      "action": "Scannen und behandeln"
+    }
+  },
+  "firewall": {
+    "title": "App-Firewall",
+    "subtitle": "Fragt vor App-Verbindungen und erlaubt oder blockiert sie nach Ihren Regeln. Alles wird auf diesem Mac entschieden",
+    "tabs": {
+      "label": "App-Firewall",
+      "rules": "Regeln",
+      "activity": "Verbindungsverlauf",
+      "blocklists": "Sperrlisten",
+      "settings": "Einstellungen"
+    },
+    "unavailable": {
+      "not_bundled": {
+        "title": "Diese Version enthält keine Firewall",
+        "body": "Die App-Firewall benötigt die signierte Netzwerk-Systemerweiterung der offiziellen Version. Entwicklungs- und unsignierte Versionen enthalten sie nicht. Verwenden Sie die offizielle OpenNavo-Version."
+      },
+      "not_in_applications": {
+        "title": "OpenNavo zuerst in „Programme“ verschieben",
+        "body": "macOS erlaubt nur Apps im Ordner „Programme“, Systemerweiterungen zu installieren. Verschieben Sie OpenNavo dorthin, öffnen Sie es erneut und kehren Sie hierher zurück."
+      },
+      "unsupported_os": {
+        "title": "Diese macOS-Version wird nicht unterstützt",
+        "body": "Die App-Firewall benötigt macOS 13 oder neuer."
+      }
+    },
+    "setup": {
+      "title": "App-Firewall aktivieren",
+      "lead": "Beim ersten Netzwerkzugriff jeder App fragt OpenNavo, ob Sie die Verbindung erlauben oder blockieren möchten, und merkt sich Ihre Wahl.",
+      "points": {
+        "ask": {
+          "title": "Fragt vor dem Verbinden",
+          "body": "Sehen Sie App, Verbindungsziel und Unterzeichner, bevor Sie erlauben oder blockieren."
+        },
+        "rules": {
+          "title": "Nach App oder Ziel",
+          "body": "Erlauben Sie eine ganze App oder erlauben bzw. blockieren Sie nur eine Website oder einen Port."
+        },
+        "blocklists": {
+          "title": "Sperrlisten",
+          "body": "Importieren Sie Listen mit Werbe-, Tracking- oder schädlichen Websites. Passende Verbindungen werden direkt blockiert."
+        }
+      },
+      "enable": "App-Firewall aktivieren",
+      "retry": "Erneut aktivieren",
+      "steps": "macOS bittet um zwei Bestätigungen: Erlauben Sie zuerst die OpenNavo-Systemerweiterung in den Systemeinstellungen und danach das Filtern von Netzwerkinhalten.",
+      "privacy": "Alles wird auf diesem Mac entschieden. Verbindungsdetails werden nie hochgeladen.",
+      "failedTitle": "App-Firewall konnte nicht aktiviert werden",
+      "failed": "Aktivierung fehlgeschlagen: {reason}"
+    },
+    "options": {
+      "allowApple": "Apple-Programme automatisch erlauben",
+      "allowAppleHint": "Befehlszeilentools wie curl, ssh und python fragen weiterhin nach.",
+      "allowInstalled": "Bereits installierte Apps automatisch erlauben",
+      "allowInstalledHint": "Nur später installierte Apps fragen nach; weniger Unterbrechungen."
+    },
+    "progress": {
+      "title": "App-Firewall wird aktiviert",
+      "uninstalling": "App-Firewall wird entfernt…",
+      "install": "Systemerweiterung installieren",
+      "installHint": "Firewall-Komponente wird an macOS übergeben. Das dauert meist wenige Sekunden.",
+      "approve": "In Systemeinstellungen erlauben",
+      "approveHint": "Aktivieren Sie OpenNavo unter Systemeinstellungen → Allgemein → Anmeldeobjekte & Erweiterungen → Netzwerkerweiterungen. Unter macOS 14 und älter klicken Sie unter Datenschutz & Sicherheit auf „Erlauben“.",
+      "consent": "Filtern von Netzwerkinhalten erlauben",
+      "consentHint": "Klicken Sie im angezeigten Dialog auf „Erlauben“.",
+      "openSettings": "Systemeinstellungen öffnen",
+      "reboot": "Starten Sie Ihren Mac neu, um die Installation abzuschließen."
+    },
+    "status": {
+      "on": "App-Firewall aktiv",
+      "off": "App-Firewall pausiert",
+      "offBody": "Derzeit werden keine Verbindungen gefiltert. Ihre Regeln bleiben erhalten.",
+      "toggle": "App-Firewall",
+      "rules": "{count} Regel | {count} Regeln",
+      "blockedToday": "Heute {count}-mal blockiert | Heute {count}-mal blockiert",
+      "disconnected": "Firewall-Komponente antwortet nicht.",
+      "disconnectedBody": "Vorhandene Regeln gelten weiterhin. Falls das Problem anhält, schalten Sie die Firewall aus und wieder ein.",
+      "serviceMissing": "Firewall-Dienst nicht korrekt gestartet.",
+      "serviceMissingBody": "Vorhandene Regeln gelten weiterhin. Verbindungen ohne Regel werden erlaubt und protokolliert. Starten Sie den Mac neu, um dies zu beheben.",
+      "preparing": "Bereits installierte Apps werden geprüft. Das dauert meist wenige Sekunden; die Firewall arbeitet weiter.",
+      "mode": "Verbindungen ohne Regel",
+      "modes": {
+        "ask": "Nachfragen",
+        "allow": "Erlauben & protokollieren",
+        "block": "Blockieren & protokollieren"
+      },
+      "modeHints": {
+        "ask": "Ihre Antwort auf die Nachfrage wird als Regel gespeichert.",
+        "allow": "Keine Nachfragen. Unter „Verbindungsverlauf“ einsehbar.",
+        "block": "Neue Apps können erst nach Hinzufügen einer Erlaubnisregel eine Verbindung herstellen."
+      },
+      "pending": "{count} Verbindung wartet auf Ihre Bestätigung | {count} Verbindungen warten auf Ihre Bestätigung",
+      "review": "Prüfen"
+    },
+    "signer": {
+      "apple": "Von Apple signiert",
+      "app_store": "App Store",
+      "developer": "Entwickler: {team}",
+      "developer_id": "Signiert",
+      "adhoc": "Ad-hoc-signiert",
+      "unsigned": "Nicht signiert",
+      "invalid": "Ungültige Signatur"
+    },
+    "rules": {
+      "search": "Apps, Entwickler oder Adressen suchen",
+      "filterLabel": "Regeln filtern",
+      "filters": {
+        "all": "Alle",
+        "allow": "Erlauben",
+        "block": "Blockieren",
+        "user": "Meine Regeln",
+        "auto": "Automatisch hinzugefügt"
+      },
+      "add": "Regel hinzufügen",
+      "allApps": "Alle Apps",
+      "allAppsHint": "Gilt für jede App",
+      "anyRemote": "Beliebige Adresse",
+      "anyPort": "Beliebiger Port",
+      "port": "Port {port}",
+      "action": {
+        "allow": "Erlauben",
+        "block": "Blockieren"
+      },
+      "untilQuit": "Bis zum Beenden der App",
+      "source": {
+        "user": "Meine Regel",
+        "apple": "Apple-Programm",
+        "installed": "Installierte App"
+      },
+      "lastMatch": "Verwendet {time} · {count}×",
+      "neverMatched": "Noch nicht verwendet",
+      "menuLabel": "Regelaktionen für „{name}“",
+      "menu": {
+        "allow": "Auf Erlauben ändern",
+        "block": "Auf Blockieren ändern",
+        "edit": "Bearbeiten",
+        "delete": "Löschen"
+      },
+      "noMatch": "Keine passenden Regeln",
+      "empty": "Noch keine Regeln",
+      "emptyBody": "Ihre Antworten beim Netzwerkzugriff von Apps werden zu Regeln und erscheinen hier.",
+      "deleteTitle": "Diese Regel löschen?",
+      "deleteBody": "Beim nächsten Netzwerkzugriff wird „{name}“ wie eine Verbindung ohne Regel behandelt.",
+      "deleted": "Regel gelöscht"
+    },
+    "sheet": {
+      "addTitle": "Regel hinzufügen",
+      "editTitle": "Regel bearbeiten",
+      "program": "Programm",
+      "oneApp": "Eine App",
+      "allApps": "Alle Apps",
+      "allAppsHint": "Gilt für jede App; Adresse oder Port erforderlich.",
+      "chooseApp": "App oder Programm auswählen…",
+      "change": "Ändern",
+      "needApp": "Wählen Sie eine App oder ein Programm",
+      "action": "Aktion",
+      "remote": "Ziel",
+      "someRemote": "Bestimmte Adresse",
+      "remotePlaceholder": "example.com, *.example.com, IP oder Netzbereich",
+      "remoteHint": "*.example.com umfasst alle Subdomains. Netzbereiche z. B. als 10.0.0.0/8 angeben.",
+      "port": "Port",
+      "somePort": "Bestimmter Port",
+      "invalid": "Adress- oder Portformat prüfen",
+      "needDestination": "Eine Regel für alle Apps benötigt eine Adresse oder einen Port. Sonst würde sie den gesamten Netzwerkzugriff des Mac erlauben oder blockieren.",
+      "order": "Genauere Regeln haben Vorrang: Regeln mit Adresse oder Port gelten zuerst. Bei gleicher Genauigkeit hat Blockieren Vorrang vor Erlauben.",
+      "save": "Speichern",
+      "saved": "Regel gespeichert",
+      "added": "Regel hinzugefügt"
+    },
+    "activity": {
+      "filterLabel": "Verlauf filtern",
+      "filters": {
+        "all": "Alle",
+        "blocked": "Nur blockierte"
+      },
+      "hint": "Durch Regeln erlaubte Verbindungen werden nicht protokolliert",
+      "clear": "Verlauf leeren",
+      "clearTitle": "Verbindungsverlauf leeren?",
+      "clearBody": "Nur der Verlauf wird gelöscht. Ihre Regeln bleiben erhalten.",
+      "port": "Port {port}",
+      "reason": {
+        "rule": "Gemäß Regel",
+        "blocklist": "Sperrlisten",
+        "apple": "Apple-Programm, automatisch erlaubt",
+        "installed": "Installierte App, automatisch erlaubt",
+        "mode": "Keine Regel",
+        "answer": "Ihre Antwort",
+        "timeout": "Keine rechtzeitige Antwort; vorerst erlaubt",
+        "no_client": "OpenNavo lief nicht; vorerst erlaubt"
+      },
+      "action": {
+        "allow": "Erlaubt",
+        "block": "Blockiert"
+      },
+      "count": "{count}-mal",
+      "allowApp": "App erlauben",
+      "blockApp": "App blockieren",
+      "ruled": {
+        "allow": "„{name}“ darf sich jetzt verbinden",
+        "block": "Netzwerkzugriff für „{name}“ blockiert"
+      },
+      "ruledShort": {
+        "allow": "Jetzt erlaubt",
+        "block": "Jetzt blockiert"
+      },
+      "more": "Älteren Verlauf laden",
+      "empty": "Noch keine Einträge",
+      "emptyBlocked": "Noch keine blockierten Verbindungen",
+      "emptyBody": "Blockierte Verbindungen, Ihre Antworten und automatisch erlaubte Verbindungen werden hier protokolliert."
+    },
+    "blocklists": {
+      "intro": "Verbindungen zu aufgeführten Websites oder IPs werden ohne Nachfrage blockiert. Listen aus dem Web werden täglich aktualisiert.",
+      "source": "Sperrlisten-Adresse oder Datei",
+      "placeholder": "https://… oder lokaler Dateipfad",
+      "add": "Hinzufügen",
+      "chooseFile": "Datei auswählen…",
+      "added": "„{name}“ mit {count} Einträgen hinzugefügt",
+      "addFailed": "Sperrliste konnte nicht hinzugefügt werden",
+      "toggle": "„{name}“ aktivieren",
+      "entries": "{count} Eintrag | {count} Einträge",
+      "updated": "Aktualisiert {time}",
+      "refresh": "„{name}“ jetzt aktualisieren",
+      "remove": "„{name}“ entfernen",
+      "empty": "Noch keine Sperrlisten",
+      "emptyBody": "Unterstützt hosts-Dateien sowie Listen mit einer Domain, IP oder einem Netzbereich pro Zeile.",
+      "boundary": "Manche Apps ermitteln IPs selbst und verbinden sich direkt. Solche Verbindungen lassen sich nur über IPs in der Liste blockieren; Domainsperren greifen möglicherweise nicht.",
+      "removeTitle": "Diese Sperrliste entfernen?",
+      "removeBody": "Nach Entfernen von „{name}“ werden die enthaltenen Adressen nicht mehr direkt blockiert.",
+      "removeAction": "Entfernen"
+    },
+    "settings": {
+      "automatic": "Automatisch erlauben",
+      "allowInstalledHint": "Vor Aktivierung der Firewall installierte Apps dürfen sich frei verbinden. Nur später installierte Apps fragen nach.",
+      "closedHint": "Die Systemerweiterung speichert diese Einstellungen. Sie gelten auch bei beendetem OpenNavo.",
+      "remove": "Entfernen",
+      "removeLabel": "App-Firewall entfernen",
+      "removeHint": "Deaktiviert die Filterung und deinstalliert die Systemerweiterung. Regeln und Verlauf werden gelöscht. macOS fragt möglicherweise nach Ihrem Passwort.",
+      "removeAction": "Entfernen",
+      "removeTitle": "App-Firewall entfernen?",
+      "removeBody": "Danach können sich alle Apps frei verbinden. Regeln, Sperrlisten und Verbindungsverlauf werden gelöscht. Sie können die Firewall jederzeit erneut aktivieren."
+    },
+    "alert": {
+      "title": "„{name}“ möchte sich mit dem Netzwerk verbinden",
+      "warning": {
+        "unsigned": "Dieses Programm ist nicht signiert. Sein Entwickler lässt sich nicht bestätigen.",
+        "adhoc": "Dieses Programm hat nur eine Ad-hoc-Signatur. Sein Entwickler lässt sich nicht bestätigen.",
+        "invalid": "Die Signatur dieses Programms ist ungültig. Es wurde möglicherweise verändert."
+      },
+      "to": "Verbindung zu",
+      "port": "Port {port}",
+      "path": "Programmpfad",
+      "parents": "Gestartet von",
+      "args": "Befehlsargumente",
+      "scope": "Geltungsbereich",
+      "scopes": {
+        "app": "Alle Verbindungen dieser App",
+        "destination": "Nur diese Adresse"
+      },
+      "until": "Gültigkeit",
+      "untils": {
+        "always": "Dauerhaft",
+        "app_quits": "Bis zum Beenden der App"
+      },
+      "waiting": "{count} weitere Verbindung dieser App wartet auf diese Antwort | {count} weitere Verbindungen dieser App warten auf diese Antwort",
+      "queue": "{count} weitere Verbindung wartet auf Bestätigung | {count} weitere Verbindungen warten auf Bestätigung",
+      "block": "Blockieren",
+      "allow": "Erlauben",
+      "none": "Keine Verbindungen warten auf Bestätigung",
+      "deadline": "Ohne Antwort innerhalb von {time} wird diese Verbindung vorerst erlaubt",
+      "released": "Diese Verbindung wurde vorerst erlaubt. Ihre Antwort wird weiterhin als Regel gespeichert."
+    },
+    "rail": {
+      "title": "Firewall",
+      "state": "Status",
+      "notSetUp": "Aus",
+      "paused": "Pausiert",
+      "on": "Läuft",
+      "noResponse": "Keine Antwort",
+      "mode": "Ohne Regel",
+      "rules": "Regeln",
+      "blockedToday": "Heute blockiert",
+      "version": "Komponentenversion",
+      "limitsTitle": "Geltungsbereich",
+      "limits": "Nur ausgehende Verbindungen von Apps auf diesem Mac. Eingehende Verbindungen regelt die integrierte macOS-Firewall. Wenn OpenNavo nicht läuft, kann es nicht nachfragen. Verbindungen ohne Regel werden dann vorerst erlaubt und im Verbindungsverlauf protokolliert."
+    }
+  }
+}

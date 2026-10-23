@@ -1,135 +1,155 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
-import { useElementSize } from '@vueuse/core';
+import { computed } from 'vue';
 import { useThemeVars } from 'naive-ui';
+import { formatCount, formatDate, formatTime } from '@opennavo/shared';
 import type { Schemas } from '@/typings/api/opennavo';
+import { useAppStore } from '@/store/modules/app';
+import { useThemeStore } from '@/store/modules/theme';
 import { $t } from '@/locales';
+import { USAGE_SERIES_COLORS } from './usage-series';
+import UsageTrend from './usage-trend.vue';
+
+defineOptions({ name: 'UsageCard' });
 
 const props = defineProps<{ usage: Schemas['UsageOverview'] }>();
 const theme = useThemeVars();
-const chart = useTemplateRef<HTMLElement>('chart');
-const { width } = useElementSize(chart);
-const chartWidth = computed(() => Math.max(300, width.value));
-const text = (key: keyof typeof import('@/locales/langs/pages/zh-cn').default.dashboard.usage) =>
-  $t(`page.dashboard.usage.${key}`);
+const appStore = useAppStore();
+const themeStore = useThemeStore();
+const locale = computed(() => appStore.locale);
+const colors = computed(() => USAGE_SERIES_COLORS[themeStore.darkMode ? 'dark' : 'light']);
+const text = (key: keyof typeof import('@/locales/langs/pages/zh-cn').default.dashboard.usage, values = {}) =>
+  $t(`page.dashboard.usage.${key}`, values);
+const count = (value: number) => formatCount(value, { locale: locale.value });
+const day = (date: string) => formatDate(`${date}T00:00:00Z`, { locale: locale.value, timeZone: 'UTC' });
+
+// Days before the first report are a collection gap, not zero activity, so the trend and the table start there.
+const days = computed(() => {
+  const first = props.usage.days.findIndex(entry => entry.desktop || entry.web || entry.newDesktop || entry.newWeb);
+  return first < 0 ? [] : props.usage.days.slice(first);
+});
 const today = computed(() => props.usage.days.at(-1));
-const hasData = computed(() => props.usage.days.some(day => day.desktop || day.web));
-const ceiling = computed(() => Math.max(1, ...props.usage.days.flatMap(day => [day.web, day.desktop])));
-const points = (platform: 'web' | 'desktop') =>
-  props.usage.days
-    .map(
-      (day, index) =>
-        `${40 + (index * (chartWidth.value - 80)) / Math.max(1, props.usage.days.length - 1)},${180 - (day[platform] / ceiling.value) * 150}`
-    )
-    .join(' ');
+const yesterday = computed(() => (days.value.length > 1 ? days.value.at(-2) : undefined));
+const metrics = computed(() =>
+  (['desktop', 'web', 'newDesktop', 'newWeb'] as const).map(key => ({
+    key,
+    color: key === 'desktop' || key === 'web' ? colors.value[key] : null,
+    value: count(today.value?.[key] ?? 0),
+    previous: text('yesterday', { value: yesterday.value ? count(yesterday.value[key]) : '—' })
+  }))
+);
+const trendTitle = computed(() =>
+  text('trend', { start: day(days.value[0]?.date ?? ''), end: day(days.value.at(-1)?.date ?? '') })
+);
+const asOf = computed(() => text('asOf', { time: formatTime(props.usage.asOf, { timeZone: props.usage.timeZone }) }));
+const countryNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'region' }));
+const countryName = (code: string) => (code === 'ZZ' ? text('unknownCountry') : (countryNames.value.of(code) ?? code));
+const versionCeiling = computed(() => Math.max(1, ...props.usage.versions.map(version => version.count)));
+const hasBreakdown = computed(() => props.usage.versions.length > 0 || Boolean(props.usage.countries?.length));
 </script>
 
 <template>
   <NCard :bordered="false" size="small" class="card-wrapper" :title="text('title')">
+    <template #header-extra>
+      <NText depth="3" class="text-12px">{{ asOf }}</NText>
+    </template>
     <div class="flex-col gap-16px">
-      <NText depth="3">{{ text('hint') }}</NText>
-      <div v-if="today" class="flex flex-wrap gap-x-32px gap-y-8px text-16px tabular-nums">
-        <span
-          >{{ text('desktop') }}: <strong>{{ today.desktop }}</strong></span
+      <dl class="m-0 grid grid-cols-2 gap-12px lg:grid-cols-4">
+        <div
+          v-for="metric in metrics"
+          :key="metric.key"
+          :data-metric="metric.key"
+          class="rounded-8px px-14px py-12px"
+          :style="{ background: theme.actionColor }"
         >
-        <span
-          >{{ text('web') }}: <strong>{{ today.web }}</strong></span
-        >
-        <span
-          >{{ text('newDesktop') }}: <strong>{{ today.newDesktop }}</strong></span
-        >
-        <span
-          >{{ text('newWeb') }}: <strong>{{ today.newWeb }}</strong></span
-        >
-      </div>
-      <NEmpty v-if="!hasData" :description="text('empty')" />
-      <figure v-else ref="chart" class="m-0">
-        <figcaption class="mb-8px font-600">{{ text('trend') }}</figcaption>
-        <div class="flex flex-wrap gap-16px text-13px">
-          <span :style="{ color: theme.primaryColorPressed }">{{ text('desktop') }} —</span>
-          <span :style="{ color: theme.textColorBase }">{{ text('web') }} ···</span>
+          <dt class="flex items-center gap-6px text-13px" :style="{ color: theme.textColor2 }">
+            <span v-if="metric.color" class="h-2px w-12px rounded-full" :style="{ background: metric.color }" />
+            {{ text(metric.key) }}
+          </dt>
+          <dd class="m-0 mt-4px text-26px font-600 leading-32px" :style="{ color: theme.textColor1 }">
+            {{ metric.value }}
+          </dd>
+          <dd class="m-0 mt-2px text-12px" :style="{ color: theme.textColor3 }">{{ metric.previous }}</dd>
         </div>
-        <svg :viewBox="`0 0 ${chartWidth} 220`" class="block w-full" role="img" :aria-label="text('trend')">
-          <title>{{ text('trend') }}</title>
-          <path :d="`M40 30 V180 H${chartWidth - 40}`" fill="none" :stroke="theme.borderColor" />
-          <text x="32" y="35" text-anchor="end" :fill="theme.textColor2" font-size="12">{{ ceiling }}</text>
-          <text x="32" y="184" text-anchor="end" :fill="theme.textColor2" font-size="12">0</text>
-          <polyline :points="points('desktop')" fill="none" :stroke="theme.primaryColorPressed" stroke-width="2" />
-          <polyline
-            :points="points('web')"
-            fill="none"
-            :stroke="theme.textColorBase"
-            stroke-width="2"
-            stroke-dasharray="5 4"
-          />
-          <text x="40" y="207" :fill="theme.textColor2" font-size="12">{{ usage.days[0]?.date }}</text>
-          <text :x="chartWidth - 40" y="207" text-anchor="end" :fill="theme.textColor2" font-size="12">
-            {{ today?.date }}
-          </text>
-        </svg>
-      </figure>
-      <details>
-        <summary class="cursor-pointer rounded py-8px focus-visible:outline-solid">{{ text('details') }}</summary>
-        <div class="overflow-x-auto">
+      </dl>
+      <NEmpty v-if="!days.length" :description="text('empty')" />
+      <div v-else class="grid grid-cols-1 gap-x-24px gap-y-16px" :class="{ 'xl:grid-cols-[minmax(0,1fr)_320px]': hasBreakdown }">
+        <UsageTrend :days="days" :colors="colors" :locale="locale" :title="trendTitle" />
+        <div v-if="hasBreakdown" class="flex-col gap-16px">
+          <section v-if="usage.versions.length">
+            <h3 class="mb-8px mt-0 text-14px font-600">{{ text('versions') }}</h3>
+            <NTable size="small" :bordered="false" class="tabular-nums">
+              <thead>
+                <tr>
+                  <th scope="col">{{ text('version') }}</th>
+                  <th scope="col" class="!text-right">{{ text('count') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="version in usage.versions" :key="version.version">
+                  <th scope="row" class="!bg-transparent !font-normal">{{ version.version }}</th>
+                  <td>
+                    <div class="flex items-center justify-end gap-8px">
+                      <span
+                        class="h-6px rounded-r-3px"
+                        :style="{ width: `${(version.count / versionCeiling) * 96}px`, background: colors.desktop }"
+                      />
+                      <span class="min-w-32px text-right">{{ count(version.count) }}</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </NTable>
+          </section>
+          <section v-if="usage.countries?.length">
+            <h3 class="mb-8px mt-0 text-14px font-600">{{ text('countries') }}</h3>
+            <NTable size="small" :bordered="false" class="tabular-nums">
+              <thead>
+                <tr>
+                  <th scope="col">{{ text('country') }}</th>
+                  <th scope="col" class="!text-right">{{ text('desktop') }}</th>
+                  <th scope="col" class="!text-right">{{ text('web') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in usage.countries" :key="row.country">
+                  <th scope="row" class="!bg-transparent !font-normal">{{ countryName(row.country) }}</th>
+                  <td class="text-right">{{ count(row.desktop) }}</td>
+                  <td class="text-right">{{ count(row.web) }}</td>
+                </tr>
+              </tbody>
+            </NTable>
+          </section>
+        </div>
+      </div>
+      <details v-if="days.length">
+        <summary class="cursor-pointer rounded py-4px text-13px focus-visible:outline-solid">{{ text('details') }}</summary>
+        <div class="mt-8px overflow-x-auto">
           <NTable :single-line="false" size="small" class="tabular-nums">
             <thead>
               <tr>
                 <th scope="col">{{ text('date') }}</th>
-                <th scope="col">{{ text('desktop') }}</th>
-                <th scope="col">{{ text('web') }}</th>
-                <th scope="col">{{ text('newDesktop') }}</th>
-                <th scope="col">{{ text('newWeb') }}</th>
+                <th scope="col" class="!text-right">{{ text('desktop') }}</th>
+                <th scope="col" class="!text-right">{{ text('web') }}</th>
+                <th scope="col" class="!text-right">{{ text('newDesktop') }}</th>
+                <th scope="col" class="!text-right">{{ text('newWeb') }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="day in [...usage.days].reverse()" :key="day.date">
-                <th scope="row" class="whitespace-nowrap">{{ day.date }}</th>
-                <td>{{ day.desktop }}</td>
-                <td>{{ day.web }}</td>
-                <td>{{ day.newDesktop }}</td>
-                <td>{{ day.newWeb }}</td>
+              <tr v-for="entry in [...days].reverse()" :key="entry.date">
+                <th scope="row" class="whitespace-nowrap !bg-transparent !font-normal">{{ entry.date }}</th>
+                <td class="text-right">{{ count(entry.desktop) }}</td>
+                <td class="text-right">{{ count(entry.web) }}</td>
+                <td class="text-right">{{ count(entry.newDesktop) }}</td>
+                <td class="text-right">{{ count(entry.newWeb) }}</td>
               </tr>
             </tbody>
           </NTable>
         </div>
       </details>
-      <section v-if="usage.versions.length">
-        <h3 class="mb-8px mt-0 text-14px font-600">{{ text('versions') }}</h3>
-        <NTable size="small" class="tabular-nums">
-          <thead>
-            <tr>
-              <th scope="col">{{ text('version') }}</th>
-              <th scope="col">{{ text('count') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="version in usage.versions" :key="version.version">
-              <th scope="row">{{ version.version }}</th>
-              <td>{{ version.count }}</td>
-            </tr>
-          </tbody>
-        </NTable>
-      </section>
-      <section v-if="usage.countries?.length">
-        <h3 class="mb-8px mt-0 text-14px font-600">{{ text('countries') }}</h3>
-        <NTable size="small" class="tabular-nums">
-          <thead>
-            <tr>
-              <th scope="col">{{ text('country') }}</th>
-              <th scope="col">{{ text('desktop') }}</th>
-              <th scope="col">{{ text('web') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in usage.countries" :key="row.country">
-              <th scope="row">{{ row.country === 'ZZ' ? text('unknownCountry') : row.country }}</th>
-              <td>{{ row.desktop }}</td>
-              <td>{{ row.web }}</td>
-            </tr>
-          </tbody>
-        </NTable>
-      </section>
-      <NText depth="3" class="text-12px">{{ text('newHint') }}</NText>
+      <div class="flex-col gap-4px text-12px" :style="{ color: theme.textColor3 }">
+        <p class="m-0">{{ text('hint') }}</p>
+        <p class="m-0">{{ text('newHint') }}</p>
+      </div>
     </div>
   </NCard>
 </template>

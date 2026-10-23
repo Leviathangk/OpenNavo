@@ -10,6 +10,15 @@
       "fr-FR",
       "de-DE"
     ],
+    "expected": "en-US",
+    "desktop": "fr-FR"
+  },
+  {
+    "name": "unsupported-everywhere",
+    "languages": [
+      "nl-NL",
+      "ko-KR"
+    ],
     "expected": "en-US"
   },
   {
@@ -19,14 +28,16 @@
       "ja-JP",
       "ru-RU"
     ],
-    "expected": "ja-JP"
+    "expected": "ja-JP",
+    "desktop": "fr-FR"
   },
   {
     "name": "region-zh",
     "languages": [
       "zh-Hant-TW"
     ],
-    "expected": "zh-CN"
+    "expected": "zh-CN",
+    "desktop": "zh-Hant"
   },
   {
     "name": "region-es",
