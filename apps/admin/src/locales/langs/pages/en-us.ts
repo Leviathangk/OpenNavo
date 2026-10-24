@@ -45,6 +45,8 @@ const pages: PageMessages = {
   dashboard: {
     usage: {
       countries: 'Country distribution today',
+      countryOrder: 'Sorted by total DAU',
+      allCountries: 'View all countries / regions',
       country: 'Country',
       unknownCountry: 'Unknown',
       title: 'User activity',

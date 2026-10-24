@@ -34,6 +34,8 @@ const pages = {
   dashboard: {
     usage: {
       countries: '今日国家分布',
+      countryOrder: '按总日活排序',
+      allCountries: '查看全部国家 / 地区',
       country: '国家',
       unknownCountry: '未知',
       title: '用户活跃',

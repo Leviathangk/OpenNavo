@@ -1818,7 +1818,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     );
     assert.equal(listCapabilities.at(-1), 'link');
   });
-  await t.test('app titles name the platform once and descriptions keep their closing sentence', async () => {
+  await t.test('app titles name the platform once and descriptions prioritize the complete summary', async () => {
     const page = async path => {
       const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
       assert.equal(response.status, 200, `${path}\n${logs}`);
@@ -1835,10 +1835,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       ['/ru', 'WeChat для Mac — скачать и установить · OpenNavo']
     ])
       assert.equal(title(await page(`${prefix}/apps/wechat`)), expected, prefix || '/');
-    // The summary gives way, so search results show the whole closing sentence (about 160 columns).
+    // Keep the complete summary instead of shortening it for a generic closing sentence.
     assert.equal(
       description(await page('/apps/wechat')),
-      'Tencent’s Mac messaging client for text, files, voice and video calls with your WeChat… Explore installation and uninstallation for WeChat for Mac on Mac.'
+      'Tencent’s Mac messaging client for text, files, voice and video calls with your WeChat contacts.'
     );
     // Chinese names join the Chinese text around them; this one fits whole.
     assert.equal(

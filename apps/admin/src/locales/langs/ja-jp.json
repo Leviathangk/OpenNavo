@@ -441,6 +441,8 @@
         "details": "日別の詳細",
         "newHint": "新規は識別子の初回観測です。ローカルデータの削除や90日以上利用がない場合、再訪問が新規として集計されることがあります。",
         "countries": "今日の国別分布",
+        "countryOrder": "総 DAU 順",
+        "allCountries": "すべての国 / 地域を表示",
         "country": "国",
         "unknownCountry": "不明"
       }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useThemeVars } from 'naive-ui';
 import { formatCount, formatDate, formatTime } from '@opennavo/shared';
 import type { Schemas } from '@/typings/api/opennavo';
@@ -8,6 +8,7 @@ import { useThemeStore } from '@/store/modules/theme';
 import { $t } from '@/locales';
 import { USAGE_SERIES_COLORS } from './usage-series';
 import UsageTrend from './usage-trend.vue';
+import UsageCountryTable from './usage-country-table.vue';
 
 defineOptions({ name: 'UsageCard' });
 
@@ -41,8 +42,13 @@ const trendTitle = computed(() =>
   text('trend', { start: day(days.value[0]?.date ?? ''), end: day(days.value.at(-1)?.date ?? '') })
 );
 const asOf = computed(() => text('asOf', { time: formatTime(props.usage.asOf, { timeZone: props.usage.timeZone }) }));
-const countryNames = computed(() => new Intl.DisplayNames([locale.value], { type: 'region' }));
-const countryName = (code: string) => (code === 'ZZ' ? text('unknownCountry') : (countryNames.value.of(code) ?? code));
+const showCountries = ref(false);
+const countries = computed(() =>
+  [...(props.usage.countries ?? [])].sort(
+    (a, b) => b.desktop + b.web - a.desktop - a.web || a.country.localeCompare(b.country)
+  )
+);
+const previewCountries = computed(() => countries.value.slice(0, 5));
 const versionCeiling = computed(() => Math.max(1, ...props.usage.versions.map(version => version.count)));
 const hasBreakdown = computed(() => props.usage.versions.length > 0 || Boolean(props.usage.countries?.length));
 </script>
@@ -72,7 +78,11 @@ const hasBreakdown = computed(() => props.usage.versions.length > 0 || Boolean(p
         </div>
       </dl>
       <NEmpty v-if="!days.length" :description="text('empty')" />
-      <div v-else class="grid grid-cols-1 gap-x-24px gap-y-16px" :class="{ 'xl:grid-cols-[minmax(0,1fr)_320px]': hasBreakdown }">
+      <div
+        v-else
+        class="grid grid-cols-1 gap-x-24px gap-y-16px"
+        :class="{ 'xl:grid-cols-[minmax(0,1fr)_384px]': hasBreakdown }"
+      >
         <UsageTrend :days="days" :colors="colors" :locale="locale" :title="trendTitle" />
         <div v-if="hasBreakdown" class="flex-col gap-16px">
           <section v-if="usage.versions.length">
@@ -100,29 +110,32 @@ const hasBreakdown = computed(() => props.usage.versions.length > 0 || Boolean(p
               </tbody>
             </NTable>
           </section>
-          <section v-if="usage.countries?.length">
-            <h3 class="mb-8px mt-0 text-14px font-600">{{ text('countries') }}</h3>
-            <NTable size="small" :bordered="false" class="tabular-nums">
-              <thead>
-                <tr>
-                  <th scope="col">{{ text('country') }}</th>
-                  <th scope="col" class="!text-right">{{ text('desktop') }}</th>
-                  <th scope="col" class="!text-right">{{ text('web') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in usage.countries" :key="row.country">
-                  <th scope="row" class="!bg-transparent !font-normal">{{ countryName(row.country) }}</th>
-                  <td class="text-right">{{ count(row.desktop) }}</td>
-                  <td class="text-right">{{ count(row.web) }}</td>
-                </tr>
-              </tbody>
-            </NTable>
+          <section v-if="countries.length" class="min-w-0" data-testid="usage-countries">
+            <div class="mb-8px flex flex-wrap items-center justify-between gap-8px">
+              <h3 class="m-0 text-14px font-600">{{ text('countries') }}</h3>
+              <NText depth="3" class="text-12px">{{ text('countryOrder') }}</NText>
+            </div>
+            <UsageCountryTable :countries="previewCountries" :locale="locale" />
+            <NButton
+              v-if="countries.length > previewCountries.length"
+              block
+              secondary
+              size="small"
+              class="mt-8px"
+              data-testid="usage-all-countries"
+              aria-haspopup="dialog"
+              :aria-expanded="showCountries"
+              @click="showCountries = true"
+            >
+              {{ text('allCountries') }}
+            </NButton>
           </section>
         </div>
       </div>
       <details v-if="days.length">
-        <summary class="cursor-pointer rounded py-4px text-13px focus-visible:outline-solid">{{ text('details') }}</summary>
+        <summary class="cursor-pointer rounded py-4px text-13px focus-visible:outline-solid">
+          {{ text('details') }}
+        </summary>
         <div class="mt-8px overflow-x-auto">
           <NTable :single-line="false" size="small" class="tabular-nums">
             <thead>
@@ -151,5 +164,11 @@ const hasBreakdown = computed(() => props.usage.versions.length > 0 || Boolean(p
         <p class="m-0">{{ text('newHint') }}</p>
       </div>
     </div>
+    <NDrawer v-model:show="showCountries" width="min(560px, 100vw)">
+      <NDrawerContent :title="text('countries')" closable>
+        <p class="mb-12px mt-0 text-12px" :style="{ color: theme.textColor3 }">{{ text('countryOrder') }}</p>
+        <UsageCountryTable :countries="countries" :locale="locale" />
+      </NDrawerContent>
+    </NDrawer>
   </NCard>
 </template>

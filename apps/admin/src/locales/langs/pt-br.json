@@ -441,6 +441,8 @@
         "details": "Detalhes por dia",
         "newHint": "Novo significa a primeira observação do identificador. Limpar dados locais ou retornar após 90 dias sem atividade pode contar como novo.",
         "countries": "Distribuição por país hoje",
+        "countryOrder": "Ordenado por DAU total",
+        "allCountries": "Ver todos os países / regiões",
         "country": "País",
         "unknownCountry": "Desconhecido"
       }
