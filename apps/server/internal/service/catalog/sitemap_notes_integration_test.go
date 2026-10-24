@@ -54,7 +54,7 @@ func TestSitemapUsesStoredNotesFactsAndCountsMissingOnesLive(t *testing.T) {
 	require.NoError(t, st.DB.Exec("UPDATE releases SET body_markdown='' WHERE package_id=902").Error)
 	require.Equal(t, live, versions())
 	// Without them it counts live and sees the blank notes.
-	require.NoError(t, st.DB.Exec("UPDATE package_page_state SET notes_chars=NULL,notes_has_source=NULL WHERE package_id=902").Error)
+	require.NoError(t, st.DB.Exec("UPDATE package_page_state SET notes_chars=NULL,notes_entries=NULL WHERE package_id=902").Error)
 	thin := versions()
 	require.Equal(t, "noindex, follow", string(thin.Robots))
 	require.Equal(t, "thin_notes_page", string(thin.Reason))

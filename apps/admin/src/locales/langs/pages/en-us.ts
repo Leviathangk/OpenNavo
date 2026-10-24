@@ -929,7 +929,7 @@ const pages: PageMessages = {
         'Unchecked languages still render, but their home, list, category and static pages stay out of the index, hreflang and sitemaps. App pages are judged on their own translation quality. English is the default language and always stays open.',
       versionsMinNotesChars: 'Minimum release-note length',
       versionsMinNotesCharsHint:
-        'A version page is indexed only when its release notes reach this many characters (CJK characters count as 2) and name a source.',
+        'A version page is indexed only when at least 3 of its releases carry notes that together reach this many characters (CJK characters count as 2). Notes that only say the details are unavailable or unverified do not count.',
       detailsRedirect: 'Redirect details pages to the overview',
       detailsRedirectHint:
         'When on, a details page redirects (301) to the overview once the overview carries everything the details page had and is indexable in that language. Link apps have no details page.',

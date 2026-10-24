@@ -156,8 +156,13 @@ usePageSeo({
   title: () => (article.value ? articleTitle(article.value) : t('articles.metaTitle')),
   description: () => (article.value ? articleDescription(article.value) : undefined)
 });
+// Only a noindex is written: an empty robots value removes the default meta tag while X-Robots-Tag keeps
+// it, and the audit then sees them disagree.
+useHead(() => {
+  const robots = article.value ? articleRobots(article.value, appLocale.value) : undefined;
+  return robots ? { meta: [{ name: 'robots', content: robots, tagPriority: 'high' as const }] } : {};
+});
 useSeoMeta({
-  robots: () => (article.value ? articleRobots(article.value, appLocale.value) : undefined),
   ogType: () => (article.value ? 'article' : undefined),
   articlePublishedTime: () => article.value?.publishedAt,
   articleModifiedTime: () => article.value?.updatedAt

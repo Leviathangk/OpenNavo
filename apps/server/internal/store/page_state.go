@@ -21,8 +21,8 @@ type PageState struct {
 	PageNumber                    int
 	ContentModifiedAt             time.Time
 	// Versions pages only: the notes facts the sitemap's thin-page rule reads (nil until computed).
-	NotesChars     *int
-	NotesHasSource *bool
+	NotesChars   *int
+	NotesEntries *int
 }
 
 // stableContent strips persistence metadata, never public evidence dates or version dates.
@@ -171,17 +171,16 @@ func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, e
 						if err != nil {
 							return err
 						}
-						var chars *int
-						var source *bool
+						var chars, entries *int
 						if facts != nil {
-							chars, source = &facts.Chars, &facts.HasSource
+							chars, entries = &facts.Chars, &facts.Entries
 						}
-						return tx.Exec(`INSERT INTO package_page_state(package_id,locale,page_kind,page_number,content_hash,content_modified_at,notes_chars,notes_has_source)
+						return tx.Exec(`INSERT INTO package_page_state(package_id,locale,page_kind,page_number,content_hash,content_modified_at,notes_chars,notes_entries)
        VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(package_id,locale,page_kind,page_number) DO UPDATE SET
-       content_hash=EXCLUDED.content_hash,content_checked_at=now(),notes_chars=EXCLUDED.notes_chars,notes_has_source=EXCLUDED.notes_has_source,
+       content_hash=EXCLUDED.content_hash,content_checked_at=now(),notes_chars=EXCLUDED.notes_chars,notes_entries=EXCLUDED.notes_entries,
        content_modified_at=CASE WHEN package_page_state.content_hash<>EXCLUDED.content_hash
        THEN GREATEST(package_page_state.content_modified_at+interval '1 microsecond',?)
-       ELSE package_page_state.content_modified_at END`, row.ID, locale, kind, page, hash, baseline, chars, source, job.ChangedAt).Error
+       ELSE package_page_state.content_modified_at END`, row.ID, locale, kind, page, hash, baseline, chars, entries, job.ChangedAt).Error
 					}
 					latest := entries[:min(1, len(entries))]
 					if err := save("overview", 1, []any{overview, shots, latest}, nil); err != nil {
@@ -226,18 +225,18 @@ func (s *Store) PageStates(ctx context.Context, ids []int64) ([]PageState, error
 	if len(ids) == 0 {
 		return rows, nil
 	}
-	err := s.DB.WithContext(ctx).Raw(`SELECT package_id,locale,page_kind,page_number,content_hash,content_modified_at,notes_chars,notes_has_source
+	err := s.DB.WithContext(ctx).Raw(`SELECT package_id,locale,page_kind,page_number,content_hash,content_modified_at,notes_chars,notes_entries
  FROM package_page_state WHERE package_id IN ? ORDER BY package_id,locale,page_kind,page_number`, ids).Scan(&rows).Error
 	return rows, err
 }
 
-// BackfillPageNotes stores the notes facts of versions pages written before they were recorded, a few packages per
-// run, reading only each package's timeline (much lighter than a full page-state refresh). It returns the
-// number of packages filled; zero means none are missing.
+// BackfillPageNotes stores the notes facts of versions pages written before they were recorded (or before
+// notes_entries replaced the source-URL flag), a few packages per run, reading only each package's timeline
+// (much lighter than a full page-state refresh). It returns the number of packages filled; zero means none are missing.
 func (s *Store) BackfillPageNotes(ctx context.Context, limit int) (int, error) {
 	var ids []int64
 	if err := s.DB.WithContext(ctx).Raw(`SELECT DISTINCT package_id FROM package_page_state
- WHERE page_kind='versions' AND notes_chars IS NULL ORDER BY package_id LIMIT ?`, min(max(limit, 1), 500)).Scan(&ids).Error; err != nil {
+ WHERE page_kind='versions' AND notes_entries IS NULL ORDER BY package_id LIMIT ?`, min(max(limit, 1), 500)).Scan(&ids).Error; err != nil {
 		return 0, err
 	}
 	for _, id := range ids {
@@ -249,10 +248,10 @@ func (s *Store) BackfillPageNotes(ctx context.Context, limit int) (int, error) {
 			// Pages beyond the current timeline are empty; a later refresh rewrites them anyway.
 			if err := s.DB.WithContext(ctx).Exec(`UPDATE package_page_state SET
  notes_chars=CASE WHEN page_number<=? THEN (?::int[])[page_number] ELSE 0 END,
- notes_has_source=CASE WHEN page_number<=? THEN (?::boolean[])[page_number] ELSE false END
- WHERE package_id=? AND locale=? AND page_kind='versions' AND notes_chars IS NULL`,
+ notes_entries=CASE WHEN page_number<=? THEN (?::int[])[page_number] ELSE 0 END
+ WHERE package_id=? AND locale=? AND page_kind='versions' AND notes_entries IS NULL`,
 				len(notes), pageNotesArray(notes, func(f seo.NotesFacts) string { return strconv.Itoa(f.Chars) }),
-				len(notes), pageNotesArray(notes, func(f seo.NotesFacts) string { return strconv.FormatBool(f.HasSource) }),
+				len(notes), pageNotesArray(notes, func(f seo.NotesFacts) string { return strconv.Itoa(f.Entries) }),
 				id, locale).Error; err != nil {
 				return 0, err
 			}

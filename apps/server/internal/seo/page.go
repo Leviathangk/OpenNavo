@@ -21,11 +21,15 @@ const (
 	PageDetails              PageKind = "details"
 	VersionsPageSize                  = 24
 	TroubleshootingMinIssues          = 3
+	// A versions page needs notes on this many releases: one note only repeats the overview's latest release.
+	VersionsMinNoteEntries = 3
 )
 
+// NotesFacts measures the notes one versions page shows in one language: readable characters, and how many
+// releases on the page carry them. Notes that only say no details are available count as neither.
 type NotesFacts struct {
-	Chars     int
-	HasSource bool
+	Chars   int
+	Entries int
 }
 
 type PageRef struct {
@@ -112,7 +116,7 @@ func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 		}
 		if ref.Kind == PageVersions {
 			notes := f.NotesPages[page][locale]
-			if notes.Chars < minimum || !notes.HasSource {
+			if notes.Chars < minimum || notes.Entries < VersionsMinNoteEntries {
 				continue
 			}
 		}

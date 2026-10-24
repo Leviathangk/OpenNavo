@@ -884,7 +884,8 @@ const pages = {
       openLocalesHint:
         '未勾选的语言照常显示，但首页、列表、分类和静态页不收录，也不出现在 hreflang 和 sitemap 中。App 页按各自的译文质量单独判断。英文是默认语言，始终开放。',
       versionsMinNotesChars: '版本说明最少字数',
-      versionsMinNotesCharsHint: '版本页的更新说明达到这个字数（中日韩文字按 2 个计）并注明来源，才会被收录。',
+      versionsMinNotesCharsHint:
+        '版本页至少有 3 个版本带更新说明、合计达到这个字数（中日韩文字按 2 个计）才会被收录；只写“未提供”或“无法核实”的说明不计入。',
       detailsRedirect: 'details 页跳转到概览',
       detailsRedirectHint:
         '开启后，如果概览已包含原 details 页的全部信息，且该语言的概览可收录，details 页会 301 跳转到概览。link App 没有 details 页。',

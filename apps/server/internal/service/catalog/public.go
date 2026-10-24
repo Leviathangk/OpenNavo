@@ -848,13 +848,13 @@ func (s *PublicService) sitemap(ctx context.Context, group string, current, size
 func fillStoredNotes(rows []store.IndexRow, states []store.PageState) []int {
 	stored := map[int64]map[string]seo.NotesFacts{}
 	for _, state := range states {
-		if state.PageKind != "versions" || state.PageNumber != 1 || state.NotesChars == nil || state.NotesHasSource == nil {
+		if state.PageKind != "versions" || state.PageNumber != 1 || state.NotesChars == nil || state.NotesEntries == nil {
 			continue
 		}
 		if stored[state.PackageID] == nil {
 			stored[state.PackageID] = map[string]seo.NotesFacts{}
 		}
-		stored[state.PackageID][state.Locale] = seo.NotesFacts{Chars: *state.NotesChars, HasSource: *state.NotesHasSource}
+		stored[state.PackageID][state.Locale] = seo.NotesFacts{Chars: *state.NotesChars, Entries: *state.NotesEntries}
 	}
 	missing := []int{}
 	for i := range rows {

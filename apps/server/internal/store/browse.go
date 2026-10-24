@@ -52,7 +52,14 @@ func (s *Store) Browse(ctx context.Context, kind, bucket, locale string, page in
 // Cache this compact directory once per kind/locale, rather than rebuilding the
 // full catalog for every independently crawled letter and page.
 func (s *Store) BrowseDirectory(ctx context.Context, kind, locale string, policy seo.Policy) (BrowseDirectory, error) {
-	out := BrowseDirectory{Buckets: []publicapi.BrowseBucket{}, Groups: map[string][]publicapi.BrowseItem{}}
+	directories, err := s.BrowseDirectories(ctx, kind, []string{locale}, policy)
+	return directories[locale], err
+}
+
+// BrowseDirectories builds the directory of several languages from one read of the catalog's index facts,
+// the expensive part, which does not depend on the language. Only display names are read per language.
+func (s *Store) BrowseDirectories(ctx context.Context, kind string, locales []string, policy seo.Policy) (map[string]BrowseDirectory, error) {
+	out := map[string]BrowseDirectory{}
 	condition := "NOT COALESCE(m.hidden,false) AND NOT p.is_font"
 	if kind == "fonts" {
 		condition = "NOT COALESCE(m.hidden,false) AND p.is_font"
@@ -61,24 +68,32 @@ func (s *Store) BrowseDirectory(ctx context.Context, kind, locale string, policy
 	if err != nil {
 		return out, err
 	}
-	var names []struct {
-		ID          int64
-		DisplayName string
-	}
-	if err := s.DB.WithContext(ctx).Raw(`SELECT p.id,COALESCE(NULLIF(i.display_name,''),p.name) AS display_name FROM packages p
+	for _, locale := range locales {
+		var names []struct {
+			ID          int64
+			DisplayName string
+		}
+		if err := s.DB.WithContext(ctx).Raw(`SELECT p.id,COALESCE(NULLIF(i.display_name,''),p.name) AS display_name FROM packages p
  LEFT JOIN LATERAL(SELECT t.display_name FROM package_i18n t CROSS JOIN(SELECT ?::text requested) lang WHERE t.package_id=p.id AND NULLIF(t.display_name,'') IS NOT NULL AND t.locale IN(lang.requested,p.source_locale,'en-US') ORDER BY `+publicLocaleOrder+` LIMIT 1)i ON true WHERE p.kind IN('cask','link') AND p.removed_at IS NULL`, locale).Scan(&names).Error; err != nil {
-		return out, err
+			return out, err
+		}
+		byID := map[int64]string{}
+		for _, v := range names {
+			byID[v.ID] = v.DisplayName
+		}
+		out[locale] = browseDirectory(rows, byID, locale, policy)
 	}
-	byID := map[int64]string{}
-	for _, v := range names {
-		byID[v.ID] = v.DisplayName
-	}
+	return out, nil
+}
+
+func browseDirectory(rows []IndexRow, names map[int64]string, locale string, policy seo.Policy) BrowseDirectory {
+	out := BrowseDirectory{Buckets: []publicapi.BrowseBucket{}, Groups: map[string][]publicapi.BrowseItem{}}
 	groups := out.Groups
 	for _, row := range rows {
 		if !seo.DecidePage(row.Facts(), seo.PageRef{Kind: seo.PageOverview, Locale: locale, Page: 1}, policy).InSitemap {
 			continue
 		}
-		name := byID[row.ID]
+		name := names[row.ID]
 		key := BrowseBucket(name)
 		groups[key] = append(groups[key], publicapi.BrowseItem{Token: row.Token, DisplayName: name})
 	}
@@ -101,7 +116,17 @@ func (s *Store) BrowseDirectory(ctx context.Context, kind, locale string, policy
 			return strings.Compare(a.Token, b.Token)
 		})
 	}
-	return out, nil
+	return out
+}
+
+// HasBrowsePage reports whether a bucket page exists in this listing of buckets.
+func HasBrowsePage(buckets []publicapi.BrowseBucket, bucket string, page int) bool {
+	for _, b := range buckets {
+		if b.Key == bucket {
+			return page >= 1 && page <= b.Pages
+		}
+	}
+	return false
 }
 
 func (directory BrowseDirectory) Page(bucket string, page int) (publicapi.BrowsePage, error) {

@@ -47,7 +47,11 @@ export default defineNitroPlugin(nitroApp => {
     // Let API failures propagate when nothing is cached yet: an outage must not look like removed
     // content. The article check is one small request and follows publishing at once; the
     // populated buckets come from the cached catalog (populatedPackageSitemaps).
-    const [{ articles, authors }, populated] = await Promise.all([articleSitemap(), populatedPackageSitemaps()]);
+    const [{ articles, authors }, populated, backgroundItems] = await Promise.all([
+      articleSitemap(),
+      populatedPackageSitemaps(),
+      backgroundItemEntries()
+    ]);
     // T5: each package bucket and the article groups carry the date their newest page last changed in
     // content; groups without such a date (static pages, categories, collections) carry none.
     const newest = (dates: (string | null | undefined)[]) =>
@@ -64,6 +68,8 @@ export default defineNitroPlugin(nitroApp => {
         if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) return populated.has(sitemapName);
         if (sitemapName === 'articles') return articles.length > 0;
         if (sitemapName === 'authors') return authors.length > 0;
+        // An empty urlset in the index reads as a broken sitemap to Search Console.
+        if (sitemapName === 'background-items') return backgroundItems.length > 0;
         return true;
       })
       .map(entry => {
@@ -180,7 +186,7 @@ const rebuildFailedAt = new Map<PackageGroup, number>();
 
 /** Settles once no snapshot or index refresh is running (tests). */
 export async function sitemapSourcesIdle(): Promise<void> {
-  await populatedPackageSitemaps.idle();
+  await Promise.all([populatedPackageSitemaps.idle(), backgroundItemEntries.idle()]);
   while (packageRebuilds.size) await Promise.allSettled(packageRebuilds.values());
 }
 
@@ -395,13 +401,52 @@ async function articleSitemap(): Promise<ArticleSitemap> {
   return (await $fetch<{ data: ArticleSitemap }>(`${apiBase()}/sitemap/articles`)).data;
 }
 
-async function openLocales() {
-  return (await getSiteSettings()).pages.openLocales;
+/** Settings without the list (an older API) leave the app languages open, as localizedEntries does. */
+async function openLocales(): Promise<readonly Locale[]> {
+  return (await getSiteSettings()).pages.openLocales ?? LOCALES;
 }
 
 function flatten(nodes: CategoryNode[]): CategoryNode[] {
   return nodes.flatMap(node => [node, ...flatten(node.children)]);
 }
+
+/**
+ * F1: the label pages the API marks indexable in each open language, dated by their checked content. The index
+ * also reads this list to leave the group out while it is empty, so it is kept like the package snapshot:
+ * fresh for SNAPSHOT_FRESH_MS, then served stale while one refresh runs.
+ */
+const backgroundItemEntries = createStaleCache(
+  async (): Promise<ReturnType<typeof localizedEntries>> => {
+    const labels = new Map<string, { locales: Locale[]; lastmod: Map<Locale, string | undefined> }>();
+    for (const locale of await openLocales())
+      for (let current = 1; ; current += 1) {
+        const page = await $fetch<{ data: { total: number; records: BackgroundItem[] } }>(
+          `${apiBase()}/background-items`,
+          { query: { locale, current, size: 100 } }
+        );
+        for (const item of page.data.records.filter(record => record.indexable)) {
+          const entry = labels.get(item.label) ?? {
+            locales: [] as Locale[],
+            lastmod: new Map<Locale, string | undefined>()
+          };
+          entry.locales.push(locale);
+          entry.lastmod.set(locale, item.content?.evidence.checkedAt ?? undefined);
+          labels.set(item.label, entry);
+        }
+        if (page.data.records.length < 100 || current * 100 >= page.data.total) break;
+      }
+    return [...labels].flatMap(([label, entry]) =>
+      localizedEntries(`/background-items/${encodeURIComponent(label)}`, 'background-items', entry.locales, locale =>
+        entry.lastmod.get(locale)
+      )
+    );
+  },
+  {
+    freshMs: SNAPSHOT_FRESH_MS,
+    retryMs: SNAPSHOT_RETRY_MS,
+    onError: error => console.error('[opennavo] background-items sitemap refresh failed', error)
+  }
+);
 
 const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>> = {
   // Lists and other pages that are not about one app or article use the languages open for indexing (L1).
@@ -448,32 +493,8 @@ const GROUPS: Record<string, () => Promise<ReturnType<typeof localizedEntries>>>
       }
     return [...languages].flatMap(([path, locales]) => localizedEntries(path, 'browse', locales));
   },
-  // F1: the label pages the API marks indexable in each open language, dated by their checked content.
-  'background-items': async () => {
-    const labels = new Map<string, { locales: Locale[]; lastmod: Map<Locale, string | undefined> }>();
-    for (const locale of await openLocales())
-      for (let current = 1; ; current += 1) {
-        const page = await $fetch<{ data: { total: number; records: BackgroundItem[] } }>(
-          `${apiBase()}/background-items`,
-          { query: { locale, current, size: 100 } }
-        );
-        for (const item of page.data.records.filter(record => record.indexable)) {
-          const entry = labels.get(item.label) ?? {
-            locales: [] as Locale[],
-            lastmod: new Map<Locale, string | undefined>()
-          };
-          entry.locales.push(locale);
-          entry.lastmod.set(locale, item.content?.evidence.checkedAt ?? undefined);
-          labels.set(item.label, entry);
-        }
-        if (page.data.records.length < 100 || current * 100 >= page.data.total) break;
-      }
-    return [...labels].flatMap(([label, entry]) =>
-      localizedEntries(`/background-items/${encodeURIComponent(label)}`, 'background-items', entry.locales, locale =>
-        entry.lastmod.get(locale)
-      )
-    );
-  },
+  // F1: the label pages the API marks indexable in each open language (backgroundItemEntries).
+  'background-items': () => backgroundItemEntries(),
   authors: async () => {
     const [{ authors }, open] = await Promise.all([articleSitemap(), openLocales()]);
     return authors.flatMap(author =>

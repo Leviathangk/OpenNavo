@@ -90,6 +90,20 @@ func TestEditorialReleaseLocaleIsolationAndPageDecision(t *testing.T) {
 			require.NoError(t, st.DB.Exec(`INSERT INTO package_i18n(package_id,locale,source_locale,status,source_hash,display_name,summary,description,source)
  SELECT ?,locale,'zh-CN',CASE WHEN locale='zh-CN' THEN 'source' ELSE 'manual' END,repeat('a',64),'Locale Fixture','A useful macOS editor','Detailed macOS editor content','human'
  FROM unnest(ARRAY['zh-CN','en-US','ja-JP']) locale`, id).Error)
+			// A versions page needs notes on seo.VersionsMinNoteEntries releases. Older releases give every test
+			// language two notes besides this version's (English counts the 0.9 note below as one of them), so
+			// the page decision still turns on whether this version's notes count in the requested language.
+			japanese := strings.Repeat("ウインドウの復元とファイルの保存を改善しました。", 30)
+			for i, older := range []string{"1.138.0", "1.139.0"} {
+				olderID := releaseID + 5 + int64(i)
+				require.NoError(t, st.DB.Exec(`INSERT INTO package_versions(package_id,version,version_base,first_seen_at) VALUES(?,?,?,'2026-01-01')`, id, older, older).Error)
+				require.NoError(t, st.DB.Exec(`INSERT INTO releases(id,package_id,source,source_key,version,source_locale,body_markdown,source_url)
+ VALUES(?,?,'manual',?,?,'zh-CN',?,'https://vendor.example/releases')`, olderID, id, "older:"+older, older, sourceBody).Error)
+				require.NoError(t, st.DB.Exec(`INSERT INTO release_i18n(release_id,locale,source_locale,status,source_hash,body_markdown) VALUES(?,'ja-JP','zh-CN','manual',repeat('c',64),?)`, olderID, japanese).Error)
+				if i == 0 {
+					require.NoError(t, st.DB.Exec(`INSERT INTO release_i18n(release_id,locale,source_locale,status,source_hash,body_markdown) VALUES(?,'en-US','zh-CN','manual',repeat('c',64),?)`, olderID, translatedBody).Error)
+				}
+			}
 			var buildID any
 			if tc.build {
 				buildID = id
@@ -181,13 +195,15 @@ func TestEditorialReleaseLocaleIsolationAndPageDecision(t *testing.T) {
 			if tc.locale != "zh-CN" {
 				require.NotContains(t, string(lookup), "中文摘要")
 			}
-			// H9 rollout never relaxes the per-language version-note threshold.
+			// H9 rollout never relaxes the per-language version-note threshold: this version's notes are the
+			// third release with notes in the requested language only when they count in that language.
 			row, found, err := st.IndexRowByID(ctx, id)
 			require.NoError(t, err)
 			require.True(t, found)
 			rows := []store.IndexRow{row}
 			require.NoError(t, st.PopulatePageNotes(ctx, rows, 1))
-			require.Equal(t, tc.localized, rows[0].NotesPages[1][tc.locale].Chars >= 300)
+			require.GreaterOrEqual(t, rows[0].NotesPages[1][tc.locale].Chars, 300)
+			require.Equal(t, tc.localized, rows[0].NotesPages[1][tc.locale].Entries >= seo.VersionsMinNoteEntries)
 			for _, mode := range []string{"shadow", "enforce"} {
 				policy := seo.Policy{Mode: "shadow", TranslationMode: mode, TranslationLocales: []string{"en-US"}, VersionsMinNotesChars: 300}
 				decision := seo.DecidePage(rows[0].Facts(), seo.PageRef{Kind: seo.PageVersions, Locale: tc.locale, Page: 1}, policy)

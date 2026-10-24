@@ -1275,7 +1275,7 @@
         "openLocales": "Idiomas abiertos a la indexación",
         "openLocalesHint": "Los idiomas sin marcar se siguen mostrando, pero su página de inicio, sus listas, sus categorías y sus páginas estáticas quedan fuera del índice, de hreflang y de los sitemaps. Las páginas de apps se evalúan según la calidad de su propia traducción. El inglés es el idioma predeterminado y siempre está abierto.",
         "versionsMinNotesChars": "Longitud mínima de las notas de versión",
-        "versionsMinNotesCharsHint": "Una página de versión solo se indexa si sus notas de versión alcanzan este número de caracteres (los caracteres CJK cuentan como 2) e indican una fuente.",
+        "versionsMinNotesCharsHint": "Una página de versión solo se indexa si al menos 3 de sus versiones tienen notas que en conjunto alcanzan este número de caracteres (los caracteres CJK cuentan como 2). No cuentan las notas que solo dicen que los detalles no están disponibles o no se han verificado.",
         "detailsRedirect": "Redirigir las páginas details a la vista general",
         "detailsRedirectHint": "Si se activa, la página details redirige (301) a la vista general cuando esta ya incluye toda la información de la página details y se puede indexar en ese idioma. Las apps de tipo link no tienen página details.",
         "intentPages": "Páginas de alternativas y de desinstalación",

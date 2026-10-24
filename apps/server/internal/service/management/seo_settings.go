@@ -242,6 +242,14 @@ func decodeSEOUpdate(body map[string]any) (seoUpdate, error) {
 	return in, nil
 }
 
+// renderedSEOSettings keeps what pages embed: index decisions, titles, identity, verification,
+// analytics and edge-cache headers. Crawler rules, IndexNow and Cloudflare never reach page HTML.
+func renderedSEOSettings(s store.SEOSettings) store.SEOSettings {
+	var none store.SEOSettings
+	s.Crawlers, s.IndexNow, s.Cloudflare = none.Crawlers, none.IndexNow, none.Cloudflare
+	return s
+}
+
 func (s *Service) seoSettings(ctx context.Context, op string, in Input) (any, error) {
 	if op == "GetSeoSettings" {
 		row, err := s.Store.SEOSettings(ctx)
@@ -320,7 +328,8 @@ func (s *Service) seoSettings(ctx context.Context, op string, in Input) (any, er
 			return err
 		}
 		// Cached app details carry the index decision; refresh them when the policy changes.
-		if !reflect.DeepEqual(previous, after.Settings) {
+		switch {
+		case !reflect.DeepEqual(renderedSEOSettings(previous), renderedSEOSettings(after.Settings)):
 			// The decision is also embedded in SSR HTML; feed the existing cache-purge worker.
 			if err := tx.WithContext(ctx).Exec(`INSERT INTO catalog_changes(package_id,kind,token,op,reason)
                 SELECT id,kind,token,'upsert','content' FROM packages WHERE kind IN ('cask','link') AND removed_at IS NULL`).Error; err != nil {
@@ -330,6 +339,12 @@ func (s *Service) seoSettings(ctx context.Context, op string, in Input) (any, er
 				return err
 			}
 			if err := store.QueueCacheInvalidation(ctx, tx, "seo-settings", cache.PackageDetailPrefix+"*", "c:rel:*", "c:dep:*", "c:home:*", "c:cat:*", "c:coll:*", "c:article:*", "c:author:*", "c:browse:*", "c:site:*"); err != nil {
+				return err
+			}
+		case !reflect.DeepEqual(previous, after.Settings):
+			// Crawler rules, IndexNow and Cloudflare are read per request (robots.txt reads the site
+			// settings), so no page needs refreshing. Adding GPTBot on 2026-10-22 refreshed 78,522 URLs.
+			if err := store.QueueCacheInvalidation(ctx, tx, "seo-settings", "c:site:*"); err != nil {
 				return err
 			}
 		}

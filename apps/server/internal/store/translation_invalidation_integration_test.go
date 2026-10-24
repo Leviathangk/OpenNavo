@@ -18,7 +18,7 @@ func TestTranslationInvalidationKeepsUnrelatedCachedPages(t *testing.T) {
 	ctx := context.Background()
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash)
  SELECT i,'cask','translation-'||i,'translation-'||i,'homebrew/cask','Fixture','1','1','{}','fixture' FROM generate_series(1,2) i`).Error)
-	affected := []string{cache.PackageDetailPrefix + "cask:translation-1:en-US", "c:rel:c3:cask:translation-1:en-US", "c:dep:c1:cask:translation-1:en-US:1:", "c:related:c1:cask:translation-1:en-US:5"}
+	affected := []string{cache.PackageDetailPrefix + "cask:translation-1:en-US", "c:rel:c4:cask:translation-1:en-US", "c:dep:c1:cask:translation-1:en-US:1:", "c:related:c1:cask:translation-1:en-US:5"}
 	unaffected := []string{cache.PackageDetailPrefix + "cask:translation-2:en-US", "c:dep:c1:cask:translation-2:en-US:1:", "c:related:c1:cask:translation-2:en-US:5", "c:cfg:client:macos:en-US"}
 	for _, key := range append(append([]string{}, affected...), unaffected...) {
 		require.NoError(t, st.Redis.Set(ctx, key, "{}", time.Minute).Err())

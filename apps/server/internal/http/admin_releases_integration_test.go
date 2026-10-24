@@ -90,7 +90,7 @@ func TestAdminReleaseContractsApprovalStalenessSourcesAndAudit(t *testing.T) {
 	require.Contains(t, call("GET", "/translations/queue?type=release", "", "0000").Body.String(), `"total":1`)
 	call("GET", "/translations/queue?type=package&status=failed", "", "0000")
 	call("POST", "/translations/approve", `{"type":"release","ids":[`+id+`]}`, "0000")
-	require.Eventually(t, func() bool { return st.Redis.Exists(ctx, "c:rel:c3:cask:sample:zh-CN").Val() == 0 }, 2*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return st.Redis.Exists(ctx, "c:rel:c4:cask:sample:zh-CN").Val() == 0 }, 2*time.Second, 10*time.Millisecond)
 	r := httptest.NewRequest("GET", "/api/v1/packages/cask/sample/releases?locale=zh-CN", nil)
 	w := httptest.NewRecorder()
 	server.Engine.ServeHTTP(w, r)

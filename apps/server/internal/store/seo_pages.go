@@ -21,7 +21,7 @@ func visibleNotes(text string) string {
 
 // Count only text published in the requested language; an English fallback is never a translation.
 func releaseNotesFacts(r TimelineRelease, locale string) seo.NotesFacts {
-	if r.Source == "editorial" && (r.EditorialUnavailable || !r.editorialTranslationReady()) {
+	if r.Source == "editorial" && (r.EditorialUnavailable || r.NoInformation || !r.editorialTranslationReady()) {
 		return seo.NotesFacts{}
 	}
 	if r.TranslationStatus != nil && *r.TranslationStatus == "skipped" {
@@ -51,7 +51,10 @@ func releaseNotesFacts(r TimelineRelease, locale string) seo.NotesFacts {
 		}
 	}
 	chars := seo.ReadableChars(visibleNotes(body))
-	return seo.NotesFacts{Chars: chars, HasSource: chars > 0 && r.SourceURL != nil && strings.TrimSpace(*r.SourceURL) != ""}
+	if chars == 0 {
+		return seo.NotesFacts{}
+	}
+	return seo.NotesFacts{Chars: chars, Entries: 1}
 }
 
 // PopulatePageNotes batches database reads across entities. Version grouping and ordering are
@@ -117,10 +120,8 @@ func pageNotesFacts(entries []publicapi.ReleaseEntry, byID map[int64]TimelineRel
 			r = r.originalNotes()
 		}
 		notes := releaseNotesFacts(r, locale)
-		if notes.HasSource {
-			metrics.Chars += notes.Chars
-			metrics.HasSource = true
-		}
+		metrics.Chars += notes.Chars
+		metrics.Entries += notes.Entries
 	}
 	return metrics
 }

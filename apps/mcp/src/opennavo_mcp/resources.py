@@ -104,6 +104,11 @@ version may be a full build (0.1,49): those notes belong to that build only. A b
 version (0.1) writes the note shared by builds without notes of their own; neither
 scope changes the other, and clear=true clears only the scope given.
 Describe only changes in this version; omit notes when reliable information is unavailable.
+A note that only says the changes are unavailable, unverified or not provided adds nothing:
+it never counts toward a versions page being indexed; clear it (clear=true) instead.
+A versions page is indexed in a language once at least 3 of its releases carry notes
+in that language, together at least the configured minimum (300 readable characters
+by default; CJK characters count twice).
 Specify source_locale and preserve code blocks, links and version numbers.
 clear=true clears only OpenNavo editorial content and requires deletion allowance.
 dry_run is an optional preview; revisions support restoration.

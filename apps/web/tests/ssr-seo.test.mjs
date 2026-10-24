@@ -1589,6 +1589,18 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.equal(head.headers.get('x-robots-tag'), 'noindex, follow', `${path}: HEAD`);
     }
   });
+  await t.test('indexable article, list and author pages keep the robots meta tag the header repeats', async () => {
+    // An empty page-level robots value once removed the meta tag while X-Robots-Tag kept the default,
+    // which the SEO audit reports as a P0 disagreement and which stops all SEO automation.
+    for (const path of ['/articles', '/articles/choose-a-screenshot-app', '/authors/lin-wei']) {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      const html = await response.text();
+      const directives = [...html.matchAll(/<meta name="robots" content="([^"]*)"/g)].map(m => m[1]);
+      assert.equal(directives.length, 1, path);
+      assert.ok(!directives[0].includes('noindex'), path);
+      assert.equal(response.headers.get('x-robots-tag'), directives[0], path);
+    }
+  });
   await t.test('sitemaps fail loudly and list grouped URLs with per-language lastmod', async () => {
     sitemapState = 'error';
     const failed = await fetch(`${origin}/__sitemap__/fonts-bucket-0.xml`);
@@ -2753,6 +2765,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const xml = await restored.text();
     assert.ok(xml.includes('/__sitemap__/articles.xml'), xml);
     assert.ok(xml.includes('/__sitemap__/authors.xml'), xml);
+    // No label page is indexable in the fixture: an empty urlset must not be listed (Search Console flags it).
+    assert.ok(!xml.includes('/__sitemap__/background-items.xml'), xml);
   });
   await t.test('author pages, feeds and sitemaps cover published articles', async () => {
     const response = await fetch(`${origin}/authors/lin-wei`, {

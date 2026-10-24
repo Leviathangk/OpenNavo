@@ -43,16 +43,16 @@ func TestVersionsPageNotesFactsMatchLiveCountsAndBackfill(t *testing.T) {
 	require.Equal(t, 1, count)
 	stored := func() map[string]map[int]seo.NotesFacts {
 		var states []store.PageState
-		require.NoError(t, st.DB.Raw(`SELECT package_id,locale,page_kind,page_number,content_hash,content_modified_at,notes_chars,notes_has_source
+		require.NoError(t, st.DB.Raw(`SELECT package_id,locale,page_kind,page_number,content_hash,content_modified_at,notes_chars,notes_entries
  FROM package_page_state WHERE package_id=? AND page_kind='versions'`, id).Scan(&states).Error)
 		out := map[string]map[int]seo.NotesFacts{}
 		for _, state := range states {
 			require.NotNil(t, state.NotesChars, "%s page %d", state.Locale, state.PageNumber)
-			require.NotNil(t, state.NotesHasSource)
+			require.NotNil(t, state.NotesEntries)
 			if out[state.Locale] == nil {
 				out[state.Locale] = map[int]seo.NotesFacts{}
 			}
-			out[state.Locale][state.PageNumber] = seo.NotesFacts{Chars: *state.NotesChars, HasSource: *state.NotesHasSource}
+			out[state.Locale][state.PageNumber] = seo.NotesFacts{Chars: *state.NotesChars, Entries: *state.NotesEntries}
 		}
 		return out
 	}
@@ -68,13 +68,15 @@ func TestVersionsPageNotesFactsMatchLiveCountsAndBackfill(t *testing.T) {
 			require.Equal(t, rows[0].NotesPages[page][locale], facts[locale][page], "%s page %d", locale, page)
 		}
 	}
-	require.True(t, facts["en-US"][1].HasSource)
+	require.Equal(t, seo.VersionsPageSize, facts["en-US"][1].Entries)
+	require.Equal(t, 6, facts["en-US"][2].Entries)
 	require.Greater(t, facts["en-US"][1].Chars, facts["en-US"][2].Chars, "page 1 holds the newest, longest notes")
-	require.True(t, facts["de-DE"][1].HasSource, "the German translation counts in German")
-	require.False(t, facts["ja-JP"][1].HasSource, "an English fallback is never a translation")
+	require.Equal(t, 1, facts["de-DE"][1].Entries, "the German translation counts in German")
+	require.Equal(t, seo.NotesFacts{}, facts["ja-JP"][1], "an English fallback is never a translation")
 
 	// Rows written before notes facts were stored are filled by the backfill, then nothing is left to do.
-	require.NoError(t, st.DB.Exec(`UPDATE package_page_state SET notes_chars=NULL,notes_has_source=NULL WHERE package_id=?`, id).Error)
+	// notes_entries is NULL for every row written before it replaced the source-URL flag (migration 00104).
+	require.NoError(t, st.DB.Exec(`UPDATE package_page_state SET notes_entries=NULL WHERE package_id=?`, id).Error)
 	filled, err := st.BackfillPageNotes(ctx, 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, filled)
@@ -92,4 +94,42 @@ func TestVersionsPageNotesFactsMatchLiveCountsAndBackfill(t *testing.T) {
 	after := stored()
 	require.Equal(t, seo.NotesFacts{}, after["en-US"][2], "24 entries fit on page 1; the old page 2 is empty")
 	require.Equal(t, facts["en-US"][1], after["en-US"][1])
+}
+
+// Editorial notes keep their text in release_i18n and never carry a source URL. They count like any other
+// notes, except notes that only say the version's changes are not known, which count in no language.
+func TestEditorialNotesCountUnlessTheyOnlySayNothingIsKnown(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	ctx := context.Background()
+	var id int64
+	require.NoError(t, st.DB.Raw(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash,source_locale,first_seen_at)
+ VALUES('cask','editorial-notes','editorial-notes','homebrew/cask','Editorial Notes','7.0','7.0','{}','fixture','en-US','2020-01-01') RETURNING id`).Scan(&id).Error)
+	notes := map[string]struct{ summary, body, sections string }{
+		"1.0": {"Adds tabs", "Adds tabs to the main window and remembers the last open tab between launches.", `[{"area":"New","items":["Tabs in the main window"]}]`},
+		"2.0": {"Faster sync", "Syncing large libraries is about twice as fast, and interrupted syncs resume where they stopped.", `[]`},
+		"3.0": {"Fixes crashes", "Fixes a crash when importing damaged files and a hang when the network drops during upload.", `[]`},
+		"4.0": {"No details", "Detailed official release notes are unavailable. No changes are inferred from the version number.", `[]`},
+		"5.0": {"Changes", "### Changes\n\n- Not provided: exact changes for this version are unverified.", `[{"area":"Changes","items":["Not provided: exact changes for this version are unverified."]}]`},
+		// A change stated mid-sentence beside an aside counts; links under a placeholder do not.
+		"6.0": {"Vertical tabs", "Separate version details were not provided.\n\nThis release adds vertical tabs and fixes a crash when importing large files.", `[]`},
+		"7.0": {"No details", "Official release notes are unavailable.\n\n- [View the release history](https://example.com/history)\n- [Read the version details](https://example.com/details)", `[]`},
+	}
+	for _, version := range []string{"1.0", "2.0", "3.0", "4.0", "5.0", "6.0", "7.0"} {
+		require.NoError(t, st.DB.Exec(`INSERT INTO package_versions(package_id,version,version_base,first_seen_at) VALUES(?,?,?,'2026-01-01')`, id, version, version).Error)
+		var release int64
+		require.NoError(t, st.DB.Raw(`INSERT INTO releases(package_id,source,source_key,version,source_locale) VALUES(?,'editorial',?,?,'en-US') RETURNING id`,
+			id, "editorial:"+version, version).Scan(&release).Error)
+		note := notes[version]
+		require.NoError(t, st.DB.Exec(`INSERT INTO release_i18n(release_id,locale,source_locale,summary,body_markdown,sections,status) VALUES(?,'en-US','en-US',?,?,?::jsonb,'source')`,
+			release, note.summary, note.body, note.sections).Error)
+	}
+	row, found, err := st.IndexRowByID(ctx, id)
+	require.NoError(t, err)
+	require.True(t, found)
+	rows := []store.IndexRow{row}
+	require.NoError(t, st.PopulatePageNotes(ctx, rows, 1))
+	english := rows[0].NotesPages[1]["en-US"]
+	require.Equal(t, 4, english.Entries, "the three notes that only say nothing is known do not count")
+	require.GreaterOrEqual(t, english.Chars, 200)
+	require.Equal(t, seo.NotesFacts{}, rows[0].NotesPages[1]["ja-JP"], "no Japanese notes exist")
 }

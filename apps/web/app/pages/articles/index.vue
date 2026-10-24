@@ -53,8 +53,13 @@ usePageSeo({
   page,
   description: () => t('articles.description')
 });
-// Filters and empty lists have nothing of their own to index.
-useSeoMeta({ robots: () => (type.value || (data.value && !data.value.total) ? 'noindex, follow' : undefined) });
+// Filters and empty lists have nothing of their own to index. Only a noindex is written: an empty robots
+// value removes the default meta tag while X-Robots-Tag keeps it, and the audit then sees them disagree.
+useHead(() =>
+  type.value || (data.value && !data.value.total)
+    ? { meta: [{ name: 'robots', content: 'noindex, follow', tagPriority: 'high' as const }] }
+    : {}
+);
 useHead(() =>
   type.value
     ? {

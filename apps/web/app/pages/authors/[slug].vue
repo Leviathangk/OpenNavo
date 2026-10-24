@@ -83,7 +83,13 @@ usePageSeo({
   page,
   description: () => author.value?.bio ?? t('authors.description', { name: author.value?.name ?? slug.value })
 });
-useSeoMeta({ robots: () => (data.value && !total.value ? 'noindex, follow' : undefined) });
+// An author without articles has nothing of their own to index. Only a noindex is written: an empty robots
+// value removes the default meta tag while X-Robots-Tag keeps it, and the audit then sees them disagree.
+useHead(() =>
+  data.value && !total.value
+    ? { meta: [{ name: 'robots', content: 'noindex, follow', tagPriority: 'high' as const }] }
+    : {}
+);
 if (author.value)
   defineOgImage('OgListSatori', {
     locale: toAppLocale(locale.value),

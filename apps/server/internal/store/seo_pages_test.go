@@ -4,20 +4,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNotesEvidenceDoesNotCountFallbackOrInvalidTranslation(t *testing.T) {
 	source, translated, status, hash, url := strings.Repeat("原", 160), strings.Repeat("譯", 160), "machine", strings.Repeat("a", 64), "https://example.com/releases"
 	r := TimelineRelease{SourceLocale: "en-US", Locale: "zh-Hant", BodyMarkdown: &source, TranslatedBody: &translated, TranslationStatus: &status, SourceHash: &hash, SourceURL: &url}
-	require.Equal(t, 320, releaseNotesFacts(r, "zh-Hant").Chars)
-	require.True(t, releaseNotesFacts(r, "zh-Hant").HasSource)
+	require.Equal(t, seo.NotesFacts{Chars: 320, Entries: 1}, releaseNotesFacts(r, "zh-Hant"))
 	require.Zero(t, releaseNotesFacts(r, "fr-FR").Chars)
 	r.SourceHash = nil
 	require.Zero(t, releaseNotesFacts(r, "zh-Hant").Chars)
 	require.Equal(t, 320, releaseNotesFacts(r, "en-US").Chars)
 	r.SourceHash, r.SourceURL = &hash, nil
-	require.False(t, releaseNotesFacts(r, "zh-Hant").HasSource)
+	require.Equal(t, 1, releaseNotesFacts(r, "zh-Hant").Entries, "notes count without a source URL")
 	status = "pending"
 	require.Zero(t, releaseNotesFacts(r, "zh-Hant").Chars)
 	status = "skipped"
@@ -34,4 +34,12 @@ func TestEditorialNotesEvidenceRequiresCurrentSourceHash(t *testing.T) {
 	r.CurrentSourceHash = hash
 	status = "pending"
 	require.Zero(t, releaseNotesFacts(r, "en-US").Chars)
+}
+
+func TestNoInformationNotesNeverCount(t *testing.T) {
+	body, status := strings.Repeat("Detailed official release notes are unavailable. ", 10), "source"
+	r := TimelineRelease{Source: "editorial", SourceLocale: "en-US", Locale: "en-US", TranslatedBody: &body, TranslationStatus: &status, NoInformation: true}
+	require.Equal(t, seo.NotesFacts{}, releaseNotesFacts(r, "en-US"))
+	r.NoInformation = false
+	require.Equal(t, 1, releaseNotesFacts(r, "en-US").Entries)
 }

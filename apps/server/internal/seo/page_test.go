@@ -18,7 +18,7 @@ func TestPageDecisionMatrix(t *testing.T) {
 	for page := 1; page <= 3; page++ {
 		f.NotesPages[page] = map[string]NotesFacts{}
 		for _, locale := range Locales {
-			f.NotesPages[page][locale] = NotesFacts{Chars: 300, HasSource: true}
+			f.NotesPages[page][locale] = NotesFacts{Chars: 300, Entries: VersionsMinNoteEntries}
 		}
 	}
 	p := Policy{Mode: "enforce", Scope: "all", TranslationMode: "enforce", VersionsSitemap: true}
@@ -46,15 +46,20 @@ func TestPageDecisionMatrix(t *testing.T) {
 		}
 	}
 	// A thin page removes that locale from every equivalent page's hreflang set, not just itself.
-	f.NotesPages[2]["fr-FR"] = NotesFacts{Chars: 299, HasSource: true}
-	for _, locale := range Locales {
-		d := DecidePage(f, PageRef{Kind: PageVersions, Locale: locale, Page: 2}, p)
-		require.NotContains(t, d.Hreflang, "fr-FR")
-		if locale == "fr-FR" {
-			require.False(t, d.Announce)
-			require.Empty(t, d.CanonicalPath)
-			require.Empty(t, d.Hreflang)
-			require.Equal(t, "thin_notes_page", d.Reason)
+	f.NotesPages[2]["fr-FR"] = NotesFacts{Chars: 299, Entries: VersionsMinNoteEntries}
+	// Long notes on too few releases are thin too: one or two notes repeat the overview's latest release.
+	f.NotesPages[3]["ja-JP"] = NotesFacts{Chars: 5000, Entries: VersionsMinNoteEntries - 1}
+	for page, thin := range map[int]string{2: "fr-FR", 3: "ja-JP"} {
+		for _, locale := range Locales {
+			d := DecidePage(f, PageRef{Kind: PageVersions, Locale: locale, Page: page}, p)
+			require.NotContains(t, d.Hreflang, thin)
+			if locale == thin {
+				require.Equal(t, "noindex, follow", d.Robots)
+				require.False(t, d.Announce)
+				require.Empty(t, d.CanonicalPath)
+				require.Empty(t, d.Hreflang)
+				require.Equal(t, "thin_notes_page", d.Reason)
+			}
 		}
 	}
 }

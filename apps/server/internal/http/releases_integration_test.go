@@ -107,7 +107,7 @@ func TestPublicReleaseTimelineContractsPriorityTranslationAndPatch(t *testing.T)
 	// "Original" consistently selects English, even when both the UI and content source language are Chinese.
 	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE releases SET source_locale='zh-CN' WHERE source_key='priority'").Error)
 	require.NoError(t, st.DB.WithContext(ctx).Exec(`INSERT INTO release_i18n(release_id,locale,status,summary,body_markdown,sections) SELECT id,'en-US','manual','English summary','English notes','[{"area":"Editor","items":["New feature"]}]' FROM releases WHERE source_key='priority'`).Error)
-	require.NoError(t, st.Redis.Del(ctx, "c:rel:c3:cask:sample:en-US").Err())
+	require.NoError(t, st.Redis.Del(ctx, "c:rel:c4:cask:sample:en-US").Err())
 	var original publicapi.ReleasePageResponse
 	require.NoError(t, json.Unmarshal(call("GET", "/packages/cask/sample/releases?original=true&locale=zh-CN&size=100", "", 200).Body.Bytes(), &original))
 	require.Equal(t, "English notes", *original.Data.Records[1].BodyMarkdown)
@@ -126,7 +126,7 @@ func TestPublicReleaseTimelineContractsPriorityTranslationAndPatch(t *testing.T)
 	require.Equal(t, 5, empty.Data.Total)
 	for _, body := range []any{nil, ""} {
 		require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE release_i18n SET status='manual',body_markdown=?", body).Error)
-		require.NoError(t, st.Redis.Del(ctx, "c:rel:c3:cask:sample:zh-CN").Err())
+		require.NoError(t, st.Redis.Del(ctx, "c:rel:c4:cask:sample:zh-CN").Err())
 		var reviewed publicapi.ReleasePageResponse
 		require.NoError(t, json.Unmarshal(call("GET", "/packages/cask/sample/releases?size=100", "", 200).Body.Bytes(), &reviewed))
 		entry := reviewed.Data.Records[1]
@@ -143,14 +143,14 @@ func TestPublicReleaseTimelineContractsPriorityTranslationAndPatch(t *testing.T)
 	} {
 		require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE releases SET body_markdown=NULL WHERE source_key='priority'").Error)
 		require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE release_i18n SET summary=?,sections=?", content.summary, content.sections).Error)
-		require.NoError(t, st.Redis.Del(ctx, "c:rel:c3:cask:sample:zh-CN").Err())
+		require.NoError(t, st.Redis.Del(ctx, "c:rel:c4:cask:sample:zh-CN").Err())
 		page, err := svc.ReleasePage(ctx, "cask", "sample", "zh-CN", 1, 100, false)
 		require.NoError(t, err)
 		require.True(t, page.Records[1].HasNotes)
 		require.Nil(t, page.Records[1].BodyMarkdown)
 	}
 	require.NoError(t, st.DB.WithContext(ctx).Exec("UPDATE release_i18n SET status='skipped'").Error)
-	require.NoError(t, st.Redis.Del(ctx, "c:rel:c3:cask:sample:zh-CN").Err())
+	require.NoError(t, st.Redis.Del(ctx, "c:rel:c4:cask:sample:zh-CN").Err())
 	skipped, err := svc.ReleasePage(ctx, "cask", "sample", "zh-CN", 1, 100, false)
 	require.NoError(t, err)
 	require.False(t, skipped.Records[1].HasNotes)

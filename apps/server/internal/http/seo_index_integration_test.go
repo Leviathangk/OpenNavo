@@ -168,6 +168,21 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.NoError(t, st.DB.Raw("SELECT token FROM catalog_changes WHERE seq>? AND reason='content'", policyCursor).Scan(&policyChanges).Error)
 	require.ElementsMatch(t, []string{"good-app", "no-summary", "gone-upstream", "font-good", "hidden-app", "paused-app", "paused-deprecated"}, policyChanges)
 
+	// Crawler rules only reach robots.txt: saving them refreshes no page.
+	var crawlerCursor, sectionCursor int64
+	require.NoError(t, st.DB.Raw("SELECT COALESCE(max(seq),0) FROM catalog_changes").Scan(&crawlerCursor).Error)
+	require.NoError(t, st.DB.Raw("SELECT COALESCE(max(seq),0) FROM content_url_changes").Scan(&sectionCursor).Error)
+	settings := adminCall("GET", "/system/seo-settings", nil, "0000")["settings"].(map[string]any)
+	training := settings["crawlers"].(map[string]any)["training"].(map[string]any)
+	training["bots"] = append(training["bots"].([]any), "GPTBot")
+	saved := adminCall("PUT", "/system/seo-settings", map[string]any{"settings": settings}, "0000")["settings"].(map[string]any)
+	require.Contains(t, saved["crawlers"].(map[string]any)["training"].(map[string]any)["bots"], "GPTBot")
+	var crawlerChanges, sectionChanges int
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM catalog_changes WHERE seq>?", crawlerCursor).Scan(&crawlerChanges).Error)
+	require.NoError(t, st.DB.Raw("SELECT count(*) FROM content_url_changes WHERE seq>?", sectionCursor).Scan(&sectionChanges).Error)
+	require.Zero(t, crawlerChanges)
+	require.Zero(t, sectionChanges)
+
 	apps = sitemap("apps")
 	require.Equal(t, []string{"good-app", "paused-app"}, keys(apps))
 	require.Equal(t, []publicapi.Locale{"en-US", "zh-CN"}, locales(apps["good-app"]))

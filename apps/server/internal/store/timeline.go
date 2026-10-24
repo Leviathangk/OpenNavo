@@ -31,11 +31,13 @@ func (v TimelineVersion) Seen() time.Time {
 }
 
 type TimelineRelease struct {
-	PackageID                             int64
-	SourceHash                            *string
-	CurrentSourceHash                     string          `gorm:"-" json:"-"`
-	SourceFields                          json.RawMessage `json:"-"`
-	EditorialUnavailable                  bool            `gorm:"-" json:"-"`
+	PackageID            int64
+	SourceHash           *string
+	CurrentSourceHash    string          `gorm:"-" json:"-"`
+	SourceFields         json.RawMessage `json:"-"`
+	EditorialUnavailable bool            `gorm:"-" json:"-"`
+	// NoInformation marks an editorial note whose source text only says the changes are not known.
+	NoInformation                         bool `gorm:"-" json:"-"`
 	MachineTranslated                     bool
 	ID                                    int64
 	PackageVersionID                      *int64
@@ -84,6 +86,7 @@ func (s *Store) timelineReleasesFor(ctx context.Context, ids []int64, locale str
 				fields[field] = source[field]
 			}
 			r.CurrentSourceHash = content.Hash(r.SourceLocale, fields)
+			r.NoInformation = noInformation(source)
 		}
 		r.SourceFields = nil
 		r.Locale = locale
