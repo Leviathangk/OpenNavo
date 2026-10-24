@@ -212,7 +212,7 @@ func TestAuditSubpageExpiryPaginationFlagsAndBindings(t *testing.T) {
 	d, err = s.ExpectedPage(ctx, page)
 	require.NoError(t, err)
 	require.Equal(t, AuditExpectation{Status: 404}, d)
-	require.NoError(t, st.DB.Exec(`INSERT INTO releases(package_id,source,source_key,version,source_locale,body_markdown,source_url) VALUES(720,'webpage','notes','24','en-US',repeat('Useful release notes ',40),'https://example.com/notes')`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO releases(package_id,source,source_key,version,source_locale,body_markdown,source_url) SELECT 720,'webpage','notes-'||n,n::text,'en-US',repeat('Useful release notes ',40),'https://example.com/notes' FROM generate_series(22,24) n`).Error)
 	for _, query := range []string{"", "?notes=0", "?original=0", "?notes=0&original=0"} {
 		page.URL = s.WebURL + "/apps/same/versions" + query
 		d, err = s.ExpectedPage(ctx, page)
@@ -256,7 +256,7 @@ func TestVersionQueryAndCaseRedirectExpectations(t *testing.T) {
 	s := &Service{DB: st.DB, WebURL: "https://fixture.example"}
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(721,'cask','ordinary-app','ordinary-app','homebrew/cask','App','25','25','{}','fixture')`).Error)
 	require.NoError(t, st.DB.Exec(`INSERT INTO package_versions(package_id,version,version_base) SELECT 721,n::text,n::text FROM generate_series(1,25) n`).Error)
-	require.NoError(t, st.DB.Exec(`INSERT INTO releases(package_id,source,source_key,version,source_locale,body_markdown,source_url) VALUES(721,'webpage','notes','25','en-US',repeat('Useful release notes ',40),'https://example.com/notes')`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO releases(package_id,source,source_key,version,source_locale,body_markdown,source_url) SELECT 721,'webpage','notes-'||n,n::text,'en-US',repeat('Useful release notes ',40),'https://example.com/notes' FROM generate_series(23,25) n`).Error)
 	require.NoError(t, st.DB.Exec("INSERT INTO package_aliases(kind,token,package_id,source) VALUES('cask','old-app',721,'renamed')").Error)
 	for _, tc := range versionQueryCases(t) {
 		for _, token := range []string{"ordinary-app", "ORDINARY-APP"} {
@@ -302,7 +302,7 @@ func TestLegacyRegistryMetadataEscapesAndOriginalAlternates(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	s := &Service{DB: st.DB, WebURL: "https://fixture.example"}
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) VALUES(722,'cask','ordinary-app','ordinary-app','homebrew/cask','App','1','1','{}','fixture')`).Error)
-	require.NoError(t, st.DB.Exec(`INSERT INTO releases(package_id,source,source_key,version,source_locale,body_markdown,source_url) VALUES(722,'webpage','notes','1','en-US',repeat('Useful release notes ',40),'https://example.com/notes')`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO releases(package_id,source,source_key,version,source_locale,body_markdown,source_url) SELECT 722,'webpage','notes-'||n,n::text,'en-US',repeat('Useful release notes ',40),'https://example.com/notes' FROM generate_series(1,3) n`).Error)
 	for _, tc := range packagePathCases(t) {
 		t.Run(tc.Path, func(t *testing.T) {
 			rawURL := s.WebURL + tc.Path
