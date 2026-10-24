@@ -20,6 +20,8 @@ import {
   validRegions,
   validSecret
 } from './modules/validate';
+import { useAuth } from '@/hooks/business/auth';
+import DataProviders from './modules/data-providers.vue';
 import IndexReport from './modules/index-report.vue';
 import TranslationImpact from './modules/translation-impact.vue';
 
@@ -30,6 +32,7 @@ type Settings = View['settings'];
 type CrawlerClass = 'training' | 'seoTools';
 
 const crawlerClasses: CrawlerClass[] = ['training', 'seoTools'];
+const { hasAuth } = useAuth();
 const crawlerModes = ['allow', 'limit', 'block'] as const;
 
 // Placeholder until the first load; the form stays hidden while `ready` is false.
@@ -635,4 +638,11 @@ void load();
       </NForm>
     </div>
   </NCard>
+  <!-- Provider credentials save on their own endpoints, so they sit outside the settings form. -->
+  <DataProviders
+    v-if="ready && hasAuth('system:seo:edit')"
+    class="mt-16px"
+    :site-url="view.siteUrl"
+    :revision="reportRevision"
+  />
 </template>

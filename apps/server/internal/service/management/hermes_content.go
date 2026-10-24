@@ -109,7 +109,7 @@ func (s *Service) glossary(ctx context.Context, op string, in Input) (any, error
 }
 func (s *Service) upsertNotes(ctx context.Context, in Input) (any, error) {
 	if in.Version == "" {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("field_required:version")
 	}
 	return s.write(ctx, in, "UpsertReleaseNotes", "release", func(st *store.Store) (any, error) {
 		// A full build version owns its notes; a base version writes the note its builds share.
@@ -152,11 +152,11 @@ func (s *Service) upsertNotes(ctx context.Context, in Input) (any, error) {
 		if dateProvided && value != nil {
 			stamp, ok := value.(string)
 			if !ok {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("date_invalid:publishedAt")
 			}
 			parsed, err := time.Parse(time.RFC3339, stamp)
 			if err != nil || parsed.UTC().Year() <= 1 {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("date_invalid:publishedAt")
 			}
 			date = &parsed
 		}

@@ -22,6 +22,14 @@ func Validation() *AppError {
 	return &AppError{Code: CodeValidation, HTTPStatus: http.StatusBadRequest}
 }
 
+// Rejected is a validation failure that names its cause, so agents can fix the request instead of
+// guessing. The agent API forwards "rejected: <reason>" to MCP clients unchanged. reason is lowercase
+// snake_case, optionally followed by ":<detail>" naming the field or locale (letters, digits and
+// "._-[]" only). Never put user-supplied values in either part.
+func Rejected(reason string) *AppError {
+	return &AppError{Code: CodeValidation, HTTPStatus: http.StatusBadRequest, Msg: "rejected: " + reason}
+}
+
 func Message(code, locale string) string {
 	return i18n.Message(code, locale)
 }

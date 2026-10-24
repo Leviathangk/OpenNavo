@@ -23,9 +23,13 @@ func factActor(ctx context.Context) facts.Actor {
 	return facts.Actor{Name: op.ActorName, Agent: op.AgentClientID > 0}
 }
 
-func validationError(err error) error {
+func validationError(err error, reasons ...string) error {
 	if errors.Is(err, facts.ErrInvalid) {
-		return domain.Validation()
+		reason := "fact_invalid"
+		if len(reasons) > 0 {
+			reason = reasons[0]
+		}
+		return domain.Rejected(reason)
 	}
 	return err
 }
@@ -120,31 +124,34 @@ func (s *Service) packageFacts(ctx context.Context, op string, in Input) (any, e
 	case "SetPackagePrice":
 		var body facts.PriceInput
 		if err := facts.Decode(in.Body, &body); err != nil {
-			return nil, domain.Validation()
+			return nil, validationError(err, "price_input_invalid")
 		}
 		var err error
 		if price, err = facts.NormalizePrice(body, actor, now); err != nil {
-			return nil, validationError(err)
+			return nil, validationError(err, "price_invalid")
 		}
 	case "SetPackageMacosSupport":
 		var body facts.MacosInput
 		if err := facts.Decode(in.Body, &body); err != nil {
-			return nil, domain.Validation()
+			return nil, validationError(err, "macos_input_invalid")
 		}
 		var err error
 		if macos, err = facts.NormalizeMacos(body, actor, now); err != nil {
-			return nil, validationError(err)
+			return nil, validationError(err, "macos_support_invalid")
 		}
 	case "SetPackageAlternatives":
 		var body struct {
 			Items []facts.Alternative `json:"items"`
 		}
-		if err := facts.Decode(in.Body, &body); err != nil || body.Items == nil {
-			return nil, domain.Validation()
+		if err := facts.Decode(in.Body, &body); err != nil {
+			return nil, validationError(err, "alternative_items_invalid:items")
+		}
+		if body.Items == nil {
+			return nil, domain.Rejected("alternative_items_invalid:items")
 		}
 		var err error
 		if alternatives, err = facts.NormalizeAlternatives(in.ID, body.Items); err != nil {
-			return nil, validationError(err)
+			return nil, validationError(err, "alternatives_invalid")
 		}
 	}
 	return s.write(ctx, in, op, "package", func(st *store.Store) (any, error) {
@@ -180,7 +187,7 @@ func (s *Service) packageFacts(ctx context.Context, op string, in Input) (any, e
 			// Alternatives are apps still in the catalog; hidden or disabled ones stay listed but
 			// pages skip them and the gaps report says so.
 			if slices.ContainsFunc(ids, func(id int64) bool { return !targets[id] }) {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("alternative_target_unavailable:packageId")
 			}
 			source := "admin"
 			if actor.Agent {

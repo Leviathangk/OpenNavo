@@ -8,15 +8,6 @@ from typing_extensions import TypeAliasType
 from datetime import date as date_aliased
 
 
-class SeoProviderView(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    source: Literal['gsc', 'bing', 'audit']
-    enabled: bool
-    configured: bool
-
-
 class Credentials(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -25,6 +16,7 @@ class Credentials(BaseModel):
     clientId: Annotated[str | None, Field(max_length=4096)] = None
     clientSecret: Annotated[str | None, Field(max_length=4096)] = None
     refreshToken: Annotated[str | None, Field(max_length=4096)] = None
+    serviceAccountJson: Annotated[str | None, Field(description='GSC service account JSON document serialized as a string, not a nested object. Must contain type=service_account, client_email and a valid RSA private_key of at least 2048 bits. token_uri defaults to https://oauth2.googleapis.com/token; if supplied, only that URL or https://accounts.google.com/o/oauth2/token is accepted. Send together with property and omit the OAuth fields.', max_length=16384)] = None
     apiKey: Annotated[str | None, Field(max_length=4096)] = None
     originUrl: Annotated[str | None, Field(max_length=4096)] = None
 
@@ -34,8 +26,8 @@ class SeoProviderUpdate(BaseModel):
         extra='forbid',
     )
     enabled: bool | None = None
-    clearCredentials: bool | None = None
-    credentials: Credentials | None = None
+    clearCredentials: Annotated[bool | None, Field(description='Clear stored credentials. Mutually exclusive with credentials; also set enabled to false when clearing an enabled provider.')] = None
+    credentials: Annotated[Credentials | None, Field(description='Replaces the entire stored credential document; omit to retain it. For gsc, send property with either serviceAccountJson or all three OAuth fields (clientId, clientSecret, refreshToken), never both. For bing, send property and apiKey. For audit, send originUrl only. Credential values are never returned.')] = None
 
 
 class Kind(RootModel[str]):
@@ -1098,7 +1090,7 @@ class SecurityObservation(BaseModel):
 class FactRecordEvidence(BaseModel):
     sourceUrl: str
     checkedAt: Annotated[AwareDatetime | None, Field(...)]
-    validUntil: Annotated[AwareDatetime | None, Field(...)]
+    validUntil: Annotated[AwareDatetime | None, Field(description='Omit or send null to use checkedAt plus 30 days. An explicit value must be later than checkedAt.')] = None
     status: Literal['verified', 'stale', 'needs_review', 'unknown']
 
 
@@ -2703,7 +2695,7 @@ class EditorialNotesWrite(BaseModel):
     clear: Literal[False] = False
     sourceLocale: Locale
     summary: Annotated[str, Field(examples=['改善窗口管理体验'], max_length=400)]
-    sections: Annotated[list[ReleaseSection], Field(examples=[[{'area': '改进', 'items': ['改善窗口管理体验。']}]], max_length=8)]
+    sections: Annotated[list[ReleaseSection], Field(description='Omit to preserve existing sections; new records use an empty array. Send an explicit empty array to clear sections.', examples=[[{'area': '改进', 'items': ['改善窗口管理体验。']}]], max_length=8)] = None
     title: Annotated[str | None, Field(examples=[None], max_length=256)] = None
     bodyMarkdown: Annotated[str | None, Field(examples=[None], max_length=200000)] = None
     publishedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
@@ -5242,6 +5234,17 @@ class ListArticleTestArtifactsInput(BaseModel):
         extra='forbid',
     )
     id: Annotated[int, Field(examples=[1], ge=1)]
+
+
+class SeoProviderView(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    source: Literal['gsc', 'bing', 'audit']
+    enabled: Annotated[bool, Field(description='Whether scheduled ingestion is enabled; does not imply a successful connection or fresh data.')]
+    configured: Annotated[bool, Field(description='Whether encrypted credentials are stored; does not imply that the provider has accepted them.')]
+    credentialType: Annotated[Literal['oauth', 'service_account', 'api_key', 'origin'] | None, Field(description='Stored credential kind only; gsc uses oauth or service_account, bing uses api_key, and audit uses origin. Null when unconfigured or the kind cannot be determined. Credential contents are never returned.')]
+    watermarks: Annotated[list[SeoWatermark], Field(description='Data progress for this provider, ordered as gsc_page/gsc_query/inspection for gsc, bing for bing, and audit/edge_probe for audit. Missing rows are omitted. Null dates mean no recorded progress; updatedAt is the watermark row update time, not proof of a successful ingestion. Clearing credentials or disabling ingestion does not erase historical progress.')]
 
 
 class SeoProviderResponse(BaseModel):

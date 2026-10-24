@@ -9,7 +9,7 @@ from pydantic import AnyUrl, PrivateAttr
 from opennavo_mcp.agent_client import AgentClient
 from opennavo_mcp.auth import CURRENT
 from opennavo_mcp.contracts import LOCALES
-from opennavo_mcp.geo_routine import GEO_ROUTINE
+from opennavo_mcp.geo_routine import GEO_ROUTINE, GEO_ROUTINE_VERSION
 
 GUIDES = {
     "geo-routine": GEO_ROUTINE,
@@ -157,7 +157,8 @@ class AdapterResource(Resource):
             }
         else:
             slug = uri.split("/")[-1]
-            result = {"guide": GUIDES[slug], "version": f"{slug}-v1"}
+            version = GEO_ROUTINE_VERSION if slug == "geo-routine" else f"{slug}-v1"
+            result = {"guide": GUIDES[slug], "version": version}
             if uri == "opennavo://guide/content-style":
                 result["locales"] = LOCALES["locales"]
                 if identity.allows("content:glossary:edit"):

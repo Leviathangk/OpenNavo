@@ -6,7 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
+	"unicode/utf8"
 
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
@@ -29,7 +31,91 @@ var textSpecs = map[string]textSpec{
 	"mirror":          {"mirrors", "mirror_i18n", "mirror_id", map[string]string{"name": "name"}},
 }
 
+// These localized API schemas have tighter limits than the translation registry.
+// Other entities use the existing content-write limits (including release sections
+// and the 20,000-character desktop notes write path).
+var localizedFieldLimits = map[string]map[string]int{
+	"category":        {"name": 30, "description": 200},
+	"collection":      {"title": 40, "subtitle": 80, "body": 10000},
+	"feature":         {"badge": 12, "title": 30, "subtitle": 30, "body": 120, "cta_label": 10},
+	"screenshot":      {"caption": 120},
+	"collection_item": {"note": 160},
+	"mirror":          {"name": 40},
+}
+
+// ValidateLocalizedFields checks only submitted fields, using API character limits.
+// Unknown field names and invalid locales are never copied into rejection reasons.
+func ValidateLocalizedFields(entity, locale string, fields map[string]any) error {
+	spec, ok := content.Registry[entity]
+	if !ok {
+		return domain.Rejected("localized_entity_invalid")
+	}
+	if !i18n.Valid(locale) || entity == "desktop_release" && !i18n.ValidDesktop(locale) {
+		return domain.Rejected("locale_invalid")
+	}
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	check := func(field string, value any, limit int) error {
+		if value == nil {
+			return nil
+		}
+		text, ok := value.(string)
+		if !ok {
+			return domain.Rejected("field_type_invalid:" + entity + "." + field + "." + locale)
+		}
+		if utf8.RuneCountInString(text) > limit {
+			return domain.Rejected("field_too_long:" + entity + "." + field + "." + locale)
+		}
+		return nil
+	}
+	for _, key := range keys {
+		column := textColumn(key)
+		limit, ok := spec.Fields[column]
+		if !ok {
+			return domain.Rejected("unknown_field")
+		}
+		if max, ok := localizedFieldLimits[entity][column]; ok {
+			limit = max
+		}
+		field, value := textAPIKey(column), fields[key]
+		if column == "sections" {
+			groups, ok := value.([]any)
+			if !ok || len(groups) > 8 {
+				return domain.Rejected("release_sections_invalid")
+			}
+			for i, item := range groups {
+				group, ok := item.(map[string]any)
+				if !ok {
+					return domain.Rejected("release_sections_invalid")
+				}
+				if err := check(fmt.Sprintf("sections[%d].area", i), group["area"], 12); err != nil {
+					return err
+				}
+				items, ok := group["items"].([]any)
+				if !ok || len(items) > 6 {
+					return domain.Rejected("release_sections_invalid")
+				}
+				for j, item := range items {
+					if err := check(fmt.Sprintf("sections[%d].items[%d]", i, j), item, 80); err != nil {
+						return err
+					}
+				}
+			}
+			value = jsonText(value)
+		}
+		if err := check(field, value, limit); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Callers invoke this within the content transaction; identifiers come only from the fixed registry.
+// Omitted locales retain their content; an explicit null deletes a non-source
+// collection/feature translation. Supplied fields are upserted within each locale.
 func (s *Store) WriteLocalized(ctx context.Context, entity string, id, secondaryID int64, body map[string]any, required bool) error {
 	spec, ok := textSpecs[entity]
 	if !ok {
@@ -41,21 +127,30 @@ func (s *Store) WriteLocalized(ctx context.Context, entity string, id, secondary
 		return nil
 	}
 	values, ok := raw.(map[string]any)
-	if !ok || !i18n.Valid(source) || (entity == "desktop_release" && !i18n.ValidDesktop(source)) || len(values) == 0 {
-		return domain.Validation()
+	if !ok || len(values) == 0 {
+		return domain.Rejected("i18n_required")
+	}
+	if !i18n.Valid(source) || (entity == "desktop_release" && !i18n.ValidDesktop(source)) {
+		return domain.Rejected("source_locale_invalid")
 	}
 	if _, ok := values[source].(map[string]any); !ok {
-		return domain.Validation()
+		return domain.Rejected("source_locale_text_required")
 	}
 	for locale, value := range values {
 		if !i18n.Valid(locale) || (entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
-			return domain.Validation()
+			return domain.Rejected("locale_invalid")
 		}
 		if value == nil && locale != source && (entity == "collection" || entity == "feature") {
 			continue
 		}
-		if _, ok := value.(map[string]any); !ok {
-			return domain.Validation()
+		fields, ok := value.(map[string]any)
+		if !ok {
+			return domain.Rejected("localized_fields_invalid")
+		}
+		if entity == "collection" || entity == "feature" || entity == "category" || entity == "collection_item" {
+			if err := ValidateLocalizedFields(entity, locale, fields); err != nil {
+				return err
+			}
 		}
 	}
 	parentWhere, parentArgs := "id=?", []any{id}
@@ -122,10 +217,10 @@ func (s *Store) TextSourceLocale(ctx context.Context, entity string, id int64, l
 	if entity == "release" {
 		parent, key = "releases", "release_id"
 	} else if entity != "package" {
-		return "", domain.Validation()
+		return "", domain.Rejected("localized_entity_invalid")
 	}
 	if !i18n.Valid(locale) || (entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
-		return "", domain.Validation()
+		return "", domain.Rejected("locale_invalid")
 	}
 	var source string
 	if err := s.DB.WithContext(ctx).Table(parent).Select("source_locale").Where("id=?", id).Scan(&source).Error; err != nil {
@@ -137,7 +232,7 @@ func (s *Store) TextSourceLocale(ctx context.Context, entity string, id int64, l
 	if value, present := body["sourceLocale"]; present {
 		requested, ok := value.(string)
 		if !ok || requested != locale {
-			return "", domain.Validation()
+			return "", domain.Rejected("source_locale_mismatch")
 		}
 		source = requested
 		if err := s.DB.WithContext(ctx).Table(parent).Where("id=?", id).Update("source_locale", source).Error; err != nil {

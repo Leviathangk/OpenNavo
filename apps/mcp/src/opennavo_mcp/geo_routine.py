@@ -1,7 +1,9 @@
 """Public, authenticated GEO operating guide. Reading does not authorize execution."""
 # ruff: noqa: E501 -- preserve operating-guide paragraphs and tables.
 
-GEO_ROUTINE = """GEO routine — version geo-routine-v1 (2026-10-22)
+GEO_ROUTINE_VERSION = "geo-routine-v2"
+
+GEO_ROUTINE = """GEO routine — version geo-routine-v2 (2026-10-24)
 
 ## 运行前置与固定队列
 
@@ -75,7 +77,7 @@ outbox 的 pending/invalidated/probed 是本地流水阶段；dead 表示投递�
 
 ja/de/fr 本地问法、品牌识别、Copilot/AI Mode 使用独立探索组/version/预算。先保全核心，不从未知结果补 false；不同市场、surface、语言、窗口不混算趋势。回答覆盖、已知联网触发、可判断提及和完整引用各列 n/N；known=0 显示 unavailable。三态 mentioned/candidate/cited 各自独立，不从品牌出现推断最终引用。域名 Top N=10 并标 domainsTruncated，不能计算全部引用域名数或全量份额。
 
-先估价，再核对全站已花费、在途预占和余额。DataForSEO $15/天、$100/月的约束不变；从既有排名追踪份额调拨最多 $12/月给 GEO，含重试/探索，不能在原约 $95/月外再叠加。OpenSEO 单批超过 2000 credits 必须先确认，不拆批规避；金额和 credits 分开，不猜兑换率。$2.32 是供应商该次上限，不是实际费用或永久价格。预算不足跳过付费，修复/撤回/补偿照常。
+先估价，再核对全站已花费、在途预占和余额。DataForSEO 上限为 $5/天、$100/月；GEO 每月最多 $2，含重试/探索，占用上述预算，不能额外叠加。OpenSEO 单批超过 2000 credits 必须先确认，不拆批规避；金额和 credits 分开，不猜兑换率。$2.32 是供应商历史采样的报价上限，不是实际费用或永久价格，也不覆盖当前 GEO 月预算限制。预算不足跳过付费，修复/撤回/补偿照常。
 
 运行定时前须核实唯一付费入口对日/月硬限制和在途预占的实际执行；余额/月充值有结转时不能当自然月硬限额。只有事后账本则保留手动获批的小批次，不宣称 OpenNavo 能阻止外部花费。每个实际收费 task/request ID 保存 costUsd、incurredAt 和独立 credits；重试产生新收费 ID 就新增收据，重复读取同 ID 不再次计费，unknown 金额为 null。已发生的超额账单仍导入，再停止后续付费。
 

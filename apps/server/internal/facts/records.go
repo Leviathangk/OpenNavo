@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/opennavo/opennavo/server/internal/domain"
 )
 
 type Record struct {
@@ -17,20 +19,57 @@ type Record struct {
 	Evidence Proof           `json:"evidence"`
 }
 
+// Keep ErrInvalid discoverable by existing callers while exposing a safe API reason.
+func rejected(reason string) error {
+	err := domain.Rejected(reason)
+	err.Cause = ErrInvalid
+	return err
+}
+
 func strictValue(raw json.RawMessage, value any) error {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(value) != nil {
-		return ErrInvalid
+	if err := decoder.Decode(value); err != nil {
+		if strings.HasPrefix(err.Error(), "json: unknown field ") {
+			return rejected("unknown_field")
+		}
+		return rejected("field_value_invalid")
 	}
 	return nil
+}
+
+// NormalizeRecord validates writes and persists the default lifetime, including
+// the independent evidence attached to each migration step.
+func NormalizeRecord(r Record, now time.Time) (Record, error) {
+	if err := ValidateRecord(r, now); err != nil {
+		return r, err
+	}
+	r.Evidence = r.Evidence.WithDefaultValidity()
+	if r.Kind == "migration" {
+		var value Migration
+		if err := strictValue(r.Value, &value); err != nil {
+			return r, err
+		}
+		for i := range value.Steps {
+			value.Steps[i].Evidence = value.Steps[i].Evidence.WithDefaultValidity()
+		}
+		raw, err := json.Marshal(value)
+		if err != nil {
+			return r, err
+		}
+		r.Value = raw
+	}
+	return r, nil
 }
 
 // ValidateRecord is also the Hermes write gate. Every supported kind has a typed validator;
 // merely possessing a source URL is not sufficient to publish an arbitrary document.
 func ValidateRecord(r Record, now time.Time) error {
-	if len(r.Key) == 0 || len(r.Key) > 160 || strings.TrimSpace(r.Key) != r.Key || strings.ContainsAny(r.Key, "\r\n\x00") || len(r.Value) > 65536 {
-		return ErrInvalid
+	if len(r.Key) == 0 || len(r.Key) > 160 || strings.TrimSpace(r.Key) != r.Key || strings.ContainsAny(r.Key, "\r\n\x00") {
+		return rejected("record_key_invalid")
+	}
+	if len(r.Value) > 65536 {
+		return rejected("record_value_too_large")
 	}
 	if err := r.Evidence.Validate(now); err != nil {
 		return err
@@ -38,48 +77,74 @@ func ValidateRecord(r Record, now time.Time) error {
 	switch r.Kind {
 	case "integration":
 		var value Integration
-		if strictValue(r.Value, &value) != nil {
-			return ErrInvalid
+		if err := strictValue(r.Value, &value); err != nil {
+			return err
 		}
-		return value.Validate(now)
+		if value.Validate(now) != nil {
+			return rejected("integration_value_invalid")
+		}
+		return nil
 	case "issue":
 		var value Issue
-		if strictValue(r.Value, &value) != nil {
-			return ErrInvalid
+		if err := strictValue(r.Value, &value); err != nil {
+			return err
 		}
-		return value.Validate()
+		if value.Validate() != nil {
+			return rejected("issue_value_invalid")
+		}
+		return nil
 	case "compatibility":
 		var value Compatibility
-		if strictValue(r.Value, &value) != nil {
-			return ErrInvalid
+		if err := strictValue(r.Value, &value); err != nil {
+			return err
 		}
-		return value.Validate()
+		if value.Validate() != nil {
+			return rejected("compatibility_value_invalid")
+		}
+		return nil
 	case "attribute":
 		var value Attribute
-		if strictValue(r.Value, &value) != nil {
-			return ErrInvalid
+		if err := strictValue(r.Value, &value); err != nil {
+			return err
 		}
-		return value.Validate()
+		if value.Validate() != nil {
+			return rejected("attribute_value_invalid")
+		}
+		return nil
 	case "migration":
 		var value Migration
-		if strictValue(r.Value, &value) != nil {
-			return ErrInvalid
+		if err := strictValue(r.Value, &value); err != nil {
+			return err
 		}
-		return value.Validate(now)
+		for _, step := range value.Steps {
+			if err := step.Evidence.Validate(now); err != nil {
+				return err
+			}
+		}
+		if value.Validate(now) != nil {
+			return rejected("migration_value_invalid")
+		}
+		return nil
 	case "security":
 		var value SecurityObservation
-		if strictValue(r.Value, &value) != nil {
-			return ErrInvalid
+		if err := strictValue(r.Value, &value); err != nil {
+			return err
 		}
-		return value.Validate()
+		if value.Validate() != nil {
+			return rejected("security_value_invalid")
+		}
+		return nil
 	case "price":
 		var value PriceObservation
-		if strictValue(r.Value, &value) != nil {
-			return ErrInvalid
+		if err := strictValue(r.Value, &value); err != nil {
+			return err
 		}
-		return value.Validate()
+		if value.Validate() != nil {
+			return rejected("price_value_invalid")
+		}
+		return nil
 	default:
-		return ErrInvalid
+		return rejected("record_kind_invalid")
 	}
 }
 

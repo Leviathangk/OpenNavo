@@ -39,7 +39,8 @@ func (s *Store) UpsertFactRecords(ctx context.Context, id int64, records []facts
 			return gorm.ErrRecordNotFound
 		}
 		for _, r := range records {
-			if err := facts.ValidateRecord(r, now); err != nil {
+			r, err := facts.NormalizeRecord(r, now)
+			if err != nil {
 				return err
 			}
 			if err := (&Store{DB: tx, Redis: s.Redis}).validateMigrationTarget(ctx, id, r); err != nil {

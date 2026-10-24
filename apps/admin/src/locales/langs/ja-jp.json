@@ -1349,6 +1349,94 @@
           "enforced": "適用後",
           "empty": "適用後にインデックスから外れる App はありません"
         },
+        "providers": {
+          "title": "データ連携",
+          "hint": "サーバーはここの認証情報を使い、Search Console、Bing、サイト診断のデータを定期的に取得します。取得したデータは SEO の改善タスク、ページ診断、変更前後の比較に使われます。認証情報は暗号化して保存され、保存後は表示されません。",
+          "replaceHint": "認証情報はまとめて置き換わります。取得元のいずれかの項目を変更する場合は、その取得元のすべての項目を入力し直してください。下の取得元はそれぞれ個別に保存します。",
+          "loadFailed": "この取得元の状態を読み込めません。更新して再試行してください。",
+          "saveFailed": "保存されませんでした。認証情報を確認するか、しばらくしてから再試行してください。",
+          "save": "保存",
+          "enabled": "自動取得を有効にする",
+          "enabledHint": "有効にすると定期的に取得します。無効にしても取得済みのデータは削除されません。",
+          "clearCredentials": "保存済みの認証情報を削除",
+          "clearHint": "削除すると自動取得も停止します。",
+          "noProgress": "データの進捗はまだ記録されていません",
+          "progress": "{label}：{complete} まで完全、最新は {fresh}",
+          "progressNone": "{label}：データはまだありません",
+          "none": "なし",
+          "state": {
+            "enabled": "有効",
+            "disabled": "無効",
+            "configured": "認証情報あり",
+            "notConfigured": "認証情報なし"
+          },
+          "credentialTypes": {
+            "oauth": "OAuth リフレッシュトークン",
+            "service_account": "サービスアカウント",
+            "api_key": "API キー",
+            "origin": "オリジンの URL"
+          },
+          "watermarks": {
+            "gsc_page": "ページデータ",
+            "gsc_query": "検索クエリデータ",
+            "inspection": "インデックス確認",
+            "bing": "Bing の検索クエリデータ",
+            "audit": "サイト診断",
+            "edge_probe": "CDN との比較"
+          },
+          "sources": {
+            "gsc": {
+              "title": "Google Search Console との連携",
+              "hint": "6 時間ごとにページと検索クエリのデータを取得し、毎日一部の URL のインデックス状況を確認します。",
+              "mode": "ログイン方法",
+              "modes": {
+                "service_account": "サービスアカウント（推奨）",
+                "oauth": "OAuth リフレッシュトークン"
+              },
+              "property": "プロパティ",
+              "propertyHint": "ドメインプロパティは sc-domain:opennavo.com、URL プレフィックスプロパティは完全な URL を入力します。",
+              "serviceAccountJson": "サービスアカウントの JSON キー",
+              "chooseFile": "JSON ファイルを選択",
+              "pasteJson": "貼り付けに切り替え",
+              "pastePlaceholder": "サービスアカウントの JSON キーの内容をすべて貼り付けます",
+              "keyLoaded": "{email} のキーを読み込みました",
+              "keyInvalid": "このファイルは有効なサービスアカウントキーではありません",
+              "forgetKey": "削除",
+              "serviceAccountHint": "Google Cloud でサービスアカウントを作成して JSON キーをダウンロードし、Search Console でサービスアカウントのメールアドレスをユーザーに追加します（制限付きの権限で十分です）。キーは保存時にだけ送信され、このページには表示されません。",
+              "clientId": "クライアント ID",
+              "clientSecret": "クライアントシークレット",
+              "refreshToken": "リフレッシュトークン"
+            },
+            "bing": {
+              "title": "Bing ウェブマスターツール",
+              "hint": "Bing の検索クエリデータを毎日取得します。",
+              "property": "サイトの URL",
+              "apiKey": "API キー",
+              "apiKeyHint": "Bing ウェブマスターツールの「設定 › API アクセス」で生成します。"
+            },
+            "audit": {
+              "title": "サイト診断",
+              "hint": "毎時、CDN とオリジンが返すページを比較し、インデックスに影響する技術的な問題を見つけます。",
+              "originUrl": "オリジンの URL",
+              "originHint": "オリジンに直接つながる https のアドレスです。ホストのみを入力し、公開ドメインとは別にしてください。"
+            }
+          },
+          "errors": {
+            "gscProperty": "プロパティの形式が正しくありません。ドメインプロパティは sc-domain: で、URL プレフィックスプロパティは https:// で始まります。",
+            "serviceAccount": {
+              "missing": "サービスアカウントの JSON キーファイルを選択するか、内容を貼り付けてください。プロパティだけを変更する場合もキーが必要です。",
+              "invalidJson": "有効な JSON ではありません。",
+              "notServiceAccount": "サービスアカウントキーではありません（type が service_account ではありません）。",
+              "missingFields": "キーに client_email または private_key がありません。",
+              "tooLong": "キーファイルが大きすぎます。サービスアカウントの JSON キーを選んだか確認してください。"
+            },
+            "oauth": "クライアント ID、クライアントシークレット、リフレッシュトークンをすべて空白なしで入力してください。",
+            "bingProperty": "サイトの URL は https:// で始めてください。",
+            "apiKey": "API キーを空白なしで入力してください。",
+            "origin": "オリジンは https のホストのみ（パスやパラメーターなし）で、公開ドメインとは別にしてください。",
+            "credentialsRequired": "有効にする前に認証情報を入力してください。"
+          }
+        },
         "errors": {
           "invalidName": "サイト名は制御文字を含まない 1〜60 文字にしてください。",
           "invalidAlternateName": "別名はそれぞれ 1〜80 文字で、最大 5 個までです。",

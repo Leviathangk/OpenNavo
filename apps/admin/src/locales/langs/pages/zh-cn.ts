@@ -960,6 +960,95 @@ const pages = {
         enforced: '启用后',
         empty: '启用后没有 App 会失去收录'
       },
+      providers: {
+        title: '数据接入',
+        hint: '服务端用这里的凭据自动拉取 Search Console、Bing 和站点体检数据，供 SEO 机会任务、页面诊断和效果对比使用。凭据加密保存，保存后不再显示。',
+        replaceHint: '凭据只能整体替换：修改某个来源的任一字段时，要重新填写该来源的全部字段。下面每个来源单独保存。',
+        loadFailed: '无法读取该来源的状态，请点击刷新重试。',
+        saveFailed: '未保存，请检查凭据或稍后重试。',
+        save: '保存',
+        enabled: '启用自动拉取',
+        enabledHint: '启用后按计划自动拉取；关闭不会删除已拉取的数据。',
+        clearCredentials: '清除已保存的凭据',
+        clearHint: '清除后会同时停止自动拉取。',
+        noProgress: '还没有数据进度记录',
+        progress: '{label}：完整到 {complete}，最新到 {fresh}',
+        progressNone: '{label}：还没有数据',
+        none: '暂无',
+        state: {
+          enabled: '已启用',
+          disabled: '未启用',
+          configured: '已配置凭据',
+          notConfigured: '未配置凭据'
+        },
+        credentialTypes: {
+          oauth: 'OAuth 刷新令牌',
+          service_account: '服务账号',
+          api_key: 'API Key',
+          origin: '源站地址'
+        },
+        watermarks: {
+          gsc_page: '页面数据',
+          gsc_query: '查询数据',
+          inspection: '收录检查',
+          bing: 'Bing 查询数据',
+          audit: '站点体检',
+          edge_probe: 'CDN 对比'
+        },
+        sources: {
+          gsc: {
+            title: 'Google Search Console',
+            hint: '每 6 小时拉取页面和查询数据，每天抽查一批网址的收录状态。',
+            mode: '登录方式',
+            modes: {
+              service_account: '服务账号（推荐）',
+              oauth: 'OAuth 刷新令牌'
+            },
+            property: '资源',
+            propertyHint: '域名资源填 sc-domain:opennavo.com，网址前缀资源填完整网址。',
+            serviceAccountJson: '服务账号 JSON 密钥',
+            chooseFile: '选择 JSON 文件',
+            pasteJson: '改为粘贴',
+            pastePlaceholder: '粘贴服务账号 JSON 密钥的完整内容',
+            keyLoaded: '已读取 {email} 的密钥',
+            keyInvalid: '这个文件不是有效的服务账号密钥',
+            forgetKey: '移除',
+            serviceAccountHint:
+              '在 Google Cloud 创建服务账号并下载 JSON 密钥，再在 Search Console 里把服务账号邮箱加为用户（受限权限即可）。密钥只在保存时发送，页面不会显示它。',
+            clientId: 'Client ID',
+            clientSecret: 'Client Secret',
+            refreshToken: 'Refresh Token'
+          },
+          bing: {
+            title: 'Bing 网站管理员工具',
+            hint: '每天拉取 Bing 的搜索查询数据。',
+            property: '网站地址',
+            apiKey: 'API Key',
+            apiKeyHint: '在 Bing 网站管理员工具的「设置 › API 访问」中生成。'
+          },
+          audit: {
+            title: '站点体检',
+            hint: '每小时对比 CDN 和源站返回的页面，找出影响收录的技术问题。',
+            originUrl: '源站地址',
+            originHint: '直连源站的 https 地址，只填主机，不能和公开域名相同。'
+          }
+        },
+        errors: {
+          gscProperty: '资源格式不对：域名资源以 sc-domain: 开头，网址前缀资源以 https:// 开头。',
+          serviceAccount: {
+            missing: '请选择服务账号的 JSON 密钥文件，或粘贴密钥内容。只改属性也要重新提供密钥。',
+            invalidJson: '不是有效的 JSON。',
+            notServiceAccount: '这不是服务账号密钥（type 不是 service_account）。',
+            missingFields: '密钥缺少 client_email 或 private_key。',
+            tooLong: '密钥文件太大，请确认选的是服务账号 JSON 密钥。'
+          },
+          oauth: 'Client ID、Client Secret 和 Refresh Token 都要填写，且不能包含空格。',
+          bingProperty: '网站地址需以 https:// 开头。',
+          apiKey: '请填写 API Key，且不能包含空格。',
+          origin: '源站地址需为 https，只填主机（不带路径和参数），且不能与公开域名相同。',
+          credentialsRequired: '启用前需要先填写凭据。'
+        }
+      },
       errors: {
         invalidName: '站点名称为 1–60 个字符，不能包含控制字符。',
         invalidAlternateName: '每个备用名称为 1–80 个字符，最多 5 个。',

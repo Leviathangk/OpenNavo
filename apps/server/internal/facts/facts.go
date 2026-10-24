@@ -157,12 +157,7 @@ func Decode(body map[string]any, target any) error {
 	if err != nil {
 		return ErrInvalid
 	}
-	decoder := json.NewDecoder(strings.NewReader(string(data)))
-	decoder.DisallowUnknownFields()
-	if decoder.Decode(target) != nil {
-		return ErrInvalid
-	}
-	return nil
+	return strictValue(data, target)
 }
 
 // label trims a short single-line text; empty input becomes nil.

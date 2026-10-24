@@ -1007,6 +1007,99 @@ const pages: PageMessages = {
         enforced: 'When enforced',
         empty: 'No app would leave the index'
       },
+      providers: {
+        title: 'Data connections',
+        hint: 'The server uses these credentials to pull Search Console, Bing and site audit data on a schedule. SEO opportunity tasks, page diagnostics and before/after comparisons use that data. Credentials are stored encrypted and never shown again.',
+        replaceHint:
+          'Credentials are replaced as a whole: changing any field of a source means filling in all of its fields again. Each source below saves separately.',
+        loadFailed: "Couldn't read this source's status. Click Refresh to try again.",
+        saveFailed: 'Not saved. Check the credentials or try again later.',
+        save: 'Save',
+        enabled: 'Pull automatically',
+        enabledHint: 'Pulls data on a schedule once enabled; turning it off keeps the data already pulled.',
+        clearCredentials: 'Clear stored credentials',
+        clearHint: 'Clearing also stops automatic pulls.',
+        noProgress: 'No data progress recorded yet',
+        progress: '{label}: complete through {complete}, latest {fresh}',
+        progressNone: '{label}: no data yet',
+        none: 'none',
+        state: {
+          enabled: 'Enabled',
+          disabled: 'Not enabled',
+          configured: 'Credentials stored',
+          notConfigured: 'No credentials'
+        },
+        credentialTypes: {
+          oauth: 'OAuth refresh token',
+          service_account: 'Service account',
+          api_key: 'API key',
+          origin: 'Origin URL'
+        },
+        watermarks: {
+          gsc_page: 'Page data',
+          gsc_query: 'Query data',
+          inspection: 'Index checks',
+          bing: 'Bing query data',
+          audit: 'Site audit',
+          edge_probe: 'CDN comparison'
+        },
+        sources: {
+          gsc: {
+            title: 'Google Search Console',
+            hint: 'Pulls page and query data every 6 hours and checks the index status of a sample of URLs every day.',
+            mode: 'Sign-in method',
+            modes: {
+              service_account: 'Service account (recommended)',
+              oauth: 'OAuth refresh token'
+            },
+            property: 'Property',
+            propertyHint:
+              'Use sc-domain:opennavo.com for a domain property, or the full URL for a URL-prefix property.',
+            serviceAccountJson: 'Service account JSON key',
+            chooseFile: 'Choose JSON file',
+            pasteJson: 'Paste instead',
+            pastePlaceholder: 'Paste the full contents of the service account JSON key',
+            keyLoaded: 'Key for {email} loaded',
+            keyInvalid: "This file isn't a valid service account key",
+            forgetKey: 'Remove',
+            serviceAccountHint:
+              'Create a service account in Google Cloud and download its JSON key, then add the service account email as a user in Search Console (restricted access is enough). The key is only sent when you save and is never shown on this page.',
+            clientId: 'Client ID',
+            clientSecret: 'Client secret',
+            refreshToken: 'Refresh token'
+          },
+          bing: {
+            title: 'Bing Webmaster Tools',
+            hint: 'Pulls Bing search query data every day.',
+            property: 'Site URL',
+            apiKey: 'API key',
+            apiKeyHint: 'Generate it in Bing Webmaster Tools under Settings › API access.'
+          },
+          audit: {
+            title: 'Site audit',
+            hint: 'Compares the pages served by the CDN and the origin every hour to find technical problems that affect indexing.',
+            originUrl: 'Origin URL',
+            originHint: 'An https address that reaches the origin directly. Host only, and not the public domain.'
+          }
+        },
+        errors: {
+          gscProperty:
+            'Invalid property: domain properties start with sc-domain:, URL-prefix properties with https://.',
+          serviceAccount: {
+            missing:
+              'Choose the service account JSON key file or paste its contents. Changing only the property also needs the key again.',
+            invalidJson: "This isn't valid JSON.",
+            notServiceAccount: "This isn't a service account key (type is not service_account).",
+            missingFields: 'The key is missing client_email or private_key.',
+            tooLong: 'The key file is too large. Make sure you chose the service account JSON key.'
+          },
+          oauth: 'Fill in Client ID, Client secret and Refresh token, without spaces.',
+          bingProperty: 'The site URL must start with https://.',
+          apiKey: 'Enter the API key, without spaces.',
+          origin: 'The origin must be an https host with no path or query, and must differ from the public domain.',
+          credentialsRequired: 'Add credentials before enabling.'
+        }
+      },
       errors: {
         invalidName: 'The site name must be 1–60 characters with no control characters.',
         invalidAlternateName: 'Each alternate name must be 1–80 characters, with up to 5 names.',

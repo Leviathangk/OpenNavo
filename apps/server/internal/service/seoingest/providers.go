@@ -3,15 +3,19 @@ package seoingest
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/fetch"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -19,12 +23,105 @@ import (
 
 // These documents exist only inside authenticated encryption at rest. None is an API response.
 type Credentials struct {
-	Property     string `json:"property"`
-	ClientID     string `json:"clientId"`
-	ClientSecret string `json:"clientSecret"`
-	RefreshToken string `json:"refreshToken"`
-	APIKey       string `json:"apiKey"`
-	OriginURL    string `json:"originUrl"`
+	Property           string `json:"property"`
+	ClientID           string `json:"clientId"`
+	ClientSecret       string `json:"clientSecret"`
+	RefreshToken       string `json:"refreshToken"`
+	APIKey             string `json:"apiKey"`
+	OriginURL          string `json:"originUrl"`
+	ServiceAccountJSON string `json:"serviceAccountJson"`
+}
+
+const googleTokenURL = "https://oauth2.googleapis.com/token" // #nosec G101 -- Google's public token endpoint, not a credential.
+const webmasterScope = "https://www.googleapis.com/auth/webmasters.readonly"
+
+type serviceAccount struct {
+	Type         string `json:"type"`
+	ClientEmail  string `json:"client_email"`
+	PrivateKey   string `json:"private_key"`
+	PrivateKeyID string `json:"private_key_id"`
+	TokenURI     string `json:"token_uri"`
+}
+
+// Parse only the fields used for authentication; downloaded Google key files
+// include other metadata. Never return parser errors containing submitted data.
+func parseServiceAccount(raw string) (serviceAccount, *rsa.PrivateKey, error) {
+	var account serviceAccount
+	if utf8.RuneCountInString(raw) > 16384 || json.Unmarshal([]byte(raw), &account) != nil || account.Type != "service_account" {
+		return serviceAccount{}, nil, ErrUpstream
+	}
+	address, err := mail.ParseAddress(account.ClientEmail)
+	if err != nil || address.Address != account.ClientEmail {
+		return serviceAccount{}, nil, ErrUpstream
+	}
+	if account.TokenURI == "" {
+		account.TokenURI = googleTokenURL
+	}
+	// The assertion must only be sent to Google's token service, never to a URL
+	// supplied by an unrelated key file. Tests replace the transport, not this boundary.
+	if account.TokenURI != googleTokenURL && account.TokenURI != "https://accounts.google.com/o/oauth2/token" {
+		return serviceAccount{}, nil, ErrUpstream
+	}
+	key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(account.PrivateKey))
+	if err != nil || key.N.BitLen() < 2048 || key.Validate() != nil {
+		return serviceAccount{}, nil, ErrUpstream
+	}
+	return account, key, nil
+}
+
+func ValidServiceAccountJSON(raw string) bool {
+	_, _, err := parseServiceAccount(raw)
+	return err == nil
+}
+
+func googleProvider(ctx context.Context, c Credentials, client *http.Client, now time.Time) (Google, error) {
+	if c.Property == "" || c.APIKey != "" || c.OriginURL != "" {
+		return nil, ErrUpstream
+	}
+	tokenURL := googleTokenURL
+	var body url.Values
+	if c.ServiceAccountJSON != "" {
+		if c.ClientID != "" || c.ClientSecret != "" || c.RefreshToken != "" {
+			return nil, ErrUpstream
+		}
+		account, key, err := parseServiceAccount(c.ServiceAccountJSON)
+		if err != nil {
+			return nil, err
+		}
+		tokenURL = account.TokenURI
+		assertion := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+			"iss": account.ClientEmail, "scope": webmasterScope, "aud": tokenURL,
+			"iat": now.Unix(), "exp": now.Add(time.Hour).Unix(),
+		})
+		if account.PrivateKeyID != "" {
+			assertion.Header["kid"] = account.PrivateKeyID
+		}
+		signed, err := assertion.SignedString(key)
+		if err != nil {
+			return nil, ErrUpstream
+		}
+		body = url.Values{"grant_type": {"urn:ietf:params:oauth:grant-type:jwt-bearer"}, "assertion": {signed}}
+	} else {
+		if c.ClientID == "" || c.ClientSecret == "" || c.RefreshToken == "" {
+			return nil, ErrUpstream
+		}
+		body = url.Values{"client_id": {c.ClientID}, "client_secret": {c.ClientSecret}, "refresh_token": {c.RefreshToken}, "grant_type": {"refresh_token"}}
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(body.Encode()))
+	if err != nil {
+		return nil, ErrUpstream
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	var token struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := readJSON(client, req, &token); err != nil {
+		return nil, err
+	}
+	if token.AccessToken == "" {
+		return nil, ErrUpstream
+	}
+	return &googleHTTP{client: client, property: c.Property, token: token.AccessToken}, nil
 }
 
 func New(st *store.Store, cfg config.Config) *Service {
@@ -55,26 +152,7 @@ func New(st *store.Store, cfg config.Config) *Service {
 		if err != nil {
 			return nil, err
 		}
-		if c.Property == "" || c.ClientID == "" || c.ClientSecret == "" || c.RefreshToken == "" {
-			return nil, ErrUpstream
-		}
-		client := apiClient()
-		body := url.Values{"client_id": {c.ClientID}, "client_secret": {c.ClientSecret}, "refresh_token": {c.RefreshToken}, "grant_type": {"refresh_token"}}
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://oauth2.googleapis.com/token", strings.NewReader(body.Encode()))
-		if err != nil {
-			return nil, ErrUpstream
-		}
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		var token struct {
-			AccessToken string `json:"access_token"`
-		}
-		if err := readJSON(client, req, &token); err != nil {
-			return nil, err
-		}
-		if token.AccessToken == "" {
-			return nil, ErrUpstream
-		}
-		return &googleHTTP{client: client, property: c.Property, token: token.AccessToken}, nil
+		return googleProvider(ctx, c, apiClient(), s.now())
 	}
 	s.Bing = func(ctx context.Context) (Bing, error) {
 		c, err := load(ctx, "bing")

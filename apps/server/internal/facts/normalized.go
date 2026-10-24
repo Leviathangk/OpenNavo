@@ -10,12 +10,22 @@ import (
 	"github.com/opennavo/opennavo/server/internal/homebrew"
 )
 
-// Proof is the shared, public provenance contract. Unknown dates are never replaced by now.
+// Proof is the shared, public provenance contract. Unknown checked dates are never replaced by now.
 type Proof struct {
 	SourceURL  string     `json:"sourceUrl"`
 	CheckedAt  *time.Time `json:"checkedAt"`
 	ValidUntil *time.Time `json:"validUntil"`
 	Status     string     `json:"status"`
+}
+
+// WithDefaultValidity applies the same 30-day lifetime as captured agent evidence.
+// Call this only on writes: reading legacy evidence must not invent expiry dates.
+func (p Proof) WithDefaultValidity() Proof {
+	if p.ValidUntil == nil && p.CheckedAt != nil {
+		until := p.CheckedAt.Add(30 * 24 * time.Hour)
+		p.ValidUntil = &until
+	}
+	return p
 }
 
 func (p Proof) At(now time.Time) Proof {
@@ -29,10 +39,17 @@ func (p Proof) At(now time.Time) Proof {
 
 func (p Proof) Validate(now time.Time) error {
 	if p.Status != "verified" && p.Status != "needs_review" {
-		return ErrInvalid
+		return rejected("evidence_status_invalid")
 	}
-	if p.At(now).Status == "unknown" || p.CheckedAt.Before(earliest) {
-		return ErrInvalid
+	if !ValidSourceURL(p.SourceURL) {
+		return rejected("evidence_source_url_invalid")
+	}
+	if p.CheckedAt == nil || p.CheckedAt.Before(earliest) || p.CheckedAt.After(now.Add(maxSkew)) {
+		return rejected("evidence_checked_at_invalid")
+	}
+	p = p.WithDefaultValidity()
+	if !p.ValidUntil.After(*p.CheckedAt) {
+		return rejected("evidence_valid_until_invalid")
 	}
 	return nil
 }

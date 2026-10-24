@@ -37,7 +37,8 @@ func (s *Store) PopulateIntentEligibility(ctx context.Context, rows []IndexRow, 
 	}
 	if err := s.DB.WithContext(ctx).Raw(`SELECT p.id AS package_id,t.intent,t.locale,t.target_url FROM seo_targets t JOIN packages p ON t.entity_key='pkg:'||p.id::text
  WHERE p.id IN ? AND t.intent IN('alternative','uninstall') AND EXISTS(
- SELECT 1 FROM seo_keyword_links l JOIN seo_keywords k ON k.id=l.keyword_id WHERE l.package_id=p.id AND l.intent=t.intent AND l.state='confirmed' AND k.language=t.locale AND k.volume_state='known' AND k.search_volume>0)`, ids).Scan(&targets).Error; err != nil {
+ SELECT 1 FROM seo_keyword_links l JOIN seo_keywords k ON k.id=l.keyword_id WHERE l.package_id=p.id AND l.intent=t.intent AND l.state='confirmed' AND k.language=t.locale
+ AND ((k.volume_state='known' AND k.search_volume>0) OR (k.source IN ('gsc','bing') AND k.anomaly IS NULL AND k.our_position IS NOT NULL AND k.observed_at>=clock_timestamp()-interval '60 days' AND k.observed_at<=clock_timestamp())))`, ids).Scan(&targets).Error; err != nil {
 		return err
 	}
 	content := map[int64]map[seo.PageKind]bool{}

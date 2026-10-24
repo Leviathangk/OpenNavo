@@ -21,7 +21,7 @@ func parseTime(body map[string]any, key string) (*time.Time, error) {
 	}
 	t, err := time.Parse(time.RFC3339, v)
 	if err != nil {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("field_time_invalid:" + key)
 	}
 	return &t, nil
 }
@@ -91,18 +91,18 @@ func (s *Service) contentWrite(ctx context.Context, op string, in Input) (any, e
 		if op == "SetCollectionItems" {
 			items, ok := in.Body["items"].([]any)
 			if !ok || len(items) > 100 {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("collection_items_invalid")
 			}
 			seen := map[int64]bool{}
 			packageIDs := make([]int64, 0, len(items))
 			for index, value := range items {
 				row, ok := value.(map[string]any)
 				if !ok {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("collection_item_invalid")
 				}
 				pid := int64(number(row, "packageId", 0))
 				if pid < 1 || seen[pid] {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("collection_item_package_invalid")
 				}
 				seen[pid] = true
 				packageIDs = append(packageIDs, pid)
@@ -161,7 +161,7 @@ func (s *Service) contentWrite(ctx context.Context, op string, in Input) (any, e
 					start = *at
 				}
 				if endRow.UnpublishAt != nil && !endRow.UnpublishAt.After(start) {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("collection_unpublish_at_invalid")
 				}
 			}
 			return nil, st.DB.WithContext(ctx).Exec("UPDATE collections SET status=?,publish_at=?,updated_by=?,updated_at=? WHERE id=?", status, at, in.Actor.ID, s.now(), id).Error
@@ -175,7 +175,7 @@ func (s *Service) contentWrite(ctx context.Context, op string, in Input) (any, e
 					return nil, err
 				}
 				if a.Kind != "cover" {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("collection_cover_kind_invalid")
 				}
 			}
 		} else {
@@ -190,7 +190,7 @@ func (s *Service) contentWrite(ctx context.Context, op string, in Input) (any, e
 				v := text(in.Body, "url")
 				u, err := url.Parse(v)
 				if err != nil || u.Host == "" || (u.Scheme != "https" && u.Scheme != "http") || u.User != nil {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("feature_url_invalid")
 				}
 				fields["url"] = v
 			}
@@ -203,7 +203,7 @@ func (s *Service) contentWrite(ctx context.Context, op string, in Input) (any, e
 				return nil, err
 			}
 			if start != nil && end != nil && !end.After(*start) {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("feature_ends_at_invalid")
 			}
 		}
 		fields["updated_by"], fields["updated_at"] = in.Actor.ID, s.now()
@@ -232,7 +232,7 @@ func (s *Service) contentWrite(ctx context.Context, op string, in Input) (any, e
 					if row, ok := value.(map[string]any); ok {
 						plain := strings.ReplaceAll(text(row, "body"), "**", "")
 						if strings.ContainsAny(plain, "<>`[]*_#") || strings.Contains(plain, "\n") {
-							return nil, domain.Validation()
+							return nil, domain.Rejected("feature_body_markup_invalid")
 						}
 					}
 				}

@@ -3102,14 +3102,44 @@ export interface components {
          * @example {
          *       "source": "gsc",
          *       "enabled": false,
-         *       "configured": false
+         *       "configured": false,
+         *       "credentialType": null,
+         *       "watermarks": [
+         *         {
+         *           "source": "gsc_page",
+         *           "completeThrough": null,
+         *           "freshThrough": null,
+         *           "updatedAt": "2026-10-24T00:00:00Z"
+         *         },
+         *         {
+         *           "source": "gsc_query",
+         *           "completeThrough": null,
+         *           "freshThrough": null,
+         *           "updatedAt": "2026-10-24T00:00:00Z"
+         *         },
+         *         {
+         *           "source": "inspection",
+         *           "completeThrough": null,
+         *           "freshThrough": null,
+         *           "updatedAt": "2026-10-24T00:00:00Z"
+         *         }
+         *       ]
          *     }
          */
         SeoProviderView: {
             /** @enum {string} */
             source: "gsc" | "bing" | "audit";
+            /** @description Whether scheduled ingestion is enabled; does not imply a successful connection or fresh data. */
             enabled: boolean;
+            /** @description Whether encrypted credentials are stored; does not imply that the provider has accepted them. */
             configured: boolean;
+            /**
+             * @description Stored credential kind only; gsc uses oauth or service_account, bing uses api_key, and audit uses origin. Null when unconfigured or the kind cannot be determined. Credential contents are never returned.
+             * @enum {string|null}
+             */
+            credentialType: "oauth" | "service_account" | "api_key" | "origin" | null;
+            /** @description Data progress for this provider, ordered as gsc_page/gsc_query/inspection for gsc, bing for bing, and audit/edge_probe for audit. Missing rows are omitted. Null dates mean no recorded progress; updatedAt is the watermark row update time, not proof of a successful ingestion. Clearing credentials or disabling ingestion does not erase historical progress. */
+            watermarks: components["schemas"]["SeoWatermark"][];
         };
         /**
          * @example {
@@ -3119,12 +3149,16 @@ export interface components {
          */
         SeoProviderUpdate: {
             enabled?: boolean;
+            /** @description Clear stored credentials. Mutually exclusive with credentials; also set enabled to false when clearing an enabled provider. */
             clearCredentials?: boolean;
+            /** @description Replaces the entire stored credential document; omit to retain it. For gsc, send property with either serviceAccountJson or all three OAuth fields (clientId, clientSecret, refreshToken), never both. For bing, send property and apiKey. For audit, send originUrl only. Credential values are never returned. */
             credentials?: {
                 property?: string;
                 clientId?: string;
                 clientSecret?: string;
                 refreshToken?: string;
+                /** @description GSC service account JSON document serialized as a string, not a nested object. Must contain type=service_account, client_email and a valid RSA private_key of at least 2048 bits. token_uri defaults to https://oauth2.googleapis.com/token; if supplied, only that URL or https://accounts.google.com/o/oauth2/token is accepted. Send together with property and omit the OAuth fields. */
+                serviceAccountJson?: string;
                 apiKey?: string;
                 originUrl?: string;
             };
@@ -3136,7 +3170,9 @@ export interface components {
          *       "data": {
          *         "source": "gsc",
          *         "enabled": false,
-         *         "configured": false
+         *         "configured": false,
+         *         "credentialType": null,
+         *         "watermarks": []
          *       }
          *     }
          */
@@ -5394,6 +5430,7 @@ export interface components {
             evidence: components["schemas"]["FactRecordEvidence"];
         };
         /**
+         * @description OpenSEO DataForSEO observations may omit both vendorTaskId and costUsd; no cost receipt is recorded in that case. When either is supplied with a non-null value, both must be supplied and pass receipt validation.
          * @example {
          *       "keyword": "Example Editor mac",
          *       "source": "gsc",
@@ -8033,8 +8070,11 @@ export interface components {
             sourceUrl: string;
             /** Format: date-time */
             checkedAt: string | null;
-            /** Format: date-time */
-            validUntil: string | null;
+            /**
+             * Format: date-time
+             * @description Omit or send null to use checkedAt plus 30 days. An explicit value must be later than checkedAt.
+             */
+            validUntil?: string | null;
             /** @enum {string} */
             status: "verified" | "stale" | "needs_review" | "unknown";
         };
@@ -19426,6 +19466,7 @@ export interface components {
             /** @example 改善窗口管理体验 */
             summary: string;
             /**
+             * @description Omit to preserve existing sections; new records use an empty array. Send an explicit empty array to clear sections.
              * @example [
              *       {
              *         "area": "改进",
@@ -19435,7 +19476,7 @@ export interface components {
              *       }
              *     ]
              */
-            sections: components["schemas"]["ReleaseSection"][];
+            sections?: components["schemas"]["ReleaseSection"][];
             /** @example null */
             title?: string | null;
             /** @example null */

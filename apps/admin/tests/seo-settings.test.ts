@@ -33,6 +33,8 @@ import {
 } from '../src/views/system/seo/modules/validate';
 
 const api = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn() }));
+// The data-provider card (system:seo:edit) has its own tests in seo-providers.test.ts.
+vi.mock('@/hooks/business/auth', () => ({ useAuth: () => ({ hasAuth: () => false }) }));
 vi.mock('@/service/api', () => ({
   fetchSeoSettings: api.load,
   updateSeoSettings: api.save,

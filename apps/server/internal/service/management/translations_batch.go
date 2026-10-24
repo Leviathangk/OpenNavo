@@ -139,6 +139,9 @@ func (s *Service) writeTranslationLocale(ctx context.Context, request translatio
 }
 
 func (s *Service) writeTranslationLocaleOnce(ctx context.Context, request translationBatch, item translationItem) (any, error) {
+	if err := store.ValidateLocalizedFields(request.Ref.Entity, item.Locale, item.Fields); err != nil {
+		return nil, err
+	}
 	var result any
 	err := s.Store.WithTx(ctx, func(tx *gorm.DB) error {
 		if !i18n.Valid(item.Locale) || item.SourceHash != "" && len(item.SourceHash) != 64 || item.ExpectedRevision != "" && len(item.ExpectedRevision) != 64 {

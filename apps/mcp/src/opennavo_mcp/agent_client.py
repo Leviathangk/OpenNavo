@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+from collections.abc import Sequence
 from typing import Any, cast
 from urllib.parse import quote
 from uuid import uuid4
@@ -33,16 +34,62 @@ MESSAGES = {
 
 
 # Forward only short, structured rejection reasons; never arbitrary backend text.
-REJECTION = re.compile(r"rejected: [a-z][a-z0-9_]{0,63}")
+REJECTION = re.compile(r"rejected: [a-z][a-z0-9_]{0,63}(:[A-Za-z0-9_.\[\]-]{1,96})?")
 
 
 class AgentError(ToolError):
-    def __init__(self, code: str, detail: object = None):
+    def __init__(self, code: str, detail: object = None, *, validation: str = ""):
         self.code = code if code in MESSAGES else "5000"
         message = f"{self.code}: {MESSAGES[self.code]}"
         if self.code != "5000" and isinstance(detail, str) and REJECTION.fullmatch(detail):
             message += f" ({detail})"
+        if self.code == "1001" and validation:
+            message += f" ({validation})"
         super().__init__(message)
+
+
+def field_detail(loc: Sequence[str | int], kind: str, schema: dict[str, Any]) -> str:
+    # loc may contain caller-controlled dictionary keys. Only expose schema field names
+    # and list indices, never input values, custom error messages or context.
+    fields: set[str] = set()
+
+    def collect(node: Any) -> None:
+        if isinstance(node, dict):
+            node = cast(dict[str, Any], node)
+            fields.update(node.get("properties", {}))
+            for child in node.values():
+                collect(child)
+        elif isinstance(node, list):
+            for child in cast(list[Any], node):
+                collect(child)
+
+    collect(schema)
+    branches = set(schema.get("$defs", {}))
+    path = (
+        ".".join(
+            str(part) if isinstance(part, int) or part in fields else "<key>"
+            for part in loc
+            if part not in branches
+        )
+        or "request"
+    )
+    if not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", kind):
+        kind = "invalid"
+    return f"field {path[:200]}: {kind}"
+
+
+def validation_detail(error: ValidationError, schema: dict[str, Any]) -> str:
+    details: list[str] = []
+    for item in error.errors(include_url=False, include_context=False, include_input=False):
+        loc = list(item["loc"])
+        if loc and loc[0] == "body":
+            loc.pop(0)
+        detail = field_detail(loc, item["type"], schema)
+        if detail not in details:
+            details.append(detail)
+        if len(details) == 3:
+            break
+    return "; ".join(details)
 
 
 class AgentClient:
@@ -64,13 +111,23 @@ class AgentClient:
                 json.dumps(values or {}), strict=True
             )
             data = model.model_dump(mode="json", exclude_unset=True, by_alias=True)
-        except (ValidationError, ValueError, TypeError):
-            raise AgentError("1001") from None
+        except ValidationError as error:
+            raise AgentError(
+                "1001",
+                validation=validation_detail(error, input_model(operation).model_json_schema()),
+            ) from None
+        except (ValueError, TypeError):
+            raise AgentError("1001", validation="field request: json_invalid") from None
         path = spec["path"]
         for key in spec["parameters"]["path"]:
             value = str(data.pop(key))
             if value in {".", ".."} or "/" in value or "\\" in value:
-                raise AgentError("1001")
+                raise AgentError(
+                    "1001",
+                    validation=field_detail(
+                        [key], "path_invalid", input_model(operation).model_json_schema()
+                    ),
+                )
             path = path.replace("{" + key + "}", quote(value, safe=""))
         query: dict[str, Any] = {}
         for key in spec["parameters"]["query"]:

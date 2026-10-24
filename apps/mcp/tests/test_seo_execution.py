@@ -122,17 +122,18 @@ async def test_geo_guide_version_boundaries_and_no_execution(backend: Backend) -
         daily = await client.read_resource("opennavo://guide/daily-routine")
         seo = await client.read_resource("opennavo://guide/seo-routine")
     data = json.loads(content[0].text)  # type: ignore[union-attr]
-    assert data["version"] == "geo-routine-v1"
+    assert data["version"] == "geo-routine-v2"
     guide = data["guide"]
+    assert "$15/天" not in guide and "$12/月" not in guide
     for guard in (
         "未授权不运行",
         "paidCalls=0",
         "summary_only",
         "evidence_unavailable",
         "2000 credits",
-        "$15/天",
+        "$5/天",
         "$100/月",
-        "$12/月",
+        "每月最多 $2",
         "在途预占",
         "observation ID",
         "answerText/bodyText/rawResponse/html",

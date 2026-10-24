@@ -50,7 +50,7 @@ func (s *Service) linkOperation(ctx context.Context, op string, in Input) (any, 
 		// PATCH merges nullable fields, while preserving omitted fields and immutable token.
 		if previous != nil {
 			if v, ok := in.Body["token"]; ok && v != previous.Token {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("immutable_field:token")
 			}
 		}
 		body, err := json.Marshal(in.Body)
@@ -58,7 +58,7 @@ func (s *Service) linkOperation(ctx context.Context, op string, in Input) (any, 
 			return nil, err
 		}
 		if err := json.Unmarshal(body, &input); err != nil {
-			return nil, domain.Validation()
+			return nil, domain.Rejected("link_input_invalid")
 		}
 		if err := input.Validate(); err != nil {
 			return nil, err

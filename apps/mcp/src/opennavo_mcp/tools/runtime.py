@@ -8,7 +8,7 @@ from jsonschema import Draft202012Validator, ValidationError
 from mcp_types import ToolAnnotations
 from pydantic import PrivateAttr
 
-from opennavo_mcp.agent_client import AgentClient, AgentError
+from opennavo_mcp.agent_client import AgentClient, AgentError, field_detail
 from opennavo_mcp.auth import CURRENT, Authenticator
 from opennavo_mcp.contracts import OPERATIONS, expand, request_schema, snake
 from opennavo_mcp.tools.display import package_display
@@ -271,8 +271,17 @@ class AdapterTool(Tool):
     async def run(self, arguments: dict[str, Any]) -> ToolResult:
         try:
             cast(InputValidator, Draft202012Validator(self.parameters)).validate(arguments)
-        except ValidationError:
-            raise AgentError("1001") from None
+        except ValidationError as error:
+            loc: list[str | int] = list(error.absolute_path)
+            kind = str(error.validator)
+            if error.validator == "required":
+                required = cast(list[str], error.validator_value)
+                instance = cast(dict[str, Any], error.instance)
+                missing = next((key for key in required if key not in instance), None)
+                if missing is not None:
+                    loc.append(missing)
+                kind = "missing"
+            raise AgentError("1001", validation=field_detail(loc, kind, self.parameters)) from None
         args = deepcopy(arguments)
         operation = choose(self._spec, args)
         if "package" in args:

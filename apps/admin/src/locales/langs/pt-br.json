@@ -1349,6 +1349,94 @@
           "enforced": "Com o critério",
           "empty": "Nenhum app sairia do índice"
         },
+        "providers": {
+          "title": "Conexões de dados",
+          "hint": "O servidor usa estas credenciais para buscar, de forma programada, os dados do Search Console, do Bing e da auditoria do site. As tarefas de oportunidades de SEO, o diagnóstico de páginas e as comparações de antes e depois usam esses dados. As credenciais são guardadas criptografadas e não são exibidas de novo.",
+          "replaceHint": "As credenciais são substituídas por inteiro: ao alterar qualquer campo de uma fonte, preencha de novo todos os campos dela. Cada fonte abaixo é salva separadamente.",
+          "loadFailed": "Não foi possível ler o status desta fonte. Clique em Atualizar para tentar de novo.",
+          "saveFailed": "Não foi salvo. Confira as credenciais ou tente mais tarde.",
+          "save": "Salvar",
+          "enabled": "Buscar automaticamente",
+          "enabledHint": "Depois de ativada, busca os dados conforme a programação; ao desativar, os dados já buscados são mantidos.",
+          "clearCredentials": "Apagar as credenciais salvas",
+          "clearHint": "Ao apagar, a busca automática também para.",
+          "noProgress": "Ainda não há progresso de dados registrado",
+          "progress": "{label}: completo até {complete}, mais recente em {fresh}",
+          "progressNone": "{label}: ainda não há dados",
+          "none": "sem dados",
+          "state": {
+            "enabled": "Ativado",
+            "disabled": "Desativado",
+            "configured": "Credenciais salvas",
+            "notConfigured": "Sem credenciais"
+          },
+          "credentialTypes": {
+            "oauth": "Token de atualização do OAuth",
+            "service_account": "Conta de serviço",
+            "api_key": "Chave de API",
+            "origin": "URL da origem"
+          },
+          "watermarks": {
+            "gsc_page": "Dados de páginas",
+            "gsc_query": "Dados de consultas",
+            "inspection": "Verificação de indexação",
+            "bing": "Dados de consultas do Bing",
+            "audit": "Auditoria do site",
+            "edge_probe": "Comparação com a CDN"
+          },
+          "sources": {
+            "gsc": {
+              "title": "Conexão com o Google Search Console",
+              "hint": "Busca dados de páginas e consultas a cada 6 horas e verifica todos os dias o status de indexação de uma amostra de URLs.",
+              "mode": "Método de acesso",
+              "modes": {
+                "service_account": "Conta de serviço (recomendado)",
+                "oauth": "Token de atualização do OAuth"
+              },
+              "property": "Propriedade",
+              "propertyHint": "Para uma propriedade de domínio, use sc-domain:opennavo.com; para uma propriedade de prefixo de URL, a URL completa.",
+              "serviceAccountJson": "Chave JSON da conta de serviço",
+              "chooseFile": "Escolher arquivo JSON",
+              "pasteJson": "Colar em vez disso",
+              "pastePlaceholder": "Cole o conteúdo completo da chave JSON da conta de serviço",
+              "keyLoaded": "Chave de {email} carregada",
+              "keyInvalid": "Este arquivo não é uma chave de conta de serviço válida",
+              "forgetKey": "Remover",
+              "serviceAccountHint": "Crie uma conta de serviço no Google Cloud e baixe a chave JSON; depois adicione o e-mail da conta de serviço como usuário no Search Console (acesso restrito é suficiente). A chave só é enviada ao salvar e nunca aparece nesta página.",
+              "clientId": "ID do cliente",
+              "clientSecret": "Segredo do cliente",
+              "refreshToken": "Token de atualização"
+            },
+            "bing": {
+              "title": "Ferramentas para webmasters do Bing",
+              "hint": "Busca todos os dias os dados de consultas de pesquisa do Bing.",
+              "property": "URL do site",
+              "apiKey": "Chave de API",
+              "apiKeyHint": "Gere a chave nas Ferramentas para webmasters do Bing, em Configurações › Acesso à API."
+            },
+            "audit": {
+              "title": "Auditoria do site",
+              "hint": "Compara a cada hora as páginas entregues pela CDN e pela origem para encontrar problemas técnicos que afetam a indexação.",
+              "originUrl": "URL da origem",
+              "originHint": "Um endereço https que chega diretamente à origem. Apenas o host, e diferente do domínio público."
+            }
+          },
+          "errors": {
+            "gscProperty": "Propriedade inválida: as de domínio começam com sc-domain: e as de prefixo de URL com https://.",
+            "serviceAccount": {
+              "missing": "Escolha o arquivo de chave JSON da conta de serviço ou cole o conteúdo. Mesmo que altere só a propriedade, informe a chave de novo.",
+              "invalidJson": "Não é um JSON válido.",
+              "notServiceAccount": "Não é uma chave de conta de serviço (type não é service_account).",
+              "missingFields": "Faltam client_email ou private_key na chave.",
+              "tooLong": "O arquivo da chave é grande demais. Confira se você escolheu a chave JSON da conta de serviço."
+            },
+            "oauth": "Preencha o ID do cliente, o segredo do cliente e o token de atualização, sem espaços.",
+            "bingProperty": "A URL do site deve começar com https://.",
+            "apiKey": "Informe a chave de API, sem espaços.",
+            "origin": "A origem deve ser um host https sem caminho nem parâmetros e diferente do domínio público.",
+            "credentialsRequired": "Adicione as credenciais antes de ativar."
+          }
+        },
         "errors": {
           "invalidName": "O nome do site deve ter de 1 a 60 caracteres, sem caracteres de controle.",
           "invalidAlternateName": "Cada nome alternativo deve ter de 1 a 80 caracteres, com no máximo 5 nomes.",

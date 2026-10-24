@@ -41,6 +41,11 @@ func Error(c *gin.Context, err error, admin bool) {
 		status = http.StatusOK
 	}
 	msg := appErr.Msg
+	// Both Agent API and admin JWT handlers use admin=true (HTTP 200 envelopes).
+	// Preserve machine-readable reasons for MCP, while keeping the admin UI localized.
+	if admin && !strings.HasPrefix(c.Request.URL.Path, "/agent-api/") && strings.HasPrefix(msg, "rejected: ") {
+		msg = domain.Message(appErr.Code, Locale(c))
+	}
 	if msg == "" {
 		msg = domain.Message(appErr.Code, Locale(c))
 	}

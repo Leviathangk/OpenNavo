@@ -93,7 +93,7 @@ func Decode(request any, body []byte, actor store.AuditActor, ci bool) (Input, e
 				DownloadSize int64 `json:"downloadSize"`
 			}
 			if json.Unmarshal(body, &fields) != nil || fields.DownloadSize < 0 {
-				return out, domain.Validation()
+				return out, domain.Rejected("download_size_invalid:downloadSize")
 			}
 			out.Body["downloadSize"] = fields.DownloadSize
 		}

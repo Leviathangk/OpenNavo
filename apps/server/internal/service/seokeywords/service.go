@@ -69,14 +69,35 @@ func validate(o *Observation, now time.Time) error {
 	o.Keyword = strings.TrimSpace(o.Keyword)
 	o.Country = strings.ToUpper(o.Country)
 	if Normalize(o.Keyword) == "" {
-		return domain.Validation()
+		return domain.Rejected("keyword_invalid:keyword")
 	}
-	if o.Keyword == "" || len(o.Keyword) > 1000 || strings.IndexFunc(o.Keyword, unicode.IsControl) >= 0 || !i18n.Valid(o.Language) || !slices.Contains([]string{"openseo:dataforseo", "gsc", "bing", "site_search", "homebrew"}, o.Source) || !slices.Contains([]string{"google", "bing", "site", "homebrew"}, o.Engine) || !slices.Contains([]string{"all", "desktop", "mobile", "tablet"}, o.Device) || !datePeriod.MatchString(o.Period) || len(o.Country) < 2 || len(o.Country) > 3 || o.ObservedAt.IsZero() || o.ObservedAt.After(now.Add(5*time.Minute)) {
-		return domain.Validation()
+	if o.Keyword == "" || len(o.Keyword) > 1000 || strings.IndexFunc(o.Keyword, unicode.IsControl) >= 0 {
+		return domain.Rejected("keyword_invalid:keyword")
+	}
+	if !i18n.Valid(o.Language) {
+		return domain.Rejected("locale_invalid:language")
+	}
+	if !slices.Contains([]string{"openseo:dataforseo", "gsc", "bing", "site_search", "homebrew"}, o.Source) {
+		return domain.Rejected("source_invalid:source")
+	}
+	if !slices.Contains([]string{"google", "bing", "site", "homebrew"}, o.Engine) {
+		return domain.Rejected("engine_invalid:engine")
+	}
+	if !slices.Contains([]string{"all", "desktop", "mobile", "tablet"}, o.Device) {
+		return domain.Rejected("device_invalid:device")
+	}
+	if !datePeriod.MatchString(o.Period) {
+		return domain.Rejected("period_invalid:period")
+	}
+	if len(o.Country) < 2 || len(o.Country) > 3 {
+		return domain.Rejected("country_invalid:country")
+	}
+	if o.ObservedAt.IsZero() || o.ObservedAt.After(now.Add(5*time.Minute)) {
+		return domain.Rejected("observed_at_invalid:observedAt")
 	}
 	for _, r := range o.Country {
 		if r < 'A' || r > 'Z' {
-			return domain.Validation()
+			return domain.Rejected("country_invalid:country")
 		}
 	}
 	layout := "2006-01"
@@ -84,37 +105,39 @@ func validate(o *Observation, now time.Time) error {
 		layout = "2006-01-02"
 	}
 	if _, err := time.Parse(layout, o.Period); err != nil {
-		return domain.Validation()
+		return domain.Rejected("period_invalid:period")
 	}
 	if !slices.Contains([]string{"known", "unknown", "unsupported"}, o.VolumeState) {
-		return domain.Validation()
+		return domain.Rejected("volume_state_invalid:volumeState")
 	}
 	if o.Source == "openseo:dataforseo" {
 		if o.Country == "CN" || o.Country == "CHN" {
-			return domain.Validation()
+			return domain.Rejected("paid_market_unsupported:country")
 		}
 		if o.Language == "ru-RU" || o.Country == "RU" || o.Country == "RUS" {
 			o.VolumeState = "unsupported"
 			o.SearchVolume = nil
 		}
-		if o.VolumeState != "unsupported" && (o.VendorTaskID == nil || strings.TrimSpace(*o.VendorTaskID) == "" || len(*o.VendorTaskID) > 200 || o.CostUSD == nil) {
-			return domain.Validation()
+		// OpenSEO may return keyword metrics without a billing receipt. When
+		// either receipt field is provided, require the complete original pair.
+		if (o.VendorTaskID != nil || o.CostUSD != nil) && (o.VendorTaskID == nil || strings.TrimSpace(*o.VendorTaskID) == "" || len(*o.VendorTaskID) > 200 || o.CostUSD == nil) {
+			return domain.Rejected("vendor_receipt_required")
 		}
 	}
 	if (o.VolumeState == "known") != (o.SearchVolume != nil) || o.SearchVolume != nil && *o.SearchVolume < 0 || o.CostUSD != nil && !money.MatchString(*o.CostUSD) {
-		return domain.Validation()
+		return domain.Rejected("volume_or_cost_invalid")
 	}
 	for _, v := range []*float64{o.Difficulty, o.OurPosition} {
 		if v != nil && (*v < 0 || math.IsNaN(*v) || math.IsInf(*v, 0)) {
-			return domain.Validation()
+			return domain.Rejected("metric_invalid")
 		}
 	}
 	if o.Difficulty != nil && *o.Difficulty > 100 || len(o.SERPFeatures) > 30 {
-		return domain.Validation()
+		return domain.Rejected("metric_or_serp_features_invalid")
 	}
 	for _, f := range o.SERPFeatures {
 		if len(f) > 100 {
-			return domain.Validation()
+			return domain.Rejected("serp_feature_too_long:serpFeatures")
 		}
 	}
 	return nil
@@ -123,7 +146,7 @@ func validate(o *Observation, now time.Time) error {
 func (s *Service) ReserveTargets(ctx context.Context, tx *gorm.DB, targets []Target) error {
 	base, err := url.Parse(s.WebURL)
 	if err != nil {
-		return domain.Validation()
+		return domain.Rejected("site_url_invalid")
 	}
 	// Stable lock order prevents deadlocks when two batches reserve overlapping targets.
 	slices.SortFunc(targets, func(a, b Target) int {
@@ -132,7 +155,7 @@ func (s *Service) ReserveTargets(ctx context.Context, tx *gorm.DB, targets []Tar
 	for _, t := range targets {
 		u, err := url.Parse(t.TargetURL)
 		if !entity.MatchString(t.EntityKey) || !i18n.Valid(t.Locale) || !slices.Contains([]string{"download", "install", "brew", "uninstall", "alternative", "price", "version", "requirements", "compare", "topic"}, t.Intent) || err != nil || u.Scheme != "https" || u.Host != base.Host || u.User != nil || u.RawQuery != "" || u.Fragment != "" || len(t.TargetURL) > 2048 {
-			return domain.Validation()
+			return domain.Rejected("target_invalid")
 		}
 		actualLocale := "en-US"
 		for _, code := range i18n.SiteLocales {
@@ -144,23 +167,23 @@ func (s *Service) ReserveTargets(ctx context.Context, tx *gorm.DB, targets []Tar
 		}
 		_, blocked := Intent(t.EntityKey + " " + u.Path)
 		if actualLocale != t.Locale || path.Clean(u.Path) != u.Path || blocked {
-			return domain.Validation()
+			return domain.Rejected("target_path_invalid")
 		}
 		prefix := i18n.Metadata[i18n.LocaleCode(t.Locale)].Prefix + "/"
 		if !strings.HasPrefix(u.Path, prefix) {
-			return domain.Validation()
+			return domain.Rejected("target_locale_mismatch:locale")
 		}
 		if strings.HasPrefix(t.EntityKey, "pkg:") {
 			id, err := strconv.ParseInt(strings.TrimPrefix(t.EntityKey, "pkg:"), 10, 64)
 			if err != nil {
-				return domain.Validation()
+				return domain.Rejected("target_entity_invalid:entityKey")
 			}
 			var n int64
 			if err := tx.WithContext(ctx).Table("packages").Where("id=? AND removed_at IS NULL", id).Count(&n).Error; err != nil {
 				return err
 			}
 			if n != 1 {
-				return domain.Validation()
+				return domain.Rejected("target_package_not_found:entityKey")
 			}
 		}
 		var saved string
@@ -181,7 +204,7 @@ func (s *Service) ReserveTargets(ctx context.Context, tx *gorm.DB, targets []Tar
 
 func (s *Service) Upsert(ctx context.Context, in Request, dry bool, actor store.AuditActor) (map[string]any, error) {
 	if len(in.Records) < 1 || len(in.Records) > 100 || len(in.Targets) > 100 {
-		return nil, domain.Validation()
+		return nil, domain.Rejected("keyword_batch_size_invalid")
 	}
 	for i := range in.Records {
 		if err := validate(&in.Records[i], s.now()); err != nil {

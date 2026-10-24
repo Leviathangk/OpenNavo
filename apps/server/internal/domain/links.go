@@ -91,8 +91,14 @@ func (v *LinkInput) Validate() error {
 	if v.SourceLocale == "" {
 		v.SourceLocale = "en-US"
 	}
-	if !linkToken.MatchString(v.Token) || v.Name == "" || len(v.Name) > 256 || !i18n.Valid(v.SourceLocale) {
-		return Validation()
+	if !linkToken.MatchString(v.Token) {
+		return Rejected("token_invalid:token")
+	}
+	if v.Name == "" || len(v.Name) > 256 {
+		return Rejected("name_invalid:name")
+	}
+	if !i18n.Valid(v.SourceLocale) {
+		return Rejected("locale_invalid:sourceLocale")
 	}
 	for _, p := range []**string{&v.Homepage, &v.DownloadURL, &v.SparkleFeed, &v.GithubRepo, &v.TeamID} {
 		if *p != nil {
@@ -105,24 +111,27 @@ func (v *LinkInput) Validate() error {
 		}
 	}
 	if v.Homepage == nil && v.DownloadURL == nil && v.GithubRepo == nil {
-		return Validation()
+		return Rejected("link_destination_required")
 	}
-	for _, p := range []*string{v.Homepage, v.DownloadURL, v.SparkleFeed} {
-		if p != nil && !LinkHTTPS(*p) {
-			return Validation()
+	for _, field := range []struct {
+		key   string
+		value *string
+	}{{"homepage", v.Homepage}, {"downloadUrl", v.DownloadURL}, {"sparkleFeed", v.SparkleFeed}} {
+		if field.value != nil && !LinkHTTPS(*field.value) {
+			return Rejected("url_invalid:" + field.key)
 		}
 	}
 	if v.GithubRepo != nil && (!linkRepo.MatchString(*v.GithubRepo) || strings.HasSuffix(*v.GithubRepo, ".git") || strings.Contains(*v.GithubRepo, "..")) {
-		return Validation()
+		return Rejected("github_repo_invalid:githubRepo")
 	}
 	if v.TeamID != nil && !linkTeam.MatchString(*v.TeamID) {
-		return Validation()
+		return Rejected("team_id_invalid:teamId")
 	}
 	if v.Pricing == "" {
 		v.Pricing = "unknown"
 	}
 	if !slices.Contains([]string{"free", "paid", "freemium", "subscription", "open_source", "unknown"}, v.Pricing) || len(v.BundleIDs) > 32 {
-		return Validation()
+		return Rejected("pricing_or_bundle_count_invalid")
 	}
 	if v.BundleIDs == nil {
 		v.BundleIDs = []string{}
@@ -130,21 +139,21 @@ func (v *LinkInput) Validate() error {
 	seen := map[string]bool{}
 	for _, b := range v.BundleIDs {
 		if len(b) > 255 || !linkBundle.MatchString(b) || seen[b] {
-			return Validation()
+			return Rejected("bundle_id_invalid_or_duplicate:bundleIds")
 		}
 		seen[b] = true
 	}
 	for k, s := range v.Notes {
 		if !i18n.Valid(k) || (s != nil && len(*s) > 16384) {
-			return Validation()
+			return Rejected("notes_invalid:notes")
 		}
 	}
 	for k, s := range v.AssetRules {
 		if !slices.Contains([]string{"arm64", "x86_64", "universal"}, k) || len(s) > 1024 {
-			return Validation()
+			return Rejected("asset_rule_invalid:assetRules")
 		}
 		if _, err := regexp.Compile(s); err != nil {
-			return Validation()
+			return Rejected("asset_rule_pattern_invalid:assetRules")
 		}
 	}
 	return nil

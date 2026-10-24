@@ -76,13 +76,13 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 		if value := in.Body["downloadSize"]; value != nil {
 			n, ok := value.(int64)
 			if !ok || n < 0 {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("download_size_invalid:downloadSize")
 			}
 		}
 		if value := in.Body["accentColor"]; value != nil {
 			color, ok := value.(string)
 			if !ok || !accentColorPattern.MatchString(color) {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("accent_color_invalid:accentColor")
 			}
 		}
 	}
@@ -174,18 +174,18 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 		case "SetPackageCategories":
 			list, ok := in.Body["items"].([]any)
 			if !ok || len(list) > 3 {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("category_items_invalid:items")
 			}
 			seen := map[int64]bool{}
 			primaries := 0
 			for _, value := range list {
 				row, ok := value.(map[string]any)
 				if !ok {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("category_item_invalid:items")
 				}
 				id := int64(number(row, "categoryId", 0))
 				if id < 1 || seen[id] {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("category_id_invalid_or_duplicate:categoryId")
 				}
 				seen[id] = true
 				if boolean(row, "isPrimary") {
@@ -202,11 +202,11 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 					return nil, err
 				}
 				if applies != "both" && applies != kind {
-					return nil, domain.Validation()
+					return nil, domain.Rejected("category_kind_mismatch:categoryId")
 				}
 			}
 			if len(list) > 0 && primaries != 1 {
-				return nil, domain.Validation()
+				return nil, domain.Rejected("primary_category_count_invalid:isPrimary")
 			}
 			if err := st.DB.WithContext(ctx).Exec("DELETE FROM package_categories WHERE package_id=?", in.ID).Error; err != nil {
 				return nil, err

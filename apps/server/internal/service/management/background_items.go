@@ -13,6 +13,7 @@ func (s *Service) saveBackgroundItem(ctx context.Context, op string, in Input) (
 	if !facts.ValidBackgroundLabel(in.Key) || facts.Decode(in.Body, &body) != nil || body.Validate(s.now()) != nil {
 		return nil, domain.Validation()
 	}
+	body.Evidence = body.Evidence.WithDefaultValidity()
 	return s.write(ctx, in, op, "background_item", func(st *store.Store) (any, error) {
 		if err := st.SaveBackgroundContent(ctx, in.Key, body); err != nil {
 			return nil, store.MapAdminError(err)

@@ -99,6 +99,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 zh-CN:
                   value:
                     code: '0000'
@@ -107,6 +109,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 ja-JP:
                   value:
                     code: '0000'
@@ -115,6 +119,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 es-ES:
                   value:
                     code: '0000'
@@ -123,6 +129,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 pt-BR:
                   value:
                     code: '0000'
@@ -131,6 +139,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 ru-RU:
                   value:
                     code: '0000'
@@ -139,6 +149,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 de-DE:
                   value:
                     code: '0000'
@@ -147,6 +159,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 fr-FR:
                   value:
                     code: '0000'
@@ -155,6 +169,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 it-IT:
                   value:
                     code: '0000'
@@ -163,6 +179,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 zh-Hant:
                   value:
                     code: '0000'
@@ -171,6 +189,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
     put:
       operationId: updateSeoProvider
       summary: Store encrypted SEO provider credentials
@@ -208,6 +228,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 zh-CN:
                   value:
                     code: '0000'
@@ -216,6 +238,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 ja-JP:
                   value:
                     code: '0000'
@@ -224,6 +248,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 es-ES:
                   value:
                     code: '0000'
@@ -232,6 +258,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 pt-BR:
                   value:
                     code: '0000'
@@ -240,6 +268,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 ru-RU:
                   value:
                     code: '0000'
@@ -248,6 +278,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 de-DE:
                   value:
                     code: '0000'
@@ -256,6 +288,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 fr-FR:
                   value:
                     code: '0000'
@@ -264,6 +298,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 it-IT:
                   value:
                     code: '0000'
@@ -272,6 +308,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
                 zh-Hant:
                   value:
                     code: '0000'
@@ -280,6 +318,8 @@ paths:
                       source: gsc
                       enabled: false
                       configured: false
+                      credentialType: null
+                      watermarks: []
       requestBody:
         required: true
         content:
@@ -21690,6 +21730,8 @@ components:
       - source
       - enabled
       - configured
+      - credentialType
+      - watermarks
       properties:
         source:
           type: string
@@ -21699,12 +21741,43 @@ components:
           - audit
         enabled:
           type: boolean
+          description: Whether scheduled ingestion is enabled; does not imply a successful connection or fresh data.
         configured:
           type: boolean
+          description: Whether encrypted credentials are stored; does not imply that the provider has accepted them.
+        credentialType:
+          type: string
+          nullable: true
+          enum:
+          - oauth
+          - service_account
+          - api_key
+          - origin
+          - null
+          description: Stored credential kind only; gsc uses oauth or service_account, bing uses api_key, and audit uses origin. Null when unconfigured or the kind cannot be determined. Credential contents are never returned.
+        watermarks:
+          type: array
+          description: Data progress for this provider, ordered as gsc_page/gsc_query/inspection for gsc, bing for bing, and audit/edge_probe for audit. Missing rows are omitted. Null dates mean no recorded progress; updatedAt is the watermark row update time, not proof of a successful ingestion. Clearing credentials or disabling ingestion does not erase historical progress.
+          items:
+            $ref: '#/components/schemas/SeoWatermark'
       example:
         source: gsc
         enabled: false
         configured: false
+        credentialType: null
+        watermarks:
+        - source: gsc_page
+          completeThrough: null
+          freshThrough: null
+          updatedAt: '2026-10-24T00:00:00Z'
+        - source: gsc_query
+          completeThrough: null
+          freshThrough: null
+          updatedAt: '2026-10-24T00:00:00Z'
+        - source: inspection
+          completeThrough: null
+          freshThrough: null
+          updatedAt: '2026-10-24T00:00:00Z'
     SeoProviderUpdate:
       type: object
       additionalProperties: false
@@ -21713,9 +21786,11 @@ components:
           type: boolean
         clearCredentials:
           type: boolean
+          description: Clear stored credentials. Mutually exclusive with credentials; also set enabled to false when clearing an enabled provider.
         credentials:
           type: object
           additionalProperties: false
+          description: Replaces the entire stored credential document; omit to retain it. For gsc, send property with either serviceAccountJson or all three OAuth fields (clientId, clientSecret, refreshToken), never both. For bing, send property and apiKey. For audit, send originUrl only. Credential values are never returned.
           properties:
             property:
               type: string
@@ -21733,6 +21808,11 @@ components:
               type: string
               maxLength: 4096
               writeOnly: true
+            serviceAccountJson:
+              type: string
+              maxLength: 16384
+              writeOnly: true
+              description: GSC service account JSON document serialized as a string, not a nested object. Must contain type=service_account, client_email and a valid RSA private_key of at least 2048 bits. token_uri defaults to https://oauth2.googleapis.com/token; if supplied, only that URL or https://accounts.google.com/o/oauth2/token is accepted. Send together with property and omit the OAuth fields.
             apiKey:
               type: string
               maxLength: 4096
@@ -21765,6 +21845,8 @@ components:
           source: gsc
           enabled: false
           configured: false
+          credentialType: null
+          watermarks: []
     TranslationReadFields:
       type: object
       additionalProperties: false
@@ -25052,6 +25134,7 @@ components:
     SeoKeywordObservation:
       type: object
       additionalProperties: false
+      description: OpenSEO DataForSEO observations may omit both vendorTaskId and costUsd; no cost receipt is recorded in that case. When either is supplied with a non-null value, both must be supplied and pass receipt validation.
       required:
         - keyword
         - source
@@ -28183,7 +28266,6 @@ components:
       required:
         - sourceUrl
         - checkedAt
-        - validUntil
         - status
       properties:
         sourceUrl:
@@ -28196,6 +28278,7 @@ components:
           type: string
           format: date-time
           nullable: true
+          description: Omit or send null to use checkedAt plus 30 days. An explicit value must be later than checkedAt.
         status:
           type: string
           enum:
@@ -40967,7 +41050,6 @@ components:
       required:
         - sourceLocale
         - summary
-        - sections
       properties:
         clear:
           type: boolean
@@ -40982,6 +41064,8 @@ components:
           example: 改善窗口管理体验
         sections:
           type: array
+          nullable: false
+          description: Omit to preserve existing sections; new records use an empty array. Send an explicit empty array to clear sections.
           items:
             $ref: '#/components/schemas/ReleaseSection'
           example:

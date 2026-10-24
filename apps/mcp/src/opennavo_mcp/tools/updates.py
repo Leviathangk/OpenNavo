@@ -68,7 +68,23 @@ async def merge_update(
     if expected != state_hash(before):
         raise AgentError("1003")
     _, body, definitions = fields(operation)
-    values["body"] = merge(project(before, body, definitions), values.get("body", {}))
+    supplied = values.get("body", {})
+    updated = merge(project(before, body, definitions), supplied)
+    # Localized writes upsert supplied languages and preserve omitted languages.
+    # Merge fields within each requested language, but do not replay unrelated
+    # translations (legacy text may exceed today's write limits).
+    if isinstance(updated.get("i18n"), dict):
+        requested = supplied.get("i18n", {})
+        locales = (
+            set(cast(dict[str, Any], requested)) if isinstance(requested, dict) else set[str]()
+        )
+        source = updated.get("sourceLocale")
+        if isinstance(source, str):
+            locales.add(source)
+        updated["i18n"] = {
+            locale: value for locale, value in updated["i18n"].items() if locale in locales
+        }
+    values["body"] = updated
     if state_hash(await current()) != expected:
         raise AgentError("1003")
     return values
