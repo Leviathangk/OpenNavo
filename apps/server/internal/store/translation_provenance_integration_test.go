@@ -6,14 +6,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/opennavo/opennavo/server/internal/content"
-	"github.com/opennavo/opennavo/server/internal/domain"
-	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 func TestTranslationHistoricalWriterCorrection(t *testing.T) {
@@ -22,41 +17,26 @@ func TestTranslationHistoricalWriterCorrection(t *testing.T) {
 	sql, err := st.DB.DB()
 	require.NoError(t, err)
 	require.NoError(t, goose.DownToContext(ctx, sql, ".", 90))
+	// Rows written at schema 90 are fixtures in that schema's columns. Today's
+	// store writers know columns added later, so they cannot stand in for them.
+	require.NoError(t, st.DB.Exec("INSERT INTO content_revision_requests(request_id) VALUES('fixture-historical-writers')").Error)
 	for i, writer := range []string{"agent", "admin", "unknown", "later-edit"} {
 		id := int64(850 + i)
-		ref := content.Ref{Entity: "category", ID: id}
-		require.NoError(t, st.DB.Exec("INSERT INTO categories(id,slug,icon,source_locale) VALUES(?,?,'lucide:box','en-US')", id, uuid.NewString()).Error)
-		require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
-			local := &store.Store{DB: tx}
-			if err := local.WriteContentText(ctx, ref, "en-US", map[string]any{"name": "File manager"}, true); err != nil {
-				return err
-			}
-			before, err := local.HistorySnapshot(ctx, ref)
-			if err != nil {
-				return err
-			}
-			if err := local.WriteContentText(ctx, ref, "zh-CN", map[string]any{"name": "文件管理工具"}, false); err != nil {
-				return err
-			}
-			after, err := local.HistorySnapshot(ctx, ref)
-			if err != nil {
-				return err
-			}
-			if writer == "unknown" {
-				return nil
-			}
-			op := &domain.Operation{RequestID: uuid.NewString(), Name: "FixTranslation", RequiredPermissions: []string{"translation:review"}, Locale: "zh-CN"}
-			if writer == "agent" || writer == "later-edit" {
-				op.AgentClientID = 1
-			}
-			if _, err := local.RecordRevision(ctx, ref, before, after, "update", op); err != nil {
-				return err
-			}
-			if writer == "later-edit" {
-				return tx.Exec("UPDATE category_i18n SET name='文档管理工具' WHERE category_id=? AND locale='zh-CN'", id).Error
-			}
-			return nil
-		}))
+		require.NoError(t, st.DB.Exec(`INSERT INTO categories(id,slug,icon,source_locale) VALUES(?,'historical-writer-'||?::bigint,'lucide:box','en-US')`, id, id).Error)
+		require.NoError(t, st.DB.Exec(`INSERT INTO category_i18n(category_id,locale,source_locale,status,name) VALUES(?,'zh-CN','en-US','manual','文件管理工具')`, id).Error)
+		if writer == "unknown" {
+			continue
+		}
+		actor := "agent"
+		if writer == "admin" {
+			actor = "admin"
+		}
+		require.NoError(t, st.DB.Exec(`INSERT INTO content_revisions(entity,object_key,version,locale,action,operation_id,required_permissions,actor_type,request_id,before_data,after_data)
+ SELECT 'category',category_id::text,1,locale,'update','FixTranslation',ARRAY['translation:review'],?,'fixture-historical-writers','{}'::jsonb,jsonb_build_object('category_i18n',jsonb_build_array(to_jsonb(t)))
+ FROM category_i18n t WHERE category_id=? AND locale='zh-CN'`, actor, id).Error)
+		if writer == "later-edit" {
+			require.NoError(t, st.DB.Exec("UPDATE category_i18n SET name='文档管理工具' WHERE category_id=? AND locale='zh-CN'", id).Error)
+		}
 	}
 	require.NoError(t, goose.UpContext(ctx, sql, "."))
 	for i, status := range []string{"machine", "manual", "manual", "manual"} {

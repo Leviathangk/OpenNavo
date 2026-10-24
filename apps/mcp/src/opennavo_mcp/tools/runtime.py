@@ -177,16 +177,17 @@ def writable_schema(schema: dict[str, Any]) -> dict[str, Any]:
 
     def visit(value: Any) -> None:
         if isinstance(value, dict):
-            enum = value.get("enum")
+            node = cast(dict[str, Any], value)
+            enum = node.get("enum")
             if isinstance(enum, list) and "zh-Hant" in enum:
-                value["enum"] = [code for code in enum if code != "zh-Hant"]
-            properties = value.get("properties")
+                node["enum"] = [code for code in cast(list[Any], enum) if code != "zh-Hant"]
+            properties = node.get("properties")
             if isinstance(properties, dict):
-                properties.pop("zh-Hant", None)
-            for child in value.values():
+                cast(dict[str, Any], properties).pop("zh-Hant", None)
+            for child in node.values():
                 visit(child)
         elif isinstance(value, list):
-            for child in value:
+            for child in cast(list[Any], value):
                 visit(child)
 
     visit(result)

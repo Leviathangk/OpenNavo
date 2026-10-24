@@ -24,7 +24,7 @@ func TestDailySearchMeasurementsDoNotDuplicateOrReopenPageTasks(t *testing.T) {
 		require.NoError(t, st.DB.Exec(`INSERT INTO seo_ingest_days(source,day,temporal_complete,retrieval_complete,row_count,coverage,fetched_at)
  VALUES('gsc_query',current_date-?::int,true,true,4,'fixture',now())`, daysAgo).Error)
 		require.NoError(t, st.DB.Exec(`INSERT INTO seo_gsc_query_daily(day,url_id,query,clicks,impressions,position_sum)
- SELECT current_date-?::int,id,query,1,10,20 FROM seo_urls CROSS JOIN (VALUES('Best Mac Fixture Tools'),('fixture utility mac')) q(query)`, daysAgo).Error)
+ SELECT current_date-?::int,id,query,1,10,20 FROM seo_urls CROSS JOIN (VALUES('Best Mac Fixture Tools'),('download fixture mac')) q(query)`, daysAgo).Error)
 		_, err := svc.Run(ctx)
 		require.NoError(t, err)
 	}

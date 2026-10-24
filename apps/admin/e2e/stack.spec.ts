@@ -47,7 +47,8 @@ test('Editing a package Chinese summary updates the public API', async ({ superP
   await page.waitForURL('**/catalog/package-detail/**');
   await page.locator('.n-tabs-tab', { hasText: '文字与翻译' }).click();
   // Six-language tabs open in the source language; explicitly switch to Simplified Chinese here.
-  await page.locator('.n-tabs-tab', { hasText: '简体中文' }).click();
+  // The Traditional tab reads "繁體中文 ← 简体中文", so exclude it from the match.
+  await page.locator('.n-tabs-tab', { hasText: '简体中文' }).filter({ hasNotText: '繁體中文' }).click();
 
   const column = page.locator('[data-locale="zh-CN"]');
   const summary = column.getByRole('textbox').nth(1);
@@ -78,7 +79,7 @@ test('Editing a package Chinese summary updates the public API', async ({ superP
     // Saving reloads details and returns to the source tab; reopen Chinese before restoring seed data.
     await page.reload();
     await page.locator('.n-tabs-tab', { hasText: '文字与翻译' }).click();
-    await page.locator('.n-tabs-tab', { hasText: '简体中文' }).click();
+    await page.locator('.n-tabs-tab', { hasText: '简体中文' }).filter({ hasNotText: '繁體中文' }).click();
     await saveSummary(original);
   }
 });

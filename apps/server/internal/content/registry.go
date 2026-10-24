@@ -20,8 +20,8 @@ type Spec struct {
 var Registry = map[string]Spec{
 	"package":         {"packages", "package_i18n", "package_id", map[string]int{"display_name": 128, "summary": 200, "description": 20000}, map[string]bool{"description": true}},
 	"release":         {"releases", "release_i18n", "release_id", map[string]int{"title": 256, "summary": 400, "sections": 2400, "body_markdown": 200000}, map[string]bool{"body_markdown": true}},
-	"category":        {"categories", "category_i18n", "category_id", map[string]int{"name": 128, "description": 1000}, nil},
-	"collection":      {"collections", "collection_i18n", "collection_id", map[string]int{"title": 200, "subtitle": 500, "body": 20000}, map[string]bool{"body": true}},
+	"category":        {"categories", "category_i18n", "category_id", map[string]int{"name": 128, "description": 1000, "seo_title": 120, "seo_description": 300}, nil},
+	"collection":      {"collections", "collection_i18n", "collection_id", map[string]int{"title": 200, "subtitle": 500, "body": 20000, "seo_title": 120, "seo_description": 300}, map[string]bool{"body": true}},
 	"feature":         {"features", "feature_i18n", "feature_id", map[string]int{"badge": 80, "title": 200, "subtitle": 500, "body": 20000, "cta_label": 80}, map[string]bool{"body": true}},
 	"screenshot":      {"package_screenshots", "screenshot_i18n", "screenshot_id", map[string]int{"caption": 1000}, nil},
 	"collection_item": {"collection_items", "collection_item_i18n", "collection_id", map[string]int{"note": 2000}, nil},

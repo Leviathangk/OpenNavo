@@ -2,9 +2,13 @@
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadReleaseNotes, RELEASE_NOTE_LOCALES, validateNotes } from '../scripts/release-notes.mjs';
 import { releaseBody, TARGETS } from '../scripts/release-lib.mjs';
+
+// Deriving zh-Hant runs `go run ./cmd/derive-traditional`; a cold Go build cache on CI
+// takes well over the default 5 s, so this file allows for that build.
+vi.setConfig({ testTimeout: 60_000 });
 
 describe('Versioned release notes', () => {
   it.each([undefined, '', ' \n ', 'OpenNavo 0.3.0', '# OpenNavo 0.3.0', '0.3.0', 'TODO', '待补充'])(

@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const RuleVersion = "opportunities-v1"
+const RuleVersion = "opportunities-v2"
 
 // Catalog changes are read in windows of rows that can open maintenance. Content
 // and asset rows never do, so bulk cache invalidations (thousands of rows each)
@@ -56,20 +56,26 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended('seo:opportunities',0))").Error; err != nil {
 			return err
 		}
+		emitSignal := func(v signal) error {
+			held, err := save(ctx, tx, v)
+			if err != nil {
+				return err
+			}
+			if held {
+				stashed++
+			}
+			count++
+			return nil
+		}
 		emit := func(query string, args ...any) (int, error) {
 			var signals []signal
 			if err := tx.Raw(query, args...).Scan(&signals).Error; err != nil {
 				return 0, err
 			}
 			for _, v := range signals {
-				held, err := save(ctx, tx, v)
-				if err != nil {
+				if err := emitSignal(v); err != nil {
 					return 0, err
 				}
-				if held {
-					stashed++
-				}
-				count++
 			}
 			return len(signals), nil
 		}
@@ -166,8 +172,14 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		if err := tx.Raw("SELECT signature FROM seo_opportunity_cursors WHERE source='demand' FOR UPDATE").Scan(&prior).Error; err != nil {
 			return err
 		}
+		repaired, err := repairDemand(ctx, tx)
+		if err != nil {
+			return err
+		}
+		stats["demandRepaired"] = repaired
+		signature = RuleVersion + ":" + signature
 		if prior != signature {
-			if err := s.demand(tx, emit); err != nil {
+			if err := s.demand(tx, emit, emitSignal); err != nil {
 				return err
 			}
 			if err := tx.Exec("UPDATE seo_opportunity_cursors SET signature=?,updated_at=clock_timestamp() WHERE source='demand'", signature).Error; err != nil {
@@ -180,7 +192,7 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	return stats, err
 }
 
-func (s *Service) demand(tx *gorm.DB, emit func(string, ...any) (int, error)) error {
+func (s *Service) demand(tx *gorm.DB, emit func(string, ...any) (int, error), emitSignal func(signal) error) error {
 	// Both the window marker and each day must be complete. Query totals never stand in for page totals.
 	const window = `SELECT w.complete_through FROM seo_data_watermarks w WHERE source='gsc_page' AND (SELECT count(*) FROM seo_ingest_days d WHERE d.source=w.source AND d.day BETWEEN w.complete_through-27 AND w.complete_through AND temporal_complete AND retrieval_complete)=28`
 	if _, err := emit(`WITH demand AS (SELECT l.package_id,k.language locale,l.intent,sum(coalesce(k.search_volume,CASE WHEN k.source IN ('gsc','bing') THEN 1 ELSE 0 END)) volume,jsonb_agg(k.id ORDER BY k.id) keyword_ids FROM seo_keyword_links l JOIN seo_keywords k ON k.id=l.keyword_id WHERE l.state='confirmed' AND k.anomaly IS NULL AND k.observed_at>clock_timestamp()-interval '60 days' AND l.intent IN ('price','requirements','uninstall','alternative') GROUP BY l.package_id,k.language,l.intent)
@@ -194,33 +206,7 @@ func (s *Service) demand(tx *gorm.DB, emit func(string, ...any) (int, error)) er
 	if _, err := emit(`SELECT 'discover_fix' kind,CASE WHEN u.package_id IS NULL THEN 'url:'||u.id ELSE 'pkg:'||u.package_id END entity_key,u.locale,'discover:'||u.id dedupe_key,30 priority,jsonb_build_object('source','inspection','url',u.url,'coverageState',s.coverage_state,'canonical',s.google_canonical) evidence FROM seo_url_status s JOIN seo_urls u ON u.id=s.url_id WHERE s.checked_at>clock_timestamp()-interval '14 days' AND (s.coverage_state ILIKE '%not indexed%' OR s.coverage_state ILIKE '%未编入索引%') ORDER BY u.id LIMIT 1000`); err != nil {
 		return err
 	}
-	// A daily observation is evidence for the same page opportunity. Neither its
-	// row ID nor the latest date belongs in task identity or its evidence hash.
-	// Reuse legacy demand tasks by page/locale so the rollout does not duplicate
-	// existing work, reset completed decisions, or disturb an active lease.
-	if _, err := emit(`WITH candidates AS (
- SELECT k.language,regexp_replace(trim(k.normalized),'[^a-z0-9]+','-','g') slug,
- CASE WHEN k.normalized~'(^| )(best|how|guide|tools)( |$)' THEN 'topic' ELSE 'listing' END kind,
- coalesce(k.search_volume,1) volume
- FROM seo_keywords k WHERE (k.search_volume>0 OR k.source IN ('gsc','bing'))
- AND k.anomaly IS NULL AND k.observed_at>clock_timestamp()-interval '60 days'
- AND k.normalized~'(^| )(mac|macos)( |$)' AND k.normalized!~'(crack|torrent|pirate|破解|盗版)'
- AND NOT EXISTS(SELECT 1 FROM seo_keyword_links l WHERE l.keyword_id=k.id AND l.state='confirmed')
- ), pages AS (
- SELECT kind,language,slug,max(volume) volume,
- CASE kind WHEN 'topic' THEN 'article:new:' ELSE 'listing:' END||slug entity_key
- FROM candidates WHERE length(slug) BETWEEN 1 AND 100 AND slug~'^[a-z0-9].*[a-z0-9]$'
- AND NOT EXISTS(SELECT 1 FROM seo_targets t WHERE t.entity_key='topic:'||slug AND t.locale=candidates.language)
- GROUP BY kind,language,slug
- )
- SELECT p.kind,p.entity_key,p.language locale,
- coalesce(existing.dedupe_key,'demand:'||p.kind||':'||p.language||':'||p.slug) dedupe_key,
- 10+ln(1+p.volume) priority,
- coalesce(existing.evidence,jsonb_build_object('source','keywords','keyword',replace(p.slug,'-',' '),'targetSlug',p.slug)) evidence
- FROM pages p LEFT JOIN LATERAL (
- SELECT t.dedupe_key,t.evidence FROM seo_tasks t WHERE t.kind=p.kind AND t.entity_key=p.entity_key AND t.locale=p.language
- AND t.dedupe_key LIKE 'demand:%' AND t.evidence->>'source'='keywords' ORDER BY t.id LIMIT 1
- ) existing ON true ORDER BY p.volume DESC,p.kind,p.language,p.slug LIMIT 500`); err != nil {
+	if err := emitDemand(tx, emitSignal); err != nil {
 		return err
 	}
 	if _, err := emit(`SELECT 'alias' kind,'pkg:'||l.package_id entity_key,k.language locale,'alias:'||k.id||':'||l.package_id dedupe_key,10+ln(1+coalesce(k.search_volume,0)) priority,jsonb_build_object('source','confirmed_link','keywordId',k.id,'alias',k.keyword) evidence FROM seo_keyword_links l JOIN seo_keywords k ON k.id=l.keyword_id JOIN packages p ON p.id=l.package_id WHERE l.state='confirmed' AND l.confidence>=0.95 AND l.intent IN ('download','install','brew') AND k.anomaly IS NULL AND k.normalized<>lower(p.token) AND k.normalized NOT LIKE '%'||lower(p.token)||'%' ORDER BY k.id LIMIT 500`); err != nil {

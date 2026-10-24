@@ -41,7 +41,7 @@ const { hasAuth } = useAuth();
 const { routerPushByKey } = useRouterPush();
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
-const TEXT_KEYS = ['title', 'subtitle', 'body'] as const;
+const TEXT_KEYS = ['title', 'subtitle', 'body', 'seoTitle', 'seoDescription'] as const;
 
 const id = computed(() => (route.params.id === 'new' ? null : Number(route.params.id)));
 const detail = ref<DataOf<'getAdminCollection'> | null>(null);
@@ -153,7 +153,13 @@ function body(): BodyOf<'createCollection'> {
       original: original.value,
       sourceLocale: model.sourceLocale,
       keys: TEXT_KEYS,
-      entry: text => ({ title: text.title ?? '', subtitle: text.subtitle, body: text.body }),
+      entry: text => ({
+        title: text.title ?? '',
+        subtitle: text.subtitle,
+        body: text.body,
+        seoTitle: text.seoTitle,
+        seoDescription: text.seoDescription
+      }),
       clearable: true
     })
   };
@@ -388,8 +394,8 @@ const live = computed(() => detail.value?.status === 'published' || detail.value
                       :path="code === model.sourceLocale ? `i18n.${code}.title` : undefined"
                     >
                       <NInput
-                        :disabled="code === 'zh-Hant'"
                         v-model:value="model.i18n[code].title"
+                        :disabled="code === 'zh-Hant'"
                         :maxlength="40"
                         show-count
                         :placeholder="code === model.sourceLocale ? '' : $t('page.shared.i18n.autoPlaceholder')"
@@ -397,9 +403,26 @@ const live = computed(() => detail.value?.status === 'published' || detail.value
                     </NFormItem>
                     <NFormItem :label="$t('page.content.collectionDetail.subtitle')">
                       <NInput
-                        :disabled="code === 'zh-Hant'"
                         v-model:value="model.i18n[code].subtitle"
+                        :disabled="code === 'zh-Hant'"
                         :maxlength="80"
+                        show-count
+                      />
+                    </NFormItem>
+                    <NFormItem :label="$t('page.content.articleDetail.seoTitle')">
+                      <NInput
+                        v-model:value="model.i18n[code].seoTitle"
+                        :disabled="code === 'zh-Hant'"
+                        :maxlength="120"
+                        show-count
+                      />
+                    </NFormItem>
+                    <NFormItem :label="$t('page.content.articleDetail.seoDescription')">
+                      <NInput
+                        v-model:value="model.i18n[code].seoDescription"
+                        :disabled="code === 'zh-Hant'"
+                        type="textarea"
+                        :maxlength="300"
                         show-count
                       />
                     </NFormItem>

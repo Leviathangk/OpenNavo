@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Service) categories(ctx context.Context, _ Input) (any, error) {
-	rows, err := s.Store.JSONRows(ctx, `SELECT jsonb_build_object('id',c.id,'sourceLocale',c.source_locale,'parentId',c.parent_id,'slug',c.slug,'icon',c.icon,'sort',c.sort,'appliesTo',c.applies_to,'visible',c.visible,'hiddenByDefault',c.hidden_by_default,'packageCount',(SELECT count(*) FROM package_categories pc WHERE pc.category_id=c.id),'i18n',COALESCE((SELECT jsonb_object_agg(ci.locale,jsonb_build_object('status',ci.status,'sourceLocale',ci.source_locale,'sourceHash',ci.source_hash,'model',ci.model,'translatedAt',ci.translated_at,'name',ci.name,'description',ci.description)) FROM category_i18n ci WHERE ci.category_id=c.id),'{}'::jsonb),'children','[]'::jsonb) AS data FROM categories c ORDER BY c.sort,c.id`)
+	rows, err := s.Store.JSONRows(ctx, `SELECT jsonb_build_object('id',c.id,'sourceLocale',c.source_locale,'parentId',c.parent_id,'slug',c.slug,'icon',c.icon,'sort',c.sort,'appliesTo',c.applies_to,'visible',c.visible,'hiddenByDefault',c.hidden_by_default,'packageCount',(SELECT count(*) FROM package_categories pc WHERE pc.category_id=c.id),'i18n',COALESCE((SELECT jsonb_object_agg(ci.locale,jsonb_build_object('status',ci.status,'sourceLocale',ci.source_locale,'sourceHash',ci.source_hash,'model',ci.model,'translatedAt',ci.translated_at,'name',ci.name,'description',ci.description,'seoTitle',ci.seo_title,'seoDescription',ci.seo_description)) FROM category_i18n ci WHERE ci.category_id=c.id),'{}'::jsonb),'children','[]'::jsonb) AS data FROM categories c ORDER BY c.sort,c.id`)
 	if err != nil {
 		return nil, err
 	}

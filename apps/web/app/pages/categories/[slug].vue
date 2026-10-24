@@ -134,6 +134,7 @@ const legacyTitles = useLegacyTitles();
 // Sorted and filtered variants stay out of the index through the route query contract (S4).
 usePageSeo({
   title: () =>
+    category.value?.seoTitle?.trim() ||
     t(legacyTitles.value ? 'categories.itemMetaTitle' : 'categories.seo.itemTitle', {
       name: category.value?.name ?? ''
     }),
@@ -141,6 +142,7 @@ usePageSeo({
   description: () => {
     const value = category.value;
     if (!value) return t('categories.description');
+    if (value.seoDescription?.trim()) return value.seoDescription.trim();
     const total = data.value?.total ?? 0;
     return (
       categoryDescription(

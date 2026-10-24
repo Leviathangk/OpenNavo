@@ -138,8 +138,8 @@ if (data.value)
 useItemListSchema(() => entries.value.map(entry => ({ name: entry.name, path: entry.href })));
 
 usePageSeo({
-  title: () => t('collections.itemMetaTitle', { title: data.value?.title ?? '' }),
-  description: () => data.value?.subtitle ?? t('collections.description')
+  title: () => data.value?.seoTitle?.trim() || t('collections.itemMetaTitle', { title: data.value?.title ?? '' }),
+  description: () => data.value?.seoDescription?.trim() || data.value?.subtitle || t('collections.description')
 });
 </script>
 

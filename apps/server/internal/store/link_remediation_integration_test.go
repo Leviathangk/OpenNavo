@@ -118,7 +118,15 @@ func TestRemediationLinkContentAndTranslation(t *testing.T) {
 	source, err = st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
 	require.NoError(t, st.DB.Table("seo_tasks").Where("kind='translate' AND entity_key=? AND state='open'", fmt.Sprintf("package:%d", id)).Count(&n).Error)
-	require.EqualValues(t, len(i18n.SiteLocales)-1, n)
+	// Translation work targets every writable site language except the source;
+	// Traditional Chinese is derived from Simplified Chinese, never queued.
+	targets := 0
+	for _, code := range i18n.SiteLocales {
+		if code != "en-US" && i18n.Writable(string(code)) {
+			targets++
+		}
+	}
+	require.EqualValues(t, targets, n)
 	applied, err := st.WriteTranslationSnapshot(ctx, source, "zh-CN", map[string]string{"summary": "译文", "description": "正文"}, "fixture")
 	require.NoError(t, err)
 	require.True(t, applied)

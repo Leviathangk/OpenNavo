@@ -17,6 +17,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/cli/migrate"
 	"github.com/opennavo/opennavo/server/internal/cli/seedcmd"
 	"github.com/opennavo/opennavo/server/internal/cli/seede2e"
+	"github.com/opennavo/opennavo/server/internal/cli/seodemandrepair"
 	"github.com/opennavo/opennavo/server/internal/cli/traditionalbackfill"
 	"github.com/opennavo/opennavo/server/internal/cli/worker"
 )
@@ -24,6 +25,7 @@ import (
 // The Dockerfile links each name to this binary.
 var commands = map[string]func(){
 	"api":                  api.Main,
+	"seo-demand-repair":    seodemandrepair.Main,
 	"traditional-backfill": traditionalbackfill.Main,
 	"db-bootstrap":         dbbootstrap.Main,
 	"desktop-publish":      desktoppublish.Main,

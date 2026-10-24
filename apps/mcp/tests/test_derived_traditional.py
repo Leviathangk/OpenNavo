@@ -1,9 +1,21 @@
 import json
+from collections.abc import Iterator
+from typing import Any, Protocol, cast
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
 from opennavo_mcp.tools.manifest import TOOLS
 from opennavo_mcp.tools.runtime import tool_schema
+
+
+class SchemaValidator(Protocol):
+    def iter_errors(self, instance: Any) -> Iterator[ValidationError]: ...
+
+    def validate(self, instance: Any) -> None: ...
+
+
+def validator_for(schema: dict[str, Any]) -> SchemaValidator:
+    return cast(SchemaValidator, Draft202012Validator(schema))
 
 
 def test_traditional_is_readable_but_not_a_write_target():
@@ -16,7 +28,7 @@ def test_traditional_is_readable_but_not_a_write_target():
 def test_seo_metadata_still_accepts_traditional():
     tools = {tool.name: tool for tool in TOOLS}
     schema = tool_schema(tools["seo_keywords_upsert"])
-    validator = Draft202012Validator(schema)
+    validator = validator_for(schema)
     errors = list(
         validator.iter_errors(
             {
@@ -51,4 +63,4 @@ def test_topic_nomination_accepts_traditional_target():
     tools = {tool.name: tool for tool in TOOLS}
     schema = tool_schema(tools["seo_topic_nominate"])
     locale = schema["properties"]["locale"]
-    Draft202012Validator({**locale, "$defs": schema["$defs"]}).validate("zh-Hant")
+    validator_for({**locale, "$defs": schema["$defs"]}).validate("zh-Hant")

@@ -1706,6 +1706,8 @@ class PackageVersion(BaseModel):
 
 
 class CategoryI18n(BaseModel):
+    seoTitle: Annotated[str | None, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = None
+    seoDescription: Annotated[str | None, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = None
     name: Annotated[str, Field(examples=['Visual Studio Code'], max_length=30)]
     description: Annotated[str | None, Field(examples=[None], max_length=200)] = None
 
@@ -1721,6 +1723,8 @@ class CategoryOrder(BaseModel):
 
 
 class CollectionI18n(BaseModel):
+    seoTitle: Annotated[str | None, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = None
+    seoDescription: Annotated[str | None, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = None
     title: Annotated[str, Field(examples=['Visual Studio Code'], max_length=40)]
     subtitle: Annotated[str | None, Field(examples=[None], max_length=80)] = None
     body: Annotated[str | None, Field(examples=[None], max_length=10000)] = None
@@ -2272,6 +2276,8 @@ class LocalizedNullableString(BaseModel):
 
 
 class CategoryI18nView(BaseModel):
+    seoTitle: Annotated[str | None, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = None
+    seoDescription: Annotated[str | None, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = None
     name: Annotated[str, Field(examples=['Visual Studio Code'], max_length=30)]
     description: Annotated[str | None, Field(examples=[None], max_length=200)] = None
     status: TranslationStatus
@@ -2314,6 +2320,8 @@ class CategoryI18nViewMap(BaseModel):
 
 
 class CollectionI18nView(BaseModel):
+    seoTitle: Annotated[str | None, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = None
+    seoDescription: Annotated[str | None, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = None
     title: Annotated[str, Field(examples=['Visual Studio Code'], max_length=40)]
     subtitle: Annotated[str | None, Field(examples=[None], max_length=80)] = None
     body: Annotated[str | None, Field(examples=[None], max_length=10000)] = None
@@ -3132,6 +3140,7 @@ class ArticlePackageRef(BaseModel):
 
 
 class AdminArticleRevision(BaseModel):
+    id: Annotated[int | None, Field(description='Database revision ID; use the published revision ID for article translations.', examples=[101])] = None
     claims: Annotated[list[ArticleClaim] | None, Field(max_length=200)] = None
     target: ArticleSeoTarget | None = None
     claimEvidence: list[ArticleClaimEvidence] | None = None
@@ -3169,6 +3178,7 @@ class ArticleLocaleState(BaseModel):
 
 
 class ArticleRevisionEntry(BaseModel):
+    id: Annotated[int | None, Field(description='Database revision ID; use the published revision ID for article translations.', examples=[101])] = None
     number: Annotated[int, Field(examples=[2])]
     title: Annotated[str, Field(examples=['How to choose a screenshot app for Mac'])]
     createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 08:00:00+00:00'])]
@@ -3193,6 +3203,7 @@ class ArticleImage(BaseModel):
 
 
 class Published(BaseModel):
+    id: Annotated[int | None, Field(description='Database revision ID to pass as ref.id with entity article to translations_write.', examples=[101])] = None
     number: Annotated[int, Field(examples=[2])]
     publishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12 10:00:00+00:00'])]
 
@@ -5304,7 +5315,7 @@ class SeoSnippetProposal(BaseModel):
     locale: Locale
     variant: Literal['verified_free', 'current_version', 'uninstall_alternatives']
     slots: list[Literal['name', 'version', 'free', 'uninstall', 'alternatives']]
-    baselineCtr: Annotated[float, Field(ge=0.0, le=1.0)]
+    baselineCtr: Annotated[float | None, Field(deprecated=True, description='Ignored for compatibility; the server computes the baseline from the eligible GSC cohort.', ge=0.0, le=1.0)] = None
     targetCtr: Annotated[float, Field(ge=0.0, le=1.0)]
 
 

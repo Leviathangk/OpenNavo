@@ -141,3 +141,15 @@ func (s *Store) ReserveURLPurge(ctx context.Context, now time.Time, interval tim
 	result := s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET next_purge_at=? WHERE id=true AND (next_purge_at IS NULL OR next_purge_at<=?)", now.Add(interval), now)
 	return result.RowsAffected == 1, result.Error
 }
+
+func (s *Store) URLPurgeReadyAt(ctx context.Context) (time.Time, error) {
+	var due time.Time
+	err := s.DB.WithContext(ctx).Raw("SELECT next_purge_at FROM url_notify_state WHERE id=true").Scan(&due).Error
+	return due, err
+}
+
+// Account-level throttling may outlive our own interval. Persist the cooldown
+// so release purges, other workers and restarts all honor the same deadline.
+func (s *Store) DelayURLPurge(ctx context.Context, due time.Time) error {
+	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET next_purge_at=greatest(next_purge_at,?) WHERE id=true", due).Error
+}

@@ -2091,7 +2091,6 @@ paths:
               slots:
               - name
               - version
-              baselineCtr: 0.01
               targetCtr: 0.015
   /seo/actions/{id}/compensate:
     post:
@@ -22200,6 +22199,8 @@ components:
             - alternatives
         baselineCtr:
           type: number
+          deprecated: true
+          description: Ignored for compatibility; the server computes the baseline from the eligible GSC cohort.
           exclusiveMinimum: false
           minimum: 0
           maximum: 1
@@ -22212,7 +22213,6 @@ components:
       - locale
       - variant
       - slots
-      - baselineCtr
       - targetCtr
       example:
         pageKind: overview
@@ -22221,7 +22221,6 @@ components:
         slots:
         - name
         - version
-        baselineCtr: 0.01
         targetCtr: 0.015
     SeoCompensation:
       type: object
@@ -33951,6 +33950,18 @@ components:
       required:
         - name
       properties:
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Localized search title; blank uses the default page title.
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: Localized search description; blank uses the default page description.
+          example: null
         name:
           type: string
           maxLength: 30
@@ -34170,6 +34181,18 @@ components:
       required:
         - title
       properties:
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Localized search title; blank uses the default page title.
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: Localized search description; blank uses the default page description.
+          example: null
         title:
           type: string
           maxLength: 40
@@ -39452,6 +39475,18 @@ components:
         - status
         - sourceLocale
       properties:
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Localized search title; blank uses the default page title.
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: Localized search description; blank uses the default page description.
+          example: null
         name:
           type: string
           maxLength: 30
@@ -39596,6 +39631,18 @@ components:
         - status
         - sourceLocale
       properties:
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Localized search title; blank uses the default page title.
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: Localized search description; blank uses the default page description.
+          example: null
         title:
           type: string
           maxLength: 40
@@ -43843,6 +43890,11 @@ components:
           updatedAt
         ]
       properties:
+        id:
+          type: integer
+          format: int64
+          description: Database revision ID; use the published revision ID for article translations.
+          example: 101
         claims:
           type: array
           maxItems: 200
@@ -44001,6 +44053,11 @@ components:
       type: object
       required: [number, title, createdAt, createdByName, submittedAt, publishedAt]
       properties:
+        id:
+          type: integer
+          format: int64
+          description: Database revision ID; use the published revision ID for article translations.
+          example: 101
         number:
           type: integer
           example: 2
@@ -44163,6 +44220,11 @@ components:
           nullable: true
           required: [number, publishedAt]
           properties:
+            id:
+              type: integer
+              format: int64
+              description: Database revision ID to pass as ref.id with entity article to translations_write.
+              example: 101
             number:
               type: integer
               example: 2

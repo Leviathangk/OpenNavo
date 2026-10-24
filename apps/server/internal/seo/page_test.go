@@ -38,7 +38,7 @@ func TestPageDecisionMatrix(t *testing.T) {
 					require.Equal(t, "index, follow", d.Robots)
 					require.Empty(t, d.CanonicalPath)
 					require.Equal(t, Locales, d.Hreflang)
-					require.Equal(t, page == 1, d.InSitemap)
+					require.Equal(t, page == 1 && kind != PageDependencies, d.InSitemap)
 					require.True(t, d.Announce)
 					require.Empty(t, d.Reason)
 				})

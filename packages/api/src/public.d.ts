@@ -3384,6 +3384,16 @@ export interface components {
          *     }
          */
         CategoryNode: {
+            /**
+             * @description Localized search title; blank uses the default page title.
+             * @example null
+             */
+            seoTitle?: string | null;
+            /**
+             * @description Localized search description; blank uses the default page description.
+             * @example null
+             */
+            seoDescription?: string | null;
             /** @example developer-tools */
             slug: string;
             /** @example 开发工具 */
@@ -3475,6 +3485,16 @@ export interface components {
          *     }
          */
         CollectionSummary: {
+            /**
+             * @description Localized search title; blank uses the default page title.
+             * @example null
+             */
+            seoTitle?: string | null;
+            /**
+             * @description Localized search description; blank uses the default page description.
+             * @example null
+             */
+            seoDescription?: string | null;
             /** @example new-mac */
             slug: string;
             /** @example 新 Mac 必装 */

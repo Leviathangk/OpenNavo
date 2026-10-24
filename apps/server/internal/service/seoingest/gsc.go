@@ -138,6 +138,9 @@ func (s *Service) registerURL(tx *gorm.DB, raw string) (int64, error) {
 
 func (s *Service) saveGSC(ctx context.Context, source, date string, rows []SearchRow, incomplete string, retrieved bool, fetched time.Time) error {
 	return s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockRegistry(tx); err != nil {
+			return err
+		}
 		if err := lockSource(tx, source); err != nil {
 			return err
 		}
@@ -188,6 +191,13 @@ func (s *Service) saveGSC(ctx context.Context, source, date string, rows []Searc
 		}
 		return advanceWatermark(tx, source, fetched)
 	})
+}
+
+// lockRegistry serializes every transaction that upserts several seo_urls rows:
+// registry sync and opportunity analysis already hold it, and each writes rows in
+// its own order. Take it before any row lock, or concurrent writers can deadlock.
+func lockRegistry(tx *gorm.DB) error {
+	return tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended('seo:opportunities',0))").Error
 }
 
 func lockSource(tx *gorm.DB, source string) error {

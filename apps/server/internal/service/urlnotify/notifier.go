@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -356,8 +357,11 @@ func (n *Notifier) drainPurges(ctx context.Context, state *store.URLNotifyState)
 	if err != nil || token == "" {
 		return "error: Cloudflare token unavailable", 0
 	}
-	purged, status := n.purgePrefixes(ctx, settings, token, prefixes)
+	purged, status, err := n.purgePrefixes(ctx, settings, token, prefixes)
 	state.PendingPurgePrefixes = prefixes[purged:]
+	if wait := (*purgeWait)(nil); errors.As(err, &wait) {
+		return "pending: waiting for purge capacity", purged
+	}
 	if purged < len(prefixes) {
 		return fmt.Sprintf("pending: %d prefixes; Cloudflare returned %d after %d prefixes", len(prefixes)-purged, status, purged), purged
 	}
@@ -372,36 +376,77 @@ func (n *Notifier) purgeSections(ctx context.Context, settings store.SEOSettings
 		return "error: Cloudflare token unavailable", 0
 	}
 	sections := sectionPrefixes(n.Config.WebBaseURL)
-	if purged, status := n.purgePrefixes(ctx, settings, token, sections); purged < len(sections) {
+	if purged, status, err := n.purgePrefixes(ctx, settings, token, sections); purged < len(sections) {
+		var wait *purgeWait
+		if errors.As(err, &wait) {
+			return "pending: waiting for purge capacity", 0
+		}
 		return fmt.Sprintf("error: Cloudflare returned %d for %s", status, label), 0
 	}
 	return fmt.Sprintf("ok: %s (%d prefixes)", label, len(sections)), len(sections)
 }
 
-// purgePrefixes sends prefixes to Cloudflare 100 per request and stops at the first failure. It
-// returns how many were purged and the last response status (0 when Cloudflare was unreachable).
-func (n *Notifier) purgePrefixes(ctx context.Context, settings store.SEOSettingsRow, token string, prefixes []string) (int, int) {
+// purgeWait describes quota scheduling, never an exhausted delivery attempt.
+type purgeWait struct{ until time.Time }
+
+func (e *purgeWait) Error() string { return "waiting for Cloudflare purge capacity" }
+
+func purgeRetryAt(header string, now time.Time) time.Time {
+	if seconds, err := strconv.ParseInt(header, 10, 32); err == nil && seconds > 0 {
+		return now.Add(time.Duration(seconds) * time.Second)
+	}
+	if due, err := http.ParseTime(header); err == nil && due.After(now) {
+		return due
+	}
+	return now.Add(time.Minute)
+}
+
+// purgePrefixes sends at most 100 prefixes per request and stops at the first
+// failure or quota wait. Status is zero when no response was received.
+func (n *Notifier) purgePrefixes(ctx context.Context, settings store.SEOSettingsRow, token string, prefixes []string) (int, int, error) {
 	endpoint := n.CloudflareAPI + "/zones/" + url.PathEscape(settings.Settings.Cloudflare.ZoneID) + "/purge_cache"
 	purged := 0
 	for chunk := range slices.Chunk(prefixes, purgeChunk) {
 		allowed, err := n.Store.ReserveURLPurge(ctx, n.Now(), purgeInterval)
 		if err != nil {
-			return purged, 0
+			return purged, 0, err
 		}
 		if !allowed {
-			return purged, http.StatusTooManyRequests
+			due, err := n.Store.URLPurgeReadyAt(ctx)
+			if err != nil {
+				return purged, 0, err
+			}
+			return purged, 0, &purgeWait{until: due}
 		}
-		// Do not retry immediately: every attempt uses the shared sustained allowance.
-		status, body, err := n.post(ctx, endpoint, token, map[string]any{"prefixes": chunk})
+		body, _ := json.Marshal(map[string]any{"prefixes": chunk})
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+		if err != nil {
+			return purged, 0, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := n.HTTP.Do(req)
+		if err != nil {
+			return purged, 0, errors.New("cloudflare purge unavailable")
+		}
+		data, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusTooManyRequests {
+			due := purgeRetryAt(resp.Header.Get("Retry-After"), n.Now())
+			if err := n.Store.DelayURLPurge(ctx, due); err != nil {
+				return purged, resp.StatusCode, err
+			}
+			return purged, resp.StatusCode, &purgeWait{until: due}
+		}
 		var reply struct {
 			Success bool `json:"success"`
 		}
-		if err != nil || status != http.StatusOK || json.Unmarshal([]byte(body), &reply) != nil || !reply.Success {
-			return purged, status
+		if readErr != nil || resp.StatusCode != http.StatusOK || json.Unmarshal(data, &reply) != nil || !reply.Success {
+			return purged, resp.StatusCode, fmt.Errorf("cloudflare purge failed: status %d", resp.StatusCode)
 		}
 		purged += len(chunk)
 	}
-	return purged, http.StatusOK
+	return purged, http.StatusOK, nil
 }
 
 // releasePurge purges the long-cached sections once per web release, since the edge would otherwise

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/facts"
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
@@ -28,12 +29,13 @@ type Service struct {
 	WebURL string
 }
 type Proposal struct {
-	Variant     string   `json:"variant"`
-	Slots       []string `json:"slots"`
-	PageKind    string   `json:"pageKind"`
-	Locale      string   `json:"locale"`
-	BaselineCTR float64  `json:"baselineCtr"`
-	TargetCTR   float64  `json:"targetCtr"`
+	Variant  string   `json:"variant"`
+	Slots    []string `json:"slots"`
+	PageKind string   `json:"pageKind"`
+	Locale   string   `json:"locale"`
+	// Deprecated: accepted for older clients; the eligible GSC cohort supplies the baseline.
+	BaselineCTR float64 `json:"baselineCtr,omitempty"`
+	TargetCTR   float64 `json:"targetCtr"`
 }
 type Experiment struct {
 	ID                                                      int64 `json:"id"`
@@ -100,9 +102,6 @@ func (s *Service) Start(ctx context.Context, tx *gorm.DB, p Proposal) (Experimen
 		return out, ErrSample
 	}
 	baseline := float64(clicks) / float64(impressions)
-	if math.Abs(p.BaselineCTR-baseline) > 0.000001 {
-		return out, ErrSample
-	}
 	// Reserve sufficient power for two predeclared looks, not just a single .05 test.
 	required := seo.ImpressionsPerArm(baseline, p.TargetCTR)
 	if required == 0 {
@@ -218,7 +217,7 @@ func (s *Service) Assignment(ctx context.Context, raw string) (map[string]any, e
 	}
 	r := s.DB.WithContext(ctx).Raw(`SELECT e.id,u.package_id,p.arm,e.variant,e.template_version,u.locale,e.started_at+interval '42 days' expires_at FROM seo_experiment_pages p JOIN seo_experiments e ON e.id=p.experiment_id JOIN seo_urls u ON u.id=p.url_id WHERE u.url=? AND p.active AND e.state='running' AND e.started_at>clock_timestamp()-interval '42 days'`, raw).Scan(&row)
 	if r.Error != nil {
-		return nil, r.Error
+		return nil, &domain.OperationError{Operation: "seo_assignment_lookup", Cause: r.Error}
 	}
 	if r.RowsAffected == 0 {
 		return none, nil
@@ -227,11 +226,11 @@ func (s *Service) Assignment(ctx context.Context, raw string) (map[string]any, e
 		if errors.Is(err, seobudget.ErrFrozen) {
 			return none, nil
 		}
-		return nil, err
+		return nil, &domain.OperationError{Operation: "seo_assignment_budget", Cause: err}
 	}
 	ok, err := s.eligible(ctx, s.DB, row.PackageID, row.Variant, row.Locale)
 	if err != nil {
-		return nil, err
+		return nil, &domain.OperationError{Operation: "seo_assignment_eligibility", Cause: err}
 	}
 	arm := "control"
 	if row.Arm == 1 {

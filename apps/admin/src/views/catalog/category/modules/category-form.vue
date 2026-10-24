@@ -28,10 +28,12 @@ const { tree, nameOf } = useCategoryTree();
 const formRef = ref<FormInst | null>(null);
 const saving = ref(false);
 
-const TEXT_KEYS = ['name', 'description'] as const;
+const TEXT_KEYS = ['name', 'description', 'seoTitle', 'seoDescription'] as const;
 const fields = computed<LocalizedField[]>(() => [
   { key: 'name', label: $t('page.catalog.category.form.name'), maxlength: 30, required: true },
-  { key: 'description', label: $t('page.catalog.category.form.description'), type: 'textarea', maxlength: 200 }
+  { key: 'description', label: $t('page.catalog.category.form.description'), type: 'textarea', maxlength: 200 },
+  { key: 'seoTitle', label: $t('page.content.articleDetail.seoTitle'), maxlength: 120 },
+  { key: 'seoDescription', label: $t('page.content.articleDetail.seoDescription'), type: 'textarea', maxlength: 300 }
 ]);
 
 function blank(): Form {
@@ -94,10 +96,7 @@ const rules = computed<FormRules>(() => ({
     required,
     { pattern: SLUG, message: $t('page.catalog.category.form.slugInvalid'), trigger: ['blur', 'input'] }
   ],
-  icon: [
-    required,
-    { pattern: ICON, message: $t('page.catalog.category.form.iconInvalid'), trigger: ['blur', 'input'] }
-  ]
+  icon: [required, { pattern: ICON, message: $t('page.catalog.category.form.iconInvalid'), trigger: ['blur', 'input'] }]
 }));
 
 async function save() {
@@ -112,7 +111,12 @@ async function save() {
       original: original.value,
       sourceLocale: model.sourceLocale,
       keys: TEXT_KEYS,
-      entry: text => ({ name: text.name ?? '', description: text.description })
+      entry: text => ({
+        name: text.name ?? '',
+        description: text.description,
+        seoTitle: text.seoTitle,
+        seoDescription: text.seoDescription
+      })
     })
   };
   const { error } = props.node ? await updateCategory(props.node.id, body) : await createCategory(body);

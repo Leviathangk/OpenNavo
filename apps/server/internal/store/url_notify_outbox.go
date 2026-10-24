@@ -104,8 +104,14 @@ func (s *Store) SuppressURLAnnouncement(ctx context.Context, row URLNotification
 }
 
 func (s *Store) PauseURLNotification(ctx context.Context, row URLNotificationRow, now time.Time) error {
-	return s.DB.WithContext(ctx).Exec(`UPDATE url_notify_outbox SET next_attempt_at=?,lease_token=NULL,lease_until=NULL
-WHERE id=? AND revision=? AND lease_token=?`, now.Add(time.Minute), row.ID, row.Revision, row.LeaseToken).Error
+	return s.DeferURLNotification(ctx, row, now, now.Add(time.Minute))
+}
+
+// Waiting for shared capacity is not a delivery failure and must not exhaust
+// the retry budget. Keep the lease/revision fence used by all acknowledgements.
+func (s *Store) DeferURLNotification(ctx context.Context, row URLNotificationRow, now, due time.Time) error {
+	return s.DB.WithContext(ctx).Exec(`UPDATE url_notify_outbox SET next_attempt_at=?,lease_token=NULL,lease_until=NULL,last_error='',updated_at=?
+WHERE id=? AND revision=? AND lease_token=? AND lease_until>?`, due, now, row.ID, row.Revision, row.LeaseToken, now).Error
 }
 
 // RenewURLNotification checks ownership immediately before an external side effect.

@@ -156,6 +156,13 @@ func TestSixLanguageHTTPNegotiationFallbackSearchAndCache(t *testing.T) {
 			name = "Fixture " + string(code)
 		}
 		body := map[string]any{"sourceLocale": string(code), "i18n": map[string]any{string(code): map[string]any{"name": name}}}
+		if !i18n.Writable(string(code)) {
+			// Traditional Chinese is derived from Simplified Chinese and is never a source language.
+			require.ErrorContains(t, st.WithTx(ctx, func(tx *gorm.DB) error {
+				return (&store.Store{DB: tx}).WriteLocalized(ctx, "category", categoryID, 0, body, true)
+			}), "source_locale_invalid")
+			continue
+		}
 		require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
 			return (&store.Store{DB: tx}).WriteLocalized(ctx, "category", categoryID, 0, body, true)
 		}))

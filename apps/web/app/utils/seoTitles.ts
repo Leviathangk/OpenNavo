@@ -211,22 +211,31 @@ export function overviewTitle(pkg: OverviewFacts, t: Translate, assignment?: Seo
  * Fits the summary around a complete closing sentence. An ellipsis replaces a Latin full stop;
  * CJK punctuation stays to separate the two sentences.
  */
-function overviewSentence(pkg: OverviewFacts, t: Translate, key: string, named: Record<string, unknown> = {}): string {
+function overviewSentence(
+  pkg: OverviewFacts,
+  t: Translate,
+  key: string,
+  named: Record<string, unknown> = {},
+  whole = false
+): string {
   let name = pkg.displayName;
   const room = DESCRIPTION_WIDTH - textWidth(withName(t, `${key}NoSummary`, '', named));
   if (textWidth(name) > room) name = fitSummary(name, room);
   const summary = usableSummary(pkg.summary, pkg.displayName);
   const fitted =
     summary && fitSummary(summary, DESCRIPTION_WIDTH - textWidth(withName(t, key, name, { ...named, summary: '' })));
+  // `whole` accepts the closing sentence only beside the complete summary and full name.
+  if (whole && (!summary || fitted !== summary || name !== pkg.displayName)) return '';
   if (!fitted) return withName(t, `${key}NoSummary`, name, named);
   const text = withName(t, key, name, { ...named, summary: `${fitted}${SUMMARY_END}` });
   return text.replace(fitted.endsWith('…') ? /\ue001\.?/u : SUMMARY_END, '');
 }
 
 /**
- * C2: name only sections the overview renders, using the same facts helpers as those sections.
- * First shorten/drop the summary; only if the closing sentence alone is too long, drop whole list
- * items from the end. H3 puts uninstall and alternatives first and keeps both together.
+ * Give an app summary the full description budget: it is never shortened for the generic
+ * section sentence, which follows only when it fits completely after the whole summary.
+ * Without a useful summary, name only sections the overview renders and drop whole list
+ * items when needed. H3 puts uninstall and alternatives first and keeps both together.
  */
 export function overviewDescription(
   pkg: OverviewFacts,
@@ -236,7 +245,18 @@ export function overviewDescription(
 ): string {
   // Preserve the existing distribution/lifecycle branches.
   if (disabledByHomebrew(pkg)) return overviewSentence(pkg, t, 'package.seo.descriptionUnavailable');
-  if (pkg.kind === 'link') return overviewSentence(pkg, t, 'package.seo.descriptionLink');
+  if (!usableSummary(pkg.summary, pkg.displayName)) return sectionDescription(pkg, t, list, assignment);
+  return sectionDescription(pkg, t, list, assignment, true) || fitSummary(pkg.summary!.trim(), DESCRIPTION_WIDTH);
+}
+
+function sectionDescription(
+  pkg: OverviewFacts,
+  t: Translate,
+  list: ListFormat,
+  assignment: SeoExperimentAssignment | null | undefined,
+  whole = false
+): string {
+  if (pkg.kind === 'link') return overviewSentence(pkg, t, 'package.seo.descriptionLink', {}, whole);
   const can = capabilities(pkg);
   const available = {
     installation: can.homebrew,
@@ -252,13 +272,13 @@ export function overviewDescription(
     ? ['uninstall', 'alternatives', 'installation', 'price', 'requirements', 'versions']
     : ['installation', 'price', 'requirements', 'uninstall', 'alternatives', 'versions'];
   const parts = priority.filter(part => available[part]).map(part => t(`package.seo.overviewParts.${part}`));
-  if (!parts.length) return overviewSentence(pkg, t, 'package.seo.descriptionOverview');
+  if (!parts.length) return overviewSentence(pkg, t, 'package.seo.descriptionOverview', {}, whole);
   while (parts.length > (treatment ? 2 : 1)) {
     const closing = withName(t, 'package.seo.descriptionFactsNoSummary', pkg.displayName, { parts: list(parts) });
     if (textWidth(closing) <= DESCRIPTION_WIDTH) break;
     parts.pop();
   }
-  return overviewSentence(pkg, t, 'package.seo.descriptionFacts', { parts: list(parts) });
+  return overviewSentence(pkg, t, 'package.seo.descriptionFacts', { parts: list(parts) }, whole);
 }
 
 export interface VersionFacts {

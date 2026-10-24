@@ -23,9 +23,10 @@ func (s *Service) SyncRegistry(ctx context.Context) error {
 	if err != nil || u.Scheme != "https" || u.Host == "" {
 		return ErrUpstream
 	}
-	// Serialize with opportunity analysis, including its first cursor creation.
+	// Serialize with opportunity analysis, including its first cursor creation,
+	// and with GSC/Bing URL registration.
 	return s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended('seo:opportunities',0))").Error; err != nil {
+		if err := lockRegistry(tx); err != nil {
 			return err
 		}
 		scoped := *s

@@ -332,8 +332,8 @@ const preview = computed(() => {
               <div class="pt-12px">
                 <NFormItem :label="$t('page.content.feature.badge')">
                   <NInput
-                    :disabled="code === 'zh-Hant'"
                     v-model:value="model.copy[code].badge"
+                    :disabled="code === 'zh-Hant'"
                     :maxlength="12"
                     show-count
                   />
@@ -343,8 +343,8 @@ const preview = computed(() => {
                   :path="code === model.sourceLocale ? `copy.${code}.title` : undefined"
                 >
                   <NInput
-                    :disabled="code === 'zh-Hant'"
                     v-model:value="model.copy[code].title"
+                    :disabled="code === 'zh-Hant'"
                     :maxlength="30"
                     show-count
                     :placeholder="code === model.sourceLocale ? '' : $t('page.shared.i18n.autoPlaceholder')"
@@ -352,16 +352,16 @@ const preview = computed(() => {
                 </NFormItem>
                 <NFormItem :label="$t('page.content.feature.subtitle')">
                   <NInput
-                    :disabled="code === 'zh-Hant'"
                     v-model:value="model.copy[code].subtitle"
+                    :disabled="code === 'zh-Hant'"
                     :maxlength="30"
                     show-count
                   />
                 </NFormItem>
                 <NFormItem :label="$t('page.content.feature.body')" :path="`copy.${code}.body`">
                   <NInput
-                    :disabled="code === 'zh-Hant'"
                     v-model:value="model.copy[code].body"
+                    :disabled="code === 'zh-Hant'"
                     type="textarea"
                     :rows="3"
                     :maxlength="120"
@@ -371,8 +371,8 @@ const preview = computed(() => {
                 </NFormItem>
                 <NFormItem :label="$t('page.content.feature.ctaLabel')">
                   <NInput
-                    :disabled="code === 'zh-Hant'"
                     v-model:value="model.copy[code].ctaLabel"
+                    :disabled="code === 'zh-Hant'"
                     :maxlength="10"
                     show-count
                   />

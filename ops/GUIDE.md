@@ -423,3 +423,48 @@ Markdown conversion edits only AST prose segments, preserving the remaining sour
 bytes. This includes complete fences, inline code delimiters, link destinations
 and reference definitions. Implicit reference labels remain unchanged because they
 are lookup keys; ordinary prose and explicit link labels are converted.
+
+## SEO demand and delivery recovery
+
+Migration 00103 adds nullable, localized `seo_title` and `seo_description` to
+categories and collections. Empty metadata uses the web's existing defaults;
+existing translation fingerprints remain valid until metadata is authored.
+Admin, public API, MCP models and web rendering must ship with the matching schema.
+
+The opportunity worker's `opportunities-v2` rule repairs unfinished keyword tasks
+created by `opportunities-v1`. Category and informational queries become topics;
+only explicit product acquisition queries without category intent become listing
+research. Accents are folded for ASCII URLs; queries containing other scripts
+receive a stable hash suffix, with the full query retained as evidence.
+Repair keeps task IDs and deduplication keys, records the previous classification,
+and expires duplicate work with a replacement task ID. Completed, skipped and
+quarantined tasks and active leases are preserved. Expired leases are reconsidered
+on subsequent worker runs even when no new keyword data has arrived.
+
+After migration and before starting the new worker, operators can preview or
+apply the same repair explicitly with deployment credentials in the environment:
+
+```sh
+/seo-demand-repair          # preview transaction, rolled back; prints task count
+/seo-demand-repair --apply  # persist the same repair
+```
+
+Migration 00103 also requeues the latest dead URL receipt for the specific legacy
+purge-429 or dependencies robots-mismatch failures. It preserves newer receipts
+and active work. Cached API dependency decisions are invalidated before recovered
+jobs run, and the web release purge refreshes HTML. Empty dependencies pages use
+the server's noindex/canonical decision and their obsolete announcements finish
+without contacting search engines. Dependencies pages remain outside the sitemap.
+
+Purge requests share the persisted 12-second interval across workers and release
+purges. Capacity waits and upstream 429 responses defer delivery without consuming
+attempts; `Retry-After` extends the shared deadline (one minute if absent/invalid).
+Other failures retain exponential retries. Recovered delivery receipts are not
+reverted by the down migration, which only removes the new metadata columns.
+
+Article translation callers should use `article_get.published.id` as the article
+translation reference, not the article ID or the revision number. Snippet proposals
+may omit `baselineCtr`; the server derives it from the eligible GSC cohort, while
+still enforcing completeness and sample-size requirements. Public request failure
+logs include request ID, route, fixed operation stage, error types and classified
+causes/SQLSTATE, without copying raw database or upstream error payloads.

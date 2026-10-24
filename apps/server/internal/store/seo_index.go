@@ -60,7 +60,8 @@ const indexRowSelect = `SELECT
  OR COALESCE(jsonb_array_length(p.dependencies->'dependsOn'->'formula'),0)>0
  OR COALESCE(jsonb_array_length(p.conflicts_with->'cask'),0)>0
  OR COALESCE(jsonb_array_length(p.conflicts_with->'formula'),0)>0
- OR EXISTS(SELECT 1 FROM packages dependent WHERE dependent.removed_at IS NULL
+ OR EXISTS(SELECT 1 FROM packages dependent LEFT JOIN package_meta dm ON dm.package_id=dependent.id WHERE dependent.kind='cask' AND dependent.removed_at IS NULL
+ AND NOT (dependent.disabled OR dependent.stale_disabled) AND NOT COALESCE(dm.hidden,false)
  AND dependent.dependencies->'dependsOn'->'cask' @> jsonb_build_array(p.token))) AS has_dependency_content,
  (SELECT v.brew_committed_at FROM package_versions v WHERE v.package_id=p.id AND v.version=p.version) AS committed_at,
  (SELECT max(sc.created_at) FROM package_screenshots sc WHERE sc.package_id=p.id) AS screenshots_at,

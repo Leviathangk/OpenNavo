@@ -126,7 +126,7 @@ func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 		return d
 	}
 	d.Robots, d.Hreflang, d.Announce = "index, follow", locales, true
-	d.InSitemap = page == 1 && (ref.Kind != PageVersions || p.VersionsSitemap)
+	d.InSitemap = page == 1 && ref.Kind != PageDependencies && (ref.Kind != PageVersions || p.VersionsSitemap)
 	return d
 }
 

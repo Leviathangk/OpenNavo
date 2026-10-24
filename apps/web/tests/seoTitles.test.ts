@@ -98,7 +98,9 @@ describe('WP1 titles and descriptions', () => {
       expect(title).toContain(pkg.displayName);
       expect(title.endsWith(' · OpenNavo')).toBe(true);
       expect(`${title} ${description}`).not.toMatch(/[{}]|brew install|undefined|null/);
-      expect(description).toContain(pkg.displayName);
+      if (!pkg.summary || pkg.disabled) expect(description).toContain(pkg.displayName);
+      // The whole summary leads; the section sentence follows only when it fits after it.
+      else expect(description.startsWith(usableSummary(pkg.summary, pkg.displayName)), description).toBe(true);
     }
     expect(versionsTitle({ displayName: 'Visual Studio Code', version: '1.95.3,abc' }, t)).toContain('1.95.3');
     expect(versionsTitle({ displayName: 'Visual Studio Code', version: 'latest' }, t)).not.toContain('latest');
@@ -325,7 +327,7 @@ describe('Descriptions that fit search results', () => {
     ]
   };
 
-  it.each(LOCALES)('%s shortens the summary and keeps the closing sentence whole', code => {
+  it.each(LOCALES)('%s preserves the app summary and still states unavailability', code => {
     const t = translator(code);
     const [displayName, summary] = wechat[code];
     for (const pkg of [
@@ -335,9 +337,17 @@ describe('Descriptions that fit search results', () => {
       const description = overviewDescription(pkg, t);
       const closing = overviewDescription({ ...pkg, summary: null }, t);
       expect(textWidth(description), description).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
-      expect(description.endsWith(closing), description).toBe(true);
-      // The summary still says what the app is.
-      expect(description.length - closing.length, description).toBeGreaterThan(20);
+      if (pkg.disabled) {
+        expect(description.endsWith(closing), description).toBe(true);
+      } else {
+        // Never shortened for the section sentence: either the summary alone, or the
+        // whole summary followed by a complete sentence that names the app.
+        const alone = fitSummary(summary, DESCRIPTION_WIDTH);
+        if (description !== alone) {
+          expect(description.startsWith(usableSummary(summary, displayName)), description).toBe(true);
+          expect(description).toContain(displayName);
+        }
+      }
       expect(description).not.toMatch(/…\.|\p{Co}|[{}]/u);
     }
   });
@@ -345,14 +355,12 @@ describe('Descriptions that fit search results', () => {
   it('Cuts where the summary reads complete, else between words with an ellipsis', () => {
     const t = translator('en-US');
     expect(overviewDescription({ ...app, displayName: 'WeChat for Mac', summary: wechat['en-US'][1] }, t)).toBe(
-      'Tencent’s Mac messaging client for text, files, voice and video calls with your WeChat… Explore installation and uninstallation for WeChat for Mac on Mac.'
+      'Tencent’s Mac messaging client for text, files, voice and video calls with your WeChat contacts.'
     );
     expect(
       overviewDescription({ ...app, displayName: 'WeChat for Mac', summary: wechat['ja-JP'][1] }, translator('ja-JP'))
-    ).toBe(
-      'TencentのMac向けメッセージアプリです。WeChatの連絡先とテキストやファイルをや…。Mac 版 WeChat for Mac のインストール方法、アンインストール方法をご確認ください。'
-    );
-    // Short enough already: unchanged.
+    ).toBe(fitSummary(wechat['ja-JP'][1], DESCRIPTION_WIDTH));
+    // A short summary keeps the section sentence when both fit completely.
     expect(overviewDescription(app, t)).toBe(
       'Open-source code editor. Explore installation and uninstallation for Visual Studio Code on Mac.'
     );
@@ -716,22 +724,19 @@ describe('H3 assignments and C2 factual overview descriptions', () => {
     expect(overviewDescription(zapOnly, t, group)).toBe(text);
   });
 
-  it.each(LOCALES)('%s shortens the summary before the list and keeps complete closing sentences', code => {
+  it.each(LOCALES)('%s keeps the summary ahead of template lists and long product names', code => {
     const t = translator(code);
     for (const group of [undefined, assignment('uninstall_alternatives')]) {
       const summary = 'A code editor with extensions, themes and useful tools for every project. '.repeat(5);
       const description = overviewDescription({ ...complete, summary }, t, group);
-      expect(description.endsWith(overviewDescription(complete, t, group))).toBe(true);
+      expect(description).toContain(summary.slice(0, 50));
+      expect(description).not.toContain(overviewDescription(complete, t, group));
       for (const displayName of [longName, '很长的应用名称'.repeat(30)]) {
         const long = overviewDescription({ ...complete, displayName, summary }, t, group);
         expect(textWidth(long), long).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
-        expect(long).toMatch(/[。.]$/);
+        expect(long).toBe(description);
         expect(long).not.toMatch(/…\.|[{}]|\p{Co}/u);
-        expect(long).not.toContain(summary.slice(0, 30));
-        if (group) {
-          expect(long).toContain(t('package.seo.overviewParts.uninstall'));
-          expect(long).toContain(t('package.seo.overviewParts.alternatives'));
-        }
+        expect(long).toContain(summary.slice(0, 30));
       }
     }
   });

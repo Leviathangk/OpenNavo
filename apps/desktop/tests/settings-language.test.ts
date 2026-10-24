@@ -56,7 +56,8 @@ describe('Language settings menu', () => {
       await flushPromises();
       expect(settings.value).toMatchObject({ locale: 'zh-Hant', localeMode: 'manual' });
       expect(i18n.global.locale.value).toBe('zh-Hant');
-      expect(wrapper.text()).toContain('重新啟動後，系統對話框才會切換語言。');
+      // Traditional Chinese is converted from the Simplified Chinese source above.
+      expect(wrapper.text()).toContain('系統對話方塊重啟後切換語言。');
       menu.vm.$emit('select', 'system');
       await flushPromises();
       expect(settings.value?.localeMode).toBe('system');

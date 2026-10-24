@@ -13362,6 +13362,18 @@ components:
         - packageCount
         - children
       properties:
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Localized search title; blank uses the default page title.
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: Localized search description; blank uses the default page description.
+          example: null
         slug:
           type: string
           example: developer-tools
@@ -13457,6 +13469,18 @@ components:
         - iconUrls
         - updatedAt
       properties:
+        seoTitle:
+          type: string
+          nullable: true
+          maxLength: 120
+          description: Localized search title; blank uses the default page title.
+          example: null
+        seoDescription:
+          type: string
+          nullable: true
+          maxLength: 300
+          description: Localized search description; blank uses the default page description.
+          example: null
         slug:
           type: string
           example: new-mac

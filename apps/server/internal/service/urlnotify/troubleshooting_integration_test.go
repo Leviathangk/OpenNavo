@@ -34,7 +34,7 @@ func TestTroubleshootingOutboxRechecksEvidenceAfterProbe(t *testing.T) {
 	rows, err := st.ClaimURLNotifications(ctx, "fixture-owner", now, 1)
 	require.NoError(t, err)
 	require.Len(t, rows, 1)
-	keep, err := n.retainTroubleshootingAnnouncement(ctx, rows[0])
+	keep, err := n.retainAnnouncement(ctx, rows[0])
 	require.NoError(t, err)
 	require.True(t, keep)
 	now = now.Add(2 * time.Hour)

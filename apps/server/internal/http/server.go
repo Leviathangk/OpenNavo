@@ -85,7 +85,8 @@ func New(cfg config.Config, logger *slog.Logger, ready Readiness, deps ...Depend
 		return func(c *gin.Context, err error) {
 			var appErr *domain.AppError
 			if !errors.As(err, &appErr) || appErr.Code == domain.CodeInternal {
-				logger.ErrorContext(c.Request.Context(), "request failed", "requestId", c.GetString("requestId"), "code", domain.CodeInternal)
+				attrs := []any{"requestId", c.GetString("requestId"), "code", domain.CodeInternal, "route", c.FullPath()}
+				logger.ErrorContext(c.Request.Context(), "request failed", append(attrs, failureDetails(err)...)...)
 			}
 			respond.Error(c, err, admin)
 		}

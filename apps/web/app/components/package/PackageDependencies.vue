@@ -97,6 +97,7 @@ const empty = computed(
 // Without dependency relations this tab has nothing of its own to show;
 // keep it out of search indexes while its links stay followable.
 if (
+  !pkg.value?.indexing?.pages?.dependencies &&
   data.value &&
   !groups.value.runtime.length &&
   !groups.value.build.length &&

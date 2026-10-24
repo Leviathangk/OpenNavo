@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/content"
@@ -106,7 +107,19 @@ func (s *Store) ReadContentSource(ctx context.Context, ref content.Ref) (Content
 			delete(out.Fields, "body_markdown")
 		}
 	}
-	out.Hash = content.Hash(out.SourceLocale, out.Fields)
+	hashFields := out.Fields
+	if ref.Entity == "category" || ref.Entity == "collection" {
+		// Adding optional SEO columns must not stale every existing translation.
+		// Keep nil fields in the snapshot so clearing authored metadata still
+		// clears it in translations, but preserve the pre-migration fingerprint.
+		hashFields = maps.Clone(out.Fields)
+		for _, field := range []string{"seo_title", "seo_description"} {
+			if hashFields[field] == nil {
+				delete(hashFields, field)
+			}
+		}
+	}
+	out.Hash = content.Hash(out.SourceLocale, hashFields)
 	var targets []struct {
 		Locale    string
 		UpdatedAt time.Time

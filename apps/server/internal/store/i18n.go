@@ -22,8 +22,8 @@ type textSpec struct {
 }
 
 var textSpecs = map[string]textSpec{
-	"category":        {"categories", "category_i18n", "category_id", map[string]string{"name": "name", "description": "description"}},
-	"collection":      {"collections", "collection_i18n", "collection_id", map[string]string{"title": "title", "subtitle": "subtitle", "body": "body"}},
+	"category":        {"categories", "category_i18n", "category_id", map[string]string{"name": "name", "description": "description", "seoTitle": "seo_title", "seoDescription": "seo_description"}},
+	"collection":      {"collections", "collection_i18n", "collection_id", map[string]string{"title": "title", "subtitle": "subtitle", "body": "body", "seoTitle": "seo_title", "seoDescription": "seo_description"}},
 	"feature":         {"features", "feature_i18n", "feature_id", map[string]string{"badge": "badge", "title": "title", "subtitle": "subtitle", "body": "body", "ctaLabel": "cta_label"}},
 	"screenshot":      {"package_screenshots", "screenshot_i18n", "screenshot_id", map[string]string{"caption": "caption"}},
 	"collection_item": {"collection_items", "collection_item_i18n", "collection_id", map[string]string{"note": "note"}},
@@ -35,8 +35,8 @@ var textSpecs = map[string]textSpec{
 // Other entities use the existing content-write limits (including release sections
 // and the 20,000-character desktop notes write path).
 var localizedFieldLimits = map[string]map[string]int{
-	"category":        {"name": 30, "description": 200},
-	"collection":      {"title": 40, "subtitle": 80, "body": 10000},
+	"category":        {"name": 30, "description": 200, "seo_title": 120, "seo_description": 300},
+	"collection":      {"title": 40, "subtitle": 80, "body": 10000, "seo_title": 120, "seo_description": 300},
 	"feature":         {"badge": 12, "title": 30, "subtitle": 30, "body": 120, "cta_label": 10},
 	"screenshot":      {"caption": 120},
 	"collection_item": {"note": 160},

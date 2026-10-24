@@ -143,20 +143,27 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 					err = errors.New("cloudflare credential unavailable")
 				}
 				if err == nil {
-					count, status := n.purgePrefixes(ctx, settings, token, prefixes)
+					count, _, purgeErr := n.purgePrefixes(ctx, settings, token, prefixes)
 					purged += count
-					if count != len(prefixes) {
-						err = fmt.Errorf("edge purge incomplete: status %d", status)
-					}
+					err = purgeErr
 				}
 			}
 			for _, row := range pending {
+				if wait := (*purgeWait)(nil); errors.As(err, &wait) {
+					if e := n.Store.DeferURLNotification(ctx, row, n.Now(), wait.until); e != nil {
+						return purged, announced, e
+					}
+					continue
+				}
 				if e := n.Store.CompleteURLNotification(ctx, row, "invalidated", err, n.Now()); e != nil {
 					return purged, announced, e
 				}
 			}
 			if err != nil {
-				resultErr = err
+				var wait *purgeWait
+				if !errors.As(err, &wait) {
+					resultErr = err
+				}
 			}
 		}
 		ready := []store.URLNotificationRow{}
@@ -172,7 +179,7 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 			if !owned {
 				continue
 			}
-			keep, decisionErr := n.retainTroubleshootingAnnouncement(ctx, row)
+			keep, decisionErr := n.retainAnnouncement(ctx, row)
 			if decisionErr != nil {
 				if e := n.Store.CompleteURLNotification(ctx, row, row.State, decisionErr, n.Now()); e != nil {
 					return purged, announced, e
@@ -218,7 +225,7 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 					return purged, announced, err
 				}
 				if owned {
-					keep, err := n.retainTroubleshootingAnnouncement(ctx, row)
+					keep, err := n.retainAnnouncement(ctx, row)
 					if err != nil {
 						return purged, announced, err
 					}
@@ -264,17 +271,23 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 
 // A persistent job may outlive the issue evidence, even after its public probe.
 // Read the same decision again immediately before delivery; expiry never announces.
-func (n *Notifier) retainTroubleshootingAnnouncement(ctx context.Context, row store.URLNotificationRow) (bool, error) {
+func (n *Notifier) retainAnnouncement(ctx context.Context, row store.URLNotificationRow) (bool, error) {
 	path := strings.TrimPrefix(row.Path, localePrefix(row.Locale))
 	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if !row.Announce || len(parts) != 3 || parts[0] != "apps" || parts[2] != string(seo.PageTroubleshooting) {
+	if !row.Announce || len(parts) != 3 || parts[0] != "apps" || (parts[2] != string(seo.PageTroubleshooting) && parts[2] != string(seo.PageDependencies)) {
 		return true, nil
 	}
 	policy, err := n.Store.IndexPolicy(ctx)
 	if err != nil {
 		return false, err
 	}
-	index, found, err := n.Store.TroubleshootingIndexRow(ctx, parts[1], n.Now())
+	var index store.IndexRow
+	var found bool
+	if parts[2] == string(seo.PageDependencies) {
+		index, found, err = n.Store.IndexRowByToken(ctx, parts[1])
+	} else {
+		index, found, err = n.Store.TroubleshootingIndexRow(ctx, parts[1], n.Now())
+	}
 	if err != nil {
 		return false, err
 	}
@@ -282,7 +295,7 @@ func (n *Notifier) retainTroubleshootingAnnouncement(ctx context.Context, row st
 	if found {
 		f = index.Facts()
 	}
-	d := seo.DecidePage(f, seo.PageRef{Kind: seo.PageTroubleshooting, Locale: row.Locale}, policy)
+	d := seo.DecidePage(f, seo.PageRef{Kind: seo.PageKind(parts[2]), Locale: row.Locale}, policy)
 	if d.Announce {
 		return true, nil
 	}

@@ -234,7 +234,11 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	require.Equal(t, "choose-a-screenshot-app", (*detail.Articles)[0].Slug)
 
 	// A Chinese translation becomes ready for this revision only.
-	ref := content.Ref{Entity: "article", ID: publishedRevisionID(t, st, id)}
+	articleView := call("GET", base, nil, "0000")
+	apiRevision := int64(articleView["published"].(map[string]any)["id"].(float64))
+	require.Equal(t, firstPublishedRevision, apiRevision)
+	require.EqualValues(t, apiRevision, articleView["working"].(map[string]any)["id"])
+	ref := content.Ref{Entity: "article", ID: apiRevision}
 	source, err := st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
 	require.Contains(t, source.Targets, "zh-CN")
@@ -249,12 +253,12 @@ func TestArticleWorkflowRevisionsTranslationsAndPublicReads(t *testing.T) {
 	// The worker dispatches queued cache invalidations; the language's page is queued for the URL feed.
 	require.NoError(t, st.DispatchCacheInvalidations(ctx))
 	require.NoError(t, st.DB.Raw("SELECT count(*) FROM content_url_changes WHERE '/articles/choose-a-screenshot-app'=ANY(paths)").Scan(&queued).Error)
-	require.Equal(t, 2, queued)
+	require.Equal(t, 3, queued, "source plus simplified and derived traditional translations")
 	require.Eventually(t, func() bool { return lookup("choose-a-screenshot-app", "zh-CN").Article.Locale == "zh-CN" }, 5*time.Second, 50*time.Millisecond)
 	zh := lookup("choose-a-screenshot-app", "zh-CN").Article
 	require.Equal(t, "如何选择截图工具", zh.Title)
 	require.True(t, zh.MachineTranslated)
-	require.ElementsMatch(t, []publicapi.Locale{"en-US", "zh-CN"}, zh.AvailableLocales)
+	require.ElementsMatch(t, []publicapi.Locale{"en-US", "zh-CN", "zh-Hant"}, zh.AvailableLocales)
 
 	// Holding a language back hides it again.
 	current := call("GET", base, nil, "0000")

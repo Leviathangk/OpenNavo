@@ -145,7 +145,7 @@ func (s *PublicService) Categories(ctx context.Context, locale string) ([]public
 					continue
 				}
 				seen[r.ID] = true
-				out = append(out, publicapi.CategoryNode{SourceLocale: localePointer(r.SourceLocale), MachineTranslated: boolPointer(r.MachineTranslated), Slug: r.Slug, Name: r.Name, Description: r.Description, Icon: r.Icon, AppliesTo: publicapi.CategoryNodeAppliesTo(r.AppliesTo), HiddenByDefault: r.HiddenByDefault, PackageCount: r.PackageCount, Children: tree(&r.ID, seen)})
+				out = append(out, publicapi.CategoryNode{SourceLocale: localePointer(r.SourceLocale), MachineTranslated: boolPointer(r.MachineTranslated), Slug: r.Slug, Name: r.Name, Description: r.Description, SeoTitle: r.SeoTitle, SeoDescription: r.SeoDescription, Icon: r.Icon, AppliesTo: publicapi.CategoryNodeAppliesTo(r.AppliesTo), HiddenByDefault: r.HiddenByDefault, PackageCount: r.PackageCount, Children: tree(&r.ID, seen)})
 			}
 			return out
 		}

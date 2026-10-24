@@ -10,9 +10,9 @@ import (
 
 func TestLocalizedFieldsRespectWriteLimits(t *testing.T) {
 	for entity, fields := range map[string]map[string]int{
-		"collection":      {"title": 40, "subtitle": 80, "body": 10000},
+		"collection":      {"title": 40, "subtitle": 80, "body": 10000, "seoTitle": 120, "seoDescription": 300},
 		"collection_item": {"note": 160},
-		"category":        {"name": 30, "description": 200},
+		"category":        {"name": 30, "description": 200, "seoTitle": 120, "seoDescription": 300},
 		"feature":         {"badge": 12, "title": 30, "subtitle": 30, "body": 120, "ctaLabel": 10},
 		"package":         {"displayName": 128, "summary": 200, "description": 20000},
 		"release":         {"title": 256, "summary": 400, "bodyMarkdown": 200000},

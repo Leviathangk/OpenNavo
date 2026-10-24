@@ -118,3 +118,40 @@ func TestGSCSkipsOtherOriginsWithoutLosingSiteRows(t *testing.T) {
 		require.Equal(t, "2026-10-16", watermark)
 	}
 }
+
+// GSC and Bing register URLs row by row inside one transaction, while registry
+// sync upserts the same table in bulk. Both take the registry lock first, so a
+// day's save waits for a sync instead of deadlocking with it.
+func TestURLRegistrationWaitsForRegistrySync(t *testing.T) {
+	st := testutil.NewSEOStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	s := &Service{DB: st.DB, WebURL: "https://example.test", Now: func() time.Time { return now }}
+	holder := st.DB.Begin()
+	require.NoError(t, holder.Error)
+	released := false
+	t.Cleanup(func() {
+		if !released {
+			holder.Rollback()
+		}
+	})
+	require.NoError(t, lockRegistry(holder))
+	done := make(chan error, 1)
+	go func() {
+		page := SearchRow{Keys: []string{"2026-10-16", "https://example.test/apps/sample", "usa", "DESKTOP"}, Clicks: 1, Impressions: 2, Position: 3}
+		done <- s.saveGSC(ctx, "gsc_page", "2026-10-16", []SearchRow{page}, "", true, now)
+	}()
+	select {
+	case err := <-done:
+		t.Fatalf("GSC save finished while registry sync held the lock: %v", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	require.NoError(t, holder.Rollback().Error)
+	released = true
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("GSC save did not resume after registry sync released the lock")
+	}
+}

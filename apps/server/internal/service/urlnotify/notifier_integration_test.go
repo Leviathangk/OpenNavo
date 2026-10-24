@@ -267,7 +267,11 @@ func TestPendingPurgesSurviveFailuresAndRestart(t *testing.T) {
 			addCasks(t, f.st, "retry", 1)
 			f.cloudflare.status = status
 			_, err = f.run(context.Background())
-			require.Error(t, err)
+			if status == 429 {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
 			require.EqualValues(t, 10, outboxRemaining(t, f.st))
 			require.Empty(t, f.indexNow.requests)
 			restarted := *f.notifier

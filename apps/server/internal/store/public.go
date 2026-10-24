@@ -61,17 +61,18 @@ func (i *PublicI18n) UnmarshalJSON(value []byte) error {
 }
 
 type PublicCategory struct {
-	SourceLocale      string `json:"source_locale"`
-	MachineTranslated bool   `json:"machine_translated"`
-	ID                int64  `json:"id"`
-	ParentID          *int64 `json:"parent_id"`
-	Slug, Name, Icon  string
-	Description       *string
-	AppliesTo         string   `json:"applies_to"`
-	HiddenByDefault   bool     `json:"hidden_by_default"`
-	IsPrimary         bool     `json:"is_primary"`
-	PackageCount      int      `json:"package_count"`
-	Confidence        *float64 `json:"confidence"`
+	SeoTitle, SeoDescription *string
+	SourceLocale             string `json:"source_locale"`
+	MachineTranslated        bool   `json:"machine_translated"`
+	ID                       int64  `json:"id"`
+	ParentID                 *int64 `json:"parent_id"`
+	Slug, Name, Icon         string
+	Description              *string
+	AppliesTo                string   `json:"applies_to"`
+	HiddenByDefault          bool     `json:"hidden_by_default"`
+	IsPrimary                bool     `json:"is_primary"`
+	PackageCount             int      `json:"package_count"`
+	Confidence               *float64 `json:"confidence"`
 }
 type PublicPackage struct {
 	IconVariants                           []ImageVariant      `json:"icon_variants"`
@@ -277,7 +278,7 @@ func (s *Store) PublicCategories(ctx context.Context, locale string) ([]PublicCa
 	// Aggregate by ancestor once, avoiding costly JIT compilation triggered by overestimated per-category correlated queries.
 	err := s.DB.WithContext(ctx).Raw(linkSQL(ctx, `WITH RECURSIVE descendants AS(SELECT id ancestor,id FROM categories UNION ALL SELECT d.ancestor,c.id FROM descendants d JOIN categories c ON c.parent_id=d.id),
 	 counts AS(SELECT d.ancestor,count(DISTINCT pc.package_id) package_count FROM descendants d JOIN package_categories pc ON pc.category_id=d.id JOIN packages p ON p.id=pc.package_id LEFT JOIN package_meta m ON m.package_id=p.id WHERE `+publicVisible+` AND NOT (p.disabled OR p.stale_disabled) GROUP BY d.ancestor)
-	 SELECT c.id,c.source_locale,COALESCE(i.machine_translated,false) machine_translated,c.parent_id,c.slug,c.icon,c.applies_to,c.hidden_by_default,COALESCE(i.name,c.slug) name,i.description,COALESCE(counts.package_count,0) package_count
+	 SELECT c.id,c.source_locale,COALESCE(i.machine_translated,false) machine_translated,c.parent_id,c.slug,c.icon,c.applies_to,c.hidden_by_default,COALESCE(i.name,c.slug) name,i.description,i.seo_title,i.seo_description,COALESCE(counts.package_count,0) package_count
 	 FROM categories c LEFT JOIN LATERAL (SELECT t.* FROM category_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE NULLIF(t.name,'') IS NOT NULL AND t.category_id=c.id AND t.locale IN (lang.requested,c.source_locale,'en-US') ORDER BY `+publicLocaleOrder+` LIMIT 1) i ON TRUE LEFT JOIN counts ON counts.ancestor=c.id WHERE `+publicCategoryVisible+` ORDER BY c.sort,c.id`), locale).Scan(&rows).Error
 	return rows, err
 }

@@ -52,7 +52,10 @@ func (s *Store) confirmHomebrewBatch(ctx context.Context, observed []HomebrewCon
  WHERE p.kind='cask' AND p.removed_at IS NULL AND p.token=observed.token
  AND p.tap=observed.tap AND p.raw_hash=observed.raw_hash
 	 AND (p.homebrew_checked_at IS NULL OR p.homebrew_checked_at<?)
- FOR UPDATE OF p), confirmed AS (
+ ORDER BY p.id
+ -- Only a non-key column changes. NO KEY keeps foreign-key checks (keyword links,
+ -- versions) from waiting on, and deadlocking with, this confirmation.
+ FOR NO KEY UPDATE OF p), confirmed AS (
  UPDATE packages p SET homebrew_checked_at=? FROM observed_packages o WHERE p.id=o.id
  RETURNING o.homebrew_checked_at)
  SELECT COALESCE(bool_or(homebrew_checked_at IS NULL OR homebrew_checked_at<=?),false) FROM confirmed`, string(raw), at.Add(-homebrewConfirmationInterval), at, at.Add(-facts.StaleAfter+cache.PackageDetailTTL)).Scan(&refreshCache).Error

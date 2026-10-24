@@ -3350,7 +3350,6 @@ export interface components {
          *         "name",
          *         "version"
          *       ],
-         *       "baselineCtr": 0.01,
          *       "targetCtr": 0.015
          *     }
          */
@@ -3361,7 +3360,11 @@ export interface components {
             /** @enum {string} */
             variant: "verified_free" | "current_version" | "uninstall_alternatives";
             slots: ("name" | "version" | "free" | "uninstall" | "alternatives")[];
-            baselineCtr: number;
+            /**
+             * @deprecated
+             * @description Ignored for compatibility; the server computes the baseline from the eligible GSC cohort.
+             */
+            baselineCtr?: number;
             targetCtr: number;
         };
         /**
@@ -13289,6 +13292,16 @@ export interface components {
          *     }
          */
         CategoryI18n: {
+            /**
+             * @description Localized search title; blank uses the default page title.
+             * @example null
+             */
+            seoTitle?: string | null;
+            /**
+             * @description Localized search description; blank uses the default page description.
+             * @example null
+             */
+            seoDescription?: string | null;
             /** @example Visual Studio Code */
             name: string;
             /** @example null */
@@ -13472,6 +13485,16 @@ export interface components {
          *     }
          */
         CollectionI18n: {
+            /**
+             * @description Localized search title; blank uses the default page title.
+             * @example null
+             */
+            seoTitle?: string | null;
+            /**
+             * @description Localized search description; blank uses the default page description.
+             * @example null
+             */
+            seoDescription?: string | null;
             /** @example Visual Studio Code */
             title: string;
             /** @example null */
@@ -18224,6 +18247,16 @@ export interface components {
          *     }
          */
         CategoryI18nView: {
+            /**
+             * @description Localized search title; blank uses the default page title.
+             * @example null
+             */
+            seoTitle?: string | null;
+            /**
+             * @description Localized search description; blank uses the default page description.
+             * @example null
+             */
+            seoDescription?: string | null;
             /** @example Visual Studio Code */
             name: string;
             /** @example null */
@@ -18346,6 +18379,16 @@ export interface components {
          *     }
          */
         CollectionI18nView: {
+            /**
+             * @description Localized search title; blank uses the default page title.
+             * @example null
+             */
+            seoTitle?: string | null;
+            /**
+             * @description Localized search description; blank uses the default page description.
+             * @example null
+             */
+            seoDescription?: string | null;
             /** @example Visual Studio Code */
             title: string;
             /** @example null */
@@ -21826,6 +21869,12 @@ export interface components {
          *     }
          */
         AdminArticleRevision: {
+            /**
+             * Format: int64
+             * @description Database revision ID; use the published revision ID for article translations.
+             * @example 101
+             */
+            id?: number;
             claims?: components["schemas"]["ArticleClaim"][];
             target?: components["schemas"]["ArticleSeoTarget"] | null;
             claimEvidence?: components["schemas"]["ArticleClaimEvidence"][];
@@ -21927,6 +21976,12 @@ export interface components {
          *     }
          */
         ArticleRevisionEntry: {
+            /**
+             * Format: int64
+             * @description Database revision ID; use the published revision ID for article translations.
+             * @example 101
+             */
+            id?: number;
             /** @example 2 */
             number: number;
             /** @example How to choose a screenshot app for Mac */
@@ -22100,6 +22155,12 @@ export interface components {
              *     }
              */
             published: {
+                /**
+                 * Format: int64
+                 * @description Database revision ID to pass as ref.id with entity article to translations_write.
+                 * @example 101
+                 */
+                id?: number;
                 /** @example 2 */
                 number: number;
                 /**
@@ -26685,7 +26746,6 @@ export interface operations {
                  *         "name",
                  *         "version"
                  *       ],
-                 *       "baselineCtr": 0.01,
                  *       "targetCtr": 0.015
                  *     }
                  */

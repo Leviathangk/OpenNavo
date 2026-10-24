@@ -896,7 +896,7 @@ func (s *Service) articleView(ctx context.Context, st *store.Store, id int64) (m
 		if err != nil {
 			return nil, err
 		}
-		published = map[string]any{"number": meta.Number, "publishedAt": meta.PublishedAt}
+		published = map[string]any{"id": *article.PublishedRevisionID, "number": meta.Number, "publishedAt": meta.PublishedAt}
 		siteLanguages, _ := json.Marshal(i18n.SiteLocales)
 		rows, err := st.JSONRows(ctx, `SELECT jsonb_build_object('locale',l.code,'status',COALESCE(i.status,'missing'),'withheld',COALESCE(i.withheld,false),'source',l.code=r.source_locale,
  'failReason',i.fail_reason,'translatedAt',i.translated_at) AS data
@@ -909,7 +909,7 @@ func (s *Service) articleView(ctx context.Context, st *store.Store, id int64) (m
 			locales = append(locales, row)
 		}
 	}
-	revisions, err := st.JSONRows(ctx, `SELECT jsonb_build_object('number',r.number,'title',COALESCE(i.title,''),'createdAt',r.created_at,'createdByName',r.created_by_name,
+	revisions, err := st.JSONRows(ctx, `SELECT jsonb_build_object('id',r.id,'number',r.number,'title',COALESCE(i.title,''),'createdAt',r.created_at,'createdByName',r.created_by_name,
  'submittedAt',r.submitted_at,'publishedAt',r.published_at) AS data FROM article_revisions r LEFT JOIN article_revision_i18n i ON i.revision_id=r.id AND i.locale=r.source_locale
  WHERE r.article_id=? ORDER BY r.number DESC LIMIT 30`, id)
 	if err != nil {
@@ -964,7 +964,7 @@ func articleImages(ctx context.Context, st *store.Store, scan articles.Scan) ([]
 }
 
 func (s *Service) articleRevisionView(ctx context.Context, st *store.Store, revisionID int64) (map[string]any, error) {
-	rows, err := st.JSONRows(ctx, `SELECT jsonb_build_object('number',r.number,'sourceLocale',r.source_locale,'type',r.type,'authorId',r.author_id,
+	rows, err := st.JSONRows(ctx, `SELECT jsonb_build_object('id',r.id,'number',r.number,'sourceLocale',r.source_locale,'type',r.type,'authorId',r.author_id,
  'author',(SELECT jsonb_build_object('id',a.id,'slug',a.slug,'name',a.name) FROM article_authors a WHERE a.id=r.author_id),
  'claims',r.claims,'claimEvidence',r.claim_evidence,'target',r.seo_target,'coverAssetId',r.cover_asset_id,'coverUrl',ca.url,'coverAlt',r.cover_alt,'sources',r.sources,
  'packages',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'token',p.token,'name',p.name,'displayName',COALESCE(NULLIF(si.display_name,''),p.name),'iconUrl',ia.url) ORDER BY rp.sort)

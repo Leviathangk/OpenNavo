@@ -17,7 +17,7 @@ func TestExperimentSampleGroupsRecrawlAndCooldown(t *testing.T) {
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash) SELECT i,'cask','experiment-'||i,'experiment-'||i,'homebrew/cask','Example Editor','1.0','1.0','{}','fixture' FROM generate_series(701,704) i`).Error)
 	require.NoError(t, st.DB.Exec(`INSERT INTO package_i18n(package_id,locale,display_name,summary,description,status,source_locale,source) SELECT id,'en-US','Example Editor','A text editor for macOS.','A text editor for macOS that supports editing documents and managing files.','source','en-US','human' FROM packages WHERE id BETWEEN 701 AND 704`).Error)
 	require.NoError(t, st.DB.Exec(`INSERT INTO seo_urls(id,url,page_kind,locale,package_id) SELECT id,'https://fixture.example/apps/'||token,'overview','en-US',id FROM packages WHERE id BETWEEN 701 AND 704`).Error)
-	p := Proposal{Variant: "current_version", Slots: []string{"name", "version"}, PageKind: "overview", Locale: "en-US", BaselineCTR: .01, TargetCTR: .02}
+	p := Proposal{Variant: "current_version", Slots: []string{"name", "version"}, PageKind: "overview", Locale: "en-US", TargetCTR: .02}
 	svc := &Service{DB: st.DB, WebURL: "https://fixture.example"}
 	err := st.DB.Transaction(func(tx *gorm.DB) error { _, err := svc.Start(ctx, tx, p); return err })
 	require.ErrorIs(t, err, ErrSample)
@@ -26,6 +26,7 @@ func TestExperimentSampleGroupsRecrawlAndCooldown(t *testing.T) {
 	require.NoError(t, st.DB.Exec(`INSERT INTO seo_gsc_page_daily(day,url_id,country,device,clicks,impressions,position_sum) SELECT d,u.id,'US','desktop',10,1000,8000 FROM seo_urls u CROSS JOIN generate_series((now() AT TIME ZONE 'UTC')::date-30,(now() AT TIME ZONE 'UTC')::date-3,interval '1 day') d`).Error)
 	var e Experiment
 	require.NoError(t, st.DB.Transaction(func(tx *gorm.DB) error { var err error; e, err = svc.Start(ctx, tx, p); return err }))
+	require.Equal(t, 0.01, e.BaselineCTR)
 	var groups []struct {
 		Arm   int
 		Count int64

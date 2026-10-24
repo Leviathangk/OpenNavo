@@ -100,8 +100,12 @@ func TestAnnouncementRepairsNonObjectWithoutAutomaticTranslation(t *testing.T) {
 				require.Len(t, locales, len(i18n.SiteLocales))
 				for locale, row := range locales {
 					expected := "missing"
-					if locale == "zh-CN" {
+					switch locale {
+					case "zh-CN":
 						expected = "source"
+					case "zh-Hant":
+						// Derived from the Simplified Chinese source, never translated independently.
+						expected = "machine"
 					}
 					require.Equal(t, expected, row.(map[string]any)["status"], locale)
 				}

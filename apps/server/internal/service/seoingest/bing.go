@@ -24,6 +24,9 @@ func (s *Service) BingStats(ctx context.Context) (map[string]any, error) {
 		return nil, err
 	}
 	err = s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockRegistry(tx); err != nil {
+			return err
+		}
 		if err := lockSource(tx, "bing"); err != nil {
 			return err
 		}

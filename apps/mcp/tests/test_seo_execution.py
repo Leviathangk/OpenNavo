@@ -7,6 +7,26 @@ from conftest import Backend, execution_args
 from fastmcp import Client
 
 
+async def test_snippet_proposal_uses_server_baseline(backend: Backend) -> None:
+    async with Client(backend.server) as client:
+        result = await client.call_tool(
+            "seo_snippet_template_propose",
+            {
+                "page_kind": "overview",
+                "locale": "en-US",
+                "variant": "current_version",
+                "slots": ["name", "version"],
+                "target_ctr": 0.015,
+            },
+            raise_on_error=False,
+        )
+    assert not result.is_error, result.content
+    request = next(req for name, req in backend.calls if name == "proposeSnippetTemplate")
+    body = json.loads(request.content)
+    assert "baselineCtr" not in body
+    assert body["targetCtr"] == 0.015
+
+
 async def test_catalog_write_without_task_or_evidence(backend: Backend) -> None:
     async with Client(backend.server) as client:
         result = await client.call_tool(
