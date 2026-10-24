@@ -123,7 +123,9 @@ func (s *Store) ReadContentSource(ctx context.Context, ref content.Ref) (Content
 		return out, err
 	}
 	for _, target := range targets {
-		out.Targets[target.Locale] = target.UpdatedAt
+		if target.Locale != "zh-Hant" {
+			out.Targets[target.Locale] = target.UpdatedAt
+		}
 	}
 	if ref.Entity == "package" || ref.Entity == "release" || ref.Entity == "screenshot" || ref.Entity == "collection_item" {
 		query := "SELECT name,token FROM packages WHERE id=?"
@@ -167,6 +169,9 @@ func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref)
 	if err != nil {
 		return err
 	}
+	if !i18n.Writable(source.SourceLocale) {
+		return domain.Rejected("source_locale_read_only")
+	}
 	spec := content.Registry[ref.Entity]
 	where, args := textWhere(ref)
 	if err := s.DB.WithContext(ctx).Table(spec.Table).Where(where+" AND locale=?", append(args, source.SourceLocale)...).Updates(map[string]any{"status": "source", "source_hash": source.Hash, "source_locale": source.SourceLocale}).Error; err != nil {
@@ -186,7 +191,7 @@ func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref)
 	}
 	for _, code := range i18n.SiteLocales {
 		locale := string(code)
-		if locale == source.SourceLocale || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
+		if locale == "zh-Hant" || locale == source.SourceLocale || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
 			continue
 		}
 		var fresh bool
@@ -202,7 +207,14 @@ func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref)
 			return err
 		}
 	}
-	return nil
+	if _, err = s.DeriveTraditional(ctx, ref); err != nil {
+		return err
+	}
+	// Restored collection snapshots may predate derived setup criteria.
+	if ref.Entity == "collection" {
+		_, err = s.deriveAuxiliaryTraditional(ctx, "collection_setup", ref.Key())
+	}
+	return err
 }
 
 // Cancel outstanding work when the source object disappears.
@@ -256,7 +268,13 @@ func (s *Store) StampContentHash(ctx context.Context, ref content.Ref, locale st
 		return err
 	}
 	where, args := textWhere(ref)
-	return s.DB.WithContext(ctx).Table(content.Registry[ref.Entity].Table).Where(where+" AND locale=?", append(args, locale)...).Update("source_hash", source.Hash).Error
+	if err := s.DB.WithContext(ctx).Table(content.Registry[ref.Entity].Table).Where(where+" AND locale=?", append(args, locale)...).Update("source_hash", source.Hash).Error; err != nil {
+		return err
+	}
+	if locale == "zh-CN" {
+		_, err = s.DeriveTraditional(ctx, ref)
+	}
+	return err
 }
 func (s *Store) ContentGlossary(ctx context.Context) (map[string]map[string]string, []string, error) {
 	var rows []struct {
@@ -298,7 +316,7 @@ func (s *Store) ScheduleAnnouncement(ctx context.Context) error {
 	if source == "" {
 		source = string(i18n.AuthoringLocale)
 	}
-	if !i18n.Valid(source) {
+	if !i18n.Writable(source) {
 		return fmt.Errorf("invalid announcement locale")
 	}
 	fields, ok := data[source].(map[string]any)

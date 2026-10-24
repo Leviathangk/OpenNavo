@@ -12017,6 +12017,12 @@ export interface components {
          */
         Locale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT" | "zh-Hant";
         /**
+         * @description Externally writable language. zh-Hant is read-only and automatically derived from valid zh-CN.
+         * @example zh-CN
+         * @enum {string}
+         */
+        WritableLocale: "en-US" | "zh-CN" | "ja-JP" | "es-ES" | "pt-BR" | "ru-RU" | "de-DE" | "fr-FR" | "it-IT";
+        /**
          * @description Mac client language (the desktop locales), used for client release notes; content APIs use Locale.
          * @example en-US
          * @enum {string}
@@ -20418,7 +20424,7 @@ export interface components {
          */
         TranslationFix: {
             ref: components["schemas"]["ContentRef"];
-            locale: components["schemas"]["Locale"];
+            locale: components["schemas"]["WritableLocale"];
             /**
              * @description Optional model provenance; omitted models are recorded as agent:unspecified.
              * @example example-model

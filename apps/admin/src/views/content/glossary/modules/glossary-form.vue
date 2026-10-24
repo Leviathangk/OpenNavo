@@ -14,20 +14,26 @@ const props = defineProps<{ term: Schemas['GlossaryTerm'] | null }>();
 const show = defineModel<boolean>('show', { required: true });
 const emit = defineEmits<{ saved: [] }>();
 
+const writableLocales = CONTENT_LOCALES.filter(code => code !== 'zh-Hant');
+
 const model = reactive({
   term: '',
   doNotTranslate: false,
-  translations: Object.fromEntries(CONTENT_LOCALES.map(code => [code, ''])) as Record<ContentLocale, string>
+  translations: Object.fromEntries(writableLocales.map(code => [code, ''])) as Record<ContentLocale, string>
 });
 const saving = ref(false);
 const editing = computed(() => Boolean(props.term));
 
-watch(show, open => {
-  if (!open) return;
-  model.term = props.term?.term ?? '';
-  model.doNotTranslate = props.term?.doNotTranslate ?? false;
-  for (const code of CONTENT_LOCALES) model.translations[code] = props.term?.translations[code] ?? '';
-}, { immediate: true });
+watch(
+  show,
+  open => {
+    if (!open) return;
+    model.term = props.term?.term ?? '';
+    model.doNotTranslate = props.term?.doNotTranslate ?? false;
+    for (const code of writableLocales) model.translations[code] = props.term?.translations[code] ?? '';
+  },
+  { immediate: true }
+);
 
 async function save() {
   const term = model.term.trim();
@@ -37,7 +43,7 @@ async function save() {
   }
   saving.value = true;
   const translations = Object.fromEntries(
-    CONTENT_LOCALES.map(code => [code, model.doNotTranslate ? null : model.translations[code].trim() || null])
+    writableLocales.map(code => [code, model.doNotTranslate ? null : model.translations[code].trim() || null])
   ) as Schemas['GlossaryTranslations'];
   const { error } = await upsertGlossaryTerm({ term, translations, doNotTranslate: model.doNotTranslate });
   saving.value = false;
@@ -57,7 +63,12 @@ async function save() {
   >
     <NForm label-placement="left" label-width="auto">
       <NFormItem :label="$t('page.content.glossary.term')" required>
-        <NInput v-model:value="model.term" :maxlength="200" :disabled="editing" :placeholder="$t('page.content.glossary.termPlaceholder')" />
+        <NInput
+          v-model:value="model.term"
+          :maxlength="200"
+          :disabled="editing"
+          :placeholder="$t('page.content.glossary.termPlaceholder')"
+        />
       </NFormItem>
       <NFormItem :label="$t('page.content.glossary.doNotTranslate')">
         <div class="flex items-center gap-12px">
@@ -65,7 +76,7 @@ async function save() {
           <NText depth="3" class="text-12px">{{ $t('page.content.glossary.doNotTranslateHint') }}</NText>
         </div>
       </NFormItem>
-      <NFormItem v-for="code in CONTENT_LOCALES" :key="code" :label="localeName(code)">
+      <NFormItem v-for="code in writableLocales" :key="code" :label="localeName(code)">
         <NInput v-model:value="model.translations[code]" :maxlength="200" :disabled="model.doNotTranslate" clearable />
       </NFormItem>
     </NForm>

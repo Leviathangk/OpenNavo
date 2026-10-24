@@ -278,11 +278,12 @@
       },
       "i18n": {
         "sourceLocale": "原文の言語",
-        "sourceHint": "原文のみ入力してください。他の言語はAIが翻訳します",
+        "sourceHint": "原文を入力すると他の言語に自動翻訳されます。繁体字中国語は簡体字中国語から自動生成されます。",
         "required": "原文を入力してください",
         "translations": "その他の言語",
         "translationsSummary": "{done}/{total}言語の翻訳が完了 · 展開して編集できます",
-        "autoPlaceholder": "空欄の場合、AI翻訳が使用されます"
+        "autoPlaceholder": "空欄の場合、AI翻訳が使用されます",
+        "derivedHint": "簡体字中国語から自動生成・読み取り専用"
       },
       "changelogStatus": {
         "none": "なし",

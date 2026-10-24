@@ -108,7 +108,7 @@ func TestBackgroundDeveloperPaginationHiddenOwnersAndReadyLocales(t *testing.T) 
 	require.EqualValues(t, 1, filtered["total"])
 	require.Len(t, filtered["records"], 1)
 
-	for _, locale := range []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU", "de-DE", "fr-FR", "it-IT", "zh-Hant"} {
+	for _, locale := range []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU", "de-DE", "fr-FR", "it-IT"} {
 		proof := facts.NewProof("https://vendor.example/helper", now, time.Hour, "verified", now)
 		description := "Verified background helper description."
 		switch locale {

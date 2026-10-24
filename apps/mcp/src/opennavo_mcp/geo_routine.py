@@ -140,7 +140,7 @@ HTML、FAQ、JSON-LD、MD 使用同一事实集合及适用范围。FAQ 无可�
 
 ## 2. 十语同步与已发布快照
 
-读取 `opennavo://meta/locales` 和现有内容来源，不用后台六语清单限制站点内容。当前十种内容语言为 `en-US`、`zh-CN`、`ja-JP`、`es-ES`、`pt-BR`、`ru-RU`、`de-DE`、`fr-FR`、`it-IT`、`zh-Hant`；列表变更以元数据为准。后台界面仍是六语，客户端界面和客户端发行说明按各自的十语契约，本规则不扩其范围。
+读取 `opennavo://meta/locales` 和现有内容来源，不用后台六语清单限制站点内容。zh-Hant 仅供读取，由有效 zh-CN 自动生成；不要提交繁体文本、选择繁体源语言或创建繁体翻译任务。当前十种内容语言为 `en-US`、`zh-CN`、`ja-JP`、`es-ES`、`pt-BR`、`ru-RU`、`de-DE`、`fr-FR`、`it-IT`、`zh-Hant`；列表变更以元数据为准。后台界面仍是六语，客户端界面和客户端发行说明按各自的十语契约，本规则不扩其范围。
 
 1. 明确每个内容 ref 的 sourceLocale，保留已有源语言。先完成可靠源文，不按关键词换源语言，也不把外文旧译文冒充新源文。
 2. 通过 `translations_write` 的来源读取能力（`getTranslationsSource`）取得当前 `sourceHash`、各目标语言的 revision 和状态。保存此次翻译基于哪个源快照；通常一个源语言加九个目标语言，而不是把源语言也作为目标提交。

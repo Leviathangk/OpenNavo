@@ -17,7 +17,12 @@ func TestTargetLanguagePlanning(t *testing.T) {
 			target := Target{Source: map[string]string{"open": "打开"}, English: map[string]string{"open": "Open"}}
 			batches := Batches(Plan{Targets: map[string]Target{name: target}})
 			require.Len(t, batches, 1)
-			require.Len(t, batches[0].Locales, count-2)
+			expected := count - 2
+			if count == 10 {
+				expected--
+			}
+			require.Len(t, batches[0].Locales, expected)
+			require.NotContains(t, batches[0].Locales, "zh-Hant")
 			require.NotContains(t, batches[0].Locales, "en-US")
 			require.NotContains(t, batches[0].Locales, "zh-CN")
 			target.Locales = []string{"fr-FR", "ja-JP", "unknown"}

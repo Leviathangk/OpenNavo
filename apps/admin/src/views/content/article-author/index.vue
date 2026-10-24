@@ -4,7 +4,7 @@ import type { UploadCustomRequestOptions } from 'naive-ui';
 import { createArticleAuthor, fetchArticleAuthors, updateArticleAuthor, uploadAsset } from '@/service/api';
 import type { DataOf, Schemas } from '@/typings/api/opennavo';
 import { formatDateTime, isDryRun } from '@/utils/opennavo';
-import { CONTENT_LOCALE_OPTIONS, DEFAULT_SOURCE_LOCALE } from '@/utils/content-locale';
+import { SOURCE_LOCALE_OPTIONS, DEFAULT_SOURCE_LOCALE } from '@/utils/content-locale';
 import { $t } from '@/locales';
 import { ARTICLE_SLUG } from '../article-detail/modules/article';
 
@@ -139,7 +139,7 @@ onMounted(load);
             <NInput v-model:value="form.role" :maxlength="80" />
           </NFormItem>
           <NFormItem :label="$t('page.shared.i18n.sourceLocale')">
-            <NSelect v-model:value="form.sourceLocale" :options="CONTENT_LOCALE_OPTIONS" />
+            <NSelect v-model:value="form.sourceLocale" :options="SOURCE_LOCALE_OPTIONS" />
           </NFormItem>
         </div>
         <NFormItem :label="text('bio')">

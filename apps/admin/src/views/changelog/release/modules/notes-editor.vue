@@ -3,9 +3,17 @@ import { computed, reactive, ref, watch } from 'vue';
 import { fetchReleaseDetail, upsertReleaseNotes } from '@/service/api';
 import type { RecordOf } from '@/typings/api/opennavo';
 import MarkdownEditor from '@/components/opennavo/markdown-editor.vue';
-import { CONTENT_LOCALE_OPTIONS } from '@/utils/content-locale';
+import { SOURCE_LOCALE_OPTIONS } from '@/utils/content-locale';
 import { $t } from '@/locales';
-import { NOTES_LIMITS, buildNotesBody, emptyNotes, notesFromRelease, notesVersion, ownsNotes, validateNotes } from './notes';
+import {
+  NOTES_LIMITS,
+  buildNotesBody,
+  emptyNotes,
+  notesFromRelease,
+  notesVersion,
+  ownsNotes,
+  validateNotes
+} from './notes';
 import type { NotesForm } from './notes';
 
 defineOptions({ name: 'ReleaseNotesEditor' });
@@ -20,19 +28,25 @@ const form = reactive<NotesForm>(emptyNotes());
 const loading = ref(false);
 const saving = ref(false);
 const title = computed(() =>
-  props.version ? $t('page.changelog.notes.editorTitle', { token: props.version.token, version: notesVersion(props.version) }) : ''
+  props.version
+    ? $t('page.changelog.notes.editorTitle', { token: props.version.token, version: notesVersion(props.version) })
+    : ''
 );
 
-watch(show, async open => {
-  if (!open || !props.version) return;
-  Object.assign(form, emptyNotes());
-  // A build still showing its base version's shared note starts empty: saving writes notes of its own.
-  if (!props.version.editorialReleaseId || !ownsNotes(props.version)) return;
-  loading.value = true;
-  const { data, error } = await fetchReleaseDetail(props.version.editorialReleaseId);
-  loading.value = false;
-  if (!error) Object.assign(form, notesFromRelease(data));
-}, { immediate: true });
+watch(
+  show,
+  async open => {
+    if (!open || !props.version) return;
+    Object.assign(form, emptyNotes());
+    // A build still showing its base version's shared note starts empty: saving writes notes of its own.
+    if (!props.version.editorialReleaseId || !ownsNotes(props.version)) return;
+    loading.value = true;
+    const { data, error } = await fetchReleaseDetail(props.version.editorialReleaseId);
+    loading.value = false;
+    if (!error) Object.assign(form, notesFromRelease(data));
+  },
+  { immediate: true }
+);
 
 function addGroup() {
   if (form.groups.length >= NOTES_LIMITS.groups) return;
@@ -52,7 +66,11 @@ async function save() {
     return;
   }
   saving.value = true;
-  const { error } = await upsertReleaseNotes(props.version.packageId, notesVersion(props.version), buildNotesBody(form));
+  const { error } = await upsertReleaseNotes(
+    props.version.packageId,
+    notesVersion(props.version),
+    buildNotesBody(form)
+  );
   saving.value = false;
   if (error) return;
   window.$message?.success($t('page.changelog.notes.saved'));
@@ -68,17 +86,28 @@ async function save() {
         <NForm label-placement="top" :show-feedback="false" class="flex-col gap-16px">
           <NGrid :x-gap="16" :cols="2">
             <NFormItemGi :label="$t('page.changelog.notes.sourceLocale')">
-              <NSelect v-model:value="form.sourceLocale" :options="CONTENT_LOCALE_OPTIONS" />
+              <NSelect v-model:value="form.sourceLocale" :options="SOURCE_LOCALE_OPTIONS" />
             </NFormItemGi>
             <NFormItemGi :label="$t('page.changelog.notes.publishedAt')">
               <NDatePicker v-model:value="form.publishedAt" type="datetime" clearable class="w-full" />
             </NFormItemGi>
           </NGrid>
           <NFormItem :label="$t('page.changelog.notes.titleField')">
-            <NInput v-model:value="form.title" :maxlength="NOTES_LIMITS.title" :placeholder="$t('page.changelog.notes.titlePlaceholder')" clearable />
+            <NInput
+              v-model:value="form.title"
+              :maxlength="NOTES_LIMITS.title"
+              :placeholder="$t('page.changelog.notes.titlePlaceholder')"
+              clearable
+            />
           </NFormItem>
           <NFormItem :label="$t('page.changelog.notes.summary')" required>
-            <NInput v-model:value="form.summary" type="textarea" :rows="3" :maxlength="NOTES_LIMITS.summary" show-count />
+            <NInput
+              v-model:value="form.summary"
+              type="textarea"
+              :rows="3"
+              :maxlength="NOTES_LIMITS.summary"
+              show-count
+            />
           </NFormItem>
           <div class="flex-col gap-8px">
             <div class="flex items-center justify-between">
@@ -88,15 +117,28 @@ async function save() {
               </NButton>
             </div>
             <NText depth="3" class="text-12px">{{ $t('page.changelog.notes.sectionsHint', NOTES_LIMITS) }}</NText>
-            <div v-for="(group, index) in form.groups" :key="index" class="flex-col gap-6px rounded-default bg-layout p-12px">
+            <div
+              v-for="(group, index) in form.groups"
+              :key="index"
+              class="flex-col gap-6px rounded-default bg-layout p-12px"
+            >
               <div class="flex items-center gap-8px">
-                <NInput v-model:value="group.area" :maxlength="NOTES_LIMITS.area" :placeholder="$t('page.changelog.notes.areaPlaceholder')" class="!w-200px" />
+                <NInput
+                  v-model:value="group.area"
+                  :maxlength="NOTES_LIMITS.area"
+                  :placeholder="$t('page.changelog.notes.areaPlaceholder')"
+                  class="!w-200px"
+                />
                 <NButton size="small" quaternary type="error" class="ml-auto" @click="form.groups.splice(index, 1)">
                   {{ $t('page.changelog.notes.removeGroup') }}
                 </NButton>
               </div>
               <div v-for="(_, itemIndex) in group.items" :key="itemIndex" class="flex items-center gap-8px">
-                <NInput v-model:value="group.items[itemIndex]" :maxlength="NOTES_LIMITS.item" :placeholder="$t('page.changelog.notes.itemPlaceholder')" />
+                <NInput
+                  v-model:value="group.items[itemIndex]"
+                  :maxlength="NOTES_LIMITS.item"
+                  :placeholder="$t('page.changelog.notes.itemPlaceholder')"
+                />
                 <NButton size="small" quaternary @click="group.items.splice(itemIndex, 1)">×</NButton>
               </div>
               <NButton size="small" dashed :disabled="group.items.length >= NOTES_LIMITS.items" @click="addItem(index)">
@@ -105,7 +147,11 @@ async function save() {
             </div>
           </div>
           <NFormItem :label="$t('page.changelog.notes.body')">
-            <MarkdownEditor v-model="form.bodyMarkdown" :rows="8" :placeholder="$t('page.changelog.notes.bodyPlaceholder')" />
+            <MarkdownEditor
+              v-model="form.bodyMarkdown"
+              :rows="8"
+              :placeholder="$t('page.changelog.notes.bodyPlaceholder')"
+            />
           </NFormItem>
         </NForm>
       </NSpin>

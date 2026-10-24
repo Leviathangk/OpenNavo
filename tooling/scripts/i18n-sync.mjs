@@ -1,8 +1,10 @@
 // Node only exports and writes results; only Go reads gateway and secret configuration.
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { generateTraditional } from './derive-traditional.mjs';
 import { exportPlan, selection, writeResult } from './interface-i18n.mjs';
 function main() {
+  if (!process.argv.includes('--dry-run') && !process.argv.includes('--replay')) generateTraditional();
   const args = process.argv.slice(2),
     names = selection(args),
     plan = exportPlan(names);

@@ -11,7 +11,8 @@ const pages = {
     translationStatus: { none: '无', source: '原文', machine: '机器', manual: '人工', pending: '排队', failed: '失败' },
     i18n: {
       sourceLocale: '原文语言',
-      sourceHint: '只需填写原文，其他语言由 AI 自动翻译',
+      sourceHint: '只需填写原文，其他语言自动翻译；繁体由简体自动生成',
+      derivedHint: '由简体中文自动生成，只读',
       required: '请填写原文',
       translations: '其他语言',
       translationsSummary: '{done}/{total} 种语言已有译文 · 展开可人工修正',

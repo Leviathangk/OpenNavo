@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/articles"
 	"github.com/opennavo/opennavo/server/internal/config"
+	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -71,6 +72,12 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	_, err = mutate("PublishArticle", map[string]any{})
 	require.NoError(t, err)
 	first := *state().PublishedRevisionID
+	// A valid Simplified translation may exist while an archived article misses
+	// Traditional during migration; restoring must derive it immediately.
+	ref := content.Ref{Entity: "article", ID: first}
+	source, err := st.ReadContentSource(ctx, ref)
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Exec("INSERT INTO article_revision_i18n(revision_id,locale,title,source_locale,source_hash,status) VALUES(?,'zh-CN','软件','en-US',?,'manual')", first, source.Hash).Error)
 	var bound string
 	require.NoError(t, st.DB.Raw("SELECT claim_evidence::text FROM article_revisions WHERE id=?", first).Scan(&bound).Error)
 	require.JSONEq(t, "[]", bound)
@@ -132,6 +139,12 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	require.NotEqual(t, first, second)
 	require.NoError(t, st.DB.Raw("SELECT claim_evidence::text FROM article_revisions WHERE id=?", second).Scan(&bound).Error)
 	require.JSONEq(t, "[]", bound)
+	// Old published revisions are skipped by startup backfill until made live.
+	_, err = st.BackfillTraditional(ctx, false)
+	require.NoError(t, err)
+	beforeRevert, err := st.TranslationValue(ctx, ref, "zh-Hant")
+	require.NoError(t, err)
+	require.Equal(t, "missing", beforeRevert.Status)
 	// Revert moves the actual online pointer and emits page invalidations.
 	var before int64
 	require.NoError(t, st.DB.Table("content_url_changes").Count(&before).Error)
@@ -142,13 +155,27 @@ func TestArticlePublicationEvidenceArtifactsAndLiveRollback(t *testing.T) {
 	var after int64
 	require.NoError(t, st.DB.Table("content_url_changes").Count(&after).Error)
 	require.Greater(t, after, before)
+	afterRevert, err := st.TranslationValue(ctx, ref, "zh-Hant")
+	require.NoError(t, err)
+	require.Equal(t, "machine", afterRevert.Status)
+	require.Equal(t, "軟體", afterRevert.Fields["title"])
 	// Restore does not depend on old evidence remaining fresh.
 	_, err = mutate("WithdrawArticle", map[string]any{})
 	require.NoError(t, err)
+	require.NoError(t, st.DB.Exec("DELETE FROM article_revision_i18n WHERE revision_id=? AND locale='zh-Hant'", first).Error)
+	_, err = st.BackfillTraditional(ctx, false)
+	require.NoError(t, err)
+	traditionalBefore, err := st.TranslationValue(ctx, ref, "zh-Hant")
+	require.NoError(t, err)
+	require.Equal(t, "missing", traditionalBefore.Status)
 	require.NoError(t, st.DB.Exec("UPDATE seo_evidence_snapshots SET revoked_at=now() WHERE id=?", e.ID).Error)
 	_, err = mutate("RestoreArticle", map[string]any{})
 	require.NoError(t, err)
 	require.Equal(t, "published", state().Status)
+	traditionalAfter, err := st.TranslationValue(ctx, ref, "zh-Hant")
+	require.NoError(t, err)
+	require.Equal(t, "machine", traditionalAfter.Status)
+	require.Equal(t, "軟體", traditionalAfter.Fields["title"])
 	// Caller annotations neither block publication nor mint verified receipts.
 	draft, err := st.LoadArticleDraft(ctx, second)
 	require.NoError(t, err)

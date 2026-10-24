@@ -8,6 +8,8 @@ info:
   description: 'API for the admin console (soybean-admin v2.2.0), prefixed with `/admin-api`.
 
 
+    - Traditional Chinese (`zh-Hant`) is read-only and derived from valid `zh-CN`. Content writes must omit it and cannot select it as sourceLocale.
+
     - Response bodies use `{code, msg, data}`; success is `code = "0000"`.
 
     - **Business errors always use HTTP 200**, distinguished by code (soybean reads code and handles logout/token refresh only on 2xx).
@@ -32409,6 +32411,11 @@ components:
         - zh-Hant
       example: en-US
       description: 'Supported language; without locale, match Accept-Language by q value and ultimately default to en-US.'
+    WritableLocale:
+      type: string
+      enum: [en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU, de-DE, fr-FR, it-IT]
+      description: Externally writable language. zh-Hant is read-only and automatically derived from valid zh-CN.
+      example: zh-CN
     AppLocale:
       type: string
       enum:
@@ -42125,7 +42132,7 @@ components:
         ref:
           $ref: '#/components/schemas/ContentRef'
         locale:
-          $ref: '#/components/schemas/Locale'
+          $ref: '#/components/schemas/WritableLocale'
         model:
           type: string
           maxLength: 160

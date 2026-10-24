@@ -1431,6 +1431,10 @@ class Locale(RootModel[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-
     root: Annotated[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT', 'zh-Hant'], Field(description='Supported language; without locale, match Accept-Language by q value and ultimately default to en-US.', examples=['en-US'])]
 
 
+class WritableLocale(RootModel[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT']]):
+    root: Annotated[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT'], Field(description='Externally writable language. zh-Hant is read-only and automatically derived from valid zh-CN.', examples=['zh-CN'])]
+
+
 class AppLocale(RootModel[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT', 'zh-Hant']]):
     root: Annotated[Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT', 'zh-Hant'], Field(description='Mac client language (the desktop locales), used for client release notes; content APIs use Locale.', examples=['en-US'])]
 
@@ -2725,7 +2729,7 @@ class TranslationFix(BaseModel):
         extra='forbid',
     )
     ref: ContentRef
-    locale: Locale
+    locale: WritableLocale
     model: Annotated[str | None, Field(description='Optional model provenance; omitted models are recorded as agent:unspecified.', examples=['example-model'], max_length=160, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = None
     fields: ContentFields
 

@@ -10,7 +10,7 @@ COPY . .
 # `go mod download` layer held every module of the server's tests too).
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/ ./cmd/opennavo ./cmd/backup ./cmd/storage-init ./cmd/probe && \
-    for name in api worker desktop-publish migrate seed seed-e2e db-bootstrap; do ln -s opennavo /out/"$name"; done
+    for name in api worker desktop-publish migrate seed seed-e2e db-bootstrap traditional-backfill; do ln -s opennavo /out/"$name"; done
 
 FROM alpine:3.24 AS ops
 # Backups require PostgreSQL 18 clients, not a database server or its entrypoint helpers.

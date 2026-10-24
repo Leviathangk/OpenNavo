@@ -390,6 +390,21 @@
       "products": [
         "desktop"
       ]
+    },
+    {
+      "name": "OpenCC dictionaries",
+      "version": "1.1.9",
+      "license": "Apache-2.0",
+      "url": "https://github.com/BYVoid/OpenCC/tree/ver.1.1.9",
+      "scope": "runtime",
+      "kind": "data",
+      "source": "apps/server/internal/traditional/data/upstream.json",
+      "products": [
+        "server"
+      ],
+      "licensePaths": [
+        "apps/server/internal/traditional/data/LICENSE"
+      ]
     }
   ]
 }

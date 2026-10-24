@@ -139,6 +139,24 @@ func run(ctx context.Context) error {
 	defer cancelDispatch()
 	// Content written before a site language existed never queued that language.
 	go func() {
+		for {
+			derived, err := st.BackfillTraditional(dispatchCtx, false)
+			if err == nil {
+				logger.Info("Traditional Chinese backfill complete", "counts", derived)
+				break
+			}
+			logger.Warn("Traditional Chinese backfill failed; retrying in one minute")
+			timer := time.NewTimer(time.Minute)
+			select {
+			case <-dispatchCtx.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+			}
+		}
+	}()
+	// Ordinary translation scheduling must not wait for derived-content retries.
+	go func() {
 		queued, ran, err := st.BackfillTranslationTasksForLocales(dispatchCtx)
 		if err != nil {
 			logger.Warn("translation backfill failed")

@@ -54,6 +54,8 @@ function runTogether(commands) {
 export function runTask(task) {
   switch (task) {
     case 'lint':
+      run('node', ['tooling/scripts/derive-traditional.mjs', '--check']);
+      run('node', ['--test', 'tooling/scripts/traditional-markdown.test.mjs']);
       run('node', ['tooling/scripts/check-interface-i18n.mjs']);
       run('node', ['tooling/scripts/check-hardcoded-i18n.mjs']);
       run('node', ['tooling/scripts/sync-brand-readme.mjs', '--check']);
@@ -75,6 +77,7 @@ export function runTask(task) {
       return;
     case 'build':
     case 'gen':
+      run('node', ['tooling/scripts/derive-traditional.mjs']);
       run('pnpm', [...workspace, task]);
       return;
     case 'mock':

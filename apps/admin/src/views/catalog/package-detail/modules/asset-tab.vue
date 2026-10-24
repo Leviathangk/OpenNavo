@@ -139,7 +139,7 @@ async function saveShot(shot: Screenshot) {
   const { error } = await updatePackageScreenshot(
     props.detail.id,
     shot.id,
-    !caption && !hadCaption
+    shot.editLocale === 'zh-Hant' || (!caption && !hadCaption)
       ? { theme: shot.theme }
       : {
           theme: shot.theme,
@@ -252,7 +252,13 @@ const themeOptions = computed(() =>
                     class="w-120px shrink-0"
                     @update:value="(code: ContentLocale) => switchLocale(shot, code)"
                   />
-                  <NInput v-model:value="shot.caption" :maxlength="120" clearable @update:value="shot.dirty = true" />
+                  <NInput
+                    v-model:value="shot.caption"
+                    :readonly="shot.editLocale === 'zh-Hant'"
+                    :maxlength="120"
+                    clearable
+                    @update:value="shot.dirty = true"
+                  />
                 </div>
               </NFormItem>
               <NFormItem :label="$t('page.catalog.packageDetail.assets.theme')">

@@ -2,12 +2,12 @@
   "formatVersion": 1,
   "lockDigests": {
     "pnpm-lock.yaml": "b827db50eb63062d2a53f0ce5f6939635a249f6a0328affb04b3b25e0be011d8",
-    "apps/server/go.mod": "b251df646037969fa8aea7013a3b0e9f3394d3af6b9e3b98d4455179aa60c116",
-    "apps/server/go.sum": "d0383bdc83d8992b2c966db97eabf88db8baa3c886792290cac525e6f5228c5e",
+    "apps/server/go.mod": "ab09e642d5fc7b856a24e0160e90e02791c7a278442cc20aed657d72194a3802",
+    "apps/server/go.sum": "0aef1b3864eb8ea96a36b3b4b709abc96959d6b200584c4eef841d72ebbcb6a2",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
     "apps/desktop/src-tauri/Cargo.lock": "e68ee8f8254068d4996af4517485dedb8b25ea4c4926e80a2ab00f622e3e3f4c",
     "apps/desktop/native/firewall/core/Cargo.lock": "22bdb9a96ef3b8a62249637d81060826ff82e3eff3e158125d51e269c35bd798",
-    "docs/legal/native/manifest.json": "ecf558c84dd1f56ebe06e9bcc87edc818aca30cba9397ef66e68a78f9dce9a58",
+    "docs/legal/native/manifest.json": "d9619fd270ab33851ceabd487e00888046bfd386e9ce5568943772bf2d4a923a",
     "apps/desktop/native/store/upstream.json": "c85b3ebf2515718f8b066febf42d4f5ffe609941f2957cc8bd73f348a828e9c8",
     "apps/desktop/native/clamav/sources.lock.json": "f6257ce0e0aa9bfc7dfb7f891bb11bf77655ef1aa54040653d55a673e26385c3",
     "apps/desktop/native/store/LICENSE.mas": "926b52ce77b2a26ac5cb7be146678a965d3a0d420187677368e6169cf3587f4d",
@@ -231,7 +231,9 @@
     "docs/legal/native/installomator-upstream.json": "91dc8759b8e58b5c1cf6d11352666e1118651f0e209b64b986b248ff6678e162",
     "docs/legal/native/LICENSE.Installomator": "ea938190e03013466f80311ee9b3753b9e476b920d8290b9a90a0864edff522e",
     "apps/desktop/native/firewall/upstream.json": "80bde1e4ff88a4cd151147795bb7944c20e9c728d6a84a330e3c6c25b83268ce",
-    "apps/desktop/native/firewall/LICENSE.LuLu": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    "apps/desktop/native/firewall/LICENSE.LuLu": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "apps/server/internal/traditional/data/upstream.json": "4b301923dc283d429adacb5584923be42a85589060d188ad0a0af0f97d81ec7d",
+    "apps/server/internal/traditional/data/LICENSE": "b534e465949558eec2597b04f5092b5e161236a68dfbfd04d547592ac3964308"
   },
   "scopeNote": "runtime-candidate includes platform-conditional and bundled/build-time dependencies; conservative notices, not proof of runtime reachability",
   "modules": [

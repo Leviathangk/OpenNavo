@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// Writable excludes system-derived Traditional Chinese from authoring and translation targets.
+func Writable(value string) bool { return Valid(value) && value != "zh-Hant" }
+
 func Valid(value string) bool {
 	_, ok := Metadata[LocaleCode(value)]
 	return ok

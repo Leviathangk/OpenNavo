@@ -20,7 +20,7 @@ import type { DataOf, RecordOf, Schemas } from '@/typings/api/opennavo';
 import { useAuth } from '@/hooks/business/auth';
 import { useLocalizedPackage } from '@/hooks/business/localized';
 import { formatDateTime, isDryRun } from '@/utils/opennavo';
-import { CONTENT_LOCALE_OPTIONS, localeName } from '@/utils/content-locale';
+import { SOURCE_LOCALE_OPTIONS, localeName } from '@/utils/content-locale';
 import { $t } from '@/locales';
 import ArticlePreview from './modules/article-preview.vue';
 import ClaimEvidence from './modules/claim-evidence.vue';
@@ -396,7 +396,7 @@ const articlePath = computed(() => `/articles/${detail.value?.slug ?? ''}`);
           <NForm label-placement="top">
             <div class="grid grid-cols-1 gap-x-16px md:grid-cols-3">
               <NFormItem :label="$t('page.shared.i18n.sourceLocale')">
-                <NSelect v-model:value="form.sourceLocale" :options="CONTENT_LOCALE_OPTIONS" />
+                <NSelect v-model:value="form.sourceLocale" :options="SOURCE_LOCALE_OPTIONS" />
               </NFormItem>
               <NFormItem :label="listText('columns.type')">
                 <NSelect v-model:value="form.type" :options="typeOptions" />

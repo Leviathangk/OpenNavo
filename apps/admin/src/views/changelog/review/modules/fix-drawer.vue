@@ -24,7 +24,7 @@ const saving = ref(false);
 const targets = computed(() =>
   props.item
     ? (props.item.ref.entity === 'desktop_release' ? APP_CONTENT_LOCALES : CONTENT_LOCALES).filter(
-        code => code !== props.item!.sourceLocale
+        code => code !== 'zh-Hant' && code !== props.item!.sourceLocale
       )
     : []
 );
@@ -69,7 +69,7 @@ const fieldLabel = (key: string) => {
 };
 
 async function save() {
-  if (!props.item || !targets.value.includes(locale.value)) return;
+  if (!props.item || locale.value === 'zh-Hant' || !targets.value.includes(locale.value)) return;
   saving.value = true;
   const fields = Object.fromEntries(
     textKeys.value.map(key => [key, values.value[key].trim() || null])

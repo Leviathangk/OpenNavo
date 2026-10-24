@@ -24,8 +24,19 @@ export const APP_CONTENT_LOCALES: readonly AppContentLocale[] = [
 
 /** Use each language's native name (e.g. English, Japanese), independent of admin UI language. */
 export function localeName(code: ContentLocale): string {
-  return LOCALE_METADATA[code].name;
+  return code === 'zh-Hant'
+    ? `${LOCALE_METADATA[code].name} ← ${LOCALE_METADATA['zh-CN'].name}`
+    : LOCALE_METADATA[code].name;
 }
+
+export const SOURCE_LOCALE_OPTIONS = CONTENT_LOCALES.filter(code => code !== 'zh-Hant').map(code => ({
+  label: localeName(code),
+  value: code
+}));
+export const APP_SOURCE_LOCALE_OPTIONS = APP_CONTENT_LOCALES.filter(code => code !== 'zh-Hant').map(code => ({
+  label: localeName(code),
+  value: code
+}));
 
 export const CONTENT_LOCALE_OPTIONS = CONTENT_LOCALES.map(code => ({ label: localeName(code), value: code }));
 
@@ -111,13 +122,16 @@ interface LocalizedBodyOptions<T> {
 export function localizedBody<T>(
   options: LocalizedBodyOptions<T> & { clearable: true }
 ): Partial<Record<ContentLocale, T | null>>;
-export function localizedBody<T>(options: LocalizedBodyOptions<T> & { clearable?: false }): Partial<Record<ContentLocale, T>>;
+export function localizedBody<T>(
+  options: LocalizedBodyOptions<T> & { clearable?: false }
+): Partial<Record<ContentLocale, T>>;
 export function localizedBody<T>(
   options: LocalizedBodyOptions<T> & { clearable?: boolean }
 ): Partial<Record<ContentLocale, T | null>> {
   const { texts, original, sourceLocale, keys, entry, clearable = false } = options;
   const body: Partial<Record<ContentLocale, T | null>> = {};
   for (const code of CONTENT_LOCALES) {
+    if (code === 'zh-Hant') continue;
     const current = normalize(texts[code], keys);
     if (code === sourceLocale) {
       body[code] = entry(current);

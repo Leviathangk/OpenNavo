@@ -546,6 +546,9 @@ func (s *Service) revertArticle(ctx context.Context, in Input) (any, error) {
 			if err := st.TouchArticle(ctx, article.ID, update); err != nil {
 				return 0, "", err
 			}
+			if err := st.ScheduleContentTranslation(ctx, content.Ref{Entity: "article", ID: revisionID}); err != nil {
+				return 0, "", err
+			}
 			return article.ID, "update", st.ArticleEvent(ctx, article.ID, number, "revert", map[string]any{"from": number, "published": true})
 		}
 		// Apps removed from the catalog since then cannot come back.
@@ -717,6 +720,13 @@ func (s *Service) withdrawArticle(ctx context.Context, op string, in Input) (any
 		if err := st.TouchArticle(ctx, article.ID, map[string]any{"status": to, "archived_at": archivedAt}); err != nil {
 			return 0, "", err
 		}
+		// Archived revisions are excluded from backfill. Restore their translation
+		// dependencies only after the article is visible again, in this transaction.
+		if op == "RestoreArticle" {
+			if err := st.ScheduleContentTranslation(ctx, content.Ref{Entity: "article", ID: *article.PublishedRevisionID}); err != nil {
+				return 0, "", err
+			}
+		}
 		detail := map[string]any{}
 		if reason != nil {
 			detail["reason"] = *reason
@@ -824,6 +834,11 @@ func (s *Service) setArticleLocale(ctx context.Context, in Input) (any, error) {
 		}
 		if result.RowsAffected == 0 {
 			return 0, "", fail(domain.CodeNotFound)
+		}
+		if in.Locale == "zh-CN" {
+			if _, err := st.DeriveTraditional(ctx, content.Ref{Entity: "article", ID: *article.PublishedRevisionID}); err != nil {
+				return 0, "", err
+			}
 		}
 		if err := st.TouchArticle(ctx, article.ID, nil); err != nil {
 			return 0, "", err

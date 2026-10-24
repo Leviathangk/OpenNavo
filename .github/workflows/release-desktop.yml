@@ -77,6 +77,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/server/go.mod
+          cache: false
       - name: Validate versioned release notes before building
         if: github.event_name == 'push'
         env:
@@ -302,6 +306,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/server/go.mod
+          cache: false
       - uses: actions/download-artifact@v6
         with:
           pattern: desktop-*

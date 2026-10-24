@@ -113,11 +113,31 @@ function remove(row: Row) {
 
 <template>
   <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
-    <NCard :title="$t('page.content.glossary.title')" :bordered="false" size="small" class="card-wrapper sm:flex-1-hidden">
+    <NCard
+      :title="$t('page.content.glossary.title')"
+      :bordered="false"
+      size="small"
+      class="card-wrapper sm:flex-1-hidden"
+    >
       <template #header-extra>
         <div class="flex items-center gap-8px">
-          <NInput v-model:value="filters.q" :placeholder="$t('page.content.glossary.search')" clearable size="small" class="!w-200px" @change="getDataByPage(1)" />
-          <NSelect v-model:value="filters.doNotTranslate" :options="typeOptions" :placeholder="$t('page.content.glossary.type')" clearable size="small" class="w-140px" @update:value="getDataByPage(1)" />
+          <NInput
+            v-model:value="filters.q"
+            :placeholder="$t('page.content.glossary.search')"
+            clearable
+            size="small"
+            class="!w-200px"
+            @change="getDataByPage(1)"
+          />
+          <NSelect
+            v-model:value="filters.doNotTranslate"
+            :options="typeOptions"
+            :placeholder="$t('page.content.glossary.type')"
+            clearable
+            size="small"
+            class="w-140px"
+            @update:value="getDataByPage(1)"
+          />
           <NButton size="small" :loading="loading" @click="getData">{{ $t('common.refresh') }}</NButton>
           <PermissionGate code="content:glossary:edit">
             <NButton size="small" type="primary" @click="openForm(null)">{{ $t('page.content.glossary.add') }}</NButton>

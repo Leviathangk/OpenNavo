@@ -50,7 +50,7 @@ func ValidateLocalizedFields(entity, locale string, fields map[string]any) error
 	if !ok {
 		return domain.Rejected("localized_entity_invalid")
 	}
-	if !i18n.Valid(locale) || entity == "desktop_release" && !i18n.ValidDesktop(locale) {
+	if !i18n.Writable(locale) || entity == "desktop_release" && !i18n.ValidDesktop(locale) {
 		return domain.Rejected("locale_invalid")
 	}
 	keys := make([]string, 0, len(fields))
@@ -130,14 +130,14 @@ func (s *Store) WriteLocalized(ctx context.Context, entity string, id, secondary
 	if !ok || len(values) == 0 {
 		return domain.Rejected("i18n_required")
 	}
-	if !i18n.Valid(source) || (entity == "desktop_release" && !i18n.ValidDesktop(source)) {
+	if !i18n.Writable(source) || (entity == "desktop_release" && !i18n.ValidDesktop(source)) {
 		return domain.Rejected("source_locale_invalid")
 	}
 	if _, ok := values[source].(map[string]any); !ok {
 		return domain.Rejected("source_locale_text_required")
 	}
 	for locale, value := range values {
-		if !i18n.Valid(locale) || (entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
+		if !i18n.Writable(locale) || (entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
 			return domain.Rejected("locale_invalid")
 		}
 		if value == nil && locale != source && (entity == "collection" || entity == "feature") {
@@ -208,7 +208,15 @@ func (s *Store) WriteLocalized(ctx context.Context, entity string, id, secondary
 			return err
 		}
 	}
-	return s.ScheduleContentTranslation(ctx, content.Ref{Entity: entity, ID: id, SecondaryID: secondaryID})
+	ref := content.Ref{Entity: entity, ID: id, SecondaryID: secondaryID}
+	// Stamp supplied translations against the canonical, fully merged source, not
+	// the submitted partial JSON. Derived Chinese must never consume a stale row.
+	for locale := range values {
+		if err := s.StampContentHash(ctx, ref, locale); err != nil {
+			return err
+		}
+	}
+	return s.ScheduleContentTranslation(ctx, ref)
 }
 
 // Single-language corrections preserve the source language by default; explicit changes must match the write path.
@@ -219,7 +227,7 @@ func (s *Store) TextSourceLocale(ctx context.Context, entity string, id int64, l
 	} else if entity != "package" {
 		return "", domain.Rejected("localized_entity_invalid")
 	}
-	if !i18n.Valid(locale) || (entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
+	if !i18n.Writable(locale) || (entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
 		return "", domain.Rejected("locale_invalid")
 	}
 	var source string

@@ -12,6 +12,7 @@ import { useAppStore } from '@/store/modules/app';
 import {
   CONTENT_LOCALES,
   CONTENT_LOCALE_OPTIONS,
+  SOURCE_LOCALE_OPTIONS,
   DEFAULT_SOURCE_LOCALE,
   fromView,
   localeName,
@@ -321,21 +322,28 @@ const preview = computed(() => {
           </div>
           <NFormItem :label="$t('page.shared.i18n.sourceLocale')">
             <div class="w-full flex flex-wrap items-center gap-12px">
-              <NSelect v-model:value="model.sourceLocale" :options="CONTENT_LOCALE_OPTIONS" class="w-200px" />
+              <NSelect v-model:value="model.sourceLocale" :options="SOURCE_LOCALE_OPTIONS" class="w-200px" />
               <NText depth="3" class="text-12px">{{ $t('page.shared.i18n.sourceHint') }}</NText>
             </div>
           </NFormItem>
           <NTabs v-model:value="activeLocale" type="line" size="small">
             <NTabPane v-for="code in CONTENT_LOCALES" :key="code" :name="code" :tab="tabLabel(code)">
+              <NText v-if="code === 'zh-Hant'" depth="3">{{ $t('page.shared.i18n.derivedHint') }}</NText>
               <div class="pt-12px">
                 <NFormItem :label="$t('page.content.feature.badge')">
-                  <NInput v-model:value="model.copy[code].badge" :maxlength="12" show-count />
+                  <NInput
+                    :disabled="code === 'zh-Hant'"
+                    v-model:value="model.copy[code].badge"
+                    :maxlength="12"
+                    show-count
+                  />
                 </NFormItem>
                 <NFormItem
                   :label="$t('page.content.feature.featureTitle')"
                   :path="code === model.sourceLocale ? `copy.${code}.title` : undefined"
                 >
                   <NInput
+                    :disabled="code === 'zh-Hant'"
                     v-model:value="model.copy[code].title"
                     :maxlength="30"
                     show-count
@@ -343,10 +351,16 @@ const preview = computed(() => {
                   />
                 </NFormItem>
                 <NFormItem :label="$t('page.content.feature.subtitle')">
-                  <NInput v-model:value="model.copy[code].subtitle" :maxlength="30" show-count />
+                  <NInput
+                    :disabled="code === 'zh-Hant'"
+                    v-model:value="model.copy[code].subtitle"
+                    :maxlength="30"
+                    show-count
+                  />
                 </NFormItem>
                 <NFormItem :label="$t('page.content.feature.body')" :path="`copy.${code}.body`">
                   <NInput
+                    :disabled="code === 'zh-Hant'"
                     v-model:value="model.copy[code].body"
                     type="textarea"
                     :rows="3"
@@ -356,7 +370,12 @@ const preview = computed(() => {
                   />
                 </NFormItem>
                 <NFormItem :label="$t('page.content.feature.ctaLabel')">
-                  <NInput v-model:value="model.copy[code].ctaLabel" :maxlength="10" show-count />
+                  <NInput
+                    :disabled="code === 'zh-Hant'"
+                    v-model:value="model.copy[code].ctaLabel"
+                    :maxlength="10"
+                    show-count
+                  />
                 </NFormItem>
               </div>
             </NTabPane>

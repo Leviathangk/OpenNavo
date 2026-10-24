@@ -8,7 +8,7 @@ import { useAppStore } from '@/store/modules/app';
 import { useRouterPush } from '@/hooks/common/router';
 import { defaultTransform, useNaivePaginatedTable } from '@/hooks/common/table';
 import { compactParams, formatDateTime, isDryRun } from '@/utils/opennavo';
-import { CONTENT_LOCALE_OPTIONS, DEFAULT_SOURCE_LOCALE } from '@/utils/content-locale';
+import { SOURCE_LOCALE_OPTIONS, DEFAULT_SOURCE_LOCALE } from '@/utils/content-locale';
 import { $t } from '@/locales';
 import { ARTICLE_SLUG, ARTICLE_TYPES } from '../article-detail/modules/article';
 import type { ArticleType } from '../article-detail/modules/article';
@@ -204,7 +204,7 @@ async function create() {
             <NSelect v-model:value="draft.type" :options="typeOptions" />
           </NFormItem>
           <NFormItem :label="$t('page.shared.i18n.sourceLocale')">
-            <NSelect v-model:value="draft.sourceLocale" :options="CONTENT_LOCALE_OPTIONS" />
+            <NSelect v-model:value="draft.sourceLocale" :options="SOURCE_LOCALE_OPTIONS" />
           </NFormItem>
         </div>
         <NButton type="primary" :loading="saving" @click="create">{{ text('createSubmit') }}</NButton>

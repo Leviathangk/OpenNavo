@@ -46,7 +46,9 @@ it.each(['desktop_release', 'package'])('limits %s fixes to its supported langua
   });
   const options = wrapper.findAll('option').map(option => option.attributes('value'));
   expect(options).toEqual(
-    (entity === 'desktop_release' ? APP_CONTENT_LOCALES : CONTENT_LOCALES).filter(code => code !== 'en-US')
+    (entity === 'desktop_release' ? APP_CONTENT_LOCALES : CONTENT_LOCALES).filter(
+      code => code !== 'en-US' && code !== 'zh-Hant'
+    )
   );
   const selected = (wrapper.find('select').element as HTMLSelectElement).value;
   expect(options).toContain(selected);

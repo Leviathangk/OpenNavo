@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/facts"
 	"gorm.io/gorm"
 )
@@ -76,6 +77,10 @@ func (s *Store) BackgroundContent(ctx context.Context, label, locale string) (*f
 	return content, err
 }
 func (s *Store) SaveBackgroundContent(ctx context.Context, label string, v facts.BackgroundContent) error {
+	if v.Locale == "zh-Hant" {
+		return domain.Rejected("derived_locale_read_only:zh-Hant:zh-CN")
+	}
+
 	var exists bool
 	if err := s.DB.WithContext(ctx).Raw("SELECT EXISTS(SELECT 1 FROM background_item_packages WHERE label=?)", label).Scan(&exists).Error; err != nil {
 		return err
@@ -91,6 +96,13 @@ func (s *Store) SaveBackgroundContent(ctx context.Context, label string, v facts
 	if err != nil {
 		return err
 	}
-	return s.DB.WithContext(ctx).Exec(`INSERT INTO background_item_content(label,locale,description,item_type,common_paths,evidence) VALUES(?,?,?,?,?::jsonb,?::jsonb)
- ON CONFLICT(label,locale) DO UPDATE SET description=EXCLUDED.description,item_type=EXCLUDED.item_type,common_paths=EXCLUDED.common_paths,evidence=EXCLUDED.evidence`, label, v.Locale, v.Description, v.ItemType, string(paths), string(proof)).Error
+	if err := s.DB.WithContext(ctx).Exec(`INSERT INTO background_item_content(label,locale,description,item_type,common_paths,evidence) VALUES(?,?,?,?,?::jsonb,?::jsonb)
+ ON CONFLICT(label,locale) DO UPDATE SET description=EXCLUDED.description,item_type=EXCLUDED.item_type,common_paths=EXCLUDED.common_paths,evidence=EXCLUDED.evidence`, label, v.Locale, v.Description, v.ItemType, string(paths), string(proof)).Error; err != nil {
+		return err
+	}
+	if v.Locale == "zh-CN" {
+		_, err := s.deriveAuxiliaryTraditional(ctx, "background_item", label)
+		return err
+	}
+	return nil
 }

@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { convertTraditional } from '../../../tooling/scripts/traditional-converter.mjs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -24,6 +25,9 @@ export function validateNotes(notes, version, locale) {
 
 export function loadReleaseNotes(dir, version) {
   if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(version)) throw new Error('Invalid release notes version');
+  const simplified = validateNotes(readFileSync(resolve(dir, version, 'zh-CN.md'), 'utf8'), version, 'zh-CN');
+  const traditional = convertTraditional({ notes: simplified }).notes;
+  writeFileSync(resolve(dir, version, 'zh-Hant.md'), traditional + '\n');
   return Object.fromEntries(
     RELEASE_NOTE_LOCALES.map(locale => [
       locale,

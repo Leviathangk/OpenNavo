@@ -5,7 +5,7 @@ import type { RecordOf } from '@/typings/api/opennavo';
 import MarkdownEditor from '@/components/opennavo/markdown-editor.vue';
 import {
   APP_CONTENT_LOCALES,
-  APP_CONTENT_LOCALE_OPTIONS,
+  APP_SOURCE_LOCALE_OPTIONS,
   DEFAULT_SOURCE_LOCALE,
   fromView,
   localeName,
@@ -94,14 +94,15 @@ async function save() {
       </NFormItem>
       <NFormItem :label="$t('page.shared.i18n.sourceLocale')">
         <div class="w-full flex flex-wrap items-center gap-12px">
-          <NSelect v-model:value="form.sourceLocale" :options="APP_CONTENT_LOCALE_OPTIONS" class="w-200px" />
+          <NSelect v-model:value="form.sourceLocale" :options="APP_SOURCE_LOCALE_OPTIONS" class="w-200px" />
           <NText depth="3" class="text-12px">{{ $t('page.shared.i18n.sourceHint') }}</NText>
         </div>
       </NFormItem>
       <NFormItem :label="$t('page.release.desktop.notes')">
         <NTabs v-model:value="activeLocale" type="line" size="small" class="w-full">
           <NTabPane v-for="code in APP_CONTENT_LOCALES" :key="code" :name="code" :tab="tabLabel(code)">
-            <MarkdownEditor v-model="form.notes[code]" :rows="6" />
+            <NText v-if="code === 'zh-Hant'" depth="3">{{ $t('page.shared.i18n.derivedHint') }}</NText>
+            <MarkdownEditor v-model="form.notes[code]" :disabled="code === 'zh-Hant'" :rows="6" />
           </NTabPane>
         </NTabs>
       </NFormItem>

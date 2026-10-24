@@ -3,7 +3,13 @@ import { computed, reactive, ref } from 'vue';
 import { fetchAnnouncement, updateAnnouncement } from '@/service/api';
 import type { DataOf, Schemas } from '@/typings/api/opennavo';
 import { useAuth } from '@/hooks/business/auth';
-import { CONTENT_LOCALES, CONTENT_LOCALE_OPTIONS, DEFAULT_SOURCE_LOCALE, TRANSLATION_STATUS_TAG, localeName } from '@/utils/content-locale';
+import {
+  CONTENT_LOCALES,
+  SOURCE_LOCALE_OPTIONS,
+  DEFAULT_SOURCE_LOCALE,
+  TRANSLATION_STATUS_TAG,
+  localeName
+} from '@/utils/content-locale';
 import type { ContentLocale } from '@/utils/content-locale';
 import { formatDateTime } from '@/utils/opennavo';
 import { $t } from '@/locales';
@@ -16,7 +22,12 @@ const { hasAuth } = useAuth();
 const editable = computed(() => hasAuth('content:announcement:edit'));
 
 const view = ref<DataOf<'getAnnouncement'> | null>(null);
-const model = reactive<Schemas['AnnouncementUpdate']>({ enabled: false, sourceLocale: DEFAULT_SOURCE_LOCALE, title: '', body: '' });
+const model = reactive<Schemas['AnnouncementUpdate']>({
+  enabled: false,
+  sourceLocale: DEFAULT_SOURCE_LOCALE,
+  title: '',
+  body: ''
+});
 const saving = ref(false);
 
 function fill(data: DataOf<'getAnnouncement'>) {
@@ -59,7 +70,9 @@ async function save() {
 }
 
 const statusType = (status: Schemas['ContentLocaleState']['status']) =>
-  (TRANSLATION_STATUS_TAG as Record<string, 'default' | 'success' | 'info' | 'primary' | 'warning' | 'error'>)[status] ?? 'default';
+  (TRANSLATION_STATUS_TAG as Record<string, 'default' | 'success' | 'info' | 'primary' | 'warning' | 'error'>)[
+    status
+  ] ?? 'default';
 </script>
 
 <template>
@@ -74,7 +87,7 @@ const statusType = (status: Schemas['ContentLocaleState']['status']) =>
             </div>
           </NFormItem>
           <NFormItem :label="$t('page.content.announcement.sourceLocale')">
-            <NSelect v-model:value="model.sourceLocale" :options="CONTENT_LOCALE_OPTIONS" class="w-200px" />
+            <NSelect v-model:value="model.sourceLocale" :options="SOURCE_LOCALE_OPTIONS" class="w-200px" />
           </NFormItem>
           <NFormItem :label="$t('page.content.announcement.titleField')">
             <NInput v-model:value="model.title" :maxlength="200" show-count />

@@ -128,6 +128,8 @@ export const LOCALE_METADATA = {
   },
   'zh-Hant': {
     code: 'zh-Hant',
+    derivedFrom: 'zh-CN',
+    writable: false,
     name: '繁體中文',
     prefix: '/zh-hant',
     hreflang: 'zh-Hant',

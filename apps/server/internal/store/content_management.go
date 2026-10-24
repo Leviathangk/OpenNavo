@@ -80,7 +80,7 @@ func ValidateContentFields(entity string, fields map[string]any) error {
 	return nil
 }
 func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale string, fields map[string]any, source bool) error {
-	if !ref.Valid() || !i18n.Valid(locale) || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
+	if !ref.Valid() || !i18n.Writable(locale) || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
 		return domain.Rejected("content_reference_or_locale_invalid")
 	}
 	if err := ValidateContentFields(ref.Entity, fields); err != nil {

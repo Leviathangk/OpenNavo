@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -60,10 +61,12 @@ INSERT INTO article_revisions(id,article_id,number,source_locale,type,published_
 			source, err := st.ReadContentSource(ctx, ref)
 			require.NoError(t, err)
 			require.Equal(t, "这款应用可以管理文件", source.Fields[fields[entity]])
-			require.Len(t, source.Targets, targetCount(ref))
+			require.Len(t, source.Targets, translationTargetCount(ref))
 			view, err := st.ContentView(ctx, ref)
 			require.NoError(t, err)
-			require.Len(t, view["i18n"], targetCount(ref)+1)
+			require.Len(t, view["i18n"], len(i18n.SiteLocales))
+			require.Contains(t, view["i18n"], "zh-Hant")
+			require.NotContains(t, source.Targets, "zh-Hant")
 			deleteOps := map[string]string{"category": "DeleteCategory", "collection": "DeleteCollection", "feature": "DeleteFeature", "screenshot": "DeletePackageScreenshot"}
 			if op := deleteOps[entity]; op != "" {
 				_, err := svc.Execute(ctx, op, Input{ID: 100, ScreenshotID: 100})
@@ -75,13 +78,13 @@ INSERT INTO article_revisions(id,article_id,number,source_locale,type,published_
 				require.NoError(t, err)
 				source, err = st.ReadContentSource(ctx, ref)
 				require.NoError(t, err)
-				require.Len(t, source.Targets, targetCount(ref))
+				require.Len(t, source.Targets, translationTargetCount(ref))
 			}
 		})
 	}
 }
 
-// Every content type, client release notes included, is translated from its source into the other nine languages.
-func targetCount(content.Ref) int {
-	return 9
+// Traditional is derived; only eight other languages need translation.
+func translationTargetCount(content.Ref) int {
+	return len(i18n.SiteLocales) - 2
 }

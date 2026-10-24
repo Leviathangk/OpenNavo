@@ -23,6 +23,7 @@ describe('Versioned release notes', () => {
       writeFileSync(join(dir, version, 'en-US.md'), en);
       expect(() => loadReleaseNotes(dir, version)).toThrow();
       for (const locale of RELEASE_NOTE_LOCALES) writeFileSync(join(dir, version, `${locale}.md`), en);
+      rmSync(join(dir, version, 'zh-Hant.md'));
       const notes = loadReleaseNotes(dir, version);
       const body = releaseBody({
         version,
@@ -94,7 +95,10 @@ it('registers Markdown files through the CLI without executing their contents', 
     expect(received.sourceLocale).toBe('en-US');
     expect(received.i18n).toEqual(
       Object.fromEntries(
-        RELEASE_NOTE_LOCALES.map(locale => [locale, { notes: locale === 'en-US' ? notes : `${notes}\n- ${locale}` }])
+        RELEASE_NOTE_LOCALES.map(locale => [
+          locale,
+          { notes: locale === 'en-US' ? notes : `${notes}\n- ${locale === 'zh-Hant' ? 'zh-CN' : locale}` }
+        ])
       )
     );
   } finally {

@@ -65,7 +65,7 @@ type NewTask struct {
 
 func (s *Service) Enqueue(ctx context.Context, in NewTask) (Task, error) {
 	var task Task
-	if in.Kind == "" || len(in.Kind) > 80 || in.EntityKey == "" || len(in.EntityKey) > 300 || len(in.DedupeKey) > 500 || in.DedupeKey == "" || in.RuleVersion == "" || math.IsNaN(in.Priority) || math.IsInf(in.Priority, 0) || (in.Locale != "" && !i18n.Valid(in.Locale)) {
+	if (in.Kind == "translate" && in.Locale == "zh-Hant") || in.Kind == "" || len(in.Kind) > 80 || in.EntityKey == "" || len(in.EntityKey) > 300 || len(in.DedupeKey) > 500 || in.DedupeKey == "" || in.RuleVersion == "" || math.IsNaN(in.Priority) || math.IsInf(in.Priority, 0) || (in.Locale != "" && !i18n.Valid(in.Locale)) {
 		return task, ErrInvalid
 	}
 	raw, err := json.Marshal(in.Evidence)
@@ -121,7 +121,7 @@ func (s *Service) ClaimWith(ctx context.Context, owner string, f ClaimFilter) ([
 		attempted := []int64{}
 		for len(out) < limit {
 			var candidates []Task
-			query := tx.Where("(state IN ('open','deferred','leased') OR (kind='hermes_import' AND state='done' AND next_retry_at IS NOT NULL)) AND (expires_at IS NULL OR expires_at>clock_timestamp()) AND ((state='open') OR (kind='hermes_import' AND state='done' AND next_retry_at<=clock_timestamp()) OR (state='deferred' AND next_retry_at<=clock_timestamp()) OR (state='leased' AND lease_until<=clock_timestamp()))").
+			query := tx.Where("NOT (kind='translate' AND locale='zh-Hant')").Where("(state IN ('open','deferred','leased') OR (kind='hermes_import' AND state='done' AND next_retry_at IS NOT NULL)) AND (expires_at IS NULL OR expires_at>clock_timestamp()) AND ((state='open') OR (kind='hermes_import' AND state='done' AND next_retry_at<=clock_timestamp()) OR (state='deferred' AND next_retry_at<=clock_timestamp()) OR (state='leased' AND lease_until<=clock_timestamp()))").
 				Where("NOT EXISTS(SELECT 1 FROM seo_entity_leases e WHERE e.entity_key=(CASE  WHEN seo_tasks.entity_key LIKE 'package:%' THEN 'pkg:' || substring(seo_tasks.entity_key FROM 9)  WHEN seo_tasks.entity_key ~ '^release:[0-9]+$' THEN (SELECT 'pkg:' || package_id FROM releases WHERE id=split_part(seo_tasks.entity_key,':',2)::bigint)  WHEN seo_tasks.entity_key ~ '^screenshot:[0-9]+$' THEN (SELECT 'pkg:' || package_id FROM package_screenshots WHERE id=split_part(seo_tasks.entity_key,':',2)::bigint)  ELSE seo_tasks.entity_key END) AND e.lease_until>clock_timestamp())")
 			if len(attempted) > 0 {
 				query = query.Where("id NOT IN ?", attempted)

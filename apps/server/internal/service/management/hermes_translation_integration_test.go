@@ -33,7 +33,7 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	require.NoError(t, writeSource(original))
 	var count int64
 	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='category:700' AND state='open'").Count(&count).Error)
-	require.EqualValues(t, 9, count, "identical source schedules each locale once")
+	require.EqualValues(t, 8, count, "identical source schedules each locale once")
 	require.NoError(t, st.DB.Table("job_outbox").Where("job_type='translate:content'").Count(&count).Error)
 	require.Zero(t, count)
 	svc := &Service{Store: st}
@@ -95,7 +95,7 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, source.Hash, after.Hash)
 	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='category:700' AND state IN ('open','leased')").Count(&count).Error)
-	require.EqualValues(t, 9, count)
+	require.EqualValues(t, 8, count)
 	require.NoError(t, st.DB.Table("translation_logs").Count(&count).Error)
 	require.Zero(t, count)
 }
@@ -147,12 +147,12 @@ func TestTranslationsLeaveWordingToTheCaller(t *testing.T) {
 		require.Len(t, leased, 1)
 		source, err := st.ReadContentSource(ctx, ref)
 		require.NoError(t, err)
-		current, err := st.TranslationValue(ctx, ref, "zh-Hant")
+		current, err := st.TranslationValue(ctx, ref, "zh-CN")
 		require.NoError(t, err)
 		op := &domain.Operation{RequestID: uuid.NewString(), Name: "writeTranslations", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"*"}, RequiredPermissions: []string{"translation:review"}}
 		result, err := svc.Execute(domain.WithOperation(ctx, op), "WriteTranslations", Input{Body: map[string]any{
 			"ref": map[string]any{"entity": "category", "id": id}, "model": "fixture-model", "taskId": leased[0].ID, "fencing": leased[0].Fencing,
-			"translations": []any{map[string]any{"locale": "zh-Hant", "sourceHash": source.Hash, "expectedRevision": current.Revision, "idempotencyKey": uuid.NewString(),
+			"translations": []any{map[string]any{"locale": "zh-CN", "sourceHash": source.Hash, "expectedRevision": current.Revision, "idempotencyKey": uuid.NewString(),
 				"fields": map[string]any{"name": "檔案整理工具", "description": translated}}},
 		}})
 		require.NoError(t, err)

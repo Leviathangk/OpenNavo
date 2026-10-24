@@ -21,6 +21,7 @@ import { PUBLISH_STATUS_TAG, formatDateTime, isDryRun } from '@/utils/opennavo';
 import {
   CONTENT_LOCALES,
   CONTENT_LOCALE_OPTIONS,
+  SOURCE_LOCALE_OPTIONS,
   DEFAULT_SOURCE_LOCALE,
   fromView,
   localeName,
@@ -374,18 +375,20 @@ const live = computed(() => detail.value?.status === 'published' || detail.value
               </NGrid>
               <NFormItem :label="$t('page.shared.i18n.sourceLocale')">
                 <div class="w-full flex flex-wrap items-center gap-12px">
-                  <NSelect v-model:value="model.sourceLocale" :options="CONTENT_LOCALE_OPTIONS" class="w-200px" />
+                  <NSelect v-model:value="model.sourceLocale" :options="SOURCE_LOCALE_OPTIONS" class="w-200px" />
                   <NText depth="3" class="text-12px">{{ $t('page.shared.i18n.sourceHint') }}</NText>
                 </div>
               </NFormItem>
               <NTabs v-model:value="activeLocale" type="line" size="small" class="mt-8px">
                 <NTabPane v-for="code in CONTENT_LOCALES" :key="code" :name="code" :tab="tabLabel(code)">
+                  <NText v-if="code === 'zh-Hant'" depth="3">{{ $t('page.shared.i18n.derivedHint') }}</NText>
                   <div class="flex-col pt-12px" :data-locale="code">
                     <NFormItem
                       :label="$t('page.content.collectionDetail.titleField')"
                       :path="code === model.sourceLocale ? `i18n.${code}.title` : undefined"
                     >
                       <NInput
+                        :disabled="code === 'zh-Hant'"
                         v-model:value="model.i18n[code].title"
                         :maxlength="40"
                         show-count
@@ -393,10 +396,20 @@ const live = computed(() => detail.value?.status === 'published' || detail.value
                       />
                     </NFormItem>
                     <NFormItem :label="$t('page.content.collectionDetail.subtitle')">
-                      <NInput v-model:value="model.i18n[code].subtitle" :maxlength="80" show-count />
+                      <NInput
+                        :disabled="code === 'zh-Hant'"
+                        v-model:value="model.i18n[code].subtitle"
+                        :maxlength="80"
+                        show-count
+                      />
                     </NFormItem>
                     <NFormItem :label="$t('page.content.collectionDetail.body')">
-                      <MarkdownEditor v-model="model.i18n[code].body" :maxlength="10000" :rows="8" />
+                      <MarkdownEditor
+                        v-model="model.i18n[code].body"
+                        :disabled="code === 'zh-Hant'"
+                        :maxlength="10000"
+                        :rows="8"
+                      />
                     </NFormItem>
                   </div>
                 </NTabPane>

@@ -17,18 +17,20 @@ import (
 	"github.com/opennavo/opennavo/server/internal/cli/migrate"
 	"github.com/opennavo/opennavo/server/internal/cli/seedcmd"
 	"github.com/opennavo/opennavo/server/internal/cli/seede2e"
+	"github.com/opennavo/opennavo/server/internal/cli/traditionalbackfill"
 	"github.com/opennavo/opennavo/server/internal/cli/worker"
 )
 
 // The Dockerfile links each name to this binary.
 var commands = map[string]func(){
-	"api":             api.Main,
-	"db-bootstrap":    dbbootstrap.Main,
-	"desktop-publish": desktoppublish.Main,
-	"migrate":         migrate.Main,
-	"seed":            seedcmd.Main,
-	"seed-e2e":        seede2e.Main,
-	"worker":          worker.Main,
+	"api":                  api.Main,
+	"traditional-backfill": traditionalbackfill.Main,
+	"db-bootstrap":         dbbootstrap.Main,
+	"desktop-publish":      desktoppublish.Main,
+	"migrate":              migrate.Main,
+	"seed":                 seedcmd.Main,
+	"seed-e2e":             seede2e.Main,
+	"worker":               worker.Main,
 }
 
 // The command is the name the binary runs as (/migrate up), or the first argument

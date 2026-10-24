@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/opennavo/opennavo/server/internal/i18n"
+	"github.com/opennavo/opennavo/server/internal/traditional"
 )
 
 type Target struct {
@@ -78,7 +79,7 @@ func TargetLocales(name string) []string {
 func translationLocales(name string, target Target) []string {
 	out := []string{}
 	for _, code := range TargetLocales(name) {
-		if code != "en-US" && code != "zh-CN" && (len(target.Locales) == 0 || contains(target.Locales, code)) {
+		if code != "en-US" && code != "zh-CN" && code != "zh-Hant" && (len(target.Locales) == 0 || contains(target.Locales, code)) {
 			out = append(out, code)
 		}
 	}
@@ -159,6 +160,17 @@ func Run(ctx context.Context, plan Plan, translate Translator, protected []strin
 	result := Result{}
 	for name, target := range plan.Targets {
 		result[name] = map[string]map[string]string{}
+		if contains(TargetLocales(name), traditional.Locale) {
+			fields := map[string]string{}
+			for key, value := range target.Source {
+				text, err := traditional.Text(value, protected)
+				if err != nil {
+					return result, err
+				}
+				fields[key] = text
+			}
+			result[name][traditional.Locale] = fields
+		}
 		for _, code := range translationLocales(name, target) {
 			result[name][code] = map[string]string{}
 			for key := range target.Source {

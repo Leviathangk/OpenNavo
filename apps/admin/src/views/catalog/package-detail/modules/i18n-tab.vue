@@ -26,7 +26,8 @@ const canFix = computed(() => hasAuth('translation:review'));
 
 const sourceLocale = computed<ContentLocale>(() => props.detail.sourceLocale ?? DEFAULT_SOURCE_LOCALE);
 const active = ref<ContentLocale>(sourceLocale.value);
-const editableFor = (code: ContentLocale) => (code === sourceLocale.value ? canEditSource.value : canFix.value);
+const editableFor = (code: ContentLocale) =>
+  code !== 'zh-Hant' && (code === sourceLocale.value ? canEditSource.value : canFix.value);
 
 type TextForm = { displayName: string; summary: string; description: string };
 const forms = reactive(
@@ -98,6 +99,7 @@ async function save(code: ContentLocale) {
     </NText>
     <NTabs v-model:value="active" type="line" size="small">
       <NTabPane v-for="code in CONTENT_LOCALES" :key="code" :name="code" :tab="tabLabel(code)">
+        <NText v-if="code === 'zh-Hant'" depth="3">{{ $t('page.shared.i18n.derivedHint') }}</NText>
         <div class="flex-col gap-12px pt-8px" :data-locale="code">
           <div v-if="views[code]" class="flex flex-wrap items-center gap-8px">
             <NTag size="small" :bordered="false" :type="TRANSLATION_STATUS_TAG[views[code].status]">

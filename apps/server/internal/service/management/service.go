@@ -18,6 +18,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/service/desktop"
 	"github.com/opennavo/opennavo/server/internal/service/taps"
 	"github.com/opennavo/opennavo/server/internal/store"
+	"github.com/opennavo/opennavo/server/internal/traditional"
 	"gorm.io/gorm"
 )
 
@@ -368,6 +369,20 @@ func (s *Service) write(ctx context.Context, in Input, op, entity string, fn fun
 }
 func (s *Service) Execute(ctx context.Context, op string, in Input) (any, error) {
 	ctx = operationContext(ctx, op, in)
+	// CI may carry all ten release-note languages as a consistency assertion.
+	// Discard the asserted derived text; WriteLocalized generates the stored row.
+	if in.CI && op == "CreateDesktopRelease" {
+		if err := verifyDerivedReleaseNotes(in.Body); err != nil {
+			return nil, err
+		}
+	}
+	// Keyword observations, page targets and topic nominations describe locales;
+	// their strict request schemas do not accept authored translation text.
+	if op != "UpsertSeoKeywords" && op != "NominateSeoTopic" && !strings.HasPrefix(op, "Get") && !strings.HasPrefix(op, "List") && !strings.HasPrefix(op, "Preview") {
+		if in.Locale == "zh-Hant" || derivedWrite(in.Body) {
+			return nil, domain.Rejected("derived_locale_read_only:zh-Hant:zh-CN")
+		}
+	}
 	domain.CurrentOperation(ctx).WebBaseURL = s.Config.WebBaseURL
 	// Control operations and batch translations have their own permission and
 	// transaction boundaries; task queue operations also verify lease ownership.
@@ -586,4 +601,59 @@ func redact(value any) any {
 	default:
 		return value
 	}
+}
+
+// Reject explicit derived text at the shared API/MCP boundary, including nested
+// localized maps and bulk operations. Read filters and SEO locale lists remain valid.
+func derivedWrite(value any) bool {
+	switch v := value.(type) {
+	case map[string]any:
+		for k, x := range v {
+			if k == "zh-Hant" {
+				return true
+			}
+			if (k == "locale" || k == "sourceLocale") && func() bool { text, ok := x.(string); return ok && text == "zh-Hant" }() {
+				return true
+			}
+			if derivedWrite(x) {
+				return true
+			}
+		}
+	case []any:
+		for _, x := range v {
+			if derivedWrite(x) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func verifyDerivedReleaseNotes(body map[string]any) error {
+	values, ok := body["i18n"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	supplied, present := values["zh-Hant"]
+	if !present {
+		return nil
+	}
+	cn, ok := values["zh-CN"].(map[string]any)
+	if !ok {
+		return domain.Rejected("simplified_notes_required")
+	}
+	text, ok := cn["notes"].(string)
+	if !ok {
+		return domain.Rejected("simplified_notes_required")
+	}
+	expected, err := traditional.Text(text, nil)
+	if err != nil {
+		return err
+	}
+	target, ok := supplied.(map[string]any)
+	if !ok || len(target) != 1 || target["notes"] != expected {
+		return domain.Rejected("derived_release_notes_mismatch")
+	}
+	delete(values, "zh-Hant")
+	return nil
 }

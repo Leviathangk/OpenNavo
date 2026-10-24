@@ -3900,9 +3900,9 @@
     {
       "ecosystem": "Go",
       "name": "github.com/yuin/goldmark",
-      "version": "v1.8.2",
+      "version": "v1.8.6",
       "license": "MIT",
-      "url": "https://pkg.go.dev/github.com/yuin/goldmark@v1.8.2"
+      "url": "https://pkg.go.dev/github.com/yuin/goldmark@v1.8.6"
     },
     {
       "ecosystem": "Go",
@@ -4526,6 +4526,13 @@
       "version": "7.0.0",
       "license": "MIT",
       "url": "https://github.com/mas-cli/mas/tree/v7.0.0"
+    },
+    {
+      "ecosystem": "Native",
+      "name": "OpenCC dictionaries",
+      "version": "1.1.9",
+      "license": "Apache-2.0",
+      "url": "https://github.com/BYVoid/OpenCC/tree/ver.1.1.9"
     },
     {
       "ecosystem": "Native",

@@ -94,6 +94,9 @@ func TestNominatedTopicBecomesATopicTask(t *testing.T) {
 		body := map[string]any{"idempotencyKey": uuid.NewString(), "keyword": "batch rename files mac", "reason": "Recurring question with no guide"}
 		return svc.Execute(domain.WithOperation(ctx, agentOperation("nominateSeoTopic")), "NominateSeoTopic", Input{Key: slug, Body: body})
 	}
+	traditionalResult, err := svc.Execute(domain.WithOperation(ctx, agentOperation("nominateSeoTopic")), "NominateSeoTopic", Input{Key: "traditional-topic", Body: map[string]any{"idempotencyKey": uuid.NewString(), "keyword": "軟體", "reason": "Missing guide", "locale": "zh-Hant"}})
+	require.NoError(t, err)
+	require.Equal(t, "zh-Hant", *traditionalResult.(seotasks.Task).Locale)
 	result, err := nominate("batch-rename-files-mac")
 	require.NoError(t, err)
 	task := result.(seotasks.Task)

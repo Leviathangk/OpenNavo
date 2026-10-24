@@ -20,7 +20,9 @@ const pages: PageMessages = {
     },
     i18n: {
       sourceLocale: 'Source language',
-      sourceHint: 'Write the source text only; AI translates the other languages',
+      sourceHint:
+        'Write source text; other languages are translated automatically. Traditional Chinese is derived from Simplified Chinese.',
+      derivedHint: 'Automatically generated from Simplified Chinese; read-only',
       required: 'Enter the source text',
       translations: 'Other languages',
       translationsSummary:

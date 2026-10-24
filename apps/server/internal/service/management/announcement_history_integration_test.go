@@ -58,7 +58,7 @@ func TestAnnouncementHistoryPreservesLegacySourceLocale(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, sourceLocale, source.SourceLocale)
 				require.Equal(t, "这款应用可以管理文件", source.Fields["title"])
-				require.Len(t, source.Targets, targetCount(ref))
+				require.Len(t, source.Targets, translationTargetCount(ref))
 
 				var saved json.RawMessage
 				column := "after_data"

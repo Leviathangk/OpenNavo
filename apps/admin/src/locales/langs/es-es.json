@@ -278,11 +278,12 @@
       },
       "i18n": {
         "sourceLocale": "Idioma de origen",
-        "sourceHint": "Escribe solo el texto original; la IA traducirá los demás idiomas",
+        "sourceHint": "Escribe el texto original; los demás idiomas se traducen automáticamente. El chino tradicional se genera a partir del simplificado.",
         "required": "Introduce el texto original",
         "translations": "Otros idiomas",
         "translationsSummary": "{done}/{total} idioma traducido · despliega para editar | {done}/{total} idiomas traducidos · despliega para editar",
-        "autoPlaceholder": "Déjalo vacío para usar la traducción de IA"
+        "autoPlaceholder": "Déjalo vacío para usar la traducción de IA",
+        "derivedHint": "Generado automáticamente del chino simplificado; solo lectura"
       },
       "changelogStatus": {
         "none": "Ninguno",

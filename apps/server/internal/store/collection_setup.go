@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 
+	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/facts"
 )
 
@@ -27,9 +29,20 @@ func (s *Store) CollectionCriteria(ctx context.Context, slug, locale string) (*C
 	return out, err
 }
 func (s *Store) SaveCollectionCriteria(ctx context.Context, id int64, v CollectionCriteria) error {
+	if v.Locale == "zh-Hant" {
+		return domain.Rejected("derived_locale_read_only:zh-Hant:zh-CN")
+	}
+
 	proof, err := json.Marshal(v.Evidence)
 	if err != nil {
 		return err
 	}
-	return s.DB.WithContext(ctx).Exec(`INSERT INTO collection_setup_criteria(collection_id,locale,criteria,evidence) VALUES(?,?,?,?::jsonb) ON CONFLICT(collection_id,locale) DO UPDATE SET criteria=EXCLUDED.criteria,evidence=EXCLUDED.evidence`, id, v.Locale, v.Criteria, string(proof)).Error
+	if err := s.DB.WithContext(ctx).Exec(`INSERT INTO collection_setup_criteria(collection_id,locale,criteria,evidence) VALUES(?,?,?,?::jsonb) ON CONFLICT(collection_id,locale) DO UPDATE SET criteria=EXCLUDED.criteria,evidence=EXCLUDED.evidence`, id, v.Locale, v.Criteria, string(proof)).Error; err != nil {
+		return err
+	}
+	if v.Locale == "zh-CN" {
+		_, err := s.deriveAuxiliaryTraditional(ctx, "collection_setup", strconv.FormatInt(id, 10))
+		return err
+	}
+	return nil
 }

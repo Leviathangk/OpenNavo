@@ -2,7 +2,7 @@
 import { computed, watch } from 'vue';
 import type { FormItemRule } from 'naive-ui';
 import { $t } from '@/locales';
-import { CONTENT_LOCALES, CONTENT_LOCALE_OPTIONS, TRANSLATION_STATUS_TAG, localeName } from '@/utils/content-locale';
+import { CONTENT_LOCALES, SOURCE_LOCALE_OPTIONS, TRANSLATION_STATUS_TAG, localeName } from '@/utils/content-locale';
 import type { ContentLocale, LocalizedStatuses, LocalizedTexts } from '@/utils/content-locale';
 
 defineOptions({ name: 'LocalizedFields' });
@@ -75,7 +75,7 @@ function tabLabel(code: ContentLocale) {
 <template>
   <NFormItem :label="$t('page.shared.i18n.sourceLocale')">
     <div class="w-full flex flex-wrap items-center gap-12px">
-      <NSelect v-model:value="sourceLocale" :options="CONTENT_LOCALE_OPTIONS" class="w-200px" />
+      <NSelect v-model:value="sourceLocale" :options="SOURCE_LOCALE_OPTIONS" class="w-200px" />
       <NText depth="3" class="text-12px">{{ $t('page.shared.i18n.sourceHint') }}</NText>
     </div>
   </NFormItem>
@@ -98,19 +98,33 @@ function tabLabel(code: ContentLocale) {
   <NFormItem v-if="showTranslations" :label="$t('page.shared.i18n.translations')">
     <NCollapse class="w-full">
       <NCollapseItem
-        :title="$t('page.shared.i18n.translationsSummary', { done: translated, total: others.length }, { plural: others.length })"
+        :title="
+          $t(
+            'page.shared.i18n.translationsSummary',
+            { done: translated, total: others.length },
+            { plural: others.length }
+          )
+        "
         name="others"
       >
         <NTabs type="line" size="small" animated>
           <NTabPane v-for="tab in others" :key="tab.code" :name="tab.code" :tab="tabLabel(tab.code)">
             <div class="flex-col gap-10px">
-              <NTag v-if="tab.status" size="small" :bordered="false" :type="TRANSLATION_STATUS_TAG[tab.status]" class="self-start">
+              <NText v-if="tab.code === 'zh-Hant'" depth="3">{{ $t('page.shared.i18n.derivedHint') }}</NText>
+              <NTag
+                v-if="tab.status"
+                size="small"
+                :bordered="false"
+                :type="TRANSLATION_STATUS_TAG[tab.status]"
+                class="self-start"
+              >
                 {{ $t(`page.shared.translationStatus.${tab.status}`) }}
               </NTag>
               <div v-for="field in fields" :key="field.key" class="flex-col gap-4px">
                 <NText depth="3" class="text-12px">{{ field.label }}</NText>
                 <NInput
                   :value="valueOf(tab.code, field.key)"
+                  :readonly="tab.code === 'zh-Hant'"
                   :type="field.type === 'textarea' ? 'textarea' : 'text'"
                   :rows="field.rows ?? 2"
                   :maxlength="field.maxlength"

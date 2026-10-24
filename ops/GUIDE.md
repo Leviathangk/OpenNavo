@@ -342,3 +342,84 @@ proxy such as Nginx sits in front of Caddy, that proxy is the peer of every
 request, and the unchanged filter would remove every country. In that layout,
 remove the header at the outer proxy for peers outside Cloudflare, or admit
 only Cloudflare at the origin firewall.
+
+## Derived Traditional Chinese
+
+`zh-Hant` remains a readable site/desktop locale, but all external content writes
+(including MCP, batch imports, source-language selection and admin corrections)
+must use another locale. Valid `zh-CN` text is the only input to Traditional
+Chinese. English or other source content must acquire a fresh Simplified Chinese
+translation first. Saving or correcting Simplified Chinese regenerates the
+Traditional row in the same transaction, with normal cache/page invalidation.
+Removing or invalidating Simplified Chinese withdraws its derived row.
+
+The repository generator uses the same embedded OpenCC 1.1.9 dictionaries and
+conversion code as the server, without an LLM, network call or native dependency:
+
+```sh
+node tooling/scripts/derive-traditional.mjs
+node tooling/scripts/derive-traditional.mjs --check
+```
+
+Interface synchronization and the root frontend build/generation commands run
+the generator. The frontend lint gate checks the generated files. Desktop release
+notes derive `zh-Hant.md` from `zh-CN.md` when loaded, and CI still registers ten
+languages. CI's Traditional notes are checked against the converter then discarded;
+the server creates the stored row. MCP has no such assertion exception.
+
+Migration 00102 retires unfinished independent Traditional translation tasks,
+fences outstanding leases, and creates `derived_traditional` receipts. It does
+not drop historical completed tasks or language rows. After the normal CI gates
+and a database backup, the new worker backfills in pages of 128 candidates, one
+object per transaction; retries are idempotent. Invalid derived content (including
+length expansion beyond field limits) is skipped and counted as `<entity>:failed`;
+later rows continue. Correct the source and rerun the backfill to retry these rows.
+Infrastructure failures retry after one minute. Ordinary translation backfill runs
+independently, so these retries cannot block it.
+The first prior row (including manual text), Simplified content hash, converter
+version and latest generated row are retained. Missing/stale Simplified text is
+not translated from English by the converter. Unpublished article revisions are
+handled when published, not exposed by the backfill.
+
+The server image also provides an explicit preview/apply command (credentials
+come only from the deployment environment):
+
+```sh
+/traditional-backfill             # rolls back each preview transaction
+/traditional-backfill --apply     # resumable backfill
+```
+
+For rollback, stop the new worker and quiesce content writes first. Preview with
+`/traditional-backfill --rollback`, then use `--rollback --apply` to restore only
+rows still matching their last generated snapshot; conflicts preserve later
+edits. Deleted parents are counted as conflicts, without stopping later restores.
+The rollback receipt is retained. Switch back to the prior verified image
+before restarting workers; running the new worker again intentionally regenerates
+Traditional Chinese. Do not automatically reopen retired translation tasks.
+
+Dictionary upgrades require reviewing `internal/traditional/data/upstream.json`,
+updating its checksums and the converter version, regenerating language packs,
+and running converter, migration/rollback, interface replay and write-guard tests.
+The data license and distribution notices are included in the normal inventory.
+
+Proof-backed background-item descriptions and collection setup criteria also derive
+from Simplified Chinese on save and during backfill. Only their prose is converted;
+paths, item types and evidence (including validity) are copied unchanged. Their
+receipts participate in the same preview and conditional rollback commands.
+Restoring an archived article or reverting to an older published revision schedules
+its translations and derives Traditional Chinese after the revision becomes live.
+
+After a completed rollback, the next derivation starts a new backup cycle using
+the then-current Traditional row, including any intervening manual changes.
+Repeated derivations within an active cycle preserve that cycle's first backup.
+
+A rollback receipt whose original and generated states are both absent completes
+normally when the row is still absent. A newly created row remains a conflict.
+Code literals are protected using a CommonMark AST (including quote/list containers
+and indented blocks); compatibility tests compare code tokens with the UI's
+markdown-it parser.
+
+Markdown conversion edits only AST prose segments, preserving the remaining source
+bytes. This includes complete fences, inline code delimiters, link destinations
+and reference definitions. Implicit reference labels remain unchanged because they
+are lookup keys; ordinary prose and explicit link labels are converted.

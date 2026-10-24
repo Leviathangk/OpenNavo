@@ -30,14 +30,14 @@ func TestTranslationBackfillQueuesMissingSiteLanguagesOncePerLanguageSet(t *test
 	queued, ran, err := st.BackfillTranslationTasksForLocales(ctx)
 	require.NoError(t, err)
 	require.True(t, ran)
-	require.Equal(t, 8, queued["category"])
-	require.Equal(t, 9, queued["package"])
+	require.Equal(t, 7, queued["category"])
+	require.Equal(t, 8, queued["package"])
 	var rows []struct {
 		EntityKey, Locale string
 		Priority          float64
 	}
 	require.NoError(t, st.DB.Raw("SELECT entity_key,locale,priority FROM seo_tasks WHERE kind='translate' ORDER BY entity_key,locale").Scan(&rows).Error)
-	require.Len(t, rows, 17)
+	require.Len(t, rows, 15)
 	for _, row := range rows {
 		require.NotEqual(t, "package:903", row.EntityKey, "hidden packages are not translated")
 		if row.EntityKey == "category:901" {
