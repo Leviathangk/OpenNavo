@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "lockDigests": {
     "pnpm-lock.yaml": "b827db50eb63062d2a53f0ce5f6939635a249f6a0328affb04b3b25e0be011d8",
-    "apps/server/go.mod": "ab09e642d5fc7b856a24e0160e90e02791c7a278442cc20aed657d72194a3802",
+    "apps/server/go.mod": "16bca81a4ca7e40466341f284a329a13d62fe0f6f852b0e9f0483bc6d0ee4806",
     "apps/server/go.sum": "0aef1b3864eb8ea96a36b3b4b709abc96959d6b200584c4eef841d72ebbcb6a2",
     "apps/mcp/uv.lock": "7cf1c9389ae8f28702b943baabd723ab3badbc21fbfcee5d816cb2b431718220",
     "apps/desktop/src-tauri/Cargo.lock": "e68ee8f8254068d4996af4517485dedb8b25ea4c4926e80a2ab00f622e3e3f4c",
@@ -591,6 +591,30 @@
           "source": "LICENSE",
           "path": "licenses/0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d.txt",
           "sha256": "0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d"
+        }
+      ]
+    },
+    {
+      "ecosystem": "Go",
+      "name": "github.com/hashicorp/golang-lru/v2",
+      "version": "v2.0.7",
+      "license": "MPL-2.0",
+      "url": "https://pkg.go.dev/github.com/hashicorp/golang-lru/v2@v2.0.7",
+      "scope": "runtime",
+      "evidence": {
+        "source": "Go module download verified by go.sum / checksum database",
+        "sum": "h1:a+bsQ5rvGLjzHuww6tVxozPZFVghXaHOwFs4luLUK2k="
+      },
+      "licenseFiles": [
+        {
+          "source": "LICENSE",
+          "path": "licenses/6c7088eb877b5d7e6e0e9d27e822ea25fcda2e83f9eba59bb5f1418a656796e0.txt",
+          "sha256": "6c7088eb877b5d7e6e0e9d27e822ea25fcda2e83f9eba59bb5f1418a656796e0"
+        },
+        {
+          "source": "simplelru/LICENSE_list",
+          "path": "licenses/6d462371baa8649492b06f51f154dba9b25d2ac9548369b8b4fdbbbb85f2f75d.txt",
+          "sha256": "6d462371baa8649492b06f51f154dba9b25d2ac9548369b8b4fdbbbb85f2f75d"
         }
       ]
     },
