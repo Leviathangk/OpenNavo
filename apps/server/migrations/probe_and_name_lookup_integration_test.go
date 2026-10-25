@@ -13,13 +13,12 @@ import (
 )
 
 func TestProbeAndConcurrentNameLookupUpgradeRetry(t *testing.T) {
-	st := testutil.NewSEOStore(t)
+	st := testutil.NewSEOStoreAtVersion(t, 105)
 	ctx := context.Background()
 	db, err := st.DB.DB()
 	require.NoError(t, err)
 	goose.SetBaseFS(migrations.Files)
 	require.NoError(t, goose.SetDialect("postgres"))
-	require.NoError(t, goose.DownToContext(ctx, db, ".", 105))
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash)
  VALUES('cask','name-one','name-one','homebrew/cask','Same','1','1','{}','fixture'),('cask','name-two','name-two','homebrew/cask','Same','1','1','{}','fixture')`).Error)
 	// Failed concurrent creation leaves an invalid index, as a deployment interruption can.

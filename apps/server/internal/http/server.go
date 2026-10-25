@@ -148,6 +148,7 @@ func New(cfg config.Config, logger *slog.Logger, ready Readiness, deps ...Depend
 	if len(deps) > 0 && deps[0].Admin != nil {
 		adminService = deps[0].Admin
 	}
+	adminService.RegisterOAuth(engine)
 	if adminService.Auth != nil {
 		var limiter *middleware.RateLimiter
 		if len(deps) > 0 {

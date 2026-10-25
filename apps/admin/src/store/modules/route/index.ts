@@ -214,7 +214,9 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
     if (!error) {
       const { routes, home } = data;
 
-      addAuthRoutes(routes);
+      // Account-owned OAuth grants are available independently of menu permissions.
+      const consentRoute = createStaticRoutes().authRoutes.find(route => route.name === 'oauth-consent');
+      addAuthRoutes(consentRoute ? [...routes, consentRoute] : routes);
 
       handleConstantAndAuthRoutes();
 

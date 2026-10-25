@@ -103,3 +103,36 @@ async def test_stdio_uses_same_live_policy(backend: Backend) -> None:
         denied = await client.call_tool("category_delete", {"id": 1}, raise_on_error=False)
         assert denied.is_error
     assert {op for op, _ in backend.calls} == {"introspectAgentToken"}
+
+
+async def test_oauth_challenge_uses_configured_issuer(backend: Backend) -> None:
+    server = create_server(backend.settings, backend.client, authenticator=backend.auth)
+    app = server.http_app(path="/mcp", stateless_http=True)
+    wrapped = PeerMiddleware(app, [], "https://admin.example.test")
+    async with app.router.lifespan_context(app):
+        async with httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=wrapped), base_url="http://test"
+        ) as client:
+            result = await client.post("/mcp", json={})
+            assert result.status_code == 401
+            assert result.headers["www-authenticate"] == (
+                'Bearer resource_metadata="https://admin.example.test'
+                '/.well-known/oauth-protected-resource/mcp"'
+            )
+            assert result.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize(
+    "issuer",
+    [
+        "http://example.test",
+        "https://user:pass@example.test",
+        "https://example.test/path",
+        "https://example.test?x=1",
+    ],
+)
+def test_oauth_issuer_rejects_non_origin(issuer: str) -> None:
+    with pytest.raises(ValueError):
+        Settings.model_validate(
+            {"AGENT_GATEWAY_SECRET": "test-only-" * 4, "OPENNAVO_OAUTH_ISSUER": issuer}
+        )

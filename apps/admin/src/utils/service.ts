@@ -1,5 +1,15 @@
 import json5 from 'json5';
 
+/** Relative service paths use the page origin and must never become proxy targets. */
+export function getServiceOrigin(baseURL: string): string | null {
+  try {
+    const url = new URL(baseURL);
+    return ['http:', 'https:'].includes(url.protocol) ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Create service config by current env
  *
@@ -53,11 +63,12 @@ export function getServiceBaseURL(env: Env.ImportMeta, isProxy: boolean) {
 
   // No other backend services (OtherBaseURLKey is never); retain upstream structure for upgrades.
   other.forEach(item => {
-    (otherBaseURL as Record<string, string>)[item.key] = isProxy ? item.proxyPattern : item.baseURL;
+    (otherBaseURL as Record<string, string>)[item.key] =
+      isProxy && getServiceOrigin(item.baseURL) ? item.proxyPattern : item.baseURL;
   });
 
   return {
-    baseURL: isProxy ? createProxyPattern() : baseURL,
+    baseURL: isProxy && getServiceOrigin(baseURL) ? createProxyPattern() : baseURL,
     otherBaseURL
   };
 }

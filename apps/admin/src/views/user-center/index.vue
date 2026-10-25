@@ -5,6 +5,7 @@ import { changePassword, fetchProfile, updateProfile } from '@/service/api';
 import { useAuthStore } from '@/store/modules/auth';
 import { REG_EMAIL } from '@/constants/reg';
 import { $t } from '@/locales';
+import OAuthGrants from './modules/oauth-grants.vue';
 
 defineOptions({ name: 'UserCenter' });
 
@@ -139,5 +140,6 @@ async function savePassword() {
         </div>
       </NCard>
     </NGi>
+    <NGi span="24"><OAuthGrants /></NGi>
   </NGrid>
 </template>

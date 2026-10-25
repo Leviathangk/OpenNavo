@@ -219,6 +219,7 @@
     }
   },
   "route": {
+    "oauth-consent": "Conectar ao OpenNavo",
     "403": "Sem permissão",
     "404": "Página não encontrada",
     "500": "Erro no servidor",

@@ -261,6 +261,15 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'oauth-consent',
+    path: '/oauth-consent',
+    component: 'layout.blank$view.oauth-consent',
+    meta: {
+      title: 'OpenNavo',
+      hideInMenu: true
+    }
+  },
+  {
     name: 'ops',
     path: '/ops',
     component: 'layout.base',

@@ -156,6 +156,20 @@ func (s *Service) agentOperation(ctx context.Context, op string, in Input) (any,
 				return map[string]any{"token": token, "plaintext": plain}, err
 			}
 			if op == "RevokeAgentToken" {
+				// Revoking any OAuth access token also revokes its refresh family.
+				// Lock the grant before tokens, matching the OAuth rotation order.
+				var grantID int64
+				if err := st.DB.WithContext(ctx).Raw(`SELECT g.id FROM mcp_oauth_grants g JOIN agent_tokens t ON t.oauth_grant_id=g.id WHERE t.id=? FOR UPDATE OF g`, in.ID).Scan(&grantID).Error; err != nil {
+					return nil, err
+				}
+				if grantID != 0 {
+					if err := st.DB.WithContext(ctx).Exec(`UPDATE mcp_oauth_grants SET revoked_at=COALESCE(revoked_at,now()) WHERE id=?`, grantID).Error; err != nil {
+						return nil, err
+					}
+					if err := st.DB.WithContext(ctx).Exec(`UPDATE agent_tokens SET revoked_at=COALESCE(revoked_at,now()),updated_at=now() WHERE oauth_grant_id=?`, grantID).Error; err != nil {
+						return nil, err
+					}
+				}
 				fields = map[string]any{"revoked_at": gorm.Expr("COALESCE(revoked_at,now())"), "updated_at": s.now()}
 			}
 			r := st.DB.WithContext(ctx).Table("agent_tokens").Where("id=?", in.ID).Updates(fields)

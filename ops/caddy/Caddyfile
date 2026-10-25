@@ -98,6 +98,16 @@
 	}
 	import security
 	encode zstd gzip
+	@oauth path /oauth/* /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/mcp
+	handle @oauth {
+		reverse_proxy {
+			dynamic a {
+				name api-proxy
+				port 8080
+				refresh 10s
+			}
+		}
+	}
 	handle /mcp {
 		request_body {
 			max_size 2MB

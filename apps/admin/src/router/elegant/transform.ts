@@ -185,6 +185,7 @@ const routeMap: RouteMap = {
   "dashboard": "/dashboard",
   "iframe-page": "/iframe-page/:url",
   "login": "/login/:module(pwd-login)?",
+  "oauth-consent": "/oauth-consent",
   "ops": "/ops",
   "ops_agent-log": "/ops/agent-log",
   "ops_feedback": "/ops/feedback",

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     host: str = Field("127.0.0.1", alias="OPENNAVO_MCP_HOST")
     port: int = Field(8790, alias="OPENNAVO_MCP_PORT", ge=1024, le=65535)
     path: str = Field("/mcp", alias="OPENNAVO_MCP_PATH")
+    oauth_issuer: str | None = Field(None, alias="OPENNAVO_OAUTH_ISSUER")
     transport: Literal["http", "stdio"] = Field("http", alias="OPENNAVO_MCP_TRANSPORT")
     token: SecretStr | None = Field(None, alias="OPENNAVO_TOKEN")
     trusted_proxies: list[str] = Field(default_factory=list, alias="OPENNAVO_MCP_TRUSTED_PROXIES")
@@ -40,3 +41,21 @@ class Settings(BaseSettings):
         if value != "/mcp":
             raise ValueError("MCP path must be /mcp")
         return value
+
+    @field_validator("oauth_issuer")
+    @classmethod
+    def public_issuer(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("OAuth issuer must be an HTTPS origin")
+        return value.rstrip("/")

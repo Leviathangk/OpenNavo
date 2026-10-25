@@ -11,7 +11,7 @@ import uvicorn
 from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from opennavo_mcp.agent_client import AgentClient
 from opennavo_mcp.auth import PEER, Authenticator, Credential, GatewayVerifier, credential
@@ -23,8 +23,9 @@ from opennavo_mcp.tools.runtime import AdapterTool
 
 
 class PeerMiddleware:
-    def __init__(self, app: ASGIApp, trusted: list[str]):
+    def __init__(self, app: ASGIApp, trusted: list[str], oauth_issuer: str | None = None):
         self.app = app
+        self.oauth_issuer = oauth_issuer
         self.trusted = [ipaddress.ip_network(value) for value in trusted]
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -47,8 +48,35 @@ class PeerMiddleware:
         except (ValueError, UnicodeError):
             await JSONResponse({"error": "invalid peer"}, status_code=400)(scope, receive, send)
             return
+
+        async def oauth_send(message: Message) -> None:
+            if (
+                self.oauth_issuer
+                and scope.get("path") == "/mcp"
+                and message["type"] == "http.response.start"
+                and message["status"] == 401
+            ):
+                message = dict(message)
+                headers = [
+                    (k, v)
+                    for k, v in message.get("headers", [])
+                    if k.lower() not in {b"www-authenticate", b"cache-control"}
+                ]
+                challenge = (
+                    f'Bearer resource_metadata="{self.oauth_issuer}'
+                    '/.well-known/oauth-protected-resource/mcp"'
+                )
+                headers.extend(
+                    [
+                        (b"www-authenticate", challenge.encode("ascii")),
+                        (b"cache-control", b"no-store"),
+                    ]
+                )
+                message["headers"] = headers
+            await send(message)
+
         try:
-            await self.app(scope, receive, send)
+            await self.app(scope, receive, oauth_send)
         finally:
             PEER.reset(marker)
 
@@ -109,7 +137,7 @@ def main() -> None:
     else:
         app = server.http_app(path=settings.path, stateless_http=True)
         uvicorn.run(
-            PeerMiddleware(app, settings.trusted_proxies),
+            PeerMiddleware(app, settings.trusted_proxies, settings.oauth_issuer),
             host=settings.host,
             port=settings.port,
             proxy_headers=False,

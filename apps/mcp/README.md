@@ -39,3 +39,80 @@ identity baselines or complete editorial metadata. Apply migration **00098** wit
 it adds Link edit revisions, removes candidate download/identity triggers and preserves exact keyword variants as separate
 observations. Previously collapsed keyword variants must be reimported from their source.
 Deploy the API and MCP generated contract together; source changes do not update a running service.
+
+## OAuth connections
+
+The API now provides an OAuth authorization server alongside existing manually issued
+Bearer tokens. Apply migration **00108** before starting the updated API. Deploy the
+API, admin UI, MCP service and Caddy configuration together after the normal CI gates.
+`ADMIN_ORIGIN` is the canonical authorization-server origin; production Compose sets
+`OPENNAVO_OAUTH_ISSUER=https://${ADMIN_DOMAIN}` on MCP so its 401 challenge points to
+the resource metadata. Keep these origins identical. Direct/local MCP instances can
+omit `OPENNAVO_OAUTH_ISSUER` to retain manual-token-only discovery. OAuth production
+endpoints require HTTPS; local admin development with an absolute backend URL uses
+the Vite `/oauth/` proxy. A relative backend URL such as `/admin-api` retains same-origin
+routing (including `dev:prod`); it does not create a proxy with an invented origin.
+
+Clients discover `/.well-known/oauth-protected-resource/mcp` (also available at
+`/.well-known/oauth-protected-resource`) and `/.well-known/oauth-authorization-server`.
+They register a public client at `POST /oauth/register`, then use authorization code
+flow with PKCE S256 at `/oauth/authorize` and `/oauth/token`. Registration accepts
+`client_name`, `redirect_uris`, optional `scope`, and `token_endpoint_auth_method: none`.
+Only authorization-code/refresh-token grants and the `code` response type are supported.
+A previously registered client ID can be reused. Client ID Metadata Documents and
+confidential-client authentication are not advertised or implemented in this version.
+
+Redirect URIs must match a registered value exactly, including loopback ports. HTTPS
+callbacks and HTTP loopback callbacks are supported; wildcard, fragment and embedded
+credential callbacks are rejected. The authorization and token requests must include
+`resource` equal to the canonical `ADMIN_ORIGIN` plus `/mcp`. Token and revocation
+requests use form encoding, not JSON. State is returned unchanged and the authorization
+response includes `iss`. Duplicate parameters are rejected.
+
+Users log into the existing admin UI and explicitly select permissions on
+`/oauth-consent`. Only read permissions start selected; deletion is separately opt-in.
+The user's current permissions, requested scopes, grant scopes and existing Agent role
+permissions all constrain access. The existing automation-tuning/write separation also
+applies. OAuth clients and Agent identities have separate IDs; each consent creates a
+separate Agent identity for attribution, quotas and administrative disabling.
+
+Authorization codes expire after 5 minutes and are single-use. Access tokens expire
+after at most 15 minutes. Refresh tokens rotate on every exchange, with an absolute
+30-day grant lifetime. Reusing a consumed code (with its correct PKCE binding) or refresh
+token revokes the whole grant, including issued access tokens. Refresh with narrower
+scopes narrows the grant permanently. Only credential hashes are stored. Password/session
+version changes, owner disabling, permission removal, the global Agent switch and Agent
+client disabling are rechecked; OAuth does not bypass existing audit or quotas. OAuth usage is keyed by the stable
+OAuth grant ID (in a namespace separate from manual tokens), so rotating access tokens
+does not reset call, write or LLM quotas. Manual tokens retain their existing counters.
+Deleting a human owner unlinks the owner from retained grant history; access-token
+checks and refresh exchange reject grants without a live owner.
+
+Users can revoke grants in **Profile → Connected applications**. The list uses ID
+cursor pagination: `GET /oauth/grants` returns `{items, nextCursor}` with up to 100
+records; pass the returned cursor as `before` to reach older grants. The UI's **Load
+more** action preserves previously loaded records, including after revocation.
+Clients can submit
+`client_id` and `token` to `POST /oauth/revoke`. Revoking an OAuth access token through
+existing Agent administration also revokes the grant and all its refresh tokens. MCP
+may cache discovery/introspection for up to 25 seconds; backend business calls always
+recheck authorization. Manual Agent tokens continue to work as before.
+
+At the edge, allow machine access to `/mcp`, the two well-known metadata routes and
+`/oauth/register`, `/oauth/token`, `/oauth/revoke`; do not serve SPA HTML, interactive
+bot challenges, redirects to an edge login, or empty error bodies there. Keep edge
+rate limits in place. The application additionally rate-limits registration by source
+IP and limits request sizes. Do not log authorization query strings, form bodies or
+Authorization headers. This repository change does not alter Cloudflare account rules.
+
+Targeted verification:
+
+```sh
+# apps/server (isolated PostgreSQL and Redis containers)
+go test -race -tags=integration ./internal/http -run '^TestMCPOAuthLifecycle$' -count=1
+# apps/mcp
+uv run --locked pytest tests/test_transport.py
+# repository root
+pnpm --filter @opennavo/admin typecheck
+pnpm --filter @opennavo/admin exec vitest run tests/oauth.test.ts
+```

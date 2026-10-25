@@ -95,6 +95,7 @@ services:
       OPENNAVO_MCP_HOST: 0.0.0.0
       OPENNAVO_MCP_PORT: '8790'
       OPENNAVO_MCP_PATH: /mcp
+      OPENNAVO_OAUTH_ISSUER: https://${ADMIN_DOMAIN}
       OPENNAVO_MCP_TRUSTED_PROXIES: '["${CADDY_PROXY_IP:-172.30.80.2}/32"]'
     networks:
       agent:

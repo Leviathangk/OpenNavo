@@ -65,6 +65,11 @@ func CORS(publicOrigins []string, adminOrigins ...string) gin.HandlerFunc {
 		// Declare this dimension even for SSR requests without Origin, preventing CDN reuse of cached responses lacking CORS headers.
 		appendVary(c.Writer.Header(), "Origin")
 		appendVary(c.Writer.Header(), "Accept-Language")
+		// OAuth endpoints apply their own public-client CORS and consent-origin policy.
+		if strings.HasPrefix(c.Request.URL.Path, "/oauth/") || strings.HasPrefix(c.Request.URL.Path, "/.well-known/oauth-") {
+			c.Next()
+			return
+		}
 		origin := c.GetHeader("Origin")
 		if origin == "" {
 			c.Next()

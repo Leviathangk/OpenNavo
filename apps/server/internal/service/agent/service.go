@@ -31,6 +31,7 @@ type Limits struct {
 }
 type Identity struct {
 	ID, ClientID, UserID int64
+	OAuthGrantID         int64
 	ClientName, Prefix   string
 	Permissions          []string
 	AllowDelete          bool
@@ -72,13 +73,14 @@ func (s *Service) Authenticate(ctx context.Context, gateway, token, ip string) (
 	return s.identity(ctx, "t.token_hash", Hash(token), ip)
 }
 
-const identityQuery = `SELECT t.id,t.client_id,c.user_id,c.name client_name,t.token_prefix,to_jsonb(t.permissions) permissions,to_jsonb(t.ip_allowlist) ip_allowlist,t.allow_delete,t.expires_at,t.revoked_at,c.enabled client_enabled,(u.status='1' AND u.is_machine) user_enabled,s.enabled,s.calls_per_minute,s.writes_per_day,s.llm_ops_per_day,s.batch_limit FROM agent_tokens t JOIN agent_clients c ON c.id=t.client_id JOIN admin_users u ON u.id=c.user_id CROSS JOIN agent_settings s WHERE `
+const identityQuery = `SELECT t.id,t.oauth_grant_id,t.client_id,c.user_id,c.name client_name,t.token_prefix,to_jsonb(t.permissions) permissions,to_jsonb(t.ip_allowlist) ip_allowlist,t.allow_delete,t.expires_at,t.revoked_at,c.enabled client_enabled,(u.status='1' AND u.is_machine) user_enabled,s.enabled,s.calls_per_minute,s.writes_per_day,s.llm_ops_per_day,s.batch_limit FROM agent_tokens t JOIN agent_clients c ON c.id=t.client_id JOIN admin_users u ON u.id=c.user_id CROSS JOIN agent_settings s WHERE `
 
 // identity applies every token, client, account, switch and IP allowlist check; column is a constant lookup key.
 func (s *Service) identity(ctx context.Context, column string, key any, ip string) (Identity, error) {
 	var out Identity
 	var row struct {
 		ID, ClientID, UserID                                   int64
+		OAuthGrantID                                           *int64 `gorm:"column:oauth_grant_id"`
 		ClientName, TokenPrefix                                string
 		Permissions, IPAllowlist                               json.RawMessage
 		AllowDelete, ClientEnabled, UserEnabled, Enabled       bool
@@ -127,11 +129,41 @@ func (s *Service) identity(ctx context.Context, column string, key any, ip strin
 			return out, Error(domain.CodeForbidden)
 		}
 	}
+	// OAuth credentials remain bound to a live grant and its human owner's current permissions.
+	if row.OAuthGrantID != nil {
+		var grant struct {
+			UserID      int64
+			Scopes      string
+			AllowDelete bool
+		}
+		err := s.Store.DB.WithContext(ctx).Raw(`SELECT g.user_id,g.scopes,g.allow_delete FROM mcp_oauth_grants g JOIN admin_users u ON u.id=g.user_id WHERE g.id=? AND g.revoked_at IS NULL AND g.expires_at>? AND u.status='1' AND NOT u.is_machine AND u.session_version=g.session_version`, *row.OAuthGrantID, s.now()).Scan(&grant).Error
+		if err != nil {
+			return out, err
+		}
+		if grant.UserID == 0 {
+			return out, Error(domain.CodeSessionInvalid)
+		}
+		current, err := s.Store.Permissions(ctx, grant.UserID)
+		if err != nil {
+			return out, err
+		}
+		filtered := []string{}
+		for _, p := range permissions {
+			if slices.Contains(current.Buttons, p) && slices.Contains(strings.Fields(grant.Scopes), p) {
+				filtered = append(filtered, p)
+			}
+		}
+		permissions = filtered
+		row.AllowDelete = row.AllowDelete && grant.AllowDelete
+	}
 	var rolePermissions []string
 	if err := s.Store.DB.WithContext(ctx).Raw(`SELECT rp.permission_code FROM admin_role_permissions rp JOIN admin_roles r ON r.id=rp.role_id JOIN admin_user_roles ur ON ur.role_id=r.id WHERE r.role_code='R_AGENT' AND ur.user_id=?`, row.UserID).Scan(&rolePermissions).Error; err != nil {
 		return out, err
 	}
 	out = Identity{ID: row.ID, ClientID: row.ClientID, UserID: row.UserID, ClientName: row.ClientName, Prefix: row.TokenPrefix, Permissions: []string{}, AllowDelete: row.AllowDelete, ExpiresAt: row.ExpiresAt, Limits: Limits{row.CallsPerMinute, row.WritesPerDay, row.LLMOpsPerDay, row.BatchLimit}}
+	if row.OAuthGrantID != nil {
+		out.OAuthGrantID = *row.OAuthGrantID
+	}
 	for _, p := range permissions {
 		if slices.Contains(Grantable, p) && slices.Contains(rolePermissions, p) {
 			out.Permissions = append(out.Permissions, p)
@@ -221,18 +253,23 @@ redis.call('INCR',KEYS[1]);redis.call('EXPIRE',KEYS[1],tonumber(ARGV[6]))
 redis.call('INCRBY',KEYS[2],ARGV[4]);redis.call('EXPIRE',KEYS[2],tonumber(ARGV[7]))
 redis.call('INCRBY',KEYS[3],ARGV[5]);redis.call('EXPIRE',KEYS[3],tonumber(ARGV[7]));return 1`)
 
-func (s *Service) quotaKeys(id int64) ([]string, time.Time, time.Time) {
+func (s *Service) quotaKeys(id Identity) ([]string, time.Time, time.Time) {
 	now := s.now()
 	minute := now.Truncate(time.Minute).Add(time.Minute)
 	day := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.UTC)
-	base := strconv.FormatInt(id, 10)
+	// Manual token quotas keep their existing keys. OAuth refresh changes token IDs,
+	// but every credential in a grant shares the same stable quota namespace.
+	base := strconv.FormatInt(id.ID, 10)
+	if id.OAuthGrantID != 0 {
+		base = "oauth-grant:" + strconv.FormatInt(id.OAuthGrantID, 10)
+	}
 	return []string{"agent:quota:" + base + ":minute:" + now.Format("200601021504"), "agent:quota:" + base + ":write:" + now.Format("20060102"), "agent:quota:" + base + ":llm:" + now.Format("20060102")}, minute, day
 }
 func (s *Service) Reserve(ctx context.Context, id Identity, write, llm int) error {
 	if s.Store.Redis == nil {
 		return errors.New("agent quota store unavailable")
 	}
-	keys, minute, day := s.quotaKeys(id.ID)
+	keys, minute, day := s.quotaKeys(id)
 	n, err := quotaScript.Run(ctx, s.Store.Redis, keys, id.Limits.CallsPerMinute, id.Limits.WritesPerDay, id.Limits.LLMOpsPerDay, write, llm, int(time.Until(minute).Seconds())+120, int(time.Until(day).Seconds())+120).Int()
 	if err != nil {
 		return err
@@ -243,7 +280,7 @@ func (s *Service) Reserve(ctx context.Context, id Identity, write, llm int) erro
 	return nil
 }
 func (s *Service) Introspect(ctx context.Context, id Identity) (any, error) {
-	keys, minute, day := s.quotaKeys(id.ID)
+	keys, minute, day := s.quotaKeys(id)
 	counts := []int{0, 0, 0}
 	if s.Store.Redis == nil {
 		return nil, errors.New("agent quota store unavailable")

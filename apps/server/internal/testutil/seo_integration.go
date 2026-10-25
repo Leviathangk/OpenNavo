@@ -29,6 +29,13 @@ import (
 // The caller may disable Ryuk for that mode; cleanup is always registered here.
 func NewSEOStore(t *testing.T) *store.Store {
 	t.Helper()
+	return NewSEOStoreAtVersion(t, 0)
+}
+
+// NewSEOStoreAtVersion builds a historical schema directly, without rolling back
+// later irreversible migrations. Zero selects the latest schema.
+func NewSEOStoreAtVersion(t *testing.T, version int64) *store.Store {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	opts := []testcontainers.ContainerCustomizer{pgcontainer.WithDatabase("seo_test"), pgcontainer.WithUsername("seo_test"), pgcontainer.WithPassword("isolated-test-only"), pgcontainer.BasicWaitStrategies(), PostgresSettings()}
@@ -58,6 +65,10 @@ func NewSEOStore(t *testing.T) *store.Store {
 	t.Cleanup(func() { require.NoError(t, sql.Close()) })
 	goose.SetBaseFS(migrations.Files)
 	require.NoError(t, goose.SetDialect("postgres"))
-	require.NoError(t, goose.UpContext(ctx, sql, "."))
+	if version == 0 {
+		require.NoError(t, goose.UpContext(ctx, sql, "."))
+	} else {
+		require.NoError(t, goose.UpToContext(ctx, sql, ".", version))
+	}
 	return &store.Store{DB: db}
 }

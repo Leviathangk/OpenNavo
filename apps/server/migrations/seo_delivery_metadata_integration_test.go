@@ -13,13 +13,12 @@ import (
 )
 
 func TestSEODeliveryRecoveryPreservesNewerWork(t *testing.T) {
-	st := testutil.NewSEOStore(t)
+	st := testutil.NewSEOStoreAtVersion(t, 102)
 	ctx := context.Background()
 	db, err := st.DB.DB()
 	require.NoError(t, err)
 	goose.SetBaseFS(migrations.Files)
 	require.NoError(t, goose.SetDialect("postgres"))
-	require.NoError(t, goose.DownToContext(ctx, db, ".", 102))
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash)
  VALUES('cask','cached-fixture','cached-fixture','homebrew/cask','Fixture','1','1','{}','fixture')`).Error)
 	insert := func(path, state, problem string) int64 {

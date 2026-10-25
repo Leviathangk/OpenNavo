@@ -226,6 +226,7 @@ const local: App.I18n.Schema = {
     }
   },
   route: {
+    'oauth-consent': 'Connect to OpenNavo',
     login: 'Login',
     403: 'No Permission',
     404: 'Page Not Found',

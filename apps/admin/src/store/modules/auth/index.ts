@@ -16,7 +16,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   const authStore = useAuthStore();
   const routeStore = useRouteStore();
   const tabStore = useTabStore();
-  const { toLogin, redirectFromLogin } = useRouterPush(false);
+  const { toLogin, redirectFromLogin, routerPush } = useRouterPush(false);
   const { loading: loginLoading, startLoading, endLoading } = useLoading();
 
   const token = ref('');
@@ -67,9 +67,9 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   /**
    * Check if current login user is different from previous login user If different, clear all tabs
    *
-   * @returns {boolean} Whether to clear all tabs
+   * @returns Whether all tabs were cleared
    */
-  function checkTabClear(): boolean {
+  async function checkTabClear(): Promise<boolean> {
     if (!userInfo.userId) {
       return false;
     }
@@ -79,7 +79,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     // Clear all tabs if current user is different from previous user
     if (!lastLoginUserId || lastLoginUserId !== userInfo.userId) {
       localStg.remove('globalTabs');
-      tabStore.clearTabs();
+      await tabStore.clearTabs();
 
       localStg.remove('lastLoginUserId');
       return true;
@@ -97,6 +97,12 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
    * @param [redirect=true] Whether to redirect after login. Default is `true`
    */
   async function login(userName: string, password: string, redirect = true) {
+    // Preserve the authorization request before authentication or tab cleanup can navigate away.
+    const requestedRedirect = route.query.redirect;
+    const oauthRedirect =
+      typeof requestedRedirect === 'string' && /^\/oauth-consent(?:\?|$)/.test(requestedRedirect)
+        ? requestedRedirect
+        : undefined;
     startLoading();
 
     const { data: loginToken, error } = await fetchLogin(userName, password);
@@ -106,14 +112,18 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
 
       if (pass) {
         // Check if the tab needs to be cleared
-        const isClear = checkTabClear();
+        const isClear = await checkTabClear();
         let needRedirect = redirect;
 
         if (isClear) {
-          // If the tab needs to be cleared,it means we don't need to redirect.
+          // Ordinary page redirects from the previous session should not survive an account change.
           needRedirect = false;
         }
-        await redirectFromLogin(needRedirect);
+        if (redirect && oauthRedirect) {
+          await routerPush(oauthRedirect);
+        } else {
+          await redirectFromLogin(needRedirect);
+        }
 
         window.$notification?.success({
           title: $t('page.login.common.loginSuccess'),

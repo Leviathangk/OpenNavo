@@ -31,6 +31,10 @@ export function setupElegantRouter() {
         i18nKey: `route.${key}` as App.I18n.I18nKey
       };
 
+      if (key === 'oauth-consent') {
+        return { title: 'OpenNavo', hideInMenu: true };
+      }
+
       if (constantRoutes.includes(key)) {
         meta.constant = true;
       }
