@@ -37,8 +37,9 @@ pub async fn task_cancel(state: State<'_, Arc<DesktopCore>>, id: String) -> Resu
 }
 #[tauri::command]
 #[specta::specta]
-pub fn task_list_active(state: State<'_, Arc<DesktopCore>>) -> Result<Vec<Task>, AppError> {
-    state.queue.active()
+pub async fn task_list_active(state: State<'_, Arc<DesktopCore>>) -> Result<Vec<Task>, AppError> {
+    let queue = state.queue.clone();
+    crate::blocking(move || queue.active()).await
 }
 #[tauri::command]
 #[specta::specta]

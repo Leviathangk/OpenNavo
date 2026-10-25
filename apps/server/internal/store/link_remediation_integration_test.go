@@ -9,14 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opennavo/opennavo/server/internal/i18n"
-
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/facts"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
-	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
@@ -119,18 +116,13 @@ func TestRemediationLinkContentAndTranslation(t *testing.T) {
 	source, err = st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
 	require.NoError(t, st.DB.Table("seo_tasks").Where("kind='translate' AND entity_key=? AND state='open'", fmt.Sprintf("package:%d", id)).Count(&n).Error)
-	// Translation work targets every writable site language open for indexing except the source;
+	// Translation targets all writable content languages, independently of indexing and legacy i18n settings.
 	// Traditional Chinese is derived from Simplified Chinese, never queued.
-	settings, err := st.SEOSettings(ctx)
-	require.NoError(t, err)
-	targets := 0
-	for _, code := range i18n.SiteLocales {
-		if code != "en-US" && i18n.Writable(string(code)) && seo.LocaleOpen(settings.Settings.Pages.OpenLocales, string(code)) {
-			targets++
-		}
-	}
-	require.Equal(t, 5, targets, "the default open languages, without the source")
-	require.EqualValues(t, targets, n)
+	expectedLocales := []string{"zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU", "de-DE", "fr-FR", "it-IT"}
+	require.EqualValues(t, len(expectedLocales), n)
+	var locales []string
+	require.NoError(t, st.DB.Table("seo_tasks").Where("kind='translate' AND entity_key=? AND state='open'", fmt.Sprintf("package:%d", id)).Pluck("locale", &locales).Error)
+	require.ElementsMatch(t, expectedLocales, locales)
 	applied, err := st.WriteTranslationSnapshot(ctx, source, "zh-CN", map[string]string{"summary": "译文", "description": "正文"}, "fixture")
 	require.NoError(t, err)
 	require.True(t, applied)

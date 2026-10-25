@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -66,7 +67,7 @@ func TestDurableOutboxFailuresRestartAndFencing(t *testing.T) {
 				w.WriteHeader(503)
 				return
 			}
-			_, _ = fmt.Fprintf(w, `<html><head><link rel="canonical" href="http://%s%s"><meta name="robots" content="index, follow"></head></html>`, r.Host, r.URL.Path)
+			_, _ = fmt.Fprintf(w, `<html><head><link rel="canonical" href="http://%s%s"><meta name="robots" content="index, follow"></head></html>`, html.EscapeString(r.Host), html.EscapeString(r.URL.Path))
 		}
 	}))
 	t.Cleanup(server.Close)

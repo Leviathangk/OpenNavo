@@ -48,10 +48,26 @@ export const useTasksStore = defineStore('tasks', () => {
   /** 0–100 for progress rings, which never turn into spinners. */
   const shownPercent = (task: Task) => knownPercent(task) ?? 0;
 
+  let listRead = 0;
+  const pendingReads = new Set<Map<string, Task>>();
   async function load() {
-    active.value = await unwrap(commands.taskListActive());
-    loaded.value = true;
-    pruneLogs();
+    const read = ++listRead;
+    const changes = new Map<string, Task>();
+    pendingReads.add(changes);
+    try {
+      const list = await unwrap(commands.taskListActive());
+      if (read !== listRead) return;
+      const current = new Map(list.map(task => [task.id, task]));
+      for (const task of changes.values()) {
+        if (task.state === 'queued' || task.state === 'running') current.set(task.id, task);
+        else current.delete(task.id);
+      }
+      active.value = [...current.values()];
+      loaded.value = true;
+      pruneLogs();
+    } finally {
+      pendingReads.delete(changes);
+    }
   }
 
   /**
@@ -73,6 +89,7 @@ export const useTasksStore = defineStore('tasks', () => {
 
   function applyUpdate(task: Task | null) {
     if (!task) return;
+    for (const changes of pendingReads) changes.set(task.id, task);
     const index = active.value.findIndex(item => item.id === task.id);
     if (task.percent !== null) lastPercent.set(task.id, task.percent);
     if (task.state === 'queued' || task.state === 'running') {

@@ -156,6 +156,7 @@ pub fn sink(app: tauri::AppHandle) -> EventSink {
             }
             CoreEvent::Deeplink(data) => DeeplinkReceived(data).emit_to(&app, "main"),
             CoreEvent::Locale(data) => {
+                crate::tray::refresh(&app);
                 let handle = app.clone();
                 app.run_on_main_thread(move || {
                     if let Some(core) = handle.try_state::<Arc<crate::core::DesktopCore>>()
@@ -163,9 +164,7 @@ pub fn sink(app: tauri::AppHandle) -> EventSink {
                     {
                         crate::settings::apply_apple_languages(&settings);
                     }
-                    if let Err(error) = crate::tray::refresh_now(&handle)
-                        .and_then(|()| crate::native_menu::install(&handle, data.locale))
-                    {
+                    if let Err(error) = crate::native_menu::install(&handle, data.locale) {
                         log::warn!("Menu locale refresh failed: {}", error.code);
                     }
                     if LocaleEvent(data).emit(&handle).is_err() {

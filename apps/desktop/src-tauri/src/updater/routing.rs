@@ -8,10 +8,14 @@ use crate::{
 use base64::Engine;
 use std::path::Path;
 
-pub fn decorate(
+pub fn decorate(db: &Database, settings: &Settings, app: LocalApp) -> Result<LocalApp, AppError> {
+    decorate_with_rules(db, settings, app, &service::cached_rules(db))
+}
+pub(crate) fn decorate_with_rules(
     db: &Database,
     settings: &Settings,
     mut app: LocalApp,
+    rules: &[service::FeedRule],
 ) -> Result<LocalApp, AppError> {
     app.homebrew_cask = if app.cask.is_none() && app.protected_reason.is_none() {
         app.catalog_token
@@ -30,7 +34,7 @@ pub fn decorate(
     if app.protected_reason.is_some() {
         return Ok(app);
     }
-    app.updater = select(db, settings, &app, &service::cached_rules(db))?;
+    app.updater = select(db, settings, &app, rules)?;
     Ok(app)
 }
 /// One method per app; disabled engines do not hide an available lower priority engine.

@@ -50,8 +50,27 @@ export const useFirewallStore = defineStore('firewall', () => {
   const installed = computed(() => status.value?.extension === 'installed' && status.value.filter !== 'needs_consent');
   const on = computed(() => installed.value && status.value?.filter === 'on');
 
+  let statusRevision = 0;
+  let rulesRevision = 0;
+  let alertsRevision = 0;
+  let blocklistsRevision = 0;
+  // Each full read retains successful mutations made while its snapshot is in flight.
+  const pendingRules = new Set<Map<string, FirewallRule | null>>();
+  const pendingBlocklists = new Set<Map<string, FirewallBlocklist | null>>();
+
+  function mergeChanges<T extends { id: string }>(rows: T[], changes: Map<string, T | null>): T[] {
+    const merged = new Map(rows.map(row => [row.id, row]));
+    for (const [id, row] of changes) {
+      if (row === null) merged.delete(id);
+      else merged.set(id, row);
+    }
+    return [...merged.values()];
+  }
+
   async function loadStatus() {
-    status.value = await unwrap(commands.firewallStatus());
+    const revision = ++statusRevision;
+    const next = await unwrap(commands.firewallStatus());
+    if (revision === statusRevision) status.value = next;
   }
 
   let settingsRevision = 0;
@@ -69,8 +88,17 @@ export const useFirewallStore = defineStore('firewall', () => {
   }
 
   async function loadRules() {
-    rules.value = await unwrap(commands.firewallRules());
-    rulesLoaded.value = true;
+    const revision = ++rulesRevision;
+    const changes = new Map<string, FirewallRule | null>();
+    pendingRules.add(changes);
+    try {
+      const next = await unwrap(commands.firewallRules());
+      if (revision !== rulesRevision) return;
+      rules.value = mergeChanges(next, changes);
+      rulesLoaded.value = true;
+    } finally {
+      pendingRules.delete(changes);
+    }
   }
 
   // A newer request (filter switch, clear, reload after an event) replaces the page being read.
@@ -111,12 +139,23 @@ export const useFirewallStore = defineStore('firewall', () => {
   }
 
   async function loadBlocklists() {
-    blocklists.value = await unwrap(commands.firewallBlocklists());
-    blocklistsLoaded.value = true;
+    const revision = ++blocklistsRevision;
+    const changes = new Map<string, FirewallBlocklist | null>();
+    pendingBlocklists.add(changes);
+    try {
+      const next = await unwrap(commands.firewallBlocklists());
+      if (revision !== blocklistsRevision) return;
+      blocklists.value = mergeChanges(next, changes);
+      blocklistsLoaded.value = true;
+    } finally {
+      pendingBlocklists.delete(changes);
+    }
   }
 
   async function loadAlerts() {
-    alerts.value = await unwrap(commands.firewallAlerts());
+    const revision = ++alertsRevision;
+    const next = await unwrap(commands.firewallAlerts());
+    if (revision === alertsRevision) alerts.value = next;
   }
 
   /** What the page needs once the extension is installed. */
@@ -127,7 +166,10 @@ export const useFirewallStore = defineStore('firewall', () => {
   async function lifecycle(run: () => Promise<FirewallStatus>) {
     switching.value = true;
     try {
-      status.value = await run();
+      ++statusRevision;
+      const next = await run();
+      ++statusRevision;
+      status.value = next;
     } finally {
       switching.value = false;
     }
@@ -178,6 +220,7 @@ export const useFirewallStore = defineStore('firewall', () => {
 
   async function saveRule(input: FirewallRuleInput) {
     const rule = await withBusy(input.id ? [input.id] : [], () => unwrap(commands.firewallRuleSave(input)));
+    for (const changes of pendingRules) changes.set(rule.id, rule);
     const index = rules.value.findIndex(item => item.id === rule.id);
     rules.value = index < 0 ? [...rules.value, rule] : rules.value.map(item => (item.id === rule.id ? rule : item));
     return rule;
@@ -185,6 +228,9 @@ export const useFirewallStore = defineStore('firewall', () => {
 
   async function deleteRules(ids: string[]) {
     await withBusy(ids, () => unwrap(commands.firewallRuleDelete(ids)));
+    for (const changes of pendingRules) {
+      for (const id of ids) changes.set(id, null);
+    }
     const gone = new Set(ids);
     rules.value = rules.value.filter(rule => !gone.has(rule.id));
   }
@@ -192,6 +238,7 @@ export const useFirewallStore = defineStore('firewall', () => {
   /** Answer one waiting connection; Rust sends the shorter list (firewall:alerts) and the new rule (firewall:changed). */
   async function reply(answer: FirewallReply) {
     await withBusy([answer.alertId], () => unwrap(commands.firewallAlertReply(answer)));
+    ++alertsRevision;
     alerts.value = alerts.value.filter(alert => alert.id !== answer.alertId);
   }
 
@@ -203,6 +250,7 @@ export const useFirewallStore = defineStore('firewall', () => {
   }
 
   function upsertBlocklist(list: FirewallBlocklist) {
+    for (const changes of pendingBlocklists) changes.set(list.id, list);
     const index = blocklists.value.findIndex(item => item.id === list.id);
     blocklists.value =
       index < 0 ? [...blocklists.value, list] : blocklists.value.map(item => (item.id === list.id ? list : item));
@@ -216,6 +264,7 @@ export const useFirewallStore = defineStore('firewall', () => {
     withBusy([id], async () => upsertBlocklist(await unwrap(commands.firewallBlocklistRefresh(id))));
   async function removeBlocklist(id: string) {
     await withBusy([id], () => unwrap(commands.firewallBlocklistRemove(id)));
+    for (const changes of pendingBlocklists) changes.set(id, null);
     blocklists.value = blocklists.value.filter(item => item.id !== id);
   }
 
@@ -223,12 +272,14 @@ export const useFirewallStore = defineStore('firewall', () => {
 
   // Events from Rust (firewall plan §4.8).
   function applyStatus(next: FirewallStatus) {
+    ++statusRevision;
     const wasInstalled = installed.value;
     status.value = next;
     if (!wasInstalled && installed.value) void loadInstalled();
   }
 
   function applyAlerts(next: FirewallAlert[]) {
+    ++alertsRevision;
     alerts.value = next;
   }
 

@@ -57,6 +57,7 @@ JOIN pg_attribute a ON a.attrelid=r.oid AND a.attnum=c.conkey[1]
 WHERE n.nspname='public' AND c.contype='c' AND cardinality(c.conkey)=1
 AND a.attname IN ('locale','source_locale') ORDER BY r.relname,a.attname`)
 		require.NoError(t, err)
+		defer func() { require.NoError(t, rows.Close()) }()
 		type constraint struct{ table, column, expr string }
 		var constraints []constraint
 		for rows.Next() {
@@ -70,7 +71,6 @@ AND a.attname IN ('locale','source_locale') ORDER BY r.relname,a.attname`)
 			}
 		}
 		require.NoError(t, rows.Err())
-		require.NoError(t, rows.Close())
 		require.Len(t, constraints, 35)
 		for _, c := range constraints {
 			for _, locale := range []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU", "de-DE", "fr-FR", "it-IT", "zh-Hant", "invalid"} {

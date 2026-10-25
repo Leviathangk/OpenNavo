@@ -152,7 +152,7 @@ func TestDesktopFixturesMatchSeedAndProductionSerialization(t *testing.T) {
 	if os.Getenv("UPDATE_LINK_FIXTURE") == "1" {
 		require.NoError(t, os.WriteFile(linkFixture, linkBytes, 0o600))
 	}
-	expectedLinks, err := os.ReadFile(linkFixture)
+	expectedLinks, err := os.ReadFile("../../../testdata/desktop/links.json")
 	require.NoError(t, err)
 	var compactLinks bytes.Buffer
 	require.NoError(t, json.Compact(&compactLinks, expectedLinks))

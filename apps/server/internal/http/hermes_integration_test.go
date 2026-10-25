@@ -139,7 +139,7 @@ func TestHermesAgentHTTPAuthorizationAndContracts(t *testing.T) {
 			Revision int64
 			Status   string
 		}
-		_, proof := fixture.evidence("article:new:agent-guide")
+		_, proof := fixture.evidence(ctx, "article:new:agent-guide")
 		articleBody, err := json.Marshal(map[string]any{"slug": "agent-guide", "sourceLocale": "en-US", "type": "tutorial", "title": "Mac application guide.", "summary": "Mac application guide.", "bodyMarkdown": "Follow these steps on your Mac.", "sources": []any{map[string]any{"title": "Vendor guide", "url": executionFixtureURL}}, "target": map[string]any{"entityKey": "topic:agent-guide", "intent": "topic"}, "claims": []any{map[string]any{"text": "Mac application guide.", "kind": "factual", "evidenceId": proof.ID, "excerpt": executionFixtureText, "appVersion": "", "region": "ZZ"}, map[string]any{"text": "Follow these steps on your Mac.", "kind": "factual", "evidenceId": proof.ID, "excerpt": executionFixtureText, "appVersion": "", "region": "ZZ"}}})
 		require.NoError(t, err)
 		raw := call("POST", "/articles", string(articleBody), "0000", true)

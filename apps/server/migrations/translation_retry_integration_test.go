@@ -44,7 +44,7 @@ func TestRetryRejectedTranslationsReopensOnlyFalsePositives(t *testing.T) {
 	states := map[int]string{}
 	rows, err := db.QueryContext(ctx, "SELECT id,state FROM seo_tasks")
 	require.NoError(t, err)
-	defer rows.Close()
+	defer func() { require.NoError(t, rows.Close()) }()
 	for rows.Next() {
 		var id int
 		var state string

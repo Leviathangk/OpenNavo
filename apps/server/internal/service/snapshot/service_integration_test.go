@@ -243,17 +243,18 @@ func TestV2SparsePacksCategoryChangesAndInterruptedPublication(t *testing.T) {
 		var value map[string]any
 		require.NoError(t, json.Unmarshal(raw, &value))
 		schema := "CatalogTextPack"
-		if strings.HasPrefix(key, "snapshots/base-v2-") || strings.HasPrefix(key, "snapshots/modern-base-v2-") {
+		switch {
+		case strings.HasPrefix(key, "snapshots/base-v2-") || strings.HasPrefix(key, "snapshots/modern-base-v2-"):
 			schema = "CatalogBaseSnapshot"
 			entry := value["items"].([]any)[0].(map[string]any)
 			require.NotContains(t, entry, "displayName")
 			require.NotContains(t, entry, "summary")
 			require.Equal(t, "en-US", entry["sourceLocale"])
-		} else if value["locale"] == "ja-JP" {
+		case value["locale"] == "ja-JP":
 			entry := value["items"].([]any)[0].(map[string]any)
 			require.Equal(t, "日本語エディター", entry["displayName"])
 			require.NotContains(t, entry, "summary")
-		} else if value["locale"] == "ru-RU" {
+		case value["locale"] == "ru-RU":
 			require.Empty(t, value["items"])
 		}
 		require.NoError(t, spec.Components.Schemas[schema].Value.VisitJSON(value))

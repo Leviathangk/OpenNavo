@@ -40,7 +40,7 @@ func TestRetryArticleRefreshReopensOnlyAbandonedRefreshes(t *testing.T) {
 	states := map[string]string{}
 	rows, err := db.QueryContext(ctx, "SELECT dedupe_key,state FROM seo_tasks")
 	require.NoError(t, err)
-	defer rows.Close()
+	defer func() { require.NoError(t, rows.Close()) }()
 	for rows.Next() {
 		var key, state string
 		require.NoError(t, rows.Scan(&key, &state))

@@ -162,20 +162,21 @@ func TestEditorialReleaseLocaleIsolationAndPageDecision(t *testing.T) {
 			require.Equal(t, tc.wantSource, string(entry.Source))
 			require.Equal(t, tc.wantStatus, string(entry.Translation.Status))
 			require.Equal(t, tc.hasNotes, entry.HasNotes)
-			if !tc.hasNotes {
+			switch {
+			case !tc.hasNotes:
 				require.Nil(t, entry.Title)
 				require.Nil(t, entry.BodyMarkdown)
 				require.Nil(t, entry.Summary)
 				require.Empty(t, entry.Sections)
 				require.Equal(t, tc.locale, string(*entry.Translation.Locale))
-			} else if tc.upstream {
+			case tc.upstream:
 				require.Equal(t, releaseID+1, *entry.Id)
 				require.Equal(t, upstreamBody, *entry.BodyMarkdown)
 				require.Nil(t, entry.Summary)
 				require.Equal(t, "en-US", string(*entry.Translation.Locale))
-			} else if tc.locale == "zh-CN" {
+			case tc.locale == "zh-CN":
 				require.Equal(t, sourceBody, *entry.BodyMarkdown)
-			} else {
+			default:
 				require.Nil(t, entry.Title, "foreign source title must not fill a missing translated title")
 				if tc.summaryOnly {
 					require.Nil(t, entry.BodyMarkdown)

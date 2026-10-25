@@ -3,8 +3,11 @@ use std::sync::Arc;
 use tauri::State;
 #[tauri::command]
 #[specta::specta]
-pub fn library_list(state: State<'_, Arc<DesktopCore>>) -> Result<Vec<InstalledItem>, AppError> {
-    state.library_list()
+pub async fn library_list(
+    state: State<'_, Arc<DesktopCore>>,
+) -> Result<Vec<InstalledItem>, AppError> {
+    let core = state.inner().clone();
+    crate::blocking(move || core.library_list()).await
 }
 #[tauri::command]
 #[specta::specta]
@@ -18,6 +21,9 @@ pub async fn library_refresh(
 }
 #[tauri::command]
 #[specta::specta]
-pub fn library_storage(state: State<'_, Arc<DesktopCore>>) -> Result<StorageSummary, AppError> {
-    state.storage_summary()
+pub async fn library_storage(
+    state: State<'_, Arc<DesktopCore>>,
+) -> Result<StorageSummary, AppError> {
+    let core = state.inner().clone();
+    crate::blocking(move || core.storage_summary()).await
 }

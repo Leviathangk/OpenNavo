@@ -3,7 +3,6 @@
 package management
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -72,7 +71,7 @@ func TestHermesBatchCompensationRestoresTranslationAndProtectsLaterFix(t *testin
 		revision, err := actionRevision(ctx, st, []content.Ref{ref})
 		require.NoError(t, err)
 		op := &domain.Operation{RequestID: uuid.NewString(), Name: "CompensateSeoAction", AgentClientID: 1, AgentTokenID: 2, Permissions: []string{"seo:task:handle", "catalog:category:edit", "translation:review"}, RequiredPermissions: []string{"seo:task:handle"}, Execution: &domain.AgentExecution{TaskID: leased[0].ID, Fencing: leased[0].Fencing, IdempotencyKey: uuid.NewString(), ExpectedRevision: revision, EvidenceIDs: []int64{evidence.ID}}}
-		return svc.Execute(domain.WithOperation(context.Background(), op), "CompensateSeoAction", Input{ID: actionID, Body: map[string]any{"reason": "implementation_error"}})
+		return svc.Execute(domain.WithOperation(ctx, op), "CompensateSeoAction", Input{ID: actionID, Body: map[string]any{"reason": "implementation_error"}})
 	}
 	write("原来的文件管理工具")
 	prior, err := st.HistorySnapshot(ctx, ref)
@@ -95,7 +94,7 @@ func TestHermesBatchCompensationRestoresTranslationAndProtectsLaterFix(t *testin
 		if err != nil {
 			return err
 		}
-		if err := local.WriteContentText(context.Background(), ref, "zh-CN", map[string]any{"name": "后来的人工修复", "description": "将 {count} 份文档整理到文件夹中。"}, false); err != nil {
+		if err := local.WriteContentText(ctx, ref, "zh-CN", map[string]any{"name": "后来的人工修复", "description": "将 {count} 份文档整理到文件夹中。"}, false); err != nil {
 			return err
 		}
 		after, err := local.HistorySnapshot(ctx, ref)

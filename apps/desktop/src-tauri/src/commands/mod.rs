@@ -19,3 +19,6 @@ pub mod cleanup;
 pub mod monitor;
 
 pub mod appstore;
+
+#[cfg(test)]
+mod ipc_responsiveness_tests;

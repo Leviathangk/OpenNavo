@@ -4,10 +4,11 @@ package store_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestBrowseEligibleLanguageFontAndPagination(t *testing.T) {

@@ -34,9 +34,8 @@ type httpExecutionFixture struct {
 	owner string
 }
 
-func (f httpExecutionFixture) evidence(entity string) (seotasks.Task, agentgate.Evidence) {
+func (f httpExecutionFixture) evidence(ctx context.Context, entity string) (seotasks.Task, agentgate.Evidence) {
 	f.t.Helper()
-	ctx := context.Background()
 	tasks := &seotasks.Service{DB: f.st.DB}
 	var task seotasks.Task
 	require.NoError(f.t, f.st.DB.Where("entity_key=? AND state='leased' AND lease_owner=? AND lease_until>now()", entity, f.owner).FirstOrInit(&task).Error)
@@ -61,7 +60,7 @@ func (f httpExecutionFixture) evidence(entity string) (seotasks.Task, agentgate.
 }
 func (f httpExecutionFixture) attach(r *http.Request, entity string) {
 	f.t.Helper()
-	task, proof := f.evidence(entity)
+	task, proof := f.evidence(r.Context(), entity)
 	kind, key, _ := strings.Cut(entity, ":")
 	var revision int64
 	if kind == "article" && !strings.HasPrefix(key, "new:") {

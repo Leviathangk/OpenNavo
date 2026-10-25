@@ -158,7 +158,7 @@ func TestRenamedPackageAuditFollowsRedirectToCurrentCanonical(t *testing.T) {
 				if tc.kind == "overview" || tc.kind == "details" {
 					robots = "index, follow"
 				}
-				fmt.Fprintf(w, `<meta name="robots" content="%s"><link rel="canonical" href="%s">`, robots, html.EscapeString(origin+tc.canonical))
+				_, _ = fmt.Fprintf(w, `<meta name="robots" content="%s"><link rel="canonical" href="%s">`, robots, html.EscapeString(origin+tc.canonical))
 			}))
 			defer server.Close()
 			origin = server.URL

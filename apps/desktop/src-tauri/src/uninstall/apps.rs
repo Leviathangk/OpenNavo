@@ -158,12 +158,30 @@ impl Engine {
             }
         }
         let settings = self.settings.read().map_err(super::poison)?.clone();
-        self.apps
+        let rules = crate::updater::service::cached_rules(&self.database);
+        self.inventory()?
+            .into_iter()
+            .map(|app| {
+                crate::updater::routing::decorate_with_rules(&self.database, &settings, app, &rules)
+            })
+            .collect()
+    }
+    /// Undecorated inventory for callers that resolve update ownership themselves.
+    /// Release the app lock before database access or bundle inspection.
+    pub(crate) fn inventory(self: &Arc<Self>) -> Result<Vec<LocalApp>, AppError> {
+        if !self.enumerated.load(Ordering::Acquire) {
+            let guard = self.refresh_lock.lock().map_err(super::poison)?;
+            if !self.enumerated.load(Ordering::Acquire) {
+                return self.scan_apps(guard, LocalAppsChangedReason::Startup);
+            }
+        }
+        Ok(self
+            .apps
             .lock()
             .map_err(super::poison)?
             .values()
-            .map(|a| crate::updater::routing::decorate(&self.database, &settings, a.app.clone()))
-            .collect()
+            .map(|a| a.app.clone())
+            .collect())
     }
     pub fn app(&self, id: &str) -> Result<CachedApp, AppError> {
         self.apps
@@ -562,9 +580,14 @@ impl Engine {
         }
         let generation = self.generation.fetch_add(1, Ordering::AcqRel) + 1;
         let settings = self.settings.read().map_err(super::poison)?.clone();
+        let rules = crate::updater::service::cached_rules(&self.database);
         for record in records.values_mut() {
-            record.app =
-                crate::updater::routing::decorate(&self.database, &settings, record.app.clone())?;
+            record.app = crate::updater::routing::decorate_with_rules(
+                &self.database,
+                &settings,
+                record.app.clone(),
+                &rules,
+            )?;
         }
         let result = records.values().map(|c| c.app.clone()).collect();
         *self.keys.lock().map_err(super::poison)? = keys;

@@ -31,32 +31,35 @@ pub async fn updates_check(
 
 #[tauri::command]
 #[specta::specta]
-pub fn update_ignore(
+pub async fn update_ignore(
     state: State<'_, Arc<DesktopCore>>,
     app_key: String,
     ignored: bool,
 ) -> Result<(), AppError> {
-    state.queue.updater.ignore(&app_key, ignored)
+    let updater = state.queue.updater.clone();
+    crate::blocking(move || updater.ignore(&app_key, ignored)).await
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn update_skip(
+pub async fn update_skip(
     state: State<'_, Arc<DesktopCore>>,
     app_key: String,
     version: Option<String>,
 ) -> Result<(), AppError> {
-    state.queue.updater.skip(&app_key, version.as_deref())
+    let updater = state.queue.updater.clone();
+    crate::blocking(move || updater.skip(&app_key, version.as_deref())).await
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn update_set_channel(
+pub async fn update_set_channel(
     state: State<'_, Arc<DesktopCore>>,
     app_key: String,
     channel: UpdateChannel,
 ) -> Result<(), AppError> {
-    state.queue.updater.channel(&app_key, channel)
+    let updater = state.queue.updater.clone();
+    crate::blocking(move || updater.channel(&app_key, channel)).await
 }
 
 /// Queues a rollback of a recorded update and returns the task id.

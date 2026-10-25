@@ -4,9 +4,10 @@ package main
 
 import (
 	"context"
+	"testing"
+
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSEOReplayIsolatedAndRollsBack(t *testing.T) {

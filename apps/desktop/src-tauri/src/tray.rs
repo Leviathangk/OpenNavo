@@ -1,5 +1,8 @@
 use crate::{AppError, core::DesktopCore, deeplink::Router, model::*};
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, AtomicU64, Ordering},
+};
 use tauri::{
     Manager, WebviewUrl, WebviewWindowBuilder,
     menu::{Menu, MenuItem},
@@ -58,27 +61,68 @@ fn menu(app: &tauri::AppHandle, locale: Locale) -> Result<Menu<tauri::Wry>, AppE
         .collect();
     Menu::with_items(app, &items).map_err(error)
 }
-pub fn refresh_now(app: &tauri::AppHandle) -> Result<(), AppError> {
-    let core = app.state::<Arc<DesktopCore>>();
-    let settings = core.current_settings()?;
-    if let Some(tray) = app.tray_by_id("opennavo") {
-        let count = core
-            .updates_list()?
-            .iter()
-            .filter(|i| actionable(i))
-            .count();
-        tray.set_title(title(count, settings.tray_show_count))
-            .map_err(error)?;
-        tray.set_menu(Some(menu(app, settings.locale)?))
-            .map_err(error)?;
-    }
-    Ok(())
+// One worker coalesces bursts; queued UI callbacks cannot apply stale counts/locales.
+#[derive(Default)]
+struct RefreshQueue {
+    revision: AtomicU64,
+    running: AtomicBool,
 }
+impl RefreshQueue {
+    fn request(&self) -> bool {
+        self.revision.fetch_add(1, Ordering::SeqCst);
+        !self.running.swap(true, Ordering::SeqCst)
+    }
+    fn again(&self, completed: u64) -> bool {
+        self.running.store(false, Ordering::SeqCst);
+        self.revision.load(Ordering::SeqCst) != completed
+            && !self.running.swap(true, Ordering::SeqCst)
+    }
+}
+static REFRESH: RefreshQueue = RefreshQueue {
+    revision: AtomicU64::new(0),
+    running: AtomicBool::new(false),
+};
 pub fn refresh(app: &tauri::AppHandle) {
+    if !REFRESH.request() {
+        return;
+    }
     let handle = app.clone();
-    let _ = app.run_on_main_thread(move || {
-        if let Err(error) = refresh_now(&handle) {
-            log::warn!("Tray menu refresh failed: {}", error.code);
+    tauri::async_runtime::spawn(async move {
+        loop {
+            let revision = REFRESH.revision.load(Ordering::SeqCst);
+            let core = handle.state::<Arc<DesktopCore>>().inner().clone();
+            let snapshot = crate::blocking(move || {
+                let settings = core.current_settings()?;
+                let count = core
+                    .updates_list()?
+                    .iter()
+                    .filter(|i| actionable(i))
+                    .count();
+                Ok((title(count, settings.tray_show_count), settings.locale))
+            })
+            .await;
+            match snapshot {
+                Ok((title, locale)) => {
+                    let ui = handle.clone();
+                    let _ = handle.run_on_main_thread(move || {
+                        if REFRESH.revision.load(Ordering::SeqCst) != revision {
+                            return;
+                        }
+                        if let Some(tray) = ui.tray_by_id("opennavo") {
+                            let result = tray.set_title(title).map_err(error).and_then(|()| {
+                                tray.set_menu(Some(menu(&ui, locale)?)).map_err(error)
+                            });
+                            if let Err(error) = result {
+                                log::warn!("Tray menu refresh failed: {}", error.code);
+                            }
+                        }
+                    });
+                }
+                Err(error) => log::warn!("Tray snapshot failed: {}", error.code),
+            }
+            if !REFRESH.again(revision) {
+                break;
+            }
         }
     });
 }
@@ -233,4 +277,23 @@ pub fn install(app: &tauri::AppHandle) -> Result<(), AppError> {
     panel::install(app);
     refresh(app);
     Ok(())
+}
+
+#[cfg(test)]
+mod refresh_tests {
+    use super::*;
+    #[test]
+    fn burst_requests_share_worker_and_refresh_latest_revision() {
+        let queue = RefreshQueue::default();
+        assert!(queue.request());
+        let first = queue.revision.load(Ordering::SeqCst);
+        for _ in 0..100 {
+            assert!(!queue.request());
+        }
+        assert!(queue.again(first));
+        let latest = queue.revision.load(Ordering::SeqCst);
+        assert_eq!(latest, 101);
+        assert!(!queue.again(latest));
+        assert!(queue.request());
+    }
 }

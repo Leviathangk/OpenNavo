@@ -3,11 +3,12 @@
 package management
 
 import (
+	"testing"
+	"time"
+
 	"github.com/opennavo/opennavo/server/internal/config"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestTraditionalSEOMetadataRemainsWritable(t *testing.T) {

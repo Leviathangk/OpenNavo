@@ -179,7 +179,7 @@ impl Service {
     // Resolve ownership once for both sides of merge. Keep invalid cached app records
     // without a route: an installed update may still need the old process restarted.
     fn routed_apps(&self, settings: &Settings) -> Result<Vec<LocalApp>, AppError> {
-        let apps = self.apps.list()?;
+        let apps = self.apps.inventory()?;
         let keys = self.apps.keys.lock().map_err(poisoned)?;
         let valid: Vec<_> = apps
             .into_iter()

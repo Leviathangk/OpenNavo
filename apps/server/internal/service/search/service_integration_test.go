@@ -58,12 +58,13 @@ func TestDocumentedSearchAcceptanceFiltersSuggestionAndClicks(t *testing.T) {
 				require.NoError(t, st.DB.WithContext(ctx).Raw("SELECT token FROM packages WHERE id=?", match.ID).Scan(&token).Error)
 				tokens = append(tokens, token)
 			}
-			if example.Query == "rg" || example.Query == "python" {
+			switch {
+			case example.Query == "rg" || example.Query == "python":
 				require.Empty(t, tokens)
-			} else if example.Position == 1 {
+			case example.Position == 1:
 				require.NotEmpty(t, tokens)
 				require.Equal(t, example.Token, tokens[0])
-			} else {
+			default:
 				require.Contains(t, tokens, example.Token)
 			}
 		})
