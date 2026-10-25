@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { unwrap } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
+import { withVariantNames } from '~/utils/seoTitles';
 
 // Homepage introduces OpenNavo (05 §4, 08 §10.14); store Discover is /discover.
 // Hero → app store (catalog scale, icon wall, where apps come from) → security (antivirus) → releases/install/
@@ -23,7 +24,8 @@ const [{ data: home }, { data: ranking }] = await Promise.all([
         api.GET('/rankings', {
           params: { query: { kind: 'cask', includeFonts: true, period: '30d', size: 24 } }
         })
-      ).catch(() => null)
+      ).catch(() => null),
+    { transform: withVariantNames }
   )
 ]);
 

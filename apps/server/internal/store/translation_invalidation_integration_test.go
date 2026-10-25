@@ -18,8 +18,9 @@ func TestTranslationInvalidationKeepsUnrelatedCachedPages(t *testing.T) {
 	ctx := context.Background()
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash)
  SELECT i,'cask','translation-'||i,'translation-'||i,'homebrew/cask','Fixture','1','1','{}','fixture' FROM generate_series(1,2) i`).Error)
-	affected := []string{cache.PackageDetailPrefix + "cask:translation-1:en-US", "c:rel:c4:cask:translation-1:en-US", "c:dep:c1:cask:translation-1:en-US:1:", "c:related:c1:cask:translation-1:en-US:5"}
-	unaffected := []string{cache.PackageDetailPrefix + "cask:translation-2:en-US", "c:dep:c1:cask:translation-2:en-US:1:", "c:related:c1:cask:translation-2:en-US:5", "c:cfg:client:macos:en-US"}
+	// Browse directories only lose their fresh marks: their pages keep serving while one rebuild replaces them.
+	affected := []string{cache.PackageDetailPrefix + "cask:translation-1:en-US", "c:rel:c4:cask:translation-1:en-US", "c:dep:c1:cask:translation-1:en-US:1:", "c:related:c1:cask:translation-1:en-US:5", "c:browse:v2:apps:fresh", "c:browse:v2:fonts:fresh"}
+	unaffected := []string{cache.PackageDetailPrefix + "cask:translation-2:en-US", "c:dep:c1:cask:translation-2:en-US:1:", "c:related:c1:cask:translation-2:en-US:5", "c:cfg:client:macos:en-US", "c:browse:v2:apps:en-US::1", "c:browse:v2:apps:ja-JP:a:2"}
 	for _, key := range append(append([]string{}, affected...), unaffected...) {
 		require.NoError(t, st.Redis.Set(ctx, key, "{}", time.Minute).Err())
 	}
@@ -27,6 +28,7 @@ func TestTranslationInvalidationKeepsUnrelatedCachedPages(t *testing.T) {
 	var patterns []string
 	require.NoError(t, st.DB.Raw(`SELECT jsonb_array_elements_text(payload) FROM job_outbox WHERE unique_key='cache:invalidate:translation:package:1'`).Scan(&patterns).Error)
 	require.NotContains(t, patterns, "c:*")
+	require.NotContains(t, patterns, "c:browse:*")
 	require.NoError(t, cache.Invalidate(ctx, st.Redis, patterns))
 	for _, key := range affected {
 		require.EqualValues(t, 0, st.Redis.Exists(ctx, key).Val(), key)

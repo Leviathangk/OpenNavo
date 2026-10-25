@@ -23,6 +23,7 @@ import {
   verifiedIdentities
 } from '../../app/utils/packageFacts';
 import type { FactEvidence } from '../../app/utils/packageFacts';
+import { packagePath } from '../../app/utils/packageView';
 
 type PackageDetail = PublicComponents['schemas']['PackageDetail'];
 type RequirementFact = PublicComponents['schemas']['RequirementFact'];
@@ -216,7 +217,7 @@ export function renderPackageMarkdown(pkg: PackageDetail, { siteUrl, locale }: P
     for (const item of alternatives) {
       const reasons = item.reasons.map(reason => m(`package.alternatives.reasons.${reason}`)).join(', ');
       lines.push(
-        `- [${mdText(item.package.displayName)}](${siteUrl}${prefix}/apps/${item.package.token})${reasons ? ` — ${mdText(reasons)}` : ''}`
+        `- [${mdText(item.package.displayName)}](${siteUrl}${prefix}${packagePath(item.package.token)})${reasons ? ` — ${mdText(reasons)}` : ''}`
       );
       for (const attribute of item.attributes ?? []) {
         const key =

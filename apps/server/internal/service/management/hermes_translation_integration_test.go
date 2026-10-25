@@ -33,7 +33,8 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	require.NoError(t, writeSource(original))
 	var count int64
 	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='category:700' AND state='open'").Count(&count).Error)
-	require.EqualValues(t, 8, count, "identical source schedules each locale once")
+	// The default open languages (en-US, zh-CN, ja-JP, es-ES, pt-BR, ru-RU) without the source; closed ones get no work.
+	require.EqualValues(t, 5, count, "identical source schedules each open locale once")
 	require.NoError(t, st.DB.Table("job_outbox").Where("job_type='translate:content'").Count(&count).Error)
 	require.Zero(t, count)
 	svc := &Service{Store: st}
@@ -95,7 +96,7 @@ func TestHermesTranslationSnapshotsAndProvenance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, source.Hash, after.Hash)
 	require.NoError(t, st.DB.Table("seo_tasks").Where("entity_key='category:700' AND state IN ('open','leased')").Count(&count).Error)
-	require.EqualValues(t, 8, count)
+	require.EqualValues(t, 5, count, "the rolled-back edit leaves the open locales' work as it was")
 	require.NoError(t, st.DB.Table("translation_logs").Count(&count).Error)
 	require.Zero(t, count)
 }

@@ -2,6 +2,7 @@ import type { PackageSummary } from '@opennavo/api';
 import { describe, expect, it } from 'vitest';
 import {
   articleDescription,
+  articleIndexedLocales,
   articleRobots,
   articleTitle,
   blogPostingNode,
@@ -51,10 +52,20 @@ const appPath = (token: string) => `/zh/apps/${token}`;
 
 describe('Article pages', () => {
   it('index only the languages whose text is ready and list just those in hreflang', () => {
-    expect(articleRobots(article(), 'zh-CN')).toBeUndefined();
-    expect(articleRobots(article(), 'ja-JP')).toBe('noindex, follow');
+    const open = ['en-US', 'zh-CN', 'ja-JP'] as const;
+    expect(articleRobots(article(), 'zh-CN', open)).toBeUndefined();
+    expect(articleRobots(article(), 'ja-JP', open)).toBe('noindex, follow');
+    expect(articleIndexedLocales(article(), open)).toEqual(['en-US', 'zh-CN']);
     expect(hreflangsFor(['en-US', 'zh-CN'])).toEqual(['en', 'zh-Hans', 'zh', 'x-default']);
     expect(hreflangsFor(['zh-CN'])).toEqual(['zh-Hans', 'zh']);
+  });
+
+  it('leave languages the site has closed for indexing out of the index and out of hreflang', () => {
+    // zh-CN text is ready, but the site has closed the language (L1, pages.openLocales).
+    expect(articleIndexedLocales(article(), ['en-US', 'de-DE'])).toEqual(['en-US']);
+    expect(articleRobots(article(), 'zh-CN', ['en-US', 'de-DE'])).toBe('noindex, follow');
+    expect(articleRobots(article(), 'en-US', ['en-US', 'de-DE'])).toBeUndefined();
+    expect(articleIndexedLocales(article(), ['de-DE'])).toEqual([]);
   });
 
   it('brand titles once and prefer the search title and description editors wrote', () => {

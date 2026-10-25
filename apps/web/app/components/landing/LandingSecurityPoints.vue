@@ -2,15 +2,18 @@
 import { OnIcon } from '@opennavo/ui';
 
 // The six security checks (store/security plan §6), shared by the home page's security section and /security.
+// Checks that a topic page (F8) explains link to it under the topic's own title: the scans run on ClamAV, and
+// the system check-up covers XProtect.
 const { t } = useI18n();
+const localePath = useLocalePath();
 
 const POINTS = [
-  { key: 'scan', icon: 'scan-search' },
+  { key: 'scan', icon: 'scan-search', topic: 'clamav' },
   { key: 'install', icon: 'package' },
   { key: 'downloads', icon: 'download' },
   { key: 'startup', icon: 'power' },
   { key: 'signatures', icon: 'key-round' },
-  { key: 'posture', icon: 'lock' }
+  { key: 'posture', icon: 'lock', topic: 'xprotect' }
 ] as const;
 </script>
 
@@ -33,6 +36,14 @@ const POINTS = [
       <p class="m-0 text-13.5px leading-[1.65] text-ink-secondary">
         {{ t(`landing.security.points.${point.key}.body`) }}
       </p>
+      <NuxtLink
+        v-if="'topic' in point"
+        :to="localePath(`/security/${point.topic}`)"
+        class="mt-auto inline-flex items-center gap-4px self-start rounded-tiny text-13px font-600 text-ink-primary no-underline outline-none transition-colors duration-fast ease-standard hover:text-ink-secondary focus-visible:shadow-focus-ring"
+      >
+        {{ t(`securityTopics.links.${point.topic}.title`) }}
+        <OnIcon name="arrow-right" :size="13" />
+      </NuxtLink>
     </li>
   </ul>
 </template>

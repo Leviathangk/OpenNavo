@@ -6,7 +6,7 @@ import { OnIcon, OnLogo } from '@opennavo/ui';
 // language links share one row with the copyright, so the footer stays about as tall as the brand block.
 const { t } = useI18n();
 const localePath = useLocalePath();
-const year = new Date().getFullYear();
+const year = useCopyrightYear();
 const columns = useFooterLinks();
 const consent = useAnalyticsConsent();
 </script>

@@ -2,6 +2,7 @@ package seo
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -35,10 +36,15 @@ func TestPageDecisionMatrix(t *testing.T) {
 						require.False(t, d.InSitemap)
 						return
 					}
+					if kind == PageDependencies {
+						// Dependency content keeps the tab's own URL, but the tab is never indexed.
+						require.Equal(t, PageDecision{Robots: "noindex, follow", Hreflang: []string{}, Reason: ReasonSupportingPage}, d)
+						return
+					}
 					require.Equal(t, "index, follow", d.Robots)
 					require.Empty(t, d.CanonicalPath)
 					require.Equal(t, Locales, d.Hreflang)
-					require.Equal(t, page == 1 && kind != PageDependencies, d.InSitemap)
+					require.Equal(t, page == 1, d.InSitemap)
 					require.True(t, d.Announce)
 					require.Empty(t, d.Reason)
 				})
@@ -109,6 +115,7 @@ func TestPageDecisionQualityAndShadow(t *testing.T) {
 	f.HasDependencyContent = false
 	d := DecidePage(f, PageRef{Kind: PageDependencies, Locale: "fr-FR"}, shadow)
 	require.Equal(t, "/fr/apps/visual-studio-code", d.CanonicalPath)
+	require.Equal(t, "duplicate_of_overview", d.Reason)
 	f.Kind = "link"
 	d = DecidePage(f, PageRef{Kind: PageDetails, Locale: "fr-FR"}, shadow)
 	require.Equal(t, "unsupported_page", d.Reason)
@@ -150,4 +157,103 @@ func TestIntentPagesRequireQualifiedTargetPerLocale(t *testing.T) {
 	p.IntentPagesEnabled = true
 	f.Kind = "link"
 	require.Equal(t, "unsupported_page", DecidePage(f, PageRef{Kind: PageUninstall, Locale: "en-US"}, p).Reason)
+}
+
+func TestClosedLocalesAreNoindexOnEveryPage(t *testing.T) {
+	open := []string{"en-US", "zh-CN", "ja-JP", "es-ES", "ru-RU"}
+	f := eligible()
+	f.Kind, f.ReadyLocales, f.PublishedLocales = "cask", Locales, Locales
+	f.TroubleshootingIssues, f.NotesPages = map[string]int{}, map[int]map[string]NotesFacts{1: {}}
+	f.IntentLocales = map[PageKind][]string{PageAlternatives: Locales, PageUninstall: Locales}
+	for _, locale := range Locales {
+		f.TroubleshootingIssues[locale] = TroubleshootingMinIssues
+		f.NotesPages[1][locale] = NotesFacts{Chars: 300, Entries: VersionsMinNoteEntries}
+	}
+	kinds := []PageKind{PageOverview, PageVersions, PageDependencies, PageDetails, PageAlternatives, PageUninstall, PageTroubleshooting}
+	for _, mode := range []string{"shadow", "enforce"} {
+		for _, content := range []bool{true, false} {
+			f.HasDependencyContent = content
+			everyLocale := Policy{Mode: mode, Scope: "all", VersionsSitemap: true, IntentPagesEnabled: true}
+			closing := everyLocale
+			closing.OpenLocales = open
+			for _, kind := range kinds {
+				for _, locale := range Locales {
+					t.Run(fmt.Sprintf("%s/%t/%s/%s", mode, content, kind, locale), func(t *testing.T) {
+						ref := PageRef{Kind: kind, Locale: locale, Page: 1}
+						before, d := DecidePage(f, ref, everyLocale), DecidePage(f, ref, closing)
+						if slices.Contains(open, locale) {
+							// An open language decides exactly as before, without the closed languages' alternates.
+							want := before
+							want.Hreflang = []string{}
+							for _, alternate := range before.Hreflang {
+								if slices.Contains(open, alternate) {
+									want.Hreflang = append(want.Hreflang, alternate)
+								}
+							}
+							require.Equal(t, want, d)
+							if kind == PageOverview {
+								require.Equal(t, open, d.Hreflang)
+							}
+							return
+						}
+						require.Equal(t, "noindex, follow", d.Robots)
+						require.Empty(t, d.Hreflang)
+						require.False(t, d.InSitemap)
+						require.False(t, d.Announce)
+						switch {
+						case kind == PageDetails:
+							require.Equal(t, "consolidated", d.Reason)
+						case kind == PageDependencies && content:
+							require.Equal(t, ReasonSupportingPage, d.Reason)
+							require.Empty(t, d.CanonicalPath)
+						case kind == PageDependencies:
+							require.Equal(t, "duplicate_of_overview", d.Reason)
+						default:
+							require.Equal(t, ReasonLocaleClosed, d.Reason)
+						}
+					})
+				}
+			}
+		}
+	}
+	// A filtered view keeps its own reason; an empty list closes every language, en-US included.
+	require.Equal(t, "filtered_view", DecidePage(f, PageRef{Kind: PageVersions, Locale: "de-DE", Filtered: true}, Policy{OpenLocales: open}).Reason)
+	for _, locale := range Locales {
+		require.Equal(t, ReasonLocaleClosed, DecidePage(f, PageRef{Kind: PageOverview, Locale: locale}, Policy{OpenLocales: []string{}}).Reason)
+	}
+}
+
+func TestDecideKeepsOnlyOpenLocales(t *testing.T) {
+	open := []string{"en-US", "zh-CN", "ja-JP", "es-ES", "ru-RU"}
+	require.True(t, LocaleOpen(nil, "it-IT"), "no list opens every site language")
+	require.False(t, LocaleOpen([]string{}, "en-US"))
+	require.True(t, Policy{OpenLocales: open}.LocaleOpen("ru-RU"))
+	require.False(t, Policy{OpenLocales: open}.LocaleOpen("pt-BR"))
+
+	f := eligible()
+	f.PublishedLocales = Locales
+	for _, mode := range []string{"off", "shadow", "enforce"} {
+		require.Equal(t, Locales, Decide(f, Policy{Mode: mode, Scope: "all"}).Locales, mode)
+		d := Decide(f, Policy{Mode: mode, Scope: "all", OpenLocales: open})
+		require.Equal(t, []string{"en-US", "zh-CN", "ja-JP", "es-ES", "ru-RU"}, d.Locales, mode)
+		require.True(t, d.Indexable, "closing languages does not change the app's own verdict")
+	}
+	// Enforced languages are the published ones that are also open.
+	f.PublishedLocales = []string{"en-US", "fr-FR", "ja-JP"}
+	require.Equal(t, []string{"en-US", "ja-JP"}, Decide(f, Policy{Mode: "enforce", Scope: "all", OpenLocales: open}).Locales)
+}
+
+func TestBrandOverviewRedirectDecision(t *testing.T) {
+	f := eligible()
+	f.Token = "opennavo"
+	for _, locale := range Locales {
+		d := DecidePage(f, PageRef{Kind: PageOverview, Locale: locale}, Policy{})
+		require.Equal(t, "brand_redirect", d.Reason)
+		require.Contains(t, d.CanonicalPath, "/download")
+		require.False(t, d.InSitemap)
+		require.False(t, d.Announce)
+		require.Empty(t, d.Hreflang)
+	}
+	f.NotesPages = map[int]map[string]NotesFacts{1: {"en-US": {Chars: 1000, Entries: 3}}}
+	require.True(t, DecidePage(f, PageRef{Kind: PageVersions, Locale: "en-US"}, Policy{VersionsSitemap: true}).Announce)
 }

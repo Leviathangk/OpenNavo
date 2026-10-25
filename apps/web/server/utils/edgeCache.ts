@@ -15,18 +15,26 @@ export function edgeRouteType(path: string): string {
   return RECENT_PATHS.has(path.split('?', 1)[0] ?? '') ? 'list' : webRouteType(path);
 }
 
-/** Page types cached at the edge first; the rest stays at the origin until this list grows. */
+/**
+ * Page types cached at the edge; the rest stays at the origin. The download, security, about and collection pages
+ * change with a release or an edit at most, so the short lifetime covers them without a purge.
+ */
 export const EDGE_CACHE_ROUTES = new Set([
   'home',
   'list',
   'category',
+  'collection',
   'app',
   'app_versions',
   'app_details',
   'app_dependencies',
   'article_list',
   'article',
-  'author'
+  'author',
+  'download',
+  'security',
+  'security_topic',
+  'about'
 ]);
 /**
  * Pages the Go URL change feed purges by prefix when their app or article changes, and again after
@@ -66,7 +74,7 @@ export function edgeCacheHeader(input: EdgeCacheInput): string | undefined {
     !input.setCookie &&
     !input.authorization &&
     // Only pages the origin already caches as shared (SWR route rules set s-maxage); search sends
-    // no-store and stays uncached. Collection pages are origin-cached (X5) but not on this edge list yet.
+    // no-store and stays uncached.
     /\bs-maxage=\d+/.test(input.cacheControl) &&
     !/\b(no-store|private|no-cache)\b/.test(input.cacheControl) &&
     EDGE_CACHE_ROUTES.has(edgeRouteType(input.path));

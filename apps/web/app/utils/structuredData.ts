@@ -4,7 +4,7 @@
 // facts.offers (verified, current, with an amount, currency, region and edition), so a price type or
 // a free download alone never becomes an offer. There are no reviews or ratings, so app pages are not
 // eligible for Google's software rich result; that gap is accepted rather than filled with install counts.
-import { formatBytes } from '@opennavo/shared';
+import { BRAND, formatBytes } from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { applicationCategory } from './packageView';
 import { httpsUrl, officialDownloadUrl } from './linkApp';
@@ -13,12 +13,18 @@ import type { PackagePage, PriceFact } from './packageFacts';
 import { reliableVersion } from './seoTitles';
 import type { Translate } from './seoTitles';
 
+/** @id of OpenNavo's own desktop app, the SoftwareApplication /download describes. */
+export function desktopAppId(siteUrl: string): string {
+  return `${siteUrl}/#desktop-app`;
+}
+
 /**
  * Stable @id of an app entity: the same in every language and on every page that names the app, so
- * articles can point at it in about and mentions.
+ * articles can point at it in about and mentions. OpenNavo's own catalog entry is the desktop app, whose
+ * overview answers a 301 to /download, so its pages point at the node /download defines.
  */
 export function appEntityId(siteUrl: string, token: string): string {
-  return `${siteUrl}/apps/${token}#app`;
+  return token === BRAND.caskToken ? desktopAppId(siteUrl) : `${siteUrl}/apps/${token}#app`;
 }
 
 const UNIT_CODES: Partial<Record<PriceFact['period'], string>> = { monthly: 'MON', yearly: 'ANN' };

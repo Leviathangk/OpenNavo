@@ -1,10 +1,35 @@
 <script setup lang="ts">
+import { computed, ref, useId } from 'vue';
 import type { CaskArtifact } from '@opennavo/api';
+import { interpolatePlural } from '@opennavo/shared';
+import OnButton from './OnButton.vue';
 import OnCodeText from './OnCodeText.vue';
-import { useUiMessages } from '../composables/locale';
+import { useUiLocale, useUiMessages } from '../composables/locale';
 
-defineProps<{ entries: readonly CaskArtifact[] }>();
+// Font collections declare hundreds of files, one entry each. A long list shows its first entries until the
+// visitor asks for the rest, which is only ever rendered in the browser and so stays out of server HTML.
+const COLLAPSE_ABOVE = 30;
+const COLLAPSED_COUNT = 20;
+
+const props = defineProps<{ entries: readonly CaskArtifact[] }>();
 const messages = useUiMessages();
+const locale = useUiLocale();
+const listId = useId();
+const expanded = ref(false);
+const collapsible = computed(() => props.entries.length > COLLAPSE_ABOVE);
+const shown = computed(() =>
+  collapsible.value && !expanded.value ? props.entries.slice(0, COLLAPSED_COUNT) : props.entries
+);
+const toggleLabel = computed(() =>
+  expanded.value
+    ? messages.value.about.collapse
+    : interpolatePlural(
+        messages.value.collection.viewAll,
+        { count: props.entries.length },
+        props.entries.length,
+        locale.value
+      )
+);
 </script>
 
 <template>
@@ -13,9 +38,9 @@ const messages = useUiMessages();
     class="min-w-0 rounded-big border border-solid border-line-subtle bg-surface-card p-16px"
   >
     <h2 class="m-0 text-13.5px font-600 text-ink-primary">{{ messages.cask.declarations }}</h2>
-    <ul class="m-0 mt-12px flex list-none flex-col gap-12px p-0">
+    <ul :id="listId" class="m-0 mt-12px flex list-none flex-col gap-12px p-0">
       <li
-        v-for="(entry, index) in entries"
+        v-for="(entry, index) in shown"
         :key="index"
         class="min-w-0 border-t border-t-solid border-line-subtle pt-12px text-12.5px"
       >
@@ -40,5 +65,15 @@ const messages = useUiMessages();
         </details>
       </li>
     </ul>
+    <OnButton
+      v-if="collapsible"
+      size="sm"
+      class="mt-12px"
+      :aria-controls="listId"
+      :aria-expanded="expanded ? 'true' : 'false'"
+      @click="expanded = !expanded"
+    >
+      {{ toggleLabel }}
+    </OnButton>
   </section>
 </template>

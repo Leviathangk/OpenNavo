@@ -5,6 +5,8 @@ import { OnButton, OnChip, OnIcon, OnInstallCommand, OnKeyValueList, useUiMessag
 import { trackEvent } from '~/utils/analytics';
 import { decorative } from '~/utils/decorative';
 import { DESKTOP_BREW_COMMAND } from '~/utils/download';
+import { withVariantNames } from '~/utils/seoTitles';
+import { desktopAppId } from '~/utils/structuredData';
 import { BRAND_FACTS } from '~~/shared/utils/brandFacts';
 
 // Download (05 §7.4, 08 §10.14): client icon on glow/orbits, Universal DMG, six feature cards,
@@ -33,7 +35,8 @@ const [{ data: release, error }, { data: home }] = await Promise.all([
   ),
   useAsyncData(
     () => `download:home:${locale.value}`,
-    () => decorative(unwrap(api.GET('/home')), null, 'download orbit icons')
+    () => decorative(unwrap(api.GET('/home')), null, 'download orbit icons'),
+    { transform: withVariantNames }
   )
 ]);
 
@@ -66,7 +69,12 @@ const features = computed(() =>
     key,
     icon: FEATURE_ICONS[key],
     title: t(`download.features.${key}.title`),
-    body: t(`download.features.${key}.body`)
+    body: t(`download.features.${key}.body`),
+    // The antivirus card links to the ClamAV topic page (F8), under that page's own title.
+    link:
+      key === 'security'
+        ? { label: t('securityTopics.links.clamav.title'), path: localePath('/security/clamav') }
+        : undefined
   }))
 );
 
@@ -157,14 +165,14 @@ const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
 const settings = useSiteSettings();
 // T4: the download page is about the desktop app, whose node has a stable @id across languages.
 const canonical = useCanonicalUrl();
-usePageSchema(() => ({ mainEntity: release.value && dmg.value ? `${siteUrl}/#desktop-app` : undefined }));
+usePageSchema(() => ({ mainEntity: release.value && dmg.value ? desktopAppId(siteUrl) : undefined }));
 useSchemaOrg(
   computed(() => {
     const value = release.value;
     if (!value || !dmg.value) return [];
     return [
       defineSoftwareApp({
-        '@id': `${siteUrl}/#desktop-app`,
+        '@id': desktopAppId(siteUrl),
         mainEntityOfPage: { '@id': `${canonical.value}#webpage` },
         name: settings.value?.identity.name || 'OpenNavo',
         operatingSystem: 'macOS',
@@ -244,6 +252,14 @@ useSchemaOrg(
           </span>
           <h2 class="m-0 mt-14px text-15px font-600 text-ink-primary">{{ feature.title }}</h2>
           <p class="m-0 mt-6px text-13px leading-[1.65] text-ink-secondary">{{ feature.body }}</p>
+          <NuxtLink
+            v-if="feature.link"
+            :to="feature.link.path"
+            class="mt-8px inline-flex items-center gap-4px rounded-tiny text-12.5px font-600 text-ink-primary no-underline outline-none transition-colors duration-fast ease-standard hover:text-ink-secondary focus-visible:shadow-focus-ring"
+          >
+            {{ feature.link.label }}
+            <OnIcon name="arrow-right" :size="13" />
+          </NuxtLink>
         </li>
       </ul>
 

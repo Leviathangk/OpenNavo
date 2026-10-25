@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { formatCountCompact } from '@opennavo/shared';
 import { collectionIcons, OnCollectionCard, OnRailPanel, OnRailSection, OnRankRow } from '@opennavo/ui';
+import { packagePath } from '~/utils/packageView';
 
 // Discover rail (05 §11.2): weekly popular/featured collections, versus desktop local overview/popular; below main content under xl.
 const { t, locale } = useI18n();
@@ -23,7 +24,7 @@ const collection = computed(() => home.value?.collections[0]);
             :rank="entry.rank"
             :pkg="entry.package"
             :value="formatCountCompact(entry.installs, { locale: appLocale })"
-            :href="localePath(`/apps/${entry.package.token}`)"
+            :href="localePath(packagePath(entry.package.token))"
             :link-as="NuxtLink"
           />
         </li>

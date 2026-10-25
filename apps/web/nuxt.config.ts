@@ -16,6 +16,22 @@ function localizedRules<T>(rules: Record<string, T>): Record<string, T> {
 const privatePagePaths = Object.keys(localizedRules({ '/search': true, '/brewfile': true }));
 // The article list joins the sitemap with the articles group, once there are articles to list.
 const articleListPaths = Object.keys(localizedRules({ '/articles': true }));
+// Icons and the web app manifest keep their names across releases, unlike the fingerprinted /_nuxt/ files:
+// browsers and the CDN keep them a day, then refresh them in the background.
+const iconPaths = [
+  '/favicon.ico',
+  '/favicon.svg',
+  '/favicon-32.png',
+  '/icon-512.png',
+  '/apple-touch-icon.png',
+  '/site.webmanifest'
+];
+const iconRules = Object.fromEntries(
+  iconPaths.map(path => [
+    path,
+    { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } }
+  ])
+);
 
 // Web app (05-web.md): SSR, English at the root path, other languages at their manifest prefixes.
 export default defineNuxtConfig({
@@ -94,11 +110,13 @@ export default defineNuxtConfig({
   app: {
     head: {
       // 08 §14: SVG icons adapt the star color to the system theme; PNG serves browsers without SVG icon support and the iOS home screen; root favicon.ico is the fallback.
+      // The manifest gives home-screen shortcuts the name, icons and dark page color; it stays a website (display: browser).
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32.png' },
         { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/icon-512.png' },
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+        { rel: 'manifest', href: '/site.webmanifest' }
       ],
       // Both themes (08 §3.7): pages are served dark (server/plugins/theme.ts) and this blocking head script applies
       // a saved choice before first paint. Never set data-theme here: the client renders app.head too and would
@@ -195,7 +213,8 @@ export default defineNuxtConfig({
     // Permanent moves for addresses devices and directories guess: older iOS asks for the
     // precomposed touch icon, and some directories expect a 512px logo. /sitemap.xml is in hooks.
     '/apple-touch-icon-precomposed.png': { redirect: { to: '/apple-touch-icon.png', statusCode: 301 } },
-    '/img/logo_512.png': { redirect: { to: '/icon-512.png', statusCode: 301 } }
+    '/img/logo_512.png': { redirect: { to: '/icon-512.png', statusCode: 301 } },
+    ...iconRules
   },
   // Route caching applies only to production builds; development renders every request (05 §4).
   $production: {

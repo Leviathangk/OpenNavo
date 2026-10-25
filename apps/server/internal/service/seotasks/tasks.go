@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/opennavo/opennavo/server/internal/i18n"
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -93,6 +95,10 @@ type ClaimFilter struct {
 	Limit int
 	Kinds []string
 	IDs   []int64
+	// ClosedLocales are languages closed for indexing. Their translate tasks for
+	// website content stay queued, untouched, but are not handed out while the
+	// language is closed (seo.TranslationOpen).
+	ClosedLocales []string
 }
 
 func (s *Service) Claim(ctx context.Context, owner string, limit int, kinds []string) ([]Task, error) {
@@ -100,6 +106,10 @@ func (s *Service) Claim(ctx context.Context, owner string, limit int, kinds []st
 }
 
 func (s *Service) ClaimWith(ctx context.Context, owner string, f ClaimFilter) ([]Task, error) {
+	// Keep the Simplified Chinese intermediate translation claimable for Traditional Chinese.
+	if !slices.Contains(f.ClosedLocales, "zh-Hant") {
+		f.ClosedLocales = slices.DeleteFunc(slices.Clone(f.ClosedLocales), func(locale string) bool { return locale == "zh-CN" })
+	}
 	limit, kinds := f.Limit, f.Kinds
 	if strings.TrimSpace(owner) == "" || len(owner) > 200 || limit < 1 || limit > 50 || len(kinds) > 20 || len(f.IDs) > 50 {
 		return nil, ErrInvalid
@@ -131,6 +141,10 @@ func (s *Service) ClaimWith(ctx context.Context, owner string, f ClaimFilter) ([
 			}
 			if len(f.IDs) > 0 {
 				query = query.Where("id IN ?", f.IDs)
+			}
+			if len(f.ClosedLocales) > 0 {
+				// Translate tasks are keyed <entity>:<object key>.
+				query = query.Where("NOT (kind='translate' AND locale IN ? AND split_part(entity_key,':',1) NOT IN ?)", f.ClosedLocales, seo.ClientOnlyContent())
 			}
 			// Adding age in days is this static score plus the same current-time
 			// constant for every row. Keep the expression and open/retry predicate in

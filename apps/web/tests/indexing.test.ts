@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { PackageDetail } from '@opennavo/api';
 import { latestVersionDate } from '../app/utils/indexing';
 import { hreflangsFor, hreflangValues } from '../shared/utils/hreflang';
-import { localizedEntries, openLocaleEntries, pathLocale } from '../server/utils/sitemapEntries';
+import {
+  localizedEntries,
+  openLocaleEntries,
+  pageLocaleEntries,
+  pathLocale,
+  staticSitemapLocale
+} from '../server/utils/sitemapEntries';
 
 // Page index decisions themselves come from the API (S5) and are tested in Go; the web only maps the
 // decision's languages to hreflang values.
@@ -87,5 +93,28 @@ describe('open languages in the static sitemap (L1)', () => {
     expect(open[0]!.alternatives.map(item => item.hreflang).sort()).toEqual(
       ['de', 'en', 'x-default', 'zh-HK', 'zh-Hant', 'zh-TW'].sort()
     );
+  });
+
+  it('Names the static sitemaps by hreflang and keeps a noindex page out of them in its languages', () => {
+    expect(staticSitemapLocale('en-static')).toBe('en-US');
+    expect(staticSitemapLocale('zh-Hans-static')).toBe('zh-CN');
+    expect(staticSitemapLocale('zh-Hant-static')).toBe('zh-Hant');
+    expect(staticSitemapLocale('pt-BR-static')).toBe('pt-BR');
+    for (const name of ['static', 'apps-bucket-0', 'xx-static', undefined])
+      expect(staticSitemapLocale(name), String(name)).toBeUndefined();
+    const page = (path: string) =>
+      localizedEntries(path, 'static', ['en-US', 'zh-CN', 'de-DE']).map(entry => ({
+        ...entry,
+        loc: `https://opennavo.com${entry.loc}`
+      }));
+    const entries = [...page('/background-items'), ...page('/security')];
+    const none = pageLocaleEntries(entries, '/background-items', []);
+    expect(none.map(entry => entry.loc)).toEqual(page('/security').map(entry => entry.loc));
+    const chinese = pageLocaleEntries(entries, '/background-items', ['zh-CN']);
+    const list = chinese.filter(entry => entry.loc.endsWith('/background-items'));
+    expect(list.map(entry => entry.loc)).toEqual(['https://opennavo.com/zh/background-items']);
+    expect(list[0]!.alternatives.map(item => item.hreflang).sort()).toEqual(['zh', 'zh-Hans']);
+    // Other pages keep every language and alternate.
+    expect(chinese.filter(entry => entry.loc.endsWith('/security'))).toEqual(page('/security'));
   });
 });

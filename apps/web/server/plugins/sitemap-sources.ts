@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { PublicComponents } from '@opennavo/api';
-import { LOCALES, VERSION_PAGE_MIN_NOTES } from '@opennavo/shared';
+import { BRAND, LOCALES, VERSION_PAGE_MIN_NOTES } from '@opennavo/shared';
 import { packageSitemapName, packageSitemaps, type PackageSitemapGroup } from '../../shared/utils/sitemapBuckets';
 import { MAX_CACHE_ENTRY_BYTES, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
-import { localizedEntries, openLocaleEntries } from '../utils/sitemapEntries';
+import { BACKGROUND_PAGE_SIZE, indexPageNoindex } from '../../app/utils/backgroundItems';
+import { localizedEntries, openLocaleEntries, pageLocaleEntries, staticSitemapLocale } from '../utils/sitemapEntries';
 import { createStaleCache } from '../utils/staleCache';
 
 type SitemapEntry = PublicComponents['schemas']['SitemapEntry'];
@@ -47,11 +48,14 @@ export default defineNitroPlugin(nitroApp => {
     // Let API failures propagate when nothing is cached yet: an outage must not look like removed
     // content. The article check is one small request and follows publishing at once; the
     // populated buckets come from the cached catalog (populatedPackageSitemaps).
-    const [{ articles, authors }, populated, backgroundItems] = await Promise.all([
+    const [{ articles, authors }, populated, open] = await Promise.all([
       articleSitemap(),
       populatedPackageSitemaps(),
-      backgroundItemEntries()
+      openLocales()
     ]);
+    // The label list takes hundreds of API pages to load after a restart, so the index reads it without waiting
+    // and leaves the group out until it is known.
+    const backgroundItems = backgroundItemEntries.peek();
     // T5: each package bucket and the article groups carry the date their newest page last changed in
     // content; groups without such a date (static pages, categories, collections) carry none.
     const newest = (dates: (string | null | undefined)[]) =>
@@ -69,7 +73,10 @@ export default defineNitroPlugin(nitroApp => {
         if (sitemapName === 'articles') return articles.length > 0;
         if (sitemapName === 'authors') return authors.length > 0;
         // An empty urlset in the index reads as a broken sitemap to Search Console.
-        if (sitemapName === 'background-items') return backgroundItems.length > 0;
+        if (sitemapName === 'background-items') return Boolean(backgroundItems?.length);
+        // A language closed for indexing has no static pages left in its sitemap.
+        const locale = staticSitemapLocale(sitemapName);
+        if (locale) return open.includes(locale);
         return true;
       })
       .map(entry => {
@@ -79,11 +86,13 @@ export default defineNitroPlugin(nitroApp => {
         return lastmod ? { ...entry, lastmod } : entry;
       });
   });
-  // L1: the module builds the static group from the app's pages in every site language; only the
-  // languages open for indexing (site settings, pages.openLocales) stay in it.
+  // L1: the module builds the static group from the app's pages in every site language and splits it into one
+  // sitemap per language (en-static, zh-Hans-static, …). Only the languages open for indexing (site settings,
+  // pages.openLocales) stay in them, and the background items list only where it is indexable.
   nitroApp.hooks.hook('sitemap:resolved', async ctx => {
-    if (ctx.sitemapName !== 'static') return;
-    ctx.urls = openLocaleEntries(ctx.urls, (await getSiteSettings()).pages.openLocales);
+    if (ctx.sitemapName !== 'static' && !staticSitemapLocale(ctx.sitemapName)) return;
+    const [open, listed] = await Promise.all([openLocales(), backgroundListLocales()]);
+    ctx.urls = pageLocaleEntries(openLocaleEntries(ctx.urls, open), '/background-items', listed);
   });
   nitroApp.hooks.hook('sitemap:input', async ctx => {
     if (Object.hasOwn(packageSitemaps, ctx.sitemapName)) {
@@ -186,7 +195,7 @@ const rebuildFailedAt = new Map<PackageGroup, number>();
 
 /** Settles once no snapshot or index refresh is running (tests). */
 export async function sitemapSourcesIdle(): Promise<void> {
-  await Promise.all([populatedPackageSitemaps.idle(), backgroundItemEntries.idle()]);
+  await Promise.all([populatedPackageSitemaps.idle(), backgroundItemEntries.idle(), backgroundListLocales.idle()]);
   while (packageRebuilds.size) await Promise.allSettled(packageRebuilds.values());
 }
 
@@ -287,8 +296,11 @@ async function loadPackagePages(group: 'apps' | 'fonts'): Promise<SitemapRecord[
     const page = await $fetch<{ data: { total: number; records: SitemapEntry[] } }>(`${apiBase()}/sitemap/packages`, {
       query: { current, size: PAGE_SIZE, group }
     });
-    // Link apps share /apps with casks (store/security plan §4); command-line tools have no web page.
-    const records = page.data.records.filter(record => record.kind === 'cask' || record.kind === 'link');
+    // Link apps share /apps with casks (store/security plan §4); command-line tools have no web page, and
+    // OpenNavo's own entry answers a 301 to /download (middleware/package-canonical.ts).
+    const records = page.data.records.filter(
+      record => (record.kind === 'cask' || record.kind === 'link') && record.token !== BRAND.caskToken
+    );
     chunks.push(...chunkRecords(records.map(slimRecord)));
     if (current * PAGE_SIZE >= page.data.total) return chunks;
   }
@@ -445,6 +457,29 @@ const backgroundItemEntries = createStaleCache(
     freshMs: SNAPSHOT_FRESH_MS,
     retryMs: SNAPSHOT_RETRY_MS,
     onError: error => console.error('[opennavo] background-items sitemap refresh failed', error)
+  }
+);
+
+/**
+ * Languages whose background items list is indexable: a label on its first page has a verified description (the
+ * page's own rule, indexPageNoindex), so the static sitemaps list the page only there. One API page per language.
+ */
+const backgroundListLocales = createStaleCache(
+  async (): Promise<Locale[]> => {
+    const open = await openLocales();
+    const pages = await Promise.all(
+      open.map(locale =>
+        $fetch<{ data: { records: BackgroundItem[] } }>(`${apiBase()}/background-items`, {
+          query: { locale, current: 1, size: BACKGROUND_PAGE_SIZE }
+        })
+      )
+    );
+    return open.filter((_, index) => !indexPageNoindex(pages[index]!.data.records, ''));
+  },
+  {
+    freshMs: SNAPSHOT_FRESH_MS,
+    retryMs: SNAPSHOT_RETRY_MS,
+    onError: error => console.error('[opennavo] background items list check failed', error)
   }
 );
 

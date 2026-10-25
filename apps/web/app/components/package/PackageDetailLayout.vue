@@ -140,11 +140,7 @@ const breadcrumb = computed(() => {
 useBreadcrumbSchema(breadcrumb);
 // Subpages are about the app; its full SoftwareApplication lives on the overview only (T4).
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
-usePageSchema(() =>
-  tab.value === 'overview' || !pkg.value
-    ? {}
-    : { about: { '@id': appEntityId(siteUrl, pkg.value.token), name: pkg.value.displayName } }
-);
+usePageSchema(() => (tab.value === 'overview' || !pkg.value ? {} : { about: appEntityId(siteUrl, pkg.value.token) }));
 // The versions and troubleshooting pages' h1 names the page (S1, F7); the other subpages keep the app name.
 const headingSuffix = computed(() =>
   tab.value === 'versions' || tab.value === 'troubleshooting' ? tabLabel(tab.value) : undefined

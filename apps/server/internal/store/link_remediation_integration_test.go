@@ -16,6 +16,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/facts"
 	"github.com/opennavo/opennavo/server/internal/homebrew"
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/service/catalog"
 	"github.com/opennavo/opennavo/server/internal/service/management"
 	"github.com/opennavo/opennavo/server/internal/service/snapshot"
@@ -118,14 +119,17 @@ func TestRemediationLinkContentAndTranslation(t *testing.T) {
 	source, err = st.ReadContentSource(ctx, ref)
 	require.NoError(t, err)
 	require.NoError(t, st.DB.Table("seo_tasks").Where("kind='translate' AND entity_key=? AND state='open'", fmt.Sprintf("package:%d", id)).Count(&n).Error)
-	// Translation work targets every writable site language except the source;
+	// Translation work targets every writable site language open for indexing except the source;
 	// Traditional Chinese is derived from Simplified Chinese, never queued.
+	settings, err := st.SEOSettings(ctx)
+	require.NoError(t, err)
 	targets := 0
 	for _, code := range i18n.SiteLocales {
-		if code != "en-US" && i18n.Writable(string(code)) {
+		if code != "en-US" && i18n.Writable(string(code)) && seo.LocaleOpen(settings.Settings.Pages.OpenLocales, string(code)) {
 			targets++
 		}
 	}
+	require.Equal(t, 5, targets, "the default open languages, without the source")
 	require.EqualValues(t, targets, n)
 	applied, err := st.WriteTranslationSnapshot(ctx, source, "zh-CN", map[string]string{"summary": "译文", "description": "正文"}, "fixture")
 	require.NoError(t, err)

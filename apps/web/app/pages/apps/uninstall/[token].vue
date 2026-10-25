@@ -42,9 +42,7 @@ const breadcrumb = computed(() => {
 });
 useBreadcrumbSchema(breadcrumb);
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
-usePageSchema(() =>
-  pkg.value ? { about: { '@id': appEntityId(siteUrl, pkg.value.token), name: pkg.value.displayName } } : {}
-);
+usePageSchema(() => (pkg.value ? { about: appEntityId(siteUrl, pkg.value.token) } : {}));
 
 const title = computed(() => t('package.uninstallPage.title', { name: name.value }));
 const description = computed(() =>

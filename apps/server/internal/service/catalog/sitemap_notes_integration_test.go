@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Sitemap pages read the versions-page notes facts the page-state job stored instead of recounting every
-// release, and count live only for apps whose facts are missing.
-func TestSitemapUsesStoredNotesFactsAndCountsMissingOnesLive(t *testing.T) {
+// Sitemap pages read the versions-page notes facts the page-state job stored and never recount releases: an app
+// whose facts are missing (not reached yet, or reset by a migration) keeps its versions page out until they are stored.
+func TestSitemapUsesStoredNotesFactsAndWaitsForMissingOnes(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	ctx := context.Background()
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en)
@@ -44,25 +44,25 @@ func TestSitemapUsesStoredNotesFactsAndCountsMissingOnesLive(t *testing.T) {
 		t.Fatal("English is not listed")
 		return publicapi.PageDecision{}
 	}
-	live := versions()
-	require.Equal(t, "index, follow", string(live.Robots), "English notes pass the thin-page rule")
+	require.Equal(t, "noindex, follow", string(versions().Robots), "no facts are stored before the job runs")
 	count, err := st.RefreshPackagePageStates(ctx, 100)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
-	require.Equal(t, live, versions(), "stored facts give the same verdict as a live count")
+	stored := versions()
+	require.Equal(t, "index, follow", string(stored.Robots), "English notes pass the thin-page rule")
 	// With facts stored, the sitemap does not recount: blanking the notes changes nothing until the job runs.
 	require.NoError(t, st.DB.Exec("UPDATE releases SET body_markdown='' WHERE package_id=902").Error)
-	require.Equal(t, live, versions())
-	// Without them it counts live and sees the blank notes.
-	require.NoError(t, st.DB.Exec("UPDATE package_page_state SET notes_chars=NULL,notes_entries=NULL WHERE package_id=902").Error)
+	require.Equal(t, stored, versions())
+	// Facts reset by a migration leave the page out instead of being counted live.
+	require.NoError(t, st.DB.Exec("UPDATE package_page_state SET notes_entries=NULL WHERE package_id=902").Error)
+	require.Equal(t, "noindex, follow", string(versions().Robots))
+	// The backfill stores the current facts, which see the blank notes.
+	filled, err := st.BackfillPageNotes(ctx, 10)
+	require.NoError(t, err)
+	require.Equal(t, 1, filled)
 	thin := versions()
 	require.Equal(t, "noindex, follow", string(thin.Robots))
 	require.Equal(t, "thin_notes_page", string(thin.Reason))
-	// The next refresh stores the new facts.
-	count, err = st.RefreshPackagePageStates(ctx, 100)
-	require.NoError(t, err)
-	require.Equal(t, 1, count)
-	require.Equal(t, thin, versions())
 }
 
 // Pages above SitemapPageSize are rejected rather than computed.

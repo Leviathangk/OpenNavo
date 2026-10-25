@@ -926,7 +926,7 @@ const pages: PageMessages = {
       versionsSitemapHint: 'When on, only version pages with standalone value are added to the sitemap.',
       openLocales: 'Languages open for indexing',
       openLocalesHint:
-        'Unchecked languages still render, but their home, list, category and static pages stay out of the index, hreflang and sitemaps. App pages are judged on their own translation quality. English is the default language and always stays open.',
+        'Unchecked languages still render, but none of their pages are indexed: home, list, category, static and app pages are noindex and stay out of hreflang, sitemaps and IndexNow. In checked languages, app pages are still judged on their own translation quality. English is the default language and always stays open.',
       versionsMinNotesChars: 'Minimum release-note length',
       versionsMinNotesCharsHint:
         'A version page is indexed only when at least 3 of its releases carry notes that together reach this many characters (CJK characters count as 2). Notes that only say the details are unavailable or unverified do not count.',

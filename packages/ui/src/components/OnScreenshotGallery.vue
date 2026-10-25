@@ -20,6 +20,8 @@ export interface OnScreenshotGalleryProps {
   items: readonly OnScreenshot[];
   /** Accessible section name, default Screenshots. */
   label?: string;
+  /** App the screenshots show; images without a caption are then named "{name} · Screenshot {index}". */
+  name?: string;
 }
 
 const props = defineProps<OnScreenshotGalleryProps>();
@@ -38,7 +40,9 @@ const position = computed(() =>
 );
 
 function altFor(item: OnScreenshot, index: number): string {
-  return item.caption || interpolate(messages.value.gallery.item, { index: index + 1 });
+  if (item.caption) return item.caption;
+  const label = interpolate(messages.value.gallery.item, { index: index + 1 });
+  return props.name ? `${props.name} · ${label}` : label;
 }
 
 async function open(index: number, event: MouseEvent) {

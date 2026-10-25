@@ -882,7 +882,7 @@ const pages = {
       versionsSitemapHint: '开启后，只有具备独立价值的版本页才会加入 sitemap。',
       openLocales: '开放收录的语言',
       openLocalesHint:
-        '未勾选的语言照常显示，但首页、列表、分类和静态页不收录，也不出现在 hreflang 和 sitemap 中。App 页按各自的译文质量单独判断。英文是默认语言，始终开放。',
+        '未勾选的语言照常显示，但所有页面都不收录：首页、列表、分类、静态页和 App 页都设为 noindex，也不出现在 hreflang、sitemap 和 IndexNow 推送中。勾选的语言里，App 页仍按各自的译文质量单独判断。英文是默认语言，始终开放。',
       versionsMinNotesChars: '版本说明最少字数',
       versionsMinNotesCharsHint:
         '版本页至少有 3 个版本带更新说明、合计达到这个字数（中日韩文字按 2 个计）才会被收录；只写“未提供”或“无法核实”的说明不计入。',

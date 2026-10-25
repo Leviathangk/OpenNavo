@@ -58,6 +58,42 @@ export function pathLocale(url: string): Locale {
   );
 }
 
+/** Language of one of the module's static sitemaps, which it names by hreflang: en-static, zh-Hans-static, … */
+export function staticSitemapLocale(name: string | undefined): Locale | undefined {
+  const hreflang = name?.endsWith('-static') ? name.slice(0, -'-static'.length) : undefined;
+  return SITE_LOCALES.find(code => LOCALE_METADATA[code].hreflang === hreflang);
+}
+
+/** Path of a page URL without its language prefix: /zh-hant/background-items → /background-items. */
+function unprefixedPath(url: string): string {
+  const path = url.replace(/^[a-z][\w+.-]*:\/\/[^/]+/i, '') || '/';
+  return path.slice(LOCALE_METADATA[pathLocale(path)].prefix.length) || '/';
+}
+
+/**
+ * Keeps one page only in the languages where it is indexable: its entries in other languages go, and so do the
+ * alternates pointing at them (x-default follows English).
+ */
+export function pageLocaleEntries<T extends { loc: string; alternatives?: { hreflang: string; href: string | URL }[] }>(
+  entries: T[],
+  path: string,
+  indexable: readonly Locale[]
+): T[] {
+  const keep = (url: string) => unprefixedPath(url) !== path || indexable.includes(pathLocale(url));
+  return entries
+    .filter(entry => keep(entry.loc))
+    .map(entry =>
+      entry.alternatives && unprefixedPath(entry.loc) === path
+        ? {
+            ...entry,
+            alternatives: entry.alternatives.filter(alternative =>
+              alternative.hreflang === 'x-default' ? indexable.includes('en-US') : keep(String(alternative.href))
+            )
+          }
+        : entry
+    );
+}
+
 /**
  * L1: entries for pages that are not about one app or article (the module's static group) keep only the
  * languages open for indexing; their alternates point only at open languages, and zh-Hant's carry its

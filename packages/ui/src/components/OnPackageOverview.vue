@@ -29,6 +29,8 @@ export interface OnRelatedPackage {
 export interface OnPackageOverviewProps {
   screenshots?: readonly OnScreenshot[];
   screenshotsLabel?: string;
+  /** App name for the alternative text of screenshots without a caption. */
+  screenshotsName?: string;
   /** Whether introduction exists, rendered through about slot. */
   hasAbout?: boolean;
   /** Show AI translated / View original for machine-translated introduction. */
@@ -76,7 +78,12 @@ defineSlots<{
   <div class="grid grid-cols-1 gap-20px pt-4px lg:grid-cols-[minmax(0,1fr)_320px]">
     <div class="flex min-w-0 flex-col gap-16px">
       <slot name="top" />
-      <OnScreenshotGallery v-if="screenshots.length" :items="screenshots" :label="screenshotsLabel" />
+      <OnScreenshotGallery
+        v-if="screenshots.length"
+        :items="screenshots"
+        :label="screenshotsLabel"
+        :name="screenshotsName"
+      />
       <OnAboutSection
         v-if="hasAbout"
         :machine-translated="aboutMachineTranslated"

@@ -176,9 +176,10 @@ function pageDecisions(token, locale, locales, notesCount = 0, hasDependencyCont
   return {
     overview,
     versions: decision(indexable && notesCount >= 3, indexable && notesCount >= 3 ? locales : []),
-    // Mirror seo.DecidePage: empty dependencies and details consolidate even in an unpublished locale.
+    // Mirror seo.DecidePage: empty dependencies and details consolidate even in an unpublished locale, and a
+    // dependencies tab with content supports the overview: its own canonical, but noindex in every language.
     dependencies: hasDependencyContent
-      ? decision(indexable, indexable ? locales : [], '', indexable ? '' : 'locale_not_ready')
+      ? decision(false, [], '', 'supporting_page')
       : decision(false, [], `${localePrefixes[locale]}/apps/${token}`, 'duplicate_of_overview'),
     details: decision(false, [], `${localePrefixes[locale]}/apps/${token}`, 'consolidated'),
     alternatives: decision(false),
@@ -601,7 +602,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         stats: { casks: 50, formulae: 0, updatedLast24h: 3 }
       };
     } else if (
-      /^\/api\/v1\/packages\/cask\/(ordinary-app|dependency-content-app|reverse-dependency-app)\/dependencies$/.test(
+      /^\/api\/v1\/packages\/cask\/(ordinary-app|dependency-content-app|reverse-dependency-app|variant-app@beta)\/dependencies$/.test(
         path
       )
     ) {
@@ -617,7 +618,12 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         dependsOn: { macos: null, arch: [], formulae: [], casks: [] }
       };
     } else if (
-      ['/api/v1/packages/cask/plus-app++/releases', '/api/v1/packages/cask/ordinary-app/releases'].includes(path)
+      [
+        '/api/v1/packages/cask/plus-app++/releases',
+        '/api/v1/packages/cask/ordinary-app/releases',
+        '/api/v1/packages/cask/variant-app@beta/releases',
+        '/api/v1/packages/cask/opennavo/releases'
+      ].includes(path)
     ) {
       const original = query.get('original') === 'true';
       const locale = query.get('locale');
@@ -711,7 +717,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         'font-sample',
         'facts-app',
         'wechat',
-        'guard-app'
+        'guard-app',
+        'variant-app@beta',
+        'opennavo'
       ].includes(match[1])
     ) {
       const token = match[1];
@@ -795,7 +803,17 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
                   categories: [{ slug: 'security', name: 'Security & Privacy', icon: 'lucide:shield' }]
                 }
               : {}),
-            ...wechat
+            ...wechat,
+            // A Homebrew variant named like its main app (aerial@beta is "Aerial"), with every intent page open.
+            ...(token === 'variant-app@beta'
+              ? {
+                  displayName: 'Variant App',
+                  names: ['Variant App'],
+                  artifacts: factsApp.artifacts,
+                  alternatives: factsApp.alternatives
+                }
+              : {}),
+            ...(token === 'opennavo' ? { displayName: 'OpenNavo', names: ['OpenNavo'] } : {})
           };
     } else if (path === '/api/v1/sitemap/packages') {
       sitemapPackageRequests++;
@@ -813,6 +831,18 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
                 locales: [
                   { locale: 'en-US', lastmod: '2025-03-18T10:00:00Z' },
                   { locale: 'zh-CN', lastmod: null }
+                ]
+              },
+              // OpenNavo's own entry answers a 301 to /download, so no sitemap lists it.
+              {
+                kind: 'cask',
+                token: 'opennavo',
+                updatedAt: '2026-10-07T00:00:00Z',
+                isFont: false,
+                notesCount: 5,
+                locales: [
+                  { locale: 'en-US', lastmod: '2026-10-01T10:00:00Z' },
+                  { locale: 'zh-CN', lastmod: '2026-10-01T10:00:00Z' }
                 ]
               },
               // Tokens with + (nextpad++, logi-options+) must keep it in sitemap URLs.
@@ -905,13 +935,15 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       ];
       const bucket = query.get('bucket');
       const inBucket = key => apps.filter(app => app.displayName.toLowerCase().startsWith(key));
+      // Names sort by the language they are shown in: the German directory has no "p" bucket.
+      const keys = query.get('locale') === 'de-DE' ? ['o'] : ['o', 'p'];
       if (query.get('kind') === 'fonts') data = { buckets: [], items: [] };
       else if (!bucket)
         data = {
-          buckets: ['o', 'p'].map(key => ({ key, count: inBucket(key).length, pages: 1 })),
+          buckets: keys.map(key => ({ key, count: inBucket(key).length, pages: 1 })),
           items: []
         };
-      else if (inBucket(bucket).length && (query.get('page') ?? '1') === '1')
+      else if (keys.includes(bucket) && inBucket(bucket).length && (query.get('page') ?? '1') === '1')
         data = { buckets: [], items: inBucket(bucket) };
       else status = 404;
     } else if (path === '/api/v1/background-items') {
@@ -974,6 +1006,21 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           data.indexing.notesCount,
           ['dependency-content-app', 'reverse-dependency-app'].includes(data.token)
         );
+      if (data.token === 'variant-app@beta') {
+        // Three verified known issues open the troubleshooting page; the other intent pages follow the overview.
+        data.facts.issues = ['Sync stalls', 'The window opens off-screen', 'Sign-in loops'].map(title => ({
+          locale: 'en-US',
+          title,
+          symptom: `${title} after an update.`,
+          appVersions: ['11.0'],
+          macosVersions: ['15.0'],
+          steps: ['Quit the app and open it again.'],
+          communityLinks: [],
+          evidence: evidence('https://vendor.example/issues')
+        }));
+        for (const page of ['alternatives', 'uninstall', 'troubleshooting'])
+          data.indexing.pages[page] = data.indexing.pages.overview;
+      }
     }
     if (path === '/api/v1/sitemap/packages' && data)
       for (const record of data.records)
@@ -1220,6 +1267,40 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         assert.match(html, /<title>Example App @11 for Mac – Download &amp; Install · OpenNavo<\/title>/);
     });
   }
+  await t.test('a variant cask named like its main app says its variant on every page', async () => {
+    // variant-app@beta's catalog name is "Variant App", like the main app's (aerial@beta is "Aerial").
+    const html = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      const text = await response.text();
+      assert.equal(response.status, 200, `${path}\n${logs}`);
+      return text;
+    };
+    const title = page => /<title>([^<]*)<\/title>/.exec(page)?.[1] ?? '';
+    const description = page => /<meta name="description" content="([^"]*)"/.exec(page)?.[1] ?? '';
+    const heading = page => (/<h1\b[^>]*>([\s\S]*?)<\/h1>/.exec(page)?.[1] ?? '').replace(/<[^>]*>/g, '');
+    const graph = page =>
+      [...page.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)].flatMap(
+        match => JSON.parse(match[1])['@graph'] ?? []
+      );
+    const node = (page, type) => graph(page).find(item => [item['@type']].flat().includes(type));
+    const overview = await html('/apps/variant-app@beta');
+    assert.equal(title(overview), 'Variant App Beta for Mac – Download &amp; Install · OpenNavo');
+    assert.match(overview, /<h1\b[^>]*>Variant App Beta(?:<!--(?:v-if)?-->)?<\/h1>/);
+    assert.ok(description(overview).includes('Variant App Beta'), description(overview));
+    assert.equal(node(overview, 'SoftwareApplication')?.name, 'Variant App Beta');
+    assert.equal(node(overview, 'BreadcrumbList')?.itemListElement.at(-1).name, 'Variant App Beta');
+    assert.equal(title(await html('/zh/apps/variant-app@beta')), 'Variant App Beta Mac 版下载安装 · OpenNavo');
+    // Tabs and intent pages read the same name, in their titles, descriptions, headings and breadcrumbs.
+    for (const page of ['versions', 'details', 'dependencies', 'alternatives', 'uninstall', 'troubleshooting']) {
+      const text = await html(`/apps/variant-app@beta/${page}`);
+      assert.ok(title(text).includes('Variant App Beta'), `${page} title: ${title(text)}`);
+      assert.ok(description(text).includes('Variant App Beta'), `${page} description: ${description(text)}`);
+      assert.ok(heading(text).includes('Variant App Beta'), `${page} h1: ${heading(text)}`);
+      const crumbs = node(text, 'BreadcrumbList')?.itemListElement.map(item => item.name) ?? [];
+      assert.ok(crumbs.includes('Variant App Beta'), `${page} breadcrumb: ${crumbs.join(' › ')}`);
+      assert.ok(!/Variant App(?! Beta)/.test(title(text) + description(text)), `${page} never says the bare name`);
+    }
+  });
   await t.test('link apps share /apps and download from the developer instead of installing', async () => {
     const response = await fetch(`${origin}/apps/lumen-notes`, {
       headers: { accept: 'text/html' }
@@ -1371,6 +1452,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       '/apps/ordinary-app',
       '/zh/apps/ordinary-app',
       '/apps/ordinary-app/versions',
+      '/apps/opennavo/versions',
       '/apps/lumen-notes',
       '/categories/utilities',
       '/articles',
@@ -1402,7 +1484,17 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         Object.values(value).forEach(walk);
       };
       walk(graph);
-      for (const id of references) assert.ok(ids.has(id), `${path}: ${id} is referenced but not in the graph`);
+      // A subpage names its app by @id only; the app's SoftwareApplication node lives on the overview (T4).
+      // OpenNavo's own entry is the desktop app, whose node lives on /download.
+      const app = /^\/apps\/([^/]+)\/[a-z]+$/.exec(path)?.[1];
+      const appId =
+        app && (app === 'opennavo' ? 'https://example.test/#desktop-app' : `https://example.test/apps/${app}#app`);
+      for (const id of references)
+        assert.ok(ids.has(id) || id === appId, `${path}: ${id} is referenced but not in the graph`);
+      if (app) {
+        const about = graph.find(isWebPage)?.about;
+        assert.deepEqual(about, { '@id': appId }, `${path} about is a reference`);
+      }
       const count = type => graph.filter(node => [node['@type']].flat().includes(type)).length;
       assert.equal(count('WebSite'), 1, `${path} WebSite`);
       assert.equal(count('Organization'), 1, `${path} Organization`);
@@ -1454,7 +1546,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       assert.equal([...html.matchAll(/<link[^>]+hreflang="/g)].length, 0);
       assert.equal(dependencyLinks(html, `${path}/dependencies`).length, 0);
     }
-    // Reverse relations are content too, even with no declared dependency or conflict summary.
+    // Reverse relations are content too, even with no declared dependency or conflict summary. A tab with
+    // content keeps its own canonical and its links, and is noindex in every language without alternates.
     for (const token of ['dependency-content-app', 'reverse-dependency-app']) {
       for (const prefix of ['', '/zh', '/ja']) {
         const path = `${prefix}/apps/${token}`;
@@ -1470,7 +1563,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(html)?.[1],
           `https://example.test${path}/dependencies`
         );
-        assert.equal(/<meta name="robots" content="[^"]*noindex/.test(html), prefix === '/ja');
+        assert.match(html, /<meta name="robots" content="noindex, follow"/, `${path}/dependencies`);
+        assert.match(response.headers.get('x-robots-tag') ?? '', /noindex/, `${path}/dependencies`);
+        assert.equal([...html.matchAll(/<link[^>]+hreflang="/g)].length, 0, `${path}/dependencies hreflang`);
       }
     }
     const legacy = await (await get('/apps/versioned-app@11')).text();
@@ -1631,6 +1726,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       )
     ).join('');
     assert.ok(versions.includes('https://example.test/apps/ordinary-app/versions'));
+    // OpenNavo's own entry answers a 301 to /download, so no app or versions sitemap lists any of its pages.
+    assert.ok(!/\/apps\/opennavo[<"/]/.test(apps + versions), 'no sitemap lists /apps/opennavo');
     // Tokens keep their + in every loc, as page canonicals and hreflang spell them, so no loc redirects.
     assert.ok(apps.includes('<loc>https://example.test/apps/plus-app++</loc>'), apps);
     assert.ok(apps.includes('<loc>https://example.test/zh/apps/plus-app++</loc>'), apps);
@@ -1674,6 +1771,40 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.equal(flaky.status, 503);
     assert.equal(flaky.headers.get('cache-control'), 'no-store');
     assert.equal(flaky.headers.get('retry-after'), '5');
+  });
+  await t.test('OpenNavo’s own catalog entry sends its overview to its language’s /download', async () => {
+    for (const [path, location] of [
+      ['/apps/opennavo', '/download'],
+      ['/zh/apps/opennavo', '/zh/download'],
+      ['/zh-hant/apps/opennavo', '/zh-hant/download'],
+      // Any other spelling reaches /download in the one hop every canonical redirect takes.
+      ['/en/apps/opennavo', '/download'],
+      ['/Apps/OpenNavo/', '/download'],
+      ['/ja/apps/opennavo/', '/ja/download'],
+      ['/apps/opennavo?utm_source=feed', '/download?utm_source=feed'],
+      ['/apps/opennavo?returnTo=%2Frecent', '/download']
+    ])
+      for (const method of ['GET', 'HEAD']) {
+        const response = await fetch(`${origin}${path}`, { method, redirect: 'manual' });
+        await response.text();
+        assert.equal(response.status, 301, `${method} ${path}\n${logs}`);
+        assert.equal(response.headers.get('location'), location, `${method} ${path}`);
+      }
+    // The tabs stay; their overview tab and breadcrumb point at /download, never at the redirect.
+    const response = await fetch(`${origin}/apps/opennavo/details`, { headers: { accept: 'text/html' } });
+    const html = await response.text();
+    assert.equal(response.status, 200, logs);
+    const breadcrumb = /<nav aria-label="Breadcrumb">[\s\S]*?<\/nav>/.exec(html)?.[0] ?? '';
+    assert.match(breadcrumb, /<a\b[^>]*href="\/download"[^>]*>\s*OpenNavo\s*<\/a>/, breadcrumb || 'no breadcrumb');
+    const tabs = /<nav aria-label="Package tabs"[\s\S]*?<\/nav>/.exec(html)?.[0] ?? '';
+    assert.match(tabs, /<a\b[^>]*href="\/download"[^>]*>\s*Overview\b/, tabs || 'no tabs');
+    assert.ok(!/href="\/apps\/opennavo"/.test(html), 'no link to the redirected overview');
+    // A tab the server consolidates into the overview canonicalizes to /download, where the overview goes.
+    const canonical = page => /<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(page)?.[1];
+    assert.equal(canonical(html), 'https://example.test/download');
+    const zh = await fetch(`${origin}/zh/apps/opennavo/details`, { headers: { accept: 'text/html' } });
+    assert.equal(zh.status, 200);
+    assert.equal(canonical(await zh.text()), 'https://example.test/zh/download');
   });
   await t.test('the internal port refreshes cached pages for the URL change feed', async () => {
     const page = async () =>
@@ -2331,6 +2462,38 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(promo.includes('href="/zh/security"'), promo || 'no security promo');
     assert.ok(!(await html('/apps/ordinary-app')).includes('package-security-promo'), 'other apps have no promo');
   });
+  await t.test('the home page, /download and app pages link the security topic pages directly', async () => {
+    const html = async path => (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+    const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // A link to the topic page under the topic's own translated title.
+    const links = (page, path, label) => new RegExp(`<a\\b[^>]*href="${path}"[^>]*>\\s*${escape(label)}`).test(page);
+    for (const [prefix, code] of [
+      ['', 'en-US'],
+      ['/zh', 'zh-CN']
+    ]) {
+      const { securityTopics } = JSON.parse(
+        await readFile(new URL(`../i18n/locales/${code}.json`, import.meta.url), 'utf8')
+      );
+      const title = topic => securityTopics.links[topic].title;
+      // The home page's scan and system check-up copy, beside its link to /security.
+      const home = await html(prefix || '/');
+      for (const topic of ['clamav', 'xprotect'])
+        assert.ok(links(home, `${prefix}/security/${topic}`, title(topic)), `${prefix || '/'} → ${topic}`);
+      assert.ok(home.includes(`href="${prefix}/security"`), `${prefix || '/'} still links /security`);
+      const download = await html(`${prefix}/download`);
+      assert.ok(links(download, `${prefix}/security/clamav`, title('clamav')), `${prefix}/download → clamav`);
+      // Every app page's security facts link the engine its scan runs on.
+      const app = await html(`${prefix}/apps/ordinary-app`);
+      const safety = /data-testid="package-safety"[\s\S]*?<\/section>/.exec(app)?.[0] ?? '';
+      assert.ok(links(safety, `${prefix}/security/clamav`, title('clamav')), safety || `${prefix} no safety facts`);
+      // Security-category apps link the two features the promo names, and /security.
+      const guard = await html(`${prefix}/apps/guard-app`);
+      const promo = /<section[^>]*aria-labelledby="package-security-promo"[\s\S]*?<\/section>/.exec(guard)?.[0] ?? '';
+      for (const topic of ['clamav', 'firewall'])
+        assert.ok(links(promo, `${prefix}/security/${topic}`, title(topic)), `${prefix} promo → ${topic}`);
+      assert.ok(promo.includes(`href="${prefix}/security"`), `${prefix} promo still links /security`);
+    }
+  });
   await t.test('links prefetch on pointer or focus only in the built client', async () => {
     // Prefetching on visibility had Google's renderer fetch the payload of every linked page.
     const dir = fileURLToPath(new URL('../.output/public/_nuxt/', import.meta.url));
@@ -2721,6 +2884,32 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     assert.ok(/data-testid="package-articles"[\s\S]*href="\/articles\/choose-a-screenshot-app"/.test(app));
     assert.ok(app.includes('"@id":"https://example.test/apps/ordinary-app#app"'));
   });
+  await t.test('article languages closed for indexing are noindex and absent from hreflang', async () => {
+    const html = async path => (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+    const alternates = page => [...page.matchAll(/<link[^>]+hreflang="([^"]+)"/g)].map(match => match[1]).sort();
+    const robots = page => [...page.matchAll(/<meta name="robots" content="([^"]*)"/g)].map(match => match[1]);
+    const paths = ['/articles/choose-a-screenshot-app', '/zh/articles/choose-a-screenshot-app'];
+    try {
+      // L1: the Chinese text is ready (availableLocales), but the site has the language closed for indexing.
+      siteSettings.pages.openLocales = ['en-US', 'de-DE'];
+      assert.equal((await invalidatePaths(paths, true)).settingsCleared, true);
+      const en = await html(paths[0]);
+      assert.deepEqual(alternates(en), ['en', 'x-default']);
+      assert.ok(!robots(en).some(value => value.includes('noindex')), robots(en).join());
+      const zh = await html(paths[1]);
+      assert.deepEqual(robots(zh), ['noindex, follow']);
+      assert.deepEqual(alternates(zh), ['en', 'x-default']);
+      // The page still shows its ready translation, without the source-text notice.
+      assert.match(zh, /<h1[^>]*>\s*如何选择截图工具\s*<\/h1>/);
+      assert.ok(!zh.includes('data-testid="article-source-text"'));
+    } finally {
+      delete siteSettings.pages.openLocales;
+      await invalidatePaths(paths, true);
+    }
+    const reopened = await html('/zh/articles/choose-a-screenshot-app');
+    assert.ok(!robots(reopened).some(value => value.includes('noindex')), 'reopened languages index again');
+    assert.deepEqual(alternates(reopened), ['en', 'x-default', 'zh', 'zh-Hans']);
+  });
   await t.test('moved, withdrawn and unknown articles get 301, 410 and 404', async () => {
     const moved = await fetch(`${origin}/zh/articles/old-slug`, { redirect: 'manual' });
     assert.equal(moved.status, 301, logs);
@@ -2768,6 +2957,34 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     // No label page is indexable in the fixture: an empty urlset must not be listed (Search Console flags it).
     assert.ok(!xml.includes('/__sitemap__/background-items.xml'), xml);
   });
+  await t.test(
+    'browse leaves offer only languages with the same page; static sitemaps follow open languages',
+    async () => {
+      const html = async path => (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+      const alternates = page => [...page.matchAll(/<link[^>]+hreflang="([^"]+)"/g)].map(match => match[1]).sort();
+      const paths = ['/browse/o', '/browse/p', '/zh/browse/p'];
+      try {
+        siteSettings.pages.openLocales = ['en-US', 'de-DE', 'zh-CN', 'zh-Hant'];
+        await invalidatePaths(paths, true);
+        const leaf = await html('/browse/p');
+        assert.deepEqual(alternates(leaf), ['en', 'x-default', 'zh', 'zh-HK', 'zh-Hans', 'zh-Hant', 'zh-TW'].sort());
+        assert.ok(!leaf.includes('href="/de/browse/p"'), 'the language menu does not link a missing page');
+        assert.ok(leaf.includes('href="/zh-hant/browse/p"'), 'it still links the languages that have the page');
+        assert.ok(alternates(await html('/browse/o')).includes('de'));
+        // Each language's static sitemap keeps open languages with the zh-Hant aliases, without the noindex list.
+        const statics = await (await fetch(`${origin}/__sitemap__/en-static.xml`)).text();
+        assert.ok(statics.includes('hreflang="zh-TW"'), statics);
+        assert.ok(!statics.includes('hreflang="ja"'), 'closed languages are not alternates');
+        assert.ok(!/<loc>[^<]*\/background-items<\/loc>/.test(statics), 'the list without a ready label is noindex');
+        const index = await (await fetch(`${origin}/sitemap_index.xml`)).text();
+        assert.ok(index.includes('/__sitemap__/zh-Hant-static.xml'), index);
+        assert.ok(!index.includes('/__sitemap__/ja-static.xml'), 'a closed language has no static sitemap');
+      } finally {
+        delete siteSettings.pages.openLocales;
+        await invalidatePaths(paths, true);
+      }
+    }
+  );
   await t.test('author pages, feeds and sitemaps cover published articles', async () => {
     const response = await fetch(`${origin}/authors/lin-wei`, {
       headers: { accept: 'text/html' }
@@ -2858,7 +3075,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       'ordinary-app',
       'plus-app++',
       'reverse-dependency-app',
+      'opennavo',
       'thin-app',
+      'variant-app@beta',
       'versioned-app@11',
       'wechat'
     ].sort()

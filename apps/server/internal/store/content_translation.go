@@ -12,6 +12,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -202,9 +203,16 @@ func (s *Store) ScheduleContentTranslation(ctx context.Context, ref content.Ref)
 	if len(content.Flatten(source.Fields)) == 0 {
 		return s.DB.WithContext(ctx).Table(spec.Table).Where(where+" AND locale<>?", append(args, source.SourceLocale)...).Delete(map[string]any{}).Error
 	}
+	// Website content queues work only for languages open for indexing; translations already
+	// published in a closed language stay as they are.
+	settings, err := s.SEOSettings(ctx)
+	if err != nil {
+		return err
+	}
 	for _, code := range i18n.SiteLocales {
 		locale := string(code)
-		if locale == "zh-Hant" || locale == source.SourceLocale || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) {
+		if locale == "zh-Hant" || locale == source.SourceLocale || (ref.Entity == "desktop_release" && !i18n.ValidDesktop(locale)) ||
+			!seo.TranslationOpen(ref.Entity, settings.Settings.Pages.OpenLocales, locale) {
 			continue
 		}
 		var fresh bool

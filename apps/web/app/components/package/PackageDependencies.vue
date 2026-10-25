@@ -6,7 +6,7 @@ import { architectures, OnAppRow, OnChip, OnEmpty, OnErrorState, OnKeyValueList,
 import type { OnKeyValueItem } from '@opennavo/ui';
 import { homebrewRows } from '~/utils/packageFacts';
 import { packageLink, packagePath } from '~/utils/packageView';
-import { dependenciesDescription } from '~/utils/seoTitles';
+import { dependenciesDescription, withVariantNames } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -34,7 +34,8 @@ const { data, error, refresh } = await useAsyncData(
       api.GET('/packages/{kind}/{token}/dependencies', {
         params: { path: { kind: props.kind, token: token.value } }
       })
-    )
+    ),
+  { transform: withVariantNames }
 );
 
 const groups = computed(() => {
@@ -94,17 +95,9 @@ const empty = computed(
     !data.value.dependents.count
 );
 
-// Without dependency relations this tab has nothing of its own to show;
-// keep it out of search indexes while its links stay followable.
-if (
-  !pkg.value?.indexing?.pages?.dependencies &&
-  data.value &&
-  !groups.value.runtime.length &&
-  !groups.value.build.length &&
-  !groups.value.other.length &&
-  !conflicts.value.length &&
-  !data.value.dependents.count
-) {
+// The dependencies tab is never indexed, with or without dependency relations; its links stay followable.
+// The API's decision says so (the layout applies it); an older API without one gets the same rule here.
+if (!pkg.value?.indexing?.pages?.dependencies) {
   useRobotsRule('noindex, follow');
 }
 

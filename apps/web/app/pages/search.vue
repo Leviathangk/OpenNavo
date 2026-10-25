@@ -14,6 +14,8 @@ import {
 import type { OnSearchResult } from '@opennavo/ui';
 import { toAppLocale } from '~/utils/locale';
 import { readPage, readSearchQuery } from '~/utils/catalogQuery';
+import { packagePath } from '~/utils/packageView';
+import { withVariantNames } from '~/utils/seoTitles';
 
 // Search (08 §10.4): shared OnSearchResultsView (ADR-017); query/count/related searches, search box,
 // row results with alias hints; zero results offer a listing suggestion. Cask-only (ADR-018).
@@ -45,7 +47,8 @@ const { data, error, refresh } = await useAsyncData(
             }
           })
         )
-      : Promise.resolve(null)
+      : Promise.resolve(null),
+  { transform: withVariantNames }
 );
 
 const pageCount = computed(() => Math.max(1, Math.ceil((data.value?.total ?? 0) / PAGE_SIZE)));
@@ -99,7 +102,7 @@ const results = computed<OnSearchResult[] | null>(() => {
           meta: formatVersion(hit.package.version),
           description: hit.package.summary,
           matched: alias ? t('search.matched', { name: alias }) : null,
-          href: localePath(`/apps/${hit.package.token}`)
+          href: localePath(packagePath(hit.package.token))
         };
       })
     : null;

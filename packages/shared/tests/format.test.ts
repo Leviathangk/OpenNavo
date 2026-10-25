@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   formatBytes,
   formatCount,
@@ -14,7 +14,8 @@ import {
   formatReleaseVersion,
   releaseTitleDetail,
   formatVersion,
-  formatVersionChange
+  formatVersionChange,
+  setDateDefaults
 } from '../src/format';
 
 const timeZone = 'Asia/Shanghai';
@@ -122,6 +123,56 @@ describe('Relative time formatting', () => {
 
   it('Defaults the reference time to now', () => {
     expect(formatRelativeTime(new Date())).toBe('just now');
+  });
+});
+
+describe('Date defaults', () => {
+  // UTC+14: the calendar day differs from almost every machine's local zone, UTC included.
+  const kiritimati = 'Pacific/Kiritimati';
+  const input = '2026-09-30T12:30:00Z';
+  afterEach(() => setDateDefaults({}));
+
+  it('Apply to calls without a zone or reference time', () => {
+    setDateDefaults({ timeZone: kiritimati, now: () => new Date('2026-10-01T12:00:00Z') });
+    expect(formatDate(input, { locale: 'en-US' })).toBe('Oct 1');
+    expect(formatTime(input)).toBe('02:30 Pacific/Kiritimati');
+    expect(formatRelativeTime(input, { locale: 'en-US' })).toBe('23 hours ago');
+    expect(formatDate(input, { locale: 'ja-JP' })).toBe(
+      new Intl.DateTimeFormat('ja-JP', { timeZone: kiritimati, month: 'short', day: 'numeric' }).format(new Date(input))
+    );
+  });
+
+  it('Name the default zone in clock times, as the website shows them', () => {
+    setDateDefaults({ timeZone: 'UTC' });
+    expect(formatTime(input)).toBe('12:30 UTC');
+    expect(`${formatDate(input, { locale: 'zh-CN', now: new Date(input) })} ${formatTime(input)}`).toBe(
+      '9月30日 12:30 UTC'
+    );
+  });
+
+  it('Give way to explicit options', () => {
+    setDateDefaults({ timeZone: kiritimati, now: () => new Date('2027-01-01T00:00:00Z') });
+    expect(formatDate(input, { locale: 'en-US', now, timeZone })).toBe('Sep 30');
+    // A zone the caller chose is the caller's to name, even when it is UTC.
+    expect(formatTime(input, { timeZone: 'UTC' })).toBe('12:30');
+    expect(formatRelativeTime('2026-09-30T12:25:00Z', { locale: 'en-US', now: new Date(input) })).toBe('5 min ago');
+  });
+
+  it('Read the reference time at every call', () => {
+    let clock = new Date('2026-09-30T12:31:00Z');
+    setDateDefaults({ now: () => clock });
+    expect(formatRelativeTime(input, { locale: 'en-US' })).toBe('1 min ago');
+    clock = new Date('2026-09-30T15:30:00Z');
+    expect(formatRelativeTime(input, { locale: 'en-US' })).toBe('3 hours ago');
+  });
+
+  it('Fall back to the clock and the local zone once cleared', () => {
+    setDateDefaults({ timeZone: kiritimati, now: () => new Date('2020-01-01T00:00:00Z') });
+    setDateDefaults({});
+    expect(formatRelativeTime(new Date())).toBe('just now');
+    // The desktop app's case: local time, unnamed.
+    expect(formatTime(input)).toBe(formatTime(input, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
+    expect(formatTime(input)).toMatch(/^\d{2}:\d{2}$/);
   });
 });
 

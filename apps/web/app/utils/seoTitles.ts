@@ -92,6 +92,94 @@ export function titleName(name: string): string {
   return /[\p{L}\p{N}]/u.test(rest) ? rest : full;
 }
 
+/** How a name says the common channel suffixes; numbers and other suffixes stay as the token spells them. */
+const VARIANT_LABELS: Record<string, string> = {
+  beta: 'Beta',
+  nightly: 'Nightly',
+  preview: 'Preview',
+  dev: 'Dev',
+  canary: 'Canary'
+};
+
+/** What a variant cask's token adds after its @ (aerial@beta → Beta, parallels@19 → 19); empty without one. */
+export function variantLabel(token: string): string {
+  const at = token.indexOf('@');
+  if (at < 0) return '';
+  const suffix = token.slice(at + 1);
+  return VARIANT_LABELS[suffix] ?? suffix;
+}
+
+/** A letter or digit of the word around a match; Han and kana adjoin Latin words without a space. */
+function isWordChar(char: string | undefined): boolean {
+  return char !== undefined && /[\p{L}\p{N}]/u.test(char) && !isCjkLetter(char);
+}
+
+/**
+ * Whether a name already says its variant: the label as a whole word in any case, with any separator
+ * between its parts (Developer Edition for developer-edition), and a number also as v2 or @11.
+ */
+function carriesVariant(name: string, label: string): boolean {
+  const parts = label.split(/[\s_-]+/u).map(part => part.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'));
+  const pattern = new RegExp(`${/^\d/u.test(label) ? 'v?' : ''}${parts.join('[\\s_-]+')}`, 'giu');
+  for (const match of name.matchAll(pattern)) {
+    const before = Array.from(name.slice(0, match.index)).at(-1);
+    const after = Array.from(name.slice(match.index + match[0].length))[0];
+    if (!isWordChar(before) && !isWordChar(after)) return true;
+  }
+  return false;
+}
+
+/**
+ * A variant cask's name with its variant added, ahead of a platform phrase so titles still find that
+ * ("Aerial" → "Aerial Beta", "Telegram for macOS" → "Telegram Beta for macOS"). A name that already says
+ * it stays as it is ("Firefox Nightly", "Kaleidoscope v2", "Example App @11"), and so does any other token.
+ */
+export function variantName(name: string, token: string): string {
+  const label = variantLabel(token);
+  const full = name.trim();
+  if (!label || !full || carriesVariant(full, label)) return name;
+  const platform = PLATFORM_SUFFIX.exec(full);
+  const at = platform && /[\p{L}\p{N}]/u.test(full.slice(0, platform.index)) ? platform.index : full.length;
+  const rest = full.slice(at);
+  return `${full.slice(0, at).trimEnd()} ${label}${rest && !/^\s/u.test(rest) ? ' ' : ''}${rest}`;
+}
+
+/**
+ * Variant casks (aerial@beta, parallels@19) often have the main app's name, so their pages would repeat
+ * its titles. The detail's display name says the variant before any page reads it, so titles,
+ * descriptions, headings, breadcrumbs and structured data all name it, as they already do when the catalog
+ * name says it. Applying this twice changes nothing.
+ */
+export function withVariantName<T extends { token: string; displayName: string }>(detail: T): T {
+  const displayName = variantName(detail.displayName, detail.token);
+  return displayName === detail.displayName ? detail : { ...detail, displayName };
+}
+
+/**
+ * withVariantName for every app in an API response: list records, a detail's alternatives, a collection's
+ * items, anything with a token and a display name. Only the objects on the way to a renamed app are copied;
+ * the response itself is left as it is, as other readers may share it.
+ */
+export function withVariantNames<T>(value: T): T {
+  if (Array.isArray(value)) {
+    const items = value.map(item => withVariantNames(item));
+    return (items.some((item, index) => item !== value[index]) ? items : value) as T;
+  }
+  if (!value || typeof value !== 'object') return value;
+  const source = value as Record<string, unknown>;
+  let copy: Record<string, unknown> | undefined;
+  for (const [key, item] of Object.entries(source)) {
+    const next = withVariantNames(item);
+    if (next !== item) (copy ??= { ...source })[key] = next;
+  }
+  const node = copy ?? source;
+  return (
+    typeof node.token === 'string' && typeof node.displayName === 'string'
+      ? withVariantName(node as { token: string; displayName: string })
+      : node
+  ) as T;
+}
+
 /** Search results show about this many columns of a description, a CJK character taking two. */
 export const DESCRIPTION_WIDTH = 160;
 /** Less room than this leaves no useful part of a summary, so the description goes without one. */
@@ -158,6 +246,8 @@ export interface OverviewFacts {
   facts: PackagePage['facts'];
   version: string;
   latestRelease?: PackagePage['latestRelease'];
+  /** Catalog token; a variant cask's (aerial@beta) description always names it. */
+  token?: string;
 }
 
 export type SeoExperimentAssignment = PublicComponents['schemas']['SeoExperimentAssignment'];
@@ -236,6 +326,8 @@ function overviewSentence(
  * section sentence, which follows only when it fits completely after the whole summary.
  * Without a useful summary, name only sections the overview renders and drop whole list
  * items when needed. H3 puts uninstall and alternatives first and keeps both together.
+ * A variant cask often has its main app's summary as well, so its description keeps the
+ * sentence with its name and shortens the summary instead.
  */
 export function overviewDescription(
   pkg: OverviewFacts,
@@ -246,7 +338,10 @@ export function overviewDescription(
   // Preserve the existing distribution/lifecycle branches.
   if (disabledByHomebrew(pkg)) return overviewSentence(pkg, t, 'package.seo.descriptionUnavailable');
   if (!usableSummary(pkg.summary, pkg.displayName)) return sectionDescription(pkg, t, list, assignment);
-  return sectionDescription(pkg, t, list, assignment, true) || fitSummary(pkg.summary!.trim(), DESCRIPTION_WIDTH);
+  const whole = sectionDescription(pkg, t, list, assignment, true);
+  if (whole) return whole;
+  if (variantLabel(pkg.token ?? '')) return sectionDescription(pkg, t, list, assignment);
+  return fitSummary(pkg.summary!.trim(), DESCRIPTION_WIDTH);
 }
 
 function sectionDescription(

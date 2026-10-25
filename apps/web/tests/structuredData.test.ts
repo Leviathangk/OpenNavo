@@ -1,6 +1,7 @@
 import type { PackageDetail } from '@opennavo/api';
 import { describe, expect, it } from 'vitest';
-import { appOffers, listItems, softwareAppNode } from '../app/utils/structuredData';
+import { BRAND } from '@opennavo/shared';
+import { appEntityId, appOffers, desktopAppId, listItems, softwareAppNode } from '../app/utils/structuredData';
 import type { PriceFact } from '../app/utils/packageFacts';
 import { evidence, pageOf } from './packageFixtures';
 
@@ -174,6 +175,15 @@ describe('WP10 SoftwareApplication from the facts model (T2)', () => {
     const node = softwareAppNode(stale, url, t)!;
     expect(node).not.toHaveProperty('softwareRequirements');
     expect(node).not.toHaveProperty('processorRequirements');
+  });
+});
+
+describe('App entity ids', () => {
+  it('Are stable per app, and OpenNavo’s own entry is the desktop app /download describes', () => {
+    expect(appEntityId('https://x', 'visual-studio-code')).toBe('https://x/apps/visual-studio-code#app');
+    expect(appEntityId('https://x', 'python@3.14')).toBe('https://x/apps/python@3.14#app');
+    expect(appEntityId('https://x', BRAND.caskToken)).toBe(desktopAppId('https://x'));
+    expect(desktopAppId('https://x')).toBe('https://x/#desktop-app');
   });
 });
 

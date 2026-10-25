@@ -19,7 +19,7 @@ func (s *Store) QueueTranslationInvalidation(ctx context.Context, ref content.Re
 		return nil
 	case "package":
 		query = "SELECT kind,token FROM packages WHERE id=?"
-		patterns = append(patterns, "c:home:*", "c:rank:*", "c:sug:*", "c:browse:*")
+		patterns = append(patterns, "c:home:*", "c:rank:*", "c:sug:*", BrowseRefreshPattern)
 	case "release":
 		query = "SELECT p.kind,p.token FROM packages p JOIN releases r ON r.package_id=p.id WHERE r.id=?"
 	case "screenshot":

@@ -1,7 +1,9 @@
 package store
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -152,4 +154,21 @@ func TestNoInformationAllowsAndResolvedFailures(t *testing.T) {
 			require.Equal(t, tc.empty, noInformation(map[string]any{"body_markdown": "Official release notes are unavailable. " + tc.statement}))
 		})
 	}
+}
+
+// A long changelog is read at once: a placeholder line in it never makes it a note without information, and
+// reading it must not rescan the whole note once per list item (cmux's notes took over a minute in every language).
+func TestNoInformationReadsLongNotesQuickly(t *testing.T) {
+	var body strings.Builder
+	body.WriteString("Official release notes are unavailable for some components.\n\n## Changes\n")
+	for i := 0; i < 1500; i++ {
+		body.WriteString("- Fixed a crash when reopening a workspace with many panes and restored the scrollback buffer (#1234).\n")
+	}
+	start := time.Now()
+	require.False(t, noInformation(map[string]any{"body_markdown": body.String()}))
+	require.Less(t, time.Since(start), time.Second)
+	// Just under the bound, the full reading still runs, and the listed changes still count.
+	short := "Official release notes are unavailable.\n\n" + strings.Repeat("- Fixed a crash when importing large files.\n", 120)
+	require.Less(t, len(short), noInformationMaxBytes)
+	require.False(t, noInformation(map[string]any{"body_markdown": short}))
 }

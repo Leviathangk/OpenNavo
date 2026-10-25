@@ -4,6 +4,8 @@ import { OnCommandPalette, useUiMessages } from '@opennavo/ui';
 import type { OnCommandGroup, OnCommandItem } from '@opennavo/ui';
 import { paletteGroups } from '~/utils/commandPalette';
 import type { SuggestItem } from '~/utils/commandPalette';
+import { packagePath } from '~/utils/packageView';
+import { variantName } from '~/utils/seoTitles';
 
 // Web Command-K (05 §7): Go to (all results first) and Apps groups only; suggestions from suggest API.
 const { t } = useI18n();
@@ -33,7 +35,11 @@ watch(query, value => {
     const current = ++sequence;
     try {
       const items = await unwrap(api.GET('/search/suggest', { params: { query: { q: q.slice(0, 64), limit: 8 } } }));
-      if (current === sequence) suggestions.value = items;
+      // A variant cask's suggestion says its variant, as its page does.
+      if (current === sequence)
+        suggestions.value = items.map(item =>
+          item.type === 'package' && item.token ? { ...item, name: variantName(item.name, item.token) } : item
+        );
     } catch {
       if (current === sequence) suggestions.value = [];
     } finally {
@@ -50,7 +56,7 @@ const groups = computed<OnCommandGroup[]>(() => paletteGroups(query.value, sugge
 
 function targetOf(item: OnCommandItem): string | null {
   const [type, ...rest] = item.key.split(':');
-  if (type === 'package') return localePath(`/apps/${rest.slice(1).join(':')}`);
+  if (type === 'package') return localePath(packagePath(rest.slice(1).join(':')));
   if (type === 'category') return localePath(`/categories/${rest.join(':')}`);
   if (type === 'page') return localePath(rest.join(':'));
   if (type === 'search') return localePath(`/search?q=${encodeURIComponent(rest.join(':'))}`);

@@ -25,11 +25,18 @@ type PageState struct {
 	NotesEntries *int
 }
 
-// stableContent strips persistence metadata, never public evidence dates or version dates.
+// pageHashVersion names the shape of the hashed page input. Bump it whenever that shape changes without the page
+// changing (a column added to a table pageStateInputs hashes whole, a key added or stripped here).
+// Baseline-only refreshes preserve dates; pending content changes retain their recorded change time.
+const pageHashVersion = 2
+
+// stableContent strips persistence metadata and the times of checks (when a CVE, store or feed lookup last ran
+// and how long it holds) together with the category and collection page metadata: sitemap dates follow changes
+// in what a page says, not a re-check that confirmed it. Check results, evidence and version dates stay.
 func stableContent(value any) any {
 	switch v := value.(type) {
 	case map[string]any:
-		for _, key := range []string{"updated_at", "created_at", "updated_by", "created_by", "reviewed_by", "reviewed_at", "translated_at", "fetched_at", "synced_at", "etag", "last_error", "fail_reason", "source_hash", "body_hash", "revision", "revision_id", "next_check_at", "fail_count"} {
+		for _, key := range []string{"updated_at", "created_at", "updated_by", "created_by", "reviewed_by", "reviewed_at", "translated_at", "fetched_at", "synced_at", "etag", "last_error", "fail_reason", "source_hash", "body_hash", "revision", "revision_id", "next_check_at", "fail_count", "checked_at", "valid_until", "seo_title", "seo_description"} {
 			delete(v, key)
 		}
 		for key, child := range v {
@@ -99,6 +106,17 @@ func (s *Store) pageStateInputs(ctx context.Context, id int64, locale string) (j
 // RefreshPackagePageStates locks only dirty queue rows. New writes wait on that row and then
 // enqueue again, so a change concurrent with hashing is never acknowledged by an older snapshot.
 func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, error) {
+	// Upgrade idle pages proactively, without inventing a content change date. Never overwrite a
+	// real dirty job: edits before or during the upgrade must retain their recorded timestamp.
+	// Match IndexRowByID before LIMIT: unrefreshable states would otherwise refill every batch.
+	if err := s.DB.WithContext(ctx).Exec(`INSERT INTO package_page_dirty(package_id,changed_at)
+ SELECT DISTINCT ps.package_id,'0001-01-01'::timestamptz FROM package_page_state ps
+ JOIN packages p ON p.id=ps.package_id
+ WHERE ps.content_hash_version<>? AND p.kind IN ('cask','link') AND p.removed_at IS NULL
+ ORDER BY ps.package_id LIMIT ?
+ ON CONFLICT(package_id) DO NOTHING`, pageHashVersion, min(max(limit, 1), 100)).Error; err != nil {
+		return 0, err
+	}
 	// Expired evidence changes public output without a write. Queue its owners and referring apps.
 	if err := s.DB.WithContext(ctx).Exec(`WITH expired AS (
       SELECT f.package_id,max((f.evidence->>'validUntil')::timestamptz) AS at FROM package_fact_records f
@@ -175,12 +193,16 @@ func (s *Store) RefreshPackagePageStates(ctx context.Context, limit int) (int, e
 						if facts != nil {
 							chars, entries = &facts.Chars, &facts.Entries
 						}
-						return tx.Exec(`INSERT INTO package_page_state(package_id,locale,page_kind,page_number,content_hash,content_modified_at,notes_chars,notes_entries)
-       VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(package_id,locale,page_kind,page_number) DO UPDATE SET
-       content_hash=EXCLUDED.content_hash,content_checked_at=now(),notes_chars=EXCLUDED.notes_chars,notes_entries=EXCLUDED.notes_entries,
-       content_modified_at=CASE WHEN package_page_state.content_hash<>EXCLUDED.content_hash
+						// Hash versions are incomparable. Preserve the baseline date unless a real dirty job exists.
+						return tx.Exec(`INSERT INTO package_page_state(package_id,locale,page_kind,page_number,content_hash,content_hash_version,content_modified_at,notes_chars,notes_entries)
+       VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(package_id,locale,page_kind,page_number) DO UPDATE SET
+       content_hash=EXCLUDED.content_hash,content_hash_version=EXCLUDED.content_hash_version,content_checked_at=now(),
+       notes_chars=EXCLUDED.notes_chars,notes_entries=EXCLUDED.notes_entries,
+       content_modified_at=CASE WHEN package_page_state.content_hash_version<>EXCLUDED.content_hash_version
+       THEN GREATEST(package_page_state.content_modified_at,?)
+       WHEN package_page_state.content_hash<>EXCLUDED.content_hash
        THEN GREATEST(package_page_state.content_modified_at+interval '1 microsecond',?)
-       ELSE package_page_state.content_modified_at END`, row.ID, locale, kind, page, hash, baseline, chars, entries, job.ChangedAt).Error
+       ELSE package_page_state.content_modified_at END`, row.ID, locale, kind, page, hash, pageHashVersion, baseline, chars, entries, job.ChangedAt, job.ChangedAt).Error
 					}
 					latest := entries[:min(1, len(entries))]
 					if err := save("overview", 1, []any{overview, shots, latest}, nil); err != nil {

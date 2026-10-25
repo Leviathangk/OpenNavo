@@ -4,7 +4,7 @@ import { formatCount } from '@opennavo/shared';
 import { collectionIcons, OnCollectionsView, OnEmpty, OnErrorState, OnPagination } from '@opennavo/ui';
 import type { OnCollectionsItem } from '@opennavo/ui';
 import { pageCount as countPages } from '~/utils/catalogQuery';
-import { brandlessTitle } from '~/utils/seoTitles';
+import { brandlessTitle, withVariantNames } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -21,7 +21,8 @@ const { page, assertExists } = useListPage();
 
 const { data, error, refresh, status } = await useAsyncData(
   () => `collections:${page.value}:${locale.value}`,
-  () => unwrap(api.GET('/collections', { params: { query: { current: page.value, size: PAGE_SIZE } } }))
+  () => unwrap(api.GET('/collections', { params: { query: { current: page.value, size: PAGE_SIZE } } })),
+  { transform: withVariantNames }
 );
 
 assertExists(() => data.value?.total, PAGE_SIZE, status);

@@ -29,8 +29,10 @@ func TestCatalogRetriesInvalidationAfterCommittedSync(t *testing.T) {
 			stop, err := cache.Subscribe(ctx, redis, slog.New(slog.NewTextHandler(io.Discard, nil)))
 			require.NoError(t, err)
 			defer stop()
-			keys := []string{"c:pkg:c5:cask:sample:en-US", "c:rank:sentinel", "c:home:sentinel", "c:cat:sentinel", "c:sug:sentinel", "c:dep:sentinel", "c:related:sentinel"}
-			for _, key := range keys {
+			keys := []string{"c:pkg:c5:cask:sample:en-US", "c:rank:sentinel", "c:home:sentinel", "c:cat:sentinel", "c:sug:sentinel", "c:dep:sentinel", "c:related:sentinel", browseFreshKey("apps")}
+			// Browse pages outlive the sync: they serve until a rebuild replaces them.
+			browsePages := []string{browseKey("apps", "en-US", "", 1), browseKey("apps", "en-US", "s", 1)}
+			for _, key := range append(append([]string{}, keys...), browsePages...) {
 				require.NoError(t, redis.Set(ctx, key, "old", time.Hour).Err())
 			}
 			require.NoError(t, redis.Set(ctx, "session:sentinel", "keep", time.Hour).Err())
@@ -56,6 +58,7 @@ func TestCatalogRetriesInvalidationAfterCommittedSync(t *testing.T) {
 			require.Zero(t, kind.Inserted+kind.Updated+kind.Removed)
 			require.Eventually(t, func() bool { return redis.Exists(ctx, keys...).Val() == 0 }, 2*time.Second, 10*time.Millisecond)
 			require.Equal(t, "keep", redis.Get(ctx, "session:sentinel").Val())
+			require.EqualValues(t, len(browsePages), redis.Exists(ctx, browsePages...).Val())
 			require.NoError(t, st.DB.Table("job_outbox").Where("job_type='cache:invalidate'").Count(&count).Error)
 			require.Zero(t, count)
 

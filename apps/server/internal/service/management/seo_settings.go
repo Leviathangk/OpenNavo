@@ -338,7 +338,8 @@ func (s *Service) seoSettings(ctx context.Context, op string, in Input) (any, er
 			if err := tx.WithContext(ctx).Exec(`INSERT INTO content_url_changes(paths,announce,purge_sections) VALUES(ARRAY['/','/apps','/browse','/categories','/collections','/articles','/authors','/discover','/rankings','/recent','/about','/download','/security'],false,true)`).Error; err != nil {
 				return err
 			}
-			if err := store.QueueCacheInvalidation(ctx, tx, "seo-settings", cache.PackageDetailPrefix+"*", "c:rel:*", "c:dep:*", "c:home:*", "c:cat:*", "c:coll:*", "c:article:*", "c:author:*", "c:browse:*", "c:site:*"); err != nil {
+			// Article, author and article sitemap reads share c:art: (store.ArticleCachePatterns); the sitemap lists only open languages.
+			if err := store.QueueCacheInvalidation(ctx, tx, "seo-settings", cache.PackageDetailPrefix+"*", "c:rel:*", "c:dep:*", "c:home:*", "c:cat:*", "c:coll:*", "c:art:*", "c:browse:*", "c:site:*"); err != nil {
 				return err
 			}
 		case !reflect.DeepEqual(previous, after.Settings):

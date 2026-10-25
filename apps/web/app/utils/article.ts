@@ -1,6 +1,6 @@
 // Article pages (WP17), pure for testing: index decisions, titles, dates and structured data. The
 // API decides which languages are ready; pages in other languages show the source text, stay out
-// of the index and are left out of hreflang.
+// of the index and are left out of hreflang. So do languages the site has closed for indexing (L1).
 import type { PublicComponents } from '@opennavo/api';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { TITLE_SUFFIX } from './seoTitles';
@@ -22,9 +22,27 @@ export function isArticleType(value: unknown): value is ArticleType {
   return typeof value === 'string' && (ARTICLE_TYPES as readonly string[]).includes(value);
 }
 
-/** robots for an article page: languages whose text is not ready show the source text, unindexed. */
-export function articleRobots(article: Pick<Article, 'availableLocales'>, locale: Locale): string | undefined {
-  return article.availableLocales.includes(locale) ? undefined : 'noindex, follow';
+/**
+ * Languages an article is indexed in, and the ones its hreflang lists: those whose text is ready and that
+ * the site has open for indexing (L1, site settings pages.openLocales).
+ */
+export function articleIndexedLocales(
+  article: Pick<Article, 'availableLocales'>,
+  openLocales: readonly Locale[]
+): Locale[] {
+  return article.availableLocales.filter(locale => openLocales.includes(locale));
+}
+
+/**
+ * robots for an article page: languages whose text is not ready show the source text, unindexed, and a
+ * language closed for indexing is unindexed even with its text ready.
+ */
+export function articleRobots(
+  article: Pick<Article, 'availableLocales'>,
+  locale: Locale,
+  openLocales: readonly Locale[]
+): string | undefined {
+  return articleIndexedLocales(article, openLocales).includes(locale) ? undefined : 'noindex, follow';
 }
 
 /** Title tag: the search title when the editors wrote one, else the headline; always branded once. */

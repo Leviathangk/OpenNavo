@@ -1273,7 +1273,7 @@
         "versionsSitemap": "Incluir as páginas de versões no sitemap",
         "versionsSitemapHint": "Quando ativado, só as páginas de versões com valor próprio entram no sitemap.",
         "openLocales": "Idiomas abertos para indexação",
-        "openLocalesHint": "Os idiomas desmarcados continuam sendo exibidos, mas a página inicial, as listas, as categorias e as páginas estáticas ficam fora do índice, do hreflang e dos sitemaps. As páginas de apps são avaliadas pela qualidade da própria tradução. O inglês é o idioma padrão e fica sempre aberto.",
+        "openLocalesHint": "Os idiomas desmarcados continuam sendo exibidos, mas nenhuma das suas páginas é indexada: a página inicial, as listas, as categorias, as páginas estáticas e as de apps recebem noindex e ficam fora do hreflang, dos sitemaps e do IndexNow. Nos idiomas marcados, as páginas de apps continuam sendo avaliadas pela qualidade da própria tradução. O inglês é o idioma padrão e fica sempre aberto.",
         "versionsMinNotesChars": "Tamanho mínimo das notas de versão",
         "versionsMinNotesCharsHint": "Uma página de versão só é indexada quando pelo menos 3 das suas versões têm notas que, juntas, atingem esse número de caracteres (caracteres CJK contam como 2). Notas que só dizem que os detalhes não estão disponíveis ou não foram verificados não contam.",
         "detailsRedirect": "Redirecionar páginas details para a visão geral",

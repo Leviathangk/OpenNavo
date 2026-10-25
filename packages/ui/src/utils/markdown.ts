@@ -72,6 +72,28 @@ md.core.ruler.push('on_table_align', state => {
   }
 });
 
+// GitHub's generated release notes credit bots by account, but bots only have app pages: a link such as
+// github.com/github-actions[bot] (or its percent-encoded spelling) answers 404. Such links stay text.
+const GITHUB_BOT_ACCOUNT = /^https?:\/\/(?:www\.)?github\.com\/[\w.-]+(?:\[|%5B)bot(?:\]|%5D)\/?(?:[?#].*)?$/i;
+
+const isGitHubBotAccount = (href: string | null) => GITHUB_BOT_ACCOUNT.test(href ?? '');
+
+md.core.ruler.push('on_bot_links', state => {
+  for (const block of state.tokens) {
+    if (!block.children) continue;
+    // Whether each open link is a bot account, so its closing token goes too.
+    const open: boolean[] = [];
+    block.children = block.children.filter(token => {
+      if (token.type === 'link_open') {
+        const bot = isGitHubBotAccount(String(token.attrGet('href') ?? ''));
+        open.push(bot);
+        return !bot;
+      }
+      return token.type === 'link_close' ? !open.pop() : true;
+    });
+  }
+});
+
 // Open external links in new windows without opener access.
 md.core.ruler.push('on_link_target', state => {
   for (const block of state.tokens) {
@@ -139,6 +161,10 @@ export function sanitizeReleaseHtml(source: string, options: RenderMarkdownOptio
     image.replaceWith(link);
   }
   for (const link of fragment.querySelectorAll('a')) {
+    if (isGitHubBotAccount(link.getAttribute('href'))) {
+      link.replaceWith(...link.childNodes);
+      continue;
+    }
     if (!/^https?:/i.test(link.getAttribute('href') ?? '')) link.removeAttribute('href');
     link.setAttribute('target', '_blank');
     link.setAttribute('rel', 'noopener noreferrer');

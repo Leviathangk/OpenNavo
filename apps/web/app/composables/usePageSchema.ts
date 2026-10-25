@@ -7,8 +7,11 @@ export interface PageSchemaInput {
   type?: string;
   /** @id of the entity the page is (an app overview, an article, a list). */
   mainEntity?: string;
-  /** The entity a subpage is about (an app's versions page is about the app). */
-  about?: { '@id': string; name?: string };
+  /**
+   * @id of the entity a subpage is about (an app's versions page is about the app). Only a reference: the
+   * schema.org resolver reads an `about` that carries any other property as an Organization of its own.
+   */
+  about?: string;
   /** @id of the page's main image node. */
   imageId?: string;
   dateModified?: string | null;
@@ -34,7 +37,7 @@ export function usePageSchema(input: MaybeRefOrGetter<PageSchemaInput> = {}) {
         isPartOf: { '@id': `${siteUrl}/#website` },
         ...(type ? { '@type': type } : {}),
         ...(mainEntity ? { mainEntity: { '@id': mainEntity } } : {}),
-        ...(about ? { about } : {}),
+        ...(about ? { about: { '@id': about } } : {}),
         ...(imageId ? { primaryImageOfPage: { '@id': imageId } } : {}),
         ...(dateModified ? { dateModified } : {})
       };

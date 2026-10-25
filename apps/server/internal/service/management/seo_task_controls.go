@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/opennavo/opennavo/server/internal/domain"
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/service/agentgate"
 	"github.com/opennavo/opennavo/server/internal/service/seotasks"
 )
@@ -43,11 +44,18 @@ func (s *Service) seoTaskControl(ctx context.Context, name string, in Input) (an
 		request.IdempotencyKey = uuid.NewString()
 	}
 	owner := seoOwner(ctx)
+	var closed []string
+	if name == "ClaimSeoTasks" {
+		var err error
+		if closed, err = s.closedLocales(ctx); err != nil {
+			return nil, err
+		}
+	}
 	tasks := &seotasks.Service{DB: s.Store.DB}
 	result, err := tasks.Control(ctx, owner, name, request.IdempotencyKey, map[string]any{"id": in.ID, "body": in.Body}, domain.CurrentOperation(ctx).DryRun, func(t *seotasks.Service) (any, error) {
 		switch name {
 		case "ClaimSeoTasks":
-			records, err := t.ClaimWith(ctx, owner, seotasks.ClaimFilter{Limit: request.Limit, Kinds: request.Kinds, IDs: request.TaskIDs})
+			records, err := t.ClaimWith(ctx, owner, seotasks.ClaimFilter{Limit: request.Limit, Kinds: request.Kinds, IDs: request.TaskIDs, ClosedLocales: closed})
 			return map[string]any{"records": records}, err
 		case "CompleteSeoTask":
 			return t.Complete(ctx, in.ID, request.Fencing, owner, request.Outcome, request.Reason)
@@ -62,6 +70,21 @@ func (s *Service) seoTaskControl(ctx context.Context, name string, in Input) (an
 		return nil, domain.Validation()
 	})
 	return result, mapTaskError(err)
+}
+
+// closedLocales are the site languages closed for indexing (pages.openLocales), in site order.
+func (s *Service) closedLocales(ctx context.Context) ([]string, error) {
+	settings, err := s.Store.SEOSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	closed := []string{}
+	for _, locale := range seo.Locales {
+		if !seo.LocaleOpen(settings.Settings.Pages.OpenLocales, locale) {
+			closed = append(closed, locale)
+		}
+	}
+	return closed, nil
 }
 
 func (s *Service) captureSeoEvidence(ctx context.Context, in Input) (any, error) {

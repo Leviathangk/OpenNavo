@@ -1,5 +1,6 @@
 // Detail display calculations (08 §10.5), pure for testing.
 // Monthly installs, trends, architecture, and URL display live in shared @opennavo/ui; only web-specific calculations remain here.
+import { BRAND, LOCALE_METADATA, SITE_LOCALES } from '@opennavo/shared';
 
 /** Detail URLs: Casks (ADR-018) and link apps share /apps; their tokens never collide. */
 /** Pages under an app: its tabs, the troubleshooting page (F7) and the intent pages (X2). */
@@ -13,8 +14,27 @@ export const PACKAGE_SUBPAGES = [
 ] as const;
 export type PackageSubpage = (typeof PACKAGE_SUBPAGES)[number];
 
+/**
+ * OpenNavo's own catalog entry is the desktop app, whose page is /download: its overview answers a 301
+ * there (server/middleware/package-canonical.ts), so links go straight to it. Its tabs stay where they are.
+ */
 export function packagePath(token: string, tab?: PackageSubpage): string {
+  if (!tab && token === BRAND.caskToken) return '/download';
   return `/apps/${token}${tab ? `/${tab}` : ''}`;
+}
+
+const BRAND_OVERVIEW = `/apps/${BRAND.caskToken}`;
+/** Language prefixes of the site's paths (/zh, /zh-hant, …; English has none). */
+const LOCALE_PREFIXES: ReadonlySet<string> = new Set(SITE_LOCALES.map(locale => LOCALE_METADATA[locale].prefix));
+
+/**
+ * Where OpenNavo's own overview goes in its language, for the 301 and for canonicals that name it:
+ * /apps/opennavo → /download, /zh/apps/opennavo → /zh/download. Undefined for every other path.
+ */
+export function brandDownloadPath(path: string): string | undefined {
+  if (!path.endsWith(BRAND_OVERVIEW)) return undefined;
+  const prefix = path.slice(0, -BRAND_OVERVIEW.length);
+  return LOCALE_PREFIXES.has(prefix) ? `${prefix}/download` : undefined;
 }
 
 /** Mixed dependency/conflict/alternative lists: Casks and link apps have detail links; command-line tools show names only. */

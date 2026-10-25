@@ -36,6 +36,22 @@ describe('Stale-while-revalidate value cache', () => {
     expect(await get()).toBe(1);
   });
 
+  it('peeks without waiting: nothing until the first load finishes, then the value while it refreshes', async () => {
+    const { get, load, onError, advance } = setup();
+    load.mockRejectedValueOnce(new Error('API down'));
+    expect(get.peek()).toBeUndefined();
+    await get.idle();
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(get.peek()).toBeUndefined();
+    await get.idle();
+    expect(get.peek()).toBe(1);
+    advance(1001);
+    expect(get.peek()).toBe(1);
+    await get.idle();
+    expect(load).toHaveBeenCalledTimes(3);
+    expect(get.peek()).toBe(2);
+  });
+
   it('keeps serving the previous value through failed refreshes, retrying after a pause', async () => {
     const { get, load, onError, advance } = setup();
     expect(await get()).toBe(1);

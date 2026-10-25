@@ -214,5 +214,5 @@ func (s *Store) IndexPolicy(ctx context.Context) (seo.Policy, error) {
 	}
 	policy := row.Settings.Pages.IndexPolicy
 	since, _ := time.Parse(time.RFC3339, policy.Since)
-	return seo.Policy{IntentPagesEnabled: row.Settings.Pages.IntentPagesEnabled, Mode: policy.Mode, Scope: policy.Scope, Since: since, VersionsSitemap: row.Settings.Pages.VersionsSitemap, TranslationMode: row.Settings.Pages.TranslationMode, TranslationLocales: row.Settings.Pages.TranslationLocales, VersionsMinNotesChars: row.Settings.Pages.VersionsMinNotesChars}, nil
+	return seo.Policy{IntentPagesEnabled: row.Settings.Pages.IntentPagesEnabled, Mode: policy.Mode, Scope: policy.Scope, Since: since, VersionsSitemap: row.Settings.Pages.VersionsSitemap, TranslationMode: row.Settings.Pages.TranslationMode, TranslationLocales: row.Settings.Pages.TranslationLocales, VersionsMinNotesChars: row.Settings.Pages.VersionsMinNotesChars, OpenLocales: row.Settings.Pages.OpenLocales}, nil
 }

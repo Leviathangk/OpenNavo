@@ -9360,7 +9360,7 @@ export interface components {
                 /** @default 300 */
                 versionsMinNotesChars: number;
                 /**
-                 * @description Languages open for non-entity pages; defaults to the six application languages. Entity pages use their own PageDecision.
+                 * @description Languages open for indexing, on every page type: pages in a language not listed still render but are noindex and stay out of hreflang, sitemaps and IndexNow. New translation work for website content targets only listed languages; published translations stay, and content only the Mac app shows is not affected. An empty list closes every language; omitted, it defaults to the six application languages.
                  * @default [
                  *       "en-US",
                  *       "zh-CN",

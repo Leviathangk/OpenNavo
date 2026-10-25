@@ -70,6 +70,50 @@ type Policy struct {
 	Mode                  string // off | shadow | enforce
 	Scope                 string // new | all
 	Since                 time.Time
+	// OpenLocales are the languages open for indexing (pages.openLocales); nil opens every site language.
+	OpenLocales []string
+}
+
+// LocaleOpen reports whether an openLocales list lets pages in a language be indexed; a nil list opens
+// every site language. Pages in a closed language still render, but stay noindex and out of every
+// hreflang set, sitemap and IndexNow announcement.
+func LocaleOpen(open []string, locale string) bool {
+	return open == nil || slices.Contains(open, locale)
+}
+
+// LocaleOpen applies the policy's openLocales list.
+func (p Policy) LocaleOpen(locale string) bool {
+	return LocaleOpen(p.OpenLocales, locale)
+}
+
+// clientOnlyContent names the content registry entities only the Mac client shows. The website never
+// indexes them, so their translation languages follow the client's, not pages.openLocales.
+var clientOnlyContent = []string{"announcement", "desktop_release", "mirror"}
+
+// ClientOnlyContent lists the entities whose translation work TranslationOpen never stops.
+func ClientOnlyContent() []string { return slices.Clone(clientOnlyContent) }
+
+// TranslationOpen reports whether new translation work may target a language for a content entity:
+// website content only in languages open for indexing, client-only content in all of its languages.
+// Translations that already exist stay published either way.
+func TranslationOpen(entity string, open []string, locale string) bool {
+	// Traditional Chinese is derived from Simplified Chinese, even when the latter is not indexed.
+	return slices.Contains(clientOnlyContent, entity) || LocaleOpen(open, locale) ||
+		(locale == "zh-CN" && LocaleOpen(open, "zh-Hant"))
+}
+
+// openOnly keeps the languages open for indexing, in their given order.
+func (p Policy) openOnly(locales []string) []string {
+	if p.OpenLocales == nil {
+		return locales
+	}
+	out := []string{}
+	for _, locale := range locales {
+		if p.LocaleOpen(locale) {
+			out = append(out, locale)
+		}
+	}
+	return out
 }
 
 // Decision is what pages and the sitemap act on.
@@ -129,12 +173,13 @@ func IndexedLocales(f Facts) []string {
 }
 
 // Decide applies the policy. off and shadow keep today's behaviour (every listed page indexable in
-// all six languages); enforce applies the rule to apps in scope. "new" covers apps first seen after
-// Since, so existing pages are not noindexed overnight. A manual override is an explicit decision,
-// so under enforce it applies to any app, in scope or not.
+// every language open for indexing); enforce applies the rule to apps in scope. "new" covers apps first
+// seen after Since, so existing pages are not noindexed overnight. A manual override is an explicit
+// decision, so under enforce it applies to any app, in scope or not. Languages closed for indexing are
+// never among the Locales, whatever the mode or override.
 func Decide(f Facts, p Policy) Decision {
 	eligible, reason := Evaluate(f)
-	d := Decision{Indexable: true, Locales: Locales, Eligible: eligible, EligibleReason: reason}
+	d := Decision{Indexable: true, Locales: p.openOnly(Locales), Eligible: eligible, EligibleReason: reason}
 	inScope := p.Scope == "all" || (p.Scope == "new" && !p.Since.IsZero() && f.FirstSeenAt.After(p.Since))
 	overridden := f.Override == OverrideIndex || f.Override == OverrideNoindex
 	if p.Mode != "enforce" || !inScope && !overridden {
@@ -143,7 +188,7 @@ func Decide(f Facts, p Policy) Decision {
 	d.Enforced = true
 	d.Indexable, d.Reason = eligible, reason
 	if eligible {
-		d.Locales = IndexedLocales(f)
+		d.Locales = p.openOnly(IndexedLocales(f))
 	} else {
 		d.Locales = []string{}
 	}

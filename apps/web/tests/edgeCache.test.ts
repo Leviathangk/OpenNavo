@@ -31,7 +31,18 @@ describe('HTML edge cache switch', () => {
       '/authors/lin-wei'
     ])
       expect(edgeCacheHeader(page({ path })), path).toBe(LONG_EDGE_CACHE_VALUE);
-    for (const path of ['/', '/zh', '/ja/categories/browsers', '/apps', '/articles'])
+    for (const path of [
+      '/',
+      '/zh',
+      '/ja/categories/browsers',
+      '/apps',
+      '/articles',
+      '/collections/new-mac',
+      '/download',
+      '/de/security',
+      '/security/clamav',
+      '/about'
+    ])
       expect(edgeCacheHeader(page({ path })), path).toBe(SHORT_EDGE_CACHE_VALUE);
     expect(edgeCacheHeader(page({ method: 'HEAD' }))).toBe(LONG_EDGE_CACHE_VALUE);
   });
@@ -65,7 +76,7 @@ describe('HTML edge cache switch', () => {
       { cacheControl: 's-maxage=600, private' },
       { cacheControl: '' },
       { path: '/search' },
-      { path: '/collections/new-mac' },
+      { path: '/feedback' },
       { path: '/apps/x/unknown-tab' }
     ];
     for (const overrides of bypass)

@@ -1,5 +1,10 @@
 export interface StaleCache<T> {
   (): Promise<T>;
+  /**
+   * The value without waiting: undefined until the first load has finished. Starts the load or a due refresh
+   * behind the caller, as a call would.
+   */
+  peek(): T | undefined;
   /** Settles once no refresh is running (tests). */
   idle(): Promise<void>;
 }
@@ -41,7 +46,14 @@ export function createStaleCache<T>(
     void refresh();
     return value.data;
   };
+  const peek = (): T | undefined => {
+    // A first load that fails has no previous value to fall back on, so report it here instead of to a caller.
+    if (!value) void refresh().catch((error: unknown) => options.onError?.(error));
+    else if (expires <= now()) void refresh();
+    return value?.data;
+  };
   return Object.assign(get, {
+    peek,
     idle: async () => {
       await pending?.catch(() => undefined);
     }

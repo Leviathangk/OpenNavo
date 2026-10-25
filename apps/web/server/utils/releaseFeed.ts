@@ -4,6 +4,7 @@ import { isValidToken, LOCALE_METADATA, SLUG_PATTERN } from '@opennavo/shared';
 import type { SiteLocale } from '@opennavo/shared';
 import { apiStatus, fetchPackageDetail, publicApi } from './publicApi';
 import { siteMessage } from './siteCopy';
+import { withVariantNames } from '../../app/utils/seoTitles';
 
 type ReleaseEntry = PublicComponents['schemas']['ReleaseEntry'];
 type CollectionDetail = PublicComponents['schemas']['CollectionDetail'];
@@ -244,9 +245,11 @@ async function inBatches<T, R>(values: readonly T[], size: number, run: (value: 
 /** A collection's feed: the newest releases of its apps. One app failing leaves it out; all failing is a 503. */
 export async function collectionFeed(event: H3Event, locale: SiteLocale, slug: string) {
   const { siteUrl, get } = publicApi(event);
-  const collection = await get<CollectionDetail>(`/collections/${slug}`, { locale }).catch((error: unknown) => {
-    throw apiStatus(error) === 404 ? notFound() : error;
-  });
+  const collection = await get<CollectionDetail>(`/collections/${slug}`, { locale })
+    .then(withVariantNames)
+    .catch((error: unknown) => {
+      throw apiStatus(error) === 404 ? notFound() : error;
+    });
   const apps: PackageSummary[] = collection.items
     .map(item => item.package)
     .filter(pkg => pkg.kind === 'cask' || pkg.kind === 'link');

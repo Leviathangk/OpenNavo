@@ -47,7 +47,7 @@ const issues = computed(() =>
       : null
   }))
 );
-const pageHref = computed(() => localePath(`${packagePath(props.pkg.token)}/troubleshooting`));
+const pageHref = computed(() => localePath(packagePath(props.pkg.token, 'troubleshooting')));
 </script>
 
 <template>

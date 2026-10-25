@@ -62,7 +62,8 @@ func (n *Notifier) notifications(ctx context.Context, plan Plan) ([]store.URLNot
 		if d, ok := plan.Decisions[raw]; ok {
 			note.Robots, note.CanonicalPath = d.Robots, d.CanonicalPath
 		}
-		// Articles announce only the language snapshots included by the public sitemap.
+		// Articles announce only the language snapshots included by the public sitemap: ready, and open
+		// for indexing.
 		path := strings.TrimPrefix(note.Path, localePrefix(note.Locale))
 		if strings.HasPrefix(path, "/articles/") {
 			article, found, err := n.Store.PublicArticle(ctx, strings.TrimPrefix(path, "/articles/"), note.Locale)
@@ -74,7 +75,7 @@ func (n *Notifier) notifications(ctx context.Context, plan Plan) ([]store.URLNot
 				if err := json.Unmarshal([]byte(article.ReadyLocales), &ready); err != nil {
 					return nil, err
 				}
-				note.Announce = slices.Contains(ready, note.Locale)
+				note.Announce = slices.Contains(ready, note.Locale) && seo.LocaleOpen(settings.Settings.Pages.OpenLocales, note.Locale)
 				if note.Announce {
 					note.Robots = "index, follow"
 				}
@@ -86,7 +87,7 @@ func (n *Notifier) notifications(ctx context.Context, plan Plan) ([]store.URLNot
 				note.Announce = state == "moved" || state == "withdrawn"
 			}
 		} else if !strings.HasPrefix(path, "/apps/") {
-			note.Announce = slices.Contains(settings.Settings.Pages.OpenLocales, note.Locale)
+			note.Announce = seo.LocaleOpen(settings.Settings.Pages.OpenLocales, note.Locale)
 		}
 		byURL[raw] = note
 	}
@@ -179,7 +180,7 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 			if !owned {
 				continue
 			}
-			keep, decisionErr := n.retainAnnouncement(ctx, row)
+			keep, decisionErr := n.retainAnnouncement(ctx, row, settings)
 			if decisionErr != nil {
 				if e := n.Store.CompleteURLNotification(ctx, row, row.State, decisionErr, n.Now()); e != nil {
 					return purged, announced, e
@@ -225,7 +226,7 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 					return purged, announced, err
 				}
 				if owned {
-					keep, err := n.retainAnnouncement(ctx, row)
+					keep, err := n.retainAnnouncement(ctx, row, settings)
 					if err != nil {
 						return purged, announced, err
 					}
@@ -269,12 +270,25 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 	return purged, announced, resultErr
 }
 
-// A persistent job may outlive the issue evidence, even after its public probe.
-// Read the same decision again immediately before delivery; expiry never announces.
-func (n *Notifier) retainAnnouncement(ctx context.Context, row store.URLNotificationRow) (bool, error) {
+// A persistent job may outlive the issue evidence, even after its public probe, and its language may
+// have closed for indexing since it was queued. Read the same decision again immediately before
+// delivery; expiry never announces. Retired app and article URLs (queued without robots) still
+// announce in every language, so engines can drop them.
+func (n *Notifier) retainAnnouncement(ctx context.Context, row store.URLNotificationRow, settings store.SEOSettingsRow) (bool, error) {
+	if !row.Announce {
+		return true, nil
+	}
 	path := strings.TrimPrefix(row.Path, localePrefix(row.Locale))
 	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if !row.Announce || len(parts) != 3 || parts[0] != "apps" || (parts[2] != string(seo.PageTroubleshooting) && parts[2] != string(seo.PageDependencies)) {
+	live := row.Robots != "" || (parts[0] != "apps" && parts[0] != "articles")
+	if live && !seo.LocaleOpen(settings.Settings.Pages.OpenLocales, row.Locale) {
+		return false, n.Store.SuppressURLAnnouncement(ctx, row, "noindex, follow", row.CanonicalPath, n.Now())
+	}
+	// Retire already queued overview probes after the brand route became a redirect.
+	if len(parts) == 2 && parts[0] == "apps" && parts[1] == "opennavo" {
+		return false, n.Store.SuppressURLAnnouncement(ctx, row, "noindex, follow", localePrefix(row.Locale)+"/download", n.Now())
+	}
+	if len(parts) != 3 || parts[0] != "apps" || (parts[2] != string(seo.PageTroubleshooting) && parts[2] != string(seo.PageDependencies)) {
 		return true, nil
 	}
 	policy, err := n.Store.IndexPolicy(ctx)

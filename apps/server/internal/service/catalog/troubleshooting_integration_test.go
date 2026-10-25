@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opennavo/opennavo/server/gen/publicapi"
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/facts"
 	"github.com/opennavo/opennavo/server/internal/seo"
@@ -25,6 +26,12 @@ func TestTroubleshootingDetailSitemapAndNotificationsAgree(t *testing.T) {
 	now := time.Now().UTC()
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash,desc_en)
  VALUES(901,'cask','issue-fixture','issue-fixture','homebrew/cask','Issue Fixture','1','1','{}','fixture','Useful fixture application')`).Error)
+	// Every language open for indexing (no list), so the issue rules alone decide until the list closes some.
+	openLocales := func(list string) {
+		t.Helper()
+		require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}',coalesce(settings->'pages','{}')||jsonb_build_object('openLocales',?::jsonb))`, list).Error)
+	}
+	openLocales("null")
 	for _, locale := range seo.Locales {
 		require.NoError(t, st.DB.Exec(`INSERT INTO package_i18n(package_id,locale,source_locale,summary,description,status,source_hash,source)
  VALUES(901,?,'en-US','Useful fixture application','Complete fixture description','machine',repeat('a',64),'rule')`, locale).Error)
@@ -90,6 +97,30 @@ func TestTroubleshootingDetailSitemapAndNotificationsAgree(t *testing.T) {
 	require.Contains(t, plan.IndexNowURLs, "https://site.example.test/apps/issue-fixture/troubleshooting")
 	require.Contains(t, plan.IndexNowURLs, "https://site.example.test/fr/apps/issue-fixture/troubleshooting")
 	require.NotContains(t, plan.IndexNowURLs, "https://site.example.test/ja/apps/issue-fixture/troubleshooting")
+
+	// Closing French keeps its qualified page out of the index, the sitemap, IndexNow and English's hreflang.
+	openLocales(`["en-US","zh-CN","ja-JP","ru-RU","es-ES"]`)
+	uncached := &catalog.PublicService{Store: st, Now: func() time.Time { return now }}
+	french, err := uncached.Detail(ctx, "cask", "issue-fixture", "fr-FR")
+	require.NoError(t, err)
+	require.Equal(t, seo.ReasonLocaleClosed, french.Indexing.Pages.Troubleshooting.Reason)
+	require.False(t, french.Indexing.Pages.Troubleshooting.InSitemap)
+	english, err := uncached.Detail(ctx, "cask", "issue-fixture", "en-US")
+	require.NoError(t, err)
+	require.Equal(t, []publicapi.Locale{"en-US"}, english.Indexing.Pages.Troubleshooting.Hreflang)
+	sitemap, err = uncached.Sitemap(ctx, "apps", 1, 100)
+	require.NoError(t, err)
+	listed := []publicapi.Locale{}
+	for _, locale := range *sitemap.Records[0].Locales {
+		listed = append(listed, locale.Locale)
+	}
+	require.NotContains(t, listed, publicapi.Locale("fr-FR"))
+	policy, err = st.IndexPolicy(ctx)
+	require.NoError(t, err)
+	plan = urlnotify.BuildPlan([]store.URLChange{{PackageID: 901, Token: row.Token, Reason: "content"}}, map[int64]store.URLChange{901: {Token: row.Token}}, map[int64]store.IndexRow{901: row}, policy, "https://site.example.test")
+	require.Contains(t, plan.IndexNowURLs, "https://site.example.test/apps/issue-fixture/troubleshooting")
+	require.NotContains(t, plan.IndexNowURLs, "https://site.example.test/fr/apps/issue-fixture/troubleshooting")
+	openLocales("null")
 	// Cached detail crosses an expiry boundary without a cache purge.
 	now = now.Add(2 * time.Hour)
 	detail, err := svc.Detail(ctx, "cask", "issue-fixture", "en-US")

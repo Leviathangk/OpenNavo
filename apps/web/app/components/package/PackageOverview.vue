@@ -8,7 +8,7 @@ import { capabilities } from '~/utils/packageFacts';
 import { packagePath } from '~/utils/packageView';
 import { appEntityId, softwareAppNode } from '~/utils/structuredData';
 import { trackEvent } from '~/utils/analytics';
-import { overviewDescription, overviewTitle } from '~/utils/seoTitles';
+import { overviewDescription, overviewTitle, withVariantNames } from '~/utils/seoTitles';
 import type { SeoExperimentAssignment } from '~/utils/seoTitles';
 import { httpsUrl } from '~/utils/linkApp';
 
@@ -72,7 +72,8 @@ const { data: related } = await useAsyncData(
       api.GET('/packages/{kind}/{token}/related', {
         params: { path: { kind: kind.value, token: token.value }, query: { limit: 8 } }
       })
-    ).catch(() => [])
+    ).catch(() => []),
+  { transform: withVariantNames }
 );
 const { data: experiment } = await experimentRequest;
 
@@ -233,6 +234,7 @@ usePageSeo({
     <OnPackageOverview
       :screenshots="shots"
       :screenshots-label="t('package.screenshots')"
+      :screenshots-name="pkg.displayName"
       :has-about="Boolean(description)"
       :about-machine-translated="Boolean(pkg.machineTranslated)"
       :about-original-href="originalHref"

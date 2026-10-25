@@ -265,6 +265,24 @@ describe('OnScreenshotGallery', () => {
     expect(wrapper.get('button span').attributes('aria-hidden')).toBe('true');
   });
 
+  it('Names uncaptioned screenshots after the app when the host passes its name', async () => {
+    const wrapper = mount(OnScreenshotGallery, {
+      props: { items: shots, name: 'Inkscape' },
+      global: withLocale('en-US'),
+      attachTo: document.body
+    });
+    expect(wrapper.findAll('img').map(image => image.attributes('alt'))).toEqual([
+      '主窗口',
+      'Inkscape · Screenshot 2',
+      '设置'
+    ]);
+    // The lightbox image carries the same text.
+    await wrapper.findAll('button')[1]?.trigger('click');
+    await nextTick();
+    expect(dialog()?.querySelector('figure img')?.getAttribute('alt')).toBe('Inkscape · Screenshot 2');
+    wrapper.unmount();
+  });
+
   it('Renders caption chips and the lightbox in the dark theme, as their backgrounds stay dark in both themes', async () => {
     const wrapper = mount(OnScreenshotGallery, { props: { items: shots }, attachTo: document.body });
     expect(wrapper.get('button span').attributes('data-theme')).toBe('dark');

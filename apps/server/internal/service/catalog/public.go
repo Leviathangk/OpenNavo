@@ -777,20 +777,10 @@ func (s *PublicService) sitemap(ctx context.Context, group string, current, size
 	if err != nil {
 		return out, err
 	}
-	// The page-state job stores the first versions page's notes facts; only apps it has not reached yet are counted
-	// here, from every release in every language.
-	if missing := fillStoredNotes(rows, states); len(missing) > 0 {
-		subset := make([]store.IndexRow, len(missing))
-		for j, i := range missing {
-			subset[j] = rows[i]
-		}
-		if err := s.Store.PopulatePageNotes(ctx, subset, 1); err != nil {
-			return out, err
-		}
-		for j, i := range missing {
-			rows[i].NotesPages = subset[j].NotesPages
-		}
-	}
+	// The page-state job stores the first versions page's notes facts. An app it has not reached yet keeps its
+	// versions page out until it does: counting here reads every release in every language, and after a migration
+	// resets the facts of every app, whole sitemap pages outlast their load timeout and never reach the cache.
+	fillStoredNotes(rows, states)
 	dates := map[int64]map[string]map[string]time.Time{}
 	for _, state := range states {
 		if dates[state.PackageID] == nil {
@@ -843,9 +833,9 @@ func (s *PublicService) sitemap(ctx context.Context, group string, current, size
 	return out, err
 }
 
-// fillStoredNotes copies the first versions page's stored notes facts into rows and returns the positions of rows
-// that lack them in some language.
-func fillStoredNotes(rows []store.IndexRow, states []store.PageState) []int {
+// fillStoredNotes copies the first versions page's stored notes facts into rows. A language without stored facts
+// stays empty, so its versions page counts as thin until the page-state job stores them.
+func fillStoredNotes(rows []store.IndexRow, states []store.PageState) {
 	stored := map[int64]map[string]seo.NotesFacts{}
 	for _, state := range states {
 		if state.PageKind != "versions" || state.PageNumber != 1 || state.NotesChars == nil || state.NotesEntries == nil {
@@ -856,11 +846,9 @@ func fillStoredNotes(rows []store.IndexRow, states []store.PageState) []int {
 		}
 		stored[state.PackageID][state.Locale] = seo.NotesFacts{Chars: *state.NotesChars, Entries: *state.NotesEntries}
 	}
-	missing := []int{}
 	for i := range rows {
 		facts := stored[rows[i].ID]
-		if len(facts) < len(seo.Locales) {
-			missing = append(missing, i)
+		if len(facts) == 0 {
 			continue
 		}
 		if rows[i].NotesPages == nil {
@@ -868,7 +856,6 @@ func fillStoredNotes(rows []store.IndexRow, states []store.PageState) []int {
 		}
 		rows[i].NotesPages[1] = facts
 	}
-	return missing
 }
 
 // indexing is the WP11 decision for one cask's pages, plus the Homebrew commit time of its current

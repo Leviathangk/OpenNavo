@@ -88,7 +88,7 @@ const migrations = computed(() =>
 );
 
 const pageHref = computed(() =>
-  alternativesPageOpen(props.pkg) ? localePath(`${packagePath(props.pkg.token)}/alternatives`) : undefined
+  alternativesPageOpen(props.pkg) ? localePath(packagePath(props.pkg.token, 'alternatives')) : undefined
 );
 
 const href = (item: AlternativeFact) =>

@@ -108,6 +108,8 @@ func TestBackgroundDeveloperPaginationHiddenOwnersAndReadyLocales(t *testing.T) 
 	require.EqualValues(t, 1, filtered["total"])
 	require.Len(t, filtered["records"], 1)
 
+	// Every language open for indexing (no list), so only content readiness decides below.
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}',coalesce(settings->'pages','{}')||'{"openLocales":null}'::jsonb)`).Error)
 	for _, locale := range []string{"en-US", "zh-CN", "ja-JP", "es-ES", "pt-BR", "ru-RU", "de-DE", "fr-FR", "it-IT"} {
 		proof := facts.NewProof("https://vendor.example/helper", now, time.Hour, "verified", now)
 		description := "Verified background helper description."
@@ -139,4 +141,31 @@ func TestBackgroundDeveloperPaginationHiddenOwnersAndReadyLocales(t *testing.T) 
 	require.NoError(t, err)
 	require.Empty(t, shared["locales"])
 	require.Equal(t, false, shared["indexable"])
+}
+
+func TestBackgroundItemsStayOutOfTheIndexInClosedLocales(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewFactsStore(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	raw := `{"token":"helper-owner","name":["Helper Owner"],"version":"1","artifacts":[{"uninstall":[{"launchctl":"com.example.closed"}]}]}`
+	p, err := homebrew.Normalize("cask", json.RawMessage(raw))
+	require.NoError(t, err)
+	require.NoError(t, st.ApplyCatalogBatch(ctx, []store.CatalogMutation{{Package: p}}))
+	for _, locale := range []string{"en-US", "zh-CN", "pt-BR", "de-DE"} {
+		proof := facts.NewProof("https://vendor.example/helper", now, time.Hour, "verified", now)
+		require.NoError(t, st.SaveBackgroundContent(ctx, "com.example.closed", facts.BackgroundContent{Locale: locale, Description: "Verified background helper description.", ItemType: "launch_agent", CommonPaths: []string{}, Evidence: proof}))
+	}
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}',coalesce(settings->'pages','{}')||'{"openLocales":["en-US","zh-CN","ja-JP","ru-RU","es-ES"]}'::jsonb)`).Error)
+	svc := &catalog.PublicService{Store: st, Now: func() time.Time { return now }}
+	for locale, indexable := range map[string]bool{"en-US": true, "zh-CN": true, "pt-BR": false, "de-DE": false} {
+		view, err := svc.BackgroundItem(ctx, "com.example.closed", locale)
+		require.NoError(t, err)
+		require.Equal(t, indexable, view["indexable"], locale)
+		// The description still shows in a closed language; only indexing and hreflang leave it out.
+		require.Equal(t, locale, view["content"].(*facts.BackgroundContent).Locale, locale)
+		require.Equal(t, []string{"en-US", "zh-CN"}, view["locales"], locale)
+		list, err := svc.BackgroundItems(ctx, "", locale, 1, 24)
+		require.NoError(t, err)
+		require.Equal(t, indexable, list["records"].([]any)[0].(map[string]any)["indexable"], locale)
+	}
 }

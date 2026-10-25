@@ -8,7 +8,7 @@ import { OnIcon, OnLogo } from '@opennavo/ui';
 // language links (C4) sit above the copyright line.
 const { t } = useI18n();
 const localePath = useLocalePath();
-const year = new Date().getFullYear();
+const year = useCopyrightYear();
 const columns = useFooterLinks();
 const consent = useAnalyticsConsent();
 </script>

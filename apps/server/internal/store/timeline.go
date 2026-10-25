@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/opennavo/opennavo/server/internal/content"
 )
 
@@ -65,6 +66,28 @@ func (s *Store) TimelineReleases(ctx context.Context, id int64, locale string) (
 	return s.timelineReleasesFor(ctx, []int64{id}, locale)
 }
 
+// noInformationSeen keeps each editorial source's verdict by its content hash, which covers every field the verdict
+// reads. Languages share cached verdicts; least recently used hashes are evicted so revisions cannot
+// grow memory indefinitely. Only hashes and booleans are retained, never source text.
+const noInformationCacheCapacity = 4096
+
+var noInformationSeen = func() *lru.Cache[string, bool] {
+	cache, err := lru.New[string, bool](noInformationCacheCapacity)
+	if err != nil {
+		panic(err) // The fixed capacity must be positive.
+	}
+	return cache
+}()
+
+func cachedNoInformation(hash string, source map[string]any) bool {
+	if verdict, ok := noInformationSeen.Get(hash); ok {
+		return verdict
+	}
+	verdict := noInformation(source)
+	noInformationSeen.Add(hash, verdict)
+	return verdict
+}
+
 func (s *Store) timelineReleasesFor(ctx context.Context, ids []int64, locale string) ([]TimelineRelease, error) {
 	rows := []TimelineRelease{}
 	err := s.DB.WithContext(ctx).Raw(`SELECT r.package_id,i.source_hash,to_jsonb(src) source_fields,r.id,r.package_version_id,r.version,r.source,r.source_locale,i.locale,i.title translated_title,r.title,r.source_url,r.body_markdown,r.published_at,r.is_prerelease,CASE WHEN r.source='editorial' THEN 0 ELSE COALESCE(s.priority,CASE r.source WHEN 'manual' THEN 10 WHEN 'github_release' THEN 20 WHEN 'sparkle' THEN 30 ELSE 40 END) END priority,i.machine_translated,i.status translation_status,i.summary,i.body_markdown translated_body,i.sections FROM releases r LEFT JOIN release_i18n src ON src.release_id=r.id AND src.locale=r.source_locale AND r.source='editorial' LEFT JOIN changelog_sources s ON s.package_id=r.package_id AND s.type=CASE r.source WHEN 'github_release' THEN 'github_releases' ELSE r.source END LEFT JOIN LATERAL (SELECT t.* FROM release_i18n t CROSS JOIN (SELECT ?::text requested) lang WHERE (r.source='editorial' OR t.status='skipped' OR COALESCE(NULLIF(t.title,''),NULLIF(t.summary,''),NULLIF(t.body_markdown,'')) IS NOT NULL OR t.sections<>'[]'::jsonb) AND t.release_id=r.id AND ((r.source='editorial' AND t.locale=lang.requested) OR (r.source<>'editorial' AND t.locale IN (lang.requested,r.source_locale,'en-US'))) ORDER BY `+publicLocaleOrder+` LIMIT 1) i ON TRUE WHERE r.package_id IN ? AND NOT r.hidden ORDER BY priority,r.updated_at DESC,r.id DESC`, locale, ids).Scan(&rows).Error
@@ -86,7 +109,7 @@ func (s *Store) timelineReleasesFor(ctx context.Context, ids []int64, locale str
 				fields[field] = source[field]
 			}
 			r.CurrentSourceHash = content.Hash(r.SourceLocale, fields)
-			r.NoInformation = noInformation(source)
+			r.NoInformation = cachedNoInformation(r.CurrentSourceHash, source)
 		}
 		r.SourceFields = nil
 		r.Locale = locale

@@ -2,6 +2,7 @@
 import type { PackageSummary } from '@opennavo/api';
 import { OnAppCard } from '@opennavo/ui';
 import type { OnAppCardStat } from '@opennavo/ui';
+import { packagePath } from '~/utils/packageView';
 
 // Web app card: shared OnAppCard with web Get menu (open client / copy command / add to list), linking to details.
 const props = defineProps<{
@@ -14,7 +15,7 @@ const props = defineProps<{
 
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
-const href = computed(() => props.href ?? localePath(`/apps/${props.pkg.token}`));
+const href = computed(() => props.href ?? localePath(packagePath(props.pkg.token)));
 </script>
 
 <template>

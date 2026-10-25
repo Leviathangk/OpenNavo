@@ -12,6 +12,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/cache"
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"gorm.io/gorm"
 )
@@ -215,7 +216,8 @@ func (s *PublicService) Author(ctx context.Context, slug, locale string, current
 	})
 }
 
-// ArticleSitemap lists article and author URLs with ready languages.
+// ArticleSitemap lists article and author URLs with ready languages that are open for indexing
+// (pages.openLocales); an article ready in no open language is left out.
 func (s *PublicService) ArticleSitemap(ctx context.Context) (publicapi.ArticleSitemap, error) {
 	return cache.ReadThrough(ctx, s.Cache, "c:art:sitemap", 10*time.Minute, func(ctx context.Context) (publicapi.ArticleSitemap, error) {
 		rows, authors, err := s.Store.ArticleSitemap(ctx)
@@ -223,16 +225,22 @@ func (s *PublicService) ArticleSitemap(ctx context.Context) (publicapi.ArticleSi
 		if err != nil {
 			return out, err
 		}
+		settings, err := s.Store.SEOSettings(ctx)
+		if err != nil {
+			return out, err
+		}
 		for _, row := range rows {
 			entry := publicapi.ArticleSitemapEntry{Slug: row.Slug, Locales: []publicapi.SitemapLocale{}}
 			for _, code := range i18n.SiteLocales {
 				locale := string(code)
-				if at, ok := row.Locales[locale]; ok {
+				if at, ok := row.Locales[locale]; ok && seo.LocaleOpen(settings.Settings.Pages.OpenLocales, locale) {
 					stamp := at.UTC()
 					entry.Locales = append(entry.Locales, publicapi.SitemapLocale{Locale: publicapi.Locale(locale), Lastmod: &stamp})
 				}
 			}
-			out.Articles = append(out.Articles, entry)
+			if len(entry.Locales) > 0 {
+				out.Articles = append(out.Articles, entry)
+			}
 		}
 		for _, author := range authors {
 			out.Authors = append(out.Authors, publicapi.AuthorSitemapEntry{Slug: author.Slug, Lastmod: author.Lastmod})

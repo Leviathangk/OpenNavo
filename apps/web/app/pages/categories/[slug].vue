@@ -6,7 +6,7 @@ import { CATALOG_SORTS, GRID_PAGE_SIZE, pageCount as countPages, readEnum, readF
 import { findCategoryPath } from '~/utils/categories';
 import { categoryFamily, otherCategories } from '~/utils/categoryLinks';
 import { packagePath } from '~/utils/packageView';
-import { categoryDescription } from '~/utils/seoTitles';
+import { categoryDescription, withVariantNames } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -58,7 +58,8 @@ const { data, error, refresh, status } = await useAsyncData(
           }
         }
       })
-    )
+    ),
+  { transform: withVariantNames }
 );
 
 assertExists(() => data.value?.total, pageSize, status);

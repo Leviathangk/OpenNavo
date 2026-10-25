@@ -4,6 +4,7 @@ import type { PackageDetail } from '@opennavo/api';
 import { toBrewfile } from '@opennavo/shared';
 import { OnAppRow, OnButton, OnEmpty, OnInstallCommand, useUiMessages } from '@opennavo/ui';
 import { packagePath } from '~/utils/packageView';
+import { withVariantNames } from '~/utils/seoTitles';
 
 // Brewfile generator (05 §7.2, 08 §10.14): browser-only via routeRules ssr:false; list from localStorage.
 const { t } = useI18n();
@@ -26,8 +27,10 @@ async function loadMissing() {
       const key = keyOf(item);
       details.value[key] = null;
       try {
-        details.value[key] = await unwrap(
-          api.GET('/packages/{kind}/{token}', { params: { path: { kind: item.kind, token: item.token } } })
+        details.value[key] = withVariantNames(
+          await unwrap(
+            api.GET('/packages/{kind}/{token}', { params: { path: { kind: item.kind, token: item.token } } })
+          )
         );
       } catch {
         // Removed packages retain token display and remain included in generated Brewfiles.

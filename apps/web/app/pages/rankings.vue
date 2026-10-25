@@ -6,7 +6,8 @@ import type { OnRankingsEntry } from '@opennavo/ui';
 import { pageCount as countPages, RANKING_PERIODS, readEnum } from '~/utils/catalogQuery';
 import { flattenCategories } from '~/utils/categories';
 import { decorative } from '~/utils/decorative';
-import { brandlessTitle } from '~/utils/seoTitles';
+import { packagePath } from '~/utils/packageView';
+import { brandlessTitle, withVariantNames } from '~/utils/seoTitles';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -51,7 +52,8 @@ const { data, error, refresh, status } = await useAsyncData(
           }
         }
       })
-    )
+    ),
+  { transform: withVariantNames }
 );
 
 const periodOptions = computed(() => RANKING_PERIODS.map(value => ({ value, label: t(`rankings.period.${value}`) })));
@@ -72,7 +74,7 @@ const entries = computed<OnRankingsEntry[] | null>(() =>
         change: entry.rankChange ?? null,
         pkg: entry.package,
         value: formatCount(entry.installs, { locale: formattingLocale.value }),
-        href: localePath(`/apps/${entry.package.token}`)
+        href: localePath(packagePath(entry.package.token))
       }))
     : null
 );

@@ -31,11 +31,34 @@ export function formatDecimal(value: number, { locale = 'en-US', digits = 2 }: D
 }
 
 export interface DateFormatOptions extends FormatOptions {
-  /** Current time for this-year/yesterday checks; defaults to new Date(). */
+  /** Current time for this-year/yesterday checks; defaults to DateDefaults.now, else new Date(). */
   now?: Date;
-  /** IANA zone, defaulting to runtime local zone; pass explicitly for SSR. */
+  /** IANA zone; defaults to DateDefaults.timeZone, else the runtime's local zone. */
   timeZone?: string;
 }
+
+/** Zone and reference time for date formatting calls that pass none. */
+export interface DateDefaults {
+  /**
+   * IANA zone; unset formats in the runtime's local zone, as the desktop app does. Readers cannot assume
+   * a default zone is theirs, so clock times formatted in it name it, e.g. 14:05 UTC.
+   */
+  timeZone?: string;
+  /** Reference time for relative times and this-year checks; unset reads the clock. */
+  now?: () => Date;
+}
+
+let dateDefaults: DateDefaults = {};
+
+/**
+ * Sets the defaults for every later call. The website formats in UTC against the time its server
+ * rendered the page, so cached HTML and its hydration in any visitor's browser produce the same text.
+ */
+export function setDateDefaults(defaults: DateDefaults): void {
+  dateDefaults = defaults;
+}
+
+const defaultNow = (): Date => dateDefaults.now?.() ?? new Date();
 
 const integer = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
@@ -179,7 +202,12 @@ const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'
  */
 export function formatDate(
   input: Date | string | number,
-  { locale = 'en-US', now = new Date(), timeZone, weekday = false }: DateFormatOptions & { weekday?: boolean } = {}
+  {
+    locale = 'en-US',
+    now = defaultNow(),
+    timeZone = dateDefaults.timeZone,
+    weekday = false
+  }: DateFormatOptions & { weekday?: boolean } = {}
 ): string {
   if (locale !== 'zh-CN' && locale !== 'en-US') {
     const year = dateParts(new Date(input), timeZone).year === dateParts(now, timeZone).year ? undefined : 'numeric';
@@ -201,13 +229,18 @@ export function formatDate(
   return weekday ? `${text} · ${EN_WEEKDAYS[date.weekday]}` : text;
 }
 
-/** 24-hour time, e.g. 22:53. */
+/**
+ * 24-hour time, e.g. 22:53. In the default zone from setDateDefaults it names that zone, e.g. 14:05 UTC;
+ * a zone the caller passes, or the runtime's local zone, stays unnamed.
+ */
 export function formatTime(
   input: Date | string | number,
   { timeZone }: Pick<DateFormatOptions, 'timeZone'> = {}
 ): string {
-  const { hour, minute } = dateParts(new Date(input), timeZone);
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const zone = timeZone ?? dateDefaults.timeZone;
+  const { hour, minute } = dateParts(new Date(input), zone);
+  const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  return timeZone === undefined && zone ? `${time} ${zone}` : time;
 }
 
 // Calendar-day difference, unaffected by DST.
@@ -223,7 +256,7 @@ function calendarDays(from: DateParts, to: DateParts): number {
  */
 export function formatRelativeTime(
   input: Date | string | number,
-  { locale = 'en-US', now = new Date(), timeZone }: DateFormatOptions = {}
+  { locale = 'en-US', now = defaultNow(), timeZone = dateDefaults.timeZone }: DateFormatOptions = {}
 ): string {
   const date = new Date(input);
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);

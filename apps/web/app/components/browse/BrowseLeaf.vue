@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ApiError, unwrap } from '@opennavo/api';
-import { formatCount } from '@opennavo/shared';
+import { LOCALES, formatCount } from '@opennavo/shared';
 import { OnBreadcrumb, OnCategoryChips, OnErrorState, OnPagination } from '@opennavo/ui';
 import { BROWSE_PAGE_SIZE, browsePath, bucketHeading, bucketLabel, isBrowseBucket } from '~/utils/browse';
 import type { BrowseKind } from '~/utils/browse';
 import { packagePath } from '~/utils/packageView';
-import { brandlessTitle } from '~/utils/seoTitles';
+import { brandlessTitle, withVariantNames } from '~/utils/seoTitles';
+import { hreflangsFor } from '~~/shared/utils/hreflang';
 
 // A–Z leaf page (T1, plan 4.2): one bucket of the directory, at most 300 plain links per page (no icons or
 // cards, so the page stays light), sorted by the name a visitor reads. An unknown bucket, an empty bucket
@@ -39,7 +40,8 @@ const { data, error, refresh, status } = await useAsyncData(
       if (reason instanceof ApiError && (reason.isNotFound || reason.status === 404))
         throw createError({ statusCode: 404, statusMessage: 'Page not found' });
       throw reason;
-    })
+    }),
+  { transform: withVariantNames }
 );
 if (error.value?.statusCode === 404) throw notFound();
 watch(
@@ -48,6 +50,45 @@ watch(
     if (code === 404) showError(notFound());
   }
 );
+
+// Names sort into buckets by the language they are shown in, and de, fr, it and zh-Hant list translated apps only,
+// so this leaf page exists only in the open languages whose directory has the same bucket and page. The hreflang
+// alternates and the language menu offer just those (page:hreflangs), as browse.xml does. A language closed for
+// indexing leaves page:hreflangs unset, so app.vue keeps marking it noindex. Unknown (an API error): no limit.
+const settings = useSiteSettings();
+const openLocales = computed(() => settings.value?.pages.openLocales ?? [...LOCALES]);
+const { data: leafLocales } = await useAsyncData(
+  () => `browse-locales:${props.kind}:${bucket.value}:${page.value}`,
+  async () => {
+    const roots = await Promise.all(
+      openLocales.value.map(code =>
+        unwrap(api.GET('/browse', { params: { query: { kind: props.kind, locale: code } } })).catch(() => null)
+      )
+    );
+    if (roots.some(root => !root)) return null;
+    return openLocales.value.filter((_, index) =>
+      roots[index]!.buckets.some(item => item.key === bucket.value && page.value <= item.pages)
+    );
+  }
+);
+const pageHreflangs = useState<string[] | null>('page:hreflangs', () => null);
+let ownedHreflangs: string[] | null = null;
+const applyLeafLocales = () => {
+  if (leafLocales.value && openLocales.value.includes(appLocale.value)) {
+    pageHreflangs.value = hreflangsFor(leafLocales.value);
+    ownedHreflangs = pageHreflangs.value;
+    return;
+  }
+  // Unknown or closed: hand the default back, so an earlier leaf's languages do not stay behind.
+  if (ownedHreflangs && pageHreflangs.value === ownedHreflangs) pageHreflangs.value = null;
+  ownedHreflangs = null;
+};
+applyLeafLocales();
+watch([leafLocales, openLocales, appLocale], applyLeafLocales);
+onUnmounted(() => {
+  // The next page can finish its setup before this one unmounts.
+  if (pageHreflangs.value === ownedHreflangs) pageHreflangs.value = null;
+});
 
 const current = computed(() => data.value?.buckets.find(item => item.key === bucket.value));
 assertExists(() => current.value?.count, BROWSE_PAGE_SIZE, status);

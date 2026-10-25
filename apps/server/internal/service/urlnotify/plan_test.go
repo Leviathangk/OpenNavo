@@ -83,14 +83,42 @@ func TestSectionPrefixesCoverLongCachedPagesInAllLanguages(t *testing.T) {
 	}
 }
 
-func TestBuildPlanAnnouncesIndependentDependenciesOnly(t *testing.T) {
+func TestBuildPlanNeverAnnouncesDependencyOrDetailsTabs(t *testing.T) {
 	row := indexRow(1, "editor")
 	row.Kind, row.HasDependencyContent = "cask", true
 	plan := BuildPlan([]store.URLChange{{PackageID: 1, Token: "editor", Reason: "content"}},
 		map[int64]store.URLChange{1: {Token: "editor"}}, map[int64]store.IndexRow{1: row}, seo.Policy{Mode: "shadow"}, "https://site.example")
-	require.Contains(t, plan.IndexNowURLs, "https://site.example/apps/editor/dependencies")
-	require.NotContains(t, plan.IndexNowURLs, "https://site.example/apps/editor/details")
-	require.True(t, plan.Decisions["https://site.example/apps/editor/dependencies"].Announce)
+	require.Contains(t, plan.IndexNowURLs, "https://site.example/apps/editor")
+	// Dependency content keeps the tab's own URL, but the tab is noindex in every language.
+	for _, url := range plan.IndexNowURLs {
+		require.NotRegexp(t, `/(dependencies|details)$`, url)
+	}
+	require.NotContains(t, plan.Decisions, "https://site.example/apps/editor/dependencies")
+}
+
+func TestBuildPlanAnnouncesOnlyOpenLanguagesButRetiresEverywhere(t *testing.T) {
+	at := time.Date(2026, 10, 25, 8, 0, 0, 0, time.UTC)
+	changes := []store.URLChange{
+		{Seq: 1, PackageID: 1, Token: "editor", Reason: "homebrew", CreatedAt: at},
+		{Seq: 2, PackageID: 2, Token: "gone", Op: "delete", Reason: "homebrew", EventType: text("removed"), CreatedAt: at},
+	}
+	current := map[int64]store.URLChange{1: {Token: "editor"}, 2: {Token: "gone", Op: "delete"}}
+	editor := indexRow(1, "editor")
+	editor.PublishedLocales = seo.Locales
+	policy := seo.Policy{Mode: "shadow", Scope: "all", OpenLocales: []string{"en-US", "zh-CN", "ja-JP", "es-ES", "ru-RU"}}
+	plan := BuildPlan(changes, current, map[int64]store.IndexRow{1: editor}, policy, "https://opennavo.example")
+	for _, prefix := range []string{"", "/zh", "/ja", "/es", "/ru"} {
+		require.Contains(t, plan.IndexNowURLs, "https://opennavo.example"+prefix+"/apps/editor")
+	}
+	for _, prefix := range []string{"/pt", "/de", "/fr", "/it", "/zh-hant"} {
+		require.NotContains(t, plan.IndexNowURLs, "https://opennavo.example"+prefix+"/apps/editor", "closed for indexing")
+		// Engines can still drop a removed app's URLs in every language.
+		require.Contains(t, plan.IndexNowURLs, "https://opennavo.example"+prefix+"/apps/gone")
+		// Every language's page cache is refreshed all the same.
+		require.Contains(t, plan.Paths, prefix+"/apps/editor")
+	}
+	require.Len(t, plan.IndexNowURLs, 5+len(seo.Locales))
+	require.Equal(t, []string{"en-US", "zh-CN", "ja-JP", "es-ES", "ru-RU"}, plan.Decisions["https://opennavo.example/apps/editor"].Hreflang)
 }
 
 func TestBuildPlanRefreshesButDoesNotAnnounceBulkContentRewrites(t *testing.T) {
@@ -143,4 +171,15 @@ func TestCollectionPrefixesCoverLocalizedDetails(t *testing.T) {
 	require.Contains(t, plan.PurgePrefixes, "site.example/zh-hant/collections/new")
 	require.NotContains(t, plan.PurgePrefixes, "site.example/collections")
 	require.Contains(t, sectionPrefixes("https://site.example"), "site.example/collections")
+}
+
+func TestBrandPlanPurgesRedirectAndDownloadWithoutAnnouncingOverview(t *testing.T) {
+	row := indexRow(1, "opennavo")
+	plan := BuildPlan([]store.URLChange{{PackageID: 1, Token: "opennavo", Reason: "content"}}, map[int64]store.URLChange{1: {Token: "opennavo"}}, map[int64]store.IndexRow{1: row}, seo.Policy{}, "https://opennavo.example")
+	for _, locale := range seo.Locales {
+		prefix := localePrefix(locale)
+		require.Contains(t, plan.Paths, prefix+"/apps/opennavo")
+		require.Contains(t, plan.Paths, prefix+"/download")
+		require.NotContains(t, plan.IndexNowURLs, "https://opennavo.example"+prefix+"/apps/opennavo")
+	}
 }

@@ -6,6 +6,7 @@ import type { OnCollectionEntry } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
 import { launchDeepLink } from '~/utils/deepLink';
 import { packagePath } from '~/utils/packageView';
+import { withVariantNames } from '~/utils/seoTitles';
 
 // Collection details (05 §4, §7.2): shared OnCollectionView (ADR-017), title/body, add all, Brewfile export
 // by direct API text download, and items preferring recommendations over summaries. F4 turns the collection
@@ -33,7 +34,8 @@ const { data, error, refresh } = await useAsyncData(
       if (reason instanceof ApiError && (reason.isNotFound || reason.status === 404))
         throw createError({ statusCode: 404, statusMessage: 'Collection not found' });
       throw reason;
-    })
+    }),
+  { transform: withVariantNames }
 );
 
 if (error.value?.statusCode === 404)

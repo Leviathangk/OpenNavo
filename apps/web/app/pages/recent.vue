@@ -4,7 +4,7 @@ import { OnEmpty, OnErrorState, OnPackageListView, OnPagination } from '@opennav
 import type { OnAppCardStat } from '@opennavo/ui';
 import { GRID_PAGE_SIZE, pageCount as countPages } from '~/utils/catalogQuery';
 import { packagePath } from '~/utils/packageView';
-import { brandlessTitle } from '~/utils/seoTitles';
+import { brandlessTitle, withVariantNames } from '~/utils/seoTitles';
 
 // Recently Updated: Discover's section in full, newest version first, with real page links. Shared
 // OnPackageListView (ADR-017), Cask-only (ADR-018). Pages past the end answer 404.
@@ -27,7 +27,8 @@ const { data, error, refresh, status } = await useAsyncData(
           query: { kind: 'cask', includeFonts: true, sort: 'updated', current: page.value, size: pageSize }
         }
       })
-    )
+    ),
+  { transform: withVariantNames }
 );
 
 assertExists(() => data.value?.total, pageSize, status);

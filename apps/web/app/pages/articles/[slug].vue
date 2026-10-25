@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ApiError, unwrap } from '@opennavo/api';
-import { formatDate } from '@opennavo/shared';
+import { formatDate, LOCALES } from '@opennavo/shared';
 import { OnAppRow, OnBreadcrumb, OnErrorState, OnMarkdownView } from '@opennavo/ui';
 import type { RenderedArticle } from '@opennavo/ui/markdown';
 import { hreflangsFor } from '~~/shared/utils/hreflang';
 import { packagePath } from '~/utils/packageView';
+import { withVariantNames } from '~/utils/seoTitles';
 import {
   ARTICLE_SLUG,
   articleDescription,
+  articleIndexedLocales,
   articleRobots,
   articleTitle,
   blogPostingNode,
@@ -28,6 +30,9 @@ const NuxtLink = resolveComponent('NuxtLink');
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
 const appLocale = computed(() => toAppLocale(locale.value));
 const slug = computed(() => String(route.params.slug ?? ''));
+// L1: robots and hreflang list only ready languages the site has open for indexing, with app.vue's fallback.
+const settings = useSiteSettings();
+const openLocales = computed(() => settings.value?.pages.openLocales ?? [...LOCALES]);
 
 if (!ARTICLE_SLUG.test(slug.value))
   throw createError({ statusCode: 404, statusMessage: 'Article not found', fatal: true });
@@ -39,7 +44,8 @@ const { data, error, refresh } = await useAsyncData(
       if (reason instanceof ApiError && (reason.isNotFound || reason.status === 404))
         throw createError({ statusCode: 404, statusMessage: 'Article not found' });
       throw reason;
-    })
+    }),
+  { transform: withVariantNames }
 );
 if (error.value?.statusCode === 404)
   throw createError({ statusCode: 404, statusMessage: 'Article not found', fatal: true });
@@ -145,7 +151,11 @@ usePageSchema(() => ({
 const hreflangs = useState<string[] | null>('page:hreflangs', () => null);
 let ownedHreflangs: string[] | null = null;
 watchEffect(() => {
-  ownedHreflangs = article.value ? hreflangsFor(article.value.availableLocales) : withdrawn.value ? [] : null;
+  ownedHreflangs = article.value
+    ? hreflangsFor(articleIndexedLocales(article.value, openLocales.value))
+    : withdrawn.value
+      ? []
+      : null;
   hreflangs.value = ownedHreflangs;
 });
 onUnmounted(() => {
@@ -159,7 +169,7 @@ usePageSeo({
 // Only a noindex is written: an empty robots value removes the default meta tag while X-Robots-Tag keeps
 // it, and the audit then sees them disagree.
 useHead(() => {
-  const robots = article.value ? articleRobots(article.value, appLocale.value) : undefined;
+  const robots = article.value ? articleRobots(article.value, appLocale.value, openLocales.value) : undefined;
   return robots ? { meta: [{ name: 'robots', content: robots, tagPriority: 'high' as const }] } : {};
 });
 useSeoMeta({

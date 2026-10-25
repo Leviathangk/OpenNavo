@@ -25,6 +25,15 @@ const (
 	VersionsMinNoteEntries = 3
 )
 
+// Page reasons other packages act on.
+const (
+	// ReasonLocaleClosed: the language is closed for indexing (pages.openLocales).
+	ReasonLocaleClosed = "locale_closed"
+	// ReasonSupportingPage: a dependencies tab with content supports the overview; it keeps its own
+	// canonical and followable links but is never indexed, listed in a sitemap or announced.
+	ReasonSupportingPage = "supporting_page"
+)
+
 // NotesFacts measures the notes one versions page shows in one language: readable characters, and how many
 // releases on the page carry them. Notes that only say no details are available count as neither.
 type NotesFacts struct {
@@ -59,11 +68,18 @@ func TranslationReady(f Facts, locale string) bool {
 }
 
 // DecidePage is the single policy for a concrete URL. Hreflang is filtered using the same page
-// number and notes threshold for every language, making the links reciprocal.
+// number and notes threshold for every language, making the links reciprocal. A language closed for
+// indexing is noindex on every page and appears in no page's hreflang; pages noindexed by their shape
+// (install details, dependencies, filtered views) keep that reason in every language.
 func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 	d := PageDecision{Robots: "noindex, follow", Hreflang: []string{}}
 	if !i18n.Valid(ref.Locale) || ref.Page < 0 {
 		d.Reason = "invalid_page"
+		return d
+	}
+	if ref.Kind == PageOverview && f.Token == "opennavo" {
+		d.CanonicalPath = i18n.Metadata[i18n.LocaleCode(ref.Locale)].Prefix + "/download"
+		d.Reason = "brand_redirect"
 		return d
 	}
 	if f.Kind == "link" && (ref.Kind == PageDetails || ref.Kind == PageDependencies) {
@@ -84,12 +100,20 @@ func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 		d.CanonicalPath, d.Reason = OverviewPath(f, ref.Locale), "duplicate_of_overview"
 		return d
 	}
-	if ref.Kind != PageOverview && ref.Kind != PageVersions && ref.Kind != PageDependencies {
+	if ref.Kind == PageDependencies {
+		d.Reason = ReasonSupportingPage
+		return d
+	}
+	if ref.Kind != PageOverview && ref.Kind != PageVersions {
 		d.Reason = "unsupported_page"
 		return d
 	}
 	if ref.Filtered {
 		d.Reason = "filtered_view"
+		return d
+	}
+	if !p.LocaleOpen(ref.Locale) {
+		d.Reason = ReasonLocaleClosed
 		return d
 	}
 	entity := Decide(f, p)
@@ -130,7 +154,7 @@ func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 		return d
 	}
 	d.Robots, d.Hreflang, d.Announce = "index, follow", locales, true
-	d.InSitemap = page == 1 && ref.Kind != PageDependencies && (ref.Kind != PageVersions || p.VersionsSitemap)
+	d.InSitemap = page == 1 && (ref.Kind != PageVersions || p.VersionsSitemap)
 	return d
 }
 

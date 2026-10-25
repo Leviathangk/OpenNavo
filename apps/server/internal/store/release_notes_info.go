@@ -157,27 +157,31 @@ func negatedAfter(after string) bool {
 var notesReferenceDefinition = regexp.MustCompile(`(?m)^ {0,3}\[([^]\n]+)\]:[^\n]*(?:\n|$)`)
 var notesReferenceLink = regexp.MustCompile(`!?\[([^]\n]+)\](?:\[([^]\n]*)\]|(\([^\n)]*\)))?`)
 
-func normalizeNotesReferences(value, document string) string {
+// notesReferenceResolver reads a note's reference definitions once, then resolves the reference links of any part
+// of it: a note with a thousand list items must not rescan the whole note for each of them.
+func notesReferenceResolver(document string) func(string) string {
 	key := func(label string) string { return strings.ToLower(strings.Join(strings.Fields(label), " ")) }
 	definitions := make(map[string]bool)
 	for _, match := range notesReferenceDefinition.FindAllStringSubmatch(document, -1) {
 		definitions[key(match[1])] = true
 	}
-	value = notesReferenceDefinition.ReplaceAllString(value, "")
-	return notesReferenceLink.ReplaceAllStringFunc(value, func(link string) string {
-		match := notesReferenceLink.FindStringSubmatch(link)
-		if match[3] != "" {
-			return link
-		}
-		label := match[2]
-		if label == "" {
-			label = match[1]
-		}
-		if !definitions[key(label)] {
-			return link
-		}
-		return "[" + match[1] + "]()"
-	})
+	return func(value string) string {
+		value = notesReferenceDefinition.ReplaceAllString(value, "")
+		return notesReferenceLink.ReplaceAllStringFunc(value, func(link string) string {
+			match := notesReferenceLink.FindStringSubmatch(link)
+			if match[3] != "" {
+				return link
+			}
+			label := match[2]
+			if label == "" {
+				label = match[1]
+			}
+			if !definitions[key(label)] {
+				return link
+			}
+			return "[" + match[1] + "]()"
+		})
+	}
 }
 
 // statementBreaks ends a sentence at a line break or punctuation; a dot ends one only before a space or the
@@ -211,6 +215,9 @@ func statesChange(text string) bool {
 	return false
 }
 
+// noInformationMaxBytes bounds the reading: long changelogs are costly to scan and never only a placeholder.
+const noInformationMaxBytes = 6000
+
 // noInformation reads an editorial note's source-language fields. Translations inherit the verdict: a
 // translated "details are unavailable" says no more than its source.
 func noInformation(fields map[string]any) bool {
@@ -242,10 +249,16 @@ func noInformation(fields map[string]any) bool {
 			}
 		}
 	}
-	// Link labels still read as statements ("[Fixes a crash on launch](…)").
 	document := text.String()
-	for i := range items {
-		items[i] = normalizeNotesReferences(items[i], document)
+	// A placeholder says in a few sentences that the details are missing, so a longer note always carries something
+	// else; most notes never say it at all. Only the rest get the closer reading below.
+	if len(document) > noInformationMaxBytes || !noInformationNotes.MatchString(document) {
+		return false
 	}
-	return noInformationNotes.MatchString(document) && !statesChange(visibleNotes(normalizeNotesReferences(statements.String(), document))) && !listsChanges(items)
+	// Link labels still read as statements ("[Fixes a crash on launch](…)").
+	resolve := notesReferenceResolver(document)
+	for i := range items {
+		items[i] = resolve(items[i])
+	}
+	return !statesChange(visibleNotes(resolve(statements.String()))) && !listsChanges(items)
 }

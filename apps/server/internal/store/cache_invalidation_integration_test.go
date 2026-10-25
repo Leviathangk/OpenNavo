@@ -52,6 +52,9 @@ func TestWorkerOutboxRecoversInvalidationWithoutRerunningSync(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(message.Payload), &event))
 	require.Contains(t, event.Patterns, "c:pkg:*")
 	require.Contains(t, event.Patterns, "c:rank:*")
+	// Browse pages stay and serve while a rebuild replaces them; only their fresh marks go.
+	require.Contains(t, event.Patterns, store.BrowseRefreshPattern)
+	require.NotContains(t, event.Patterns, "c:browse:*")
 	require.NoError(t, st.DB.Table("job_outbox").Count(&count).Error)
 	require.Zero(t, count)
 }

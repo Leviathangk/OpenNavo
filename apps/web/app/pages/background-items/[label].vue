@@ -16,7 +16,7 @@ import {
   usableContent
 } from '~/utils/backgroundItems';
 import { packagePath } from '~/utils/packageView';
-import { DESCRIPTION_WIDTH, fitSummary } from '~/utils/seoTitles';
+import { DESCRIPTION_WIDTH, fitSummary, withVariantNames } from '~/utils/seoTitles';
 
 // One background item (F1): what it is (only from a verified description, with its source and check date),
 // which apps declare it in Homebrew (candidates, not proof), its type and where such items usually live, how
@@ -49,7 +49,8 @@ const {
         throw createError({ statusCode: 404, statusMessage: 'Page not found' });
       throw reason;
     }
-  }
+  },
+  { transform: withVariantNames }
 );
 if (error.value?.statusCode === 404) throw notFound();
 

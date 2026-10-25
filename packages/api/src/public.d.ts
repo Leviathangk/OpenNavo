@@ -1177,7 +1177,7 @@ export interface components {
             label: string;
             apps: components["schemas"]["BackgroundOwner"][];
             developers: string[];
-            /** @description Languages with currently verified body content and a visible app with fresh ownership evidence; empty when none are ready. */
+            /** @description Languages open for indexing (openLocales) with currently verified body content and a visible app with fresh ownership evidence: the hreflang candidates of the label. Empty when none are ready. */
             locales: components["schemas"]["Locale"][];
             shared: boolean;
             /** @enum {string} */
@@ -2914,7 +2914,7 @@ export interface components {
             items: string[];
         };
         /**
-         * @description Editorial notes are shown only in the requested locale: source text for the source locale, otherwise manual/machine text matching the current source hash. Unavailable editorial translations fall back to original upstream notes for the same version using source priority; without upstream notes, hasNotes is false and translation reports pending/failed/skipped. The selected note supplies id/source/sourceLocale. Version and build grouping are preserved.
+         * @description Editorial notes are shown only in the requested locale: source text for the source locale, otherwise manual/machine text matching the current source hash. Unavailable editorial translations fall back to original upstream notes for the same version using source priority; without upstream notes, hasNotes is false and translation reports pending/failed/skipped. Editorial notes that only say the changes are not known count as unavailable in every locale: they fall back the same way, and without upstream notes the entry keeps its id, source, dates and sourceUrl with hasNotes false, no title, summary, body or sections, and translation none. The selected note supplies id/source/sourceLocale. Version and build grouping are preserved.
          * @example {
          *       "id": 101,
          *       "version": "1.140.0",
@@ -5865,7 +5865,7 @@ export interface components {
                 /** @default 300 */
                 versionsMinNotesChars: number;
                 /**
-                 * @description Languages open for non-entity pages; defaults to the six application languages. Entity pages use their own PageDecision.
+                 * @description Languages open for indexing, on every page type: pages in a language not listed still render but are noindex and stay out of hreflang, sitemaps and IndexNow; app pages carry this in their PageDecision. An empty list closes every language. Defaults to the six application languages.
                  * @default [
                  *       "en-US",
                  *       "zh-CN",

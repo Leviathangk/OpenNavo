@@ -9,6 +9,7 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/i18n"
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"gorm.io/gorm"
 )
 
@@ -28,10 +29,15 @@ var translationBackfill = []struct{ Entity, Query string }{
 // BackfillTranslationTasks queues translate tasks for public catalog content whose
 // site languages are missing or older than the current source text. A source
 // edit already queues every site language; content written before a language
-// was added never got that work. It writes tasks only, never content, and leaves
-// existing tasks as they are.
+// was added never got that work. Languages closed for indexing (pages.openLocales)
+// get no new work. It writes tasks only, never content, and leaves existing tasks
+// as they are.
 func (s *Store) BackfillTranslationTasks(ctx context.Context) (map[string]int, error) {
 	queued := map[string]int{}
+	settings, err := s.SEOSettings(ctx)
+	if err != nil {
+		return queued, err
+	}
 	for _, group := range translationBackfill {
 		var rows []struct{ ID, SecondaryID int64 }
 		if err := s.DB.WithContext(ctx).Raw(group.Query).Scan(&rows).Error; err != nil {
@@ -51,7 +57,9 @@ func (s *Store) BackfillTranslationTasks(ctx context.Context) (map[string]int, e
 			}
 			locales := make([]string, 0, len(source.Targets))
 			for locale := range source.Targets {
-				locales = append(locales, locale)
+				if seo.TranslationOpen(group.Entity, settings.Settings.Pages.OpenLocales, locale) {
+					locales = append(locales, locale)
+				}
 			}
 			sort.Strings(locales)
 			entity := ref.Entity + ":" + ref.Key()
@@ -70,15 +78,23 @@ func (s *Store) BackfillTranslationTasks(ctx context.Context) (map[string]int, e
 }
 
 // BackfillTranslationTasksForLocales runs the backfill once per set of site
-// languages. Languages are added by a deploy, so the worker calls this on start
-// and later starts skip the scan. A failed or interrupted run is retried on the
-// next start.
+// languages open for indexing. Languages are added by a deploy and opened in the
+// SEO settings, so the worker calls this on start and later starts skip the scan:
+// a language opened later gets its work at the next start. A failed or
+// interrupted run is retried on the next start.
 func (s *Store) BackfillTranslationTasksForLocales(ctx context.Context) (map[string]int, bool, error) {
+	settings, err := s.SEOSettings(ctx)
+	if err != nil {
+		return nil, false, err
+	}
 	codes := make([]string, 0, len(i18n.SiteLocales))
 	for _, code := range i18n.SiteLocales {
-		codes = append(codes, string(code))
+		if seo.LocaleOpen(settings.Settings.Pages.OpenLocales, string(code)) {
+			codes = append(codes, string(code))
+		}
 	}
-	signature := "translation-backfill-v1:" + strings.Join(codes, ",")
+	// v2 includes the Simplified Chinese dependency of Traditional Chinese.
+	signature := "translation-backfill-v2:" + strings.Join(codes, ",")
 	if err := s.DB.WithContext(ctx).Exec("INSERT INTO seo_opportunity_cursors(source) VALUES('translation_locales') ON CONFLICT DO NOTHING").Error; err != nil {
 		return nil, false, err
 	}

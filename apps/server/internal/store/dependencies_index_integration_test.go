@@ -31,11 +31,15 @@ func TestDependencyIndexDecisionMatchesVisibleDependents(t *testing.T) {
 		require.Equal(t, state == "visible", count > 0, state)
 		require.Equal(t, count > 0, row.HasDependencyContent, state)
 		decision := seo.DecidePage(row.Facts(), seo.PageRef{Kind: seo.PageDependencies, Locale: "en-US"}, seo.Policy{Mode: "shadow"})
+		// The tab is never indexed; dependency content only decides whether it keeps its own canonical.
+		require.Equal(t, "noindex, follow", decision.Robots, state)
 		require.False(t, decision.InSitemap)
-		require.Equal(t, count > 0, decision.Announce, state)
+		require.False(t, decision.Announce, state)
 		if count == 0 {
-			require.Equal(t, "noindex, follow", decision.Robots)
 			require.Equal(t, "/apps/dependency", decision.CanonicalPath)
+		} else {
+			require.Empty(t, decision.CanonicalPath, state)
+			require.Equal(t, seo.ReasonSupportingPage, decision.Reason, state)
 		}
 	}
 }

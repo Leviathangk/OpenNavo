@@ -14,7 +14,7 @@ import {
 } from '~/utils/backgroundItems';
 import { pageCount as countPages } from '~/utils/catalogQuery';
 import { packagePath } from '~/utils/packageView';
-import { brandlessTitle } from '~/utils/seoTitles';
+import { brandlessTitle, withVariantNames } from '~/utils/seoTitles';
 
 // Background items encyclopedia (F1): every label a catalog app's Homebrew definition declares (launchd
 // jobs, login items, package receipts), grouped by the developer of the apps that declare it, paginated,
@@ -48,7 +48,8 @@ const { data, error, refresh, status } = await useAsyncData(
           query: { current: page.value, size: BACKGROUND_PAGE_SIZE, ...(query.value ? { q: query.value } : {}) }
         }
       })
-    )
+    ),
+  { transform: withVariantNames }
 );
 assertExists(() => data.value?.total, BACKGROUND_PAGE_SIZE, status);
 const pageCount = computed(() => countPages(data.value?.total ?? 0, BACKGROUND_PAGE_SIZE));

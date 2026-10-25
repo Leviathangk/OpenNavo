@@ -10,6 +10,7 @@ import type {
   OnFeatureHeroIcon
 } from '@opennavo/ui';
 import { HOME_SECTION_SIZE } from '~/composables/useHome';
+import { packagePath } from '~/utils/packageView';
 
 const { locale: useI18nLocale } = useI18n();
 const formattingLocale = computed(() => toAppLocale(useI18nLocale.value));
@@ -27,7 +28,7 @@ const NuxtLink = resolveComponent('NuxtLink');
 
 const { data: home, error, refresh } = await useHome();
 
-const detailPath = (token: string) => localePath(`/apps/${token}`);
+const detailPath = (token: string) => localePath(packagePath(token));
 
 const toIcon = (pkg: PackageSummary): OnFeatureHeroIcon => ({
   kind: pkg.kind,

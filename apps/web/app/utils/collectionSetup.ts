@@ -3,6 +3,7 @@
 // Nothing here adds, converts or merges what the server keeps apart (currencies, billing periods, editions).
 import type { PublicComponents } from '@opennavo/api';
 import type { SiteLocale } from '@opennavo/shared';
+import { packagePath } from './packageView';
 
 export type CollectionDetail = PublicComponents['schemas']['CollectionDetail'];
 export type CollectionSetup = PublicComponents['schemas']['CollectionSetup'];
@@ -52,7 +53,7 @@ export interface ExternalEntry extends SetupEntry {
 
 const entryFor = (items: readonly CollectionItem[], token: string): SetupEntry => {
   const item = items.find(candidate => candidate.package.token === token);
-  return { token, name: item?.package.displayName ?? token, path: `/apps/${token}` };
+  return { token, name: item?.package.displayName ?? token, path: packagePath(token) };
 };
 
 /** Apps "Install all" and the Brewfile cover, in the API's order: exactly setup.installableTokens. */

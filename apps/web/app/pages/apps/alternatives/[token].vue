@@ -106,9 +106,7 @@ useBreadcrumbSchema(breadcrumb);
 // CollectionPage → ItemList of the alternatives, about the app itself (its entity lives on the overview).
 useItemListSchema(() => cards.value.map(card => ({ name: card.pkg.displayName, path: card.path })));
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
-usePageSchema(() =>
-  pkg.value ? { about: { '@id': appEntityId(siteUrl, pkg.value.token), name: pkg.value.displayName } } : {}
-);
+usePageSchema(() => (pkg.value ? { about: appEntityId(siteUrl, pkg.value.token) } : {}));
 
 const title = computed(() => t('package.alternatives.page.title', { name: name.value }));
 const description = computed(() =>

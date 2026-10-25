@@ -20,8 +20,11 @@ import {
   textWidth,
   titleName,
   usableSummary,
+  variantLabel,
   versionsDescription,
   versionsTitle,
+  withVariantName,
+  withVariantNames,
   type Translate
 } from '../app/utils/seoTitles';
 import { evidence } from './packageFixtures';
@@ -278,6 +281,112 @@ describe('App names that already name the platform', () => {
     expect(overviewTitle({ ...app, displayName: 'SF Mono for Mac', isFont: true }, translator('en-US'))).toBe(
       'SF Mono Font for Mac – Download & Install · OpenNavo'
     );
+  });
+});
+
+describe('Variant casks', () => {
+  const named = (token: string, displayName: string) => withVariantName({ token, displayName }).displayName;
+
+  it('names the variant a plain name leaves out', () => {
+    expect(named('aerial@beta', 'Aerial')).toBe('Aerial Beta');
+    expect(named('parallels@19', 'Parallels Desktop')).toBe('Parallels Desktop 19');
+    expect(named('cloudflare-warp@beta', 'Cloudflare WARP')).toBe('Cloudflare WARP Beta');
+    for (const [suffix, label] of [
+      ['nightly', 'Nightly'],
+      ['preview', 'Preview'],
+      ['dev', 'Dev'],
+      ['canary', 'Canary']
+    ])
+      expect(named(`hyper@${suffix}`, 'Hyper')).toBe(`Hyper ${label}`);
+    // Other suffixes stay as the token spells them.
+    expect(named('vscodium@insiders', 'VSCodium')).toBe('VSCodium insiders');
+    expect(named('burp-suite@early-adopter', 'Burp Suite')).toBe('Burp Suite early-adopter');
+    expect(variantLabel('aerial@beta')).toBe('Beta');
+    expect(variantLabel('parallels@19')).toBe('19');
+    expect(variantLabel('aerial')).toBe('');
+  });
+
+  it('keeps names that already say the variant, and every other token', () => {
+    for (const [token, name] of [
+      ['versioned-app@11', 'Example App @11'],
+      ['firefox@nightly', 'Firefox Nightly'],
+      ['kaleidoscope@2', 'Kaleidoscope v2'],
+      ['firefox@developer-edition', 'Mozilla Firefox Developer Edition'],
+      ['android-studio-preview@canary', 'Android Studio Preview (Canary)'],
+      ['kitty@nightly', 'kitty-nightly'],
+      ['picoscope@beta', 'PicoScope beta'],
+      // Chinese and Japanese write Latin words without a space.
+      ['wechat@beta', '微信Beta版'],
+      ['aerial', 'Aerial'],
+      ['visual-studio-code', 'Visual Studio Code']
+    ]) {
+      const detail = { token, displayName: name, version: '1.0' };
+      expect(withVariantName(detail), `${token} ${name}`).toBe(detail);
+    }
+  });
+
+  it('matches whole words only and goes before a platform phrase', () => {
+    // The 1 of 1Password and the Beta of Betamax are not the variant.
+    expect(named('1password-cli@1', '1Password CLI')).toBe('1Password CLI 1');
+    expect(named('betamax@beta', 'Betamax')).toBe('Betamax Beta');
+    expect(named('telegram@beta', 'Telegram for macOS')).toBe('Telegram Beta for macOS');
+    expect(named('wechat@beta', '微信 Mac 版')).toBe('微信 Beta Mac 版');
+    expect(named('wechat@beta', '微信Mac版')).toBe('微信 Beta Mac版');
+    expect(titleName(named('telegram@beta', 'Telegram for macOS'))).toBe('Telegram Beta');
+  });
+
+  it('changes nothing when applied twice and keeps the rest of the detail', () => {
+    const detail = { token: 'aerial@beta', displayName: 'Aerial', names: ['Aerial'], version: '3.6' };
+    const once = withVariantName(detail);
+    expect(once).toEqual({ ...detail, displayName: 'Aerial Beta' });
+    expect(withVariantName(once)).toBe(once);
+    expect(detail.displayName).toBe('Aerial');
+  });
+
+  it('names variants anywhere in an API response, copying only what changes', () => {
+    const main = { kind: 'cask', token: 'aerial', displayName: 'Aerial' };
+    const response = {
+      total: 2,
+      records: [
+        { rank: 1, package: { kind: 'cask', token: 'aerial@beta', displayName: 'Aerial' } },
+        { rank: 2, package: main }
+      ],
+      facts: { alternatives: [{ package: { kind: 'cask', token: 'parallels@19', displayName: 'Parallels Desktop' } }] }
+    };
+    const result = withVariantNames(response);
+    expect(result.records[0]!.package.displayName).toBe('Aerial Beta');
+    expect(result.facts.alternatives[0]!.package.displayName).toBe('Parallels Desktop 19');
+    // Unchanged parts keep their identity, and the response itself is left as it is.
+    expect(result.records[1]).toBe(response.records[1]);
+    expect(response.records[0]!.package.displayName).toBe('Aerial');
+    const plain = { total: 1, records: [{ package: main }] };
+    expect(withVariantNames(plain)).toBe(plain);
+    for (const value of [null, undefined, 'aerial@beta', 3]) expect(withVariantNames(value)).toBe(value);
+  });
+
+  it('keeps the name in a description whose summary the main app shares', () => {
+    const t = translator('en-US');
+    // Too long for the closing sentence to follow it whole, so the main app's description is the summary alone.
+    const summary =
+      'Screensaver that plays the aerial videos Apple filmed for Apple TV, with a choice of places, times of day and weather.';
+    const main = { ...app, token: 'aerial', displayName: 'Aerial', summary };
+    const beta = { ...main, token: 'aerial@beta', displayName: named('aerial@beta', 'Aerial') };
+    expect(overviewDescription(main, t)).toBe(summary);
+    const description = overviewDescription(beta, t);
+    expect(description).toContain('Aerial Beta');
+    expect(description.startsWith('Screensaver that plays')).toBe(true);
+    expect(textWidth(description)).toBeLessThanOrEqual(DESCRIPTION_WIDTH);
+  });
+
+  it.each(LOCALES)('%s titles and descriptions no longer repeat the main app', code => {
+    const t = translator(code);
+    const main = { ...app, displayName: 'Aerial' };
+    const beta = { ...main, displayName: named('aerial@beta', 'Aerial') };
+    expect(overviewTitle(beta, t)).toContain('Aerial Beta');
+    expect(overviewTitle(beta, t)).not.toBe(overviewTitle(main, t));
+    expect(overviewDescription(beta, t)).not.toBe(overviewDescription(main, t));
+    expect(versionsTitle(beta, t)).toContain('Aerial Beta');
+    expect(detailsDescription(beta.displayName, t)).toContain('Aerial Beta');
   });
 });
 

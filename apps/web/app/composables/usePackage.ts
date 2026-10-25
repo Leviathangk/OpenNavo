@@ -4,6 +4,7 @@ import { isValidToken } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
 import { slimPackage } from '~/utils/packageFacts';
 import { PACKAGE_SUBPAGES, packagePath } from '~/utils/packageView';
+import { withVariantNames } from '~/utils/seoTitles';
 
 type RemovedPackage = PublicComponents['schemas']['RemovedPackage'];
 
@@ -50,7 +51,9 @@ export async function usePackage(kind: PackageKind) {
       throw createError({ statusCode: 404, statusMessage: 'Package not found' });
     },
     // T6: the payload keeps only what the pages read; facts carries what the dropped copies held.
-    { transform: slimPackage }
+    // A variant cask's name says its variant (aerial@beta: "Aerial Beta") for every page that reads it, and so
+    // do the apps the detail lists (alternatives).
+    { transform: detail => slimPackage(withVariantNames(detail)) }
   );
 
   if (result.error.value?.statusCode === 404) {
@@ -82,7 +85,7 @@ export async function usePackage(kind: PackageKind) {
       const tab = PACKAGE_SUBPAGES.find(page => page === last);
       await nuxtApp.runWithContext(() => navigateTo(localePath(packagePath(value.token, tab)), { redirectCode: 301 }));
     } else if (value?.state === 'removed' && value.removed) {
-      removed.value = value.removed;
+      removed.value = withVariantNames(value.removed);
       if (event) setResponseStatus(event, 410);
     } else {
       throw createError({ statusCode: 404, statusMessage: 'Package not found', fatal: true });

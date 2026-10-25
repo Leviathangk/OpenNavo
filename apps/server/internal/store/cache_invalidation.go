@@ -41,8 +41,13 @@ func mergeCacheInvalidation(ctx context.Context, tx *gorm.DB, key string, patter
  ) scopes),available_at=now()`, "cache:invalidate:"+key, string(payload)).Error
 }
 
+// BrowseRefreshPattern matches only the fresh marks of the browse directories (c:browse:<version>:<kind>:fresh), never
+// their pages: a catalog or translation change leaves the old pages serving while one rebuild per kind replaces them,
+// instead of making the next request wait for it. c:browse:* still clears the pages too.
+const BrowseRefreshPattern = "c:browse:*:fresh"
+
 func addCatalogInvalidation(ctx context.Context, tx *gorm.DB) error {
-	return mergeCacheInvalidation(ctx, tx, "catalog", "c:pkg:*", "c:home:*", "c:rank:*", "c:cat:*", "c:sug:*", "c:dep:*", "c:related:*", "c:browse:*")
+	return mergeCacheInvalidation(ctx, tx, "catalog", "c:pkg:*", "c:home:*", "c:rank:*", "c:cat:*", "c:sug:*", "c:dep:*", "c:related:*", BrowseRefreshPattern)
 }
 
 // DispatchCacheInvalidations acknowledges only successful publications. Keeping

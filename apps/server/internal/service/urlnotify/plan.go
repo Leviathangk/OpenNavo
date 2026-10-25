@@ -110,6 +110,11 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 				path := localePrefix(locale) + "/apps/" + token
 				plan.Paths = appendUnique(plan.Paths, seenPath, path)
 				plan.PurgePrefixes = appendUnique(plan.PurgePrefixes, seenPurge, host+path)
+				if token == "opennavo" {
+					download := localePrefix(locale) + "/download"
+					plan.Paths = appendUnique(plan.Paths, seenPath, download)
+					plan.PurgePrefixes = appendUnique(plan.PurgePrefixes, seenPurge, host+download)
+				}
 			}
 		}
 		if !announce[id] {
@@ -131,7 +136,8 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 						plan.IndexNowURLs = appendUnique(plan.IndexNowURLs, seenAnnounce, siteURL+path)
 						plan.Decisions[siteURL+path] = d
 					}
-				} else {
+				} else if token != "opennavo" {
+					// The permanent brand redirect is not a catalog URL, even after removal.
 					// Redirects and removals must still be announced, so engines can retire old URLs.
 					plan.IndexNowURLs = appendUnique(plan.IndexNowURLs, seenAnnounce, siteURL+localePrefix(locale)+"/apps/"+token)
 				}

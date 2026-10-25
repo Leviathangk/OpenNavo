@@ -543,6 +543,17 @@ describe('Detail views', () => {
     expect(wrapper.text()).toContain('brew install --cask ghostty');
     expect(wrapper.find('a[href="#/apps/a"]').text()).toBe('A');
   });
+
+  it('Overviews pass the app name on to screenshots without a caption', () => {
+    const screenshots = [{ src: '/shots/1.png' }, { src: '/shots/2.png', caption: '设置' }];
+    const alts = (props: Record<string, unknown>) =>
+      mount(OnPackageOverview, { props: { info: [], screenshots, ...props }, global: withLocale('zh-CN') })
+        .findAll('img')
+        .map(image => image.attributes('alt'));
+    expect(alts({ screenshotsName: 'Ghostty' })).toEqual(['Ghostty · 截图 1', '设置']);
+    // Without a name (the desktop app's callers), screenshots keep their numbered names.
+    expect(alts({})).toEqual(['截图 1', '设置']);
+  });
 });
 
 describe('Responsive app-list pagination', () => {

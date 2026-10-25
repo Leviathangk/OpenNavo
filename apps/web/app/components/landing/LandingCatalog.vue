@@ -2,6 +2,7 @@
 import type { PackageSummary } from '@opennavo/api';
 import { DESKTOP_LOCALES, formatCount } from '@opennavo/shared';
 import { OnAppIcon, OnButton, OnIcon } from '@opennavo/ui';
+import { packagePath } from '~/utils/packageView';
 
 // App store (08 §10.14): the store right under the hero, ahead of security — title with the catalog count, live
 // count-up stats, two opposing app-icon rows, the three places apps come from, then Rankings/Discover links.
@@ -87,7 +88,7 @@ const rows = computed(() =>
           <NuxtLink
             v-for="(pkg, index) in row.items"
             :key="index"
-            :to="localePath(`/apps/${pkg.token}`)"
+            :to="localePath(packagePath(pkg.token))"
             tabindex="-1"
             class="landing-marquee-item mr-12px box-border inline-flex shrink-0 items-center gap-10px rounded-full border border-solid border-line-subtle bg-surface-card py-6px pl-6px pr-16px text-13.5px font-500 text-ink-secondary no-underline transition-colors duration-fast ease-standard hover:border-line-strong hover:text-ink-primary"
           >

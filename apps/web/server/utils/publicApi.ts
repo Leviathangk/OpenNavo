@@ -1,6 +1,7 @@
 import type { PublicComponents } from '@opennavo/api';
 import type { H3Event } from 'h3';
 import type { SiteLocale } from '@opennavo/shared';
+import { withVariantNames } from '../../app/utils/seoTitles';
 
 type PackageDetail = PublicComponents['schemas']['PackageDetail'];
 
@@ -26,7 +27,10 @@ export function apiStatus(error: unknown): number | undefined {
   return value.statusCode ?? value.response?.status;
 }
 
-/** An app's detail as its page finds it: casks first, then link apps (usePackage); undefined when neither exists. */
+/**
+ * An app's detail as its page finds it: casks first, then link apps, with a variant cask's name saying its
+ * variant (usePackage); undefined when neither exists.
+ */
 export async function fetchPackageDetail(
   api: ReturnType<typeof publicApi>,
   token: string,
@@ -34,7 +38,9 @@ export async function fetchPackageDetail(
 ): Promise<PackageDetail | undefined> {
   for (const kind of ['cask', 'link'] as const) {
     try {
-      return await api.get<PackageDetail>(`/packages/${kind}/${encodeURIComponent(token)}`, { locale });
+      return withVariantNames(
+        await api.get<PackageDetail>(`/packages/${kind}/${encodeURIComponent(token)}`, { locale })
+      );
     } catch (error) {
       if (apiStatus(error) !== 404) throw error;
     }

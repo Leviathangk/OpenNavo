@@ -8,7 +8,8 @@ import type { FactEvidence, PackagePage } from '~/utils/packageFacts';
 // where the app is distributed, whether its source is open and where, and known vulnerabilities, limited to
 // CVEs NVD matches exactly to this product and version. Being listed, signed or scanned clean is never
 // presented as a safety certification, and an empty CVE list is not shown as a verdict. The scan link opens
-// a preview in the OpenNavo app; the person starts the scan there.
+// a preview in the OpenNavo app; the person starts the scan there. Its note links to the page on ClamAV,
+// the engine that scan runs on (F8).
 const props = defineProps<{ pkg: PackagePage }>();
 
 const { t, locale } = useI18n();
@@ -143,9 +144,9 @@ const visible = computed(() => Boolean(security.value) || channels.value.length 
       <span class="text-12px text-ink-tertiary"
         >{{ `${t('package.safety.scanNote')} `
         }}<NuxtLink
-          :to="localePath('/security')"
+          :to="localePath('/security/clamav')"
           class="text-ink-secondary underline-offset-2 hover:text-ink-primary"
-          >{{ t('package.securityPromo.link') }}</NuxtLink
+          >{{ t('securityTopics.links.clamav.title') }}</NuxtLink
         ></span
       >
     </div>

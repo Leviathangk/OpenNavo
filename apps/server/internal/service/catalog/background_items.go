@@ -9,6 +9,7 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/facts"
+	"github.com/opennavo/opennavo/server/internal/seo"
 	"gorm.io/gorm"
 )
 
@@ -16,6 +17,17 @@ func (s *PublicService) BackgroundItem(ctx context.Context, label, locale string
 	if !facts.ValidBackgroundLabel(label) {
 		return nil, domain.Validation()
 	}
+	settings, err := s.Store.SEOSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.backgroundItem(ctx, label, locale, settings.Settings.Pages.OpenLocales)
+}
+
+// backgroundItem is one label's page. It is indexable only in a language open for indexing (open, the
+// pages.openLocales list), with a verified description in that language and a catalog app still declaring
+// it; closed languages are left out of its locales too.
+func (s *PublicService) backgroundItem(ctx context.Context, label, locale string, open []string) (map[string]any, error) {
 	owners, err := s.Store.BackgroundOwners(ctx, label)
 	if err != nil {
 		return nil, err
@@ -66,13 +78,19 @@ func (s *PublicService) BackgroundItem(ctx context.Context, label, locale string
 	indexable := false
 	if content != nil {
 		content.Evidence = content.Evidence.At(now)
-		indexable = strings.TrimSpace(content.Description) != "" && content.Evidence.Status == "verified" && content.Locale == locale && freshOwner
+		indexable = strings.TrimSpace(content.Description) != "" && content.Evidence.Status == "verified" && content.Locale == locale && freshOwner && seo.LocaleOpen(open, locale)
 	}
+	// The label's hreflang candidates: ready languages that are open for indexing.
 	locales := []string{}
 	if freshOwner {
-		locales, err = s.Store.BackgroundReadyLocales(ctx, label, now)
+		ready, err := s.Store.BackgroundReadyLocales(ctx, label, now)
 		if err != nil {
 			return nil, err
+		}
+		for _, code := range ready {
+			if seo.LocaleOpen(open, code) {
+				locales = append(locales, code)
+			}
 		}
 	}
 	return map[string]any{"label": label, "apps": apps, "developers": developers, "shared": len(ids) > 1, "ownership": "declared_candidates", "identityChecks": []string{"signature", "path", "version"}, "content": content, "indexable": indexable, "locales": locales, "startupUrl": "opennavo://startup?" + url.Values{"label": {label}}.Encode()}, nil
@@ -85,9 +103,13 @@ func (s *PublicService) BackgroundItems(ctx context.Context, q, locale string, c
 	if err != nil {
 		return nil, err
 	}
+	settings, err := s.Store.SEOSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
 	records := []any{}
 	for _, label := range labels {
-		item, err := s.BackgroundItem(ctx, label, locale)
+		item, err := s.backgroundItem(ctx, label, locale, settings.Settings.Pages.OpenLocales)
 		if err != nil {
 			return nil, err
 		}

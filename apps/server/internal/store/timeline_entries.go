@@ -13,8 +13,8 @@ import (
 
 // TimelineEntries uses the same version grouping for public pagination and SEO page evidence.
 func TimelineEntries(versions []TimelineVersion, releases []TimelineRelease) ([]publicapi.ReleaseEntry, error) {
-	// Preserve source priority and build grouping while allowing unavailable
-	// editorial translations to use this version's original upstream notes.
+	// Preserve source priority and build grouping while allowing unavailable editorial
+	// translations and notes without information to use this version's original upstream notes.
 	type upstreamKey struct {
 		packageID int64
 		version   string
@@ -106,7 +106,9 @@ func TimelineEntries(versions []TimelineVersion, releases []TimelineRelease) ([]
 			}
 			items[key] = it
 		}
-		if r.EditorialUnavailable {
+		// A note that only says the changes are not known helps no more than one this language cannot show: both give
+		// way to the version's original upstream notes. Without those, the release is listed with no notes at all.
+		if r.EditorialUnavailable || r.NoInformation {
 			key := upstreamKey{packageID: r.PackageID, version: r.Version}
 			if r.PackageVersionID != nil {
 				key.buildID = *r.PackageVersionID
@@ -118,6 +120,8 @@ func TimelineEntries(versions []TimelineVersion, releases []TimelineRelease) ([]
 			}
 			if found {
 				r = fallback
+			} else if r.NoInformation {
+				r = r.withoutNotes()
 			}
 		}
 		entry := &it.entry
@@ -187,6 +191,16 @@ func TimelineEntries(versions []TimelineVersion, releases []TimelineRelease) ([]
 		out[0].IsLatest = true
 	}
 	return out, nil
+}
+
+// withoutNotes keeps a release's version, dates and links and drops all of its text, title included, in every
+// language: the release is listed like one whose source published no notes.
+func (r TimelineRelease) withoutNotes() TimelineRelease {
+	r.Title, r.TranslatedTitle, r.BodyMarkdown, r.TranslatedBody, r.Summary = nil, nil, nil, nil, nil
+	r.Sections = nil
+	r.MachineTranslated = false
+	r.TranslationStatus = nil
+	return r
 }
 
 // A fallback is upstream reference text, never another language's editorial summary.

@@ -1,4 +1,5 @@
 import { unwrap } from '@opennavo/api';
+import { withVariantNames } from '~/utils/seoTitles';
 
 /**
  * Apps and collections per Discover group (T1): the server renders exactly this many in every group, and
@@ -12,7 +13,8 @@ export function useHome() {
   const api = useApi();
   return useAsyncData(
     () => `home:${locale.value}`,
-    () => unwrap(api.GET('/home', { params: { query: { sectionSize: HOME_SECTION_SIZE } } }))
+    () => unwrap(api.GET('/home', { params: { query: { sectionSize: HOME_SECTION_SIZE } } })),
+    { transform: withVariantNames }
   );
 }
 
@@ -25,6 +27,7 @@ export function useWeeklyTop() {
     () =>
       unwrap(
         api.GET('/rankings', { params: { query: { kind: 'cask', includeFonts: true, period: '30d', size: 4 } } })
-      ).catch(() => null)
+      ).catch(() => null),
+    { transform: withVariantNames }
   );
 }

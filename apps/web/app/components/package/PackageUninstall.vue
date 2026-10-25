@@ -53,7 +53,7 @@ const checked = computed(() => {
 });
 const visible = computed(() => props.homebrew || regular.value.length > 0 || cleanup.value.length > 0);
 const guidePath = computed(() =>
-  props.guide && uninstallPageOpen(props.pkg) ? localePath(`${packagePath(props.pkg.token)}/uninstall`) : null
+  props.guide && uninstallPageOpen(props.pkg) ? localePath(packagePath(props.pkg.token, 'uninstall')) : null
 );
 
 function onCopied(command: string) {
