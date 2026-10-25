@@ -186,7 +186,17 @@ impl DesktopCore {
                 .await
             {
                 log::info!("Installed-package scan temporarily unavailable: {}", e.code);
-            } else if let Err(e) = core.check_updates(false).await {
+            }
+            let updater = core.queue.updater.clone();
+            let recover = crate::blocking(move || updater.needs_startup_check()).await;
+            let result = match recover {
+                // Recovery does not perform the scheduler's notifications or upgrades,
+                // so it must not consume today's scheduled run.
+                Ok(true) => core.recover_update_sources(None).await,
+                Ok(false) => core.check_updates(false).await,
+                Err(error) => Err(error),
+            };
+            if let Err(e) = result {
                 log::info!("Startup update check temporarily unavailable: {}", e.code);
             }
         });
@@ -437,9 +447,8 @@ impl DesktopCore {
         Ok(())
     }
     pub fn updates_list(&self) -> Result<Vec<OutdatedItem>, AppError> {
-        self.queue
-            .updater
-            .merge(self.updates.read().map_err(poisoned)?.clone())
+        let updates = self.updates.read().map_err(poisoned)?.clone();
+        self.queue.updater.merge(updates)
     }
     pub async fn rebuild_updates(self: &Arc<Self>) -> Result<Vec<OutdatedItem>, AppError> {
         let core = self.clone();
@@ -478,6 +487,24 @@ impl DesktopCore {
         requested: Option<Vec<UpdateSource>>,
         trigger: TaskTrigger,
         finished_at: Option<i64>,
+    ) -> Result<Vec<OutdatedItem>, AppError> {
+        self.check_update_sources_inner(requested, trigger, finished_at, false)
+            .await
+    }
+    /// Revalidate startup caches without completing the daily scheduled workflow.
+    pub async fn recover_update_sources(
+        self: &Arc<Self>,
+        finished_at: Option<i64>,
+    ) -> Result<Vec<OutdatedItem>, AppError> {
+        self.check_update_sources_inner(None, TaskTrigger::Schedule, finished_at, true)
+            .await
+    }
+    async fn check_update_sources_inner(
+        self: &Arc<Self>,
+        requested: Option<Vec<UpdateSource>>,
+        trigger: TaskTrigger,
+        finished_at: Option<i64>,
+        recovery: bool,
     ) -> Result<Vec<OutdatedItem>, AppError> {
         let settings = self.current_settings()?;
         let sources = crate::updater::check_sources(requested, &settings.update_sources)?;
@@ -525,8 +552,14 @@ impl DesktopCore {
             }
         }
         let now = finished_at.unwrap_or_else(|| chrono::Utc::now().timestamp_millis());
-        self.database
-            .set_meta("updates_checked_at", &now.to_string())?;
+        self.database.set_meta(
+            if recovery {
+                "updates_recovery_checked_at"
+            } else {
+                "updates_checked_at"
+            },
+            &now.to_string(),
+        )?;
         self.database.set_meta(
             "updates_failed_sources",
             &serde_json::to_string(&outcome.failed_sources())?,
@@ -535,7 +568,9 @@ impl DesktopCore {
             "updates_failures",
             &serde_json::to_string(&outcome.details)?,
         )?;
-        *self.checked_at.write().map_err(poisoned)? = Some(now);
+        if !recovery {
+            *self.checked_at.write().map_err(poisoned)? = Some(now);
+        }
         drop(reset); // The final event must let the frontend observe completed status.
         self.queue.updater.changed()?;
         outcome.result()?;

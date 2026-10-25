@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestClaimSkipsWebsiteTranslationsInClosedLocales(t *testing.T) {
+func TestClaimKeepsWebsiteTranslationsInClosedLocales(t *testing.T) {
 	ctx := context.Background()
 	st := testutil.NewSEOStore(t)
 	insert := func(kind, entity, locale string) int64 {
@@ -21,6 +21,7 @@ func TestClaimSkipsWebsiteTranslationsInClosedLocales(t *testing.T) {
 			kind, entity, locale, kind+":"+entity+":"+locale).Scan(&id).Error)
 		return id
 	}
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}',coalesce(settings->'pages','{}')||'{"openLocales":["en-US","zh-CN","ja-JP","ru-RU","es-ES"]}'::jsonb)`).Error)
 	open := insert("translate", "package:1", "ja-JP")
 	closed := insert("translate", "package:2", "de-DE")
 	article := insert("translate", "article:3", "pt-BR")
@@ -28,7 +29,7 @@ func TestClaimSkipsWebsiteTranslationsInClosedLocales(t *testing.T) {
 	release := insert("translate", "desktop_release:4", "de-DE")
 	announcement := insert("translate", "announcement:desktop.announcement", "fr-FR")
 	maintenance := insert("maintenance", "pkg:5", "it-IT")
-	filter := seotasks.ClaimFilter{Limit: 10, ClosedLocales: []string{"pt-BR", "de-DE", "fr-FR", "it-IT", "zh-Hant"}}
+	filter := seotasks.ClaimFilter{Limit: 10}
 	svc := &seotasks.Service{DB: st.DB}
 	claimed, err := svc.ClaimWith(ctx, "translator", filter)
 	require.NoError(t, err)
@@ -36,20 +37,8 @@ func TestClaimSkipsWebsiteTranslationsInClosedLocales(t *testing.T) {
 	for _, task := range claimed {
 		ids = append(ids, task.ID)
 	}
-	require.ElementsMatch(t, []int64{open, release, announcement, maintenance}, ids)
+	require.ElementsMatch(t, []int64{open, closed, article, release, announcement, maintenance}, ids)
 
-	// Asked for by ID they are still not handed out, and they stay queued as they were.
-	filter.Limit, filter.IDs = 2, []int64{closed, article}
-	claimed, err = svc.ClaimWith(ctx, "translator", filter)
-	require.NoError(t, err)
-	require.Empty(t, claimed)
-	var states []string
-	require.NoError(t, st.DB.Raw("SELECT state FROM seo_tasks WHERE id IN (?,?)", closed, article).Scan(&states).Error)
-	require.Equal(t, []string{"open", "open"}, states)
-	// Once the languages open again the same tasks are claimable.
-	claimed, err = svc.ClaimWith(ctx, "translator", seotasks.ClaimFilter{Limit: 2, IDs: []int64{closed, article}})
-	require.NoError(t, err)
-	require.Len(t, claimed, 2)
 }
 
 func TestClaimKeepsSimplifiedChineseForTraditionalChinese(t *testing.T) {
@@ -58,10 +47,8 @@ func TestClaimKeepsSimplifiedChineseForTraditionalChinese(t *testing.T) {
 	svc := &seotasks.Service{DB: st.DB}
 	task, err := svc.Enqueue(ctx, seotasks.NewTask{Kind: "translate", EntityKey: "article:1", Locale: "zh-CN", DedupeKey: "traditional-dependency", RuleVersion: "fixture"})
 	require.NoError(t, err)
-	claimed, err := svc.ClaimWith(ctx, "translator", seotasks.ClaimFilter{Limit: 1, ClosedLocales: []string{"zh-CN", "zh-Hant"}})
-	require.NoError(t, err)
-	require.Empty(t, claimed)
-	claimed, err = svc.ClaimWith(ctx, "translator", seotasks.ClaimFilter{Limit: 1, ClosedLocales: []string{"zh-CN"}})
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}',coalesce(settings->'pages','{}')||'{"openLocales":["en-US"]}'::jsonb)`).Error)
+	claimed, err := svc.ClaimWith(ctx, "translator", seotasks.ClaimFilter{Limit: 1, IDs: []int64{task.ID}})
 	require.NoError(t, err)
 	require.Len(t, claimed, 1)
 	require.Equal(t, task.ID, claimed[0].ID)

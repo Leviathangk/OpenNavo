@@ -82,12 +82,3 @@ func TestDecideAppliesModeAndScope(t *testing.T) {
 	zhSource.SourceLocale, zhSource.PublishedLocales = "zh-CN", []string{"ru-RU"}
 	require.Equal(t, []string{"zh-CN", "ru-RU"}, IndexedLocales(zhSource))
 }
-
-func TestTraditionalChineseKeepsTranslationDependency(t *testing.T) {
-	for _, entity := range []string{"package", "article", "release", "category"} {
-		require.True(t, TranslationOpen(entity, []string{"zh-Hant"}, "zh-CN"))
-		require.False(t, TranslationOpen(entity, []string{"en-US"}, "zh-CN"))
-		require.False(t, TranslationOpen(entity, []string{}, "zh-CN"))
-	}
-	require.False(t, LocaleOpen([]string{"zh-Hant"}, "zh-CN"))
-}

@@ -3,13 +3,19 @@ use std::sync::Arc;
 use tauri::State;
 #[tauri::command]
 #[specta::specta]
-pub fn updates_status(state: State<'_, Arc<DesktopCore>>) -> Result<UpdatesStatus, AppError> {
-    state.updates_status()
+pub async fn updates_status(state: State<'_, Arc<DesktopCore>>) -> Result<UpdatesStatus, AppError> {
+    let core = state.inner().clone();
+    crate::blocking(move || core.updates_status()).await
 }
 #[tauri::command]
 #[specta::specta]
-pub fn updates_list(state: State<'_, Arc<DesktopCore>>) -> Result<Vec<OutdatedItem>, AppError> {
-    state.updates_list()
+pub async fn updates_list(
+    state: State<'_, Arc<DesktopCore>>,
+) -> Result<Vec<OutdatedItem>, AppError> {
+    // Merging cached updates still reads app bundles and may enumerate local apps.
+    // Neither disk access nor waiting for their locks may block the window thread.
+    let core = state.inner().clone();
+    crate::blocking(move || core.updates_list()).await
 }
 #[tauri::command]
 #[specta::specta]

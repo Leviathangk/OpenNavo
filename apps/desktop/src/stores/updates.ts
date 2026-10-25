@@ -122,8 +122,18 @@ export const useUpdatesStore = defineStore('updates', () => {
   /** The row a task target updates (the tray sends targets, not rows). */
   const rowFor = (target: TaskTarget) => items.value.find(item => matches(item, target));
 
+  let statusRead = 0;
+  let listRead = 0;
+  let pendingChecks = 0;
+  async function readStatus() {
+    const read = ++statusRead;
+    const next = await unwrap(commands.updatesStatus());
+    if (read === statusRead) status.value = next;
+    return next;
+  }
+
   async function loadStatus() {
-    status.value = await unwrap(commands.updatesStatus());
+    await readStatus();
   }
 
   function settle(task: Task) {
@@ -186,19 +196,26 @@ export const useUpdatesStore = defineStore('updates', () => {
   }
 
   async function load() {
+    const read = ++listRead;
     // Status first: a list read after it is at least as new as the check the status reports.
-    await loadStatus().catch(() => undefined);
-    accept(await unwrap(commands.updatesList()), status.value?.checkedAt ?? null);
+    const snapshot = await readStatus().catch(() => undefined);
+    if (read !== listRead) return;
+    const list = await unwrap(commands.updatesList());
+    if (read === listRead) accept(list, snapshot?.checkedAt ?? null);
   }
 
   /** Check every source enabled in Settings; whether Homebrew runs brew update first is a setting Rust reads. */
   async function check() {
+    const read = ++listRead;
+    ++statusRead;
     const startedAt = Date.now();
+    ++pendingChecks;
     requested.value = true;
     try {
-      accept(await unwrap(commands.updatesCheck(null)), startedAt);
+      const list = await unwrap(commands.updatesCheck(null));
+      if (read === listRead) accept(list, startedAt);
     } finally {
-      requested.value = false;
+      requested.value = --pendingChecks > 0;
       await loadStatus().catch(() => undefined);
     }
   }

@@ -290,14 +290,63 @@ async fn startup_refresh_preserves_daily_check_schedule_across_restart() {
         .unwrap();
     core.check_updates(false).await.unwrap();
     assert_eq!(core.updates_status_at(due).unwrap().checked_at, None);
+    // A full startup recovery before the scheduled time also must not consume it.
+    core.recover_update_sources(Some(due - 60_000))
+        .await
+        .unwrap();
+    assert_eq!(core.updates_status_at(due).unwrap().checked_at, None);
+    assert_eq!(
+        core.database.meta("updates_recovery_checked_at").unwrap(),
+        Some((due - 60_000).to_string())
+    );
+    let reopened = DesktopCore::open(
+        tmp.path().join("data"),
+        tmp.path().join("cache"),
+        tmp.path().join("askpass"),
+        Arc::new(|_| {}),
+    )
+    .unwrap();
+    reopened.settings.write().unwrap().check_time = "12:02".into();
+    assert_eq!(reopened.updates_status_at(due).unwrap().checked_at, None);
+    assert_eq!(
+        reopened.updates_status_at(due).unwrap().next_check_at,
+        Some(due)
+    );
     assert_eq!(
         core.updates_status_at(due).unwrap().next_check_at,
         Some(due)
     );
+    core.settings.write().unwrap().auto_upgrade_casks = true;
+    core.queue
+        .set_completion(Arc::new(|_| Box::pin(async {})))
+        .unwrap();
+    core.queue.start();
     assert!(scheduler::tick(core.clone(), due).await.unwrap());
+    let upgrades: Vec<_> = core
+        .database
+        .tasks()
+        .unwrap()
+        .into_iter()
+        .filter(|task| task.op == TaskOp::Upgrade)
+        .collect();
+    assert_eq!(
+        upgrades.len(),
+        2,
+        "startup recovery must not skip scheduled upgrades"
+    );
+    for task in upgrades {
+        assert_eq!(task.trigger, TaskTrigger::Schedule);
+        assert_eq!(
+            core.queue.wait_terminal(&task.id).await.unwrap().state,
+            TaskState::Succeeded
+        );
+    }
     assert_eq!(core.updates_status_at(due).unwrap().checked_at, Some(due));
 
     // Later startup/completion refreshes must not overwrite a full check's record.
+    core.recover_update_sources(Some(due + 60_000))
+        .await
+        .unwrap();
     core.check_updates(false).await.unwrap();
     assert_eq!(core.updates_status_at(due).unwrap().checked_at, Some(due));
     assert!(!scheduler::tick(core.clone(), due).await.unwrap());

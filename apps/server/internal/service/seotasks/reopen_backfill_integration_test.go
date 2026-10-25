@@ -25,7 +25,7 @@ INSERT INTO category_i18n(category_id,locale,name,source_locale,status) VALUES(9
 					_, _, err := st.BackfillTranslationTasksForLocales(ctx)
 					require.NoError(t, err)
 					var task seotasks.Task
-					// A language open for indexing: closed ones get no new translation work.
+					// Translation work is independent of indexing settings.
 					require.NoError(t, st.DB.Where("entity_key=? AND locale=?", "category:991", "ja-JP").First(&task).Error)
 					source, err := st.ReadContentSource(ctx, content.Ref{Entity: "category", ID: 991})
 					require.NoError(t, err)

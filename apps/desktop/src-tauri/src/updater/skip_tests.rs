@@ -217,12 +217,15 @@ impl Fixture {
         .unwrap();
     }
     async fn refresh(&self, source: UpdateSource) {
+        self.refresh_mode(source, true).await;
+    }
+    async fn refresh_mode(&self, source: UpdateSource, manual: bool) {
         let apps = self.service.apps.list().unwrap();
         assert_eq!(apps[0].updater, Some(source));
         let mut candidates = self.service.candidates().unwrap();
         let outcome = self
             .service
-            .check_native_with_rules(&[source], &apps, &mut candidates, true, Ok(vec![]))
+            .check_native_with_rules(&[source], &apps, &mut candidates, manual, Ok(vec![]))
             .await
             .unwrap();
         outcome.result().unwrap();
@@ -234,6 +237,105 @@ impl Fixture {
             )
             .unwrap();
     }
+}
+
+#[tokio::test]
+async fn startup_rechecks_remounted_candidates_without_trusting_old_snapshots() {
+    let source = UpdateSource::Sparkle;
+    let (_feeds, mut process, url, client) = server(&feed(source, "200.0.0")).await;
+    let mut fixture = Fixture::new(source, &url);
+    fixture.service.client = client.clone();
+    fixture.refresh(source).await;
+    assert!(!fixture.service.needs_startup_check().unwrap());
+
+    // Model the persisted pre-reboot device numbers, including ancestor devices.
+    fixture
+        .service
+        .update_candidates(|candidates| {
+            for candidate in candidates {
+                candidate.snapshot.device += 1;
+                for (_, device, _) in &mut candidate.snapshot.parents {
+                    *device += 1;
+                }
+            }
+            Ok(())
+        })
+        .unwrap();
+    fixture.restart();
+    assert!(fixture.service.needs_startup_check().unwrap());
+    assert!(
+        fixture.merged().is_empty(),
+        "stale snapshots must still fail closed"
+    );
+    assert!(
+        !fixture.service.candidates().unwrap()[0]
+            .snapshot
+            .still(&fixture.path)
+    );
+
+    fixture.service.client = client;
+    fixture.refresh_mode(source, false).await;
+    assert!(!fixture.service.needs_startup_check().unwrap());
+    assert!(
+        fixture.service.candidates().unwrap()[0]
+            .snapshot
+            .still(&fixture.path)
+    );
+    let merged = fixture
+        .service
+        .merge(vec![fixture.brew(Kind::Cask, "unrelated")])
+        .unwrap();
+    assert!(
+        merged
+            .iter()
+            .any(|item| item.source == UpdateSource::Homebrew)
+    );
+    assert!(merged.iter().any(|item| item.source == source));
+    process.kill().await.unwrap();
+    process.wait().await.unwrap();
+}
+
+#[test]
+fn startup_recovery_respects_preferences_and_pending_relaunches() {
+    let source = UpdateSource::Sparkle;
+    let fixture = Fixture::new(source, "https://example.org/feed.xml");
+    assert!(!fixture.service.needs_startup_check().unwrap());
+    fixture.cache_candidate(source);
+    assert!(!fixture.service.needs_startup_check().unwrap());
+    fixture
+        .service
+        .update_candidates(|candidates| {
+            candidates[0].snapshot.device += 1;
+            Ok(())
+        })
+        .unwrap();
+    assert!(fixture.service.needs_startup_check().unwrap());
+    fixture.settings.write().unwrap().auto_check = false;
+    assert!(!fixture.service.needs_startup_check().unwrap());
+    fixture.settings.write().unwrap().auto_check = true;
+    fixture
+        .settings
+        .write()
+        .unwrap()
+        .update_sources
+        .0
+        .insert(source, false);
+    assert!(!fixture.service.needs_startup_check().unwrap());
+    fixture
+        .settings
+        .write()
+        .unwrap()
+        .update_sources
+        .0
+        .insert(source, true);
+    fixture
+        .service
+        .update_candidates(|candidates| {
+            candidates[0].item.relaunch_pending = true;
+            Ok(())
+        })
+        .unwrap();
+    assert!(!fixture.service.needs_startup_check().unwrap());
 }
 
 async fn server(

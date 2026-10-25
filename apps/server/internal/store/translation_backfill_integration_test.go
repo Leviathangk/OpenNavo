@@ -4,14 +4,66 @@ package store_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/opennavo/opennavo/server/internal/content"
+	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/store"
 	"github.com/opennavo/opennavo/server/internal/testutil"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+func TestTranslationBackfillUpgradeIncludesArticlesAndAuthors(t *testing.T) {
+	for _, version := range []string{"v2", "v3"} {
+		t.Run(version, func(t *testing.T) {
+			st := testutil.NewSEOStore(t)
+			ctx := context.Background()
+			require.NoError(t, st.DB.Exec(`BEGIN;
+ INSERT INTO article_authors(id,slug,name) VALUES(931,'backfill-author','Backfill Author');
+ INSERT INTO article_author_i18n(author_id,locale,role,bio,status) VALUES(931,'en-US','Editor','Author biography','source');
+ INSERT INTO articles(id,slug,status,working_revision_id,published_revision_id,first_published_at,archived_at) VALUES
+ (932,'backfill-published','published',942,941,now(),NULL),
+ (933,'backfill-draft','draft',943,NULL,NULL,NULL),
+ (934,'backfill-archived','archived',944,944,now(),now());
+ INSERT INTO article_revisions(id,article_id,number,source_locale,type,author_id) VALUES
+ (941,932,1,'en-US','news',931),(942,932,2,'en-US','news',931),
+ (943,933,1,'en-US','news',931),(944,934,1,'en-US','news',931);
+ INSERT INTO article_revision_i18n(revision_id,locale,title,source_locale,status)
+ SELECT id,'en-US','Backfill article','en-US','source' FROM unnest(ARRAY[941,942,943,944]) id;
+ UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}',coalesce(settings->'pages','{}')||'{"openLocales":["en-US"]}'::jsonb);
+ COMMIT;`).Error)
+			codes := make([]string, 0, len(i18n.SiteLocales))
+			for _, code := range i18n.SiteLocales {
+				codes = append(codes, string(code))
+			}
+			require.NoError(t, st.DB.Exec("INSERT INTO seo_opportunity_cursors(source,signature) VALUES('translation_locales',?)", "translation-backfill-"+version+":"+strings.Join(codes, ",")).Error)
+			queued, ran, err := st.BackfillTranslationTasksForLocales(ctx)
+			require.NoError(t, err)
+			require.True(t, ran)
+			require.Equal(t, 8, queued["article"])
+			require.Equal(t, 8, queued["article_author"])
+			var rows []struct{ EntityKey, Locale string }
+			require.NoError(t, st.DB.Raw("SELECT entity_key,locale FROM seo_tasks WHERE kind='translate'").Scan(&rows).Error)
+			byEntity := map[string][]string{}
+			for _, row := range rows {
+				byEntity[row.EntityKey] = append(byEntity[row.EntityKey], row.Locale)
+			}
+			require.Len(t, byEntity, 2, "only the published revision and author are translated")
+			for _, entity := range []string{"article:941", "article_author:931"} {
+				require.ElementsMatch(t, []string{"de-DE", "es-ES", "fr-FR", "it-IT", "ja-JP", "pt-BR", "ru-RU", "zh-CN"}, byEntity[entity])
+			}
+			queued, ran, err = st.BackfillTranslationTasksForLocales(ctx)
+			require.NoError(t, err)
+			require.False(t, ran, "the completed upgrade is skipped on restart")
+			require.Empty(t, queued)
+			queued, err = st.BackfillTranslationTasks(ctx)
+			require.NoError(t, err)
+			require.Zero(t, queued["article"]+queued["article_author"], "rescanning does not duplicate tasks")
+		})
+	}
+}
 
 func TestTranslationBackfillQueuesMissingSiteLanguagesOncePerLanguageSet(t *testing.T) {
 	st := testutil.NewSEOStore(t)
@@ -50,26 +102,25 @@ func TestTranslationBackfillQueuesMissingSiteLanguagesOncePerLanguageSet(t *test
 		return out
 	}
 
-	// Languages closed for indexing get no new work.
+	// All supported languages get translation work even when closed for indexing.
 	openLocales(`["en-US","zh-CN","ja-JP","ru-RU","es-ES"]`)
 	queued, ran, err := st.BackfillTranslationTasksForLocales(ctx)
 	require.NoError(t, err)
 	require.True(t, ran)
-	require.Equal(t, 3, queued["category"])
-	require.Equal(t, 4, queued["package"])
-	require.Equal(t, map[string][]string{"category:901": {"es-ES", "ja-JP", "ru-RU"}, "package:902": {"es-ES", "ja-JP", "ru-RU", "zh-CN"}}, tasks())
+	require.Equal(t, 7, queued["category"])
+	require.Equal(t, 8, queued["package"])
+	require.Equal(t, map[string][]string{"category:901": {"de-DE", "es-ES", "fr-FR", "it-IT", "ja-JP", "pt-BR", "ru-RU"}, "package:902": {"de-DE", "es-ES", "fr-FR", "it-IT", "ja-JP", "pt-BR", "ru-RU", "zh-CN"}}, tasks())
 
 	queued, ran, err = st.BackfillTranslationTasksForLocales(ctx)
 	require.NoError(t, err)
 	require.False(t, ran, "the same language set is scanned once")
 	require.Empty(t, queued)
-	// Opening every language (no list) is a new set: the next start queues the opened languages.
+	// Changing indexing settings does not trigger a new translation scan.
 	openLocales("null")
 	queued, ran, err = st.BackfillTranslationTasksForLocales(ctx)
 	require.NoError(t, err)
-	require.True(t, ran)
-	require.Equal(t, 4, queued["category"])
-	require.Equal(t, 4, queued["package"])
+	require.False(t, ran)
+	require.Empty(t, queued)
 	all := tasks()
 	require.Len(t, all["category:901"], 7)
 	require.NotContains(t, all["category:901"], "zh-CN")
@@ -82,7 +133,7 @@ func TestTranslationBackfillQueuesMissingSiteLanguagesOncePerLanguageSet(t *test
 	require.Zero(t, queued["category"]+queued["package"], "existing tasks are left as they are")
 }
 
-func TestSourceEditsQueueTranslationsOnlyForOpenLocales(t *testing.T) {
+func TestSourceEditsQueueTranslationsRegardlessOfOpenLocales(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	ctx := context.Background()
 	require.NoError(t, st.DB.Exec(`INSERT INTO categories(id,slug,icon,source_locale) VALUES(911,'open-editors','lucide:box','en-US');
@@ -100,7 +151,7 @@ func TestSourceEditsQueueTranslationsOnlyForOpenLocales(t *testing.T) {
 	for _, ref := range []content.Ref{{Entity: "category", ID: 911}, {Entity: "desktop_release", ID: 912}} {
 		require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error { return (&store.Store{DB: tx}).ScheduleContentTranslation(ctx, ref) }))
 	}
-	require.Equal(t, []string{"es-ES", "ja-JP", "ru-RU", "zh-CN"}, queued("category:911"))
+	require.Equal(t, []string{"de-DE", "es-ES", "fr-FR", "it-IT", "ja-JP", "pt-BR", "ru-RU", "zh-CN"}, queued("category:911"))
 	// The existing German text stays published, stale or not.
 	var german string
 	require.NoError(t, st.DB.Raw("SELECT name FROM category_i18n WHERE category_id=911 AND locale='de-DE'").Scan(&german).Error)
@@ -109,25 +160,25 @@ func TestSourceEditsQueueTranslationsOnlyForOpenLocales(t *testing.T) {
 	require.Equal(t, []string{"de-DE", "es-ES", "fr-FR", "it-IT", "ja-JP", "pt-BR", "ru-RU", "zh-CN"}, queued("desktop_release:912"))
 }
 
-func TestTraditionalOnlyQueuesSimplifiedDependency(t *testing.T) {
+func TestClosedLocalesBackfillUpgradeKeepsAllTranslations(t *testing.T) {
 	st := testutil.NewSEOStore(t)
 	ctx := context.Background()
 	require.NoError(t, st.DB.Exec(`INSERT INTO categories(id,slug,icon,source_locale) VALUES(921,'traditional-editors','lucide:box','en-US');
  INSERT INTO category_i18n(category_id,locale,name,source_locale,status) VALUES(921,'en-US','Editors','en-US','source');
  UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}',coalesce(settings->'pages','{}')||'{"openLocales":["zh-Hant"]}'::jsonb);
- INSERT INTO seo_opportunity_cursors(source,signature) VALUES('translation_locales','translation-backfill-v1:zh-Hant')`).Error)
+ INSERT INTO seo_opportunity_cursors(source,signature) VALUES('translation_locales','translation-backfill-v2:zh-Hant')`).Error)
 	queued, ran, err := st.BackfillTranslationTasksForLocales(ctx)
 	require.NoError(t, err)
 	require.True(t, ran)
-	require.Equal(t, 1, queued["category"])
+	require.Equal(t, 8, queued["category"])
 	var locales []string
 	require.NoError(t, st.DB.Raw("SELECT locale FROM seo_tasks WHERE entity_key='category:921'").Scan(&locales).Error)
-	require.Equal(t, []string{"zh-CN"}, locales)
+	require.ElementsMatch(t, []string{"de-DE", "es-ES", "fr-FR", "it-IT", "ja-JP", "pt-BR", "ru-RU", "zh-CN"}, locales)
 	require.NoError(t, st.DB.Exec("DELETE FROM seo_tasks WHERE entity_key='category:921'").Error)
 	require.NoError(t, st.WithTx(ctx, func(tx *gorm.DB) error {
 		return (&store.Store{DB: tx}).ScheduleContentTranslation(ctx, content.Ref{Entity: "category", ID: 921})
 	}))
 	locales = nil
 	require.NoError(t, st.DB.Raw("SELECT locale FROM seo_tasks WHERE entity_key='category:921'").Scan(&locales).Error)
-	require.Equal(t, []string{"zh-CN"}, locales)
+	require.ElementsMatch(t, []string{"de-DE", "es-ES", "fr-FR", "it-IT", "ja-JP", "pt-BR", "ru-RU", "zh-CN"}, locales)
 }

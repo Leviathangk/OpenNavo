@@ -86,22 +86,6 @@ func (p Policy) LocaleOpen(locale string) bool {
 	return LocaleOpen(p.OpenLocales, locale)
 }
 
-// clientOnlyContent names the content registry entities only the Mac client shows. The website never
-// indexes them, so their translation languages follow the client's, not pages.openLocales.
-var clientOnlyContent = []string{"announcement", "desktop_release", "mirror"}
-
-// ClientOnlyContent lists the entities whose translation work TranslationOpen never stops.
-func ClientOnlyContent() []string { return slices.Clone(clientOnlyContent) }
-
-// TranslationOpen reports whether new translation work may target a language for a content entity:
-// website content only in languages open for indexing, client-only content in all of its languages.
-// Translations that already exist stay published either way.
-func TranslationOpen(entity string, open []string, locale string) bool {
-	// Traditional Chinese is derived from Simplified Chinese, even when the latter is not indexed.
-	return slices.Contains(clientOnlyContent, entity) || LocaleOpen(open, locale) ||
-		(locale == "zh-CN" && LocaleOpen(open, "zh-Hant"))
-}
-
 // openOnly keeps the languages open for indexing, in their given order.
 func (p Policy) openOnly(locales []string) []string {
 	if p.OpenLocales == nil {

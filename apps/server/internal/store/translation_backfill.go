@@ -9,16 +9,17 @@ import (
 
 	"github.com/opennavo/opennavo/server/internal/content"
 	"github.com/opennavo/opennavo/server/internal/i18n"
-	"github.com/opennavo/opennavo/server/internal/seo"
 	"gorm.io/gorm"
 )
 
 // Translate work order: published articles first, because their other languages
 // stay noindex until translated; then shared site content; packages follow by
 // popularity, and the opportunity job later raises package priority by installs.
-var translationPriority = map[string]float64{"article": 150, "category": 100, "collection": 90, "feature": 80, "collection_item": 70, "package": 10}
+var translationPriority = map[string]float64{"article": 150, "article_author": 100, "category": 100, "collection": 90, "feature": 80, "collection_item": 70, "package": 10}
 
 var translationBackfill = []struct{ Entity, Query string }{
+	{"article", "SELECT published_revision_id id,0 secondary_id FROM articles WHERE status='published' ORDER BY id"},
+	{"article_author", "SELECT id,0 secondary_id FROM article_authors ORDER BY id"},
 	{"category", "SELECT id,0 secondary_id FROM categories WHERE applies_to<>'formula' ORDER BY sort,id"},
 	{"collection", "SELECT id,0 secondary_id FROM collections ORDER BY id"},
 	{"feature", "SELECT id,0 secondary_id FROM features ORDER BY id"},
@@ -26,18 +27,13 @@ var translationBackfill = []struct{ Entity, Query string }{
 	{"package", "SELECT p.id,0 secondary_id FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id WHERE p.kind IN ('cask','link') AND p.removed_at IS NULL AND NOT (p.disabled OR p.stale_disabled) AND NOT COALESCE(m.hidden,false) ORDER BY p.popularity DESC,p.id"},
 }
 
-// BackfillTranslationTasks queues translate tasks for public catalog content whose
+// BackfillTranslationTasks queues translate tasks for published articles, authors and catalog content whose
 // site languages are missing or older than the current source text. A source
 // edit already queues every site language; content written before a language
-// was added never got that work. Languages closed for indexing (pages.openLocales)
-// get no new work. It writes tasks only, never content, and leaves existing tasks
-// as they are.
+// was added never got that work. Indexing settings do not restrict translations.
+// It writes tasks only, never content, and leaves existing tasks as they are.
 func (s *Store) BackfillTranslationTasks(ctx context.Context) (map[string]int, error) {
 	queued := map[string]int{}
-	settings, err := s.SEOSettings(ctx)
-	if err != nil {
-		return queued, err
-	}
 	for _, group := range translationBackfill {
 		var rows []struct{ ID, SecondaryID int64 }
 		if err := s.DB.WithContext(ctx).Raw(group.Query).Scan(&rows).Error; err != nil {
@@ -57,9 +53,7 @@ func (s *Store) BackfillTranslationTasks(ctx context.Context) (map[string]int, e
 			}
 			locales := make([]string, 0, len(source.Targets))
 			for locale := range source.Targets {
-				if seo.TranslationOpen(group.Entity, settings.Settings.Pages.OpenLocales, locale) {
-					locales = append(locales, locale)
-				}
+				locales = append(locales, locale)
 			}
 			sort.Strings(locales)
 			entity := ref.Entity + ":" + ref.Key()
@@ -77,24 +71,16 @@ func (s *Store) BackfillTranslationTasks(ctx context.Context) (map[string]int, e
 	return queued, nil
 }
 
-// BackfillTranslationTasksForLocales runs the backfill once per set of site
-// languages open for indexing. Languages are added by a deploy and opened in the
-// SEO settings, so the worker calls this on start and later starts skip the scan:
-// a language opened later gets its work at the next start. A failed or
-// interrupted run is retried on the next start.
+// BackfillTranslationTasksForLocales runs once per supported site language set,
+// independently of indexing settings. Failed runs retry on the next worker start.
 func (s *Store) BackfillTranslationTasksForLocales(ctx context.Context) (map[string]int, bool, error) {
-	settings, err := s.SEOSettings(ctx)
-	if err != nil {
-		return nil, false, err
-	}
 	codes := make([]string, 0, len(i18n.SiteLocales))
 	for _, code := range i18n.SiteLocales {
-		if seo.LocaleOpen(settings.Settings.Pages.OpenLocales, string(code)) {
-			codes = append(codes, string(code))
-		}
+		codes = append(codes, string(code))
 	}
-	// v2 includes the Simplified Chinese dependency of Traditional Chinese.
-	signature := "translation-backfill-v2:" + strings.Join(codes, ",")
+	// v4 includes articles and authors omitted by v3, as well as gaps left by
+	// earlier indexing-dependent backfills.
+	signature := "translation-backfill-v4:" + strings.Join(codes, ",")
 	if err := s.DB.WithContext(ctx).Exec("INSERT INTO seo_opportunity_cursors(source) VALUES('translation_locales') ON CONFLICT DO NOTHING").Error; err != nil {
 		return nil, false, err
 	}

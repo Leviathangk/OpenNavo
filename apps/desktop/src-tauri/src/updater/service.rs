@@ -142,6 +142,21 @@ impl Service {
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_default())
     }
+    /// Persisted bundle identities can become stale across a reboot/remount. A
+    /// recent successful check must not suppress recovery of those candidates.
+    /// Recheck the feeds; never rebase a cached install snapshot onto a new file.
+    pub fn needs_startup_check(&self) -> Result<bool, AppError> {
+        let settings = self.settings()?;
+        if !settings.auto_check {
+            return Ok(false);
+        }
+        Ok(self.candidates()?.iter().any(|candidate| {
+            settings.update_sources.enabled(candidate.item.source)
+                && !candidate.item.relaunch_pending
+                && candidate.app_path.is_dir()
+                && !candidate.snapshot.still(&candidate.app_path)
+        }))
+    }
     // All lifecycle read/modify/write operations share the database lock with
     // check commits, so neither writer can restore a stale whole-cache snapshot.
     fn update_candidates<T>(
