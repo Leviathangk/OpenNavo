@@ -78,6 +78,10 @@ func run(ctx context.Context) error {
 		defer func() { _ = cacheClient.Close() }()
 	}
 	cacheBackend := cache.Redis{Client: cacheClient}
+	catalogService := &catalog.PublicService{Store: st, Cache: cacheBackend, WebBaseURL: cfg.WebBaseURL, Secrets: cfg}
+	warmContext, stopWarm := context.WithCancel(ctx)
+	defer stopWarm()
+	go catalogService.WarmBrowse(warmContext)
 	searchService := search.New(ctx, st, cacheBackend, logger)
 	defer searchService.Close()
 	stopCache, err := cache.Subscribe(ctx, st.Redis, logger, cacheClient)
@@ -100,7 +104,7 @@ func run(ctx context.Context) error {
 	tapGitHub.ObserveQuota = st.ObserveGitHubQuota
 	tapGitHub.TokenProvider = func(ctx context.Context) (string, error) { return st.GitHubToken(ctx, cfg) }
 	adminService := &management.Service{Desktop: desktopService, Store: st, Config: cfg, Queue: &jobs.Enqueuer{Client: asynq.NewClientFromRedisClient(st.Redis), Redis: st.Redis}, IconAccent: assetService.IconAccent, Taps: &taps.Service{Store: st, GitHub: tapGitHub}}
-	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient)}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}, Catalog: &catalog.PublicService{Store: st, Cache: cacheBackend, WebBaseURL: cfg.WebBaseURL, Secrets: cfg}, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
+	app, err := httpserver.New(cfg, logger, st, httpserver.Dependencies{Collectors: []prometheus.Collector{observability.NewBusinessMetrics(st), observability.NewRedisMetrics(st.Redis, cacheClient)}, Admin: &admin.Handler{Management: adminService, Auth: authentication, Assets: assetService, CIToken: cfg.CIReleaseToken}, Public: &public.Handler{Desktop: desktopService, Snapshot: &snapshot.Service{Store: st, Objects: assets.S3Objects{Client: objects}}, Catalog: catalogService, Search: searchService}, Rate: &middleware.RateLimiter{Client: st.Redis}})
 	if err != nil {
 		return fmt.Errorf("create HTTP server: %w", err)
 	}

@@ -393,3 +393,12 @@ func (s *Store) SaveFeedback(ctx context.Context, in FeedbackInput) (int64, erro
 	err = s.DB.WithContext(ctx).Raw(`INSERT INTO feedback(type,package_id,content,contact,platform,app_version,os_version,error_code,package_version,macos_version,symptom,diagnostic_log,links,visibility) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?::jsonb,'private') RETURNING id`, in.Type, in.PackageID, in.Content, in.Contact, in.Platform, in.AppVersion, in.OSVersion, in.ErrorCode, in.PackageVersion, in.MacOSVersion, in.Symptom, in.DiagnosticLog, string(raw)).Scan(&id).Error
 	return id, err
 }
+
+// PackageNameCollides excludes channel/version variants of the same catalog token.
+func (s *Store) PackageNameCollides(ctx context.Context, p PublicPackage) (bool, error) {
+	var found bool
+	err := s.DB.WithContext(ctx).Raw(`SELECT EXISTS(SELECT 1 FROM packages
+ WHERE id<>? AND removed_at IS NULL AND kind IN ('cask','link')
+ AND lower(trim(name))=lower(trim(?)) AND split_part(token,'@',1)<>split_part(?,'@',1))`, p.ID, p.Name, p.Token).Scan(&found).Error
+	return found, err
+}

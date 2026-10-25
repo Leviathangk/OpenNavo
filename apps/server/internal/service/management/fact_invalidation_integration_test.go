@@ -69,7 +69,7 @@ func TestFactAndAgentInvalidationCoalesceAndRollback(t *testing.T) {
 				detail := cache.PackageDetailPrefix + "cask:fact-invalidation:*"
 				require.Contains(t, patterns, detail)
 				require.Contains(t, patterns, "c:home:*")
-				require.Contains(t, patterns, "c:browse:*")
+				require.Contains(t, patterns, store.BrowseRefreshPattern)
 				require.NotContains(t, patterns, "c:*")
 				seen := map[string]bool{}
 				for _, pattern := range patterns {

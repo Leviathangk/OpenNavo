@@ -330,11 +330,9 @@ func (s *Service) seoSettings(ctx context.Context, op string, in Input) (any, er
 		// Cached app details carry the index decision; refresh them when the policy changes.
 		switch {
 		case !reflect.DeepEqual(renderedSEOSettings(previous), renderedSEOSettings(after.Settings)):
-			// The decision is also embedded in SSR HTML; feed the existing cache-purge worker.
-			if err := tx.WithContext(ctx).Exec(`INSERT INTO catalog_changes(package_id,kind,token,op,reason)
-                SELECT id,kind,token,'upsert','content' FROM packages WHERE kind IN ('cask','link') AND removed_at IS NULL`).Error; err != nil {
-				return err
-			}
+			// Settings change decisions, not app content. Section prefixes already cover every
+			// app and its tabs; per-app catalog events would recompute all release timelines
+			// and create tens of thousands of redundant refresh jobs.
 			if err := tx.WithContext(ctx).Exec(`INSERT INTO content_url_changes(paths,announce,purge_sections) VALUES(ARRAY['/','/apps','/browse','/categories','/collections','/articles','/authors','/discover','/rankings','/recent','/about','/download','/security'],false,true)`).Error; err != nil {
 				return err
 			}

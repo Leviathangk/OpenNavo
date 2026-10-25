@@ -21,6 +21,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const tiers: Record<LoadShedTier, (string | undefined)[]> = {
   low: [
+    'OpenNavo-Probe/1.0 IndexNow',
     'GPTBot',
     'ClaudeBot',
     'CCBot',
@@ -34,6 +35,8 @@ const tiers: Record<LoadShedTier, (string | undefined)[]> = {
   ],
   medium: ['PerplexityBot', 'OAI-SearchBot', 'Claude-SearchBot', 'Meta-WebIndexer', 'MistralAI-Index', 'GoogleOther'],
   protected: [
+    'OpenNavo-Probe',
+    'OpenNavo-Test',
     'Mozilla/5.0 Chrome/145',
     'Googlebot',
     'bingbot',
@@ -54,9 +57,7 @@ const tiers: Record<LoadShedTier, (string | undefined)[]> = {
     'LinkedInBot',
     'Discordbot',
     'TelegramBot',
-    'WhatsApp',
-    'OpenNavo-Probe',
-    'OpenNavo-Test'
+    'WhatsApp'
   ]
 };
 

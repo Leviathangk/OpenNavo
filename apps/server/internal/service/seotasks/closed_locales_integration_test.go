@@ -53,3 +53,32 @@ func TestClaimKeepsSimplifiedChineseForTraditionalChinese(t *testing.T) {
 	require.Len(t, claimed, 1)
 	require.Equal(t, task.ID, claimed[0].ID)
 }
+
+func TestClosedSearchTasksPauseAndResumeWithoutStoppingTranslations(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &seotasks.Service{DB: st.DB}
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}',coalesce(settings->'pages','{}')||'{"openLocales":["en-US"]}'::jsonb)`).Error)
+	for _, kind := range []string{"discover_fix", "snippet_template", "translate", "fix_fact", "maintenance", "alias", "tech_alert"} {
+		_, err := svc.Enqueue(ctx, seotasks.NewTask{Kind: kind, EntityKey: "fixture:" + kind, Locale: "de-DE", DedupeKey: kind, RuleVersion: "fixture"})
+		require.NoError(t, err)
+	}
+	tasks, err := svc.Claim(ctx, "fixture", 20, nil)
+	require.NoError(t, err)
+	require.Len(t, tasks, 5)
+	for _, kind := range []string{"discover_fix", "snippet_template"} {
+		var task seotasks.Task
+		require.NoError(t, st.DB.Where("kind=?", kind).First(&task).Error)
+		require.Equal(t, "deferred", task.State)
+		require.Zero(t, task.Attempts)
+		require.Contains(t, string(task.Result), "locale_closed")
+	}
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{pages,openLocales}','["en-US","de-DE"]')`).Error)
+	tasks, err = svc.Claim(ctx, "fixture-reopened", 20, []string{"discover_fix", "snippet_template"})
+	require.NoError(t, err)
+	require.Len(t, tasks, 2)
+	for _, task := range tasks {
+		require.Equal(t, 1, task.Attempts)
+		require.NotContains(t, string(task.Result), "localePolicyPause")
+	}
+}

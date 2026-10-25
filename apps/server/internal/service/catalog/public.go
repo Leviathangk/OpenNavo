@@ -215,6 +215,13 @@ func (s *PublicService) Detail(ctx context.Context, kind, token, locale string) 
 		d.Description = p.I18n.Description
 		d.Homepage = p.Homepage
 		d.Developer = p.Meta.Developer
+		collision, err := s.Store.PackageNameCollides(ctx, p)
+		if err != nil {
+			return d, err
+		}
+		if collision {
+			d.DisplayName = disambiguatedName(d.DisplayName, p.Token, p.Meta.Developer)
+		}
 		d.RepoUrl = p.Meta.RepoURL
 		d.License = p.License
 		d.Caveats = p.Caveats
@@ -977,4 +984,17 @@ func (s *PublicService) Feedback(ctx context.Context, r publicapi.FeedbackCreate
 		return 0, domain.Validation()
 	}
 	return id, err
+}
+
+// Detail names flow into every tab's title, breadcrumb and structured data.
+func disambiguatedName(name, token string, developer *string) string {
+	qualifier := token
+	if developer != nil && strings.TrimSpace(*developer) != "" {
+		qualifier = strings.TrimSpace(*developer)
+	}
+	suffix := " (" + qualifier + ")"
+	if strings.HasSuffix(name, suffix) {
+		return name
+	}
+	return name + suffix
 }

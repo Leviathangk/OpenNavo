@@ -21,6 +21,7 @@ export type LoadShedLevel = 'normal' | 'mild' | 'heavy' | 'extreme';
 const TIERS: Record<AgentLabel, LoadShedTier> = {
   browser: 'protected',
   self_test: 'protected',
+  indexnow_probe: 'low',
   googlebot: 'protected',
   bingbot: 'protected',
   bing_preview: 'protected',

@@ -42,6 +42,7 @@ describe('crawler request counters', () => {
       ['Applebot-Extended', 'unknown'],
       ['Google-Extended', 'unknown'],
       ['OpenNavo-Probe/1.0', 'self_test'],
+      ['OpenNavo-Probe/1.0 IndexNow', 'indexnow_probe'],
       ['Mozilla/5.0 (compatible; MJ12bot/v1.4.8; http://mj12bot.com/)', 'seo_tool'],
       ['Mozilla/5.0 (compatible; ExampleCrawler/1.0)', 'other_bot'],
       ['Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15', 'browser'],

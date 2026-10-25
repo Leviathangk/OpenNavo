@@ -1,8 +1,11 @@
 package catalog
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -12,6 +15,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/domain"
 	"github.com/opennavo/opennavo/server/internal/i18n"
 	"github.com/opennavo/opennavo/server/internal/store"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -35,6 +39,8 @@ var browseRefreshes sync.Map
 // browseBuildTimeout bounds a shared build, which no single request's deadline controls: a database wait
 // that never ends must not hold every later caller of the same kind.
 const browseBuildTimeout = time.Minute
+
+var errBrowseBuiltElsewhere = errors.New("browse rebuilt by another API instance")
 
 func browseKey(kind, locale, bucket string, page int) string {
 	return fmt.Sprintf("c:browse:v2:%s:%s:%s:%d", kind, locale, bucket, page)
@@ -70,6 +76,20 @@ func (s *PublicService) Browse(ctx context.Context, kind, bucket, locale string,
 		return value, nil
 	}
 	directories, err := s.sharedBrowseBuild(ctx, kind)
+	if errors.Is(err, errBrowseBuiltElsewhere) {
+		if value, ok := s.cachedBrowsePage(ctx, browseKey(kind, locale, bucket, page)); ok {
+			return value, nil
+		}
+		if bucket != "" {
+			if root, ok := s.cachedBrowsePage(ctx, browseKey(kind, locale, "", 1)); ok && !store.HasBrowsePage(root.Buckets, bucket, page) {
+				return publicapi.BrowsePage{}, notFound
+			}
+		}
+		// A completion marker is not proof that this slice survived eviction or
+		// was written successfully. Build once under the same distributed lock
+		// and serve its in-memory result, even if the cache keeps failing writes.
+		directories, err = waitBrowseBuild(ctx, s.startBrowseBuild(ctx, kind, true))
+	}
 	if err != nil {
 		return publicapi.BrowsePage{}, err
 	}
@@ -78,10 +98,14 @@ func (s *PublicService) Browse(ctx context.Context, kind, bucket, locale string,
 
 // sharedBrowseBuild waits for the kind's build; a caller whose own request ends stops waiting at once.
 func (s *PublicService) sharedBrowseBuild(ctx context.Context, kind string) (map[string]store.BrowseDirectory, error) {
+	return waitBrowseBuild(ctx, s.startBrowseBuild(ctx, kind, false))
+}
+
+func waitBrowseBuild(ctx context.Context, result <-chan singleflight.Result) (map[string]store.BrowseDirectory, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case done := <-s.startBrowseBuild(ctx, kind):
+	case done := <-result:
 		if done.Err != nil {
 			return nil, done.Err
 		}
@@ -91,11 +115,58 @@ func (s *PublicService) sharedBrowseBuild(ctx context.Context, kind string) (map
 
 // startBrowseBuild joins the kind's running build or starts one. The build outlives the caller that started it
 // (others may be waiting for it, or it refreshes stale pages in the background) but stops at browseBuildTimeout.
-func (s *PublicService) startBrowseBuild(ctx context.Context, kind string) <-chan singleflight.Result {
-	return browseBuilds.DoChan(s.browseBuildKey(kind), func() (any, error) {
+func (s *PublicService) startBrowseBuild(ctx context.Context, kind string, force bool) <-chan singleflight.Result {
+	key := s.browseBuildKey(kind)
+	if force {
+		key += "|materialize"
+	}
+	return browseBuilds.DoChan(key, func() (any, error) {
 		build, cancel := context.WithTimeout(context.WithoutCancel(ctx), browseBuildTimeout)
 		defer cancel()
-		return s.buildBrowse(build, kind)
+		if s.Store.Redis == nil || s.Cache == nil {
+			return s.buildBrowse(build, kind)
+		}
+		before, _ := s.Cache.Load(build, browseFreshKey(kind))
+		rebuilt := func() bool {
+			after, err := s.Cache.Load(build, browseFreshKey(kind))
+			return err == nil && !bytes.Equal(before, after)
+		}
+		key, owner := "browse:build:"+kind, rand.Text()
+		waited := false
+		for {
+			owned, err := s.Store.Redis.SetNX(build, key, owner, browseBuildTimeout+15*time.Second).Result()
+			if err != nil {
+				// Redis is an optional cache: its outage must not make the catalog unavailable.
+				if build.Err() != nil {
+					return nil, build.Err()
+				}
+				return s.buildBrowse(build, kind)
+			}
+			if owned {
+				defer func() {
+					cleanup, stop := context.WithTimeout(context.WithoutCancel(build), time.Second)
+					defer stop()
+					_ = redis.NewScript("if redis.call('get',KEYS[1]) == ARGV[1] then return redis.call('del',KEYS[1]) end return 0").Run(cleanup, s.Store.Redis, []string{key}, owner).Err()
+				}()
+				if waited && !force {
+					if rebuilt() {
+						return nil, errBrowseBuiltElsewhere
+					}
+				}
+				return s.buildBrowse(build, kind)
+			}
+			waited = true
+			timer := time.NewTimer(200 * time.Millisecond)
+			select {
+			case <-build.Done():
+				timer.Stop()
+				return nil, build.Err()
+			case <-timer.C:
+			}
+			if !force && rebuilt() {
+				return nil, errBrowseBuiltElsewhere
+			}
+		}
 	})
 }
 
@@ -115,11 +186,25 @@ func (s *PublicService) refreshStaleBrowse(ctx context.Context, kind string) {
 	if _, running := browseRefreshes.LoadOrStore(key, true); running {
 		return
 	}
-	result := s.startBrowseBuild(ctx, kind)
+	owner := rand.Text()
+	// Successful stale refreshes are spaced across instances. Failed attempts
+	// release only their own reservation so another instance can retry.
+	if s.Store != nil && s.Store.Redis != nil {
+		allowed, err := s.Store.Redis.SetNX(ctx, "browse:refresh:"+kind, owner, 5*time.Minute).Result()
+		if err != nil || !allowed {
+			browseRefreshes.Delete(key)
+			return
+		}
+	}
+	result := s.startBrowseBuild(ctx, kind, false)
 	go func() {
 		defer browseRefreshes.Delete(key)
-		// Stale pages keep serving; the next stale read tries again.
-		if done := <-result; done.Err != nil {
+		if done := <-result; done.Err != nil && !errors.Is(done.Err, errBrowseBuiltElsewhere) {
+			if s.Store != nil && s.Store.Redis != nil {
+				cleanup, stop := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
+				defer stop()
+				_ = redis.NewScript("if redis.call('get',KEYS[1]) == ARGV[1] then return redis.call('del',KEYS[1]) end return 0").Run(cleanup, s.Store.Redis, []string{"browse:refresh:" + kind}, owner).Err()
+			}
 			slog.WarnContext(ctx, "browse refresh failed", "kind", kind, "error", done.Err)
 		}
 	}()
@@ -172,6 +257,42 @@ func (s *PublicService) buildBrowse(ctx context.Context, kind string) (map[strin
 		}
 		save(directory, locale, "", 1)
 	}
-	_ = s.Cache.Save(ctx, browseFreshKey(kind), []byte(s.now().Format(time.RFC3339)), browseTTL)
+	_ = s.Cache.Save(ctx, browseFreshKey(kind), []byte(rand.Text()), browseTTL)
 	return directories, nil
+}
+
+// WarmBrowse keeps directory caches ready even when no visitor has requested them.
+// Builds run sequentially to avoid competing for CPU on small origins. The shared
+// build group also joins requests that arrive during a warmup.
+func (s *PublicService) WarmBrowse(ctx context.Context) {
+	if s.Cache == nil {
+		return
+	}
+	timer := time.NewTicker(30 * time.Second)
+	defer timer.Stop()
+	for {
+		for _, kind := range []string{"apps", "fonts"} {
+			if ctx.Err() != nil {
+				return
+			}
+			missing := false
+			for _, locale := range i18n.SiteLocales {
+				if _, ok := s.cachedBrowsePage(ctx, browseKey(kind, string(locale), "", 1)); !ok {
+					missing = true
+					break
+				}
+			}
+			if !missing {
+				continue
+			}
+			if _, err := s.sharedBrowseBuild(ctx, kind); err != nil && !errors.Is(err, errBrowseBuiltElsewhere) && ctx.Err() == nil {
+				slog.WarnContext(ctx, "browse warmup failed", "kind", kind, "error", err)
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+		}
+	}
 }

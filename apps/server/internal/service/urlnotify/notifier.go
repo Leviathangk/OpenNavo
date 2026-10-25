@@ -92,6 +92,9 @@ func (n *Notifier) defaults() {
 // Run persists changes and cursor movement atomically, then drains independently retryable delivery work.
 func (n *Notifier) Run(ctx context.Context) (Result, error) {
 	n.defaults()
+	// Finish before the distributed lease expires, including slow probe batches.
+	ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
+	defer cancel()
 	var result Result
 	token := make([]byte, 16)
 	_, _ = rand.Read(token)
@@ -218,7 +221,15 @@ func (n *Notifier) catalogPlan(ctx context.Context, cursor, end int64, before ti
 	if err != nil {
 		return Plan{}, 0, err
 	}
-	rows, err := n.Store.IndexRowsByID(ctx, ids)
+	// Bulk content edits only invalidate caches. Load expensive per-language release
+	// facts for apps that can actually produce an announcement in this batch.
+	announce := announcementPackages(changes)
+	decisionIDs := make([]int64, 0, len(announce))
+	for id := range announce {
+		decisionIDs = append(decisionIDs, id)
+	}
+	slices.Sort(decisionIDs)
+	rows, err := n.Store.IndexRowsByID(ctx, decisionIDs)
 	if err != nil {
 		return Plan{}, 0, err
 	}

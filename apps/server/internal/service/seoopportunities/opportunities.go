@@ -56,7 +56,14 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended('seo:opportunities',0))").Error; err != nil {
 			return err
 		}
+		open, err := seotasks.OpenLocales(ctx, tx)
+		if err != nil {
+			return err
+		}
 		emitSignal := func(v signal) error {
+			if !seotasks.SearchLocaleAllowed(v.Kind, v.Locale, open) {
+				return nil
+			}
 			held, err := save(ctx, tx, v)
 			if err != nil {
 				return err
@@ -177,7 +184,13 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 			return err
 		}
 		stats["demandRepaired"] = repaired
-		signature = RuleVersion + ":" + signature
+		// Reopening a language must generate previously suppressed opportunities even
+		// when search measurements have not changed since the previous scan.
+		localePolicy, err := json.Marshal(open)
+		if err != nil {
+			return err
+		}
+		signature = RuleVersion + ":" + signature + ":" + string(localePolicy)
 		if prior != signature {
 			if err := s.demand(tx, emit, emitSignal); err != nil {
 				return err

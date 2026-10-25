@@ -200,3 +200,86 @@ func TestBrowseKeepsTheDirectoriesOfClosedLanguages(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, root.Buckets, 1)
 }
+
+func TestBrowseWarmupAfterEvictionWithoutTraffic(t *testing.T) {
+	st := testutil.NewFactsStore(t)
+	svc := &catalog.PublicService{Store: st, Cache: cache.Redis{Client: st.Redis}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan struct{})
+	go func() { defer close(done); svc.WarmBrowse(ctx) }()
+	require.Eventually(t, func() bool {
+		return st.Redis.Exists(ctx, "c:browse:v2:apps:fresh", "c:browse:v2:fonts:fresh").Val() == 2
+	}, 30*time.Second, 20*time.Millisecond)
+	require.NoError(t, cache.Invalidate(ctx, st.Redis, []string{store.BrowseRefreshPattern}))
+	require.Never(t, func() bool {
+		return st.Redis.Exists(ctx, "c:browse:v2:apps:fresh", "c:browse:v2:fonts:fresh").Val() > 0
+	}, 31*time.Second, 100*time.Millisecond, "warmup must not rebuild merely stale directories")
+	require.NoError(t, cache.Invalidate(ctx, st.Redis, []string{"c:browse:*"}))
+	require.Eventually(t, func() bool {
+		return st.Redis.Exists(ctx, "c:browse:v2:apps:en-US::1", "c:browse:v2:fonts:en-US::1").Val() == 2
+	}, 45*time.Second, 50*time.Millisecond)
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("warmup did not stop")
+	}
+}
+
+func TestPackageNameCollisionsExcludeVariants(t *testing.T) {
+	st := testutil.NewFactsStore(t)
+	ctx := context.Background()
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash)
+ VALUES ('cask','buzz','buzz','homebrew/cask','Buzz','1','1','{}','fixture'),
+ ('cask','buzz@beta','buzz@beta','homebrew/cask','Buzz','1','1','{}','fixture')`).Error)
+	p := store.PublicPackage{Kind: "cask", Token: "buzz", Name: "Buzz"}
+	require.NoError(t, st.DB.Raw("SELECT id FROM packages WHERE token='buzz'").Scan(&p.ID).Error)
+	collision, err := st.PackageNameCollides(ctx, p)
+	require.NoError(t, err)
+	require.False(t, collision)
+	require.NoError(t, st.DB.Exec(`INSERT INTO packages(kind,token,full_token,tap,name,version,version_base,raw,raw_hash)
+ VALUES ('link','buzz-chat','buzz-chat','links',' buzz ','1','1','{}','fixture')`).Error)
+	collision, err = st.PackageNameCollides(ctx, p)
+	require.NoError(t, err)
+	require.True(t, collision)
+	require.NoError(t, st.DB.Exec("UPDATE packages SET removed_at=now() WHERE token='buzz-chat'").Error)
+	collision, err = st.PackageNameCollides(ctx, p)
+	require.NoError(t, err)
+	require.False(t, collision)
+}
+
+func TestBrowseRefreshThrottleAndCrossInstanceLock(t *testing.T) {
+	st := testutil.NewFactsStore(t)
+	ctx := context.Background()
+	backend := cache.Redis{Client: st.Redis}
+	first := &catalog.PublicService{Store: st, Cache: backend}
+	// Distinct Store pointers simulate independent singleflight groups sharing Redis.
+	second := &catalog.PublicService{Store: &store.Store{DB: st.DB, Redis: st.Redis}, Cache: backend}
+	require.NoError(t, st.Redis.Set(ctx, "browse:build:apps", "other-instance", time.Minute).Err())
+	done := make(chan error, 1)
+	go func() { _, err := second.Browse(ctx, "apps", "", "en-US", 1); done <- err }()
+	require.Eventually(t, func() bool { return st.Redis.Exists(ctx, "browse:build:apps").Val() == 1 }, time.Second, time.Millisecond)
+	// The waiting instance must not query/build while the other one owns the lease.
+	require.Never(t, func() bool { return st.Redis.Exists(ctx, "c:browse:v2:apps:fresh").Val() == 1 }, 300*time.Millisecond, 20*time.Millisecond)
+	require.NoError(t, st.Redis.Del(ctx, "browse:build:apps").Err())
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(15 * time.Second):
+		t.Fatal("cold build did not recover")
+	}
+	require.NoError(t, cache.Invalidate(ctx, st.Redis, []string{store.BrowseRefreshPattern}))
+	_, err := first.Browse(ctx, "apps", "", "en-US", 1)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool { return st.Redis.Exists(ctx, "c:browse:v2:apps:fresh").Val() == 1 }, 15*time.Second, 20*time.Millisecond)
+	require.NoError(t, cache.Invalidate(ctx, st.Redis, []string{store.BrowseRefreshPattern}))
+	_, err = second.Browse(ctx, "apps", "", "en-US", 1)
+	require.NoError(t, err)
+	require.Never(t, func() bool { return st.Redis.Exists(ctx, "c:browse:v2:apps:fresh").Val() == 1 }, 300*time.Millisecond, 20*time.Millisecond)
+	// A true cold miss bypasses the stale refresh interval.
+	require.NoError(t, cache.Invalidate(ctx, st.Redis, []string{"c:browse:*"}))
+	_, err = second.Browse(ctx, "apps", "", "en-US", 1)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, st.Redis.Exists(ctx, "c:browse:v2:apps:fresh").Val())
+}

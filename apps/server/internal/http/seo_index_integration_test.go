@@ -161,12 +161,23 @@ func TestIndexPolicySitemapOverridesAndReport(t *testing.T) {
 	require.True(t, detail("no-summary").Indexable)
 
 	// Enforcing everything applies the rule and limits languages to published text.
-	var policyCursor int64
+	var policyCursor, policySections int64
+	require.NoError(t, st.DB.Raw("SELECT COALESCE(max(seq),0) FROM content_url_changes").Scan(&policySections).Error)
 	require.NoError(t, st.DB.Raw("SELECT COALESCE(max(seq),0) FROM catalog_changes").Scan(&policyCursor).Error)
 	require.Equal(t, "", setPolicy("enforce", "all", "")["since"])
 	var policyChanges []string
 	require.NoError(t, st.DB.Raw("SELECT token FROM catalog_changes WHERE seq>? AND reason='content'", policyCursor).Scan(&policyChanges).Error)
-	require.ElementsMatch(t, []string{"good-app", "no-summary", "gone-upstream", "font-good", "hidden-app", "paused-app", "paused-deprecated"}, policyChanges)
+	require.Empty(t, policyChanges, "global settings refresh sections without per-app fanout")
+	var refresh struct {
+		Paths                   string
+		Announce, PurgeSections bool
+	}
+	require.NoError(t, st.DB.Raw("SELECT to_json(paths)::text AS paths,announce,purge_sections FROM content_url_changes WHERE seq>?", policySections).Scan(&refresh).Error)
+	require.Contains(t, refresh.Paths, "\"/apps\"")
+	require.Contains(t, refresh.Paths, "\"/browse\"")
+	require.Contains(t, refresh.Paths, "\"/articles\"")
+	require.False(t, refresh.Announce)
+	require.True(t, refresh.PurgeSections)
 
 	// Crawler rules only reach robots.txt: saving them refreshes no page.
 	var crawlerCursor, sectionCursor int64

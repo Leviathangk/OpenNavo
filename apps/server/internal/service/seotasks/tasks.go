@@ -111,6 +111,13 @@ func (s *Service) ClaimWith(ctx context.Context, owner string, f ClaimFilter) ([
 	}
 	out := []Task{}
 	err := s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		open, err := OpenLocales(ctx, tx)
+		if err != nil {
+			return err
+		}
+		if err := reconcileSearchLocales(ctx, tx, open); err != nil {
+			return err
+		}
 		if err := tx.Exec(`WITH expired AS (SELECT id FROM seo_tasks WHERE expires_at<=clock_timestamp() AND state IN ('open','leased','deferred') ORDER BY id LIMIT 1000 FOR UPDATE SKIP LOCKED) UPDATE seo_tasks t SET state='expired',lease_owner=NULL,lease_until=NULL,updated_at=clock_timestamp() FROM expired e WHERE t.id=e.id`).Error; err != nil {
 			return err
 		}
@@ -123,6 +130,9 @@ func (s *Service) ClaimWith(ctx context.Context, owner string, f ClaimFilter) ([
 			var candidates []Task
 			query := tx.Where("NOT (kind='translate' AND locale='zh-Hant')").Where("(state IN ('open','deferred','leased') OR (kind='hermes_import' AND state='done' AND next_retry_at IS NOT NULL)) AND (expires_at IS NULL OR expires_at>clock_timestamp()) AND ((state='open') OR (kind='hermes_import' AND state='done' AND next_retry_at<=clock_timestamp()) OR (state='deferred' AND next_retry_at<=clock_timestamp()) OR (state='leased' AND lease_until<=clock_timestamp()))").
 				Where("NOT EXISTS(SELECT 1 FROM seo_entity_leases e WHERE e.entity_key=(CASE  WHEN seo_tasks.entity_key LIKE 'package:%' THEN 'pkg:' || substring(seo_tasks.entity_key FROM 9)  WHEN seo_tasks.entity_key ~ '^release:[0-9]+$' THEN (SELECT 'pkg:' || package_id FROM releases WHERE id=split_part(seo_tasks.entity_key,':',2)::bigint)  WHEN seo_tasks.entity_key ~ '^screenshot:[0-9]+$' THEN (SELECT 'pkg:' || package_id FROM package_screenshots WHERE id=split_part(seo_tasks.entity_key,':',2)::bigint)  ELSE seo_tasks.entity_key END) AND e.lease_until>clock_timestamp())")
+			if open != nil {
+				query = query.Where("kind NOT IN ? OR locale IS NULL OR locale IN ?", searchOnlyKinds, open)
+			}
 			if len(attempted) > 0 {
 				query = query.Where("id NOT IN ?", attempted)
 			}

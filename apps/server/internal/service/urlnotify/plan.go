@@ -71,18 +71,29 @@ func appendUnique(list []string, seen map[string]bool, value string) []string {
 	return append(list, value)
 }
 
-// BuildPlan turns pending changes into paths and URLs. current holds each package's current token
-// and removal state; index holds index facts for live packages.
-func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, index map[int64]store.IndexRow, policy seo.Policy, siteURL string) Plan {
-	siteURL, host := strings.TrimRight(siteURL, "/"), purgeHost(siteURL)
+// announcementPackages shares the bulk-edit rule with the expensive fact loader.
+func announcementPackages(changes []store.URLChange) map[int64]bool {
 	contentGroups := map[time.Time]int{}
 	for _, change := range changes {
 		if change.Reason == "content" {
 			contentGroups[change.CreatedAt]++
 		}
 	}
-	tokens := map[int64][]string{}
 	announce := map[int64]bool{}
+	for _, change := range changes {
+		if change.Reason != "content" || contentGroups[change.CreatedAt] <= bulkContentRows {
+			announce[change.PackageID] = true
+		}
+	}
+	return announce
+}
+
+// BuildPlan turns pending changes into paths and URLs. current holds each package's current token
+// and removal state; index holds index facts for live packages.
+func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, index map[int64]store.IndexRow, policy seo.Policy, siteURL string) Plan {
+	siteURL, host := strings.TrimRight(siteURL, "/"), purgeHost(siteURL)
+	tokens := map[int64][]string{}
+	announce := announcementPackages(changes)
 	order := []int64{}
 	for _, change := range changes {
 		if _, ok := tokens[change.PackageID]; !ok {
@@ -92,9 +103,6 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 			if token != "" && !slices.Contains(tokens[change.PackageID], token) {
 				tokens[change.PackageID] = append(tokens[change.PackageID], token)
 			}
-		}
-		if change.Reason != "content" || contentGroups[change.CreatedAt] <= bulkContentRows {
-			announce[change.PackageID] = true
 		}
 	}
 	plan := Plan{Decisions: map[string]seo.PageDecision{}}

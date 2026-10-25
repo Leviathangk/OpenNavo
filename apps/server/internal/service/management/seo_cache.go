@@ -31,7 +31,7 @@ func queueAgentInvalidation(ctx context.Context, st *store.Store, entity string,
 		}
 		if row.Token != "" {
 			key := row.Kind + ":" + row.Token + ":*"
-			patterns = append(patterns, cache.PackageDetailPrefix+key, "c:pkg:life:"+key, cache.ReleaseTimelinePrefix+key, "c:home:*", "c:rank:*", "c:sug:*", "c:browse:*", "c:related:*", "c:dep:*")
+			patterns = append(patterns, cache.PackageDetailPrefix+key, "c:pkg:life:"+key, cache.ReleaseTimelinePrefix+key, "c:home:*", "c:rank:*", "c:sug:*", store.BrowseRefreshPattern, "c:related:*", "c:dep:*")
 		}
 		entity = canonical
 	}

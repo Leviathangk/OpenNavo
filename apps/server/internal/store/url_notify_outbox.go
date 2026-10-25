@@ -33,7 +33,9 @@ func QueueURLNotification(ctx context.Context, tx *gorm.DB, n URLNotification) e
 	if n.Reason == "" {
 		n.Reason = "updated"
 	}
-	if err := QueueCacheInvalidation(ctx, tx, "url-notify", "c:*"); err != nil {
+	if err := QueueCacheInvalidation(ctx, tx, "url-notify",
+		"c:pkg:*", "c:home:*", "c:rank:*", "c:cat:*", "c:sug:*", "c:dep:*", "c:related:*",
+		"c:art:*", "c:col:*", "c:coll:*", "c:rel:*", "c:site:*", "c:cfg:*", BrowseRefreshPattern); err != nil {
 		return err
 	}
 	return tx.WithContext(ctx).Exec(`INSERT INTO url_notify_outbox(url,path,locale,reason,purge_prefix,announce,robots,canonical_path)

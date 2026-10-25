@@ -153,3 +153,19 @@ func (s *Store) URLPurgeReadyAt(ctx context.Context) (time.Time, error) {
 func (s *Store) DelayURLPurge(ctx context.Context, due time.Time) error {
 	return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET next_purge_at=greatest(next_purge_at,?) WHERE id=true", due).Error
 }
+
+// URLProbeReadyAt persists overload cooldown across notifier restarts.
+func (s *Store) URLProbeReadyAt(ctx context.Context) (time.Time, error) {
+	var row struct{ Ready time.Time }
+	err := s.DB.WithContext(ctx).Raw("SELECT coalesce(probe_ready_at, 'epoch'::timestamptz) AS ready FROM url_notify_state WHERE id=true").Scan(&row).Error
+	return row.Ready, err
+}
+
+func (s *Store) RecordURLProbe(ctx context.Context, now, retryAt time.Time, overloaded bool) error {
+	if !overloaded {
+		return s.DB.WithContext(ctx).Exec("UPDATE url_notify_state SET probe_failures=0 WHERE id=true").Error
+	}
+	return s.DB.WithContext(ctx).Exec(`UPDATE url_notify_state SET
+ probe_ready_at=greatest(probe_ready_at, ?, ?::timestamptz + make_interval(secs => 30 * power(2, least(probe_failures, 6))::int)),
+ probe_failures=least(probe_failures+1, 7) WHERE id=true`, retryAt, now).Error
+}

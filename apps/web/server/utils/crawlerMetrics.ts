@@ -8,6 +8,7 @@ import { isTrustedProxy } from './client-ip';
 // user-agent can be forged. cf.client.bot attests a known good bot, never the claimed vendor identity.
 
 const AGENTS = [
+  ['indexnow_probe', /\bOpenNavo-Probe\/[^ ]+\s+IndexNow\b/i],
   ['self_test', /\bOpenNavo-(?:Probe|Test)\b/i],
   // User-requested and search fetchers before the training crawlers whose names they contain.
   ['oai_searchbot', /OAI-SearchBot/i],

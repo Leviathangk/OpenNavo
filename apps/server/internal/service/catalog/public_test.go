@@ -85,3 +85,10 @@ func TestCaskPlatformPublicMappingPreservesCompleteMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, legacy)
 }
+
+func TestDisambiguatedName(t *testing.T) {
+	developer := "Example Studio"
+	require.Equal(t, "Buzz (Example Studio)", disambiguatedName("Buzz", "buzz", &developer))
+	require.Equal(t, "Buzz (buzz-other)", disambiguatedName("Buzz", "buzz-other", nil))
+	require.Equal(t, "Buzz (Example Studio)", disambiguatedName("Buzz (Example Studio)", "buzz", &developer))
+}

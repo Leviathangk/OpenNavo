@@ -194,3 +194,23 @@ func TestSkippedArticleRefreshIsRetriedAfterAWeek(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "skipped", state(), "an article republished with receipts needs no retry")
 }
+
+func TestClosedLocaleDiscoverySignalsAreNotGenerated(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.NewSEOStore(t)
+	svc := &Service{DB: st.DB}
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{pages}',coalesce(settings->'pages','{}')||'{"openLocales":["en-US"]}'::jsonb)`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO seo_urls(id,url,page_kind,locale) VALUES(99001,'https://site.example/de/apps/fixture','overview','de-DE'),(99002,'https://site.example/apps/fixture','overview','en-US')`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO seo_url_status(url_id,coverage_state,checked_at) VALUES(99001,'not indexed',now()),(99002,'not indexed',now())`).Error)
+	require.NoError(t, st.DB.Exec(`INSERT INTO seo_watermark_events(source,complete_through) VALUES('gsc_page',current_date-3)`).Error)
+	_, err := svc.Run(ctx)
+	require.NoError(t, err)
+	var locales []string
+	require.NoError(t, st.DB.Raw("SELECT locale FROM seo_tasks WHERE kind='discover_fix'").Scan(&locales).Error)
+	require.Equal(t, []string{"en-US"}, locales)
+	require.NoError(t, st.DB.Exec(`UPDATE seo_settings SET settings=jsonb_set(settings,'{pages,openLocales}','["en-US","de-DE"]')`).Error)
+	_, err = svc.Run(ctx)
+	require.NoError(t, err)
+	require.NoError(t, st.DB.Raw("SELECT locale FROM seo_tasks WHERE kind='discover_fix'").Scan(&locales).Error)
+	require.ElementsMatch(t, []string{"en-US", "de-DE"}, locales)
+}

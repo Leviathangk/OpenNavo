@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/opennavo/opennavo/server/internal/seo"
 	"github.com/opennavo/opennavo/server/internal/store"
@@ -156,7 +157,13 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 					}
 					continue
 				}
-				if e := n.Store.CompleteURLNotification(ctx, row, "invalidated", err, n.Now()); e != nil {
+				next := "invalidated"
+				if !row.Announce {
+					// A refresh-only obligation is fulfilled by successful invalidation and
+					// edge purge. Do not consume two more claims for no-op probe/submission.
+					next = "announced"
+				}
+				if e := n.Store.CompleteURLNotification(ctx, row, next, err, n.Now()); e != nil {
 					return purged, announced, e
 				}
 			}
@@ -180,6 +187,13 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 			if !owned {
 				continue
 			}
+			if !row.Announce {
+				// Finish refresh-only rows left in intermediate states by older workers.
+				if err := n.Store.CompleteURLNotification(ctx, row, "announced", nil, n.Now()); err != nil {
+					return purged, announced, err
+				}
+				continue
+			}
 			keep, decisionErr := n.retainAnnouncement(ctx, row, settings)
 			if decisionErr != nil {
 				if e := n.Store.CompleteURLNotification(ctx, row, row.State, decisionErr, n.Now()); e != nil {
@@ -194,6 +208,13 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 			switch row.State {
 			case "invalidated":
 				err = n.probeNotification(ctx, row)
+				var wait *probeWait
+				if errors.As(err, &wait) {
+					if e := n.Store.DeferURLNotification(ctx, row, n.Now(), wait.until); e != nil {
+						return purged, announced, e
+					}
+					continue
+				}
 				if e := n.Store.CompleteURLNotification(ctx, row, "probed", err, n.Now()); e != nil {
 					return purged, announced, e
 				}
@@ -201,12 +222,6 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 					resultErr = err
 				}
 			case "probed":
-				if !row.Announce {
-					if e := n.Store.CompleteURLNotification(ctx, row, "announced", nil, n.Now()); e != nil {
-						return purged, announced, e
-					}
-					continue
-				}
 				if !settings.Settings.IndexNow.Enabled {
 					if e := n.Store.PauseURLNotification(ctx, row, n.Now()); e != nil {
 						return purged, announced, e
@@ -316,6 +331,10 @@ func (n *Notifier) retainAnnouncement(ctx context.Context, row store.URLNotifica
 	return false, n.Store.SuppressURLAnnouncement(ctx, row, d.Robots, d.CanonicalPath, n.Now())
 }
 
+type probeWait struct{ until time.Time }
+
+func (e *probeWait) Error() string { return "waiting for public probe cooldown" }
+
 // Probe the same public URL an indexer will fetch, after the edge purge completed.
 func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificationRow) error {
 	if !row.Announce {
@@ -332,17 +351,41 @@ func (n *Notifier) probeNotification(ctx context.Context, row store.URLNotificat
 	if target.Host != site.Host || target.Scheme != site.Scheme {
 		return errors.New("notification outside configured site")
 	}
+	due, err := n.Store.URLProbeReadyAt(ctx)
+	if err != nil {
+		return err
+	}
+	if due.After(n.Now()) {
+		return &probeWait{until: due}
+	}
+	// Run is globally serialized. Pace every request, including failed ones.
+	n.Sleep(time.Second)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, row.URL, http.NoBody)
 	if err != nil {
 		return err
 	}
+	req.Header.Set("User-Agent", "OpenNavo-Probe/1.0 IndexNow")
 	client := *n.HTTP
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	response, err := client.Do(req)
 	if err != nil {
+		if e := n.Store.RecordURLProbe(ctx, n.Now(), n.Now(), true); e != nil {
+			return e
+		}
 		return errors.New("public page probe unavailable")
 	}
 	defer func() { _ = response.Body.Close() }()
+	overloaded := response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500
+	retryAt := n.Now()
+	if overloaded {
+		retryAt = purgeRetryAt(response.Header.Get("Retry-After"), n.Now())
+	}
+	if err := n.Store.RecordURLProbe(ctx, n.Now(), retryAt, overloaded); err != nil {
+		return err
+	}
 	if row.Robots == "" && (response.StatusCode >= 300 && response.StatusCode < 400 || response.StatusCode == 404 || response.StatusCode == 410) {
 		return nil
 	}
