@@ -24,7 +24,13 @@ import (
 // Docker Desktop versions which do not allocate port zero. Every container is explicitly cleaned up.
 func NewFactsStore(t *testing.T) *store.Store {
 	t.Helper()
-	st := NewSEOStore(t)
+	return NewFactsStoreAtVersion(t, 0)
+}
+
+// NewFactsStoreAtVersion adds Redis to a schema pinned for migration tests.
+func NewFactsStoreAtVersion(t *testing.T, version int64) *store.Store {
+	t.Helper()
+	st := NewSEOStoreAtVersion(t, version)
 	req := testcontainers.ContainerRequest{Image: "redis:8", ExposedPorts: []string{"6379/tcp"}, WaitingFor: wait.ForListeningPort("6379/tcp")}
 	if os.Getenv("OPENNAVO_TEST_EXPLICIT_PORTS") == "1" {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")

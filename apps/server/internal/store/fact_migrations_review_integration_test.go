@@ -17,11 +17,10 @@ import (
 )
 
 func TestFactBackfillCommitsBoundedBatchesAndResumes(t *testing.T) {
-	st := testutil.NewSEOStore(t)
+	st := testutil.NewSEOStoreAtVersion(t, 32)
 	ctx := context.Background()
 	db, err := st.DB.DB()
 	require.NoError(t, err)
-	require.NoError(t, goose.DownToContext(ctx, db, ".", 32))
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,min_macos,raw,raw_hash,artifacts,updated_at)
  SELECT i,'cask','backfill-'||i,'backfill-'||i,'homebrew/cask','Fixture','1','1','13','{}','fixture',
  jsonb_build_object('entries',jsonb_build_array(jsonb_build_object('phase','uninstall','declaration',jsonb_build_object('launchctl','org.example.backfill.'||i)))),'2024-01-01'

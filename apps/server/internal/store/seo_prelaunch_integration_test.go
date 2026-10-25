@@ -49,13 +49,13 @@ func TestPublicationRollbackPreservesEvidence(t *testing.T) {
 }
 
 func TestSEOBatchMigrationRoundTrip(t *testing.T) {
-	st := testutil.NewSEOStore(t)
+	st := testutil.NewSEOStoreAtVersion(t, 57)
 	ctx := context.Background()
 	db, err := st.DB.DB()
 	require.NoError(t, err)
 	// Empty isolated database: checks DDL dependencies, not a populated-data rollback.
 	require.NoError(t, goose.DownToContext(ctx, db, ".", 32))
-	require.NoError(t, goose.UpContext(ctx, db, "."))
+	require.NoError(t, goose.UpToContext(ctx, db, ".", 57))
 	var unvalidated int
 	require.NoError(t, st.DB.Raw(`SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace
  WHERE n.nspname='public' AND c.contype='c' AND NOT c.convalidated`).Scan(&unvalidated).Error)

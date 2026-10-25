@@ -32,7 +32,7 @@ func TestEnglishDefaultsPreserveExistingSourceLanguages(t *testing.T) {
 	_, err = db.ExecContext(ctx, `INSERT INTO categories(slug,icon) VALUES('legacy','lucide:box');
  INSERT INTO app_config(key,value) VALUES('site.about','{"locales":{"zh-CN":[]}}'),('desktop.announcement','{"sourceLocale":"ja-JP","title":"日本語"}');`)
 	require.NoError(t, err)
-	require.NoError(t, goose.UpContext(ctx, db, "."))
+	require.NoError(t, goose.UpToContext(ctx, db, ".", 14))
 	_, err = db.ExecContext(ctx, `INSERT INTO categories(slug,icon) VALUES('new','lucide:box');
  INSERT INTO categories(slug,icon,source_locale) VALUES('explicit','lucide:box','zh-CN');`)
 	require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestEnglishDefaultsPreserveExistingSourceLanguages(t *testing.T) {
 				_, err := db.ExecContext(ctx, `UPDATE app_config SET value=$1::jsonb WHERE key=$2`, `{"title":"Legacy content"`+test.source+`}`, key)
 				require.NoError(t, err)
 			}
-			require.NoError(t, goose.UpContext(ctx, db, "."))
+			require.NoError(t, goose.UpToContext(ctx, db, ".", 14))
 			for _, key := range []string{"site.about", "desktop.announcement"} {
 				var source, title string
 				require.NoError(t, db.QueryRowContext(ctx, "SELECT value->>'sourceLocale',value->>'title' FROM app_config WHERE key=$1", key).Scan(&source, &title))

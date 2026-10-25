@@ -32,12 +32,11 @@ import (
 
 func TestSixLanguageHTTPNegotiationFallbackSearchAndCache(t *testing.T) {
 	ctx := context.Background()
-	st := testutil.NewFactsStore(t)
+	st := testutil.NewFactsStoreAtVersion(t, 12)
 	// Start at the old schema before inserting provenance-bearing data. Modern
 	// Down migrations intentionally refuse to discard confirmations or evidence.
 	sqlDB, err := st.DB.DB()
 	require.NoError(t, err)
-	require.NoError(t, goose.DownToContext(ctx, sqlDB, ".", 12))
 	p, err := homebrew.Normalize("cask", json.RawMessage(`{"token":"six-language","name":["Sample"],"version":"1","desc":"Original English"}`))
 	require.NoError(t, err)
 	var id int64

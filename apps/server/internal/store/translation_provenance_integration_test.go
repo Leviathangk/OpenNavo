@@ -12,11 +12,10 @@ import (
 )
 
 func TestTranslationHistoricalWriterCorrection(t *testing.T) {
-	st := testutil.NewSEOStore(t)
+	st := testutil.NewSEOStoreAtVersion(t, 90)
 	ctx := context.Background()
 	sql, err := st.DB.DB()
 	require.NoError(t, err)
-	require.NoError(t, goose.DownToContext(ctx, sql, ".", 90))
 	// Rows written at schema 90 are fixtures in that schema's columns. Today's
 	// store writers know columns added later, so they cannot stand in for them.
 	require.NoError(t, st.DB.Exec("INSERT INTO content_revision_requests(request_id) VALUES('fixture-historical-writers')").Error)
@@ -38,7 +37,7 @@ func TestTranslationHistoricalWriterCorrection(t *testing.T) {
 			require.NoError(t, st.DB.Exec("UPDATE category_i18n SET name='文档管理工具' WHERE category_id=? AND locale='zh-CN'", id).Error)
 		}
 	}
-	require.NoError(t, goose.UpContext(ctx, sql, "."))
+	require.NoError(t, goose.UpToContext(ctx, sql, ".", 91))
 	for i, status := range []string{"machine", "manual", "manual", "manual"} {
 		var row struct {
 			Status            string
@@ -60,11 +59,10 @@ func TestTranslationHistoricalWriterCorrection(t *testing.T) {
 }
 
 func TestTranslationCorrectionResumesAndPreservesLaterEdits(t *testing.T) {
-	st := testutil.NewSEOStore(t)
+	st := testutil.NewSEOStoreAtVersion(t, 90)
 	ctx := context.Background()
 	db, err := st.DB.DB()
 	require.NoError(t, err)
-	require.NoError(t, goose.DownToContext(ctx, db, ".", 90))
 	require.NoError(t, st.DB.Exec(`INSERT INTO categories(id,slug,icon,source_locale) SELECT i,'correction-'||i,'lucide:box','en-US' FROM generate_series(1,130) i;
  INSERT INTO category_i18n(category_id,locale,source_locale,status,name) SELECT i,'zh-CN','en-US','manual','Fixture name' FROM generate_series(1,130) i;
  INSERT INTO content_revision_requests(request_id) VALUES('fixture-provenance-batch');
@@ -72,13 +70,13 @@ func TestTranslationCorrectionResumesAndPreservesLaterEdits(t *testing.T) {
  SELECT 'category',category_id::text,1,locale,'update','FixTranslation',ARRAY['translation:review'],'agent','fixture-provenance-batch','{}',jsonb_build_object('category_i18n',jsonb_build_array(to_jsonb(t))) FROM category_i18n t;
  CREATE FUNCTION stop_translation_correction() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.category_id=129 THEN RAISE EXCEPTION 'fixture correction interruption'; END IF; RETURN NEW; END $$;
  CREATE TRIGGER stop_translation_correction BEFORE UPDATE OF status ON category_i18n FOR EACH ROW EXECUTE FUNCTION stop_translation_correction()`).Error)
-	require.ErrorContains(t, goose.UpContext(ctx, db, "."), "fixture correction interruption")
+	require.ErrorContains(t, goose.UpToContext(ctx, db, ".", 91), "fixture correction interruption")
 	var n int64
 	require.NoError(t, st.DB.Table("seo_translation_corrections").Count(&n).Error)
 	require.EqualValues(t, 128, n, "first bounded batch and its receipts committed before interruption")
 	require.NoError(t, st.DB.Exec(`DROP TRIGGER stop_translation_correction ON category_i18n; DROP FUNCTION stop_translation_correction();
  UPDATE category_i18n SET name='Later human edit',status='manual' WHERE category_id=1 AND locale='zh-CN'`).Error)
-	require.NoError(t, goose.UpContext(ctx, db, "."))
+	require.NoError(t, goose.UpToContext(ctx, db, ".", 91))
 	require.NoError(t, st.DB.Table("seo_translation_corrections").Count(&n).Error)
 	require.EqualValues(t, 130, n, "resume neither duplicates receipts nor revisits completed keys")
 	require.NoError(t, goose.DownToContext(ctx, db, ".", 90))
@@ -94,11 +92,10 @@ func TestTranslationCorrectionResumesAndPreservesLaterEdits(t *testing.T) {
 }
 
 func TestTranslationCorrectionCompositeAndTextKeys(t *testing.T) {
-	st := testutil.NewSEOStore(t)
+	st := testutil.NewSEOStoreAtVersion(t, 90)
 	ctx := context.Background()
 	db, err := st.DB.DB()
 	require.NoError(t, err)
-	require.NoError(t, goose.DownToContext(ctx, db, ".", 90))
 	require.NoError(t, st.DB.Exec(`INSERT INTO packages(id,kind,token,full_token,tap,name,version,version_base,raw,raw_hash)
  SELECT i,'cask','provenance-'||i,'provenance-'||i,'homebrew/cask','Fixture','1','1','{}','fixture' FROM generate_series(1,2) i;
  INSERT INTO collections(id,slug) VALUES(1,'provenance');
@@ -110,7 +107,7 @@ func TestTranslationCorrectionCompositeAndTextKeys(t *testing.T) {
  INSERT INTO content_revisions(entity,object_key,version,locale,action,operation_id,required_permissions,actor_type,request_id,before_data,after_data)
  SELECT 'collection_item',collection_id||':'||package_id,1,locale,'update','FixTranslation',ARRAY['translation:review'],'agent','fixture-provenance-keys','{}'::jsonb,jsonb_build_object('collection_item_i18n',jsonb_build_array(to_jsonb(t))) FROM collection_item_i18n t
  UNION ALL SELECT 'announcement',config_key,1,locale,'update','FixTranslation',ARRAY['translation:review'],'agent','fixture-provenance-keys','{}'::jsonb,jsonb_build_object('announcement_i18n',jsonb_build_array(to_jsonb(t))) FROM announcement_i18n t WHERE config_key='announcement.fixture'`).Error)
-	require.NoError(t, goose.UpContext(ctx, db, "."))
+	require.NoError(t, goose.UpToContext(ctx, db, ".", 91))
 	var n int64
 	require.NoError(t, st.DB.Table("seo_translation_corrections").Count(&n).Error)
 	require.EqualValues(t, 3, n)
