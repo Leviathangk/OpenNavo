@@ -1292,6 +1292,8 @@
     "E_FW_NOT_BUNDLED": "このバージョンにはファイアウォールのコンポーネントが含まれていません。OpenNavo の正式版をお使いください",
     "E_FW_NOT_IN_APPLICATIONS": "OpenNavo を「アプリケーション」フォルダに移動してから開き直してください",
     "E_FW_ACTIVATION": "macOS でシステム拡張のインストールが完了しませんでした。もう一度お試しください",
+    "E_FW_REMOVAL": "App ファイアウォールを削除できませんでした。もう一度お試しください",
+    "E_FW_FILTER": "macOS でネットワークフィルタの設定を更新できませんでした。もう一度お試しください",
     "E_FW_CONSENT_DENIED": "ネットワークコンテンツのフィルタリングが許可されなかったため、ファイアウォールはオフのままです",
     "E_FW_DISCONNECTED": "ファイアウォールのコンポーネントが応答していません。しばらくしてからもう一度お試しください",
     "E_FW_RULE_INVALID": "ルールが正しくありません。プログラム、アドレス、ポートを確認してください",
@@ -1299,7 +1301,9 @@
     "E_FW_BLOCKLIST_URL": "https のアドレスか、この Mac 上のファイルのみ使えます",
     "E_FW_BLOCKLIST_FETCH": "ブロックリストをダウンロードできませんでした。アドレスとネットワークを確認してください",
     "E_FW_BLOCKLIST_FORMAT": "ファイルに使えるドメインや IP が見つかりませんでした",
-    "E_FW_BLOCKLIST_TOO_LARGE": "ブロックリストが大きすぎます。上限は 50 MB、100 万件です"
+    "E_FW_BLOCKLIST_TOO_LARGE": "ブロックリストが大きすぎます。上限は 50 MB、100 万件です",
+    "E_FW_BLOCKLIST_LIMIT": "ブロックリストが上限に達しています。上限は 32 個、合計 256 MB です",
+    "E_FW_BLOCKLIST_FILE": "ファイルが見つからないか、読み込む権限がありません"
   },
   "installConfirm": {
     "title": "既存の{name}を引き継ぎますか？",
@@ -2662,7 +2666,8 @@
       "steps": "オンにする途中で macOS から 2 回確認があります。まず「システム設定」で OpenNavo のシステム拡張を許可し、次にネットワークコンテンツのフィルタリングを許可します。",
       "privacy": "判断はすべてこの Mac 上で行われ、接続情報がアップロードされることはありません。",
       "failedTitle": "App ファイアウォールをオンにできませんでした",
-      "failed": "オンにできませんでした：{reason}"
+      "failed": "オンにできませんでした：{reason}",
+      "removed": "App ファイアウォールを削除しました。今すぐ再起動する必要はありません。残りのコンポーネントは、次に Mac を再起動したときに macOS が削除します。"
     },
     "options": {
       "allowApple": "Apple のプログラムを自動的に許可",
@@ -2811,9 +2816,13 @@
       "count": "{count} 回",
       "allowApp": "この App を許可",
       "blockApp": "この App をブロック",
+      "allowDestination": "このアドレスを許可",
+      "blockDestination": "このアドレスをブロック",
       "ruled": {
         "allow": "「{name}」の接続を許可しました",
-        "block": "「{name}」の接続をブロックしました"
+        "block": "「{name}」の接続をブロックしました",
+        "allowDestination": "「{name}」から {destination} への接続を許可しました",
+        "blockDestination": "「{name}」から {destination} への接続をブロックしました"
       },
       "ruledShort": {
         "allow": "許可に変更済み",

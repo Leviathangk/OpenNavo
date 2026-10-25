@@ -8,6 +8,7 @@
 @property NSString *bundleIdentifier;
 @property NSString *bundleShortVersion;
 @property NSString *bundleVersion;
+@property(getter=isUninstalling) BOOL uninstalling;
 @end
 @implementation MissingProperties
 @end

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { OnButton, OnCard, OnIcon, OnSegmented, OnToggle } from '@opennavo/ui';
 import type { FirewallMode } from '@/ipc/bindings';
@@ -16,18 +16,26 @@ const store = useFirewallStore();
 
 const status = computed(() => store.status);
 const on = computed(() => store.on);
+// While macOS applies an on/off change the switch shows what was asked for, not the state it is leaving.
+const switchedOn = computed(() => store.switchingTo ?? on.value);
 const settings = computed(() => store.settings);
 const pending = computed(() => store.alerts.length || status.value?.pendingAlerts || 0);
 const MODES: readonly FirewallMode[] = ['ask', 'allow', 'block'];
 const modes = computed(() => MODES.map(value => ({ value, label: t(`firewall.status.modes.${value}`) })));
 // After an update macOS can start the extension without the service OpenNavo talks to; only a restart brings it back.
 const serviceMissing = computed(() => status.value?.error?.detail === 'firewall_service_missing');
+const disconnected = computed(() => on.value && status.value?.connected === false);
 const failure = computed(() => {
   const error = status.value?.error;
-  if (!error || serviceMissing.value) return null;
+  if (!error) return null;
+  // The notice above already says the extension isn't answering; other failures still show.
+  if (error.code === 'E_FW_DISCONNECTED' && (serviceMissing.value || disconnected.value)) return null;
   const key = `errors.${error.code}`;
   return te(key) ? t(key) : (error.detail ?? error.code);
 });
+
+// The mode row reads the settings; they are read again when the extension answers after not responding.
+onUnmounted(store.follow('settings'));
 
 async function toggle(value: boolean) {
   try {
@@ -99,7 +107,7 @@ async function review() {
         </p>
       </div>
       <OnToggle
-        :model-value="on"
+        :model-value="switchedOn"
         :disabled="store.switching"
         :aria-label="t('firewall.status.toggle')"
         @update:model-value="toggle"
@@ -127,9 +135,10 @@ async function review() {
       >
     </p>
     <p
-      v-else-if="on && !status.connected"
+      v-else-if="disconnected"
       class="m-0 flex items-start gap-8px border-t border-t-solid border-line-subtle bg-status-warning-subtle px-16px py-10px text-12.5px text-ink-secondary"
       role="status"
+      data-firewall-disconnected
     >
       <OnIcon name="triangle-alert" :size="14" class="mt-2px shrink-0 text-status-warning" />
       <span

@@ -454,8 +454,8 @@ class ArticleClaimEvidence(BaseModel):
     evidenceId: Annotated[int, Field(examples=[1], ge=1)]
     sourceUrl: Annotated[str, Field(examples=['https://vendor.example.test/guide'], max_length=2048)]
     bodyHash: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64, pattern='^[0-9a-f]{64}$')]
-    checkedAt: Annotated[AwareDatetime, Field(examples=['2026-10-19 00:00:00+00:00'], max_length=1000)]
-    validUntil: Annotated[AwareDatetime, Field(examples=['2026-11-19 00:00:00+00:00'], max_length=1000)]
+    checkedAt: Annotated[AwareDatetime, Field(examples=['2026-10-19T00:00:00+00:00'], max_length=1000)]
+    validUntil: Annotated[AwareDatetime, Field(examples=['2026-11-19T00:00:00+00:00'], max_length=1000)]
     testArtifactId: Annotated[int | None, Field(examples=[1], ge=1)]
     testArtifactHash: Annotated[str | None, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=1000)]
 
@@ -487,7 +487,7 @@ class ArticleTestArtifactInput(BaseModel):
     macOS: Annotated[str, Field(examples=['15.0'], max_length=100, min_length=1)]
     architecture: Annotated[Literal['arm64', 'x86_64', 'universal'], Field(examples=['arm64'])]
     region: Annotated[str, Field(examples=['US'], max_length=2, pattern='^[A-Z]{2}$')]
-    performedAt: Annotated[AwareDatetime, Field(examples=['2026-10-19 00:00:00+00:00'], max_length=1000)]
+    performedAt: Annotated[AwareDatetime, Field(examples=['2026-10-19T00:00:00+00:00'], max_length=1000)]
     runner: Annotated[str, Field(examples=['trusted-ci-fixture'], max_length=200, min_length=1)]
     command: Annotated[str, Field(examples=['fixture-benchmark --iterations 10'], max_length=4096, min_length=1)]
     environment: Annotated[dict[str, EnvironmentAdditionalProperty], Field(max_length=40, min_length=1)]
@@ -506,7 +506,7 @@ class ArticleTestArtifact(BaseModel):
     payload: ArticleTestArtifactInput
     sha256: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64, pattern='^[0-9a-f]{64}$')]
     registeredBy: Annotated[int, Field(examples=[1], ge=1)]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-19 00:00:00+00:00'], max_length=1000)]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-19T00:00:00+00:00'], max_length=1000)]
 
 
 class ArticleTestArtifactList(BaseModel):
@@ -556,8 +556,8 @@ class SeoListingBaseline(BaseModel):
     evidenceId: Annotated[int, Field(examples=[1], ge=1)]
     evidenceHash: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=1000)]
     verifiedBy: Annotated[int, Field(examples=[1], ge=1)]
-    verifiedAt: Annotated[AwareDatetime, Field(examples=['2026-10-19 00:00:00+00:00'], max_length=1000)]
-    validUntil: Annotated[AwareDatetime, Field(examples=['2026-11-19 00:00:00+00:00'], max_length=1000)]
+    verifiedAt: Annotated[AwareDatetime, Field(examples=['2026-10-19T00:00:00+00:00'], max_length=1000)]
+    validUntil: Annotated[AwareDatetime, Field(examples=['2026-11-19T00:00:00+00:00'], max_length=1000)]
     suspicious: Annotated[bool, Field(examples=[False])]
 
 
@@ -671,7 +671,7 @@ class SeoWatermark(BaseModel):
     source: Annotated[Literal['gsc_page', 'gsc_query', 'inspection', 'bing', 'audit', 'edge_probe'], Field(examples=['gsc_page'])]
     completeThrough: Annotated[date_aliased | None, Field(examples=['2026-10-16'])]
     freshThrough: Annotated[date_aliased | None, Field(examples=['2026-10-18'])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18 10:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00+00:00'])]
 
 
 class SeoOverviewBreakerEvidence(BaseModel):
@@ -1050,8 +1050,8 @@ class AuditIssue(BaseModel):
     layer: Annotated[Literal['origin', 'edge'], Field(examples=['origin'])]
     severity: Annotated[Literal['p0', 'p1', 'p2'], Field(examples=['p0'])]
     detail: Annotated[str, Field(examples=['Canonical mismatch'])]
-    firstSeen: Annotated[AwareDatetime, Field(examples=['2026-10-18 10:00:00+00:00'])]
-    lastSeen: Annotated[AwareDatetime, Field(examples=['2026-10-18 10:00:00+00:00'])]
+    firstSeen: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
+    lastSeen: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00Z'])]
 
 
 class Gsc(BaseModel):
@@ -1534,9 +1534,9 @@ class AssetRef(BaseModel):
 
 class AuditFields(BaseModel):
     createBy: Annotated[str | None, Field(examples=[None])] = None
-    createTime: Annotated[AwareDatetime | None, Field(examples=['2026-09-30 08:00:00+00:00'])] = None
+    createTime: Annotated[AwareDatetime | None, Field(examples=['2026-09-30T08:00:00+00:00'])] = None
     updateBy: Annotated[str | None, Field(examples=[None])] = None
-    updateTime: Annotated[AwareDatetime | None, Field(examples=['2026-09-30 08:00:00+00:00'])] = None
+    updateTime: Annotated[AwareDatetime | None, Field(examples=['2026-09-30T08:00:00+00:00'])] = None
 
 
 class LoginRequest(BaseModel):
@@ -1753,7 +1753,7 @@ class ChangelogSource(BaseModel):
     lastStatus: Annotated[Literal['never', 'ok', 'not_modified', 'error', 'rate_limited', 'not_found'], Field(examples=['never'])]
     lastError: Annotated[str | None, Field(examples=[None])] = None
     failCount: Annotated[int, Field(examples=[1])]
-    nextFetchAt: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
+    nextFetchAt: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
 
 
 class Item3(RootModel[str]):
@@ -1780,7 +1780,7 @@ class AdminRelease(BaseModel):
     hidden: Annotated[bool, Field(examples=[False])]
     isPrerelease: Annotated[bool, Field(examples=[False])]
     translationStatus: ReleaseTranslationStatus
-    fetchedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
+    fetchedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
     sourceLocale: Locale | None = None
 
 
@@ -1810,7 +1810,7 @@ class JobRun(BaseModel):
     status: Annotated[Literal['running', 'succeeded', 'failed', 'partial'], Field(examples=['running'])]
     stats: dict[str, Any]
     error: Annotated[str | None, Field(examples=[None])] = None
-    startedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
+    startedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
     finishedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
     durationMs: Annotated[int | None, Field(examples=[None])] = None
 
@@ -1924,7 +1924,7 @@ class Feedback(BaseModel):
     handlerNote: Annotated[str | None, Field(examples=[None])] = None
     handledBy: Annotated[str | None, Field(examples=[None])] = None
     handledAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
+    createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
     packageVersion: Annotated[str | None, Field(max_length=100)] = None
     macosVersion: Annotated[str | None, Field(max_length=100)] = None
     symptom: Annotated[str | None, Field(max_length=500)] = None
@@ -1947,7 +1947,7 @@ class Asset(BaseModel):
     height: Annotated[int | None, Field(examples=[256])] = None
     bytes: Annotated[int, Field(examples=[12000])]
     sha256: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])]
-    createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
+    createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
 
 
 class AssetUploadTicketKind(RootModel[Literal['icon', 'screenshot', 'cover']]):
@@ -1971,7 +1971,7 @@ class AssetUploadTicket(BaseModel):
     fileField: Annotated[Literal['file'], Field(examples=['file'])]
     kind: AssetUploadTicketKind
     maxBytes: Annotated[int, Field(examples=[5242880])]
-    expiresAt: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:10:00+00:00'])]
+    expiresAt: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:10:00+00:00'])]
 
 
 class AssetUploadTicketResponse(BaseModel):
@@ -1993,7 +1993,7 @@ class AppConfigItem(BaseModel):
     value: Annotated[dict[str, Any] | str | float | bool | list[Any], Field(description='Any JSON value (string, number, boolean, object, array or null)', examples=[None])]
     description: Annotated[str | None, Field(examples=['最低客户端版本'])] = None
     updateBy: Annotated[str | None, Field(examples=['local-admin'])] = None
-    updateTime: Annotated[AwareDatetime | None, Field(examples=['2026-09-30 08:00:00+00:00'])] = None
+    updateTime: Annotated[AwareDatetime | None, Field(examples=['2026-09-30T08:00:00+00:00'])] = None
 
 
 class AppConfigUpdate(BaseModel):
@@ -2069,7 +2069,7 @@ class AuditLog(BaseModel):
     before: dict[str, Any] | None = None
     after: dict[str, Any] | None = None
     ip: Annotated[str | None, Field(examples=[None])] = None
-    createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
+    createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
 
 
 class LoginTokenResponse(BaseModel):
@@ -2775,15 +2775,15 @@ class GlossaryTerm(BaseModel):
     term: Annotated[str, Field(examples=['workspace'], max_length=200, min_length=1)]
     translations: GlossaryTranslations
     doNotTranslate: Annotated[bool, Field(examples=[False])]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
 
 
 class Data18(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[GlossaryTerm], Field(examples=[[{'id': 1, 'term': 'workspace', 'translations': {'en-US': 'workspace', 'zh-CN': '工作区', 'ja-JP': 'ワークスペース', 'es-ES': 'espacio de trabajo', 'pt-BR': 'espaço de trabalho', 'ru-RU': 'рабочее пространство'}, 'doNotTranslate': False, 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00'}]])]
+    records: Annotated[list[GlossaryTerm], Field(examples=[[{'id': 1, 'term': 'workspace', 'translations': {'en-US': 'workspace', 'zh-CN': '工作区', 'ja-JP': 'ワークスペース', 'es-ES': 'espacio de trabajo', 'pt-BR': 'espaço de trabalho', 'ru-RU': 'рабочее пространство'}, 'doNotTranslate': False, 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00'}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -2799,7 +2799,7 @@ class GlossaryResponse(BaseModel):
 
 
 class GlossaryResponseResult(RootModel[GlossaryResponse | BusinessErrorResponse]):
-    root: Annotated[GlossaryResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'term': 'workspace', 'translations': {'en-US': 'workspace', 'zh-CN': '工作区', 'ja-JP': 'ワークスペース', 'es-ES': 'espacio de trabajo', 'pt-BR': 'espaço de trabalho', 'ru-RU': 'рабочее пространство'}, 'doNotTranslate': False, 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[GlossaryResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'term': 'workspace', 'translations': {'en-US': 'workspace', 'zh-CN': '工作区', 'ja-JP': 'ワークスペース', 'es-ES': 'espacio de trabajo', 'pt-BR': 'espaço de trabalho', 'ru-RU': 'рабочее пространство'}, 'doNotTranslate': False, 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class GlossaryTermResponse(BaseModel):
@@ -2812,7 +2812,7 @@ class GlossaryTermResponse(BaseModel):
 
 
 class GlossaryTermResponseResult(RootModel[GlossaryTermResponse | BusinessErrorResponse]):
-    root: Annotated[GlossaryTermResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'term': 'workspace', 'translations': {'en-US': 'workspace', 'zh-CN': '工作区', 'ja-JP': 'ワークスペース', 'es-ES': 'espacio de trabajo', 'pt-BR': 'espaço de trabalho', 'ru-RU': 'рабочее пространство'}, 'doNotTranslate': False, 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
+    root: Annotated[GlossaryTermResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'term': 'workspace', 'translations': {'en-US': 'workspace', 'zh-CN': '工作区', 'ja-JP': 'ワークスペース', 'es-ES': 'espacio de trabajo', 'pt-BR': 'espaço de trabalho', 'ru-RU': 'рабочее пространство'}, 'doNotTranslate': False, 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00'}}])]
 
 
 class AnnouncementUpdate(BaseModel):
@@ -2888,7 +2888,7 @@ class PackagePriceUpdate(BaseModel):
     appVersion: Annotated[str | None, Field(examples=['5.2'], max_length=64)] = None
     sourceUrl: Annotated[AnyUrl | None, Field(examples=['https://vendor.example/pricing'])] = None
     method: Annotated[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other'] | None, Field(examples=['vendor_site'])] = None
-    verifiedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13 08:00:00+00:00'])] = None
+    verifiedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13T08:00:00+00:00'])] = None
     status: Annotated[Literal['verified', 'needs_review'] | None, Field(examples=['verified'])] = None
     note: Annotated[str | None, Field(examples=['Checked the US pricing page.'], max_length=1000)] = None
 
@@ -2901,7 +2901,7 @@ class PackageMacosUpdate(BaseModel):
     appVersion: Annotated[str | None, Field(examples=['5.2'], max_length=64)] = None
     sourceUrl: Annotated[AnyUrl | None, Field(examples=['https://vendor.example/docs/system-requirements'])] = None
     method: Annotated[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other'] | None, Field(examples=['vendor_site'])] = None
-    verifiedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13 08:00:00+00:00'])] = None
+    verifiedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13T08:00:00+00:00'])] = None
     status: Annotated[Literal['verified', 'needs_review'] | None, Field(examples=['verified'])] = None
     note: Annotated[str | None, Field(examples=["From the vendor's requirements page."], max_length=1000)] = None
 
@@ -2934,7 +2934,7 @@ class PackagePrice(BaseModel):
     appVersion: Annotated[str | None, Field(examples=['5.2'])]
     sourceUrl: Annotated[str, Field(examples=['https://vendor.example/pricing'])]
     method: FactMethod
-    verifiedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    verifiedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13T08:00:00+00:00'])]
     verifiedBy: Annotated[str, Field(examples=['Hermes'])]
     verifier: FactVerifier
     status: FactStatus
@@ -2947,7 +2947,7 @@ class PackageMacosSupplement(BaseModel):
     appVersion: Annotated[str | None, Field(examples=['5.2'])]
     sourceUrl: Annotated[str, Field(examples=['https://vendor.example/docs/system-requirements'])]
     method: FactMethod
-    verifiedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    verifiedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13T08:00:00+00:00'])]
     verifiedBy: Annotated[str, Field(examples=['kaka'])]
     verifier: FactVerifier
     status: FactStatus
@@ -2987,7 +2987,7 @@ class PackageFacts(BaseModel):
     alternatives: list[PackageAlternativeEntry]
     offerReady: Annotated[bool, Field(description='Structured data may publish an offer: verified, current, and free or complete', examples=[True])]
     gaps: list[FactGap]
-    updatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13T08:00:00+00:00'])]
 
 
 class PackageFactsResponse(BaseModel):
@@ -3164,8 +3164,8 @@ class AdminArticleRevision(BaseModel):
     submittedByName: Annotated[str, Field(examples=[''])]
     publishedAt: Annotated[AwareDatetime | None, Field(examples=[None])]
     createdByName: Annotated[str, Field(examples=['Hermes'])]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-13T08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13T08:00:00+00:00'])]
 
 
 class ArticleLocaleState(BaseModel):
@@ -3174,17 +3174,17 @@ class ArticleLocaleState(BaseModel):
     withheld: Annotated[bool, Field(examples=[False])]
     source: Annotated[bool, Field(examples=[False])]
     failReason: Annotated[str | None, Field(examples=[None])]
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13 09:00:00+00:00'])]
+    translatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13T09:00:00+00:00'])]
 
 
 class ArticleRevisionEntry(BaseModel):
     id: Annotated[int | None, Field(description='Database revision ID; use the published revision ID for article translations.', examples=[101])] = None
     number: Annotated[int, Field(examples=[2])]
     title: Annotated[str, Field(examples=['How to choose a screenshot app for Mac'])]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 08:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12T08:00:00+00:00'])]
     createdByName: Annotated[str, Field(examples=['Hermes'])]
-    submittedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12 09:00:00+00:00'])]
-    publishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12 10:00:00+00:00'])]
+    submittedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12T09:00:00+00:00'])]
+    publishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12T10:00:00+00:00'])]
 
 
 class ArticleEvent(BaseModel):
@@ -3193,7 +3193,7 @@ class ArticleEvent(BaseModel):
     actorType: Annotated[Literal['admin', 'agent', 'system'], Field(examples=['admin'])]
     actorName: Annotated[str, Field(examples=['kaka'])]
     detail: Annotated[dict[str, Any], Field(examples=[{}])]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 10:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12T10:00:00+00:00'])]
 
 
 class ArticleImage(BaseModel):
@@ -3205,7 +3205,7 @@ class ArticleImage(BaseModel):
 class Published(BaseModel):
     id: Annotated[int | None, Field(description='Database revision ID to pass as ref.id with entity article to translations_write.', examples=[101])] = None
     number: Annotated[int, Field(examples=[2])]
-    publishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12 10:00:00+00:00'])]
+    publishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12T10:00:00Z'])]
 
 
 class AdminArticle(BaseModel):
@@ -3213,15 +3213,15 @@ class AdminArticle(BaseModel):
     slug: Annotated[str, Field(examples=['choose-a-screenshot-app'])]
     status: ArticleStatus
     revision: Annotated[int, Field(description='Change counter; send it back as expectedRevision', examples=[4])]
-    firstPublishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12 10:00:00+00:00'])]
-    contentUpdatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12 10:00:00+00:00'])]
+    firstPublishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12T10:00:00+00:00'])]
+    contentUpdatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12T10:00:00+00:00'])]
     archivedAt: Annotated[AwareDatetime | None, Field(examples=[None])]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12 08:00:00+00:00'])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12T08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13T08:00:00+00:00'])]
     webUrl: Annotated[str | None, Field(examples=['https://opennavo.example/articles/choose-a-screenshot-app'])]
     aliases: list[str]
     working: AdminArticleRevision
-    published: Annotated[Published | None, Field(examples=[{'number': 2, 'publishedAt': '2026-10-12 10:00:00+00:00'}])]
+    published: Annotated[Published | None, Field(examples=[{'number': 2, 'publishedAt': '2026-10-12T10:00:00+00:00'}])]
     hasPendingChanges: Annotated[bool, Field(description='The working revision is not the published one', examples=[True])]
     readiness: list[ArticleProblem]
     images: list[ArticleImage]
@@ -3237,7 +3237,7 @@ class AdminArticleResponse(BaseModel):
 
 
 class AdminArticleResponseResult(RootModel[AdminArticleResponse | BusinessErrorResponse]):
-    root: Annotated[AdminArticleResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'slug': 'choose-a-screenshot-app', 'status': 'draft', 'revision': 1, 'firstPublishedAt': None, 'contentUpdatedAt': None, 'archivedAt': None, 'createdAt': '2026-10-13 08:00:00+00:00', 'updatedAt': '2026-10-13 08:00:00+00:00', 'webUrl': None, 'aliases': [], 'working': {'number': 1, 'sourceLocale': 'en-US', 'type': 'roundup', 'authorId': None, 'author': None, 'coverAssetId': None, 'coverUrl': None, 'coverAlt': None, 'sources': [], 'packages': [], 'title': 'How to choose a screenshot app for Mac', 'summary': None, 'bodyMarkdown': None, 'testNote': None, 'seoTitle': None, 'seoDescription': None, 'submittedAt': None, 'submittedByName': '', 'publishedAt': None, 'createdByName': 'Hermes', 'createdAt': '2026-10-13 08:00:00+00:00', 'updatedAt': '2026-10-13 08:00:00+00:00'}, 'published': None, 'hasPendingChanges': True, 'readiness': ['summary', 'body', 'sources'], 'images': [], 'locales': [], 'revisions': [], 'events': []}}])]
+    root: Annotated[AdminArticleResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'slug': 'choose-a-screenshot-app', 'status': 'draft', 'revision': 1, 'firstPublishedAt': None, 'contentUpdatedAt': None, 'archivedAt': None, 'createdAt': '2026-10-13T08:00:00+00:00', 'updatedAt': '2026-10-13T08:00:00+00:00', 'webUrl': None, 'aliases': [], 'working': {'number': 1, 'sourceLocale': 'en-US', 'type': 'roundup', 'authorId': None, 'author': None, 'coverAssetId': None, 'coverUrl': None, 'coverAlt': None, 'sources': [], 'packages': [], 'title': 'How to choose a screenshot app for Mac', 'summary': None, 'bodyMarkdown': None, 'testNote': None, 'seoTitle': None, 'seoDescription': None, 'submittedAt': None, 'submittedByName': '', 'publishedAt': None, 'createdByName': 'Hermes', 'createdAt': '2026-10-13T08:00:00+00:00', 'updatedAt': '2026-10-13T08:00:00+00:00'}, 'published': None, 'hasPendingChanges': True, 'readiness': ['summary', 'body', 'sources'], 'images': [], 'locales': [], 'revisions': [], 'events': []}}])]
 
 
 class AdminArticleListItem(BaseModel):
@@ -3253,9 +3253,9 @@ class AdminArticleListItem(BaseModel):
     submittedAt: Annotated[AwareDatetime | None, Field(examples=[None])]
     hasPendingChanges: Annotated[bool, Field(examples=[True])]
     authorName: Annotated[str | None, Field(examples=[None])]
-    firstPublishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12 10:00:00+00:00'])]
-    contentUpdatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12 10:00:00+00:00'])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    firstPublishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12T10:00:00+00:00'])]
+    contentUpdatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12T10:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13T08:00:00+00:00'])]
 
 
 class ArticlePage(BaseModel):
@@ -3286,7 +3286,7 @@ class ArticleAuthor(BaseModel):
     role: Annotated[str | None, Field(examples=['Editor'])]
     bio: Annotated[str | None, Field(examples=['Tests Mac productivity apps.'])]
     articleCount: Annotated[int, Field(examples=[3])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13 08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-13T08:00:00+00:00'])]
 
 
 class ArticleAuthorListResponse(BaseModel):
@@ -3316,7 +3316,7 @@ class CatalogActivity(BaseModel):
     versionBase: Annotated[str | None, Field(examples=[None], max_length=256)]
     packageVersionId: Annotated[int | None, Field(description='Recorded build of version; null when the event version is not a recorded build', examples=[None], ge=1)]
     previousVersion: Annotated[str | None, Field(examples=[None], max_length=256)]
-    changedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    changedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
     rank30d: Annotated[int | None, Field(examples=[None], ge=0)]
     popularity: Annotated[float, Field(examples=[99.5])]
     hasEditorial: Annotated[bool, Field(examples=[False])]
@@ -3328,7 +3328,7 @@ class Data19(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[CatalogActivity], Field(examples=[[{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07 08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}]])]
+    records: Annotated[list[CatalogActivity], Field(examples=[[{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07T08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -3344,7 +3344,7 @@ class CatalogActivityResponse(BaseModel):
 
 
 class CatalogActivityResponseResult(RootModel[CatalogActivityResponse | BusinessErrorResponse]):
-    root: Annotated[CatalogActivityResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07 08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[CatalogActivityResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'seq': 1, 'type': 'updated', 'packageId': 1, 'token': 'visual-studio-code', 'previousToken': None, 'version': '1.140.0', 'versionBase': '1.140.0', 'packageVersionId': 1, 'previousVersion': '1.139.0', 'changedAt': '2026-10-07T08:00:00+00:00', 'rank30d': 1, 'popularity': 99.5, 'hasEditorial': False, 'editorialScope': 'none', 'webUrl': 'https://opennavo.example/apps/visual-studio-code'}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class AgentPermission(RootModel[Literal['seo:automation:tune', 'seo:snippet:propose', 'seo:task:handle', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes', 'seo:insight:view', 'seo:keyword:edit']]):
@@ -3377,7 +3377,7 @@ class AgentSettings(BaseModel):
     limits: AgentLimits
     mcpUrl: Annotated[AnyUrl, Field(examples=['https://admin.opennavo.example/mcp'])]
     grantablePermissions: Annotated[list[AgentPermission], Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
 
 
 class AgentSettingsResponse(BaseModel):
@@ -3390,7 +3390,7 @@ class AgentSettingsResponse(BaseModel):
 
 
 class AgentSettingsResponseResult(RootModel[AgentSettingsResponse | BusinessErrorResponse]):
-    root: Annotated[AgentSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'mcpUrl': 'https://admin.opennavo.example/mcp', 'grantablePermissions': ['seo:automation:tune', 'seo:snippet:propose', 'seo:task:handle', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes', 'seo:insight:view', 'seo:keyword:edit'], 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
+    root: Annotated[AgentSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'mcpUrl': 'https://admin.opennavo.example/mcp', 'grantablePermissions': ['seo:automation:tune', 'seo:snippet:propose', 'seo:task:handle', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes', 'seo:insight:view', 'seo:keyword:edit'], 'updatedAt': '2026-10-07T08:00:00+00:00'}}])]
 
 
 class AgentClientCreate(BaseModel):
@@ -3422,8 +3422,8 @@ class AgentClient(BaseModel):
     activeTokenCount: Annotated[int, Field(examples=[1], ge=0)]
     lastUsedAt: Annotated[AwareDatetime | None, Field(examples=[None])]
     lastUsedIp: Annotated[str | None, Field(examples=[None], max_length=64)]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
 
 
 class AgentClientResponse(BaseModel):
@@ -3436,14 +3436,14 @@ class AgentClientResponse(BaseModel):
 
 
 class AgentClientResponseResult(RootModel[AgentClientResponse | BusinessErrorResponse]):
-    root: Annotated[AgentClientResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'userId': 6, 'name': 'Hermes · 家里电脑', 'notes': '负责人日常运营代理', 'enabled': True, 'activeTokenCount': 1, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
+    root: Annotated[AgentClientResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'userId': 6, 'name': 'Hermes · 家里电脑', 'notes': '负责人日常运营代理', 'enabled': True, 'activeTokenCount': 1, 'lastUsedAt': '2026-10-07T08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00'}}])]
 
 
 class Data20(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[AgentClient], Field(examples=[[{'id': 1, 'userId': 6, 'name': 'Hermes · 家里电脑', 'notes': '负责人日常运营代理', 'enabled': True, 'activeTokenCount': 1, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00'}]])]
+    records: Annotated[list[AgentClient], Field(examples=[[{'id': 1, 'userId': 6, 'name': 'Hermes · 家里电脑', 'notes': '负责人日常运营代理', 'enabled': True, 'activeTokenCount': 1, 'lastUsedAt': '2026-10-07T08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00'}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -3459,7 +3459,7 @@ class AgentClientsResponse(BaseModel):
 
 
 class AgentClientsResponseResult(RootModel[AgentClientsResponse | BusinessErrorResponse]):
-    root: Annotated[AgentClientsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'userId': 6, 'name': 'Hermes · 家里电脑', 'notes': '负责人日常运营代理', 'enabled': True, 'activeTokenCount': 1, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[AgentClientsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'userId': 6, 'name': 'Hermes · 家里电脑', 'notes': '负责人日常运营代理', 'enabled': True, 'activeTokenCount': 1, 'lastUsedAt': '2026-10-07T08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class IpAllowlistItem(RootModel[str]):
@@ -3503,8 +3503,8 @@ class AgentToken(BaseModel):
     revokedAt: Annotated[AwareDatetime | None, Field(examples=[None])]
     lastUsedAt: Annotated[AwareDatetime | None, Field(examples=[None])]
     lastUsedIp: Annotated[str | None, Field(examples=[None], max_length=64)]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
     status: Annotated[Literal['active', 'expired', 'revoked'], Field(examples=['active'])]
     expiringSoon: Annotated[bool, Field(examples=[False])]
 
@@ -3521,7 +3521,7 @@ class Data21(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[AgentToken], Field(examples=[[{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}]])]
+    records: Annotated[list[AgentToken], Field(examples=[[{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05T08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07T08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00', 'status': 'active', 'expiringSoon': False}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -3537,7 +3537,7 @@ class AgentTokensResponse(BaseModel):
 
 
 class AgentTokensResponseResult(RootModel[AgentTokensResponse | BusinessErrorResponse]):
-    root: Annotated[AgentTokensResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[AgentTokensResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05T08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07T08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00', 'status': 'active', 'expiringSoon': False}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class AgentTokenCreatedResponse(BaseModel):
@@ -3550,7 +3550,7 @@ class AgentTokenCreatedResponse(BaseModel):
 
 
 class AgentTokenCreatedResponseResult(RootModel[AgentTokenCreatedResponse | BusinessErrorResponse]):
-    root: Annotated[AgentTokenCreatedResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'token': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}, 'plaintext': 'MOCK_ONLY_NOT_A_VALID_AGENT_TOKEN'}}])]
+    root: Annotated[AgentTokenCreatedResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'token': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05T08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07T08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00', 'status': 'active', 'expiringSoon': False}, 'plaintext': 'MOCK_ONLY_NOT_A_VALID_AGENT_TOKEN'}}])]
 
 
 class AgentTokenResponse(BaseModel):
@@ -3563,7 +3563,7 @@ class AgentTokenResponse(BaseModel):
 
 
 class AgentTokenResponseResult(RootModel[AgentTokenResponse | BusinessErrorResponse]):
-    root: Annotated[AgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'active', 'expiringSoon': False}}])]
+    root: Annotated[AgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05T08:00:00+00:00', 'revokedAt': None, 'lastUsedAt': '2026-10-07T08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00', 'status': 'active', 'expiringSoon': False}}])]
 
 
 class RevokedAgentTokenResponse(BaseModel):
@@ -3576,7 +3576,7 @@ class RevokedAgentTokenResponse(BaseModel):
 
 
 class RevokedAgentTokenResponseResult(RootModel[RevokedAgentTokenResponse | BusinessErrorResponse]):
-    root: Annotated[RevokedAgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05 08:00:00+00:00', 'revokedAt': '2026-10-07 08:00:00+00:00', 'lastUsedAt': '2026-10-07 08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07 08:00:00+00:00', 'updatedAt': '2026-10-07 08:00:00+00:00', 'status': 'revoked', 'expiringSoon': False}}])]
+    root: Annotated[RevokedAgentTokenResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'clientId': 1, 'name': '日常运营', 'prefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'ipAllowlist': [], 'expiresAt': '2027-01-05T08:00:00+00:00', 'revokedAt': '2026-10-07T08:00:00+00:00', 'lastUsedAt': '2026-10-07T08:00:00+00:00', 'lastUsedIp': '192.0.2.1', 'createdAt': '2026-10-07T08:00:00+00:00', 'updatedAt': '2026-10-07T08:00:00+00:00', 'status': 'revoked', 'expiringSoon': False}}])]
 
 
 class AgentQuota(BaseModel):
@@ -3586,8 +3586,8 @@ class AgentQuota(BaseModel):
     callsRemaining: Annotated[int, Field(examples=[119], ge=0)]
     writesRemaining: Annotated[int, Field(examples=[2999], ge=0)]
     llmOpsRemaining: Annotated[int, Field(examples=[999], ge=0)]
-    minuteResetsAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
-    dayResetsAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    minuteResetsAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
+    dayResetsAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
 
 
 class AgentIntrospection(BaseModel):
@@ -3618,7 +3618,7 @@ class AgentIntrospectionResponse(BaseModel):
 
 
 class AgentIntrospectionResponseResult(RootModel[AgentIntrospectionResponse | BusinessErrorResponse]):
-    root: Annotated[AgentIntrospectionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'active': True, 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'paused': False, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'quota': {'callsRemaining': 119, 'writesRemaining': 2999, 'llmOpsRemaining': 999, 'minuteResetsAt': '2026-10-07 08:01:00+00:00', 'dayResetsAt': '2026-10-08 00:00:00+00:00'}, 'locales': ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'], 'expiresAt': '2027-01-05 08:00:00+00:00'}}])]
+    root: Annotated[AgentIntrospectionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'active': True, 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'permissions': ['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes'], 'allowDelete': True, 'paused': False, 'limits': {'callsPerMinute': 120, 'writesPerDay': 3000, 'llmOpsPerDay': 1000, 'batchLimit': 100}, 'quota': {'callsRemaining': 119, 'writesRemaining': 2999, 'llmOpsRemaining': 999, 'minuteResetsAt': '2026-10-07T08:01:00+00:00', 'dayResetsAt': '2026-10-08T00:00:00+00:00'}, 'locales': ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU'], 'expiresAt': '2027-01-05T08:00:00+00:00'}}])]
 
 
 class HistoryActor(BaseModel):
@@ -3647,7 +3647,7 @@ class ContentRevision(BaseModel):
     requestId: Annotated[str, Field(examples=['demo-request-001'], max_length=128)]
     before: Annotated[dict[str, Any] | None, Field(examples=[None])]
     after: Annotated[dict[str, Any] | None, Field(examples=[None])]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
     canRestore: Annotated[bool, Field(examples=[True])]
     affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
     operationId: Annotated[str, Field(examples=['updatePackageText'], max_length=128)]
@@ -3658,7 +3658,7 @@ class Data22(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[ContentRevision], Field(examples=[[{'id': 1, 'object': {'entity': 'package', 'objectKey': '1'}, 'version': 1, 'locale': 'zh-CN', 'action': 'update', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-request-001', 'before': {'i18n': {'en-US': {'summary': '旧简介'}, 'zh-CN': {'summary': '旧简介'}, 'ja-JP': {'summary': '旧简介'}, 'es-ES': {'summary': '旧简介'}, 'pt-BR': {'summary': '旧简介'}, 'ru-RU': {'summary': '旧简介'}}}, 'after': {'i18n': {'en-US': {'summary': '新简介'}, 'zh-CN': {'summary': '新简介'}, 'ja-JP': {'summary': '新简介'}, 'es-ES': {'summary': '新简介'}, 'pt-BR': {'summary': '新简介'}, 'ru-RU': {'summary': '新简介'}}}, 'createdAt': '2026-10-07 08:00:00+00:00', 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/apps/visual-studio-code'], 'operationId': 'updatePackageText', 'requiredPermissions': ['catalog:package:edit']}]])]
+    records: Annotated[list[ContentRevision], Field(examples=[[{'id': 1, 'object': {'entity': 'package', 'objectKey': '1'}, 'version': 1, 'locale': 'zh-CN', 'action': 'update', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-request-001', 'before': {'i18n': {'en-US': {'summary': '旧简介'}, 'zh-CN': {'summary': '旧简介'}, 'ja-JP': {'summary': '旧简介'}, 'es-ES': {'summary': '旧简介'}, 'pt-BR': {'summary': '旧简介'}, 'ru-RU': {'summary': '旧简介'}}}, 'after': {'i18n': {'en-US': {'summary': '新简介'}, 'zh-CN': {'summary': '新简介'}, 'ja-JP': {'summary': '新简介'}, 'es-ES': {'summary': '新简介'}, 'pt-BR': {'summary': '新简介'}, 'ru-RU': {'summary': '新简介'}}}, 'createdAt': '2026-10-07T08:00:00+00:00', 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/apps/visual-studio-code'], 'operationId': 'updatePackageText', 'requiredPermissions': ['catalog:package:edit']}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -3674,7 +3674,7 @@ class ContentRevisionsResponse(BaseModel):
 
 
 class ContentRevisionsResponseResult(RootModel[ContentRevisionsResponse | BusinessErrorResponse]):
-    root: Annotated[ContentRevisionsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'object': {'entity': 'package', 'objectKey': '1'}, 'version': 1, 'locale': 'zh-CN', 'action': 'update', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-request-001', 'before': {'i18n': {'en-US': {'summary': '旧简介'}, 'zh-CN': {'summary': '旧简介'}, 'ja-JP': {'summary': '旧简介'}, 'es-ES': {'summary': '旧简介'}, 'pt-BR': {'summary': '旧简介'}, 'ru-RU': {'summary': '旧简介'}}}, 'after': {'i18n': {'en-US': {'summary': '新简介'}, 'zh-CN': {'summary': '新简介'}, 'ja-JP': {'summary': '新简介'}, 'es-ES': {'summary': '新简介'}, 'pt-BR': {'summary': '新简介'}, 'ru-RU': {'summary': '新简介'}}}, 'createdAt': '2026-10-07 08:00:00+00:00', 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/apps/visual-studio-code'], 'operationId': 'updatePackageText', 'requiredPermissions': ['catalog:package:edit']}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[ContentRevisionsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'object': {'entity': 'package', 'objectKey': '1'}, 'version': 1, 'locale': 'zh-CN', 'action': 'update', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-request-001', 'before': {'i18n': {'en-US': {'summary': '旧简介'}, 'zh-CN': {'summary': '旧简介'}, 'ja-JP': {'summary': '旧简介'}, 'es-ES': {'summary': '旧简介'}, 'pt-BR': {'summary': '旧简介'}, 'ru-RU': {'summary': '旧简介'}}}, 'after': {'i18n': {'en-US': {'summary': '新简介'}, 'zh-CN': {'summary': '新简介'}, 'ja-JP': {'summary': '新简介'}, 'es-ES': {'summary': '新简介'}, 'pt-BR': {'summary': '新简介'}, 'ru-RU': {'summary': '新简介'}}}, 'createdAt': '2026-10-07T08:00:00+00:00', 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/apps/visual-studio-code'], 'operationId': 'updatePackageText', 'requiredPermissions': ['catalog:package:edit']}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class ContentRevisionResponse(BaseModel):
@@ -3687,7 +3687,7 @@ class ContentRevisionResponse(BaseModel):
 
 
 class ContentRevisionResponseResult(RootModel[ContentRevisionResponse | BusinessErrorResponse]):
-    root: Annotated[ContentRevisionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'object': {'entity': 'package', 'objectKey': '1'}, 'version': 1, 'locale': 'zh-CN', 'action': 'update', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-request-001', 'before': {'i18n': {'en-US': {'summary': '旧简介'}, 'zh-CN': {'summary': '旧简介'}, 'ja-JP': {'summary': '旧简介'}, 'es-ES': {'summary': '旧简介'}, 'pt-BR': {'summary': '旧简介'}, 'ru-RU': {'summary': '旧简介'}}}, 'after': {'i18n': {'en-US': {'summary': '新简介'}, 'zh-CN': {'summary': '新简介'}, 'ja-JP': {'summary': '新简介'}, 'es-ES': {'summary': '新简介'}, 'pt-BR': {'summary': '新简介'}, 'ru-RU': {'summary': '新简介'}}}, 'createdAt': '2026-10-07 08:00:00+00:00', 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/apps/visual-studio-code'], 'operationId': 'updatePackageText', 'requiredPermissions': ['catalog:package:edit']}}])]
+    root: Annotated[ContentRevisionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'object': {'entity': 'package', 'objectKey': '1'}, 'version': 1, 'locale': 'zh-CN', 'action': 'update', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-request-001', 'before': {'i18n': {'en-US': {'summary': '旧简介'}, 'zh-CN': {'summary': '旧简介'}, 'ja-JP': {'summary': '旧简介'}, 'es-ES': {'summary': '旧简介'}, 'pt-BR': {'summary': '旧简介'}, 'ru-RU': {'summary': '旧简介'}}}, 'after': {'i18n': {'en-US': {'summary': '新简介'}, 'zh-CN': {'summary': '新简介'}, 'ja-JP': {'summary': '新简介'}, 'es-ES': {'summary': '新简介'}, 'pt-BR': {'summary': '新简介'}, 'ru-RU': {'summary': '新简介'}}}, 'createdAt': '2026-10-07T08:00:00+00:00', 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/apps/visual-studio-code'], 'operationId': 'updatePackageText', 'requiredPermissions': ['catalog:package:edit']}}])]
 
 
 class RevisionId(RootModel[int]):
@@ -3735,8 +3735,8 @@ class TrashItem(BaseModel):
     snapshot: dict[str, Any]
     actor: HistoryActor
     requestId: Annotated[str, Field(examples=['demo-delete-001'], max_length=128)]
-    deletedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
-    expiresAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    deletedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
+    expiresAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
     restoredAt: Annotated[AwareDatetime | None, Field(examples=[None])]
     canRestore: Annotated[bool, Field(examples=[True])]
     affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/collections/new-mac']])]
@@ -3746,7 +3746,7 @@ class Data23(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[TrashItem], Field(examples=[[{'id': 1, 'object': {'entity': 'collection', 'objectKey': '1'}, 'label': '新 Mac 必装', 'snapshot': {'slug': 'new-mac', 'i18n': {'en-US': {'title': '新 Mac 必装'}, 'zh-CN': {'title': '新 Mac 必装'}, 'ja-JP': {'title': '新 Mac 必装'}, 'es-ES': {'title': '新 Mac 必装'}, 'pt-BR': {'title': '新 Mac 必装'}, 'ru-RU': {'title': '新 Mac 必装'}}, 'items': []}, 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-delete-001', 'deletedAt': '2026-10-07 08:00:00+00:00', 'expiresAt': '2026-11-06 08:00:00+00:00', 'restoredAt': None, 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/collections/new-mac']}]])]
+    records: Annotated[list[TrashItem], Field(examples=[[{'id': 1, 'object': {'entity': 'collection', 'objectKey': '1'}, 'label': '新 Mac 必装', 'snapshot': {'slug': 'new-mac', 'i18n': {'en-US': {'title': '新 Mac 必装'}, 'zh-CN': {'title': '新 Mac 必装'}, 'ja-JP': {'title': '新 Mac 必装'}, 'es-ES': {'title': '新 Mac 必装'}, 'pt-BR': {'title': '新 Mac 必装'}, 'ru-RU': {'title': '新 Mac 必装'}}, 'items': []}, 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-delete-001', 'deletedAt': '2026-10-07T08:00:00+00:00', 'expiresAt': '2026-11-06T08:00:00+00:00', 'restoredAt': None, 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/collections/new-mac']}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -3762,7 +3762,7 @@ class TrashResponse(BaseModel):
 
 
 class TrashResponseResult(RootModel[TrashResponse | BusinessErrorResponse]):
-    root: Annotated[TrashResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'object': {'entity': 'collection', 'objectKey': '1'}, 'label': '新 Mac 必装', 'snapshot': {'slug': 'new-mac', 'i18n': {'en-US': {'title': '新 Mac 必装'}, 'zh-CN': {'title': '新 Mac 必装'}, 'ja-JP': {'title': '新 Mac 必装'}, 'es-ES': {'title': '新 Mac 必装'}, 'pt-BR': {'title': '新 Mac 必装'}, 'ru-RU': {'title': '新 Mac 必装'}}, 'items': []}, 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-delete-001', 'deletedAt': '2026-10-07 08:00:00+00:00', 'expiresAt': '2026-11-06 08:00:00+00:00', 'restoredAt': None, 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/collections/new-mac']}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[TrashResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'object': {'entity': 'collection', 'objectKey': '1'}, 'label': '新 Mac 必装', 'snapshot': {'slug': 'new-mac', 'i18n': {'en-US': {'title': '新 Mac 必装'}, 'zh-CN': {'title': '新 Mac 必装'}, 'ja-JP': {'title': '新 Mac 必装'}, 'es-ES': {'title': '新 Mac 必装'}, 'pt-BR': {'title': '新 Mac 必装'}, 'ru-RU': {'title': '新 Mac 必装'}}, 'items': []}, 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-delete-001', 'deletedAt': '2026-10-07T08:00:00+00:00', 'expiresAt': '2026-11-06T08:00:00+00:00', 'restoredAt': None, 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/collections/new-mac']}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class TrashItemResponse(BaseModel):
@@ -3775,7 +3775,7 @@ class TrashItemResponse(BaseModel):
 
 
 class TrashItemResponseResult(RootModel[TrashItemResponse | BusinessErrorResponse]):
-    root: Annotated[TrashItemResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'object': {'entity': 'collection', 'objectKey': '1'}, 'label': '新 Mac 必装', 'snapshot': {'slug': 'new-mac', 'i18n': {'en-US': {'title': '新 Mac 必装'}, 'zh-CN': {'title': '新 Mac 必装'}, 'ja-JP': {'title': '新 Mac 必装'}, 'es-ES': {'title': '新 Mac 必装'}, 'pt-BR': {'title': '新 Mac 必装'}, 'ru-RU': {'title': '新 Mac 必装'}}, 'items': []}, 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-delete-001', 'deletedAt': '2026-10-07 08:00:00+00:00', 'expiresAt': '2026-11-06 08:00:00+00:00', 'restoredAt': None, 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/collections/new-mac']}}])]
+    root: Annotated[TrashItemResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'object': {'entity': 'collection', 'objectKey': '1'}, 'label': '新 Mac 必装', 'snapshot': {'slug': 'new-mac', 'i18n': {'en-US': {'title': '新 Mac 必装'}, 'zh-CN': {'title': '新 Mac 必装'}, 'ja-JP': {'title': '新 Mac 必装'}, 'es-ES': {'title': '新 Mac 必装'}, 'pt-BR': {'title': '新 Mac 必装'}, 'ru-RU': {'title': '新 Mac 必装'}}, 'items': []}, 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'requestId': 'demo-delete-001', 'deletedAt': '2026-10-07T08:00:00+00:00', 'expiresAt': '2026-11-06T08:00:00+00:00', 'restoredAt': None, 'canRestore': True, 'affectedUrls': ['https://opennavo.example/zh/collections/new-mac']}}])]
 
 
 class AgentCall(BaseModel):
@@ -3798,14 +3798,14 @@ class AgentCall(BaseModel):
     resultSummary: dict[str, Any]
     canRevert: Annotated[bool, Field(examples=[True])]
     revertedByRequestId: Annotated[str | None, Field(examples=[None], max_length=128)]
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
 
 
 class Data24(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[AgentCall], Field(examples=[[{'id': 1, 'requestId': 'demo-request-001', 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'tool': 'package_set_text', 'operationId': 'updatePackageText', 'objects': [{'entity': 'package', 'objectKey': '1'}], 'code': '0000', 'durationMs': 35, 'dryRun': False, 'paramsSummary': {'packageId': 1, 'sourceLocale': 'zh-CN', 'fields': ['summary']}, 'resultSummary': {'revisionIds': [1]}, 'canRevert': True, 'revertedByRequestId': None, 'createdAt': '2026-10-07 08:00:00+00:00'}]])]
+    records: Annotated[list[AgentCall], Field(examples=[[{'id': 1, 'requestId': 'demo-request-001', 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'tool': 'package_set_text', 'operationId': 'updatePackageText', 'objects': [{'entity': 'package', 'objectKey': '1'}], 'code': '0000', 'durationMs': 35, 'dryRun': False, 'paramsSummary': {'packageId': 1, 'sourceLocale': 'zh-CN', 'fields': ['summary']}, 'resultSummary': {'revisionIds': [1]}, 'canRevert': True, 'revertedByRequestId': None, 'createdAt': '2026-10-07T08:00:00+00:00'}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -3821,7 +3821,7 @@ class AgentCallsResponse(BaseModel):
 
 
 class AgentCallsResponseResult(RootModel[AgentCallsResponse | BusinessErrorResponse]):
-    root: Annotated[AgentCallsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'requestId': 'demo-request-001', 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'tool': 'package_set_text', 'operationId': 'updatePackageText', 'objects': [{'entity': 'package', 'objectKey': '1'}], 'code': '0000', 'durationMs': 35, 'dryRun': False, 'paramsSummary': {'packageId': 1, 'sourceLocale': 'zh-CN', 'fields': ['summary']}, 'resultSummary': {'revisionIds': [1]}, 'canRevert': True, 'revertedByRequestId': None, 'createdAt': '2026-10-07 08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[AgentCallsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'requestId': 'demo-request-001', 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'tool': 'package_set_text', 'operationId': 'updatePackageText', 'objects': [{'entity': 'package', 'objectKey': '1'}], 'code': '0000', 'durationMs': 35, 'dryRun': False, 'paramsSummary': {'packageId': 1, 'sourceLocale': 'zh-CN', 'fields': ['summary']}, 'resultSummary': {'revisionIds': [1]}, 'canRevert': True, 'revertedByRequestId': None, 'createdAt': '2026-10-07T08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class AgentCallResponse(BaseModel):
@@ -3834,7 +3834,7 @@ class AgentCallResponse(BaseModel):
 
 
 class AgentCallResponseResult(RootModel[AgentCallResponse | BusinessErrorResponse]):
-    root: Annotated[AgentCallResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'requestId': 'demo-request-001', 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'tool': 'package_set_text', 'operationId': 'updatePackageText', 'objects': [{'entity': 'package', 'objectKey': '1'}], 'code': '0000', 'durationMs': 35, 'dryRun': False, 'paramsSummary': {'packageId': 1, 'sourceLocale': 'zh-CN', 'fields': ['summary']}, 'resultSummary': {'revisionIds': [1]}, 'canRevert': True, 'revertedByRequestId': None, 'createdAt': '2026-10-07 08:00:00+00:00'}}])]
+    root: Annotated[AgentCallResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'requestId': 'demo-request-001', 'clientId': 1, 'clientName': 'Hermes · 家里电脑', 'tokenId': 1, 'tokenPrefix': 'onv_demo', 'tool': 'package_set_text', 'operationId': 'updatePackageText', 'objects': [{'entity': 'package', 'objectKey': '1'}], 'code': '0000', 'durationMs': 35, 'dryRun': False, 'paramsSummary': {'packageId': 1, 'sourceLocale': 'zh-CN', 'fields': ['summary']}, 'resultSummary': {'revisionIds': [1]}, 'canRevert': True, 'revertedByRequestId': None, 'createdAt': '2026-10-07T08:00:00+00:00'}}])]
 
 
 class FieldModel(RootModel[str]):
@@ -3860,14 +3860,14 @@ class TranslationLog(BaseModel):
     reason: Annotated[str, Field(examples=[''], max_length=1000)]
     requestId: Annotated[str | None, Field(examples=[None], max_length=128)]
     actor: HistoryActor
-    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
 
 
 class Data25(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[TranslationLog], Field(examples=[[{'id': 1, 'ref': {'entity': 'package', 'id': 1}, 'fields': ['summary'], 'sourceLocale': 'zh-CN', 'targetLocales': ['en-US', 'ja-JP'], 'model': 'gpt-6-luna', 'promptTokens': 100, 'completionTokens': 80, 'reasoningTokens': 30, 'cachedTokens': 0, 'latencyMs': 1200, 'status': 'succeeded', 'reason': '', 'requestId': 'demo-request-001', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'createdAt': '2026-10-07 08:00:00+00:00'}]])]
+    records: Annotated[list[TranslationLog], Field(examples=[[{'id': 1, 'ref': {'entity': 'package', 'id': 1}, 'fields': ['summary'], 'sourceLocale': 'zh-CN', 'targetLocales': ['en-US', 'ja-JP'], 'model': 'gpt-6-luna', 'promptTokens': 100, 'completionTokens': 80, 'reasoningTokens': 30, 'cachedTokens': 0, 'latencyMs': 1200, 'status': 'succeeded', 'reason': '', 'requestId': 'demo-request-001', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'createdAt': '2026-10-07T08:00:00+00:00'}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -3883,7 +3883,7 @@ class TranslationLogsResponse(BaseModel):
 
 
 class TranslationLogsResponseResult(RootModel[TranslationLogsResponse | BusinessErrorResponse]):
-    root: Annotated[TranslationLogsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'ref': {'entity': 'package', 'id': 1}, 'fields': ['summary'], 'sourceLocale': 'zh-CN', 'targetLocales': ['en-US', 'ja-JP'], 'model': 'gpt-6-luna', 'promptTokens': 100, 'completionTokens': 80, 'reasoningTokens': 30, 'cachedTokens': 0, 'latencyMs': 1200, 'status': 'succeeded', 'reason': '', 'requestId': 'demo-request-001', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'createdAt': '2026-10-07 08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[TranslationLogsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'ref': {'entity': 'package', 'id': 1}, 'fields': ['summary'], 'sourceLocale': 'zh-CN', 'targetLocales': ['en-US', 'ja-JP'], 'model': 'gpt-6-luna', 'promptTokens': 100, 'completionTokens': 80, 'reasoningTokens': 30, 'cachedTokens': 0, 'latencyMs': 1200, 'status': 'succeeded', 'reason': '', 'requestId': 'demo-request-001', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'createdAt': '2026-10-07T08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class TranslationLogResponse(BaseModel):
@@ -3896,7 +3896,7 @@ class TranslationLogResponse(BaseModel):
 
 
 class TranslationLogResponseResult(RootModel[TranslationLogResponse | BusinessErrorResponse]):
-    root: Annotated[TranslationLogResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'ref': {'entity': 'package', 'id': 1}, 'fields': ['summary'], 'sourceLocale': 'zh-CN', 'targetLocales': ['en-US', 'ja-JP'], 'model': 'gpt-6-luna', 'promptTokens': 100, 'completionTokens': 80, 'reasoningTokens': 30, 'cachedTokens': 0, 'latencyMs': 1200, 'status': 'succeeded', 'reason': '', 'requestId': 'demo-request-001', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'createdAt': '2026-10-07 08:00:00+00:00'}}])]
+    root: Annotated[TranslationLogResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'ref': {'entity': 'package', 'id': 1}, 'fields': ['summary'], 'sourceLocale': 'zh-CN', 'targetLocales': ['en-US', 'ja-JP'], 'model': 'gpt-6-luna', 'promptTokens': 100, 'completionTokens': 80, 'reasoningTokens': 30, 'cachedTokens': 0, 'latencyMs': 1200, 'status': 'succeeded', 'reason': '', 'requestId': 'demo-request-001', 'actor': {'type': 'agent', 'id': 6, 'name': 'Hermes · 家里电脑'}, 'createdAt': '2026-10-07T08:00:00+00:00'}}])]
 
 
 class HermesDaily(BaseModel):
@@ -3919,7 +3919,7 @@ class AdminCatalogVersion(BaseModel):
     token: Annotated[str, Field(examples=['visual-studio-code'], max_length=128)]
     version: Annotated[str, Field(examples=['1.140.0'], max_length=256)]
     versionBase: Annotated[str, Field(examples=['1.140.0'], max_length=256)]
-    firstSeenAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    firstSeenAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
     brewCommittedAt: Annotated[AwareDatetime | None, Field(examples=[None])]
     rank30d: Annotated[int | None, Field(examples=[None], ge=0)]
     hasEditorial: Annotated[bool, Field(examples=[False])]
@@ -3932,7 +3932,7 @@ class Data26(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[AdminCatalogVersion], Field(examples=[[{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07 08:00:00+00:00', 'brewCommittedAt': '2026-10-07 07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'editorialScope': 'none', 'historicalReleaseId': None}]])]
+    records: Annotated[list[AdminCatalogVersion], Field(examples=[[{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07T08:00:00+00:00', 'brewCommittedAt': '2026-10-07T07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'editorialScope': 'none', 'historicalReleaseId': None}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -3948,7 +3948,7 @@ class AdminCatalogVersionsResponse(BaseModel):
 
 
 class AdminCatalogVersionsResponseResult(RootModel[AdminCatalogVersionsResponse | BusinessErrorResponse]):
-    root: Annotated[AdminCatalogVersionsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07 08:00:00+00:00', 'brewCommittedAt': '2026-10-07 07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'editorialScope': 'none', 'historicalReleaseId': None}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[AdminCatalogVersionsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'packageVersionId': 1, 'packageId': 1, 'token': 'visual-studio-code', 'version': '1.140.0', 'versionBase': '1.140.0', 'firstSeenAt': '2026-10-07T08:00:00+00:00', 'brewCommittedAt': '2026-10-07T07:00:00+00:00', 'rank30d': 1, 'hasEditorial': False, 'editorialReleaseId': None, 'editorialScope': 'none', 'historicalReleaseId': None}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class ClaimSeoTasksInput(BaseModel):
@@ -5047,8 +5047,8 @@ class ListAdminCatalogChangesInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07 08:00:00+00:00'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07 08:00:00+00:00'])] = None
+    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-06T08:00:00Z'])] = None
+    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
     type: Annotated[Literal['created', 'updated', 'removed', 'renamed'] | None, Field(examples=['updated'])] = None
     hasEditorial: Annotated[bool | None, Field(examples=[False])] = None
     sort: Annotated[Literal['changed', 'popular'], Field(examples=['changed'])] = 'changed'
@@ -5069,8 +5069,8 @@ class ListContentRevisionsInput(BaseModel):
     entity: HistoryEntity | None = None
     objectKey: Annotated[str | None, Field(examples=['1'], max_length=200)] = None
     requestId: Annotated[str | None, Field(examples=['demo-request-001'], max_length=128)] = None
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07 08:00:00+00:00'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07 08:00:00+00:00'])] = None
+    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = None
+    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
     locale: Locale | None = None
     actorId: Annotated[int | None, Field(examples=[6], ge=1)] = None
 
@@ -5105,8 +5105,8 @@ class ListTrashInput(BaseModel):
     entity: HistoryEntity | None = None
     objectKey: Annotated[str | None, Field(examples=['1'], max_length=200)] = None
     requestId: Annotated[str | None, Field(examples=['demo-request-001'], max_length=128)] = None
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07 08:00:00+00:00'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07 08:00:00+00:00'])] = None
+    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = None
+    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
     restored: Annotated[bool | None, Field(examples=[False])] = None
 
 
@@ -5152,8 +5152,8 @@ class ListAgentCallsInput(BaseModel):
     entity: HistoryEntity | None = None
     objectKey: Annotated[str | None, Field(examples=['1'], max_length=200)] = None
     requestId: Annotated[str | None, Field(examples=['demo-request-001'], max_length=128)] = None
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07 08:00:00+00:00'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07 08:00:00+00:00'])] = None
+    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = None
+    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
     clientId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     tokenId: Annotated[int | None, Field(examples=[1], ge=1)] = None
     tool: Annotated[str | None, Field(examples=['package_set_text'], max_length=128)] = None
@@ -5177,8 +5177,8 @@ class ListTranslationLogsInput(BaseModel):
     entity: HistoryEntity | None = None
     objectKey: Annotated[str | None, Field(examples=['1'], max_length=200)] = None
     requestId: Annotated[str | None, Field(examples=['demo-request-001'], max_length=128)] = None
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07 08:00:00+00:00'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07 08:00:00+00:00'])] = None
+    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = None
+    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
     locale: Locale | None = None
     status: Annotated[Literal['succeeded', 'failed', 'stale'] | None, Field(examples=['succeeded'])] = None
 
@@ -5559,7 +5559,7 @@ class SeoKeywordObservation(BaseModel):
     serpFeatures: Annotated[list[SerpFeature] | None, Field(max_length=30)] = None
     vendorTaskId: Annotated[str | None, Field(examples=['fixture-task-1'], max_length=200)] = None
     costUsd: Annotated[str | None, Field(examples=['0.0000'], pattern='^(0|[1-9][0-9]{0,5})(\\.[0-9]{1,4})?$')] = None
-    observedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18 10:00:00+00:00'])]
+    observedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00+00:00'])]
 
 
 class SeoTarget(BaseModel):
@@ -5590,7 +5590,7 @@ class SeoKeywordRecord(BaseModel):
     serpFeatures: Annotated[list[SerpFeature], Field(max_length=30)]
     vendorTaskId: Annotated[str | None, Field(examples=['fixture-task-1'], max_length=200)]
     costUsd: Annotated[str | None, Field(examples=['0.0000'], pattern='^(0|[1-9][0-9]{0,5})(\\.[0-9]{1,4})?$')]
-    observedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18 10:00:00+00:00'])]
+    observedAt: Annotated[AwareDatetime, Field(examples=['2026-10-18T10:00:00+00:00'])]
     id: Annotated[int, Field(examples=[1], ge=1)]
     normalized: Annotated[str, Field(examples=['example editor mac'])]
     anomaly: Annotated[str | None, Field(examples=['piracy'])]
@@ -5697,7 +5697,7 @@ class SeoKeywordsResultResponse(BaseModel):
 
 
 class SeoKeywordsResultResponseResult(RootModel[SeoKeywordsResultResponse | BusinessErrorResponse]):
-    root: Annotated[SeoKeywordsResultResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'keyword': 'Example Editor mac', 'source': 'gsc', 'engine': 'google', 'country': 'US', 'language': 'en-US', 'device': 'desktop', 'period': '2026-10', 'searchVolume': 100, 'volumeState': 'known', 'observedAt': '2026-10-18 10:00:00+00:00', 'id': 1, 'normalized': 'example editor mac', 'difficulty': None, 'ourPosition': None, 'serpFeatures': [], 'vendorTaskId': None, 'costUsd': None, 'anomaly': None, 'links': []}], 'targets': []}}])]
+    root: Annotated[SeoKeywordsResultResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'keyword': 'Example Editor mac', 'source': 'gsc', 'engine': 'google', 'country': 'US', 'language': 'en-US', 'device': 'desktop', 'period': '2026-10', 'searchVolume': 100, 'volumeState': 'known', 'observedAt': '2026-10-18T10:00:00+00:00', 'id': 1, 'normalized': 'example editor mac', 'difficulty': None, 'ourPosition': None, 'serpFeatures': [], 'vendorTaskId': None, 'costUsd': None, 'anomaly': None, 'links': []}], 'targets': []}}])]
 
 
 class SeoKeywordPageResponse(BaseModel):
@@ -5710,7 +5710,7 @@ class SeoKeywordPageResponse(BaseModel):
 
 
 class SeoKeywordPageResponseResult(RootModel[SeoKeywordPageResponse | BusinessErrorResponse]):
-    root: Annotated[SeoKeywordPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'current': 1, 'size': 10, 'total': 1, 'records': [{'keyword': 'Example Editor mac', 'source': 'gsc', 'engine': 'google', 'country': 'US', 'language': 'en-US', 'device': 'desktop', 'period': '2026-10', 'searchVolume': 100, 'volumeState': 'known', 'observedAt': '2026-10-18 10:00:00+00:00', 'id': 1, 'normalized': 'example editor mac', 'difficulty': None, 'ourPosition': None, 'serpFeatures': [], 'vendorTaskId': None, 'costUsd': None, 'anomaly': None, 'links': []}]}}])]
+    root: Annotated[SeoKeywordPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'current': 1, 'size': 10, 'total': 1, 'records': [{'keyword': 'Example Editor mac', 'source': 'gsc', 'engine': 'google', 'country': 'US', 'language': 'en-US', 'device': 'desktop', 'period': '2026-10', 'searchVolume': 100, 'volumeState': 'known', 'observedAt': '2026-10-18T10:00:00+00:00', 'id': 1, 'normalized': 'example editor mac', 'difficulty': None, 'ourPosition': None, 'serpFeatures': [], 'vendorTaskId': None, 'costUsd': None, 'anomaly': None, 'links': []}]}}])]
 
 
 class SeoOverviewResponse(BaseModel):
@@ -5928,7 +5928,7 @@ class IndexReportResponse(BaseModel):
 
 
 class IndexReportResponseResult(RootModel[IndexReportResponse | BusinessErrorResponse]):
-    root: Annotated[IndexReportResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'token': 'visual-studio-code', 'displayName': 'Visual Studio Code', 'firstSeenAt': '2026-10-01 08:00:00+00:00', 'eligible': False, 'reason': 'missing_summary', 'enforced': False, 'override': 'auto', 'overrideReason': None}], 'current': 1, 'size': 24, 'total': 1, 'counts': {'hidden': 0, 'forcedNoindex': 0, 'unavailable': 12, 'missingSummary': 1, 'thin': 3, 'forcedIndex': 0}}}])]
+    root: Annotated[IndexReportResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'token': 'visual-studio-code', 'displayName': 'Visual Studio Code', 'firstSeenAt': '2026-10-01T08:00:00+00:00', 'eligible': False, 'reason': 'missing_summary', 'enforced': False, 'override': 'auto', 'overrideReason': None}], 'current': 1, 'size': 24, 'total': 1, 'counts': {'hidden': 0, 'forcedNoindex': 0, 'unavailable': 12, 'missingSummary': 1, 'thin': 3, 'forcedIndex': 0}}}])]
 
 
 class Pages(BaseModel):
@@ -5991,35 +5991,35 @@ class SeoSettingsResponse(BaseModel):
 
 
 class SeoSettingsResponseResult(RootModel[SeoSettingsResponse | BusinessErrorResponse]):
-    root: Annotated[SeoSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'settings': {'identity': {'name': 'OpenNavo', 'alternateNames': ['opennavo.com'], 'logoUrl': 'https://opennavo.example/brand/logo-512.png', 'sameAs': ['https://github.com/opennavo/OpenNavo', 'https://x.com/opennavo']}, 'verification': {'google': '', 'bing': ''}, 'analytics': {'ga4Enabled': True, 'ga4MeasurementId': 'G-EXAMPLE123', 'consentRegions': ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'IS', 'LI', False, 'GB', 'CH']}, 'indexNow': {'enabled': False}, 'cloudflare': {'zoneId': '', 'purgeEnabled': False}, 'edgeCache': {'enabled': False}, 'crawlers': {'training': {'mode': 'limit', 'delaySeconds': 10, 'bots': ['ClaudeBot']}, 'seoTools': {'mode': 'block', 'delaySeconds': 10, 'bots': ['MJ12bot', 'SerpstatBot']}}, 'pages': {'titleTemplate': 'new', 'indexPolicy': {'mode': 'shadow', 'scope': 'new', 'since': ''}, 'versionsSitemap': False}}, 'indexNowKeyConfigured': False, 'cloudflareTokenConfigured': False, 'updatedAt': '2026-10-13 08:00:00+00:00', 'revision': 1, 'siteUrl': 'https://opennavo.example', 'changeFeed': {'lastRunAt': '2026-10-13 08:00:00+00:00', 'lastUrls': 6, 'lastIndexnowStatus': 'ok: 6 URLs', 'lastPurgeStatus': '', 'lastError': ''}}}])]
+    root: Annotated[SeoSettingsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'settings': {'identity': {'name': 'OpenNavo', 'alternateNames': ['opennavo.com'], 'logoUrl': 'https://opennavo.example/brand/logo-512.png', 'sameAs': ['https://github.com/opennavo/OpenNavo', 'https://x.com/opennavo']}, 'verification': {'google': '', 'bing': ''}, 'analytics': {'ga4Enabled': True, 'ga4MeasurementId': 'G-EXAMPLE123', 'consentRegions': ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'IS', 'LI', False, 'GB', 'CH']}, 'indexNow': {'enabled': False}, 'cloudflare': {'zoneId': '', 'purgeEnabled': False}, 'edgeCache': {'enabled': False}, 'crawlers': {'training': {'mode': 'limit', 'delaySeconds': 10, 'bots': ['ClaudeBot']}, 'seoTools': {'mode': 'block', 'delaySeconds': 10, 'bots': ['MJ12bot', 'SerpstatBot']}}, 'pages': {'titleTemplate': 'new', 'indexPolicy': {'mode': 'shadow', 'scope': 'new', 'since': ''}, 'versionsSitemap': False}}, 'indexNowKeyConfigured': False, 'cloudflareTokenConfigured': False, 'updatedAt': '2026-10-13T08:00:00+00:00', 'revision': 1, 'siteUrl': 'https://opennavo.example', 'changeFeed': {'lastRunAt': '2026-10-13T08:00:00+00:00', 'lastUrls': 6, 'lastIndexnowStatus': 'ok: 6 URLs', 'lastPurgeStatus': '', 'lastError': ''}}}])]
 
 
 class AdminReleasePageResponseResult(RootModel[AdminReleasePageResponse | BusinessErrorResponse]):
-    root: Annotated[AdminReleasePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'packageId': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'packageName': 'Visual Studio Code', 'version': '1.140.0', 'title': None, 'publishedAt': None, 'source': 'github_release', 'sourceUrl': None, 'hidden': False, 'isPrerelease': False, 'translationStatus': 'source', 'fetchedAt': '2026-09-30 08:00:00+00:00', 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[AdminReleasePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'packageId': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'packageName': 'Visual Studio Code', 'version': '1.140.0', 'title': None, 'publishedAt': None, 'source': 'github_release', 'sourceUrl': None, 'hidden': False, 'isPrerelease': False, 'translationStatus': 'source', 'fetchedAt': '2026-09-30T08:00:00+00:00', 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class AdminUserPageResponseResult(RootModel[AdminUserPageResponse | BusinessErrorResponse]):
-    root: Annotated[AdminUserPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'createBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30 08:00:00+00:00', 'id': 1, 'userName': 'local-admin', 'nickName': '本地管理员', 'email': None, 'avatarUrl': None, 'status': '1', 'roles': ['R_SUPER'], 'lastLoginAt': None, 'lastLoginIp': None, 'locked': False}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[AdminUserPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'createBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30T08:00:00+00:00', 'id': 1, 'userName': 'local-admin', 'nickName': '本地管理员', 'email': None, 'avatarUrl': None, 'status': '1', 'roles': ['R_SUPER'], 'lastLoginAt': None, 'lastLoginIp': None, 'locked': False}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class AdminUserResponseResult(RootModel[AdminUserResponse | BusinessErrorResponse]):
-    root: Annotated[AdminUserResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'createBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30 08:00:00+00:00', 'id': 1, 'userName': 'local-admin', 'nickName': '本地管理员', 'email': None, 'avatarUrl': None, 'status': '1', 'roles': ['R_SUPER'], 'lastLoginAt': None, 'lastLoginIp': None, 'locked': False}}])]
+    root: Annotated[AdminUserResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'createBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30T08:00:00+00:00', 'id': 1, 'userName': 'local-admin', 'nickName': '本地管理员', 'email': None, 'avatarUrl': None, 'status': '1', 'roles': ['R_SUPER'], 'lastLoginAt': None, 'lastLoginIp': None, 'locked': False}}])]
 
 
 class AppConfigListResponseResult(RootModel[AppConfigListResponse | BusinessErrorResponse]):
-    root: Annotated[AppConfigListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'key': 'desktop.minSupportedVersion', 'value': '0.0.1', 'description': '最低客户端版本', 'updateBy': 'local-admin', 'updateTime': '2026-09-30 08:00:00+00:00'}]}])]
+    root: Annotated[AppConfigListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'key': 'desktop.minSupportedVersion', 'value': '0.0.1', 'description': '最低客户端版本', 'updateBy': 'local-admin', 'updateTime': '2026-09-30T08:00:00+00:00'}]}])]
 
 
 class AssetPageResponseResult(RootModel[AssetPageResponse | BusinessErrorResponse]):
-    root: Annotated[AssetPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'kind': 'icon', 'url': 'https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png', 'mime': 'image/png', 'width': 256, 'height': 256, 'bytes': 12000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'createTime': '2026-09-30 08:00:00+00:00'}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[AssetPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'kind': 'icon', 'url': 'https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png', 'mime': 'image/png', 'width': 256, 'height': 256, 'bytes': 12000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'createTime': '2026-09-30T08:00:00+00:00'}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class AuditLogPageResponseResult(RootModel[AuditLogPageResponse | BusinessErrorResponse]):
-    root: Annotated[AuditLogPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'actorId': None, 'actorName': None, 'action': 'catalog.package.update', 'entityType': 'package', 'entityId': '1', 'before': None, 'after': None, 'ip': None, 'createTime': '2026-09-30 08:00:00+00:00'}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[AuditLogPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'actorId': None, 'actorName': None, 'action': 'catalog.package.update', 'entityType': 'package', 'entityId': '1', 'before': None, 'after': None, 'ip': None, 'createTime': '2026-09-30T08:00:00+00:00'}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class ChangelogSourceListResponseResult(RootModel[ChangelogSourceListResponse | BusinessErrorResponse]):
-    root: Annotated[ChangelogSourceListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'type': 'homebrew_commits', 'config': {}, 'priority': 1, 'enabled': True, 'resolvedBy': 'auto', 'lastFetchedAt': None, 'lastStatus': 'never', 'lastError': None, 'failCount': 1, 'nextFetchAt': '2026-09-30 08:00:00+00:00'}]}])]
+    root: Annotated[ChangelogSourceListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'type': 'homebrew_commits', 'config': {}, 'priority': 1, 'enabled': True, 'resolvedBy': 'auto', 'lastFetchedAt': None, 'lastStatus': 'never', 'lastError': None, 'failCount': 1, 'nextFetchAt': '2026-09-30T08:00:00+00:00'}]}])]
 
 
 class EmptyResponseResult(RootModel[EmptyResponse | BusinessErrorResponse]):
@@ -6027,11 +6027,11 @@ class EmptyResponseResult(RootModel[EmptyResponse | BusinessErrorResponse]):
 
 
 class FeedbackPageResponseResult(RootModel[FeedbackPageResponse | BusinessErrorResponse]):
-    root: Annotated[FeedbackPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'type': 'wrong_info', 'packageId': None, 'packageToken': None, 'packageName': None, 'content': '希望补充该应用的中文使用说明。', 'contact': None, 'platform': 'web', 'appVersion': None, 'osVersion': None, 'errorCode': None, 'status': 'open', 'handlerNote': None, 'handledBy': None, 'handledAt': None, 'createTime': '2026-09-30 08:00:00+00:00'}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[FeedbackPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'type': 'wrong_info', 'packageId': None, 'packageToken': None, 'packageName': None, 'content': '希望补充该应用的中文使用说明。', 'contact': None, 'platform': 'web', 'appVersion': None, 'osVersion': None, 'errorCode': None, 'status': 'open', 'handlerNote': None, 'handledBy': None, 'handledAt': None, 'createTime': '2026-09-30T08:00:00+00:00'}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class FeedbackResponseResult(RootModel[FeedbackResponse | BusinessErrorResponse]):
-    root: Annotated[FeedbackResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'type': 'wrong_info', 'packageId': None, 'packageToken': None, 'packageName': None, 'content': '希望补充该应用的中文使用说明。', 'contact': None, 'platform': 'web', 'appVersion': None, 'osVersion': None, 'errorCode': None, 'status': 'open', 'handlerNote': None, 'handledBy': None, 'handledAt': None, 'createTime': '2026-09-30 08:00:00+00:00'}}])]
+    root: Annotated[FeedbackResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'type': 'wrong_info', 'packageId': None, 'packageToken': None, 'packageName': None, 'content': '希望补充该应用的中文使用说明。', 'contact': None, 'platform': 'web', 'appVersion': None, 'osVersion': None, 'errorCode': None, 'status': 'open', 'handlerNote': None, 'handledBy': None, 'handledAt': None, 'createTime': '2026-09-30T08:00:00+00:00'}}])]
 
 
 class IdResponseResult(RootModel[IdResponse | BusinessErrorResponse]):
@@ -6039,11 +6039,11 @@ class IdResponseResult(RootModel[IdResponse | BusinessErrorResponse]):
 
 
 class JobRunPageResponseResult(RootModel[JobRunPageResponse | BusinessErrorResponse]):
-    root: Annotated[JobRunPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'jobType': '本地演示样本', 'trigger': 'schedule', 'triggeredBy': None, 'status': 'running', 'stats': {}, 'error': None, 'startedAt': '2026-09-30 08:00:00+00:00', 'finishedAt': None, 'durationMs': None}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[JobRunPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'jobType': '本地演示样本', 'trigger': 'schedule', 'triggeredBy': None, 'status': 'running', 'stats': {}, 'error': None, 'startedAt': '2026-09-30T08:00:00+00:00', 'finishedAt': None, 'durationMs': None}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class JobRunResponseResult(RootModel[JobRunResponse | BusinessErrorResponse]):
-    root: Annotated[JobRunResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'jobType': '本地演示样本', 'trigger': 'schedule', 'triggeredBy': None, 'status': 'running', 'stats': {}, 'error': None, 'startedAt': '2026-09-30 08:00:00+00:00', 'finishedAt': None, 'durationMs': None}}])]
+    root: Annotated[JobRunResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'jobType': '本地演示样本', 'trigger': 'schedule', 'triggeredBy': None, 'status': 'running', 'stats': {}, 'error': None, 'startedAt': '2026-09-30T08:00:00+00:00', 'finishedAt': None, 'durationMs': None}}])]
 
 
 class LoginTokenResponseResult(RootModel[LoginTokenResponse | BusinessErrorResponse]):
@@ -6071,7 +6071,7 @@ class RoleListResponseResult(RootModel[RoleListResponse | BusinessErrorResponse]
 
 
 class SynonymPageResponseResult(RootModel[SynonymPageResponse | BusinessErrorResponse]):
-    root: Annotated[SynonymPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'createBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30 08:00:00+00:00', 'id': 1, 'terms': ['vscode', 'visual-studio-code', 'vs code'], 'enabled': True}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[SynonymPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'createBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30T08:00:00+00:00', 'id': 1, 'terms': ['vscode', 'visual-studio-code', 'vs code'], 'enabled': True}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class UserInfoResponseResult(RootModel[UserInfoResponse | BusinessErrorResponse]):
@@ -6109,8 +6109,8 @@ class AdminPackage(BaseModel):
     removed: Annotated[bool | None, Field(examples=[False])] = None
     translationStatus: PackageTranslationStatus
     changelogStatus: Annotated[Literal['none', 'ok', 'error'], Field(examples=['ok'])]
-    versionChangedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
-    updateTime: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
+    versionChangedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
+    updateTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
     sourceLocale: Locale | None = None
     displayName: LocalizedNullableString | None = None
     summary: LocalizedNullableString | None = None
@@ -6315,7 +6315,7 @@ class TranslationQueueItem(BaseModel):
     original: Annotated[str | None, Field(description="Text in the object's source language, not necessarily English.", examples=[None])] = None
     translated: Annotated[str | None, Field(examples=[None])] = None
     confidence: Annotated[float | None, Field(examples=[None])] = None
-    updatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-09-30 08:00:00+00:00'])] = None
+    updatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-09-30T08:00:00+00:00'])] = None
     locale: Locale | None = None
     sourceLocale: Locale | None = None
 
@@ -6329,7 +6329,7 @@ class DesktopRelease(BaseModel):
     artifacts: list[DesktopArtifact]
     pubDate: Annotated[AwareDatetime | None, Field(examples=[None])] = None
     publishedBy: Annotated[str | None, Field(examples=[None])] = None
-    createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30 08:00:00+00:00'])]
+    createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
     i18n: DesktopReleaseI18nViewMap
     sourceLocale: AppLocale
 
@@ -6552,14 +6552,14 @@ class TranslationObject(BaseModel):
     sourceHash: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'], max_length=64)]
     i18n: ContentLocaleStates
     webUrl: Annotated[AnyUrl | None, Field(examples=[None])]
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
 
 
 class Data17(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    records: Annotated[list[TranslationObject], Field(examples=[[{'ref': {'entity': 'package', 'id': 1}, 'label': 'Visual Studio Code', 'sourceLocale': 'zh-CN', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'i18n': {'en-US': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Example App', 'summary': 'An app for organizing daily work', 'description': '## Features\n\nOrganize daily work.'}}, 'zh-CN': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': '示例应用', 'summary': '帮助管理日常工作的应用', 'description': '## 功能\n\n帮助整理日常工作。'}}, 'ja-JP': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'サンプルアプリ', 'summary': '日々の作業を整理するアプリ', 'description': '## 機能\n\n日々の作業を整理します。'}}, 'es-ES': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicación de ejemplo', 'summary': 'Organiza el trabajo diario', 'description': '## Funciones\n\nOrganiza el trabajo diario.'}}, 'pt-BR': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicativo de exemplo', 'summary': 'Organize o trabalho diário', 'description': '## Recursos\n\nOrganize o trabalho diário.'}}, 'ru-RU': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Пример приложения', 'summary': 'Организация ежедневной работы', 'description': '## Возможности\n\nОрганизация работы.'}}}, 'webUrl': 'https://opennavo.example/zh/apps/visual-studio-code', 'updatedAt': '2026-10-07 08:00:00+00:00'}]])]
+    records: Annotated[list[TranslationObject], Field(examples=[[{'ref': {'entity': 'package', 'id': 1}, 'label': 'Visual Studio Code', 'sourceLocale': 'zh-CN', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'i18n': {'en-US': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Example App', 'summary': 'An app for organizing daily work', 'description': '## Features\n\nOrganize daily work.'}}, 'zh-CN': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': '示例应用', 'summary': '帮助管理日常工作的应用', 'description': '## 功能\n\n帮助整理日常工作。'}}, 'ja-JP': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'サンプルアプリ', 'summary': '日々の作業を整理するアプリ', 'description': '## 機能\n\n日々の作業を整理します。'}}, 'es-ES': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicación de ejemplo', 'summary': 'Organiza el trabajo diario', 'description': '## Funciones\n\nOrganiza el trabajo diario.'}}, 'pt-BR': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicativo de exemplo', 'summary': 'Organize o trabalho diário', 'description': '## Recursos\n\nOrganize o trabalho diário.'}}, 'ru-RU': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Пример приложения', 'summary': 'Организация ежедневной работы', 'description': '## Возможности\n\nОрганизация работы.'}}}, 'webUrl': 'https://opennavo.example/zh/apps/visual-studio-code', 'updatedAt': '2026-10-07T08:00:00+00:00'}]])]
     current: Annotated[int, Field(examples=[1], ge=1)]
     size: Annotated[int, Field(examples=[20], ge=1)]
     total: Annotated[int, Field(examples=[1], ge=0)]
@@ -6575,7 +6575,7 @@ class TranslationObjectsResponse(BaseModel):
 
 
 class TranslationObjectsResponseResult(RootModel[TranslationObjectsResponse | BusinessErrorResponse]):
-    root: Annotated[TranslationObjectsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'ref': {'entity': 'package', 'id': 1}, 'label': 'Visual Studio Code', 'sourceLocale': 'zh-CN', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'i18n': {'en-US': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Example App', 'summary': 'An app for organizing daily work', 'description': '## Features\n\nOrganize daily work.'}}, 'zh-CN': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': '示例应用', 'summary': '帮助管理日常工作的应用', 'description': '## 功能\n\n帮助整理日常工作。'}}, 'ja-JP': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'サンプルアプリ', 'summary': '日々の作業を整理するアプリ', 'description': '## 機能\n\n日々の作業を整理します。'}}, 'es-ES': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicación de ejemplo', 'summary': 'Organiza el trabajo diario', 'description': '## Funciones\n\nOrganiza el trabajo diario.'}}, 'pt-BR': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicativo de exemplo', 'summary': 'Organize o trabalho diário', 'description': '## Recursos\n\nOrganize o trabalho diário.'}}, 'ru-RU': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Пример приложения', 'summary': 'Организация ежедневной работы', 'description': '## Возможности\n\nОрганизация работы.'}}}, 'webUrl': 'https://opennavo.example/zh/apps/visual-studio-code', 'updatedAt': '2026-10-07 08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
+    root: Annotated[TranslationObjectsResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'ref': {'entity': 'package', 'id': 1}, 'label': 'Visual Studio Code', 'sourceLocale': 'zh-CN', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'i18n': {'en-US': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Example App', 'summary': 'An app for organizing daily work', 'description': '## Features\n\nOrganize daily work.'}}, 'zh-CN': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': '示例应用', 'summary': '帮助管理日常工作的应用', 'description': '## 功能\n\n帮助整理日常工作。'}}, 'ja-JP': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'サンプルアプリ', 'summary': '日々の作業を整理するアプリ', 'description': '## 機能\n\n日々の作業を整理します。'}}, 'es-ES': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicación de ejemplo', 'summary': 'Organiza el trabajo diario', 'description': '## Funciones\n\nOrganiza el trabajo diario.'}}, 'pt-BR': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicativo de exemplo', 'summary': 'Organize o trabalho diário', 'description': '## Recursos\n\nOrganize o trabalho diário.'}}, 'ru-RU': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Пример приложения', 'summary': 'Организация ежедневной работы', 'description': '## Возможности\n\nОрганизация работы.'}}}, 'webUrl': 'https://opennavo.example/zh/apps/visual-studio-code', 'updatedAt': '2026-10-07T08:00:00+00:00'}], 'current': 1, 'size': 20, 'total': 1}}])]
 
 
 class TranslationObjectResponse(BaseModel):
@@ -6588,7 +6588,7 @@ class TranslationObjectResponse(BaseModel):
 
 
 class TranslationObjectResponseResult(RootModel[TranslationObjectResponse | BusinessErrorResponse]):
-    root: Annotated[TranslationObjectResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'ref': {'entity': 'package', 'id': 1}, 'label': 'Visual Studio Code', 'sourceLocale': 'zh-CN', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'i18n': {'en-US': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Example App', 'summary': 'An app for organizing daily work', 'description': '## Features\n\nOrganize daily work.'}}, 'zh-CN': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': '示例应用', 'summary': '帮助管理日常工作的应用', 'description': '## 功能\n\n帮助整理日常工作。'}}, 'ja-JP': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'サンプルアプリ', 'summary': '日々の作業を整理するアプリ', 'description': '## 機能\n\n日々の作業を整理します。'}}, 'es-ES': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicación de ejemplo', 'summary': 'Organiza el trabajo diario', 'description': '## Funciones\n\nOrganiza el trabajo diario.'}}, 'pt-BR': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicativo de exemplo', 'summary': 'Organize o trabalho diário', 'description': '## Recursos\n\nOrganize o trabalho diário.'}}, 'ru-RU': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Пример приложения', 'summary': 'Организация ежедневной работы', 'description': '## Возможности\n\nОрганизация работы.'}}}, 'webUrl': 'https://opennavo.example/zh/apps/visual-studio-code', 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
+    root: Annotated[TranslationObjectResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'ref': {'entity': 'package', 'id': 1}, 'label': 'Visual Studio Code', 'sourceLocale': 'zh-CN', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'i18n': {'en-US': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Example App', 'summary': 'An app for organizing daily work', 'description': '## Features\n\nOrganize daily work.'}}, 'zh-CN': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': '示例应用', 'summary': '帮助管理日常工作的应用', 'description': '## 功能\n\n帮助整理日常工作。'}}, 'ja-JP': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'サンプルアプリ', 'summary': '日々の作業を整理するアプリ', 'description': '## 機能\n\n日々の作業を整理します。'}}, 'es-ES': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicación de ejemplo', 'summary': 'Organiza el trabajo diario', 'description': '## Funciones\n\nOrganiza el trabajo diario.'}}, 'pt-BR': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Aplicativo de exemplo', 'summary': 'Organize o trabalho diário', 'description': '## Recursos\n\nOrganize o trabalho diário.'}}, 'ru-RU': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'displayName': 'Пример приложения', 'summary': 'Организация ежедневной работы', 'description': '## Возможности\n\nОрганизация работы.'}}}, 'webUrl': 'https://opennavo.example/zh/apps/visual-studio-code', 'updatedAt': '2026-10-07T08:00:00+00:00'}}])]
 
 
 class AnnouncementView(BaseModel):
@@ -6598,7 +6598,7 @@ class AnnouncementView(BaseModel):
     enabled: Annotated[bool, Field(examples=[True])]
     sourceLocale: Locale
     i18n: ContentLocaleStates
-    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07 08:00:00+00:00'])]
+    updatedAt: Annotated[AwareDatetime, Field(examples=['2026-10-07T08:00:00+00:00'])]
 
 
 class AnnouncementResponse(BaseModel):
@@ -6611,7 +6611,7 @@ class AnnouncementResponse(BaseModel):
 
 
 class AnnouncementResponseResult(RootModel[AnnouncementResponse | BusinessErrorResponse]):
-    root: Annotated[AnnouncementResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'sourceLocale': 'zh-CN', 'i18n': {'en-US': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'Example App', 'body': 'An app for organizing daily work'}}, 'zh-CN': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': '示例应用', 'body': '帮助管理日常工作的应用'}}, 'ja-JP': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'サンプルアプリ', 'body': '日々の作業を整理するアプリ'}}, 'es-ES': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'Aplicación de ejemplo', 'body': 'Organiza el trabajo diario'}}, 'pt-BR': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'Aplicativo de exemplo', 'body': 'Organize o trabalho diário'}}, 'ru-RU': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07 08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'Пример приложения', 'body': 'Организация ежедневной работы'}}}, 'updatedAt': '2026-10-07 08:00:00+00:00'}}])]
+    root: Annotated[AnnouncementResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'enabled': True, 'sourceLocale': 'zh-CN', 'i18n': {'en-US': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'Example App', 'body': 'An app for organizing daily work'}}, 'zh-CN': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': '示例应用', 'body': '帮助管理日常工作的应用'}}, 'ja-JP': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'サンプルアプリ', 'body': '日々の作業を整理するアプリ'}}, 'es-ES': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'Aplicación de ejemplo', 'body': 'Organiza el trabajo diario'}}, 'pt-BR': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'Aplicativo de exemplo', 'body': 'Organize o trabalho diário'}}, 'ru-RU': {'status': 'manual', 'stale': False, 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'updatedAt': '2026-10-07T08:00:00+00:00', 'translatedAt': None, 'machineTranslated': False, 'model': None, 'failReason': None, 'fields': {'title': 'Пример приложения', 'body': 'Организация ежедневной работы'}}}, 'updatedAt': '2026-10-07T08:00:00+00:00'}}])]
 
 
 class PackageFactsResponseResult(RootModel[PackageFactsResponse | BusinessErrorResponse]):
@@ -6974,47 +6974,47 @@ class FactRecordsResult(BaseModel):
 
 
 class LinkPackageResponseResult(RootModel[LinkPackageResponse | BusinessErrorResponse]):
-    root: Annotated[LinkPackageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'token': 'example-app', 'name': 'Example App', 'sourceLocale': 'en-US', 'homepage': 'https://example.com', 'downloadUrl': None, 'githubRepo': 'owner/example', 'bundleIds': ['com.example.App'], 'teamId': None, 'pricing': 'free', 'sparkleFeed': None, 'assetRules': None, 'notes': None, 'id': 1, 'kind': 'link', 'latest': {'tag': 'v2.0', 'version': '2.0', 'publishedAt': '2026-10-16 00:00:00+00:00', 'url': 'https://github.com/owner/example/releases/tag/v2.0', 'assets': [{'name': 'Example-arm64.dmg', 'url': 'https://example.com/Example-arm64.dmg', 'size': 123, 'arch': 'arm64', 'format': 'dmg', 'sha256': None}]}, 'etag': None, 'syncedAt': None, 'lastError': None, 'adoptedByCaskAt': None, 'removed': False}}])]
+    root: Annotated[LinkPackageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'token': 'example-app', 'name': 'Example App', 'sourceLocale': 'en-US', 'homepage': 'https://example.com', 'downloadUrl': None, 'githubRepo': 'owner/example', 'bundleIds': ['com.example.App'], 'teamId': None, 'pricing': 'free', 'sparkleFeed': None, 'assetRules': None, 'notes': None, 'id': 1, 'kind': 'link', 'latest': {'tag': 'v2.0', 'version': '2.0', 'publishedAt': '2026-10-16T00:00:00+00:00', 'url': 'https://github.com/owner/example/releases/tag/v2.0', 'assets': [{'name': 'Example-arm64.dmg', 'url': 'https://example.com/Example-arm64.dmg', 'size': 123, 'arch': 'arm64', 'format': 'dmg', 'sha256': None}]}, 'etag': None, 'syncedAt': None, 'lastError': None, 'adoptedByCaskAt': None, 'removed': False}}])]
 
 
 class LinkPackageListResponseResult(RootModel[LinkPackageListResponse | BusinessErrorResponse]):
-    root: Annotated[LinkPackageListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'token': 'example-app', 'name': 'Example App', 'sourceLocale': 'en-US', 'homepage': 'https://example.com', 'downloadUrl': None, 'githubRepo': 'owner/example', 'bundleIds': ['com.example.App'], 'teamId': None, 'pricing': 'free', 'sparkleFeed': None, 'assetRules': None, 'notes': None, 'id': 1, 'kind': 'link', 'latest': {'tag': 'v2.0', 'version': '2.0', 'publishedAt': '2026-10-16 00:00:00+00:00', 'url': 'https://github.com/owner/example/releases/tag/v2.0', 'assets': [{'name': 'Example-arm64.dmg', 'url': 'https://example.com/Example-arm64.dmg', 'size': 123, 'arch': 'arm64', 'format': 'dmg', 'sha256': None}]}, 'etag': None, 'syncedAt': None, 'lastError': None, 'adoptedByCaskAt': None, 'removed': False}], 'total': 1, 'current': 1, 'size': 20}}])]
+    root: Annotated[LinkPackageListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'token': 'example-app', 'name': 'Example App', 'sourceLocale': 'en-US', 'homepage': 'https://example.com', 'downloadUrl': None, 'githubRepo': 'owner/example', 'bundleIds': ['com.example.App'], 'teamId': None, 'pricing': 'free', 'sparkleFeed': None, 'assetRules': None, 'notes': None, 'id': 1, 'kind': 'link', 'latest': {'tag': 'v2.0', 'version': '2.0', 'publishedAt': '2026-10-16T00:00:00+00:00', 'url': 'https://github.com/owner/example/releases/tag/v2.0', 'assets': [{'name': 'Example-arm64.dmg', 'url': 'https://example.com/Example-arm64.dmg', 'size': 123, 'arch': 'arm64', 'format': 'dmg', 'sha256': None}]}, 'etag': None, 'syncedAt': None, 'lastError': None, 'adoptedByCaskAt': None, 'removed': False}], 'total': 1, 'current': 1, 'size': 20}}])]
 
 
 class AdminCollectionPageResponseResult(RootModel[AdminCollectionPageResponse | BusinessErrorResponse]):
-    root: Annotated[AdminCollectionPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'createBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30 08:00:00+00:00', 'id': 1, 'slug': 'new-mac', 'webUrl': 'https://opennavo.example/collections/new-mac', 'status': 'published', 'publishAt': None, 'unpublishAt': None, 'sort': 0, 'coverAssetId': None, 'coverUrl': None, 'i18n': {'en-US': {'title': 'A better workspace', 'subtitle': 'Apps for everyday work', 'body': 'Find the apps you need for your Mac.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'title': '更好的工作空间', 'subtitle': '日常工作所需的应用', 'body': '找到适合你的 Mac 应用。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'title': 'より快適なワークスペース', 'subtitle': '日々の作業に役立つアプリ', 'body': 'Mac に必要なアプリを見つけましょう。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'title': 'Un mejor espacio de trabajo', 'subtitle': 'Apps para el trabajo diario', 'body': 'Encuentra las apps que necesitas para tu Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'title': 'Um espaço de trabalho melhor', 'subtitle': 'Apps para o trabalho diário', 'body': 'Encontre os apps que você precisa para o Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'title': 'Удобное рабочее пространство', 'subtitle': 'Приложения для работы', 'body': 'Найдите нужные приложения для Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'itemCount': 60, 'items': [{'packageId': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'name': 'Visual Studio Code', 'iconUrl': None, 'disabled': False, 'sort': 0, 'i18n': {'en-US': {'note': 'Recommended for everyday work', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'note': '适合日常工作', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'note': '日々の作業におすすめです', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'note': 'Recomendado para el trabajo diario', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'note': 'Recomendado para o trabalho diário', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'note': 'Для повседневной работы', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'sourceLocale': 'en-US'}], 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[AdminCollectionPageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'createBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30T08:00:00+00:00', 'id': 1, 'slug': 'new-mac', 'webUrl': 'https://opennavo.example/collections/new-mac', 'status': 'published', 'publishAt': None, 'unpublishAt': None, 'sort': 0, 'coverAssetId': None, 'coverUrl': None, 'i18n': {'en-US': {'title': 'A better workspace', 'subtitle': 'Apps for everyday work', 'body': 'Find the apps you need for your Mac.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'title': '更好的工作空间', 'subtitle': '日常工作所需的应用', 'body': '找到适合你的 Mac 应用。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'title': 'より快適なワークスペース', 'subtitle': '日々の作業に役立つアプリ', 'body': 'Mac に必要なアプリを見つけましょう。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'title': 'Un mejor espacio de trabajo', 'subtitle': 'Apps para el trabajo diario', 'body': 'Encuentra las apps que necesitas para tu Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'title': 'Um espaço de trabalho melhor', 'subtitle': 'Apps para o trabalho diário', 'body': 'Encontre os apps que você precisa para o Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'title': 'Удобное рабочее пространство', 'subtitle': 'Приложения для работы', 'body': 'Найдите нужные приложения для Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'itemCount': 60, 'items': [{'packageId': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'name': 'Visual Studio Code', 'iconUrl': None, 'disabled': False, 'sort': 0, 'i18n': {'en-US': {'note': 'Recommended for everyday work', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'note': '适合日常工作', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'note': '日々の作業におすすめです', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'note': 'Recomendado para el trabajo diario', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'note': 'Recomendado para o trabalho diário', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'note': 'Для повседневной работы', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'sourceLocale': 'en-US'}], 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class AdminCollectionResponseResult(RootModel[AdminCollectionResponse | BusinessErrorResponse]):
-    root: Annotated[AdminCollectionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'createBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30 08:00:00+00:00', 'id': 1, 'slug': 'new-mac', 'webUrl': 'https://opennavo.example/collections/new-mac', 'status': 'published', 'publishAt': None, 'unpublishAt': None, 'sort': 0, 'coverAssetId': None, 'coverUrl': None, 'i18n': {'en-US': {'title': 'A better workspace', 'subtitle': 'Apps for everyday work', 'body': 'Find the apps you need for your Mac.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'title': '更好的工作空间', 'subtitle': '日常工作所需的应用', 'body': '找到适合你的 Mac 应用。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'title': 'より快適なワークスペース', 'subtitle': '日々の作業に役立つアプリ', 'body': 'Mac に必要なアプリを見つけましょう。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'title': 'Un mejor espacio de trabajo', 'subtitle': 'Apps para el trabajo diario', 'body': 'Encuentra las apps que necesitas para tu Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'title': 'Um espaço de trabalho melhor', 'subtitle': 'Apps para o trabalho diário', 'body': 'Encontre os apps que você precisa para o Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'title': 'Удобное рабочее пространство', 'subtitle': 'Приложения для работы', 'body': 'Найдите нужные приложения для Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'itemCount': 60, 'items': [{'packageId': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'name': 'Visual Studio Code', 'iconUrl': None, 'disabled': False, 'sort': 0, 'i18n': {'en-US': {'note': 'Recommended for everyday work', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'note': '适合日常工作', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'note': '日々の作業におすすめです', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'note': 'Recomendado para el trabajo diario', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'note': 'Recomendado para o trabalho diário', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'note': 'Для повседневной работы', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'sourceLocale': 'en-US'}], 'sourceLocale': 'en-US'}}])]
+    root: Annotated[AdminCollectionResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'createBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30T08:00:00+00:00', 'id': 1, 'slug': 'new-mac', 'webUrl': 'https://opennavo.example/collections/new-mac', 'status': 'published', 'publishAt': None, 'unpublishAt': None, 'sort': 0, 'coverAssetId': None, 'coverUrl': None, 'i18n': {'en-US': {'title': 'A better workspace', 'subtitle': 'Apps for everyday work', 'body': 'Find the apps you need for your Mac.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'title': '更好的工作空间', 'subtitle': '日常工作所需的应用', 'body': '找到适合你的 Mac 应用。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'title': 'より快適なワークスペース', 'subtitle': '日々の作業に役立つアプリ', 'body': 'Mac に必要なアプリを見つけましょう。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'title': 'Un mejor espacio de trabajo', 'subtitle': 'Apps para el trabajo diario', 'body': 'Encuentra las apps que necesitas para tu Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'title': 'Um espaço de trabalho melhor', 'subtitle': 'Apps para o trabalho diário', 'body': 'Encontre os apps que você precisa para o Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'title': 'Удобное рабочее пространство', 'subtitle': 'Приложения для работы', 'body': 'Найдите нужные приложения для Mac.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'itemCount': 60, 'items': [{'packageId': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'name': 'Visual Studio Code', 'iconUrl': None, 'disabled': False, 'sort': 0, 'i18n': {'en-US': {'note': 'Recommended for everyday work', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'note': '适合日常工作', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'note': '日々の作業におすすめです', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'note': 'Recomendado para el trabajo diario', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'note': 'Recomendado para o trabalho diário', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'note': 'Для повседневной работы', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'sourceLocale': 'en-US'}], 'sourceLocale': 'en-US'}}])]
 
 
 class AdminFeaturePageResponseResult(RootModel[AdminFeaturePageResponse | BusinessErrorResponse]):
-    root: Annotated[AdminFeaturePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'createBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30 08:00:00+00:00', 'id': 1, 'placement': 'home_hero', 'categoryId': None, 'targetType': 'package', 'packageId': None, 'packageName': None, 'collectionId': None, 'collectionTitle': None, 'url': None, 'glowColor': None, 'status': 'published', 'startsAt': None, 'endsAt': None, 'sort': 0, 'i18n': {'en-US': {'title': 'A better workspace', 'subtitle': 'Apps for everyday work', 'body': 'Find the apps you need for your Mac.', 'badge': 'Featured', 'ctaLabel': 'Explore', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'title': '更好的工作空间', 'subtitle': '日常工作所需的应用', 'body': '找到适合你的 Mac 应用。', 'badge': '精选', 'ctaLabel': '浏览', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'title': 'より快適なワークスペース', 'subtitle': '日々の作業に役立つアプリ', 'body': 'Mac に必要なアプリを見つけましょう。', 'badge': 'おすすめ', 'ctaLabel': '見る', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'title': 'Un mejor espacio de trabajo', 'subtitle': 'Apps para el trabajo diario', 'body': 'Encuentra las apps que necesitas para tu Mac.', 'badge': 'Destacado', 'ctaLabel': 'Explorar', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'title': 'Um espaço de trabalho melhor', 'subtitle': 'Apps para o trabalho diário', 'body': 'Encontre os apps que você precisa para o Mac.', 'badge': 'Destaque', 'ctaLabel': 'Explorar', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'title': 'Удобное рабочее пространство', 'subtitle': 'Приложения для работы', 'body': 'Найдите нужные приложения для Mac.', 'badge': 'Выбор', 'ctaLabel': 'Открыть', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[AdminFeaturePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'createBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30T08:00:00+00:00', 'id': 1, 'placement': 'home_hero', 'categoryId': None, 'targetType': 'package', 'packageId': None, 'packageName': None, 'collectionId': None, 'collectionTitle': None, 'url': None, 'glowColor': None, 'status': 'published', 'startsAt': None, 'endsAt': None, 'sort': 0, 'i18n': {'en-US': {'title': 'A better workspace', 'subtitle': 'Apps for everyday work', 'body': 'Find the apps you need for your Mac.', 'badge': 'Featured', 'ctaLabel': 'Explore', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'title': '更好的工作空间', 'subtitle': '日常工作所需的应用', 'body': '找到适合你的 Mac 应用。', 'badge': '精选', 'ctaLabel': '浏览', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'title': 'より快適なワークスペース', 'subtitle': '日々の作業に役立つアプリ', 'body': 'Mac に必要なアプリを見つけましょう。', 'badge': 'おすすめ', 'ctaLabel': '見る', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'title': 'Un mejor espacio de trabajo', 'subtitle': 'Apps para el trabajo diario', 'body': 'Encuentra las apps que necesitas para tu Mac.', 'badge': 'Destacado', 'ctaLabel': 'Explorar', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'title': 'Um espaço de trabalho melhor', 'subtitle': 'Apps para o trabalho diário', 'body': 'Encontre os apps que você precisa para o Mac.', 'badge': 'Destaque', 'ctaLabel': 'Explorar', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'title': 'Удобное рабочее пространство', 'subtitle': 'Приложения для работы', 'body': 'Найдите нужные приложения для Mac.', 'badge': 'Выбор', 'ctaLabel': 'Открыть', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class AdminFeatureResponseResult(RootModel[AdminFeatureResponse | BusinessErrorResponse]):
-    root: Annotated[AdminFeatureResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'createBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30 08:00:00+00:00', 'id': 1, 'placement': 'home_hero', 'categoryId': None, 'targetType': 'package', 'packageId': None, 'packageName': None, 'collectionId': None, 'collectionTitle': None, 'url': None, 'glowColor': None, 'status': 'published', 'startsAt': None, 'endsAt': None, 'sort': 0, 'i18n': {'en-US': {'title': 'A better workspace', 'subtitle': 'Apps for everyday work', 'body': 'Find the apps you need for your Mac.', 'badge': 'Featured', 'ctaLabel': 'Explore', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'title': '更好的工作空间', 'subtitle': '日常工作所需的应用', 'body': '找到适合你的 Mac 应用。', 'badge': '精选', 'ctaLabel': '浏览', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'title': 'より快適なワークスペース', 'subtitle': '日々の作業に役立つアプリ', 'body': 'Mac に必要なアプリを見つけましょう。', 'badge': 'おすすめ', 'ctaLabel': '見る', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'title': 'Un mejor espacio de trabajo', 'subtitle': 'Apps para el trabajo diario', 'body': 'Encuentra las apps que necesitas para tu Mac.', 'badge': 'Destacado', 'ctaLabel': 'Explorar', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'title': 'Um espaço de trabalho melhor', 'subtitle': 'Apps para o trabalho diário', 'body': 'Encontre os apps que você precisa para o Mac.', 'badge': 'Destaque', 'ctaLabel': 'Explorar', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'title': 'Удобное рабочее пространство', 'subtitle': 'Приложения для работы', 'body': 'Найдите нужные приложения для Mac.', 'badge': 'Выбор', 'ctaLabel': 'Открыть', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'sourceLocale': 'en-US'}}])]
+    root: Annotated[AdminFeatureResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'createBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30T08:00:00+00:00', 'id': 1, 'placement': 'home_hero', 'categoryId': None, 'targetType': 'package', 'packageId': None, 'packageName': None, 'collectionId': None, 'collectionTitle': None, 'url': None, 'glowColor': None, 'status': 'published', 'startsAt': None, 'endsAt': None, 'sort': 0, 'i18n': {'en-US': {'title': 'A better workspace', 'subtitle': 'Apps for everyday work', 'body': 'Find the apps you need for your Mac.', 'badge': 'Featured', 'ctaLabel': 'Explore', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'title': '更好的工作空间', 'subtitle': '日常工作所需的应用', 'body': '找到适合你的 Mac 应用。', 'badge': '精选', 'ctaLabel': '浏览', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'title': 'より快適なワークスペース', 'subtitle': '日々の作業に役立つアプリ', 'body': 'Mac に必要なアプリを見つけましょう。', 'badge': 'おすすめ', 'ctaLabel': '見る', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'title': 'Un mejor espacio de trabajo', 'subtitle': 'Apps para el trabajo diario', 'body': 'Encuentra las apps que necesitas para tu Mac.', 'badge': 'Destacado', 'ctaLabel': 'Explorar', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'title': 'Um espaço de trabalho melhor', 'subtitle': 'Apps para o trabalho diário', 'body': 'Encontre os apps que você precisa para o Mac.', 'badge': 'Destaque', 'ctaLabel': 'Explorar', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'title': 'Удобное рабочее пространство', 'subtitle': 'Приложения для работы', 'body': 'Найдите нужные приложения для Mac.', 'badge': 'Выбор', 'ctaLabel': 'Открыть', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'sourceLocale': 'en-US'}}])]
 
 
 class AdminPackageDetailResponseResult(RootModel[AdminPackageDetailResponse | BusinessErrorResponse]):
-    root: Annotated[AdminPackageDetailResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'name': 'Microsoft Visual Studio Code', 'iconUrl': None, 'version': '1.140.0', 'primaryCategory': {'id': 2, 'slug': 'developer-tools', 'name': '开发工具'}, 'installs30d': 17392, 'rank30d': 9, 'deprecated': False, 'disabled': False, 'isFont': False, 'isLibrary': False, 'editorChoice': True, 'versionChangedAt': '2026-09-30 08:00:00+00:00', 'hasIcon': False, 'screenshotCount': 0, 'hidden': False, 'translationStatus': 'source', 'changelogStatus': 'ok', 'updateTime': '2026-09-30 08:00:00+00:00', 'removed': False, 'names': ['Microsoft Visual Studio Code', 'VS Code'], 'descEn': 'Open-source code editor with debugging and extensions', 'homepage': 'https://code.visualstudio.com/', 'downloadUrl': 'https://update.code.visualstudio.com/1.140.0/darwin-universal/stable', 'downloadSize': 317901801, 'tap': 'homebrew/cask', 'webUrl': 'https://opennavo.example/apps/visual-studio-code', 'meta': {'developer': 'Microsoft', 'repoUrl': 'https://github.com/microsoft/vscode', 'tags': ['编辑器', '开发工具'], 'notes': '本地演示数据', 'accentColor': None}, 'i18n': [{'locale': 'en-US', 'displayName': 'Visual Studio Code', 'summary': 'Code editor with debugging and extensions', 'description': 'Edit code, debug applications, and add extensions.', 'status': 'source', 'source': 'homebrew', 'model': None, 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': None}, {'locale': 'zh-CN', 'displayName': 'Visual Studio Code', 'summary': '支持调试与扩展的代码编辑器', 'description': '编辑代码、调试应用并安装扩展。', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00'}, {'locale': 'ja-JP', 'displayName': 'Visual Studio Code', 'summary': 'デバッグと拡張機能に対応したコードエディター', 'description': 'コードを編集し、アプリをデバッグして、拡張機能を追加できます。', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00'}, {'locale': 'es-ES', 'displayName': 'Visual Studio Code', 'summary': 'Editor de código con depuración y extensiones', 'description': 'Edita código, depura aplicaciones y añade extensiones.', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00'}, {'locale': 'pt-BR', 'displayName': 'Visual Studio Code', 'summary': 'Editor de código com depuração e extensões', 'description': 'Edite código, depure aplicativos e adicione extensões.', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00'}, {'locale': 'ru-RU', 'displayName': 'Visual Studio Code', 'summary': 'Редактор кода с отладкой и расширениями', 'description': 'Редактируйте код, отлаживайте приложения и добавляйте расширения.', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00'}], 'categories': [{'categoryId': 2, 'slug': 'developer-tools', 'name': '开发工具', 'isPrimary': True, 'source': 'human', 'confidence': 1}], 'screenshots': [], 'raw': {'token': 'visual-studio-code', 'name': ['Microsoft Visual Studio Code', 'VS Code'], 'version': '1.140.0', 'desc': 'Open-source code editor with debugging and extensions', 'homepage': 'https://code.visualstudio.com/'}, 'displayName': {'en-US': 'Visual Studio Code', 'zh-CN': 'Visual Studio Code', 'ja-JP': 'Visual Studio Code', 'es-ES': 'Visual Studio Code', 'pt-BR': 'Visual Studio Code', 'ru-RU': 'Visual Studio Code'}, 'summary': {'en-US': 'Code editor with debugging and extensions', 'zh-CN': '支持调试与扩展的代码编辑器', 'ja-JP': 'デバッグと拡張機能に対応したコードエディター', 'es-ES': 'Editor de código con depuración y extensiones', 'pt-BR': 'Editor de código com depuração e extensões', 'ru-RU': 'Редактор кода с отладкой и расширениями'}, 'sourceLocale': 'en-US', 'rubySourcePath': 'Casks/v/visual-studio-code.rb'}}])]
+    root: Annotated[AdminPackageDetailResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'name': 'Microsoft Visual Studio Code', 'iconUrl': None, 'version': '1.140.0', 'primaryCategory': {'id': 2, 'slug': 'developer-tools', 'name': '开发工具'}, 'installs30d': 17392, 'rank30d': 9, 'deprecated': False, 'disabled': False, 'isFont': False, 'isLibrary': False, 'editorChoice': True, 'versionChangedAt': '2026-09-30T08:00:00+00:00', 'hasIcon': False, 'screenshotCount': 0, 'hidden': False, 'translationStatus': 'source', 'changelogStatus': 'ok', 'updateTime': '2026-09-30T08:00:00+00:00', 'removed': False, 'names': ['Microsoft Visual Studio Code', 'VS Code'], 'descEn': 'Open-source code editor with debugging and extensions', 'homepage': 'https://code.visualstudio.com/', 'downloadUrl': 'https://update.code.visualstudio.com/1.140.0/darwin-universal/stable', 'downloadSize': 317901801, 'tap': 'homebrew/cask', 'webUrl': 'https://opennavo.example/apps/visual-studio-code', 'meta': {'developer': 'Microsoft', 'repoUrl': 'https://github.com/microsoft/vscode', 'tags': ['编辑器', '开发工具'], 'notes': '本地演示数据', 'accentColor': None}, 'i18n': [{'locale': 'en-US', 'displayName': 'Visual Studio Code', 'summary': 'Code editor with debugging and extensions', 'description': 'Edit code, debug applications, and add extensions.', 'status': 'source', 'source': 'homebrew', 'model': None, 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': None}, {'locale': 'zh-CN', 'displayName': 'Visual Studio Code', 'summary': '支持调试与扩展的代码编辑器', 'description': '编辑代码、调试应用并安装扩展。', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00'}, {'locale': 'ja-JP', 'displayName': 'Visual Studio Code', 'summary': 'デバッグと拡張機能に対応したコードエディター', 'description': 'コードを編集し、アプリをデバッグして、拡張機能を追加できます。', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00'}, {'locale': 'es-ES', 'displayName': 'Visual Studio Code', 'summary': 'Editor de código con depuración y extensiones', 'description': 'Edita código, depura aplicaciones y añade extensiones.', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00'}, {'locale': 'pt-BR', 'displayName': 'Visual Studio Code', 'summary': 'Editor de código com depuração e extensões', 'description': 'Edite código, depure aplicativos e adicione extensões.', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00'}, {'locale': 'ru-RU', 'displayName': 'Visual Studio Code', 'summary': 'Редактор кода с отладкой и расширениями', 'description': 'Редактируйте код, отлаживайте приложения и добавляйте расширения.', 'status': 'machine', 'source': 'human', 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'stale': False, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00'}], 'categories': [{'categoryId': 2, 'slug': 'developer-tools', 'name': '开发工具', 'isPrimary': True, 'source': 'human', 'confidence': 1}], 'screenshots': [], 'raw': {'token': 'visual-studio-code', 'name': ['Microsoft Visual Studio Code', 'VS Code'], 'version': '1.140.0', 'desc': 'Open-source code editor with debugging and extensions', 'homepage': 'https://code.visualstudio.com/'}, 'displayName': {'en-US': 'Visual Studio Code', 'zh-CN': 'Visual Studio Code', 'ja-JP': 'Visual Studio Code', 'es-ES': 'Visual Studio Code', 'pt-BR': 'Visual Studio Code', 'ru-RU': 'Visual Studio Code'}, 'summary': {'en-US': 'Code editor with debugging and extensions', 'zh-CN': '支持调试与扩展的代码编辑器', 'ja-JP': 'デバッグと拡張機能に対応したコードエディター', 'es-ES': 'Editor de código con depuración y extensiones', 'pt-BR': 'Editor de código com depuração e extensões', 'ru-RU': 'Редактор кода с отладкой и расширениями'}, 'sourceLocale': 'en-US', 'rubySourcePath': 'Casks/v/visual-studio-code.rb'}}])]
 
 
 class AdminPackagePageResponseResult(RootModel[AdminPackagePageResponse | BusinessErrorResponse]):
-    root: Annotated[AdminPackagePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'name': 'Microsoft Visual Studio Code', 'iconUrl': None, 'version': '1.140.0', 'primaryCategory': {'id': 2, 'slug': 'developer-tools', 'name': '开发工具'}, 'installs30d': 17392, 'rank30d': 9, 'deprecated': False, 'disabled': False, 'isFont': False, 'isLibrary': False, 'editorChoice': True, 'versionChangedAt': '2026-09-30 08:00:00+00:00', 'hasIcon': False, 'screenshotCount': 0, 'hidden': False, 'translationStatus': 'source', 'changelogStatus': 'ok', 'updateTime': '2026-09-30 08:00:00+00:00', 'removed': False, 'displayName': {'en-US': 'Visual Studio Code', 'zh-CN': 'Visual Studio Code', 'ja-JP': 'Visual Studio Code', 'es-ES': 'Visual Studio Code', 'pt-BR': 'Visual Studio Code', 'ru-RU': 'Visual Studio Code'}, 'summary': {'en-US': 'Code editor with debugging and extensions', 'zh-CN': '支持调试与扩展的代码编辑器', 'ja-JP': 'デバッグと拡張機能に対応したコードエディター', 'es-ES': 'Editor de código con depuración y extensiones', 'pt-BR': 'Editor de código com depuração e extensões', 'ru-RU': 'Редактор кода с отладкой и расширениями'}, 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[AdminPackagePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'name': 'Microsoft Visual Studio Code', 'iconUrl': None, 'version': '1.140.0', 'primaryCategory': {'id': 2, 'slug': 'developer-tools', 'name': '开发工具'}, 'installs30d': 17392, 'rank30d': 9, 'deprecated': False, 'disabled': False, 'isFont': False, 'isLibrary': False, 'editorChoice': True, 'versionChangedAt': '2026-09-30T08:00:00+00:00', 'hasIcon': False, 'screenshotCount': 0, 'hidden': False, 'translationStatus': 'source', 'changelogStatus': 'ok', 'updateTime': '2026-09-30T08:00:00+00:00', 'removed': False, 'displayName': {'en-US': 'Visual Studio Code', 'zh-CN': 'Visual Studio Code', 'ja-JP': 'Visual Studio Code', 'es-ES': 'Visual Studio Code', 'pt-BR': 'Visual Studio Code', 'ru-RU': 'Visual Studio Code'}, 'summary': {'en-US': 'Code editor with debugging and extensions', 'zh-CN': '支持调试与扩展的代码编辑器', 'ja-JP': 'デバッグと拡張機能に対応したコードエディター', 'es-ES': 'Editor de código con depuración y extensiones', 'pt-BR': 'Editor de código com depuração e extensões', 'ru-RU': 'Редактор кода с отладкой и расширениями'}, 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class AdminReleaseResponseResult(RootModel[AdminReleaseResponse | BusinessErrorResponse]):
-    root: Annotated[AdminReleaseResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'packageId': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'packageName': 'Visual Studio Code', 'version': '1.140.0', 'title': None, 'publishedAt': None, 'source': 'github_release', 'sourceUrl': None, 'hidden': False, 'isPrerelease': False, 'translationStatus': 'source', 'fetchedAt': '2026-09-30 08:00:00+00:00', 'bodyMarkdown': None, 'i18n': [{'locale': 'en-US', 'status': 'source', 'summary': 'Improve usability and stability.', 'sections': [{'area': 'Editor', 'items': ['Improve keyboard navigation.']}], 'bodyMarkdown': '## Editor\n\nImprove keyboard navigation.', 'failReason': None, 'stale': False, 'model': None, 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': None, 'title': 'A better workspace'}, {'locale': 'zh-CN', 'status': 'machine', 'summary': '改善体验与稳定性。', 'sections': [{'area': '编辑器', 'items': ['改善键盘导航。']}], 'bodyMarkdown': '## 编辑器\n\n改善键盘导航。', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': '更好的工作空间'}, {'locale': 'ja-JP', 'status': 'machine', 'summary': '使いやすさと安定性を改善しました。', 'sections': [{'area': 'エディター', 'items': ['キーボード操作を改善しました。']}], 'bodyMarkdown': '## エディター\n\nキーボード操作を改善しました。', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': 'より快適なワークスペース'}, {'locale': 'es-ES', 'status': 'machine', 'summary': 'Mejoras de uso y estabilidad.', 'sections': [{'area': 'Editor', 'items': ['Mejoras de navegación con teclado.']}], 'bodyMarkdown': '## Editor\n\nMejoras de navegación con teclado.', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': 'Un mejor espacio de trabajo'}, {'locale': 'pt-BR', 'status': 'machine', 'summary': 'Melhorias de uso e estabilidade.', 'sections': [{'area': 'Editor', 'items': ['Melhorias na navegação por teclado.']}], 'bodyMarkdown': '## Editor\n\nMelhorias na navegação por teclado.', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': 'Um espaço de trabalho melhor'}, {'locale': 'ru-RU', 'status': 'machine', 'summary': 'Улучшены удобство и стабильность.', 'sections': [{'area': 'Редактор', 'items': ['Улучшена навигация с клавиатуры.']}], 'bodyMarkdown': '## Редактор\n\nУлучшена навигация с клавиатуры.', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06 00:00:00+00:00', 'title': 'Удобное рабочее пространство'}], 'sourceLocale': 'en-US'}}])]
+    root: Annotated[AdminReleaseResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'packageId': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'packageName': 'Visual Studio Code', 'version': '1.140.0', 'title': None, 'publishedAt': None, 'source': 'github_release', 'sourceUrl': None, 'hidden': False, 'isPrerelease': False, 'translationStatus': 'source', 'fetchedAt': '2026-09-30T08:00:00+00:00', 'bodyMarkdown': None, 'i18n': [{'locale': 'en-US', 'status': 'source', 'summary': 'Improve usability and stability.', 'sections': [{'area': 'Editor', 'items': ['Improve keyboard navigation.']}], 'bodyMarkdown': '## Editor\n\nImprove keyboard navigation.', 'failReason': None, 'stale': False, 'model': None, 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': None, 'title': 'A better workspace'}, {'locale': 'zh-CN', 'status': 'machine', 'summary': '改善体验与稳定性。', 'sections': [{'area': '编辑器', 'items': ['改善键盘导航。']}], 'bodyMarkdown': '## 编辑器\n\n改善键盘导航。', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00', 'title': '更好的工作空间'}, {'locale': 'ja-JP', 'status': 'machine', 'summary': '使いやすさと安定性を改善しました。', 'sections': [{'area': 'エディター', 'items': ['キーボード操作を改善しました。']}], 'bodyMarkdown': '## エディター\n\nキーボード操作を改善しました。', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00', 'title': 'より快適なワークスペース'}, {'locale': 'es-ES', 'status': 'machine', 'summary': 'Mejoras de uso y estabilidad.', 'sections': [{'area': 'Editor', 'items': ['Mejoras de navegación con teclado.']}], 'bodyMarkdown': '## Editor\n\nMejoras de navegación con teclado.', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00', 'title': 'Un mejor espacio de trabajo'}, {'locale': 'pt-BR', 'status': 'machine', 'summary': 'Melhorias de uso e estabilidade.', 'sections': [{'area': 'Editor', 'items': ['Melhorias na navegação por teclado.']}], 'bodyMarkdown': '## Editor\n\nMelhorias na navegação por teclado.', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00', 'title': 'Um espaço de trabalho melhor'}, {'locale': 'ru-RU', 'status': 'machine', 'summary': 'Улучшены удобство и стабильность.', 'sections': [{'area': 'Редактор', 'items': ['Улучшена навигация с клавиатуры.']}], 'bodyMarkdown': '## Редактор\n\nУлучшена навигация с клавиатуры.', 'failReason': None, 'stale': False, 'model': 'gpt-6-luna', 'reviewedBy': None, 'reviewedAt': None, 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'translatedAt': '2026-10-06T00:00:00+00:00', 'title': 'Удобное рабочее пространство'}], 'sourceLocale': 'en-US'}}])]
 
 
 class AssetResponseResult(RootModel[AssetResponse | BusinessErrorResponse | AgentDryRunResponse]):
-    root: Annotated[AssetResponse | BusinessErrorResponse | AgentDryRunResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'kind': 'icon', 'url': 'https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png', 'mime': 'image/png', 'width': 256, 'height': 256, 'bytes': 12000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'createTime': '2026-09-30 08:00:00+00:00'}}])]
+    root: Annotated[AssetResponse | BusinessErrorResponse | AgentDryRunResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'kind': 'icon', 'url': 'https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png', 'mime': 'image/png', 'width': 256, 'height': 256, 'bytes': 12000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'createTime': '2026-09-30T08:00:00+00:00'}}])]
 
 
 class CategoryTreeResponseResult(RootModel[CategoryTreeResponse | BusinessErrorResponse]):
-    root: Annotated[CategoryTreeResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'parentId': None, 'slug': 'new-mac', 'icon': 'lucide:code-xml', 'appliesTo': 'cask', 'sort': 0, 'visible': True, 'hiddenByDefault': False, 'i18n': {'en-US': {'name': 'Developer Tools', 'description': 'Edit code, debug applications, and add extensions.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'name': '开发工具', 'description': '编辑代码、调试应用并安装扩展。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'name': '開発ツール', 'description': 'コードを編集し、アプリをデバッグして、拡張機能を追加できます。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'name': 'Desarrollo', 'description': 'Edita código, depura aplicaciones y añade extensiones.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'name': 'Desenvolvimento', 'description': 'Edite código, depure aplicativos e adicione extensões.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'name': 'Разработка', 'description': 'Редактируйте код, отлаживайте приложения и добавляйте расширения.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'packageCount': 1, 'children': [], 'sourceLocale': 'en-US'}]}])]
+    root: Annotated[CategoryTreeResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'parentId': None, 'slug': 'new-mac', 'icon': 'lucide:code-xml', 'appliesTo': 'cask', 'sort': 0, 'visible': True, 'hiddenByDefault': False, 'i18n': {'en-US': {'name': 'Developer Tools', 'description': 'Edit code, debug applications, and add extensions.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'name': '开发工具', 'description': '编辑代码、调试应用并安装扩展。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'name': '開発ツール', 'description': 'コードを編集し、アプリをデバッグして、拡張機能を追加できます。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'name': 'Desarrollo', 'description': 'Edita código, depura aplicaciones y añade extensiones.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'name': 'Desenvolvimento', 'description': 'Edite código, depure aplicativos e adicione extensões.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'name': 'Разработка', 'description': 'Редактируйте код, отлаживайте приложения и добавляйте расширения.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'packageCount': 1, 'children': [], 'sourceLocale': 'en-US'}]}])]
 
 
 class DashboardOverviewResponseResult(RootModel[DashboardOverviewResponse | BusinessErrorResponse]):
@@ -7022,27 +7022,27 @@ class DashboardOverviewResponseResult(RootModel[DashboardOverviewResponse | Busi
 
 
 class DesktopReleasePageResponseResult(RootModel[DesktopReleasePageResponse | BusinessErrorResponse]):
-    root: Annotated[DesktopReleasePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'version': '1.140.0', 'channel': 'stable', 'status': 'published', 'minMacos': '13.0', 'artifacts': [{'target': 'darwin-aarch64', 'url': 'https://cdn.opennavo.example/desktop/stable/0.3.0/OpenNavo_darwin-aarch64.app.tar.gz', 'bytes': 24000000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'signature': None}], 'pubDate': None, 'publishedBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'i18n': {'en-US': {'notes': 'Improve usability and stability.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'notes': '改善体验与稳定性。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'notes': '使いやすさと安定性を改善しました。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'notes': 'Mejoras de uso y estabilidad.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'notes': 'Melhorias de uso e estabilidade.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'notes': 'Улучшены удобство и стабильность.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[DesktopReleasePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'id': 1, 'version': '1.140.0', 'channel': 'stable', 'status': 'published', 'minMacos': '13.0', 'artifacts': [{'target': 'darwin-aarch64', 'url': 'https://cdn.opennavo.example/desktop/stable/0.3.0/OpenNavo_darwin-aarch64.app.tar.gz', 'bytes': 24000000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'signature': None}], 'pubDate': None, 'publishedBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'i18n': {'en-US': {'notes': 'Improve usability and stability.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'notes': '改善体验与稳定性。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'notes': '使いやすさと安定性を改善しました。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'notes': 'Mejoras de uso y estabilidad.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'notes': 'Melhorias de uso e estabilidade.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'notes': 'Улучшены удобство и стабильность.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class DesktopReleaseResponseResult(RootModel[DesktopReleaseResponse | BusinessErrorResponse]):
-    root: Annotated[DesktopReleaseResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'version': '1.140.0', 'channel': 'stable', 'status': 'published', 'minMacos': '13.0', 'artifacts': [{'target': 'darwin-aarch64', 'url': 'https://cdn.opennavo.example/desktop/stable/0.3.0/OpenNavo_darwin-aarch64.app.tar.gz', 'bytes': 24000000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'signature': None}], 'pubDate': None, 'publishedBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'i18n': {'en-US': {'notes': 'Improve usability and stability.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'notes': '改善体验与稳定性。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'notes': '使いやすさと安定性を改善しました。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'notes': 'Mejoras de uso y estabilidad.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'notes': 'Melhorias de uso e estabilidade.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'notes': 'Улучшены удобство и стабильность.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'sourceLocale': 'en-US'}}])]
+    root: Annotated[DesktopReleaseResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'id': 1, 'version': '1.140.0', 'channel': 'stable', 'status': 'published', 'minMacos': '13.0', 'artifacts': [{'target': 'darwin-aarch64', 'url': 'https://cdn.opennavo.example/desktop/stable/0.3.0/OpenNavo_darwin-aarch64.app.tar.gz', 'bytes': 24000000, 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'signature': None}], 'pubDate': None, 'publishedBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'i18n': {'en-US': {'notes': 'Improve usability and stability.', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'notes': '改善体验与稳定性。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'notes': '使いやすさと安定性を改善しました。', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'notes': 'Mejoras de uso y estabilidad.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'notes': 'Melhorias de uso e estabilidade.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'notes': 'Улучшены удобство и стабильность.', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'sourceLocale': 'en-US'}}])]
 
 
 class MirrorListResponseResult(RootModel[MirrorListResponse | BusinessErrorResponse]):
-    root: Annotated[MirrorListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'createBy': None, 'createTime': '2026-09-30 08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30 08:00:00+00:00', 'id': 1, 'key': 'desktop.announcement', 'apiDomain': None, 'bottleDomain': None, 'brewGitRemote': None, 'coreGitRemote': None, 'probeUrl': 'https://mirrors.ustc.edu.cn/homebrew-bottles/api/formula.jws.json', 'recommended': False, 'enabled': True, 'sort': 0, 'i18n': {'en-US': {'name': 'USTC', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'name': '中科大 USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'name': 'USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'name': 'USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'name': 'USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'name': 'USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'sourceLocale': 'en-US'}]}])]
+    root: Annotated[MirrorListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'createBy': None, 'createTime': '2026-09-30T08:00:00+00:00', 'updateBy': None, 'updateTime': '2026-09-30T08:00:00+00:00', 'id': 1, 'key': 'desktop.announcement', 'apiDomain': None, 'bottleDomain': None, 'brewGitRemote': None, 'coreGitRemote': None, 'probeUrl': 'https://mirrors.ustc.edu.cn/homebrew-bottles/api/formula.jws.json', 'recommended': False, 'enabled': True, 'sort': 0, 'i18n': {'en-US': {'name': 'USTC', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'name': '中科大 USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'name': 'USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'name': 'USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'name': 'USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'name': 'USTC', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'sourceLocale': 'en-US'}]}])]
 
 
 class ScreenshotListResponseResult(RootModel[ScreenshotListResponse | BusinessErrorResponse]):
-    root: Annotated[ScreenshotListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'assetId': 1, 'url': 'https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png', 'width': None, 'height': None, 'sort': 0, 'theme': 'dark', 'i18n': {'en-US': {'caption': 'The code editor workspace', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'caption': '代码编辑工作区', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ja-JP': {'caption': 'コード編集ワークスペース', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'es-ES': {'caption': 'El espacio de edición de código', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'pt-BR': {'caption': 'O espaço de edição de código', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}, 'ru-RU': {'caption': 'Рабочая область редактора кода', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06 00:00:00+00:00'}}, 'sourceLocale': 'en-US'}]}])]
+    root: Annotated[ScreenshotListResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': [{'id': 1, 'assetId': 1, 'url': 'https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png', 'width': None, 'height': None, 'sort': 0, 'theme': 'dark', 'i18n': {'en-US': {'caption': 'The code editor workspace', 'status': 'source', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': None, 'translatedAt': None}, 'zh-CN': {'caption': '代码编辑工作区', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ja-JP': {'caption': 'コード編集ワークスペース', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'es-ES': {'caption': 'El espacio de edición de código', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'pt-BR': {'caption': 'O espaço de edição de código', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}, 'ru-RU': {'caption': 'Рабочая область редактора кода', 'status': 'machine', 'sourceLocale': 'en-US', 'sourceHash': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'model': 'gpt-6-luna', 'translatedAt': '2026-10-06T00:00:00+00:00'}}, 'sourceLocale': 'en-US'}]}])]
 
 
 class TranslationQueuePageResponseResult(RootModel[TranslationQueuePageResponse | BusinessErrorResponse]):
-    root: Annotated[TranslationQueuePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'type': 'package', 'id': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'packageName': 'Visual Studio Code', 'version': None, 'rank30d': None, 'status': 'machine', 'original': 'Code editor with debugging and extensions', 'translated': 'デバッグと拡張機能に対応したコードエディター', 'confidence': None, 'updatedAt': '2026-09-30 08:00:00+00:00', 'locale': 'ja-JP', 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
+    root: Annotated[TranslationQueuePageResponse | BusinessErrorResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'records': [{'type': 'package', 'id': 1, 'kind': 'cask', 'token': 'visual-studio-code', 'packageName': 'Visual Studio Code', 'version': None, 'rank30d': None, 'status': 'machine', 'original': 'Code editor with debugging and extensions', 'translated': 'デバッグと拡張機能に対応したコードエディター', 'confidence': None, 'updatedAt': '2026-09-30T08:00:00+00:00', 'locale': 'ja-JP', 'sourceLocale': 'en-US'}], 'current': 1, 'size': 24, 'total': 1}}])]
 
 
 class AssetUploadTicketResponseResult(RootModel[AssetUploadTicketResponse | BusinessErrorResponse | AgentDryRunResponse]):
-    root: Annotated[AssetUploadTicketResponse | BusinessErrorResponse | AgentDryRunResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'uploadUrl': 'https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000', 'method': 'POST', 'fileField': 'file', 'kind': 'icon', 'maxBytes': 5242880, 'expiresAt': '2026-09-30 08:10:00+00:00'}}])]
+    root: Annotated[AssetUploadTicketResponse | BusinessErrorResponse | AgentDryRunResponse, Field(examples=[{'code': '0000', 'msg': 'ok', 'data': {'uploadUrl': 'https://admin.opennavo.example/admin-api/assets/upload-tickets/onvu_0000000000000000000000000000000000000000000', 'method': 'POST', 'fileField': 'file', 'kind': 'icon', 'maxBytes': 5242880, 'expiresAt': '2026-09-30T08:10:00+00:00'}}])]
 
 
 class SetPackageFactRecordsInput(BaseModel):

@@ -106,10 +106,21 @@ class AgentClient:
         if operation not in OPERATIONS:
             raise AgentError("1004")
         spec = OPERATIONS[operation]
+        # Optional query values have no clearing semantics. Keep body nulls intact.
+        supplied = dict(values or {})
+        model_type = input_model(operation)
+        optional_query = {
+            field.alias or name
+            for name, field in model_type.model_fields.items()
+            if not field.is_required()
+        } & set(spec["parameters"]["query"])
+        omitted = sorted(
+            key for key in optional_query if key in supplied and supplied[key] in (None, "")
+        )
+        for key in omitted:
+            supplied.pop(key)
         try:
-            model = input_model(operation).model_validate_json(
-                json.dumps(values or {}), strict=True
-            )
+            model = model_type.model_validate_json(json.dumps(supplied), strict=True)
             data = model.model_dump(mode="json", exclude_unset=True, by_alias=True)
         except ValidationError as error:
             raise AgentError(
@@ -157,6 +168,15 @@ class AgentClient:
             kwargs["files"] = {key: (None, str(value)) for key, value in body.items()}
         elif body is not None:
             kwargs["json"] = body
+        if operation == "listAdminCatalogChanges":
+            # Only schema-validated catalog filters; never headers, tokens, or free text.
+            logger.info(
+                "Catalog request path=%s query=%s omitted=%s request_id=%s",
+                path,
+                query,
+                omitted,
+                headers["X-Request-ID"],
+            )
         try:
             response = await self.http.request(
                 spec["method"], self.settings.agent_api_base + path, **kwargs

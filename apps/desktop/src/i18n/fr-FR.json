@@ -1292,6 +1292,8 @@
     "E_FW_NOT_BUNDLED": "Cette version ne contient pas le composant pare-feu. Utilisez la version officielle d’OpenNavo",
     "E_FW_NOT_IN_APPLICATIONS": "Déplacez OpenNavo dans le dossier Applications, puis rouvrez-le",
     "E_FW_ACTIVATION": "macOS n’a pas terminé l’installation de l’extension système. Réessayez",
+    "E_FW_REMOVAL": "Impossible de supprimer le pare-feu des apps. Réessayez",
+    "E_FW_FILTER": "macOS n’a pas pu modifier le réglage du filtre réseau. Réessayez",
     "E_FW_CONSENT_DENIED": "Le filtrage réseau n’a pas été autorisé ; le pare-feu est désactivé",
     "E_FW_DISCONNECTED": "Le composant pare-feu ne répond pas. Réessayez sous peu",
     "E_FW_RULE_INVALID": "Règle invalide : vérifiez le programme, l’adresse et le port",
@@ -1299,7 +1301,9 @@
     "E_FW_BLOCKLIST_URL": "Seules les adresses https ou les fichiers de ce Mac sont pris en charge",
     "E_FW_BLOCKLIST_FETCH": "Impossible de télécharger la liste de blocage. Vérifiez l’adresse et votre connexion",
     "E_FW_BLOCKLIST_FORMAT": "Aucun domaine ni IP exploitable dans le fichier",
-    "E_FW_BLOCKLIST_TOO_LARGE": "Liste de blocage trop volumineuse : maximum 50 MB et 1 000 000 d’entrées"
+    "E_FW_BLOCKLIST_TOO_LARGE": "Liste de blocage trop volumineuse : maximum 50 MB et 1 000 000 d’entrées",
+    "E_FW_BLOCKLIST_LIMIT": "Limite des listes de blocage atteinte : 32 listes et 256 MB au total maximum",
+    "E_FW_BLOCKLIST_FILE": "Fichier introuvable ou illisible"
   },
   "installConfirm": {
     "title": "Prendre en charge {name} déjà installé ?",
@@ -2662,7 +2666,8 @@
       "steps": "macOS demandera deux confirmations : autorisez d’abord l’extension système d’OpenNavo dans les Réglages Système, puis le filtrage du contenu réseau.",
       "privacy": "Toutes les décisions sont prises sur ce Mac. Les informations de connexion ne sont jamais envoyées.",
       "failedTitle": "Impossible d’activer le pare-feu des apps",
-      "failed": "Activation impossible : {reason}"
+      "failed": "Activation impossible : {reason}",
+      "removed": "Le pare-feu des apps a été supprimé. Inutile de redémarrer maintenant : macOS efface le composant restant au prochain redémarrage du Mac."
     },
     "options": {
       "allowApple": "Autoriser automatiquement les programmes Apple",
@@ -2811,9 +2816,13 @@
       "count": "{count} fois",
       "allowApp": "Autoriser cette app",
       "blockApp": "Bloquer cette app",
+      "allowDestination": "Autoriser cette adresse",
+      "blockDestination": "Bloquer cette adresse",
       "ruled": {
         "allow": "« {name} » peut désormais se connecter",
-        "block": "« {name} » ne peut plus se connecter"
+        "block": "« {name} » ne peut plus se connecter",
+        "allowDestination": "« {name} » peut désormais se connecter à {destination}",
+        "blockDestination": "« {name} » ne peut plus se connecter à {destination}"
       },
       "ruledShort": {
         "allow": "Désormais autorisé",

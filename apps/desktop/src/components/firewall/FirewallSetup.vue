@@ -8,7 +8,8 @@ import { useFirewallStore } from '@/stores/firewall';
 import { firewallPhase, SETUP_STEPS, stepState } from './meta';
 
 // Before the firewall runs (firewall plan §5): what it does and the two choices that keep it quiet, then macOS's own
-// steps — install the system extension, allow it in System Settings, allow network filtering — as they happen.
+// steps — install the system extension, allow it in System Settings, allow network filtering — as they happen. After a
+// removal the same card says so: macOS deletes the stopped extension only at the next restart.
 const { t, te } = useI18n();
 const toasts = useToasts();
 const { errorText } = usePackageState();
@@ -30,11 +31,25 @@ const failure = computed(() => {
 const POINTS = ['ask', 'rules', 'blocklists'] as const;
 const POINT_ICONS = { ask: 'circle-alert', rules: 'list-filter', blocklists: 'shield' } as const;
 
+const cleanupPending = computed(
+  () =>
+    status.value?.error?.code === 'E_FW_REMOVAL' &&
+    ['not_installed', 'removal_pending'].includes(status.value.extension)
+);
+
 async function enable() {
   try {
-    await store.enable({ ...choices });
+    if (cleanupPending.value) {
+      await store.uninstall();
+    } else {
+      await store.enable({ ...choices });
+    }
   } catch (error) {
-    toasts.push({ tone: 'danger', title: t('firewall.setup.failedTitle'), description: errorText(error) });
+    toasts.push({
+      tone: 'danger',
+      title: cleanupPending.value ? failure.value! : t('firewall.setup.failedTitle'),
+      description: errorText(error)
+    });
   }
 }
 
@@ -76,6 +91,14 @@ async function openApproval() {
       </h2>
       <p class="m-0 text-13px leading-[1.6] text-ink-secondary">{{ t('firewall.setup.lead') }}</p>
     </div>
+    <p
+      v-if="status?.extension === 'removal_pending'"
+      class="m-0 rounded-big bg-status-info-subtle px-12px py-8px text-12.5px text-ink-secondary"
+      role="status"
+      data-firewall-removed
+    >
+      {{ t('firewall.setup.removed') }}
+    </p>
     <ul class="m-0 grid list-none grid-cols-1 gap-10px p-0 md:grid-cols-3">
       <li
         v-for="point in POINTS"
@@ -103,11 +126,11 @@ async function openApproval() {
       class="m-0 rounded-big bg-status-danger-subtle px-12px py-8px text-12.5px text-status-danger"
       role="alert"
     >
-      {{ t('firewall.setup.failed', { reason: failure }) }}
+      {{ cleanupPending ? failure : t('firewall.setup.failed', { reason: failure }) }}
     </p>
     <div class="flex flex-wrap items-center gap-12px">
       <OnButton variant="primary" icon="brick-wall-fire" :loading="store.switching" @click="enable">
-        {{ failure ? t('firewall.setup.retry') : t('firewall.setup.enable') }}
+        {{ cleanupPending ? t('common.retry') : failure ? t('firewall.setup.retry') : t('firewall.setup.enable') }}
       </OnButton>
       <span class="min-w-0 flex-1 text-12px leading-[1.55] text-ink-tertiary">{{ t('firewall.setup.steps') }}</span>
     </div>
@@ -124,7 +147,8 @@ async function openApproval() {
     aria-labelledby="firewall-progress"
   >
     <h2 id="firewall-progress" class="m-0 flex items-center gap-8px text-15px font-600 text-ink-primary">
-      <OnIcon name="loader-circle" :size="17" class="animate-spin" />
+      <OnIcon v-if="status.extension === 'needs_reboot'" name="refresh-cw" :size="17" />
+      <OnIcon v-else name="loader-circle" :size="17" class="animate-spin" />
       {{ status.extension === 'uninstalling' ? t('firewall.progress.uninstalling') : t('firewall.progress.title') }}
     </h2>
     <ol v-if="status.extension !== 'uninstalling'" class="m-0 flex list-none flex-col gap-10px p-0">

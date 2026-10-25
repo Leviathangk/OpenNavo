@@ -5,6 +5,7 @@ import type { SeoProviderKey } from '@/service/api/system';
 import type { BodyOf, DataOf } from '@/typings/api/opennavo';
 import { $t } from '@/locales';
 import {
+  GSC_PROPERTY_EXAMPLE,
   MAX_CREDENTIAL,
   MAX_SERVICE_ACCOUNT,
   serviceAccountProblem,
@@ -258,7 +259,7 @@ void load();
                 v-model:value="draft.property"
                 :maxlength="MAX_CREDENTIAL"
                 :disabled="saving || loading || draft.clear"
-                placeholder="sc-domain:opennavo.com"
+                :placeholder="GSC_PROPERTY_EXAMPLE"
                 :input-props="{ spellcheck: false, autocomplete: 'off', 'aria-label': text('sources.gsc.property') }"
               />
               <NText depth="3" class="mt-8px block">{{ text('sources.gsc.propertyHint') }}</NText>

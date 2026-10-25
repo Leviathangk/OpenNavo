@@ -1153,6 +1153,27 @@ const pages = {
     changePassword: '修改密码',
     passwordChanged: '密码已修改，请重新登录'
   },
+  oauth: {
+    loadMore: '加载更多',
+    title: '连接 OpenNavo',
+    description: '此应用请求访问你的 OpenNavo 数据。请选择要授予的权限。',
+    callback: '应用回调地址',
+    permissions: '授权权限',
+    delete: '允许在所选权限范围内删除数据',
+    approve: '授权连接',
+    deny: '拒绝',
+    error: '无法完成授权。请重试，或返回应用重新发起连接。',
+    retry: '重试',
+    incompatible: '自动化调优权限不能与内容或任务写入权限同时授予。',
+    grants: '已授权应用',
+    empty: '暂无已授权应用。',
+    revoke: '撤销授权',
+    revoked: '已撤销',
+    expires: '到期时间',
+    confirm: '撤销此应用的访问权限？重新连接时需要再次授权。',
+    unavailable: '你的账号无法授予此权限',
+    limited: '访问仅限下方所选权限，可随时在个人中心撤销授权。'
+  },
   content: {
     article: {
       title: '文章',

@@ -929,7 +929,13 @@ export type FirewallEnableOptions = {
 	allowInstalled: boolean,
 };
 
-export type FirewallErrorCode = "E_FW_NOT_BUNDLED" | "E_FW_NOT_IN_APPLICATIONS" | "E_FW_ACTIVATION" | "E_FW_CONSENT_DENIED" | "E_FW_DISCONNECTED" | "E_FW_RULE_INVALID" | "E_FW_UNKNOWN_ALERT" | "E_FW_BLOCKLIST_URL" | "E_FW_BLOCKLIST_FETCH" | "E_FW_BLOCKLIST_FORMAT" | "E_FW_BLOCKLIST_TOO_LARGE";
+export type FirewallErrorCode = "E_FW_NOT_BUNDLED" | "E_FW_NOT_IN_APPLICATIONS" | "E_FW_ACTIVATION" | "E_FW_REMOVAL" |
+/**  macOS refused to load, save or remove the network filter configuration. */
+"E_FW_FILTER" | "E_FW_CONSENT_DENIED" | "E_FW_DISCONNECTED" | "E_FW_RULE_INVALID" | "E_FW_UNKNOWN_ALERT" | "E_FW_BLOCKLIST_URL" | "E_FW_BLOCKLIST_FETCH" | "E_FW_BLOCKLIST_FORMAT" | "E_FW_BLOCKLIST_TOO_LARGE" |
+/**  32 lists, or 256 MB across all lists, are already stored. */
+"E_FW_BLOCKLIST_LIMIT" |
+/**  A local list file is missing or can't be read. */
+"E_FW_BLOCKLIST_FILE";
 
 export type FirewallEvent = {
 	id: string,
@@ -953,7 +959,9 @@ export type FirewallEventsQuery = {
 	blockedOnly: boolean,
 };
 
-export type FirewallExtensionState = "not_installed" | "activating" | "needs_approval" | "needs_reboot" | "installed" | "uninstalling" | "failed";
+export type FirewallExtensionState = "not_installed" | "activating" | "needs_approval" | "needs_reboot" | "installed" | "uninstalling" |
+/**  Removed and no longer running; macOS deletes it at the next restart. */
+"removal_pending" | "failed";
 
 export type FirewallFailure = {
 	code: FirewallErrorCode,

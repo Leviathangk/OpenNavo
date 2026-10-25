@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"crypto/rand"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -121,6 +122,25 @@ func Validate(spec *openapi3.T, basePath string, admin bool) (gin.HandlerFunc, e
 			err = openapi3filter.ValidateRequest(c.Request.Context(), &openapi3filter.RequestValidationInput{Request: c.Request, PathParams: params, Route: route, Options: &openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc}})
 		}
 		if err != nil {
+			if c.FullPath() == basePath+"/catalog/changes" {
+				field, rule := "request", "invalid"
+				var requestErr *openapi3filter.RequestError
+				var schemaErr *openapi3.SchemaError
+				if errors.As(err, &requestErr) && requestErr.Parameter != nil {
+					field = requestErr.Parameter.Name // contract name, never caller input
+					rule = "parameter_invalid"
+					if values, ok := c.Request.URL.Query()[field]; ok && len(values) == 1 && values[0] == "" {
+						rule = "empty_parameter"
+					}
+				}
+				if errors.As(err, &schemaErr) {
+					rule = schemaErr.SchemaField
+				}
+				slog.WarnContext(c.Request.Context(), "catalog request validation failed",
+					"requestId", c.GetString("requestId"), "route", c.FullPath(), "field", field, "rule", rule)
+				respond.Error(c, domain.Rejected("parameter_invalid:"+field), admin)
+				return
+			}
 			respond.Error(c, domain.Validation(), admin)
 			return
 		}

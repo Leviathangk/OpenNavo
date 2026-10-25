@@ -120,26 +120,163 @@ fn precedence_app_destination_then_global_destination_then_list_then_app_any() {
 }
 #[test]
 fn blocking_wins_ties_independent_of_insertion_order() {
-    for actions in [
-        [FirewallAction::Block, FirewallAction::Allow],
-        [FirewallAction::Allow, FirewallAction::Block],
+    // Equally specific: an exact host and an exact IP, or a wildcard and a CIDR.
+    for [allowed, blocked] in [
+        ["example.test", "192.0.2.7"],
+        ["192.0.2.7", "example.test"],
+        ["*.test", "192.0.2.0/24"],
+        ["192.0.2.0/24", "*.test"],
     ] {
-        let mut e = engine();
-        let f = flow("one", "example.test");
-        for action in actions {
-            rule(
-                &mut e,
-                Some(f.app.clone()),
-                Some(if action == FirewallAction::Block {
-                    "*.test"
-                } else {
-                    "example.test"
-                }),
-                None,
-                action,
+        for block_first in [true, false] {
+            let mut e = engine();
+            let f = flow("one", "example.test");
+            let mut save =
+                |remote, action| rule(&mut e, Some(f.app.clone()), Some(remote), None, action);
+            if block_first {
+                save(blocked, FirewallAction::Block);
+                save(allowed, FirewallAction::Allow);
+            } else {
+                save(allowed, FirewallAction::Allow);
+                save(blocked, FirewallAction::Block);
+            }
+            assert_eq!(
+                e.decide(&f).unwrap().action,
+                FirewallAction::Block,
+                "{allowed} / {blocked}"
             );
         }
-        assert_eq!(e.decide(&f).unwrap().action, FirewallAction::Block);
+    }
+    // Entirely equal rules: the latest one decides.
+    let mut e = engine();
+    let f = flow("one", "example.test");
+    rule(
+        &mut e,
+        Some(f.app.clone()),
+        Some("example.test"),
+        None,
+        FirewallAction::Block,
+    );
+    let latest = rule(
+        &mut e,
+        Some(f.app.clone()),
+        Some("192.0.2.7"),
+        None,
+        FirewallAction::Block,
+    );
+    assert_eq!(e.decide(&f).unwrap().rule, Some(latest.id));
+}
+#[test]
+fn narrower_destinations_win_before_port_and_action() {
+    use FirewallAction::{Allow, Block};
+    type Rules = [(Option<&'static str>, Option<i64>, FirewallAction); 2];
+    let cases: [(Rules, Option<&str>, &str, FirewallAction); 8] = [
+        // An exact host outranks a wildcard even with a port.
+        (
+            [
+                (Some("*.example.com"), Some(443), Allow),
+                (Some("tracker.example.com"), None, Block),
+            ],
+            Some("tracker.example.com"),
+            "192.0.2.7",
+            Block,
+        ),
+        // An exact IP outranks any network.
+        (
+            [
+                (Some("0.0.0.0/0"), Some(443), Allow),
+                (Some("203.0.113.5"), None, Block),
+            ],
+            None,
+            "203.0.113.5",
+            Block,
+        ),
+        // A longer suffix or prefix is narrower.
+        (
+            [
+                (Some("*.example.com"), None, Block),
+                (Some("*.cdn.example.com"), None, Allow),
+            ],
+            Some("a.cdn.example.com"),
+            "192.0.2.7",
+            Allow,
+        ),
+        (
+            [
+                (Some("10.0.0.0/8"), None, Block),
+                (Some("10.1.0.0/16"), None, Allow),
+            ],
+            None,
+            "10.1.2.3",
+            Allow,
+        ),
+        // Same destination: a port is narrower.
+        (
+            [
+                (Some("example.com"), None, Allow),
+                (Some("example.com"), Some(443), Block),
+            ],
+            Some("example.com"),
+            "192.0.2.7",
+            Block,
+        ),
+        // Any destination rule outranks a port-only rule.
+        (
+            [
+                (None, Some(443), Block),
+                (Some("*.example.com"), None, Allow),
+            ],
+            Some("a.example.com"),
+            "192.0.2.7",
+            Allow,
+        ),
+        // A wildcard and a CIDR don't outrank each other; the port decides.
+        (
+            [
+                (Some("*.example.com"), Some(443), Allow),
+                (Some("192.0.2.0/24"), None, Block),
+            ],
+            Some("a.example.com"),
+            "192.0.2.7",
+            Allow,
+        ),
+        // A full-length prefix names one address, like an exact IP.
+        (
+            [
+                (Some("*.example.com"), None, Block),
+                (Some("192.0.2.7/32"), None, Allow),
+            ],
+            Some("a.example.com"),
+            "192.0.2.7",
+            Allow,
+        ),
+    ];
+    for (rules, host, address, expected) in cases {
+        for global in [false, true] {
+            for reversed in [false, true] {
+                let mut e = engine();
+                let mut f = flow("one", "unused.test");
+                f.remote_host = host.map(str::to_string);
+                f.remote_address = address.into();
+                let mut ordered = rules.to_vec();
+                if reversed {
+                    ordered.reverse();
+                }
+                for (remote, port, action) in ordered {
+                    rule(
+                        &mut e,
+                        (!global).then(|| f.app.clone()),
+                        remote,
+                        port,
+                        action,
+                    );
+                }
+                assert_eq!(
+                    e.flow(f),
+                    Some(expected),
+                    "{rules:?} global={global} reversed={reversed}"
+                );
+            }
+        }
     }
 }
 #[test]
@@ -263,9 +400,9 @@ fn unsigned_bundle_helpers_use_existing_baseline_but_keep_path_rule_keys() {
         assert_eq!(e.flow(child.clone()), None);
         // Incremental baseline arrival also releases an already waiting helper.
         let mut e = engine();
-        e.configure("first".into(), FirewallSettings::default(), 1_000);
+        e.configure("first".into(), FirewallSettings::default(), false, 1_000);
         assert_eq!(e.flow(child), None);
-        e.baseline_add(vec![parent], 1_001);
+        e.baseline_add(vec![parent], None, 1_001);
         assert!(e.alerts().is_empty());
         assert_eq!(e.resolutions[0].action, FirewallAction::Allow);
     }
@@ -889,7 +1026,7 @@ fn watchdog_timeout_is_idempotent_and_internal_failure_records_no_client() {
     let mut e = engine();
     e.flow(flow("two", "a.test"));
     e.cancel("two", 1_500);
-    e.bypass(flow("three", "a.test"));
+    e.bypass(flow("three", "a.test"), true, false);
     assert_eq!(e.state.events[0].reason, FirewallVerdictReason::NoClient);
     assert_eq!(e.state.events[0].count, 2);
     e.state.events.clear();
@@ -897,7 +1034,7 @@ fn watchdog_timeout_is_idempotent_and_internal_failure_records_no_client() {
     e.suspend(2_000);
     e.connect(2_001);
     assert_eq!(e.flow(flow("five", "a.test")), Some(FirewallAction::Allow));
-    e.bypass(flow("six", "a.test"));
+    e.bypass(flow("six", "a.test"), true, false);
     assert!(e.state.events.is_empty());
     assert!(e.alerts().is_empty());
 }
@@ -929,12 +1066,12 @@ fn suspension_survives_heartbeat_and_unmatched_alert_keeps_arrival_time() {
 fn configure_is_single_flight_idempotent_and_never_suspends_policy() {
     let mut e = engine();
     let settings = FirewallSettings::default();
-    assert!(e.configure("enable-1".into(), settings.clone(), 1_000));
+    assert!(e.configure("enable-1".into(), settings.clone(), false, 1_000));
     assert!(e.snapshot().preparing);
     for _ in 0..100 {
-        assert!(!e.configure("enable-1".into(), settings.clone(), 1_001));
+        assert!(!e.configure("enable-1".into(), settings.clone(), false, 1_001));
     }
-    assert!(!e.configure("enable-2".into(), settings, 1_002));
+    assert!(!e.configure("enable-2".into(), settings, false, 1_002));
     assert_eq!(e.flow(flow("unknown", "example.test")), None);
     assert_eq!(e.alerts().len(), 1);
     let blocked = flow("blocked", "blocked.test");
@@ -952,23 +1089,28 @@ fn configure_is_single_flight_idempotent_and_never_suspends_policy() {
 #[test]
 fn baseline_progress_resolves_installed_apps_and_completion_survives_restart() {
     let mut e = engine();
-    assert!(e.configure("enable".into(), FirewallSettings::default(), 1_000));
+    assert!(e.configure("enable".into(), FirewallSettings::default(), false, 1_000));
     let mut installed = flow("installed", "example.test");
     installed.app.bundle_path = Some("/fixtures/tool.app".into());
     assert_eq!(e.flow(installed.clone()), None);
-    e.baseline_add(vec![installed.app.clone()], 1_001);
+    e.baseline_add(vec![installed.app.clone()], None, 1_001);
     assert_eq!(e.resolutions.len(), 1);
     assert_eq!(e.resolutions[0].action, FirewallAction::Allow);
     assert!(e.alerts().is_empty());
     let mut invalid = app("invalid");
     invalid.signer = FirewallSigner::Invalid;
     invalid.bundle_path = Some("/fixtures/invalid.app".into());
-    e.baseline_add(vec![invalid.clone()], 1_002);
+    e.baseline_add(vec![invalid.clone()], None, 1_002);
     assert!(!e.state.baseline.contains(&identity_key(&invalid)));
-    e.baseline_finish();
+    e.baseline_finish(None);
     assert!(!e.snapshot().preparing);
     let mut restored = Engine::restore(e.persistent()).unwrap();
-    assert!(!restored.configure("reconnect".into(), FirewallSettings::default(), 1_003));
+    assert!(!restored.configure(
+        "reconnect".into(),
+        FirewallSettings::default(),
+        false,
+        1_003
+    ));
     assert!(
         restored
             .state
@@ -980,22 +1122,22 @@ fn baseline_progress_resolves_installed_apps_and_completion_survives_restart() {
 #[test]
 fn baseline_deadline_keeps_partial_results_and_late_work_cannot_resume_disabled_filter() {
     let mut e = engine();
-    assert!(e.configure("enable".into(), FirewallSettings::default(), 1_000));
+    assert!(e.configure("enable".into(), FirewallSettings::default(), false, 1_000));
     let mut installed = app("completed");
     installed.bundle_path = Some("/fixtures/completed.app".into());
-    e.baseline_add(vec![installed.clone()], 1_001);
+    e.baseline_add(vec![installed.clone()], None, 1_001);
     e.connect(60_999);
-    assert!(!e.configure("retry".into(), FirewallSettings::default(), 60_999));
+    assert!(!e.configure("retry".into(), FirewallSettings::default(), false, 60_999));
     e.expire(61_000, 61_000);
     assert!(!e.snapshot().preparing); // retry did not extend the original deadline
     assert!(e.state.baseline.contains(&identity_key(&installed)));
     let mut late = app("late");
     late.bundle_path = Some("/fixtures/late.app".into());
-    e.baseline_add(vec![late.clone()], 61_001);
+    e.baseline_add(vec![late.clone()], None, 61_001);
     assert!(!e.state.baseline.contains(&identity_key(&late)));
-    assert!(!e.configure("later".into(), FirewallSettings::default(), 61_002));
+    assert!(!e.configure("later".into(), FirewallSettings::default(), false, 61_002));
     e.suspend(61_003);
-    e.baseline_finish();
+    e.baseline_finish(None);
     e.connect(61_004);
     assert!(!e.connected(61_004));
 }
@@ -1025,4 +1167,767 @@ fn activity_composite_cursor_preserves_same_millisecond_rows_after_restart() {
         before_id = last["id"].clone();
     }
     assert_eq!(ids.len(), 201);
+}
+
+fn answer(
+    e: &mut Engine,
+    alert: &str,
+    action: FirewallAction,
+    scope: FirewallReplyScope,
+    until: FirewallRuleUntil,
+) -> Result<(), FirewallErrorCode> {
+    e.reply(
+        FirewallReply {
+            alert_id: alert.into(),
+            action,
+            scope,
+            until,
+        },
+        2_000,
+    )
+}
+fn addressed(id: &str, address: &str) -> Flow {
+    let mut f = flow(id, "unused.test");
+    f.remote_host = None;
+    f.remote_address = address.into();
+    f
+}
+
+#[test]
+fn flow_addresses_are_canonical_for_rules_lists_and_alerts() {
+    for (input, canonical) in [
+        ("2001:0DB8::1", "2001:db8::1"),
+        (" fe80::1%en0 ", "fe80::1"),
+        ("::ffff:203.0.113.5", "203.0.113.5"),
+        ("::ffff:203.0.113.0/120", "203.0.113.0/24"),
+        ("[2001:db8::1]", "2001:db8::1"),
+    ] {
+        assert_eq!(normalize_remote(input).unwrap(), canonical);
+    }
+    assert_eq!(
+        normalize_remote("192.0.2.1%en0"),
+        Err(FirewallErrorCode::RuleInvalid)
+    );
+    assert!(remote_matches("203.0.113.0/24", "::ffff:203.0.113.5", None));
+    assert!(remote_matches("2001:db8::1", "2001:0db8:0::1%en0", None));
+    assert!(BlockIndex::new(&["203.0.113.0/24".into()]).matches("::ffff:203.0.113.5", None));
+    for listed in [false, true] {
+        let mut e = engine();
+        if listed {
+            e.blocklist_load(
+                None,
+                "/fixtures/list".into(),
+                "list".into(),
+                b"203.0.113.0/24",
+                1_000,
+            )
+            .unwrap();
+        } else {
+            rule(
+                &mut e,
+                None,
+                Some("203.0.113.0/24"),
+                None,
+                FirewallAction::Block,
+            );
+        }
+        let mapped = addressed("mapped", "::ffff:203.0.113.5");
+        assert_eq!(e.flow(mapped), Some(FirewallAction::Block));
+        assert_eq!(e.state.events[0].remote_address, "203.0.113.5");
+    }
+    let mut e = engine();
+    assert_eq!(e.flow(addressed("zoned", "fe80::1%en0")), None);
+    assert_eq!(e.alerts()[0].remote_address, "fe80::1");
+}
+
+#[test]
+fn destination_answers_need_a_matchable_destination_or_keep_the_question() {
+    use FirewallReplyScope::{App, Destination};
+    let mut e = engine();
+    let mut zoned = addressed("zoned", "fe80::1%en0");
+    zoned.port = 0;
+    e.flow(zoned.clone());
+    answer(
+        &mut e,
+        "zoned",
+        FirewallAction::Block,
+        Destination,
+        FirewallRuleUntil::Always,
+    )
+    .unwrap();
+    assert_eq!(e.state.rules[0].remote.as_deref(), Some("fe80::1"));
+    assert_eq!(e.state.rules[0].port, None);
+    assert_eq!(e.resolutions[0].action, FirewallAction::Block);
+    // The rule survives a restart and matches the next connection there.
+    let mut restored = Engine::restore(e.persistent()).unwrap();
+    zoned.id = "again".into();
+    assert_eq!(restored.flow(zoned), Some(FirewallAction::Block));
+    // Nothing usable to name: no rule is stored and the question stays.
+    let mut e = engine();
+    e.flow(addressed("empty", " "));
+    assert_eq!(
+        answer(
+            &mut e,
+            "empty",
+            FirewallAction::Block,
+            Destination,
+            FirewallRuleUntil::Always
+        ),
+        Err(FirewallErrorCode::RuleInvalid)
+    );
+    assert!(e.state.rules.is_empty());
+    assert_eq!(e.alerts().len(), 1);
+    answer(
+        &mut e,
+        "empty",
+        FirewallAction::Block,
+        App,
+        FirewallRuleUntil::Always,
+    )
+    .unwrap();
+    assert_eq!(e.state.rules.len(), 1);
+    assert!(Engine::restore(e.persistent()).is_ok());
+}
+
+#[test]
+fn restore_drops_rules_and_entries_that_can_never_match_and_keeps_the_rest() {
+    let mut e = engine();
+    let kept = rule(
+        &mut e,
+        Some(app("tool")),
+        Some("example.test"),
+        Some(443),
+        FirewallAction::Block,
+    );
+    let template = e.state.rules[0].clone();
+    for (id, remote, port) in [
+        ("zoned", Some("fe80::1%en0"), None),
+        ("mapped", Some("::ffff:203.0.113.5"), Some(80)),
+        ("empty", Some(""), None),
+        ("malformed", Some("a..test"), None),
+        ("port", Some("example.test"), Some(0)),
+    ] {
+        e.state.rules.push(FirewallRule {
+            id: id.into(),
+            remote: remote.map(str::to_string),
+            port,
+            ..template.clone()
+        });
+    }
+    // A global rule naming nothing, and an earlier build's installed allowance for an
+    // Apple program. A third-party installed allowance stays.
+    e.state.rules.push(FirewallRule {
+        id: "global".into(),
+        app: None,
+        remote: None,
+        port: None,
+        ..template.clone()
+    });
+    let mut apple = app("Mail");
+    apple.signer = FirewallSigner::Apple;
+    apple.key = identity_key(&apple);
+    for (id, owner) in [("apple", apple), ("installed", app("installed"))] {
+        e.state.rules.push(FirewallRule {
+            id: id.into(),
+            app: Some(owner),
+            remote: None,
+            port: None,
+            action: FirewallAction::Allow,
+            source: FirewallRuleSource::Installed,
+            ..template.clone()
+        });
+    }
+    e.blocklist_load(
+        None,
+        "/fixtures/list".into(),
+        "list".into(),
+        b"a.test\nb.test",
+        1_000,
+    )
+    .unwrap();
+    e.state.blocklists[0].entries.extend([
+        "under_score.test".into(),
+        "2001:0DB8::/32".into(),
+        "A.TEST".into(),
+    ]);
+    let restored = Engine::restore(e.persistent()).unwrap();
+    let rules: Vec<_> = restored
+        .state
+        .rules
+        .iter()
+        .map(|r| (r.id.as_str(), r.remote.as_deref(), r.port))
+        .collect();
+    assert_eq!(
+        rules,
+        vec![
+            (kept.id.as_str(), Some("example.test"), Some(443)),
+            ("zoned", Some("fe80::1"), None),
+            ("mapped", Some("203.0.113.5"), Some(80)),
+            ("installed", None, None),
+        ]
+    );
+    let list = &restored.state.blocklists[0];
+    assert_eq!(list.entries, vec!["2001:db8::/32", "a.test", "b.test"]);
+    assert_eq!(list.info.entries, 3);
+    // Only an unknown version or the size limits still reject the whole file.
+    let mut future = e.persistent();
+    future.version = 2;
+    assert!(Engine::restore(future).is_err());
+}
+
+#[test]
+fn until_quit_answers_cover_every_answering_process_of_the_app() {
+    use FirewallReplyScope::App;
+    let mut e = engine();
+    e.flow(flow("main", "a.test"));
+    answer(
+        &mut e,
+        "main",
+        FirewallAction::Allow,
+        App,
+        FirewallRuleUntil::AppQuits,
+    )
+    .unwrap();
+    // A helper shares the app key but is another process: it gets its own question...
+    let mut helper = flow("helper", "a.test");
+    helper.pid = 43;
+    helper.process_start = 20;
+    assert_eq!(e.flow(helper), None);
+    answer(
+        &mut e,
+        "helper",
+        FirewallAction::Allow,
+        App,
+        FirewallRuleUntil::AppQuits,
+    )
+    .unwrap();
+    // ...and then both share one temporary rule instead of taking turns asking.
+    assert_eq!(e.state.rules.len(), 1);
+    for (id, pid, start) in [("main-2", 42, 10), ("helper-2", 43, 20)] {
+        let mut f = flow(id, "b.test");
+        f.pid = pid;
+        f.process_start = start;
+        assert_eq!(e.flow(f), Some(FirewallAction::Allow));
+    }
+    assert!(e.alerts().is_empty());
+    let mut processes = e.processes();
+    processes.sort();
+    assert_eq!(processes, vec![(42, 10), (43, 20)]);
+    // The rule ends with the last of its processes.
+    e.tick(2_000, 2_000, &HashSet::from([(43, 20)]));
+    assert_eq!(e.state.rules.len(), 1);
+    e.tick(2_000, 2_000, &HashSet::new());
+    assert!(e.state.rules.is_empty());
+}
+
+#[test]
+fn until_quit_answers_keep_permanent_rules_and_permanent_answers_replace_both() {
+    use FirewallReplyScope::App;
+    let mut e = engine();
+    e.flow(flow("old", "a.test"));
+    e.timeout("old", 1_500); // Released; the question stays answerable.
+    let permanent = rule(&mut e, Some(app("tool")), None, None, FirewallAction::Block);
+    answer(
+        &mut e,
+        "old",
+        FirewallAction::Allow,
+        App,
+        FirewallRuleUntil::AppQuits,
+    )
+    .unwrap();
+    assert_eq!(e.state.rules.len(), 2);
+    assert_eq!(e.state.rules[0], permanent);
+    assert_eq!(e.state.rules[1].until, FirewallRuleUntil::AppQuits);
+    e.tick(2_000, 2_000, &HashSet::new());
+    assert_eq!(e.state.rules, vec![permanent]);
+
+    let mut e = engine();
+    e.flow(flow("first", "a.test"));
+    answer(
+        &mut e,
+        "first",
+        FirewallAction::Allow,
+        App,
+        FirewallRuleUntil::AppQuits,
+    )
+    .unwrap();
+    let mut other = flow("second", "a.test");
+    other.pid = 43;
+    other.process_start = 20;
+    e.flow(other);
+    answer(
+        &mut e,
+        "second",
+        FirewallAction::Block,
+        App,
+        FirewallRuleUntil::Always,
+    )
+    .unwrap();
+    assert_eq!(e.state.rules.len(), 1);
+    assert_eq!(e.state.rules[0].until, FirewallRuleUntil::Always);
+    assert!(e.processes().is_empty());
+    assert_eq!(e.flow(flow("third", "a.test")), Some(FirewallAction::Block));
+}
+
+#[test]
+fn match_statistics_bump_only_the_stats_revision() {
+    let mut e = engine();
+    let blocked = rule(&mut e, None, Some("a.test"), None, FirewallAction::Block);
+    let before = e.snapshot();
+    e.flow(flow("one", "a.test"));
+    let after = e.snapshot();
+    assert_eq!(after.rules_revision, before.rules_revision);
+    assert!(after.rules_stats_revision > before.rules_stats_revision);
+    assert_eq!(e.state.rules[0].match_count, 1);
+    // Settings that prune nothing leave the list alone; creating or pruning changes it.
+    e.set_settings(
+        FirewallSettings {
+            mode: FirewallMode::Block,
+            ..FirewallSettings::default()
+        },
+        1_001,
+    );
+    assert_eq!(e.snapshot().rules_revision, before.rules_revision);
+    let mut apple = flow("apple", "b.test");
+    apple.app.signer = FirewallSigner::Apple;
+    apple.app.key = identity_key(&apple.app);
+    assert_eq!(e.flow(apple), Some(FirewallAction::Allow));
+    let created = e.snapshot().rules_revision;
+    assert!(created > before.rules_revision);
+    e.set_settings(
+        FirewallSettings {
+            allow_apple: false,
+            ..e.state.settings.clone()
+        },
+        1_002,
+    );
+    let pruned = e.snapshot().rules_revision;
+    assert!(pruned > created);
+    e.delete_rules(&[blocked.id], 1_003);
+    assert!(e.snapshot().rules_revision > pruned);
+    // Snapshots from an older extension lack the field.
+    let mut old = serde_json::to_value(e.snapshot()).unwrap();
+    old.as_object_mut().unwrap().remove("rulesStatsRevision");
+    let old: Snapshot = serde_json::from_value(old).unwrap();
+    assert_eq!(old.rules_stats_revision, 0);
+}
+
+#[test]
+fn alert_waiting_counts_other_held_connections_and_falls_as_they_release() {
+    let mut e = engine();
+    for (id, host) in [("one", "a.test"), ("two", "b.test"), ("three", "c.test")] {
+        e.flow(flow(id, host));
+    }
+    assert_eq!(e.alerts()[0].waiting, 2);
+    e.timeout("two", 1_500);
+    assert_eq!(e.alerts()[0].waiting, 1);
+    // The question's own connection never counts.
+    e.timeout("one", 1_500);
+    assert_eq!(e.alerts()[0].waiting, 1);
+    e.timeout("three", 1_500);
+    assert_eq!(e.alerts()[0].waiting, 0);
+    assert!(e.alerts()[0].released);
+}
+
+#[test]
+fn apple_programs_follow_allow_apple_even_when_in_the_installed_baseline() {
+    let mut mail = app("Mail");
+    mail.signer = FirewallSigner::Apple;
+    mail.signing_id = Some("com.apple.mail".into());
+    mail.team_id = None;
+    mail.bundle_path = Some("/System/Applications/Mail.app".into());
+    mail.key = identity_key(&mail);
+    let mut f = flow("mail", "example.test");
+    f.app = mail.clone();
+    let mut e = engine();
+    e.set_settings(
+        FirewallSettings {
+            allow_apple: false,
+            ..FirewallSettings::default()
+        },
+        1_000,
+    );
+    e.set_baseline(vec![mail.clone()]);
+    assert!(e.state.baseline.contains(&mail.key));
+    assert_eq!(e.flow(f.clone()), None);
+    assert!(e.state.rules.is_empty());
+    // Allowed as an Apple program when that setting is on, never as an installed app.
+    let mut e = engine();
+    e.set_baseline(vec![mail]);
+    assert_eq!(e.flow(f), Some(FirewallAction::Allow));
+    assert_eq!(e.state.rules[0].source, FirewallRuleSource::Apple);
+}
+
+#[test]
+fn graylist_covers_apple_network_tools_but_not_other_signers_or_dns_tools() {
+    for path in [
+        "/usr/bin/nscurl",
+        "/usr/bin/openssl",
+        "/usr/bin/rsync",
+        "/usr/bin/ftp",
+        "/usr/bin/tftp",
+        "/usr/bin/ldapsearch",
+        "/usr/libexec/git-core/git-remote-https",
+        "/Library/Developer/CommandLineTools/usr/libexec/git-core/git-remote-http",
+        "/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core/git-remote-https",
+    ] {
+        let mut tool = app("tool");
+        tool.signer = FirewallSigner::Apple;
+        tool.signing_id = None;
+        tool.path = path.into();
+        assert!(graylisted(&tool), "{path}");
+        tool.signer = FirewallSigner::DeveloperId;
+        assert!(!graylisted(&tool), "{path}");
+    }
+    for id in [
+        "com.apple.nscurl",
+        "com.apple.openssl",
+        "com.apple.rsync",
+        "com.apple.tftp",
+        "com.apple.ldapsearch",
+        "com.apple.git-remote-http",
+    ] {
+        let mut tool = app("renamed");
+        tool.signer = FirewallSigner::Apple;
+        tool.signing_id = Some(id.into());
+        assert!(graylisted(&tool), "{id}");
+    }
+    let mut dig = app("dig");
+    dig.signer = FirewallSigner::Apple;
+    dig.signing_id = Some("com.apple.dig".into());
+    dig.path = "/usr/bin/dig".into();
+    assert!(!graylisted(&dig));
+}
+
+// The header of github.com/StevenBlack/hosts, verbatim apart from the dates.
+const HOSTS_HEADER: &str = "# Title: StevenBlack/hosts
+#
+# This hosts file is a merged collection of hosts from reputable sources,
+# with a dash of crowd sourcing via GitHub
+#
+# Date: 01 January 2026 00:00:00 (UTC)
+# Number of unique domains: 2
+#
+# ===============================================================
+
+127.0.0.1 localhost
+127.0.0.1 localhost.localdomain
+127.0.0.1 local
+255.255.255.255 broadcasthost
+::1 localhost
+::1 ip6-localhost
+::1 ip6-loopback
+fe80::1%lo0 localhost
+ff00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+0.0.0.0 0.0.0.0
+
+# Custom host records are listed here.
+
+# End of custom host records.
+# Start StevenBlack
+
+#=====================================
+# Title: Hosts contributed by Steven Black
+# http://stevenblack.com
+
+";
+
+#[test]
+fn blocklist_parser_reads_real_hosts_files_and_skips_unsupported_lines() {
+    let text = format!(
+        "{HOSTS_HEADER}0.0.0.0 ads.example.com\n0.0.0.0 tracker.example.net # inline\n\
+         0.0.0.0 ad_server.example.org\n0.0.0.0 例え.example\n||adblock.example.org^\n\
+         ! Adblock comment\n[Adblock Plus 2.0]\n"
+    );
+    assert_eq!(
+        parse_blocklist(text.as_bytes()).unwrap(),
+        vec!["ads.example.com", "tracker.example.net"]
+    );
+    // An HTML page, or a file without one usable entry, is not a list.
+    for text in [
+        "<!DOCTYPE html>\n<html><body>\nNotFound\n</body></html>\n",
+        "# only comments\n\n",
+        HOSTS_HEADER,
+        "||ads.example.org^\n",
+    ] {
+        assert_eq!(
+            parse_blocklist(text.as_bytes()),
+            Err(FirewallErrorCode::BlocklistFormat),
+            "{text}"
+        );
+    }
+}
+
+#[test]
+fn blocklist_count_limit_has_its_own_code() {
+    let mut e = engine();
+    for n in 0..32 {
+        e.blocklist_load(
+            None,
+            format!("/fixtures/{n}"),
+            n.to_string(),
+            b"a.test",
+            1_000,
+        )
+        .unwrap();
+    }
+    assert_eq!(
+        e.blocklist_load(
+            None,
+            "/fixtures/extra".into(),
+            "extra".into(),
+            b"a.test",
+            1_000
+        ),
+        Err(FirewallErrorCode::BlocklistLimit)
+    );
+    // Refreshing a stored list is not another list.
+    let first = e.state.blocklists[0].info.id.clone();
+    assert!(
+        e.blocklist_load(Some(&first), String::new(), String::new(), b"b.test", 1_001)
+            .is_ok()
+    );
+}
+
+#[test]
+fn bypass_enforces_whatever_needs_no_question() {
+    use FirewallAction::{Allow, Block};
+    let mut e = engine();
+    rule(&mut e, None, Some("blocked.test"), None, Block);
+    rule(&mut e, Some(app("tool")), None, None, Block);
+    e.blocklist_load(
+        None,
+        "/fixtures/list".into(),
+        "list".into(),
+        b"listed.test",
+        1_000,
+    )
+    .unwrap();
+    // Without identity: global destination rules and lists, not the app's rules.
+    for (host, action, reason) in [
+        ("blocked.test", Block, FirewallVerdictReason::Rule),
+        ("listed.test", Block, FirewallVerdictReason::Blocklist),
+        ("other.test", Allow, FirewallVerdictReason::NoClient),
+    ] {
+        assert_eq!(
+            e.bypass(flow("unknown", host), false, false),
+            action,
+            "{host}"
+        );
+        assert_eq!(e.state.events[0].reason, reason, "{host}");
+    }
+    // Late but identified: the app's own rules apply as well.
+    assert_eq!(e.bypass(flow("late", "other.test"), true, false), Block);
+    // Already let through by the watchdog: recorded as what happened.
+    assert_eq!(e.bypass(flow("gone", "blocked.test"), true, true), Allow);
+    assert_eq!(e.state.events[0].reason, FirewallVerdictReason::NoClient);
+    // Nothing decides it: allowed without a question, even in ask mode.
+    let mut stranger = flow("stranger", "other.test");
+    stranger.app = app("stranger");
+    assert_eq!(e.bypass(stranger, true, false), Allow);
+    assert!(e.alerts().is_empty());
+    // Automatic allowances still apply when late.
+    let mut apple = flow("apple", "other.test");
+    apple.app.signer = FirewallSigner::Apple;
+    apple.app.key = identity_key(&apple.app);
+    assert_eq!(e.bypass(apple, true, false), Allow);
+    assert_eq!(e.state.events[0].reason, FirewallVerdictReason::Apple);
+    // The extension reads the verdict from the reply; addresses are normalized here too.
+    let mut native = addressed("native", "::ffff:192.0.2.9");
+    native.remote_host = Some("Blocked.Test.".into());
+    let reply = e
+        .request(serde_json::json!({"op":"bypass","identified":false,"flow":native}))
+        .unwrap();
+    assert_eq!(reply, serde_json::json!({"verdict":"block"}));
+    assert_eq!(e.state.events[0].remote_address, "192.0.2.9");
+}
+
+#[test]
+fn fresh_setup_and_reset_forget_everything_and_scan_again() {
+    for via_reset in [false, true] {
+        let mut e = engine();
+        assert!(e.configure("first".into(), FirewallSettings::default(), false, 1_000));
+        let mut installed = app("installed");
+        installed.bundle_path = Some("/fixtures/Installed.app".into());
+        e.baseline_add(vec![installed], Some("first"), 1_000);
+        e.baseline_finish(Some("first"));
+        rule(
+            &mut e,
+            None,
+            Some("blocked.test"),
+            None,
+            FirewallAction::Block,
+        );
+        e.blocklist_load(
+            None,
+            "/fixtures/list".into(),
+            "list".into(),
+            b"listed.test",
+            1_000,
+        )
+        .unwrap();
+        assert_eq!(
+            e.flow(flow("blocked", "blocked.test")),
+            Some(FirewallAction::Block)
+        );
+        assert_eq!(e.flow(flow("asked", "a.test")), None);
+        e.reply(
+            FirewallReply {
+                alert_id: "asked".into(),
+                action: FirewallAction::Allow,
+                scope: FirewallReplyScope::Destination,
+                until: FirewallRuleUntil::AppQuits,
+            },
+            1_000,
+        )
+        .unwrap();
+        assert_eq!(e.flow(flow("waiting", "b.test")), None);
+        e.resolutions.clear();
+        let reply = if via_reset {
+            e.request(serde_json::json!({"op":"reset"})).unwrap()
+        } else {
+            e.request(serde_json::json!({
+                "op":"configure","id":"second","fresh":true,"settings":FirewallSettings::default()
+            }))
+            .unwrap()
+        };
+        assert!(e.state.rules.is_empty() && e.state.blocklists.is_empty());
+        assert!(e.state.events.is_empty() && e.state.blocked_today == 0);
+        assert!(e.state.baseline.is_empty() && !e.state.baseline_initialized);
+        assert!(e.alerts().is_empty() && e.processes().is_empty());
+        assert_eq!(e.resolutions.len(), 1);
+        assert_eq!(e.resolutions[0].action, FirewallAction::Allow);
+        // A removal leaves nothing to scan for; a new setup scans again.
+        assert_eq!(e.snapshot().preparing, !via_reset);
+        if !via_reset {
+            assert_eq!(reply, serde_json::json!({"accepted":true,"scan":true}));
+        }
+        // Old list indexes are gone too, and nothing returns after a restart.
+        assert_eq!(e.flow(flow("listed", "listed.test")), None);
+        let restored = Engine::restore(e.persistent()).unwrap();
+        assert!(restored.state.rules.is_empty() && restored.state.blocklists.is_empty());
+        assert!(restored.state.events.is_empty() && restored.state.baseline.is_empty());
+    }
+    // A retried fresh configuration (same ID) must not wipe what came after it,
+    // and an ordinary one never wipes.
+    let mut e = engine();
+    assert!(e.configure("fresh".into(), FirewallSettings::default(), true, 1_000));
+    rule(&mut e, None, Some("kept.test"), None, FirewallAction::Block);
+    assert!(!e.configure("fresh".into(), FirewallSettings::default(), true, 1_001));
+    assert!(!e.configure("other".into(), FirewallSettings::default(), false, 1_002));
+    assert_eq!(e.state.rules.len(), 1);
+}
+
+#[test]
+fn results_from_a_cancelled_baseline_scan_are_ignored() {
+    let mut e = engine();
+    assert!(e.configure("old".into(), FirewallSettings::default(), false, 1_000));
+    e.reset();
+    assert!(e.configure("new".into(), FirewallSettings::default(), true, 1_001));
+    let mut stale = app("stale");
+    stale.bundle_path = Some("/fixtures/Stale.app".into());
+    let apps = serde_json::to_value(vec![stale.clone()]).unwrap();
+    e.request(serde_json::json!({"op":"baseline_add","scan":"old","apps":apps}))
+        .unwrap();
+    e.request(serde_json::json!({"op":"baseline_finish","scan":"old"}))
+        .unwrap();
+    assert!(e.snapshot().preparing);
+    assert!(!e.state.baseline.contains(&stale.key));
+    e.request(serde_json::json!({"op":"baseline_add","scan":"new","apps":apps}))
+        .unwrap();
+    e.request(serde_json::json!({"op":"baseline_finish","scan":"new"}))
+        .unwrap();
+    assert!(!e.snapshot().preparing && e.state.baseline_initialized);
+    assert!(e.state.baseline.contains(&stale.key));
+}
+
+#[test]
+fn restore_revokes_legacy_apple_grants_for_graylisted_tools_only() {
+    for (name, signing_id) in [
+        ("nscurl", "com.apple.nscurl"),
+        ("renamed", "com.apple.openssl"),
+        ("rsync", "unknown"),
+    ] {
+        let mut e = engine();
+        let mut f = flow("graylisted", "example.test");
+        f.app.signer = FirewallSigner::Apple;
+        f.app.path = format!("/usr/bin/{name}");
+        f.app.signing_id = Some(signing_id.into());
+        f.app.key = identity_key(&f.app);
+        rule(
+            &mut e,
+            Some(f.app.clone()),
+            None,
+            None,
+            FirewallAction::Allow,
+        );
+        e.state.rules.last_mut().unwrap().source = FirewallRuleSource::Apple;
+        e.state.baseline.insert(f.app.key.clone());
+        let mut restored = Engine::restore(e.persistent()).unwrap();
+        assert!(restored.state.rules.is_empty());
+        restored.connect(1_000);
+        assert!(restored.decide(&f).is_none());
+        rule(
+            &mut restored,
+            Some(f.app.clone()),
+            None,
+            None,
+            FirewallAction::Allow,
+        );
+        let mut explicit = Engine::restore(restored.persistent()).unwrap();
+        assert_eq!(explicit.decide(&f).unwrap().action, FirewallAction::Allow);
+    }
+    let mut e = engine();
+    let mut f = flow("normal-apple", "example.test");
+    f.app.signer = FirewallSigner::Apple;
+    f.app.path = "/usr/bin/dig".into();
+    f.app.signing_id = Some("com.apple.dig".into());
+    f.app.key = identity_key(&f.app);
+    rule(
+        &mut e,
+        Some(f.app.clone()),
+        None,
+        None,
+        FirewallAction::Allow,
+    );
+    e.state.rules.last_mut().unwrap().source = FirewallRuleSource::Apple;
+    assert_eq!(
+        Engine::restore(e.persistent()).unwrap().state.rules.len(),
+        1
+    );
+}
+
+#[test]
+fn activity_allow_reusing_exact_ip_target_replaces_the_block_even_with_a_hostname() {
+    for remote in [
+        "192.0.2.7",
+        "192.0.2.7/32",
+        "2001:db8::7",
+        "2001:db8::7/128",
+    ] {
+        let mut e = engine();
+        let mut f = flow("address", "example.test");
+        f.remote_address = remote.split('/').next().unwrap().into();
+        rule(
+            &mut e,
+            Some(f.app.clone()),
+            Some(remote),
+            Some(443),
+            FirewallAction::Block,
+        );
+        assert_eq!(e.decide(&f).unwrap().action, FirewallAction::Block);
+        rule(
+            &mut e,
+            Some(f.app.clone()),
+            Some(remote),
+            Some(443),
+            FirewallAction::Allow,
+        );
+        assert_eq!(e.decide(&f).unwrap().action, FirewallAction::Allow);
+        assert_eq!(e.state.rules.len(), 1);
+    }
 }

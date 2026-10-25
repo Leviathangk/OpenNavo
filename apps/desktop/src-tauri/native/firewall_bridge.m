@@ -2,7 +2,9 @@
 #import <AppKit/AppKit.h>
 #import <NetworkExtension/NetworkExtension.h>
 #import <SystemExtensions/SystemExtensions.h>
+#import <objc/message.h>
 #import <xpc/xpc.h>
+#import "firewall_cleanup.h"
 #import "../../native/firewall/FWIdentity.h"
 extern void xpc_dictionary_get_audit_token(xpc_object_t,audit_token_t *);
 
@@ -39,6 +41,10 @@ static FWPeerState FWClassifyPeer(BOOL authenticated,BOOL invalid,uint64_t elaps
 @property OSSystemExtensionRequest *operation;
 @property BOOL enableAfterActivation;
 @property BOOL uninstalling;
+@property BOOL removalConfirmed;
+@property BOOL upgrading;
+@property BOOL upgradeAttempted;
+@property BOOL canceledSameVersion;
 @property BOOL refreshing;
 @property uint64_t lastRefresh;
 @property uint64_t generation;
@@ -63,6 +69,7 @@ static FWPeerState FWClassifyPeer(BOOL authenticated,BOOL invalid,uint64_t elaps
     [[self filterManager] removeFromPreferencesWithCompletionHandler:^(NSError *error){dispatch_async(dispatch_get_main_queue(),^{completion(error);});}];
 }
 -(void)submitActivation {
+    self.canceledSameVersion=NO;
     self.operation=[OSSystemExtensionRequest activationRequestForExtension:[self extensionIdentifier] queue:dispatch_get_main_queue()];
     self.operation.delegate=self;[OSSystemExtensionManager.sharedManager submitRequest:self.operation];
 }
@@ -102,12 +109,18 @@ static FWPeerState FWClassifyPeer(BOOL authenticated,BOOL invalid,uint64_t elaps
     return @{@"availability":availability,@"extension":self.extensionState,@"extensionVersion":[self.extensionState isEqual:@"installed"]?(self.installedVersion?:NSNull.null):NSNull.null,@"filter":self.filterState,@"connected":@NO,@"preparing":@NO,@"mode":@"ask",@"ruleCount":@0,@"pendingAlerts":@0,@"blockedToday":@0,@"error":self.failure?:NSNull.null};
 }
 -(void)fail:(NSError *)error activation:(BOOL)activation {
-    NSString *code=([error.domain isEqual:NEFilterErrorDomain] && error.code==NEFilterManagerErrorConfigurationPermissionDenied)?@"E_FW_CONSENT_DENIED":@"E_FW_ACTIVATION";
+    BOOL removal=self.uninstalling,upgrade=self.upgrading;
+    BOOL consent=[error.domain isEqual:NEFilterErrorDomain] && error.code==NEFilterManagerErrorConfigurationPermissionDenied;
+    // Extension requests fail as an installation or a removal; the other failures are the NE filter configuration's.
+    NSString *code=consent?@"E_FW_CONSENT_DENIED":!activation?@"E_FW_FILTER":removal?@"E_FW_REMOVAL":@"E_FW_ACTIVATION";
     self.failure=@{@"code":code,@"detail":error.localizedDescription?:NSNull.null};
     [self resetMissingWindow];
-    if (activation) self.extensionState=@"failed";
-    self.enableAfterActivation=NO;self.activationNeedsReboot=NO;self.operation=nil;self.uninstalling=NO;self.filterOperation=NO;
-    self.filterState=[code isEqual:@"E_FW_CONSENT_DENIED"]?@"off":([self filterManager].enabled?@"on":@"off");
+    if (activation && !removal && !upgrade) self.extensionState=@"failed";
+    self.enableAfterActivation=NO;self.activationNeedsReboot=NO;self.operation=nil;self.uninstalling=NO;self.upgrading=NO;self.filterOperation=NO;
+    self.filterState=consent?@"off":([self filterManager].enabled?@"on":@"off");
+    // A failed removal (say, a dismissed password prompt) or update leaves the extension where it was; ask now, not at
+    // the next poll.
+    if (removal || upgrade) [self refreshProperties];
 }
 -(void)refresh {
     if (self.refreshing || self.operation || self.filterOperation || FWMonotonic()-self.lastRefresh<5000) return;
@@ -128,7 +141,10 @@ static FWPeerState FWClassifyPeer(BOOL authenticated,BOOL invalid,uint64_t elaps
     request.delegate=self;[OSSystemExtensionManager.sharedManager submitRequest:request];
 }
 -(void)enable {
+    // An update in flight finishes the installation; only add the intent to turn filtering on afterwards.
+    if (self.upgrading && self.operation) {self.enableAfterActivation=YES;self.failure=nil;return;}
     if (self.operation || self.filterOperation || [self.filterState isEqual:@"needs_consent"]) return;
+    self.removalConfirmed=NO;
     self.generation++;self.failure=nil;self.enableAfterActivation=YES;self.activationNeedsReboot=NO;self.uninstalling=NO;
     self.bundledVersionConfirmed=NO;[self resetMissingWindow];
     if ([self.extensionState isEqual:@"installed"] && [self hasBundledVersion]) {[self enableFilter];return;}
@@ -143,13 +159,15 @@ static FWPeerState FWClassifyPeer(BOOL authenticated,BOOL invalid,uint64_t elaps
         if (error) {[self fail:error activation:NO];return;}
         NEFilterManager *manager=[self filterManager];
         NEFilterProviderConfiguration *config=manager.providerConfiguration;
+        // macOS asks for consent only when saving a new configuration; turning a saved one back on doesn't ask.
         if(!config) {
             config=[NEFilterProviderConfiguration new];config.filterSockets=YES;config.filterPackets=NO;
             config.filterDataProviderBundleIdentifier=[self extensionIdentifier];
+            self.filterState=@"needs_consent";
         }
         manager.providerConfiguration=config;
         manager.localizedDescription=manager.localizedDescription?:@"OpenNavo";
-        manager.enabled=YES;self.filterState=@"needs_consent";
+        manager.enabled=YES;
         [self saveFilter:^(NSError *failure){
             if (generation!=self.generation) return;
             if (failure) {[self fail:failure activation:NO];return;}
@@ -160,40 +178,55 @@ static FWPeerState FWClassifyPeer(BOOL authenticated,BOOL invalid,uint64_t elaps
 }
 -(void)disable:(BOOL)uninstall {
     self.generation++;uint64_t generation=self.generation;
+    self.removalConfirmed=NO;
     self.bundledVersionConfirmed=NO;[self resetMissingWindow];
-    self.enableAfterActivation=NO;self.activationNeedsReboot=NO;self.uninstalling=uninstall;self.failure=nil;self.operation=nil;self.filterOperation=YES;
+    self.enableAfterActivation=NO;self.activationNeedsReboot=NO;self.uninstalling=uninstall;self.upgrading=NO;self.failure=nil;self.operation=nil;self.filterOperation=YES;
     if(uninstall) self.extensionState=@"uninstalling";
     [self loadFilter:^(NSError *error){
         if (generation!=self.generation) return;
+        if (uninstall) {
+            // Removal can't depend on the filter configuration: consent may never have been given, or the user deleted
+            // the filter in System Settings. Remove whatever exists, then deactivate either way.
+            void (^deactivate)(NSError *)=^(NSError *ignored){
+                (void)ignored;
+                if (generation!=self.generation) return;
+                self.filterState=@"off";self.filterOperation=NO;
+                self.operation=[OSSystemExtensionRequest deactivationRequestForExtension:[self extensionIdentifier] queue:dispatch_get_main_queue()];
+                self.operation.delegate=self;[OSSystemExtensionManager.sharedManager submitRequest:self.operation];
+            };
+            if (error || ![self filterManager].providerConfiguration) {deactivate(nil);return;}
+            [self filterManager].enabled=NO;
+            [self removeFilter:deactivate];
+            return;
+        }
         if (error) {[self fail:error activation:NO];return;}
         [self filterManager].enabled=NO;
-        void (^saved)(NSError *)=^(NSError *failure){
+        [self saveFilter:^(NSError *failure){
             if (generation!=self.generation) return;
             if(failure) {[self fail:failure activation:NO];return;}
             self.filterState=@"off";self.failure=nil;self.filterOperation=NO;
-            if (uninstall) {
-                self.operation=[OSSystemExtensionRequest deactivationRequestForExtension:[self extensionIdentifier] queue:dispatch_get_main_queue()];
-                self.operation.delegate=self;[OSSystemExtensionManager.sharedManager submitRequest:self.operation];
-            }
-        };
-        if (uninstall) [self removeFilter:saved];
-        else [self saveFilter:saved];
+        }];
     }];
 }
 -(void)requestNeedsUserApproval:(OSSystemExtensionRequest *)request {if(request==self.operation) self.extensionState=@"needs_approval";}
 -(OSSystemExtensionReplacementAction)request:(OSSystemExtensionRequest *)request actionForReplacingExtension:(OSSystemExtensionProperties *)existing withExtension:(OSSystemExtensionProperties *)replacement {
     if(request!=self.operation || ![existing.bundleIdentifier isEqual:[self extensionIdentifier]]
         || ![replacement.bundleIdentifier isEqual:[self extensionIdentifier]]) return OSSystemExtensionReplacementActionCancel;
+    // A copy macOS deletes at the next restart must not block turning the firewall back on, even at the same build.
+    if(existing.isUninstalling) return OSSystemExtensionReplacementActionReplace;
     BOOL same=[existing.bundleVersion isEqual:replacement.bundleVersion] && [existing.bundleShortVersion isEqual:replacement.bundleShortVersion];
+    self.canceledSameVersion=same;
     return same?OSSystemExtensionReplacementActionCancel:OSSystemExtensionReplacementActionReplace;
 }
 -(void)request:(OSSystemExtensionRequest *)request didFinishWithResult:(OSSystemExtensionRequestResult)result {
     if (request!=self.operation) return;self.operation=nil;
-    self.failure=nil;
+    self.removalConfirmed=self.uninstalling;
+    self.failure=nil;self.upgrading=NO;self.canceledSameVersion=NO;
     if (result==OSSystemExtensionRequestWillCompleteAfterReboot) {
+        // A removed filter stops at once; macOS only deletes its files at the next restart.
         // Replacement can already be active while the old version awaits removal.
         // Preserve the enable intent and reconcile immediately, without the poll delay.
-        self.extensionState=@"needs_reboot";self.activationNeedsReboot=!self.uninstalling;
+        self.extensionState=self.uninstalling?@"removal_pending":@"needs_reboot";self.activationNeedsReboot=!self.uninstalling;
         self.installedVersion=nil;self.installedBuildVersion=nil;self.uninstalling=NO;
         [self refreshProperties];return;
     }
@@ -204,28 +237,50 @@ static FWPeerState FWClassifyPeer(BOOL authenticated,BOOL invalid,uint64_t elaps
     self.extensionState=self.uninstalling?@"not_installed":@"installed";self.uninstalling=NO;
     if(self.enableAfterActivation) [self enableFilter];
 }
--(void)request:(OSSystemExtensionRequest *)request didFailWithError:(NSError *)error {if(request==self.operation) [self fail:error activation:YES];}
+-(void)request:(OSSystemExtensionRequest *)request didFailWithError:(NSError *)error {
+    if(request!=self.operation) return;
+    // Declining to replace the same build ends the request as canceled, but that build is the one already running.
+    if(self.canceledSameVersion && [error.domain isEqual:OSSystemExtensionErrorDomain] && error.code==OSSystemExtensionErrorRequestCanceled) {
+        [self request:request didFinishWithResult:OSSystemExtensionRequestCompleted];return;
+    }
+    self.canceledSameVersion=NO;
+    [self fail:error activation:YES];
+}
 -(void)request:(OSSystemExtensionRequest *)request foundProperties:(NSArray<OSSystemExtensionProperties *> *)properties {
-    if(request!=self.propertiesRequest || self.propertiesGeneration!=self.generation || self.operation) return;
+    if(request!=self.propertiesRequest || self.propertiesGeneration!=self.generation || self.operation || self.filterOperation) return;
     self.propertiesRequest=nil;
     OSSystemExtensionProperties *enabled=nil;
-    BOOL awaitingApproval=NO,removing=NO;
+    BOOL awaitingApproval=NO,awaitingBundled=NO,removing=NO;
     NSDictionary *info=[self bundledExtensionInfo];
     for(OSSystemExtensionProperties *p in properties) {
+        BOOL bundled=[p.bundleShortVersion isEqual:info[@"CFBundleShortVersionString"]] && [p.bundleVersion isEqual:info[@"CFBundleVersion"]];
         if(p.isUninstalling) {removing=YES;continue;}
-        if(p.isAwaitingUserApproval) {awaitingApproval=YES;continue;}
-        if(p.isEnabled && (!enabled || ([p.bundleShortVersion isEqual:info[@"CFBundleShortVersionString"]]
-            && [p.bundleVersion isEqual:info[@"CFBundleVersion"]]))) enabled=p;
+        if(p.isAwaitingUserApproval) {awaitingApproval=YES;awaitingBundled=awaitingBundled||bundled;continue;}
+        if(p.isEnabled && (!enabled || bundled)) enabled=p;
     }
+    self.removalConfirmed=!enabled && !awaitingApproval;
     self.installedVersion=enabled.bundleShortVersion;self.installedBuildVersion=enabled.bundleVersion;
     BOOL targetEnabled=enabled && [self hasBundledVersion];
     self.bundledVersionConfirmed=targetEnabled;
     if(targetEnabled) self.activationNeedsReboot=NO;
     if(self.activationNeedsReboot) self.extensionState=@"needs_reboot";
+    else if(targetEnabled) self.extensionState=@"installed";
+    // An update waiting for approval sits behind the old build that still runs; ask rather than hide it.
+    else if(awaitingBundled) self.extensionState=@"needs_approval";
     else if(enabled) self.extensionState=@"installed";
     else if(awaitingApproval) self.extensionState=@"needs_approval";
-    else self.extensionState=removing?@"needs_reboot":@"not_installed";
+    // Versions awaiting deletion no longer run; only a reboot-bound activation is still installing.
+    else self.extensionState=removing?@"removal_pending":@"not_installed";
+    // Drop failures that macOS has since resolved, so they don't outlive their cause.
+    NSString *stale=self.failure[@"code"];
+    if(([stale isEqual:@"E_FW_ACTIVATION"] && targetEnabled) || ([stale isEqual:@"E_FW_REMOVAL"] && !enabled)) self.failure=nil;
     if(targetEnabled && self.enableAfterActivation && !self.filterOperation) [self enableFilter];
+    // After an app update the previous build keeps running under its own versioned service name, which this app can't
+    // reach, so connections without a rule pass unasked. macOS replaces it without asking (same team): do it once per launch.
+    else if(enabled && !targetEnabled && !awaitingBundled && !self.upgradeAttempted && !self.filterOperation && !self.uninstalling) {
+        self.upgradeAttempted=YES;self.upgrading=YES;self.extensionState=@"activating";
+        [self submitActivation];
+    }
 }
 @end
 
@@ -295,13 +350,14 @@ static NSDictionary *FWExchange(NSDictionary *request) {
     });
     BOOL slow=[@[@"blocklist_add",@"blocklist_refresh"] containsObject:request[@"op"]];
     BOOL timedOut=dispatch_semaphore_wait(done,dispatch_time(DISPATCH_TIME_NOW,(slow?40:3)*NSEC_PER_SEC))!=0;
-    if (timedOut && (slow || [request[@"op"] isEqual:@"configure"])) {
-        // An operation deadline is not evidence that XPC disconnected. Keep the
-        // connection and let snapshots reconcile an accepted configuration ID.
-        return FWResult(nil,FWFailure(slow?@"E_FW_BLOCKLIST_FETCH":@"E_FW_ACTIVATION",@"firewall_operation_timeout"));
+    if (timedOut) {
+        // A deadline is not evidence that XPC disconnected: the extension may be saving a large state. Dropping the
+        // connection would make it release held connections and clear open questions as if the app had quit. Keep
+        // it; a dead peer still ends with a connection error, and snapshots reconcile an accepted configuration ID.
+        return FWResult(nil,FWFailure(slow?@"E_FW_BLOCKLIST_FETCH":@"E_FW_DISCONNECTED",@"firewall_operation_timeout"));
     }
-    if (timedOut || !output) {
-        FWDiscardConnection(connection);return FWResult(nil,FWFailure(@"E_FW_DISCONNECTED",timedOut?nil:authorizationDetail));
+    if (!output) {
+        FWDiscardConnection(connection);return FWResult(nil,FWFailure(@"E_FW_DISCONNECTED",authorizationDetail));
     }
     return output;
 }
@@ -314,6 +370,17 @@ char *on_fw_native_request(const char *json) {
         __block NSDictionary *output;
         if ([op isEqual:@"status"] && ![availability isEqual:@"available"]) output=FWResult([FWSharedHost() status],nil);
         else if (![op isEqual:@"status"] && ![availability isEqual:@"available"]) output=FWResult(nil,FWFailure([availability isEqual:@"not_in_applications"]?@"E_FW_NOT_IN_APPLICATIONS":@"E_FW_NOT_BUNDLED",nil));
+        else if ([op isEqual:@"cleanup"]) {
+            if (NSThread.isMainThread) return NULL;
+            __block BOOL confirmed=NO;
+            dispatch_sync(dispatch_get_main_queue(),^{
+                FWHost *host=FWSharedHost();
+                confirmed=host.removalConfirmed && !host.operation && !host.filterOperation
+                    && ([@[@"not_installed",@"removal_pending"] containsObject:host.extensionState]);
+            });
+            // Unknown initial properties are not proof of removal. Rust retries on its next poll.
+            output=!confirmed?FWResult(@NO,nil):FWCleanupData(FWExtensionID())?FWResult(@YES,nil):FWResult(nil,FWFailure(@"E_FW_REMOVAL",nil));
+        }
         else if ([op isEqual:@"identify"]) {
             NSDictionary *app=[input[@"path"] isKindOfClass:NSString.class]?FWIdentifyPath(input[@"path"]):nil;
             output=app?FWResult(app,nil):FWResult(nil,FWFailure(@"E_FW_RULE_INVALID",nil));
@@ -343,9 +410,14 @@ char *on_fw_native_request(const char *json) {
 }
 void on_fw_native_free(char *value) {free(value);}
 
-// Called only on AppKit's main thread. orderFrontRegardless never activates the app.
+// Called only on AppKit's main thread. orderFrontRegardless never activates the app, and a click must not either:
+// answering while typing elsewhere would otherwise bring OpenNavo (and its main window) to the front. Like the menu-bar
+// panels, set the window-server tag non-activating panels use. ⌘H on OpenNavo must not hide an open question.
 void on_fw_alert_present(void *pointer,int show) {
     NSWindow *window=(__bridge NSWindow *)pointer;
+    SEL preventsActivation=NSSelectorFromString(@"_setPreventsActivation:");
+    if ([window respondsToSelector:preventsActivation]) ((void (*)(id,SEL,BOOL))objc_msgSend)(window,preventsActivation,YES);
+    window.canHide=NO;
     window.collectionBehavior=NSWindowCollectionBehaviorCanJoinAllSpaces|NSWindowCollectionBehaviorFullScreenAuxiliary;
     window.level=NSFloatingWindowLevel;window.hidesOnDeactivate=NO;
     NSScreen *screen=NSScreen.screens.firstObject;

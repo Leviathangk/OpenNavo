@@ -5,25 +5,61 @@ use std::{collections::HashSet, net::IpAddr};
 pub const MAX_LIST_BYTES: usize = 50 * 1024 * 1024;
 pub const MAX_LIST_ENTRIES: usize = 1_000_000;
 
+fn parse_literal(value: &str) -> Option<IpAddr> {
+    let value = value.trim();
+    let value = value
+        .strip_prefix('[')
+        .and_then(|v| v.strip_suffix(']'))
+        .unwrap_or(value);
+    // A zone (fe80::1%en0) names the local interface, not a different peer.
+    let value = match value.split_once('%') {
+        Some((ip, _)) if ip.contains(':') => ip,
+        _ => value,
+    };
+    value.parse().ok()
+}
+
+/// One spelling per peer: brackets and IPv6 zone dropped, IPv4-mapped IPv6 as IPv4.
+pub fn parse_ip(value: &str) -> Option<IpAddr> {
+    parse_literal(value).map(|ip| ip.to_canonical())
+}
+
+/// An IP or CIDR as (network, prefix); a bare IP has a full-length prefix. A network
+/// inside ::ffff:0:0/96 is its IPv4 equivalent, matching canonical flow addresses.
+pub fn parse_network(value: &str) -> Option<(IpAddr, u8)> {
+    let (ip, prefix) = match value.split_once('/') {
+        Some((ip, prefix)) => (parse_literal(ip)?, Some(prefix.trim().parse::<u8>().ok()?)),
+        None => (parse_literal(value)?, None),
+    };
+    let bits = if ip.is_ipv4() { 32 } else { 128 };
+    let prefix = prefix.unwrap_or(bits);
+    if prefix > bits {
+        return None;
+    }
+    Some(match ip.to_canonical() {
+        IpAddr::V4(v4) if ip.is_ipv6() && prefix >= 96 => (IpAddr::V4(v4), prefix - 96),
+        _ => (ip, prefix),
+    })
+}
+
+/// Address text for a flow: canonical when it is an IP, otherwise trimmed as received.
+pub fn normalize_address(value: &str) -> String {
+    parse_ip(value).map_or_else(|| value.trim().to_owned(), |ip| ip.to_string())
+}
+
 pub fn normalize_remote(value: &str) -> Result<String, FirewallErrorCode> {
     let value = value.trim().trim_end_matches('.').to_ascii_lowercase();
-    if value.parse::<IpAddr>().is_ok() {
-        return Ok(value);
-    }
-    if let Some((ip, prefix)) = value.split_once('/') {
-        let ip = ip
-            .parse::<IpAddr>()
-            .map_err(|_| FirewallErrorCode::RuleInvalid)?;
-        let prefix = prefix
-            .parse::<u8>()
-            .map_err(|_| FirewallErrorCode::RuleInvalid)?;
-        if prefix <= if ip.is_ipv4() { 32 } else { 128 } {
-            return Ok(format!("{ip}/{prefix}"));
-        }
-        return Err(FirewallErrorCode::RuleInvalid);
+    if value.contains('/') || parse_literal(&value).is_some() {
+        // Canonical text, so equivalent spellings compare equal and dedupe.
+        let (ip, prefix) = parse_network(&value).ok_or(FirewallErrorCode::RuleInvalid)?;
+        return Ok(if value.contains('/') {
+            format!("{ip}/{prefix}")
+        } else {
+            ip.to_string()
+        });
     }
     let host = value.strip_prefix("*.").unwrap_or(&value);
-    if host.is_empty() || host.len() > 253 || host.parse::<IpAddr>().is_ok() {
+    if host.is_empty() || host.len() > 253 || parse_literal(host).is_some() {
         return Err(FirewallErrorCode::RuleInvalid);
     }
     if host.split('.').all(|label| {
@@ -56,22 +92,14 @@ fn masked(ip: u128, bits: u8, prefix: u8) -> u128 {
 }
 
 pub fn remote_matches(rule: &str, ip: &str, host: Option<&str>) -> bool {
-    if let Some((network, prefix)) = rule.split_once('/') {
-        return network
-            .parse::<IpAddr>()
-            .ok()
-            .zip(prefix.parse::<u8>().ok())
-            .zip(ip.parse::<IpAddr>().ok())
+    if rule.contains('/') || parse_literal(rule).is_some() {
+        return parse_network(rule)
+            .zip(parse_ip(ip))
             .is_some_and(|((network, prefix), ip)| {
                 let (network, bits) = address(network);
                 let (ip, other) = address(ip);
-                bits == other
-                    && prefix <= bits
-                    && masked(network, bits, prefix) == masked(ip, bits, prefix)
+                bits == other && masked(network, bits, prefix) == masked(ip, bits, prefix)
             });
-    }
-    if let Ok(rule_ip) = rule.parse::<IpAddr>() {
-        return ip.parse::<IpAddr>().is_ok_and(|ip| ip == rule_ip);
     }
     let Some(host) = host else {
         return false;
@@ -94,18 +122,13 @@ impl BlockIndex {
     pub fn new(entries: &[String]) -> Self {
         let mut index = Self::default();
         for item in entries {
-            if let Some((ip, prefix)) = item.split_once('/') {
-                if let (Ok(ip), Ok(prefix)) = (ip.parse::<IpAddr>(), prefix.parse::<u8>()) {
-                    let (ip, bits) = address(ip);
-                    if prefix <= bits {
-                        index
-                            .networks
-                            .insert((masked(ip, bits, prefix), bits, prefix));
-                    }
-                }
-            } else if let Ok(ip) = item.parse::<IpAddr>() {
+            if let Some((ip, prefix)) = parse_network(item) {
                 let (ip, bits) = address(ip);
-                index.networks.insert((ip, bits, bits));
+                index
+                    .networks
+                    .insert((masked(ip, bits, prefix), bits, prefix));
+            } else if item.contains('/') {
+                continue;
             } else if let Some(suffix) = item.strip_prefix("*.") {
                 index.wildcards.insert(suffix.into());
             } else {
@@ -115,7 +138,7 @@ impl BlockIndex {
         index
     }
     pub fn matches(&self, ip: &str, host: Option<&str>) -> bool {
-        if let Ok(ip) = ip.parse::<IpAddr>() {
+        if let Some(ip) = parse_ip(ip) {
             let (ip, bits) = address(ip);
             if (0..=bits).any(|prefix| {
                 self.networks
@@ -139,6 +162,22 @@ impl BlockIndex {
     }
 }
 
+// The standard hosts header (StevenBlack and most systems) maps these to loopback,
+// broadcast or multicast addresses. They name this machine, not hosts to block.
+const LOCAL_NAMES: &[&str] = &[
+    "localhost",
+    "localhost.localdomain",
+    "broadcasthost",
+    "local",
+    "ip6-localhost",
+    "ip6-loopback",
+    "ip6-localnet",
+    "ip6-mcastprefix",
+    "ip6-allnodes",
+    "ip6-allrouters",
+    "ip6-allhosts",
+];
+
 pub fn parse_blocklist(bytes: &[u8]) -> Result<Vec<String>, FirewallErrorCode> {
     if bytes.len() > MAX_LIST_BYTES {
         return Err(FirewallErrorCode::BlocklistTooLarge);
@@ -146,34 +185,44 @@ pub fn parse_blocklist(bytes: &[u8]) -> Result<Vec<String>, FirewallErrorCode> {
     let text = std::str::from_utf8(bytes).map_err(|_| FirewallErrorCode::BlocklistFormat)?;
     let mut entries = HashSet::new();
     let mut count = 0;
+    let mut first = true;
     for line in text.trim_start_matches('\u{feff}').lines() {
         let line = line.split('#').next().unwrap_or_default().trim();
         if line.is_empty() {
             continue;
         }
-        let parts: Vec<_> = line.split_whitespace().collect();
-        let values = if parts.len() > 1 && parts[0].parse::<IpAddr>().is_ok() {
-            &parts[1..]
-        } else {
-            &parts[..]
-        };
-        if values.len() != 1 && values.len() == parts.len() {
+        // Skipping bad lines must not let a captive portal or error page replace a good list.
+        if first && line.starts_with('<') {
             return Err(FirewallErrorCode::BlocklistFormat);
         }
+        first = false;
+        let parts: Vec<_> = line.split_whitespace().collect();
+        // A hosts line maps names to an address; any other line is a single entry.
+        let hosts = parts.len() > 1 && parse_ip(parts[0]).is_some();
+        if parts.len() > 1 && !hosts {
+            continue;
+        }
+        let values = if hosts { &parts[1..] } else { &parts[..] };
         for value in values {
             count += 1;
             if count > MAX_LIST_ENTRIES {
                 return Err(FirewallErrorCode::BlocklistTooLarge);
             }
-            let normalized =
-                normalize_remote(value).map_err(|_| FirewallErrorCode::BlocklistFormat)?;
-            if !matches!(
-                normalized.as_str(),
-                "localhost" | "localhost.localdomain" | "broadcasthost"
-            ) {
+            // Underscores, Unicode and Adblock syntax can't match; skip them, keep the rest.
+            let Ok(normalized) = normalize_remote(value) else {
+                continue;
+            };
+            // An address in a hosts name column (0.0.0.0 0.0.0.0) isn't a name to block.
+            if hosts && (normalized.contains('/') || parse_ip(&normalized).is_some()) {
+                continue;
+            }
+            if !LOCAL_NAMES.contains(&normalized.as_str()) {
                 entries.insert(normalized);
             }
         }
+    }
+    if entries.is_empty() {
+        return Err(FirewallErrorCode::BlocklistFormat);
     }
     let mut entries: Vec<_> = entries.into_iter().collect();
     entries.sort();
@@ -256,6 +305,13 @@ pub fn graylisted(app: &FirewallApp) -> bool {
         "org.python.python",
         "com.apple.pythonw",
         "com.apple.osascript",
+        // OpenNavo additions: other Apple tools that fetch or send on a user's behalf.
+        "com.apple.tftp",
+        "com.apple.rsync",
+        "com.apple.nscurl",
+        "com.apple.openssl",
+        "com.apple.ldapsearch",
+        "com.apple.git-remote-http",
     ];
     app.signer == FirewallSigner::Apple
         && (app
@@ -281,6 +337,15 @@ pub fn graylisted(app: &FirewallApp) -> bool {
                         "bash",
                         "zsh",
                         "sh",
+                        "nscurl",
+                        "openssl",
+                        "rsync",
+                        "ftp",
+                        "tftp",
+                        "ldapsearch",
+                        // Git's HTTPS transport (CommandLineTools and Xcode git-core).
+                        "git-remote-http",
+                        "git-remote-https",
                     ]
                     .iter()
                     .any(|tool| {

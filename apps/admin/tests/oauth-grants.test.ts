@@ -5,7 +5,7 @@ import OAuthGrants from '../src/views/user-center/modules/oauth-grants.vue';
 
 const api = vi.hoisted(() => vi.fn());
 vi.mock('@/service/api/oauth', () => ({ oauthRequest: api }));
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
+vi.mock('@/locales', () => ({ $t: (key: string) => key.replace('page.oauth.', '') }));
 vi.mock('@/views/system/agent/modules/permissions', () => ({ permissionLabel: (code: string) => code }));
 vi.mock('@/utils/opennavo', () => ({ formatDateTime: (value: string) => value }));
 

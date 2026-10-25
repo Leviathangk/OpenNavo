@@ -1292,6 +1292,8 @@
     "E_FW_NOT_BUNDLED": "Questa versione non include il componente firewall. Usa la versione ufficiale di OpenNavo",
     "E_FW_NOT_IN_APPLICATIONS": "Sposta prima OpenNavo nella cartella Applicazioni, poi riaprilo",
     "E_FW_ACTIVATION": "macOS non ha completato l’installazione dell’estensione di sistema. Riprova",
+    "E_FW_REMOVAL": "Impossibile rimuovere il firewall per le app. Riprova",
+    "E_FW_FILTER": "macOS non è riuscito ad aggiornare l’impostazione del filtro di rete. Riprova",
     "E_FW_CONSENT_DENIED": "Filtro dei contenuti di rete non autorizzato. Firewall disattivato",
     "E_FW_DISCONNECTED": "Il componente firewall non risponde. Riprova tra poco",
     "E_FW_RULE_INVALID": "Regola non valida. Controlla programma, indirizzo e porta",
@@ -1299,7 +1301,9 @@
     "E_FW_BLOCKLIST_URL": "Sono supportati solo indirizzi https o file su questo Mac",
     "E_FW_BLOCKLIST_FETCH": "Impossibile scaricare l’elenco di blocco. Controlla indirizzo e connessione",
     "E_FW_BLOCKLIST_FORMAT": "Nessun dominio o IP utilizzabile trovato nel file",
-    "E_FW_BLOCKLIST_TOO_LARGE": "Elenco di blocco troppo grande: massimo 50 MB e un milione di voci"
+    "E_FW_BLOCKLIST_TOO_LARGE": "Elenco di blocco troppo grande: massimo 50 MB e un milione di voci",
+    "E_FW_BLOCKLIST_LIMIT": "Limite degli elenchi di blocco raggiunto: massimo 32 elenchi e 256 MB in totale",
+    "E_FW_BLOCKLIST_FILE": "Impossibile trovare o leggere il file"
   },
   "installConfirm": {
     "title": "Gestire l’app {name} esistente?",
@@ -2662,7 +2666,8 @@
       "steps": "macOS chiederà due conferme: prima autorizza l’estensione di sistema di OpenNavo nelle Impostazioni di Sistema, poi consenti il filtro dei contenuti di rete.",
       "privacy": "Tutte le decisioni avvengono su questo Mac. I dettagli delle connessioni non vengono caricati.",
       "failedTitle": "Impossibile attivare il firewall per le app",
-      "failed": "Attivazione non riuscita: {reason}"
+      "failed": "Attivazione non riuscita: {reason}",
+      "removed": "Il firewall per le app è stato rimosso. Non serve riavviare ora: macOS elimina il componente rimasto al prossimo riavvio del Mac."
     },
     "options": {
       "allowApple": "Consenti automaticamente i programmi Apple",
@@ -2811,9 +2816,13 @@
       "count": "{count} voci",
       "allowApp": "Consenti app",
       "blockApp": "Blocca app",
+      "allowDestination": "Consenti indirizzo",
+      "blockDestination": "Blocca indirizzo",
       "ruled": {
         "allow": "“{name}” ora può connettersi",
-        "block": "Connessione di “{name}” bloccata"
+        "block": "Connessione di “{name}” bloccata",
+        "allowDestination": "“{name}” ora può connettersi a {destination}",
+        "blockDestination": "Connessione di “{name}” a {destination} bloccata"
       },
       "ruledShort": {
         "allow": "Ora consentita",

@@ -88,6 +88,7 @@ fn main() {
         }
         println!("cargo:rerun-if-changed=native/fan_bridge.m");
         println!("cargo:rerun-if-changed=../native/firewall/FWIdentity.h");
+        println!("cargo:rerun-if-changed=native/firewall_cleanup.h");
     }
     if std::env::var_os("CARGO_FEATURE_FAN_HELPER").is_some()
         && std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos")

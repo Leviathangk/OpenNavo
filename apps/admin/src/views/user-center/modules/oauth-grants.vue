@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { oauthMessages } from '@/locales/oauth';
+import { $t } from '@/locales';
 import { oauthRequest } from '@/service/api/oauth';
 import type { OAuthGrant, OAuthGrantPage } from '@/service/api/oauth';
 import { permissionLabel } from '@/views/system/agent/modules/permissions';
 import { formatDateTime } from '@/utils/opennavo';
 
-const { t } = useI18n({ useScope: 'local', messages: oauthMessages });
+const t = (key: string) => $t(`page.oauth.${key}` as App.I18n.I18nKey);
 const grants = ref<OAuthGrant[]>([]);
 const loading = ref(false);
 const nextCursor = ref<string | null>(null);

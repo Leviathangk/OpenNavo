@@ -1206,6 +1206,27 @@ const pages: PageMessages = {
     changePassword: 'Change password',
     passwordChanged: 'Password changed; please sign in again'
   },
+  oauth: {
+    loadMore: 'Load more',
+    title: 'Connect to OpenNavo',
+    description: 'This application requests access to your OpenNavo data. Select the permissions you want to grant.',
+    callback: 'Application callback',
+    permissions: 'Permissions',
+    delete: 'Allow deletion within selected permissions',
+    approve: 'Authorize connection',
+    deny: 'Deny',
+    error: 'Unable to complete authorization. Retry or restart the connection from your application.',
+    retry: 'Retry',
+    incompatible: 'Automation tuning cannot be combined with content or task write permissions.',
+    grants: 'Connected applications',
+    empty: 'No authorized applications.',
+    revoke: 'Revoke access',
+    revoked: 'Revoked',
+    expires: 'Expires',
+    confirm: 'Revoke this application’s access? It will need your authorization to reconnect.',
+    unavailable: 'Not available for your account',
+    limited: 'Access is limited to the permissions below. You can revoke it in your profile.'
+  },
   content: {
     article: {
       title: 'Articles',

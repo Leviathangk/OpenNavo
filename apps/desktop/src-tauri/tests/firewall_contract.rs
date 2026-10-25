@@ -175,6 +175,8 @@ fn failures_preserve_every_contract_error_code() {
         "E_FW_NOT_BUNDLED",
         "E_FW_NOT_IN_APPLICATIONS",
         "E_FW_ACTIVATION",
+        "E_FW_REMOVAL",
+        "E_FW_FILTER",
         "E_FW_CONSENT_DENIED",
         "E_FW_DISCONNECTED",
         "E_FW_RULE_INVALID",
@@ -183,6 +185,8 @@ fn failures_preserve_every_contract_error_code() {
         "E_FW_BLOCKLIST_FETCH",
         "E_FW_BLOCKLIST_FORMAT",
         "E_FW_BLOCKLIST_TOO_LARGE",
+        "E_FW_BLOCKLIST_LIMIT",
+        "E_FW_BLOCKLIST_FILE",
     ] {
         round_trip::<FirewallFailure>(json!({"code":code,"detail":null}));
     }

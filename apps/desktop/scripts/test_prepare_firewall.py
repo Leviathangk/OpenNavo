@@ -67,6 +67,14 @@ class PreparationTests(unittest.TestCase):
                             '-framework', 'Security', '-lbsm', '-o', str(binary)], check=True)
             subprocess.run([str(binary)], check=True, timeout=15)
 
+    @unittest.skipUnless(sys.platform == 'darwin', 'macOS filesystem APIs')
+    def test_uninstall_data_cleanup(self):
+        with tempfile.TemporaryDirectory(prefix='opennavo-firewall-cleanup-') as folder:
+            binary = Path(folder) / 'cleanup-test'
+            subprocess.run(['xcrun', 'clang', '-fobjc-arc', '-Wall', '-Wextra', '-Werror',
+                            str(fw.SOURCE / 'tests/cleanup.m'), '-framework', 'Foundation', '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True, timeout=15)
+
     @unittest.skipUnless(sys.platform == 'darwin', 'macOS SystemExtensions APIs')
     def test_host_extension_replacement_state(self):
         with tempfile.TemporaryDirectory(prefix='opennavo-firewall-host-') as folder:
@@ -111,6 +119,26 @@ class PreparationTests(unittest.TestCase):
             binary = Path(folder) / 'offline-policy-test'
             subprocess.run(['xcrun', 'clang', '-mmacosx-version-min=13.0', '-fobjc-arc', '-fblocks', '-Wall', '-Wextra', '-Werror',
                             str(fw.SOURCE / 'tests/offline_policy.m'), str(fw.SOURCE / 'FWIdentity.m'),
+                            '-framework', 'Foundation', '-framework', 'Security', '-framework', 'AppKit',
+                            '-framework', 'NetworkExtension', '-lbsm', '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True, timeout=15)
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'macOS NetworkExtension APIs')
+    def test_late_and_unidentified_flows_get_policy_verdicts(self):
+        with tempfile.TemporaryDirectory(prefix='opennavo-firewall-late-') as folder:
+            binary = Path(folder) / 'late-policy-test'
+            subprocess.run(['xcrun', 'clang', '-mmacosx-version-min=13.0', '-fobjc-arc', '-fblocks', '-Wall', '-Wextra', '-Werror',
+                            str(fw.SOURCE / 'tests/late_policy.m'), str(fw.SOURCE / 'FWIdentity.m'),
+                            '-framework', 'Foundation', '-framework', 'Security', '-framework', 'AppKit',
+                            '-framework', 'NetworkExtension', '-lbsm', '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True, timeout=15)
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'macOS NetworkExtension APIs')
+    def test_unreadable_state_is_set_aside_and_reset_discards_it(self):
+        with tempfile.TemporaryDirectory(prefix='opennavo-firewall-state-') as folder:
+            binary = Path(folder) / 'state-recovery-test'
+            subprocess.run(['xcrun', 'clang', '-mmacosx-version-min=13.0', '-fobjc-arc', '-fblocks', '-Wall', '-Wextra', '-Werror',
+                            str(fw.SOURCE / 'tests/state_recovery.m'), str(fw.SOURCE / 'FWIdentity.m'),
                             '-framework', 'Foundation', '-framework', 'Security', '-framework', 'AppKit',
                             '-framework', 'NetworkExtension', '-lbsm', '-o', str(binary)], check=True)
             subprocess.run([str(binary)], check=True, timeout=15)

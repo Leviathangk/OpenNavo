@@ -230,7 +230,7 @@
     "docs/legal/native/LICENSE.DuoUpdater": "8f7cee0d02b9b8fd00a9074c34ea1c701bc5ac8587b4fa13410d86ef9b2b165f",
     "docs/legal/native/installomator-upstream.json": "91dc8759b8e58b5c1cf6d11352666e1118651f0e209b64b986b248ff6678e162",
     "docs/legal/native/LICENSE.Installomator": "ea938190e03013466f80311ee9b3753b9e476b920d8290b9a90a0864edff522e",
-    "apps/desktop/native/firewall/upstream.json": "80bde1e4ff88a4cd151147795bb7944c20e9c728d6a84a330e3c6c25b83268ce",
+    "apps/desktop/native/firewall/upstream.json": "d565f1495012591a519e849403454d67d67887caeecc77eb5d0aea4c92ed1cb6",
     "apps/desktop/native/firewall/LICENSE.LuLu": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
     "apps/server/internal/traditional/data/upstream.json": "4b301923dc283d429adacb5584923be42a85589060d188ad0a0af0f97d81ec7d",
     "apps/server/internal/traditional/data/LICENSE": "b534e465949558eec2597b04f5092b5e161236a68dfbfd04d547592ac3964308"
@@ -13283,7 +13283,7 @@
       "evidence": {
         "source": "apps/desktop/native/firewall/upstream.json",
         "integration": "ported",
-        "sourceLockSha256": "80bde1e4ff88a4cd151147795bb7944c20e9c728d6a84a330e3c6c25b83268ce",
+        "sourceLockSha256": "d565f1495012591a519e849403454d67d67887caeecc77eb5d0aea4c92ed1cb6",
         "products": [
           "desktop"
         ]

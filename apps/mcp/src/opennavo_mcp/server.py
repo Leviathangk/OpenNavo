@@ -122,6 +122,8 @@ def create_server(
 
 def main() -> None:
     logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
+    # Enable only our allowlisted catalog diagnostics, not dependency request logs.
+    logging.getLogger("opennavo_mcp.agent_client").setLevel(logging.INFO)
     # Prevent dependency debug/access logs from echoing URLs, requests and model parameters.
     for name in ("httpx2", "httpcore", "fastmcp", "mcp", "uvicorn.access"):
         logging.getLogger(name).setLevel(logging.CRITICAL)

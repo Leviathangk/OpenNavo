@@ -5,7 +5,7 @@ use opennavo_desktop_lib::{
 };
 use opennavo_firewall_core::engine::{Engine, Flow};
 use serde_json::{Value, json};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Barrier, Mutex};
 
 struct Fake {
     status: Mutex<FirewallStatus>,
@@ -15,6 +15,12 @@ struct Fake {
     fail_configure: Mutex<bool>,
     lose_configure_reply: Mutex<bool>,
     configure_count: Mutex<usize>,
+    /// Every request after status, in order, for checks on what the service asked.
+    requests: Mutex<Vec<Value>>,
+    submission_pause: Mutex<Option<(Arc<Barrier>, Arc<Barrier>)>>,
+    uninstall_result: Mutex<Option<FirewallExtensionState>>,
+    fail_cleanup: Mutex<bool>,
+    cleanup_confirmed: Mutex<bool>,
 }
 impl Fake {
     fn new() -> Arc<Self> {
@@ -29,6 +35,11 @@ impl Fake {
             fail_configure: Mutex::new(false),
             lose_configure_reply: Mutex::new(false),
             configure_count: Mutex::new(0),
+            requests: Mutex::new(vec![]),
+            submission_pause: Mutex::new(None),
+            uninstall_result: Mutex::new(None),
+            fail_cleanup: Mutex::new(false),
+            cleanup_confirmed: Mutex::new(true),
         })
     }
     fn installed(&self) {
@@ -51,6 +62,21 @@ impl Bridge for Fake {
         if op == "status" {
             return Ok(json!(*self.status.lock().unwrap()));
         }
+        self.requests.lock().unwrap().push(request.clone());
+        if op == "cleanup" {
+            assert!(matches!(
+                self.status.lock().unwrap().extension,
+                FirewallExtensionState::NotInstalled | FirewallExtensionState::RemovalPending
+            ));
+            if *self.fail_cleanup.lock().unwrap() {
+                return Err(failure(FirewallErrorCode::Removal));
+            }
+            if !*self.cleanup_confirmed.lock().unwrap() {
+                return Ok(json!(false));
+            }
+            self.engine.lock().unwrap().reset();
+            return Ok(json!(true));
+        }
         if ["enable", "disable", "uninstall"].contains(&op) {
             let mut status = self.status.lock().unwrap();
             status.filter = if op == "enable" {
@@ -58,6 +84,11 @@ impl Bridge for Fake {
             } else {
                 FirewallFilterState::Off
             };
+            if op == "uninstall"
+                && let Some(result) = *self.uninstall_result.lock().unwrap()
+            {
+                status.extension = result;
+            }
             return Ok(json!(*status));
         }
         if *self.disconnected.lock().unwrap() {
@@ -90,8 +121,38 @@ impl Bridge for Fake {
             .map_err(failure)
     }
     fn disconnect(&self) {
+        let pause = self.submission_pause.lock().unwrap().take();
+        if let Some((entered, release)) = pause {
+            entered.wait();
+            release.wait();
+        }
         self.engine.lock().unwrap().disconnect(2000);
     }
+}
+fn ops(fake: &Fake) -> Vec<String> {
+    fake.requests
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|r| r["op"].as_str().unwrap().to_owned())
+        .collect()
+}
+fn configures(fake: &Fake) -> Vec<Value> {
+    fake.requests
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|r| r["op"] == "configure")
+        .cloned()
+        .collect()
+}
+/// The extension's installed-app scan ends a configuration's preparation; this fake has no scanner.
+fn finish_baseline(fake: &Fake) {
+    fake.engine
+        .lock()
+        .unwrap()
+        .request(json!({"op":"baseline_finish"}))
+        .unwrap();
 }
 fn service(fake: Arc<Fake>) -> (Service, Arc<Mutex<Vec<Update>>>) {
     let updates = Arc::new(Mutex::new(vec![]));
@@ -109,6 +170,20 @@ fn uninstalled_returns_defaults_and_unbundled_returns_the_contract_error() {
     fake.status.lock().unwrap().availability = FirewallAvailability::NotBundled;
     assert_eq!(s.settings().unwrap_err().code, "E_FW_NOT_BUNDLED");
     assert!(s.rules().unwrap().is_empty());
+}
+#[test]
+fn removed_extension_awaiting_reboot_is_not_asked() {
+    let fake = Fake::new();
+    fake.status.lock().unwrap().extension = FirewallExtensionState::RemovalPending;
+    // Any request past status would fail: the removed extension no longer runs.
+    *fake.disconnected.lock().unwrap() = true;
+    let (s, _) = service(fake);
+    assert_eq!(s.settings().unwrap(), FirewallSettings::default());
+    assert!(s.rules().unwrap().is_empty());
+    assert!(s.alerts().unwrap().is_empty());
+    let status = s.status().unwrap();
+    assert_eq!(status.extension, FirewallExtensionState::RemovalPending);
+    assert!(status.error.is_none());
 }
 #[test]
 fn reply_immediately_emits_full_empty_alerts_and_stale_reply_replays_them() {
@@ -346,7 +421,7 @@ fn preparing_configure_is_sent_once_and_lost_ack_is_reconciled() {
             assert!(status.error.is_none());
         }
         assert_eq!(*fake.configure_count.lock().unwrap(), 1);
-        fake.engine.lock().unwrap().baseline_finish();
+        fake.engine.lock().unwrap().baseline_finish(None);
         assert!(!s.status().unwrap().preparing);
         assert_eq!(*fake.configure_count.lock().unwrap(), 1);
     }
@@ -425,4 +500,308 @@ fn activation_without_options_preserves_persisted_settings_after_reconnect() {
     service.status().unwrap();
     assert_eq!(service.settings().unwrap(), expected);
     assert_eq!(*fake.configure_count.lock().unwrap(), 0);
+}
+#[test]
+fn pausing_does_not_suspend_policy_before_macos_stops_the_filter() {
+    // If saving the disabled filter fails, the filter keeps running; a suspended engine would then allow everything.
+    let fake = Fake::new();
+    fake.installed();
+    let (s, _) = service(fake.clone());
+    s.disable(false).unwrap();
+    assert!(
+        !ops(&fake)
+            .iter()
+            .any(|op| op == "flush" || op == "suspend" || op == "reset")
+    );
+    // Removal also waits for macOS confirmation before any destructive reset.
+    s.disable(true).unwrap();
+    assert!(!ops(&fake).iter().any(|op| op == "reset"));
+}
+#[test]
+fn cancelled_removal_preserves_all_persisted_policy_without_reconfiguration() {
+    let fake = Fake::new();
+    fake.installed();
+    let (s, _) = service(fake.clone());
+    let before = {
+        let mut engine = fake.engine.lock().unwrap();
+        let flow = Fake::fixture_flow();
+        engine.remember(flow.app.clone());
+        engine
+            .request(json!({"op":"rule_save","input":{
+                "id":null,"appKey":flow.app.key,"appPath":null,"action":"block",
+                "remote":null,"port":null
+            }}))
+            .unwrap();
+        engine
+            .blocklist_load(
+                None,
+                "/fixture/list".into(),
+                "fixture".into(),
+                b"blocked.example",
+                1000,
+            )
+            .unwrap();
+        engine.state.baseline.insert("fixture-baseline".into());
+        engine.state.baseline_initialized = true;
+        engine.flow(flow);
+        serde_json::to_value(engine.persistent()).unwrap()
+    };
+    s.refresh(false).unwrap();
+    s.disable(true).unwrap();
+    fake.installed(); // macOS password dialog cancelled / removal failed.
+    s.refresh(false).unwrap();
+    s.refresh(false).unwrap();
+    assert_eq!(
+        serde_json::to_value(fake.engine.lock().unwrap().persistent()).unwrap(),
+        before
+    );
+    assert!(configures(&fake).is_empty());
+    assert!(!ops(&fake).iter().any(|op| op == "reset"));
+}
+
+#[test]
+fn setting_up_after_a_completed_removal_wipes_once_and_a_cancelled_removal_keeps_rules() {
+    let temp = tempfile::tempdir().unwrap();
+    let database = opennavo_desktop_lib::db::Database::open(&temp.path().join("app.db")).unwrap();
+    let options = FirewallEnableOptions {
+        allow_apple: true,
+        allow_installed: false,
+    };
+    let fake = Fake::new();
+    fake.installed();
+    let sink = Arc::new(|_| {}) as opennavo_desktop_lib::firewall::service::Sink;
+    let s = Service::new(
+        fake.clone(),
+        sink.clone(),
+        Some((database.clone(), temp.path().into())),
+    );
+    // A dismissed password prompt: the extension stays installed, so nothing is wiped later.
+    s.disable(true).unwrap();
+    fake.installed();
+    s.refresh(false).unwrap();
+    fake.status.lock().unwrap().extension = FirewallExtensionState::Failed;
+    s.enable(options.clone()).unwrap();
+    fake.installed();
+    s.refresh(false).unwrap();
+    assert_eq!(configures(&fake).last().unwrap()["fresh"], false);
+    finish_baseline(&fake);
+    // A completed removal cleans immediately and keeps a one-time reinstall fallback.
+    *fake.uninstall_result.lock().unwrap() = Some(FirewallExtensionState::Uninstalling);
+    s.disable(true).unwrap();
+    fake.status.lock().unwrap().extension = FirewallExtensionState::RemovalPending;
+    s.refresh(false).unwrap();
+    s.enable(options.clone()).unwrap();
+    fake.installed();
+    s.refresh(false).unwrap();
+    assert_eq!(configures(&fake).last().unwrap()["fresh"], true);
+    finish_baseline(&fake);
+    // The flag survives an OpenNavo restart until a setup used it, and isn't reused afterwards.
+    let restarted = Service::new(fake.clone(), sink, Some((database, temp.path().into())));
+    fake.status.lock().unwrap().extension = FirewallExtensionState::NotInstalled;
+    restarted.enable(options).unwrap();
+    fake.installed();
+    restarted.refresh(false).unwrap();
+    assert_eq!(configures(&fake).last().unwrap()["fresh"], false);
+}
+#[test]
+fn setup_choices_survive_a_restart_before_the_extension_is_approved() {
+    let temp = tempfile::tempdir().unwrap();
+    let database = opennavo_desktop_lib::db::Database::open(&temp.path().join("app.db")).unwrap();
+    let sink = Arc::new(|_| {}) as opennavo_desktop_lib::firewall::service::Sink;
+    let fake = Fake::new();
+    let s = Service::new(
+        fake.clone(),
+        sink.clone(),
+        Some((database.clone(), temp.path().into())),
+    );
+    s.enable(FirewallEnableOptions {
+        allow_apple: false,
+        allow_installed: false,
+    })
+    .unwrap();
+    assert!(configures(&fake).is_empty());
+    // OpenNavo restarts; approval completes later and the user turns it on with the extension's default settings.
+    let restarted = Service::new(fake.clone(), sink, Some((database, temp.path().into())));
+    fake.installed();
+    restarted
+        .enable(FirewallEnableOptions {
+            allow_apple: true,
+            allow_installed: true,
+        })
+        .unwrap();
+    let settings = configures(&fake).last().unwrap()["settings"].clone();
+    assert_eq!(settings["allowApple"], false);
+    assert_eq!(settings["allowInstalled"], false);
+    assert!(!restarted.settings().unwrap().allow_installed);
+}
+#[test]
+fn rule_match_statistics_do_not_reload_the_rule_list_every_poll() {
+    let fake = Fake::new();
+    fake.installed();
+    let (s, updates) = service(fake.clone());
+    let rule: FirewallRule = s
+        .mutate(json!({"op":"rule_save","input":{
+            "id":null,"appKey":null,"appPath":null,"action":"block","remote":"192.0.2.1","port":null
+        }}))
+        .unwrap();
+    s.refresh(false).unwrap();
+    updates.lock().unwrap().clear();
+    let rules_changed = |updates: &Arc<Mutex<Vec<Update>>>| {
+        updates
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|u| matches!(u, Update::Changed(FirewallChangeKind::Rules)))
+            .count()
+    };
+    for _ in 0..3 {
+        // Each connection the global rule blocks updates its match statistics.
+        fake.engine.lock().unwrap().flow(Fake::fixture_flow());
+        s.refresh(false).unwrap();
+    }
+    assert_eq!(rules_changed(&updates), 0);
+    // Structural changes are announced at once.
+    s.mutate::<Value>(json!({"op":"rule_delete","ids":[rule.id]}))
+        .unwrap();
+    assert_eq!(rules_changed(&updates), 1);
+}
+
+#[test]
+fn removal_submission_excludes_polling_until_native_request_is_submitted() {
+    let fake = Fake::new();
+    fake.installed();
+    *fake.uninstall_result.lock().unwrap() = Some(FirewallExtensionState::NotInstalled);
+    let (service, _) = service(fake.clone());
+    let service = Arc::new(service);
+    let entered = Arc::new(Barrier::new(2));
+    let release = Arc::new(Barrier::new(2));
+    *fake.submission_pause.lock().unwrap() = Some((entered.clone(), release.clone()));
+    let remove = {
+        let service = service.clone();
+        std::thread::spawn(move || service.disable(true).unwrap())
+    };
+    entered.wait(); // intent is set, but no native uninstall request has been made yet.
+    let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+    let (done_tx, done_rx) = std::sync::mpsc::channel();
+    let poll = {
+        let service = service.clone();
+        std::thread::spawn(move || {
+            ready_tx.send(()).unwrap();
+            let status = service.refresh(false).unwrap();
+            done_tx.send(()).unwrap();
+            status
+        })
+    };
+    ready_rx.recv().unwrap();
+    let premature = done_rx
+        .recv_timeout(std::time::Duration::from_millis(100))
+        .is_ok();
+    release.wait();
+    remove.join().unwrap();
+    poll.join().unwrap();
+    assert!(
+        !premature,
+        "poll must not clear the intent before native submission"
+    );
+    assert_eq!(ops(&fake).iter().filter(|op| *op == "cleanup").count(), 1);
+    fake.status.lock().unwrap().extension = FirewallExtensionState::NotInstalled;
+    service
+        .enable(FirewallEnableOptions {
+            allow_apple: true,
+            allow_installed: true,
+        })
+        .unwrap();
+    fake.installed();
+    service.refresh(false).unwrap();
+    assert_eq!(configures(&fake).last().unwrap()["fresh"], true);
+}
+
+#[test]
+fn successful_removal_cleans_immediately_and_failed_cleanup_can_be_retried() {
+    for removed in [
+        FirewallExtensionState::NotInstalled,
+        FirewallExtensionState::RemovalPending,
+    ] {
+        let fake = Fake::new();
+        fake.installed();
+        fake.engine
+            .lock()
+            .unwrap()
+            .state
+            .baseline
+            .insert("private-history".into());
+        let (service, _) = service(fake.clone());
+        *fake.uninstall_result.lock().unwrap() = Some(FirewallExtensionState::Uninstalling);
+        service.disable(true).unwrap();
+        fake.status.lock().unwrap().extension = removed;
+        *fake.fail_cleanup.lock().unwrap() = true;
+        assert_eq!(
+            service.refresh(false).unwrap().error.unwrap().code,
+            FirewallErrorCode::Removal
+        );
+        assert!(
+            fake.engine
+                .lock()
+                .unwrap()
+                .state
+                .baseline
+                .contains("private-history")
+        );
+        service.refresh(false).unwrap();
+        assert_eq!(ops(&fake).iter().filter(|op| *op == "cleanup").count(), 1);
+        *fake.fail_cleanup.lock().unwrap() = false;
+        assert!(service.disable(true).unwrap().error.is_none());
+        assert!(fake.engine.lock().unwrap().state.baseline.is_empty());
+        service.refresh(false).unwrap();
+        assert_eq!(ops(&fake).iter().filter(|op| *op == "cleanup").count(), 2);
+    }
+}
+
+#[test]
+fn unconfirmed_native_properties_do_not_count_as_successful_cleanup() {
+    let fake = Fake::new();
+    fake.installed();
+    *fake.uninstall_result.lock().unwrap() = Some(FirewallExtensionState::NotInstalled);
+    *fake.cleanup_confirmed.lock().unwrap() = false;
+    let (service, _) = service(fake.clone());
+    assert_eq!(
+        service.disable(true).unwrap().extension,
+        FirewallExtensionState::Uninstalling
+    );
+    *fake.cleanup_confirmed.lock().unwrap() = true;
+    assert_eq!(
+        service.refresh(false).unwrap().extension,
+        FirewallExtensionState::NotInstalled
+    );
+    assert_eq!(ops(&fake).iter().filter(|op| *op == "cleanup").count(), 2);
+}
+
+#[test]
+fn pending_removal_cleanup_survives_application_restart() {
+    let temp = tempfile::tempdir().unwrap();
+    let database = opennavo_desktop_lib::db::Database::open(&temp.path().join("app.db")).unwrap();
+    let fake = Fake::new();
+    fake.installed();
+    fake.engine
+        .lock()
+        .unwrap()
+        .state
+        .baseline
+        .insert("private-history".into());
+    *fake.uninstall_result.lock().unwrap() = Some(FirewallExtensionState::Uninstalling);
+    let sink = Arc::new(|_| {}) as opennavo_desktop_lib::firewall::service::Sink;
+    let service = Service::new(
+        fake.clone(),
+        sink.clone(),
+        Some((database.clone(), temp.path().into())),
+    );
+    service.disable(true).unwrap();
+    drop(service);
+    fake.status.lock().unwrap().extension = FirewallExtensionState::NotInstalled;
+    let restarted = Service::new(fake.clone(), sink, Some((database, temp.path().into())));
+    restarted.refresh(false).unwrap();
+    assert!(fake.engine.lock().unwrap().state.baseline.is_empty());
+    assert_eq!(ops(&fake).iter().filter(|op| *op == "cleanup").count(), 1);
+    restarted.refresh(false).unwrap();
+    assert_eq!(ops(&fake).iter().filter(|op| *op == "cleanup").count(), 1);
 }

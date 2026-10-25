@@ -18,6 +18,13 @@ static NSArray *FWArray(id value) {return [value isKindOfClass:NSArray.class]?va
 static NSDictionary *FWDictionary(id value) {return [value isKindOfClass:NSDictionary.class]?value:@{};}
 static const NSUInteger FWMaxBytes=50*1024*1024;
 static NSDictionary *FWError(NSString *code) {return @{@"value":NSNull.null,@"error":@{@"code":code,@"message":@"firewall_request",@"detail":NSNull.null}};}
+// Destination rules and block lists need no identity; this stands in when there is none.
+static NSDictionary *FWUnidentified(pid_t pid) {
+    return @{@"key":@"",@"name":@"?",@"path":[NSString stringWithFormat:@"/unidentified/%d",pid],@"bundlePath":NSNull.null,@"bundleId":NSNull.null,@"signingId":NSNull.null,@"teamId":NSNull.null,@"teamName":NSNull.null,@"signer":@"invalid",@"iconPath":NSNull.null};
+}
+static BOOL FWOwnProcess(NSDictionary *app) {
+    return [app[@"signer"] isEqual:@"developer_id"] && [app[@"signingId"] isEqual:NSBundle.mainBundle.bundleIdentifier] && [app[@"teamId"] isEqual:FWOwnTeam()];
+}
 
 @interface FWListDownload:NSObject<NSURLSessionDataDelegate,NSURLSessionTaskDelegate>
 @property NSMutableData *data;
@@ -123,14 +130,27 @@ static NSDictionary *FWError(NSString *code) {return @{@"value":NSNull.null,@"er
     struct stat st;
     if (lstat(path.fileSystemRepresentation,&st)!=0 || !S_ISDIR(st.st_mode) || st.st_uid!=geteuid() || (st.st_mode&0077)) return NO;
     self.statePath=[path stringByAppendingPathComponent:@"state.json"];
-    if ([NSFileManager.defaultManager fileExistsAtPath:self.statePath]) {
-        if (lstat(self.statePath.fileSystemRepresentation,&st)!=0 || !S_ISREG(st.st_mode) || st.st_uid!=geteuid() || st.st_size>512*1024*1024) return NO;
-        NSData *data=[NSData dataWithContentsOfFile:self.statePath];id state=data?[NSJSONSerialization JSONObjectWithData:data options:0 error:nil]:nil;
-        if (!state) return NO;
-        NSDictionary *result=[self call:@{@"op":@"restore",@"state":state}];
-        if (result[@"error"]!=NSNull.null) return NO;
-    }
-    return YES;
+    return [self restoreState];
+}
+// File type and ownership fail closed; unreadable content doesn't. A torn write or a
+// file the core rejects must not leave filtering disabled until someone deletes it
+// by hand. Keep it aside and start empty; the next persist writes a clean file.
+-(BOOL)restoreState {
+    if (![NSFileManager.defaultManager fileExistsAtPath:self.statePath]) return YES;
+    struct stat st;
+    if (lstat(self.statePath.fileSystemRepresentation,&st)!=0 || !S_ISREG(st.st_mode) || st.st_uid!=geteuid()) return NO;
+    NSData *data=st.st_size<=512*1024*1024?[NSData dataWithContentsOfFile:self.statePath]:nil;
+    id state=data?[NSJSONSerialization JSONObjectWithData:data options:0 error:nil]:nil;
+    if (state && [self call:@{@"op":@"restore",@"state":state}][@"error"]==NSNull.null) return YES;
+    NSString *aside=[NSString stringWithFormat:@"%@.unreadable-%lld",self.statePath,(long long)time(NULL)];
+    return rename(self.statePath.fileSystemRepresentation,aside.fileSystemRepresentation)==0;
+}
+// Set-aside files hold an earlier firewall's rules and activity too.
+-(void)discardSetAside {
+    if (!self.statePath) return;
+    NSString *folder=self.statePath.stringByDeletingLastPathComponent,*prefix=[self.statePath.lastPathComponent stringByAppendingString:@".unreadable-"];
+    for (NSString *name in [NSFileManager.defaultManager contentsOfDirectoryAtPath:folder error:nil])
+        if ([name hasPrefix:prefix]) unlink([folder stringByAppendingPathComponent:name].fileSystemRepresentation);
 }
 -(void)persist {
     if (!self.healthy || !self.statePath) return;
@@ -138,6 +158,18 @@ static NSDictionary *FWError(NSString *code) {return @{@"value":NSNull.null,@"er
     NSData *data=[NSJSONSerialization dataWithJSONObject:result[@"value"] options:0 error:nil];
     if (![data writeToFile:self.statePath options:NSDataWritingAtomic error:nil]) {self.healthy=NO;[self call:@{@"op":@"disconnect"}];[self releaseAll];}
     else chmod(self.statePath.fileSystemRepresentation,0600);
+}
+// The core's flow record, from socket metadata only: no identity or process work.
+-(NSDictionary *)item:(NSString *)identifier socket:(NEFilterSocketFlow *)socket app:(NSDictionary *)app pid:(pid_t)pid start:(uint64_t)start arrival:(uint64_t)now {
+    NWHostEndpoint *remote=(NWHostEndpoint *)socket.remoteEndpoint;
+    NSString *host=socket.remoteHostname?:socket.URL.host;
+    return @{@"id":identifier,@"app":app,@"baselineOwner":app[@"baselineOwner"]?:NSNull.null,@"pid":@(MAX(pid,0)),@"processStart":@(start),@"args":@[],@"ancestors":@[],@"remoteAddress":remote.hostname?:@"",@"remoteHost":host?:NSNull.null,@"port":@(remote.port.intValue),@"protocol":socket.socketProtocol==IPPROTO_UDP?@"udp":@"tcp",@"at":@(FWNow()-(int64_t)(FWMonotonic()-now)),@"monotonicMs":@(now)};
+}
+// No question is possible any more; resume with what the core decides without one.
+-(void)bypass:(NSDictionary *)item identified:(BOOL)identified released:(BOOL)released {
+    NSDictionary *result=[self call:@{@"op":@"bypass",@"flow":item,@"identified":@(identified),@"released":@(released)}];
+    NSString *verdict=FWDictionary(result[@"value"])[@"verdict"];
+    [self resume:item[@"id"] action:[verdict isKindOfClass:NSString.class]?verdict:@"allow"];
 }
 -(NEFilterNewFlowVerdict *)handleNewFlow:(NEFilterFlow *)flow {
     // LuLu also checks direction here because inbound callbacks can still arrive.
@@ -153,6 +185,8 @@ static NSDictionary *FWError(NSString *code) {return @{@"value":NSNull.null,@"er
     }
     uint64_t now=FWMonotonic();BOOL udp=socket.socketProtocol==IPPROTO_UDP;
     NSString *identifier=flow.identifier.UUIDString;
+    // Without an identifier a paused flow could never be found and resumed.
+    if (!identifier.length) return [NEFilterNewFlowVerdict allowVerdict];
     [self.pausedLock lock];
     if (self.paused.count>=4096) {[self.pausedLock unlock];return [NEFilterNewFlowVerdict allowVerdict];}
     BOOL clientBound=self.lastHeartbeat && (now<self.lastHeartbeat || now-self.lastHeartbeat<5000);
@@ -165,34 +199,40 @@ static NSDictionary *FWError(NSString *code) {return @{@"value":NSNull.null,@"er
         // behind signing work. Discard it before touching any process identity.
         [self.pausedLock lock];NSDictionary *queued=self.paused[identifier];[self.pausedLock unlock];
         if (!queued) return;
-        if (self.stopping || !self.filtering || !self.healthy || FWMonotonic()>=[queued[@"policyDeadline"] unsignedLongLongValue]) {
-            [self resume:identifier action:@"allow"];return;
-        }
-        NWHostEndpoint *remote=(NWHostEndpoint *)socket.remoteEndpoint;
+        if (self.stopping || !self.filtering || !self.healthy) {[self resume:identifier action:@"allow"];return;}
+        audit_token_t audit={0};pid_t pid=0;
+        if (flow.sourceAppAuditToken.length==sizeof(audit)) {[flow.sourceAppAuditToken getBytes:&audit length:sizeof(audit)];pid=audit_token_to_pid(audit);}
         // Audit tokens include the process identity/version. Reuse a recently
         // verified identity across that process's connections; never cache PID alone.
         NSData *token=flow.sourceAppAuditToken;
         NSDictionary *cached=token?self.identities[token]:nil;
-        NSDictionary *app=cached && FWMonotonic()-[cached[@"at"] unsignedLongLongValue]<30000?cached[@"app"]:FWIdentifyToken(token);
+        BOOL recent=cached && FWMonotonic()-[cached[@"at"] unsignedLongLongValue]<30000;
+        if (FWMonotonic()>=[queued[@"policyDeadline"] unsignedLongLongValue]) {
+            // Too late to ask or to verify a signature. Destination rules and block
+            // lists need no identity, and an already verified one costs nothing.
+            NSDictionary *known=recent?cached[@"app"]:nil;
+            if (FWOwnProcess(known)) {[self resume:identifier action:@"allow"];return;}
+            [self bypass:[self item:identifier socket:socket app:known?:FWUnidentified(pid) pid:pid start:known?FWProcessStart(pid):0 arrival:now] identified:known!=nil released:NO];
+            return;
+        }
+        NSDictionary *app=recent?cached[@"app"]:FWIdentifyToken(token);
         if (app && token) {
             if (self.identities.count>=4096) [self.identities removeAllObjects];
-            if (!cached || FWMonotonic()-[cached[@"at"] unsignedLongLongValue]>=30000) self.identities[token]=@{@"app":app,@"at":@(FWMonotonic())};
+            if (!recent) self.identities[token]=@{@"app":app,@"at":@(FWMonotonic())};
         }
         // A slow Security call itself may outlive the watchdog too.
         [self.pausedLock lock];BOOL stillPaused=self.paused[identifier]!=nil;[self.pausedLock unlock];
         if (!stillPaused) return;
         BOOL identified=app!=nil;
-        audit_token_t audit={0};pid_t pid=0;
-        if (flow.sourceAppAuditToken.length==sizeof(audit)) {[flow.sourceAppAuditToken getBytes:&audit length:sizeof(audit)];pid=audit_token_to_pid(audit);}
-        if (!app) app=@{@"key":@"",@"name":@"?",@"path":[NSString stringWithFormat:@"/unidentified/%d",pid],@"bundlePath":NSNull.null,@"bundleId":NSNull.null,@"signingId":NSNull.null,@"teamId":NSNull.null,@"teamName":NSNull.null,@"signer":@"invalid",@"iconPath":NSNull.null};
-        if ([app[@"signer"] isEqual:@"developer_id"] && [app[@"signingId"] isEqual:NSBundle.mainBundle.bundleIdentifier] && [app[@"teamId"] isEqual:FWOwnTeam()]) {[self resume:identifier action:@"allow"];return;}
-        NSString *host=socket.remoteHostname?:flow.URL.host;
+        if (!app) app=FWUnidentified(pid);
+        if (FWOwnProcess(app)) {[self resume:identifier action:@"allow"];return;}
         uint64_t processStart=FWProcessStart(pid);
-        NSDictionary *item=@{@"id":identifier,@"app":app,@"baselineOwner":app[@"baselineOwner"]?:NSNull.null,@"pid":@(MAX(pid,0)),@"processStart":@(processStart),@"args":@[],@"ancestors":@[],@"remoteAddress":remote.hostname?:@"",@"remoteHost":host?:NSNull.null,@"port":@(remote.port.intValue),@"protocol":udp?@"udp":@"tcp",@"at":@(FWNow()-(int64_t)(FWMonotonic()-now)),@"monotonicMs":@(now)};
+        NSDictionary *item=[self item:identifier socket:socket app:app pid:pid start:processStart arrival:now];
         [self.pausedLock lock];BOOL active=self.paused[identifier]!=nil;[self.pausedLock unlock];
-        if (!active || !identified || !self.healthy || self.stopping || FWMonotonic()-now>=1000) {
-            [self call:@{@"op":@"bypass",@"flow":item}];[self resume:identifier action:@"allow"];return;
-        }
+        if (!self.healthy || self.stopping) {[self resume:identifier action:@"allow"];return;}
+        // Released meanwhile, unidentified or late: it can't wait for an answer, but
+        // rules and lists that need none still decide it (released ones are only logged).
+        if (!active || !identified || FWMonotonic()-now>=1000) {[self bypass:item identified:identified released:!active];return;}
         NSDictionary *result=[self call:@{@"op":@"flow",@"flow":item}];
         NSString *verdict=FWDictionary(result[@"value"])[@"verdict"]?:@"allow";
         [self.pausedLock lock];NSDictionary *entry=self.paused[identifier];
@@ -297,19 +337,28 @@ static NSDictionary *FWError(NSString *code) {return @{@"value":NSNull.null,@"er
         // active throughout preparation; disk work never delays this acceptance.
         NSDictionary *result=[self call:request];
         completion(result);
+        // A fresh setup wiped the core's state (persisted below); old set-aside copies go too.
+        if ([request[@"fresh"] isEqual:@YES] && result[@"error"]==NSNull.null) [self discardSetAside];
         if ([FWDictionary(result[@"value"])[@"scan"] boolValue]) {
-            uint64_t deadline=FWMonotonic()+60000;
+            // Results carry the configuration that started the scan, so a reset cancels it.
+            uint64_t deadline=FWMonotonic()+60000;id scan=request[@"id"]?:NSNull.null;
             dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{
                 @try {
                     FWScanInstalledApps(@[@"/Applications",@"/System/Applications"],deadline,^(NSDictionary *app){
-                        dispatch_async(self.queue,^{[self call:@{@"op":@"baseline_add",@"apps":@[app]}];});
+                        dispatch_async(self.queue,^{[self call:@{@"op":@"baseline_add",@"apps":@[app],@"scan":scan}];});
                     });
                 } @catch (NSException *exception) {(void)exception;} @finally {
-                    dispatch_async(self.queue,^{[self call:@{@"op":@"baseline_finish"}];[self persist];});
+                    dispatch_async(self.queue,^{[self call:@{@"op":@"baseline_finish",@"scan":scan}];[self persist];});
                 }
             });
         }
         [self persist];return;
+    }
+    if ([op isEqual:@"reset"]) {
+        // Durable before the reply: the host removes the extension right after it.
+        NSDictionary *result=[self call:@{@"op":@"reset"}];
+        if (result[@"error"]==NSNull.null) {[self discardSetAside];[self persist];}
+        completion(self.healthy?result:FWError(@"E_FW_DISCONNECTED"));return;
     }
     if ([op isEqual:@"rule_save"]) {
         [input removeObjectForKey:@"identifiedApp"];

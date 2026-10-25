@@ -1,20 +1,22 @@
 import { convertFileSrc, isTauri } from '@tauri-apps/api/core';
 import type { OnChipTone } from '@opennavo/ui';
-import type { FirewallApp, FirewallRule, FirewallSigner, FirewallStatus } from '@/ipc/bindings';
+import type { FirewallApp, FirewallExtensionState, FirewallRule, FirewallSigner, FirewallStatus } from '@/ipc/bindings';
 
 export type FirewallTab = 'rules' | 'activity' | 'blocklists' | 'settings';
 export const FIREWALL_TABS: readonly FirewallTab[] = ['rules', 'activity', 'blocklists', 'settings'];
 
 /**
  * What the page shows. Management needs the extension installed and the filter configured, even while paused; before
- * that the page explains, then follows macOS's two confirmations.
+ * that the page explains, then follows macOS's two confirmations. A removed extension that macOS deletes only at the
+ * next restart no longer runs, so it can be turned on again like one that was never installed.
  */
 export type FirewallPhase = 'loading' | 'unavailable' | 'setup' | 'progress' | 'ready';
+const SETUP_STATES: readonly FirewallExtensionState[] = ['not_installed', 'removal_pending', 'failed'];
 export function firewallPhase(status: FirewallStatus | null): FirewallPhase {
   if (!status) return 'loading';
   if (status.extension === 'installed' && status.filter !== 'needs_consent') return 'ready';
   if (status.availability !== 'available') return 'unavailable';
-  if (status.extension === 'not_installed' || status.extension === 'failed') return 'setup';
+  if (SETUP_STATES.includes(status.extension)) return 'setup';
   return 'progress';
 }
 
@@ -30,6 +32,12 @@ export function stepState(status: FirewallStatus, step: SetupStep): 'done' | 'ac
   if (extension !== 'installed') return 'todo';
   return filter === 'needs_consent' ? 'active' : filter === 'on' ? 'done' : 'todo';
 }
+
+/**
+ * The question window ignores its buttons this long after another question appears or the window shows up: the window
+ * can pop up under the cursor, and the second click of a double click would answer the next app's question.
+ */
+export const ANSWER_DELAY_MS = 600;
 
 /** Icon Rust exported into the asset-protocol cache; browser mode (dev:web) falls back to letter tiles. */
 export const appIcon = (app: FirewallApp | null) => (app?.iconPath && isTauri() ? convertFileSrc(app.iconPath) : null);
@@ -58,6 +66,10 @@ export function developerText(app: FirewallApp, t: (key: string, values?: Record
   if (app.signer === 'developer_id') return app.teamName ?? app.teamId ?? t('firewall.signer.developer_id');
   return t(`firewall.signer.${app.signer}`);
 }
+
+/** "example.com:443", with an IPv6 address in brackets. */
+export const endpoint = (remote: string, port: number) =>
+  remote.includes(':') ? `[${remote}]:${port}` : `${remote}:${port}`;
 
 /** "api.example.com · port 443", "Any address", "Any address · port 22". */
 export function ruleDestination(

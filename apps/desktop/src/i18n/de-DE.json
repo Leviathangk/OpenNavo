@@ -1292,6 +1292,8 @@
     "E_FW_NOT_BUNDLED": "Diese Version enthält keine Firewall-Komponente. Verwenden Sie die offizielle OpenNavo-Version",
     "E_FW_NOT_IN_APPLICATIONS": "Verschieben Sie OpenNavo zuerst in den Ordner „Programme“ und öffnen Sie es erneut",
     "E_FW_ACTIVATION": "macOS hat die Installation der Systemerweiterung nicht abgeschlossen. Versuchen Sie es erneut",
+    "E_FW_REMOVAL": "Die App-Firewall konnte nicht entfernt werden. Versuchen Sie es erneut",
+    "E_FW_FILTER": "macOS konnte die Netzwerkfilter-Einstellung nicht ändern. Versuchen Sie es erneut",
     "E_FW_CONSENT_DENIED": "Netzwerkinhaltsfilterung nicht erlaubt. Firewall bleibt aus",
     "E_FW_DISCONNECTED": "Firewall-Komponente antwortet nicht. Versuchen Sie es gleich erneut",
     "E_FW_RULE_INVALID": "Ungültige Regel. Prüfen Sie Programm, Adresse und Port",
@@ -1299,7 +1301,9 @@
     "E_FW_BLOCKLIST_URL": "Nur https-Adressen oder Dateien auf diesem Mac werden unterstützt",
     "E_FW_BLOCKLIST_FETCH": "Sperrliste konnte nicht geladen werden. Prüfen Sie Adresse und Verbindung",
     "E_FW_BLOCKLIST_FORMAT": "Keine nutzbaren Domains oder IPs in der Datei gefunden",
-    "E_FW_BLOCKLIST_TOO_LARGE": "Sperrliste zu groß: höchstens 50 MB und 1 Million Einträge"
+    "E_FW_BLOCKLIST_TOO_LARGE": "Sperrliste zu groß: höchstens 50 MB und 1 Million Einträge",
+    "E_FW_BLOCKLIST_LIMIT": "Limit für Sperrlisten erreicht: höchstens 32 Listen und insgesamt 256 MB",
+    "E_FW_BLOCKLIST_FILE": "Die Datei wurde nicht gefunden oder kann nicht gelesen werden"
   },
   "installConfirm": {
     "title": "Vorhandenes {name} übernehmen?",
@@ -2662,7 +2666,8 @@
       "steps": "macOS bittet um zwei Bestätigungen: Erlauben Sie zuerst die OpenNavo-Systemerweiterung in den Systemeinstellungen und danach das Filtern von Netzwerkinhalten.",
       "privacy": "Alles wird auf diesem Mac entschieden. Verbindungsdetails werden nie hochgeladen.",
       "failedTitle": "App-Firewall konnte nicht aktiviert werden",
-      "failed": "Aktivierung fehlgeschlagen: {reason}"
+      "failed": "Aktivierung fehlgeschlagen: {reason}",
+      "removed": "Die App-Firewall wurde entfernt. Ein Neustart ist jetzt nicht nötig: macOS löscht die übrige Komponente beim nächsten Neustart des Macs."
     },
     "options": {
       "allowApple": "Apple-Programme automatisch erlauben",
@@ -2811,9 +2816,13 @@
       "count": "{count}-mal",
       "allowApp": "App erlauben",
       "blockApp": "App blockieren",
+      "allowDestination": "Adresse erlauben",
+      "blockDestination": "Adresse blockieren",
       "ruled": {
         "allow": "„{name}“ darf sich jetzt verbinden",
-        "block": "Netzwerkzugriff für „{name}“ blockiert"
+        "block": "Netzwerkzugriff für „{name}“ blockiert",
+        "allowDestination": "„{name}“ darf sich jetzt mit {destination} verbinden",
+        "blockDestination": "Verbindungen von „{name}“ zu {destination} blockiert"
       },
       "ruledShort": {
         "allow": "Jetzt erlaubt",

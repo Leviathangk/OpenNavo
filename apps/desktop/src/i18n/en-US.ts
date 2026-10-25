@@ -1318,6 +1318,8 @@ const messages: MessageSchema = {
     E_FW_NOT_BUNDLED: 'This version doesn’t include the firewall component. Use the release version of OpenNavo',
     E_FW_NOT_IN_APPLICATIONS: 'Move OpenNavo to the Applications folder, then reopen it',
     E_FW_ACTIVATION: 'macOS didn’t finish installing the system extension. Try again',
+    E_FW_REMOVAL: 'Couldn’t remove the app firewall. Try again',
+    E_FW_FILTER: 'macOS couldn’t update the network filter setting. Try again',
     E_FW_CONSENT_DENIED: 'Network content filtering wasn’t allowed, so the firewall is off',
     E_FW_DISCONNECTED: 'The firewall component isn’t responding. Try again shortly',
     E_FW_RULE_INVALID: 'The rule isn’t valid. Check the program, address and port',
@@ -1325,7 +1327,9 @@ const messages: MessageSchema = {
     E_FW_BLOCKLIST_URL: 'Only https addresses or files on this Mac are supported',
     E_FW_BLOCKLIST_FETCH: 'Couldn’t download the block list. Check the address and your connection',
     E_FW_BLOCKLIST_FORMAT: 'No usable domains or IPs were found in the file',
-    E_FW_BLOCKLIST_TOO_LARGE: 'The block list is too large: at most 50 MB and 1,000,000 entries'
+    E_FW_BLOCKLIST_TOO_LARGE: 'The block list is too large: at most 50 MB and 1,000,000 entries',
+    E_FW_BLOCKLIST_LIMIT: 'Block list limit reached: at most 32 lists and 256 MB in total',
+    E_FW_BLOCKLIST_FILE: 'The file can’t be found or read'
   },
   installConfirm: {
     title: 'Adopt the existing {name}?',
@@ -2751,7 +2755,9 @@ const messages: MessageSchema = {
         'macOS asks you twice along the way: allow OpenNavo’s system extension in System Settings, then allow it to filter network content.',
       privacy: 'Everything is decided on this Mac. Connection details are never uploaded.',
       failedTitle: 'Couldn’t turn on the app firewall',
-      failed: 'Couldn’t turn it on: {reason}'
+      failed: 'Couldn’t turn it on: {reason}',
+      removed:
+        'The app firewall has been removed. You don’t need to restart now; macOS deletes the leftover component the next time your Mac restarts.'
     },
     options: {
       allowApple: 'Allow Apple programs automatically',
@@ -2904,9 +2910,13 @@ const messages: MessageSchema = {
       count: '{count}×',
       allowApp: 'Allow App',
       blockApp: 'Block App',
+      allowDestination: 'Allow Address',
+      blockDestination: 'Block Address',
       ruled: {
         allow: '{name} can now connect',
-        block: '{name} is now blocked'
+        block: '{name} is now blocked',
+        allowDestination: '{name} can now connect to {destination}',
+        blockDestination: '{name} is now blocked from {destination}'
       },
       ruledShort: {
         allow: 'Now allowed',

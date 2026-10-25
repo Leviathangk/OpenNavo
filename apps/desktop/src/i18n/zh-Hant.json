@@ -1292,6 +1292,8 @@
     "E_FW_NOT_BUNDLED": "這個版本沒有包含防火牆元件，請使用 OpenNavo 正式版",
     "E_FW_NOT_IN_APPLICATIONS": "請先把 OpenNavo 移到「應用程式」資料夾，再重新開啟",
     "E_FW_ACTIVATION": "macOS 沒有完成系統擴充套件的安裝，請重試",
+    "E_FW_REMOVAL": "沒能移除應用防火牆，請重試",
+    "E_FW_FILTER": "macOS 沒能更新網路過濾設定，請重試",
     "E_FW_CONSENT_DENIED": "沒有允許過濾網路內容，防火牆沒有開啟",
     "E_FW_DISCONNECTED": "防火牆元件沒有響應，請稍後重試",
     "E_FW_RULE_INVALID": "規則不正確：請檢查程式、地址和埠",
@@ -1299,7 +1301,9 @@
     "E_FW_BLOCKLIST_URL": "只支援 https 網址或這臺 Mac 上的檔案",
     "E_FW_BLOCKLIST_FETCH": "沒能下載遮蔽列表，請檢查網址和網路",
     "E_FW_BLOCKLIST_FORMAT": "沒有在檔案裡找到可用的域名或 IP",
-    "E_FW_BLOCKLIST_TOO_LARGE": "遮蔽列表太大了，最多 50 MB、100 萬條"
+    "E_FW_BLOCKLIST_TOO_LARGE": "遮蔽列表太大了，最多 50 MB、100 萬條",
+    "E_FW_BLOCKLIST_LIMIT": "遮蔽列表已經到上限：最多 32 個，合計不超過 256 MB",
+    "E_FW_BLOCKLIST_FILE": "找不到這個檔案，或者沒有權限讀取"
   },
   "installConfirm": {
     "title": "接管現有 {name}？",
@@ -2662,7 +2666,8 @@
       "steps": "開啟時 macOS 會請你確認兩次：先在「系統設定」裡允許 OpenNavo 的系統擴充套件，再允許它過濾網路內容。",
       "privacy": "判斷都在這臺 Mac 上完成，連線資訊不會上傳。",
       "failedTitle": "沒能開啟應用防火牆",
-      "failed": "沒能開啟：{reason}"
+      "failed": "沒能開啟：{reason}",
+      "removed": "應用防火牆已移除，不用馬上重啟。剩下的元件會在下次重啟 Mac 時由 macOS 清除。"
     },
     "options": {
       "allowApple": "自動允許 Apple 的程式",
@@ -2811,9 +2816,13 @@
       "count": "{count} 次",
       "allowApp": "允許這個 App",
       "blockApp": "阻止這個 App",
+      "allowDestination": "允許這個位址",
+      "blockDestination": "阻止這個位址",
       "ruled": {
         "allow": "已允許「{name}」聯網",
-        "block": "已阻止「{name}」聯網"
+        "block": "已阻止「{name}」聯網",
+        "allowDestination": "已允許「{name}」連線到 {destination}",
+        "blockDestination": "已阻止「{name}」連線到 {destination}"
       },
       "ruledShort": {
         "allow": "已改為允許",

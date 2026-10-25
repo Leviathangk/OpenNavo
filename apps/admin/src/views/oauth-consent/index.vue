@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useI18n } from 'vue-i18n';
 import { authorizationParams, compatibleScopes, oauthRequest } from '@/service/api/oauth';
 import type { OAuthConsent } from '@/service/api/oauth';
-import { oauthMessages } from '@/locales/oauth';
+import { $t } from '@/locales';
 import { permissionLabel } from '@/views/system/agent/modules/permissions';
 
-const { t } = useI18n({ useScope: 'local', messages: oauthMessages });
+const t = (key: string) => $t(`page.oauth.${key}` as App.I18n.I18nKey);
 const route = useRoute();
 const consent = ref<OAuthConsent | null>(null);
 const selected = ref<string[]>([]);

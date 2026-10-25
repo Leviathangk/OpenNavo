@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { OnButton, OnConfirm, OnEmpty, OnSearchField, OnSegmented, OnSkeleton } from '@opennavo/ui';
 import type { FirewallRule } from '@/ipc/bindings';
@@ -27,6 +27,8 @@ const editing = ref<FirewallRule | null>(null);
 const sheetOpen = ref(false);
 const deleting = ref<FirewallRule | null>(null);
 
+// Rule changes, and the extension answering again after a failed read, reload the list while it is on screen.
+onUnmounted(store.follow('rules'));
 onMounted(async () => {
   try {
     await store.loadRules();

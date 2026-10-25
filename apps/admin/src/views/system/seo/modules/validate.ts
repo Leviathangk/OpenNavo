@@ -63,6 +63,9 @@ const DOMAIN_PROPERTY = /^sc-domain:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-
 export const MAX_CREDENTIAL = 4096;
 export const MAX_SERVICE_ACCOUNT = 16384;
 
+/** Placeholder for the property field: an identifier in the expected format, not translatable copy. */
+export const GSC_PROPERTY_EXAMPLE = 'sc-domain:opennavo.com';
+
 /** A Search Console domain property (sc-domain:example.com) or an https URL-prefix property. */
 export function validGscProperty(value: string) {
   return DOMAIN_PROPERTY.test(value) || validHttps(value, MAX_CREDENTIAL);

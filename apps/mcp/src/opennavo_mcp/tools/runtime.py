@@ -45,6 +45,12 @@ SELECTORS: dict[str, dict[str, Any]] = {
 PARTIAL = {"category_update", "collection_update", "feature_upsert"}
 # Image bytes never pass through MCP or model output; clients send local files straight to Go.
 USAGE = {
+    "catalog_changes": (
+        " Omit from/to to query the last 24 hours. When supplied, use RFC 3339 timestamps"
+        " with a timezone; from must precede to and be within the last 14 days, and to"
+        " must not be in the future (one minute clock tolerance). Date examples illustrate"
+        " format only; replace them with recent timestamps."
+    ),
     "update_feed_upsert": (
         " Sparkle only in M2. Rules are keyed by bundle_id and source; new URLs are published"
         " after nightly validation. package_id is optional. This does not install software."

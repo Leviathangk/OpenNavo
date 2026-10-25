@@ -1,11 +1,19 @@
 // Simulated app firewall commands (firewall plan §4) for browser mode and component tests.
 // By default this Mac can run the firewall but has not turned it on: Enable installs the extension, waits for approval
 // in System Settings (open_approval approves it), then asks to filter network content (accepted).
+// Like the host, enable and disable answer with the status from before the change; the new filter state follows a tick
+// later as a firewall:status event. A saved filter configuration turns back on without asking again; only the first
+// consent shows the dialog. An answered question's shorter list goes out before the reply returns.
 // ?mock= switches: firewall-on (installed, filtering, with rules, activity and a block list), firewall-alerts (on, with
 // two connections waiting), firewall-alert-released (like firewall-alerts, but the first question's connections were
 // already let through after nobody answered), firewall-not-bundled / firewall-not-in-applications (cannot run here),
-// firewall-consent-denied (the filter dialog is declined), firewall-disconnected (the extension stops answering),
-// firewall-service-missing (macOS started the extension without the service the app talks to; a restart fixes it).
+// firewall-consent-denied (the filter dialog is declined), firewall-disconnected (the extension stops answering: the
+// status carries E_FW_DISCONNECTED and reading or changing rules, settings, activity and block lists fails with it;
+// turning filtering off and on again brings it back), firewall-service-missing (macOS started the extension without
+// the service the app talks to, so the same reads fail; a restart fixes it), firewall-removal-pending (removed earlier;
+// macOS deletes the stopped extension at the next restart), firewall-removal-fails (removing stops filtering, but the
+// password prompt is dismissed and the extension stays).
+// Component tests also drive ask() (a new connection asks) and reconnect() (the extension answers again).
 import { events as ipcEvents } from '../bindings';
 import type {
   AppError,
@@ -91,7 +99,12 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
   const now = Date.now();
   const asking = flags.has('firewall-alerts') || flags.has('firewall-alert-released');
   const missing = flags.has('firewall-service-missing');
-  const on = flags.has('firewall-on') || asking || flags.has('firewall-disconnected') || missing;
+  const disconnected = flags.has('firewall-disconnected');
+  const on = flags.has('firewall-on') || asking || disconnected || missing;
+  const removed = !on && flags.has('firewall-removal-pending');
+  const SERVICE_MISSING = { code: 'E_FW_DISCONNECTED', detail: 'firewall_service_missing' } as const;
+  // macOS keeps the filter configuration saved at the first consent; turning it on again doesn't ask.
+  let configured = on;
   const timers = new Set<ReturnType<typeof setTimeout>>();
   let sequence = 0;
   const id = (prefix: string) => `${prefix}-${++sequence}`;
@@ -114,15 +127,16 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
       : flags.has('firewall-not-in-applications')
         ? 'not_in_applications'
         : 'available',
-    extension: on ? 'installed' : 'not_installed',
+    extension: on ? 'installed' : removed ? 'removal_pending' : 'not_installed',
     extensionVersion: on ? '1.0.0' : null,
     filter: on ? 'on' : 'off',
-    connected: on && !flags.has('firewall-disconnected') && !missing,
+    connected: on && !disconnected && !missing,
     mode: 'ask',
     ruleCount: 0,
     pendingAlerts: 0,
     blockedToday: on ? 14 : 0,
-    error: missing ? { code: 'E_FW_DISCONNECTED', detail: 'firewall_service_missing' } : null
+    // Rust reports a filter that is on but doesn't answer as E_FW_DISCONNECTED.
+    error: missing ? SERVICE_MISSING : disconnected ? { code: 'E_FW_DISCONNECTED', detail: null } : null
   };
 
   const rule = (
@@ -144,26 +158,42 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     matchCount: 128,
     ...extra
   });
+  // The rules that decided the activity below (its ruleId); the engine checks app + destination rules first, then
+  // rules for every app, block lists, rules for a whole app, automatic allows, and finally the mode.
+  const decided = {
+    telemetry: rule(APPS.code, 'block', 'user', {
+      remote: 'dc.services.visualstudio.com',
+      lastMatchAt: now - HOUR,
+      matchCount: 9
+    }),
+    helper: rule(APPS.helper, 'block', 'user', {
+      lastMatchAt: now - 20 * MINUTE,
+      matchCount: 3
+    }),
+    // Answered "only this address".
+    mozilla: rule(APPS.firefox, 'allow', 'user', {
+      remote: 'www.mozilla.org',
+      port: 443,
+      lastMatchAt: now - 2 * HOUR,
+      matchCount: 1
+    }),
+    music: rule(APPS.music, 'allow', 'apple', { matchCount: 12 }),
+    doubleclick: rule(null, 'block', 'user', {
+      remote: '*.doubleclick.net',
+      lastMatchAt: now - 4 * HOUR,
+      matchCount: 2
+    })
+  };
   let rules: FirewallRule[] = on
     ? [
         rule(APPS.chrome, 'allow', 'installed'),
         rule(APPS.code, 'allow', 'user'),
-        rule(APPS.code, 'block', 'user', {
-          remote: 'dc.services.visualstudio.com',
-          lastMatchAt: now - HOUR,
-          matchCount: 9
-        }),
+        decided.telemetry,
         rule(APPS.spotify, 'allow', 'installed', { matchCount: 40 }),
-        rule(APPS.music, 'allow', 'apple', { matchCount: 12 }),
-        rule(APPS.helper, 'block', 'user', {
-          lastMatchAt: now - 20 * MINUTE,
-          matchCount: 3
-        }),
-        rule(null, 'block', 'user', {
-          remote: '*.doubleclick.net',
-          lastMatchAt: null,
-          matchCount: 0
-        })
+        decided.music,
+        decided.helper,
+        decided.mozilla,
+        decided.doubleclick
       ]
     : [];
 
@@ -192,14 +222,28 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
   });
   let activity: FirewallEvent[] = on
     ? [
-        event(APPS.helper, 'block', 'rule', 'telemetry.example.net', '203.0.113.24', 20 * MINUTE, { count: 3 }),
-        event(APPS.code, 'block', 'rule', 'dc.services.visualstudio.com', '20.42.65.85', HOUR, { count: 9 }),
-        event(APPS.firefox, 'allow', 'answer', 'www.mozilla.org', '34.120.208.123', 2 * HOUR),
-        event(APPS.chrome, 'block', 'blocklist', 'ad.doubleclick.net', '142.250.72.198', 3 * HOUR, {
+        event(APPS.helper, 'block', 'rule', 'telemetry.example.net', '203.0.113.24', 20 * MINUTE, {
+          ruleId: decided.helper.id,
+          count: 3
+        }),
+        event(APPS.code, 'block', 'rule', 'dc.services.visualstudio.com', '20.42.65.85', HOUR, {
+          ruleId: decided.telemetry.id,
+          count: 9
+        }),
+        event(APPS.firefox, 'allow', 'answer', 'www.mozilla.org', '34.120.208.123', 2 * HOUR, {
+          ruleId: decided.mozilla.id
+        }),
+        event(APPS.chrome, 'block', 'blocklist', 'pagead2.googlesyndication.com', '142.250.72.194', 3 * HOUR, {
           blocklistId: 'list-1',
           count: 6
         }),
-        event(APPS.music, 'allow', 'apple', 'init.itunes.apple.com', '17.253.144.10', 5 * HOUR),
+        event(APPS.firefox, 'block', 'rule', 'stats.g.doubleclick.net', '142.250.80.2', 4 * HOUR, {
+          ruleId: decided.doubleclick.id,
+          count: 2
+        }),
+        event(APPS.music, 'allow', 'apple', 'init.itunes.apple.com', '17.253.144.10', 5 * HOUR, {
+          ruleId: decided.music.id
+        }),
         event(APPS.firefox, 'allow', 'timeout', 'push.services.mozilla.com', '34.107.243.93', 8 * HOUR),
         event(APPS.python, 'allow', 'no_client', 'pypi.org', '151.101.0.223', 26 * HOUR, { count: 2 })
       ]
@@ -231,6 +275,7 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
       port,
       protocol: 'tcp',
       at: Date.now(),
+      // The app's other connections still held for this answer; none once they were let through.
       waiting: 0,
       // Held TCP connections are let through after 2 minutes without an answer (UDP: 5 seconds).
       released: false,
@@ -239,10 +284,13 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     }) satisfies FirewallAlert;
   let alerts: FirewallAlert[] = asking
     ? [
-        alert(APPS.firefox, 'incoming.telemetry.mozilla.org', '34.117.65.55', 443, {
-          waiting: 2,
-          ...(flags.has('firewall-alert-released') ? { released: true, deadline: null } : {})
-        }),
+        alert(
+          APPS.firefox,
+          'incoming.telemetry.mozilla.org',
+          '34.117.65.55',
+          443,
+          flags.has('firewall-alert-released') ? { released: true, deadline: null } : { waiting: 2 }
+        ),
         alert(APPS.python, null, '198.51.100.7', 8080, {
           args: [APPS.python.path, 'sync.py', '--upload'],
           ancestors: [
@@ -283,16 +331,24 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     requireBundled();
     if (status.extension !== 'installed') throw appError('E_FW_DISCONNECTED', 'firewall_not_installed');
   };
+  // Rules, settings, block lists and activity live in the extension; while it doesn't answer, reading or changing them
+  // fails. Turning filtering on or off (and removing) goes through macOS and still works.
+  const requireConnected = () => {
+    if (status.extension === 'installed' && status.filter !== 'needs_consent' && !status.connected)
+      throw appError('E_FW_DISCONNECTED', 'firewall_request', missing ? SERVICE_MISSING.detail : null);
+  };
 
   // Consent arrives a tick after the filter is configured; a declined dialog leaves filtering off with the reason.
   function askConsent() {
     status = { ...status, filter: 'needs_consent', error: null };
     publish();
     later(() => {
-      status = flags.has('firewall-consent-denied')
+      configured = !flags.has('firewall-consent-denied');
+      status = !configured
         ? {
             ...status,
             filter: 'off',
+            connected: true,
             error: { code: 'E_FW_CONSENT_DENIED', detail: null }
           }
         : // Filtering starts at once; the installed-app baseline is gathered meanwhile (a few seconds on a real Mac).
@@ -333,9 +389,22 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
           allowInstalled: options.allowInstalled
         };
       if (status.extension === 'installed') {
-        askConsent();
-        return counted();
+        const before = counted();
+        if (!configured) later(askConsent);
+        else
+          later(() => {
+            // Turning filtering back on restarts the extension; only a restart brings back a missing service.
+            status = {
+              ...status,
+              filter: 'on',
+              connected: !missing,
+              error: missing ? SERVICE_MISSING : null
+            };
+            publish();
+          });
+        return before;
       }
+      // The activation request is submitted at once, so the reply already says so.
       status = { ...status, extension: 'activating', error: null };
       later(() => {
         status = { ...status, extension: 'needs_approval' };
@@ -359,17 +428,29 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     },
     firewall_disable: () => {
       requireInstalled();
-      status = { ...status, filter: 'off', error: null };
-      later(publish);
-      return counted();
+      const before = counted();
+      later(() => {
+        status = { ...status, filter: 'off', error: null };
+        publish();
+      });
+      return before;
     },
     firewall_uninstall: () => {
       requireInstalled();
       status = { ...status, extension: 'uninstalling', filter: 'off' };
+      // Like a real Mac: the filter stops at once, and macOS deletes the extension at the next restart. A dismissed
+      // password prompt keeps the extension; filtering stays off.
+      if (flags.has('firewall-removal-fails')) {
+        later(() => {
+          status = { ...status, extension: 'installed', error: { code: 'E_FW_REMOVAL', detail: null } };
+          publish();
+        }, 2);
+        return counted();
+      }
       later(() => {
         status = {
           ...status,
-          extension: 'not_installed',
+          extension: 'removal_pending',
           extensionVersion: null,
           connected: false
         };
@@ -397,9 +478,13 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
           })
         : tool(name, path, 'unsigned', null);
     },
-    firewall_rules: () => (status.extension === 'installed' ? rules.map(item => ({ ...item })) : []),
+    firewall_rules: () => {
+      requireConnected();
+      return status.extension === 'installed' ? rules.map(item => ({ ...item })) : [];
+    },
     firewall_rule_save: args => {
       requireInstalled();
+      requireConnected();
       const input = args.input as FirewallRuleInput;
       if (!input.appKey && !input.appPath && input.remote === null && input.port === null)
         throw appError('E_FW_RULE_INVALID', 'global_rule_needs_destination');
@@ -447,12 +532,16 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     },
     firewall_rule_delete: args => {
       requireInstalled();
+      requireConnected();
       const ids = new Set(args.ids as string[]);
       rules = rules.filter(item => !ids.has(item.id));
       later(publish);
       return null;
     },
-    firewall_alerts: () => alerts.map(item => ({ ...item })),
+    firewall_alerts: () => {
+      requireConnected();
+      return alerts.map(item => ({ ...item }));
+    },
     firewall_alert_reply: args => {
       const reply = args.reply as FirewallReply;
       const answered = alerts.find(item => item.id === reply.alertId);
@@ -483,11 +572,10 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
         { port: answered.port, count: 1 + answered.waiting }
       );
       activity = [recorded, ...activity];
-      later(() => {
-        publishAlerts();
-        void ipcEvents.firewallChanged.emit({ what: 'rules' });
-        void ipcEvents.firewallActivity.emit({ events: [recorded] });
-      });
+      // Like the host, the shorter list and the new rule go out before the reply returns; activity is batched.
+      publishAlerts();
+      void ipcEvents.firewallChanged.emit({ what: 'rules' });
+      later(() => void ipcEvents.firewallActivity.emit({ events: [recorded] }));
       return null;
     },
     firewall_alert_show: () => {
@@ -495,6 +583,7 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
       return null;
     },
     firewall_events: args => {
+      requireConnected();
       const query = args.query as FirewallEventsQuery;
       return activity
         .filter(
@@ -510,12 +599,17 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     },
     firewall_events_clear: () => {
       requireInstalled();
+      requireConnected();
       activity = [];
       return null;
     },
-    firewall_blocklists: () => blocklists.map(item => ({ ...item })),
+    firewall_blocklists: () => {
+      requireConnected();
+      return blocklists.map(item => ({ ...item }));
+    },
     firewall_blocklist_add: args => {
       requireInstalled();
+      requireConnected();
       const source = String(args.source).trim();
       const url = /^https:\/\//i.test(source);
       if (!url && !source.startsWith('/') && !source.startsWith('~/'))
@@ -535,6 +629,7 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     },
     firewall_blocklist_set: args => {
       requireInstalled();
+      requireConnected();
       const list = blocklists.find(item => item.id === args.id);
       if (!list) throw appError('E_FW_BLOCKLIST_URL', 'unknown_list');
       list.enabled = Boolean(args.enabled);
@@ -542,6 +637,7 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     },
     firewall_blocklist_refresh: args => {
       requireInstalled();
+      requireConnected();
       const list = blocklists.find(item => item.id === args.id);
       if (!list) throw appError('E_FW_BLOCKLIST_URL', 'unknown_list');
       list.updatedAt = Date.now();
@@ -550,15 +646,18 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     },
     firewall_blocklist_remove: args => {
       requireInstalled();
+      requireConnected();
       blocklists = blocklists.filter(item => item.id !== args.id);
       return null;
     },
     firewall_settings: () => {
       requireBundled();
+      requireConnected();
       return { ...settings };
     },
     firewall_settings_set: args => {
       requireInstalled();
+      requireConnected();
       settings = { ...(args.settings as FirewallSettings) };
       status = { ...status, mode: settings.mode };
       later(publish);
@@ -572,10 +671,16 @@ export function createFirewallMock({ flags, tickMs }: FirewallMockOptions) {
     publishAlerts();
   }
 
+  /** The extension answers again after not responding (component tests drive this directly). */
+  function reconnect() {
+    status = { ...status, connected: true, error: null };
+    publish();
+  }
+
   function stop() {
     for (const timer of timers) clearTimeout(timer);
     timers.clear();
   }
 
-  return { handlers, stop, ask };
+  return { handlers, stop, ask, reconnect };
 }

@@ -1288,6 +1288,8 @@ export default {
     E_FW_NOT_BUNDLED: '这个版本没有包含防火墙组件，请使用 OpenNavo 正式版',
     E_FW_NOT_IN_APPLICATIONS: '请先把 OpenNavo 移到「应用程序」文件夹，再重新打开',
     E_FW_ACTIVATION: 'macOS 没有完成系统扩展的安装，请重试',
+    E_FW_REMOVAL: '没能移除应用防火墙，请重试',
+    E_FW_FILTER: 'macOS 没能更新网络过滤设置，请重试',
     E_FW_CONSENT_DENIED: '没有允许过滤网络内容，防火墙没有开启',
     E_FW_DISCONNECTED: '防火墙组件没有响应，请稍后重试',
     E_FW_RULE_INVALID: '规则不正确：请检查程序、地址和端口',
@@ -1295,7 +1297,9 @@ export default {
     E_FW_BLOCKLIST_URL: '只支持 https 网址或这台 Mac 上的文件',
     E_FW_BLOCKLIST_FETCH: '没能下载屏蔽列表，请检查网址和网络',
     E_FW_BLOCKLIST_FORMAT: '没有在文件里找到可用的域名或 IP',
-    E_FW_BLOCKLIST_TOO_LARGE: '屏蔽列表太大了，最多 50 MB、100 万条'
+    E_FW_BLOCKLIST_TOO_LARGE: '屏蔽列表太大了，最多 50 MB、100 万条',
+    E_FW_BLOCKLIST_LIMIT: '屏蔽列表已经到上限：最多 32 个，合计不超过 256 MB',
+    E_FW_BLOCKLIST_FILE: '找不到这个文件，或者没有权限读取'
   },
   installConfirm: {
     title: '接管现有 {name}？',
@@ -2663,7 +2667,8 @@ export default {
       steps: '开启时 macOS 会请你确认两次：先在「系统设置」里允许 OpenNavo 的系统扩展，再允许它过滤网络内容。',
       privacy: '判断都在这台 Mac 上完成，连接信息不会上传。',
       failedTitle: '没能开启应用防火墙',
-      failed: '没能开启：{reason}'
+      failed: '没能开启：{reason}',
+      removed: '应用防火墙已移除，不用马上重启。剩下的组件会在下次重启 Mac 时由 macOS 清除。'
     },
     options: {
       allowApple: '自动允许 Apple 的程序',
@@ -2813,9 +2818,13 @@ export default {
       count: '{count} 次',
       allowApp: '允许这个 App',
       blockApp: '阻止这个 App',
+      allowDestination: '允许这个地址',
+      blockDestination: '阻止这个地址',
       ruled: {
         allow: '已允许「{name}」联网',
-        block: '已阻止「{name}」联网'
+        block: '已阻止「{name}」联网',
+        allowDestination: '已允许「{name}」连接 {destination}',
+        blockDestination: '已阻止「{name}」连接 {destination}'
       },
       ruledShort: {
         allow: '已改为允许',

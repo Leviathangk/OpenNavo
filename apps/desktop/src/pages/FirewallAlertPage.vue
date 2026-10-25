@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { OnAppIcon, OnButton, OnIcon, OnSegmented } from '@opennavo/ui';
 import type { FirewallAction, FirewallReplyScope, FirewallRuleUntil } from '@/ipc/bindings';
 import { IpcError } from '@/ipc/client';
-import { appIcon, isBundle, signerText } from '@/components/firewall/meta';
+import { ANSWER_DELAY_MS, appIcon, isBundle, signerText } from '@/components/firewall/meta';
 import { usePackageState } from '@/composables/usePackageState';
 import { useTrayWindowSize } from '@/composables/useTrayWindowSize';
 import { useFirewallStore } from '@/stores/firewall';
@@ -24,16 +24,40 @@ const others = computed(() => Math.max(0, store.alerts.length - 1));
 const scope = ref<FirewallReplyScope>('app');
 const until = ref<FirewallRuleUntil>('always');
 const failure = ref<string | null>(null);
+/** The answer on its way, for whichever question was on screen; one at a time. */
+const answering = ref<{ id: string; action: FirewallAction } | null>(null);
+const pending = (action: FirewallAction) =>
+  answering.value?.id === alert.value?.id && answering.value?.action === action;
+
+// Rust sends the shorter list before the reply returns, so the second click of a double click (or a click as the window
+// pops up under the cursor) would land on the next question: its buttons wait ANSWER_DELAY_MS before they answer.
+const armed = ref(false);
+let arming: ReturnType<typeof setTimeout> | undefined;
+function rearm() {
+  armed.value = false;
+  clearTimeout(arming);
+  arming = setTimeout(() => (armed.value = true), ANSWER_DELAY_MS);
+}
 
 // Each new connection starts from the broadest, lasting choice.
 watch(
   () => alert.value?.id,
-  () => {
+  id => {
     scope.value = 'app';
     until.value = 'always';
     failure.value = null;
-  }
+    if (id) rearm();
+  },
+  { immediate: true }
 );
+const onVisibility = () => {
+  if (document.visibilityState === 'visible') rearm();
+};
+document.addEventListener('visibilitychange', onVisibility);
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVisibility);
+  clearTimeout(arming);
+});
 
 const destination = computed(() => {
   const value = alert.value;
@@ -87,7 +111,8 @@ const remaining = computed(() => {
 
 async function answer(action: FirewallAction) {
   const current = alert.value;
-  if (!current) return;
+  if (!current || !armed.value || answering.value) return;
+  answering.value = { id: current.id, action };
   failure.value = null;
   try {
     await store.reply({ alertId: current.id, action, scope: scope.value, until: until.value });
@@ -98,6 +123,8 @@ async function answer(action: FirewallAction) {
       return;
     }
     failure.value = errorText(error);
+  } finally {
+    answering.value = null;
   }
 }
 </script>
@@ -197,17 +224,23 @@ async function answer(action: FirewallAction) {
 
       <footer class="mt-14px flex items-center gap-8px">
         <span class="min-w-0 flex-1 text-11.5px leading-[1.4] text-ink-tertiary">
-          <template v-if="alert.waiting">{{
+          <!-- Released connections went through already; nothing waits for this answer any more. -->
+          <template v-if="alert.waiting && !alert.released">{{
             t('firewall.alert.waiting', { count: alert.waiting }, { plural: alert.waiting })
           }}</template>
           <template v-else-if="others">{{ t('firewall.alert.queue', { count: others }, { plural: others }) }}</template>
         </span>
-        <OnButton icon="ban" :loading="store.busy.has(alert.id)" @click="answer('block')">{{
+        <OnButton icon="ban" :loading="pending('block')" :disabled="pending('allow')" @click="answer('block')">{{
           t('firewall.alert.block')
         }}</OnButton>
-        <OnButton variant="primary" icon="check" :disabled="store.busy.has(alert.id)" @click="answer('allow')">{{
-          t('firewall.alert.allow')
-        }}</OnButton>
+        <OnButton
+          variant="primary"
+          icon="check"
+          :loading="pending('allow')"
+          :disabled="pending('block')"
+          @click="answer('allow')"
+          >{{ t('firewall.alert.allow') }}</OnButton
+        >
       </footer>
     </template>
     <p v-else class="m-0 py-8px text-center text-12.5px text-ink-tertiary">{{ t('firewall.alert.none') }}</p>

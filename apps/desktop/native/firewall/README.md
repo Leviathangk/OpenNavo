@@ -3,7 +3,7 @@
 This is OpenNavo's macOS outbound application firewall. The Network Extension
 bootstrap, outbound filter setup, paused-flow handling and Apple tool graylist
 are adapted from Objective-See / Patrick Wardle's LuLu v4.5.1, GPL-3.0-only.
-OpenNavo modifications dated **2026-10-18** are recorded in `upstream.json`.
+OpenNavo modifications dated **2026-10-18** and **2026-10-25** are recorded in `upstream.json`.
 `LICENSE.LuLu` retains the upstream license verbatim. No upstream UI, images,
 installer, build scripts or binaries are included or executed.
 
@@ -20,17 +20,33 @@ State lives exclusively at
 Its directory is private to the extension user and writes are atomic. State is
 saved on mutations and every 30 seconds (the latest activity/statistics can be
 lost on a crash). No extension state is stored in a user's home directory.
-Corrupt/unwritable state and internal errors cause connections to be allowed;
-they never create blocking rules. The client reports an unavailable connection.
+A state file that can't be read or that the core rejects is renamed to
+`state.json.unreadable-<seconds>` and the extension starts empty, so one bad file
+can't disable filtering until someone deletes it; individual rules or list entries
+that can never match are dropped on restore. An unsafe directory or file type,
+unwritable state and internal errors cause connections to be allowed; they never
+create blocking rules. The client reports an unavailable connection. Removing the
+firewall deletes its private state directory, including rules, lists, activity and
+unreadable-state backups, only after macOS confirms deactivation. The host requests
+administrator authorization for this root-owned directory; canceled or failed
+cleanup keeps the removal intent and exposes a retry instead of claiming success.
+Canceling deactivation preserves the policy. Lifecycle submission and polling are
+serialized so polling cannot clear removal intent before the request is submitted.
+The intent survives an app restart, and the next setup also uses `configure` with
+`fresh` as a fallback.
 
 Rule precedence is app+destination, global+destination, blocklist, app+any,
-automatic Apple/installed allowance, then ask/allow/block mode. At equal
-specificity, block wins. Host+port outranks host, which outranks port. Saving an
-identical app+destination+port replaces that rule and keeps its ID. A global rule
-must specify a destination or port. Signed identities use team+signing ID;
-ad-hoc/unsigned identities use executable path. Same-team helpers are attributed
-to their outer app. Temporary answers bind PID and process-start generation and
-are never restored after an extension restart.
+automatic Apple/installed allowance, then ask/allow/block mode. Within a stage the
+destination decides first: an exact host or IP, then the longest wildcard suffix or
+CIDR prefix, then no destination; then a port; then block over allow; then the
+newest rule. Saving an identical app+destination+port replaces that rule and keeps
+its ID. A global rule must specify a destination or port. Signed identities use
+team+signing ID; ad-hoc/unsigned identities use executable path. Same-team helpers
+are attributed to their outer app. Apple programs follow the Apple allowance only,
+even though the installed-app baseline also scans `/System/Applications`.
+Temporary answers bind each answering process (PID and process-start generation)
+to one rule per app and destination, never replace a permanent rule, end when the
+last bound process quits and are never restored after an extension restart.
 
 ## Failure and hostname boundaries
 
@@ -41,6 +57,9 @@ expires (TCP: 120 seconds; UDP: five seconds). The core expires pending flows
 before every RPC. Timed-out connections record `timeout` and pass, while their
 questions remain answerable and can still create rules. A missing client records
 `no_client`; internal protective bypasses do not masquerade as user timeouts.
+A flow that can't wait for an answer (no identity, or policy started after its
+one-second budget) still meets the rules and block lists that need no question:
+without identity only global destination rules and block lists apply.
 Disconnect and disable release all waiting flows and clear unanswered questions. The pending queue is bounded to
 4,096 flows; excess flows pass immediately. Normal rule-allowed traffic is not
 recorded. Incoming traffic and non-TCP/UDP socket flows pass unchanged.
@@ -57,7 +76,10 @@ a domain blocklist cannot reliably stop them. Wildcards match subdomains, not th
 apex. Input domains use ASCII/punycode, case-insensitive, with a trailing dot
 removed. HTTPS blocklists refresh every 24 hours; failures retain the last good
 entries. Local files are read by the host only when explicitly added/refreshed.
-Each list is limited to 50 MiB and one million input entries, with at most 32 lists.
+Hosts-file lines whose address carries an IPv6 zone (`fe80::1%lo0`), names that
+aren't valid domains and other unusable lines are skipped; a list with no usable
+entry, or an HTML page in place of a list, is rejected. Each list is limited to
+50 MiB and one million input entries, with at most 32 lists and 256 MiB in total.
 
 References:
 

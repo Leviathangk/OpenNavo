@@ -21,6 +21,8 @@ pub enum FirewallExtensionState {
     NeedsReboot,
     Installed,
     Uninstalling,
+    /// Removed and no longer running; macOS deletes it at the next restart.
+    RemovalPending,
     Failed,
 }
 
@@ -51,6 +53,11 @@ pub enum FirewallErrorCode {
     NotInApplications,
     #[serde(rename = "E_FW_ACTIVATION")]
     Activation,
+    #[serde(rename = "E_FW_REMOVAL")]
+    Removal,
+    /// macOS refused to load, save or remove the network filter configuration.
+    #[serde(rename = "E_FW_FILTER")]
+    Filter,
     #[serde(rename = "E_FW_CONSENT_DENIED")]
     ConsentDenied,
     #[serde(rename = "E_FW_DISCONNECTED")]
@@ -67,6 +74,12 @@ pub enum FirewallErrorCode {
     BlocklistFormat,
     #[serde(rename = "E_FW_BLOCKLIST_TOO_LARGE")]
     BlocklistTooLarge,
+    /// 32 lists, or 256 MB across all lists, are already stored.
+    #[serde(rename = "E_FW_BLOCKLIST_LIMIT")]
+    BlocklistLimit,
+    /// A local list file is missing or can't be read.
+    #[serde(rename = "E_FW_BLOCKLIST_FILE")]
+    BlocklistFile,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

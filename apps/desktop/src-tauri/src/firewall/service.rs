@@ -8,7 +8,7 @@ use opennavo_firewall_core::{
     engine::Snapshot,
     matching::{MAX_LIST_BYTES, parse_blocklist},
 };
-use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use std::{
     collections::HashMap,
@@ -48,15 +48,67 @@ fn changed_events<'a>(
         .filter(move |event| previous.get(event.id.as_str()).copied() != Some(*event))
 }
 
-#[derive(Clone)]
+/// An https URL (any letter case; the extension downloads it) or a file on this Mac, `~/` included.
+fn list_source(raw: &str) -> Result<String, AppError> {
+    let raw = raw.trim();
+    if raw
+        .get(..8)
+        .is_some_and(|scheme| scheme.eq_ignore_ascii_case("https://"))
+    {
+        let url = reqwest::Url::parse(raw).map_err(|_| failure(FirewallErrorCode::BlocklistUrl))?;
+        if url.host_str().is_none() || !url.username().is_empty() || url.password().is_some() {
+            return Err(failure(FirewallErrorCode::BlocklistUrl));
+        }
+        return Ok(url.to_string());
+    }
+    let path = match raw.strip_prefix("~/") {
+        Some(rest) => std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .ok_or_else(|| failure(FirewallErrorCode::BlocklistUrl))?
+            .join(rest),
+        None => PathBuf::from(raw),
+    };
+    if !path.is_absolute() {
+        return Err(failure(FirewallErrorCode::BlocklistUrl));
+    }
+    Ok(path.to_string_lossy().into_owned())
+}
+
+/// Never installed, or removed and waiting for macOS to delete it at restart: no extension answers.
+fn absent(extension: FirewallExtensionState) -> bool {
+    matches!(
+        extension,
+        FirewallExtensionState::NotInstalled | FirewallExtensionState::RemovalPending
+    )
+}
+
+/// Setup choices waiting for the extension to acknowledge them. Kept in the database, so they survive OpenNavo
+/// restarting before the extension is approved or a restart finishes installing it.
+#[derive(Clone, Serialize, Deserialize)]
 struct Configuration {
     id: String,
     options: FirewallEnableOptions,
+    /// Set up again after a removal: the extension first deletes the rules, lists and activity it kept.
+    #[serde(default)]
+    fresh: bool,
 }
+const PENDING_KEY: &str = "firewall_pending_configuration";
+/// A removal was requested; once macOS confirms it, the next setup starts from a clean state (WIPE_KEY).
+const REMOVAL_KEY: &str = "firewall_removal_requested";
+const WIPE_KEY: &str = "firewall_wipe_on_setup";
+const STATS_INTERVAL: Duration = Duration::from_secs(30);
 struct Cache {
     status: FirewallStatus,
+    /// The last snapshot that loaded; revisions and activity are compared against it across disconnects.
     snapshot: Option<Snapshot>,
+    alerts: Vec<FirewallAlert>,
     pending_options: Option<Configuration>,
+    removal_requested: bool,
+    cleanup_error: Option<FirewallFailure>,
+    wipe: bool,
+    /// Rule match statistics last announced as a rules change, and when.
+    stats_announced: Option<u64>,
+    stats_sent: Instant,
     activity: HashMap<String, FirewallEvent>,
     last_activity: Instant,
 }
@@ -65,7 +117,13 @@ impl Default for Cache {
         Self {
             status: FirewallStatus::not_bundled(),
             snapshot: None,
+            alerts: Vec::new(),
             pending_options: None,
+            removal_requested: false,
+            cleanup_error: None,
+            wipe: false,
+            stats_announced: None,
+            stats_sent: Instant::now(),
             activity: HashMap::new(),
             last_activity: Instant::now(),
         }
@@ -82,15 +140,39 @@ pub struct Service {
 }
 impl Service {
     pub fn new(bridge: Arc<dyn Bridge>, sink: Sink, icons: Option<(Database, PathBuf)>) -> Self {
+        let mut cache = Cache::default();
+        if let Some((database, _)) = &icons {
+            let meta = |key| database.meta(key).ok().flatten().unwrap_or_default();
+            cache.pending_options = serde_json::from_str(&meta(PENDING_KEY)).ok();
+            cache.removal_requested = meta(REMOVAL_KEY) == "1";
+            cache.wipe = meta(WIPE_KEY) == "1";
+        }
         Self {
             stopped: AtomicBool::new(false),
             bridge,
-            cache: Mutex::new(Cache::default()),
+            cache: Mutex::new(cache),
             refresh_gate: Mutex::new(()),
             sink,
             icons,
             icon_cache: Mutex::new(HashMap::new()),
         }
+    }
+    /// The app database (shared with the icon cache); tests run without one.
+    fn database(&self) -> Option<&Database> {
+        self.icons.as_ref().map(|(database, _)| database)
+    }
+    fn remember(&self, key: &str, value: &str) {
+        if let Some(database) = self.database()
+            && database.set_meta(key, value).is_err()
+        {
+            log::warn!("Firewall setup state not saved: {key}");
+        }
+    }
+    fn remember_pending(&self, pending: Option<&Configuration>) {
+        let value = pending
+            .and_then(|pending| serde_json::to_string(pending).ok())
+            .unwrap_or_default();
+        self.remember(PENDING_KEY, &value);
     }
     pub fn shutdown(&self) {
         self.stopped.store(true, Ordering::Release);
@@ -178,9 +260,12 @@ impl Service {
                         } else if data.preparing {
                             false
                         } else {
-                            match self.call::<Value>(
-                                json!({"op":"configure","id":configuration.id,"settings":settings}),
-                            ) {
+                            match self.call::<Value>(json!({
+                                "op":"configure",
+                                "id":configuration.id,
+                                "settings":settings,
+                                "fresh":configuration.fresh,
+                            })) {
                                 Ok(value) => value["accepted"] == true,
                                 Err(error) => {
                                     status.error = Some(FirewallFailure {
@@ -206,6 +291,11 @@ impl Service {
                                 .is_some_and(|pending| pending.id == configuration.id)
                             {
                                 cache.pending_options = None;
+                                self.remember_pending(None);
+                                if configuration.fresh && cache.wipe {
+                                    cache.wipe = false;
+                                    self.remember(WIPE_KEY, "");
+                                }
                             }
                         }
                         // No scanning occurs in configure, so this stays a short RPC.
@@ -240,23 +330,80 @@ impl Service {
                 }
             }
         }
+        // The extension's state directory is root-owned and its process may already be gone.
+        // Delete through the native authorized cleanup only after macOS confirms deactivation.
+        let removed = matches!(
+            status.extension,
+            FirewallExtensionState::RemovalPending | FirewallExtensionState::NotInstalled
+        );
+        let cleanup = {
+            let cache = self
+                .cache
+                .lock()
+                .map_err(|_| failure(FirewallErrorCode::Disconnected))?;
+            cache.removal_requested && removed && cache.cleanup_error.is_none()
+        };
+        let mut cleaned = false;
+        if cleanup {
+            match self.call::<bool>(json!({"op":"cleanup"})) {
+                Ok(true) => cleaned = true,
+                Ok(false) => status.extension = FirewallExtensionState::Uninstalling,
+                Err(error) => {
+                    let problem = FirewallFailure {
+                        code: FirewallErrorCode::Removal,
+                        detail: error.detail,
+                    };
+                    self.cache
+                        .lock()
+                        .map_err(|_| failure(FirewallErrorCode::Disconnected))?
+                        .cleanup_error = Some(problem);
+                }
+            }
+        }
         let mut updates = Vec::new();
         {
             let mut cache = self
                 .cache
                 .lock()
                 .map_err(|_| failure(FirewallErrorCode::Disconnected))?;
+            if removed
+                && cache.removal_requested
+                && let Some(error) = &cache.cleanup_error
+            {
+                status.error = Some(error.clone());
+            }
             if status != cache.status {
                 updates.push(Update::Status(status.clone()));
+            }
+            // Only this app removes its extension, so a removal waiting for a restart means the next setup wipes.
+            let removed = matches!(
+                status.extension,
+                FirewallExtensionState::RemovalPending | FirewallExtensionState::NotInstalled
+            );
+            if (cache.removal_requested && removed)
+                || (status.extension == FirewallExtensionState::RemovalPending && !cache.wipe)
+            {
+                cache.wipe = true;
+                self.remember(WIPE_KEY, "1");
+            }
+            if cache.removal_requested
+                && (cleaned || status.extension == FirewallExtensionState::Installed)
+            {
+                // Cancellation leaves the existing policy intact; no reconfiguration is needed.
+                cache.removal_requested = false;
+                cache.cleanup_error = None;
+                self.remember(REMOVAL_KEY, "");
+                if cleaned {
+                    cache.snapshot = None;
+                    cache.activity.clear();
+                }
             }
             let alerts = snapshot
                 .as_ref()
                 .map(|s| s.alerts.clone())
                 .unwrap_or_default();
-            if force_alerts
-                || cache.snapshot.as_ref().map(|s| &s.alerts)
-                    != snapshot.as_ref().map(|s| &s.alerts)
-            {
+            if force_alerts || cache.alerts != alerts {
+                cache.alerts = alerts.clone();
                 updates.push(Update::Alerts(alerts));
             }
             if let Some(current) = &snapshot {
@@ -279,7 +426,22 @@ impl Service {
                 ] {
                     if previous != Some(revision) {
                         updates.push(Update::Changed(changed));
+                        if changed == FirewallChangeKind::Rules {
+                            cache.stats_announced = Some(current.rules_stats_revision);
+                            cache.stats_sent = Instant::now();
+                        }
                     }
+                }
+                // Match statistics move with nearly every connection. Reloading the whole rule list for them every
+                // second wastes work, so they ride along at most every 30 seconds.
+                if cache.stats_announced != Some(current.rules_stats_revision)
+                    && cache.stats_sent.elapsed() >= STATS_INTERVAL
+                {
+                    if cache.stats_announced.is_some() {
+                        updates.push(Update::Changed(FirewallChangeKind::Rules));
+                    }
+                    cache.stats_announced = Some(current.rules_stats_revision);
+                    cache.stats_sent = Instant::now();
                 }
                 let changed: Vec<_> = changed_events(cache.snapshot.as_ref(), current)
                     .cloned()
@@ -296,7 +458,9 @@ impl Service {
                 cache.last_activity = Instant::now();
             }
             cache.status = status.clone();
-            cache.snapshot = snapshot;
+            if snapshot.is_some() {
+                cache.snapshot = snapshot;
+            }
         }
         super::set_protection(&status);
         for update in updates {
@@ -312,31 +476,69 @@ impl Service {
         &self,
         options: impl Into<Option<FirewallEnableOptions>>,
     ) -> Result<FirewallStatus, AppError> {
-        self.available()?;
-        self.cache
+        let gate = self
+            .refresh_gate
             .lock()
-            .map_err(|_| failure(FirewallErrorCode::Disconnected))?
-            .pending_options = options.into().map(|options| Configuration {
-            id: uuid::Uuid::now_v7().to_string(),
-            options,
-        });
+            .map_err(|_| failure(FirewallErrorCode::Disconnected))?;
+        let status = self.available()?;
+        let options = options.into();
+        // Setting up (nothing installed) takes the choices just made. Turning on an installed extension keeps setup
+        // choices it hasn't acknowledged yet: the switch passes the extension's own, never-configured defaults.
+        let setup = matches!(
+            status.extension,
+            FirewallExtensionState::NotInstalled
+                | FirewallExtensionState::RemovalPending
+                | FirewallExtensionState::Failed
+        );
+        {
+            let mut cache = self
+                .cache
+                .lock()
+                .map_err(|_| failure(FirewallErrorCode::Disconnected))?;
+            if setup || (cache.pending_options.is_none() && options.is_some()) {
+                cache.pending_options = options.map(|options| Configuration {
+                    id: uuid::Uuid::now_v7().to_string(),
+                    options,
+                    fresh: setup && cache.wipe,
+                });
+                self.remember_pending(cache.pending_options.as_ref());
+            }
+        }
         let _: FirewallStatus = self.call(json!({"op":"enable"}))?;
+        drop(gate);
         self.refresh(false)
     }
     pub fn disable(&self, uninstall: bool) -> Result<FirewallStatus, AppError> {
-        self.available()?;
+        let gate = self
+            .refresh_gate
+            .lock()
+            .map_err(|_| failure(FirewallErrorCode::Disconnected))?;
+        let initial = self.available()?;
         {
             let mut cache = self
                 .cache
                 .lock()
                 .map_err(|_| failure(FirewallErrorCode::Disconnected))?;
             cache.pending_options = None;
+            self.remember_pending(None);
+            if uninstall {
+                cache.removal_requested = true;
+                cache.cleanup_error = None;
+                self.remember(REMOVAL_KEY, "1");
+            }
         }
-        // Disabling must remain possible when the extension or its XPC endpoint has failed.
-        let _ = self.bridge.request(json!({"op":"flush"}));
+        // Never reset before macOS confirms removal: cancellation must preserve all policy data.
+        // refresh deletes persisted data after confirmed removal; WIPE_KEY is a reinstall fallback.
+        // Disabling must remain possible when the extension or its XPC endpoint has failed, so nothing here waits for
+        // it. No policy suspend up front either: if macOS then refuses to stop the filter, a suspended engine would
+        // let everything through unlogged. Stopping the filter suspends it; dropping the client releases questions.
         self.bridge.disconnect();
-        let _: FirewallStatus =
-            self.call(json!({"op":if uninstall {"uninstall"}else{"disable"}}))?;
+        if !(uninstall && absent(initial.extension)) {
+            let _: FirewallStatus =
+                self.call(json!({"op":if uninstall {"uninstall"}else{"disable"}}))?;
+        }
+        // No refresh can observe Installed between setting the intent and submitting it.
+        drop(gate);
         self.refresh(true)
     }
     pub fn open_approval(&self) -> Result<(), AppError> {
@@ -351,16 +553,14 @@ impl Service {
     }
     pub fn settings(&self) -> Result<FirewallSettings, AppError> {
         let status = self.available()?;
-        if status.extension == FirewallExtensionState::NotInstalled {
+        if absent(status.extension) {
             return Ok(FirewallSettings::default());
         }
         self.call(json!({"op":"settings"}))
     }
     pub fn list<T: DeserializeOwned>(&self, request: Value) -> Result<Vec<T>, AppError> {
         let status = bridge::status(self.bridge.as_ref())?;
-        if status.availability != FirewallAvailability::Available
-            || status.extension == FirewallExtensionState::NotInstalled
-        {
+        if status.availability != FirewallAvailability::Available || absent(status.extension) {
             return Ok(vec![]);
         }
         self.call(request)
@@ -408,7 +608,7 @@ impl Service {
         id: Option<String>,
     ) -> Result<FirewallBlocklist, AppError> {
         self.available()?;
-        let source = match source {
+        let source = list_source(&match source {
             Some(source) => source,
             None => self
                 .list::<FirewallBlocklist>(json!({"op":"blocklists"}))?
@@ -416,25 +616,21 @@ impl Service {
                 .find(|list| Some(&list.id) == id.as_ref())
                 .map(|list| list.source)
                 .ok_or_else(|| failure(FirewallErrorCode::BlocklistFormat))?,
-        };
+        })?;
         let text = if source.starts_with("https://") {
-            let url = reqwest::Url::parse(&source)
-                .map_err(|_| failure(FirewallErrorCode::BlocklistUrl))?;
-            if url.host_str().is_none() || !url.username().is_empty() || url.password().is_some() {
-                return Err(failure(FirewallErrorCode::BlocklistUrl));
-            }
             None
         } else {
+            // A list file that moved or became unreadable is a file problem, not an unsupported address.
             let path = std::path::Path::new(&source);
-            if !path.is_absolute() || !path.is_file() {
-                return Err(failure(FirewallErrorCode::BlocklistUrl));
+            if !path.is_file() {
+                return Err(failure(FirewallErrorCode::BlocklistFile));
             }
-            let file = std::fs::File::open(path)
-                .map_err(|_| failure(FirewallErrorCode::BlocklistFetch))?;
+            let file =
+                std::fs::File::open(path).map_err(|_| failure(FirewallErrorCode::BlocklistFile))?;
             let mut bytes = Vec::new();
             file.take(MAX_LIST_BYTES as u64 + 1)
                 .read_to_end(&mut bytes)
-                .map_err(|_| failure(FirewallErrorCode::BlocklistFetch))?;
+                .map_err(|_| failure(FirewallErrorCode::BlocklistFile))?;
             parse_blocklist(&bytes).map_err(failure)?;
             Some(
                 String::from_utf8(bytes)
@@ -542,6 +738,38 @@ mod activity_tests {
             eprintln!(
                 "activity-diff round={round} events=1000 before_ms={before:.6} after_ms={after:.6}"
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod source_tests {
+    use super::*;
+
+    #[test]
+    fn list_sources_accept_any_https_case_and_home_paths_only() {
+        assert_eq!(
+            list_source(" HTTPS://Example.com/hosts.txt ").unwrap(),
+            "https://example.com/hosts.txt"
+        );
+        assert_eq!(
+            list_source("/tmp/lists/ads.txt").unwrap(),
+            "/tmp/lists/ads.txt"
+        );
+        if let Some(home) = std::env::var_os("HOME") {
+            let expected = PathBuf::from(home).join("Downloads/hosts");
+            assert_eq!(
+                list_source("~/Downloads/hosts").unwrap(),
+                expected.to_string_lossy()
+            );
+        }
+        for invalid in [
+            "http://example.com/hosts",
+            "https://user:secret@example.com/hosts",
+            "lists/ads.txt",
+            "~other/hosts",
+        ] {
+            assert_eq!(list_source(invalid).unwrap_err().code, "E_FW_BLOCKLIST_URL");
         }
     }
 }

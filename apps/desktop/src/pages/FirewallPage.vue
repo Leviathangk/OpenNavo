@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { OnErrorState, OnPageHeader, OnSkeleton, OnTabs } from '@opennavo/ui';
@@ -34,18 +34,29 @@ const tabs = computed(() =>
 
 async function load() {
   loadError.value = null;
+  const known = store.status;
   try {
     await store.loadStatus();
-    if (store.installed) {
-      await store.loadSettings();
-      void store.loadAlerts().catch(() => undefined);
-    }
   } catch (error) {
-    loadError.value = error;
+    // A status pushed while the read was in flight is newer than the failure.
+    if (store.status === known) loadError.value = error;
+    return;
+  }
+  // Only a missing status is a page error: the status card and the panels show what they could not read.
+  if (store.installed) {
+    void store.loadSettings().catch(() => undefined);
+    void store.loadAlerts().catch(() => undefined);
   }
 }
 
 onMounted(load);
+// A status pushed after a failed read replaces the error, e.g. once the extension answers again.
+watch(
+  () => store.status,
+  next => {
+    if (next && loadError.value) loadError.value = null;
+  }
+);
 </script>
 
 <template>

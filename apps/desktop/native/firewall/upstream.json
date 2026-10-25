@@ -6,7 +6,7 @@
   "archive": "https://codeload.github.com/objective-see/LuLu/tar.gz/refs/tags/v4.5.1",
   "archiveSha256": "866a8126fc6416274da14a1a049022fdc748b82ab2013c97d860b32d2e862f6f",
   "license": "GPL-3.0-only",
-  "modifiedAt": "2026-10-18",
+  "modifiedAt": "2026-10-25",
   "files": [
     {
       "path": "LuLu/Extension/FilterDataProvider.m",
@@ -41,6 +41,7 @@
     "Port outbound NE filter setup, pause/resume lifecycle and Apple command-line graylist; no upstream UI or branding.",
     "Rewrite rule evaluation in independently tested Rust with explicit OpenNavo precedence, same-destination upsert, PID generation checks, bounded pauses and fail-open behavior.",
     "Replace upstream XPC and persistence with audit-token authenticated JSON IPC and extension-owned state.",
-    "Use direct clang/Cargo build without upstream build scripts or LaunchServices registration."
+    "Use direct clang/Cargo build without upstream build scripts or LaunchServices registration.",
+    "2026-10-25: extend the Apple command-line graylist with nscurl, openssl, rsync, ftp, tftp, ldapsearch and git-remote-http(s); rank rules by destination specificity; let identity-less or late flows still meet destination rules and block lists."
   ]
 }

@@ -1545,6 +1545,27 @@
       "changePassword": "Alterar senha",
       "passwordChanged": "Senha alterada; faça login novamente"
     },
+    "oauth": {
+      "loadMore": "Carregar mais",
+      "title": "Conectar ao OpenNavo",
+      "description": "Este aplicativo solicita acesso aos seus dados do OpenNavo. Selecione as permissões que deseja conceder.",
+      "callback": "Endereço de retorno",
+      "permissions": "Permissões",
+      "delete": "Permitir exclusões dentro das permissões selecionadas",
+      "approve": "Autorizar conexão",
+      "deny": "Negar",
+      "error": "Não foi possível concluir a autorização. Tente novamente ou reinicie a conexão pelo aplicativo.",
+      "retry": "Tentar novamente",
+      "incompatible": "O ajuste de automação não pode ser combinado com permissões de escrita de conteúdo ou tarefas.",
+      "grants": "Aplicativos conectados",
+      "empty": "Nenhum aplicativo autorizado.",
+      "revoke": "Revogar acesso",
+      "revoked": "Revogado",
+      "expires": "Expira em",
+      "confirm": "Revogar o acesso? O aplicativo precisará de nova autorização para se conectar.",
+      "unavailable": "Indisponível para sua conta",
+      "limited": "O acesso está limitado a estas permissões. Você pode revogá-lo no perfil."
+    },
     "content": {
       "article": {
         "title": "Artigos",

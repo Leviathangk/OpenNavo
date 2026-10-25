@@ -44,8 +44,12 @@ impl Engine {
                 Ok(Value::Null)
             }
             "bypass" => {
-                self.bypass(decode(&request, "flow")?);
-                Ok(Value::Null)
+                let verdict = self.bypass(
+                    decode(&request, "flow")?,
+                    request["identified"].as_bool().unwrap_or(false),
+                    request["released"].as_bool().unwrap_or(false),
+                );
+                Ok(json!({"verdict": verdict}))
             }
             "restore" => {
                 *self = Self::restore(decode(&request, "state")?)?;
@@ -83,16 +87,22 @@ impl Engine {
                 let scan = self.configure(
                     string(&request, "id")?.to_owned(),
                     decode(&request, "settings")?,
+                    // Older hosts omit it: keep what the extension already has.
+                    request["fresh"].as_bool().unwrap_or(false),
                     at,
                 );
                 Ok(json!({"accepted": true, "scan": scan}))
             }
+            "reset" => {
+                self.reset();
+                Ok(Value::Null)
+            }
             "baseline_add" => {
-                self.baseline_add(decode(&request, "apps")?, at);
+                self.baseline_add(decode(&request, "apps")?, request["scan"].as_str(), at);
                 Ok(Value::Null)
             }
             "baseline_finish" => {
-                self.baseline_finish();
+                self.baseline_finish(request["scan"].as_str());
                 Ok(Value::Null)
             }
             "rules" => Ok(json!(self.state.rules)),

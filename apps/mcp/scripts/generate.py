@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -13,6 +14,13 @@ from datamodel_code_generator.enums import DataModelType
 
 ROOT = Path(__file__).resolve().parents[3]
 DEST = ROOT / "apps/mcp/src/opennavo_mcp/gen"
+
+
+def json_scalar(value: Any) -> str:
+    # YAML timestamps must remain RFC 3339 when emitted into JSON schema examples.
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    raise TypeError(f"Unsupported schema value: {type(value).__name__}")
 
 
 def generate_files() -> dict[str, str]:
@@ -97,7 +105,7 @@ def generate_files() -> dict[str, str]:
                 "body": body_schema,
             }
     rendered = generate(
-        json.dumps(document, default=str),
+        json.dumps(document, default=json_scalar),
         input_file_type=InputFileType.OpenAPI,
         output_model_type=DataModelType.PydanticV2BaseModel,
         target_python_version=PythonVersion.PY_313,
@@ -116,7 +124,7 @@ def generate_files() -> dict[str, str]:
     return {
         "admin_models.py": rendered,
         "operations.json": json.dumps(
-            operations, default=str, ensure_ascii=False, indent=2, sort_keys=True
+            operations, default=json_scalar, ensure_ascii=False, indent=2, sort_keys=True
         )
         + "\n",
         "locales.json": (ROOT / "packages/shared/src/locales.json").read_text(),

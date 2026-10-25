@@ -1292,6 +1292,8 @@
     "E_FW_NOT_BUNDLED": "Esta versión no incluye el componente del cortafuegos. Usa la versión oficial de OpenNavo",
     "E_FW_NOT_IN_APPLICATIONS": "Mueve OpenNavo a la carpeta Aplicaciones y vuelve a abrirlo",
     "E_FW_ACTIVATION": "macOS no terminó de instalar la extensión del sistema. Inténtalo de nuevo",
+    "E_FW_REMOVAL": "No se pudo quitar el cortafuegos de apps. Inténtalo de nuevo",
+    "E_FW_FILTER": "macOS no pudo actualizar el ajuste del filtro de red. Inténtalo de nuevo",
     "E_FW_CONSENT_DENIED": "No se permitió el filtrado de contenido de red, así que el cortafuegos está desactivado",
     "E_FW_DISCONNECTED": "El componente del cortafuegos no responde. Inténtalo de nuevo en un momento",
     "E_FW_RULE_INVALID": "La regla no es válida. Revisa el programa, la dirección y el puerto",
@@ -1299,7 +1301,9 @@
     "E_FW_BLOCKLIST_URL": "Solo se admiten direcciones https o archivos de este Mac",
     "E_FW_BLOCKLIST_FETCH": "No se pudo descargar la lista de bloqueo. Revisa la dirección y la conexión",
     "E_FW_BLOCKLIST_FORMAT": "No se encontraron dominios ni IP utilizables en el archivo",
-    "E_FW_BLOCKLIST_TOO_LARGE": "La lista de bloqueo es demasiado grande: como máximo 50 MB y un millón de entradas"
+    "E_FW_BLOCKLIST_TOO_LARGE": "La lista de bloqueo es demasiado grande: como máximo 50 MB y un millón de entradas",
+    "E_FW_BLOCKLIST_LIMIT": "Se alcanzó el límite de listas de bloqueo: como máximo 32 listas y 256 MB en total",
+    "E_FW_BLOCKLIST_FILE": "No se encuentra el archivo o no se puede leer"
   },
   "installConfirm": {
     "title": "¿Adoptar la app existente {name}?",
@@ -2662,7 +2666,8 @@
       "steps": "Durante el proceso, macOS te pedirá dos confirmaciones: permitir la extensión del sistema de OpenNavo en Ajustes del Sistema y luego permitir que filtre el contenido de red.",
       "privacy": "Todo se decide en este Mac; los datos de las conexiones nunca se suben.",
       "failedTitle": "No se pudo activar el cortafuegos de apps",
-      "failed": "No se pudo activar: {reason}"
+      "failed": "No se pudo activar: {reason}",
+      "removed": "Se ha quitado el cortafuegos de apps. No hace falta reiniciar ahora: macOS eliminará el componente restante la próxima vez que reinicies el Mac."
     },
     "options": {
       "allowApple": "Permitir automáticamente los programas de Apple",
@@ -2811,9 +2816,13 @@
       "count": "{count} veces",
       "allowApp": "Permitir app",
       "blockApp": "Bloquear app",
+      "allowDestination": "Permitir dirección",
+      "blockDestination": "Bloquear dirección",
       "ruled": {
         "allow": "{name} ya puede conectarse",
-        "block": "{name} queda bloqueada"
+        "block": "{name} queda bloqueada",
+        "allowDestination": "{name} ya puede conectarse a {destination}",
+        "blockDestination": "{name} ya no puede conectarse a {destination}"
       },
       "ruledShort": {
         "allow": "Ahora permitida",

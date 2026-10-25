@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatCount, formatRelativeTime } from '@opennavo/shared';
 import { OnButton, OnConfirm, OnEmpty, OnIcon, OnSkeleton, OnToggle } from '@opennavo/ui';
@@ -23,6 +23,7 @@ const source = ref('');
 const adding = ref(false);
 const removing = ref<FirewallBlocklist | null>(null);
 
+onUnmounted(store.follow('blocklists'));
 onMounted(async () => {
   try {
     await store.loadBlocklists();
@@ -31,8 +32,10 @@ onMounted(async () => {
   }
 });
 
+// Sources go to Rust as typed, only trimmed: it accepts https addresses in any case and paths starting with ~/ too.
 async function add(value = source.value.trim()) {
-  if (!value) return;
+  // A second Return while a list is still being added would start the same add again, and report it as failed.
+  if (!value || adding.value) return;
   adding.value = true;
   try {
     const list = await store.addBlocklist(value);

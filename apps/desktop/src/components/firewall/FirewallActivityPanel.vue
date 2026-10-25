@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatRelativeTime } from '@opennavo/shared';
 import { OnAppIcon, OnButton, OnChip, OnConfirm, OnEmpty, OnSegmented, OnSkeleton } from '@opennavo/ui';
@@ -8,11 +8,11 @@ import { useAppLocale } from '@/composables/useAppLocale';
 import { usePackageState } from '@/composables/usePackageState';
 import { useToasts } from '@/composables/useToasts';
 import { useFirewallStore } from '@/stores/firewall';
-import { appIcon, isBundle } from './meta';
+import { appIcon, endpoint, isBundle } from './meta';
 
 // Connections the firewall decided without an existing allow rule (firewall plan §4.5): blocks, answers, automatic
 // allows, and what passed while OpenNavo was not running to ask. Repeats within a minute share one row. Each row can
-// turn into a rule for its app in one click.
+// turn into a rule in one click: for its app, or for its destination when a narrower rule or a block list decided it.
 const { t } = useI18n();
 const toasts = useToasts();
 const { errorText } = usePackageState();
@@ -20,30 +20,45 @@ const { appLocale } = useAppLocale();
 const store = useFirewallStore();
 
 const loadError = ref<unknown>(null);
+/** Rows wait for the rules behind them, so their buttons don't change wording once those arrive. */
+const rulesReady = ref(store.rulesLoaded);
 const loadingMore = ref(false);
 const clearing = ref(false);
 const confirmClear = ref(false);
-/** Rows whose app just got a rule from here, so the button turns into a note. */
+/** What just got a rule from here (an app, or an app and destination), so those rows' buttons turn into a note. */
 const ruled = ref(new Map<string, FirewallAction>());
+/** Rows whose rule is being saved, so a double click saves it once. */
+const saving = ref(new Set<string>());
 
+onUnmounted(store.follow('activity', 'rules'));
 onMounted(async () => {
+  const rules = store.rulesLoaded ? undefined : store.loadRules().catch(() => undefined);
   try {
     await store.loadActivity();
   } catch (error) {
     loadError.value = error;
   }
+  await rules;
+  rulesReady.value = true;
 });
 
 const view = computed<'all' | 'blocked'>(() => (store.blockedOnly ? 'blocked' : 'all'));
 const views = computed(() =>
-  (['all', 'blocked'] as const).map(value => ({ value, label: t(`firewall.activity.filters.${value}`) }))
+  (['all', 'blocked'] as const).map(value => ({
+    value,
+    label: t(`firewall.activity.filters.${value}`)
+  }))
 );
 
 async function setView(value: 'all' | 'blocked') {
   try {
     await store.loadActivity(value === 'blocked');
   } catch (error) {
-    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+    toasts.push({
+      tone: 'danger',
+      title: t('errors.actionFailed'),
+      description: errorText(error)
+    });
   }
 }
 
@@ -52,7 +67,11 @@ async function more() {
   try {
     await store.loadMoreActivity();
   } catch (error) {
-    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+    toasts.push({
+      tone: 'danger',
+      title: t('errors.actionFailed'),
+      description: errorText(error)
+    });
   } finally {
     loadingMore.value = false;
   }
@@ -68,18 +87,93 @@ const detail = (event: FirewallEvent) =>
     .filter(Boolean)
     .join(' · ');
 
-/** The opposite of what happened becomes the app's rule for any destination. */
+const rulesById = computed(() => new Map(store.rules.map(rule => [rule.id, rule])));
+/**
+ * Where the opposite of what happened applies. Rust checks rules for an app and destination first, then rules for every
+ * app, then block lists, and only then rules for a whole app: after one of the earlier ones decided a row, a rule for
+ * the whole app would change nothing, so the row gets a rule for its own destination and port instead.
+ */
+function targetOf(event: FirewallEvent) {
+  const rule = event.ruleId ? rulesById.value.get(event.ruleId) : undefined;
+  const narrow =
+    event.blocklistId !== null ||
+    (event.ruleId !== null && (!rule || rule.app === null || rule.remote !== null || rule.port !== null));
+  // Exact IP and hostname rules have equal priority, with block winning a tie. Reuse the
+  // matched exact target so saveRule replaces it, rather than adding an ineffective host allow.
+  const remote = rule?.remote;
+  const exact =
+    remote &&
+    !remote.startsWith('*.') &&
+    (!remote.includes('/') || remote.endsWith(remote.includes(':') ? '/128' : '/32'));
+  const peer = remote?.split('/')[0];
+  const isAddress = peer && (peer.includes(':') || /^\d+(\.\d+){3}$/.test(peer));
+  const canonical = (value: string) => {
+    try {
+      // URL canonicalizes IPv6 compression; zones identify the local interface only.
+      const host = value.replace(/^\[|\]$/g, '').split('%')[0]!;
+      return new URL(`http://${host.includes(':') ? `[${host}]` : host}`).hostname;
+    } catch {
+      return value.toLowerCase().replace(/\.$/, '');
+    }
+  };
+  const stillMatches =
+    exact &&
+    peer &&
+    (rule.app === null || rule.app.key === event.app.key) &&
+    (rule.port === null || rule.port === event.port) &&
+    (isAddress
+      ? canonical(peer) === canonical(event.remoteAddress)
+      : event.remoteHost !== null && canonical(peer) === canonical(event.remoteHost));
+  return narrow ? { remote: stillMatches ? remote : destination(event), port: event.port } : null;
+}
+// A rule for the whole app settles all of its rows; one for a destination only the rows going there.
+const keyOf = (event: FirewallEvent, target: ReturnType<typeof targetOf>) =>
+  target ? `${event.app.key}\n${target.remote}\n${target.port}` : event.app.key;
+const rows = computed(() =>
+  store.activity.map(event => {
+    const target = targetOf(event);
+    return { event, target, key: keyOf(event, target) };
+  })
+);
+const opposite = (event: FirewallEvent): FirewallAction => (event.action === 'block' ? 'allow' : 'block');
+
 async function ruleFor(event: FirewallEvent) {
-  const action: FirewallAction = event.action === 'block' ? 'allow' : 'block';
+  if (saving.value.has(event.id)) return;
+  saving.value = new Set(saving.value).add(event.id);
   try {
-    await store.saveRule({ id: null, appKey: event.app.key, appPath: null, action, remote: null, port: null });
-    ruled.value = new Map(ruled.value).set(event.app.key, action);
+    // Rules that could not be read with the page are needed to tell what decided the row.
+    if (event.ruleId && !store.rulesLoaded) await store.loadRules();
+    const target = targetOf(event);
+    const key = keyOf(event, target);
+    const action = opposite(event);
+    await store.saveRule({
+      id: null,
+      appKey: event.app.key,
+      appPath: null,
+      action,
+      remote: target?.remote ?? null,
+      port: target?.port ?? null
+    });
+    ruled.value = new Map(ruled.value).set(key, action);
     toasts.push({
       tone: 'success',
-      title: t(`firewall.activity.ruled.${action}`, { name: event.app.name })
+      title: target
+        ? t(`firewall.activity.ruled.${action}Destination`, {
+            name: event.app.name,
+            destination: endpoint(target.remote, target.port)
+          })
+        : t(`firewall.activity.ruled.${action}`, { name: event.app.name })
     });
   } catch (error) {
-    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+    toasts.push({
+      tone: 'danger',
+      title: t('errors.actionFailed'),
+      description: errorText(error)
+    });
+  } finally {
+    const next = new Set(saving.value);
+    next.delete(event.id);
+    saving.value = next;
   }
 }
 
@@ -89,7 +183,11 @@ async function clear() {
     await store.clearActivity();
     confirmClear.value = false;
   } catch (error) {
-    toasts.push({ tone: 'danger', title: t('errors.actionFailed'), description: errorText(error) });
+    toasts.push({
+      tone: 'danger',
+      title: t('errors.actionFailed'),
+      description: errorText(error)
+    });
   } finally {
     clearing.value = false;
   }
@@ -118,7 +216,7 @@ async function clear() {
       >
     </div>
 
-    <div v-if="!store.activityLoaded && !loadError" class="flex flex-col gap-8px" aria-hidden="true">
+    <div v-if="!(store.activityLoaded && rulesReady) && !loadError" class="flex flex-col gap-8px" aria-hidden="true">
       <OnSkeleton v-for="index in 6" :key="index" height="46px" radius="default" />
     </div>
     <p v-else-if="loadError && !store.activityLoaded" class="m-0 text-13px text-status-danger" role="alert">
@@ -127,7 +225,7 @@ async function clear() {
     <template v-else-if="store.activity.length">
       <ul class="m-0 list-none rounded-big border border-solid border-line-subtle p-0">
         <li
-          v-for="event in store.activity"
+          v-for="{ event, target, key } in rows"
           :key="event.id"
           class="flex items-center gap-12px border-t border-t-solid border-line-subtle px-14px py-9px first:border-t-0"
           :data-event="event.id"
@@ -150,22 +248,26 @@ async function clear() {
               }}</span>
             </p>
             <p class="m-0 truncate text-11.5px text-ink-tertiary">
-              {{ detail(event) }} · {{ t(`firewall.activity.reason.${event.reason}`) }}
+              {{ detail(event) }} ·
+              {{ t(`firewall.activity.reason.${event.reason}`) }}
             </p>
           </div>
           <span class="hidden w-110px shrink-0 text-right text-11.5px text-ink-tertiary md:block">
             {{ formatRelativeTime(event.at, { locale: appLocale }) }}
-            <template v-if="event.count > 1"> · {{ t('firewall.activity.count', { count: event.count }) }}</template>
+            <template v-if="event.count > 1">
+              ·
+              {{ t('firewall.activity.count', { count: event.count }) }}</template
+            >
           </span>
           <OnChip :tone="event.action === 'allow' ? 'success' : 'danger'" size="sm" class="shrink-0">{{
             t(`firewall.activity.action.${event.action}`)
           }}</OnChip>
-          <span class="flex w-108px shrink-0 justify-end">
-            <span v-if="ruled.get(event.app.key)" class="text-11.5px text-ink-tertiary">{{
-              t(`firewall.activity.ruledShort.${ruled.get(event.app.key)}`)
+          <span class="flex min-w-108px shrink-0 justify-end">
+            <span v-if="ruled.get(key)" class="text-11.5px text-ink-tertiary">{{
+              t(`firewall.activity.ruledShort.${ruled.get(key)}`)
             }}</span>
-            <OnButton v-else variant="ghost" size="xs" @click="ruleFor(event)">{{
-              event.action === 'block' ? t('firewall.activity.allowApp') : t('firewall.activity.blockApp')
+            <OnButton v-else variant="ghost" size="xs" :loading="saving.has(event.id)" @click="ruleFor(event)">{{
+              t(`firewall.activity.${opposite(event)}${target ? 'Destination' : 'App'}`)
             }}</OnButton>
           </span>
         </li>
