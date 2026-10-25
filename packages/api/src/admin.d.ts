@@ -2519,7 +2519,7 @@ export interface paths {
         };
         /**
          * Query catalog activity changes
-         * @description Requires catalog:package:view. Defaults to the last 24 hours, inclusive from/exclusive to; at most the retained last 14 days, otherwise 1001. Catalog events only, excluding content/analytics changes; initial sync records created only, later new versions record updated. renamed requires a trusted former token in the definition and is never guessed. No synthetic events for rows predating the migration. All sorting uses seq as a stable secondary key. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
+         * @description Requires catalog:package:view. Omit from/to for a current query; date examples illustrate format only and must be replaced with recent timestamps. Defaults to the last 24 hours, inclusive from/exclusive to; at most the retained last 14 days, otherwise 1001. Catalog events only, excluding content/analytics changes; initial sync records created only, later new versions record updated. renamed requires a trusted former token in the definition and is never guessed. No synthetic events for rows predating the migration. All sorting uses seq as a stable secondary key. This operation is also mounted at /agent-api: requires an Agent token and gateway secret (admin JWTs are rejected); enforce permissions and deletion checks via x-agent-access. Unregistered operations are not exposed.
          */
         get: operations["listAdminCatalogChanges"];
         put?: never;
