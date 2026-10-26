@@ -811,9 +811,9 @@
       }
     },
     "copy": {
-      "install": "複製安裝指令",
-      "uninstall": "複製解除安裝指令",
-      "cleanup": "複製解除安裝及清理指令"
+      "install": "複製安裝命令",
+      "uninstall": "複製解除安裝命令",
+      "cleanup": "複製解除安裝及清理命令"
     },
     "officialDownload": {
       "label": "官方下載 · {host}",
