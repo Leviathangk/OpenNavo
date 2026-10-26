@@ -7,7 +7,16 @@ import { SITEMAP_WARMUP_PATHS, warmSitemaps } from '../server/utils/sitemapWarmu
 
 beforeEach(() => {
   vi.stubEnv('OPENNAVO_SITEMAP_WARMUP', 'true');
-  vi.stubGlobal('useRuntimeConfig', () => ({ loadShed: LOAD_SHED_DEFAULTS, sitemapFonts: true }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({ status: 200 }))
+  );
+  vi.spyOn(console, 'info').mockImplementation(() => {});
+  vi.stubGlobal('useRuntimeConfig', () => ({
+    loadShed: LOAD_SHED_DEFAULTS,
+    sitemapFonts: true,
+    apiBaseInternal: 'http://api.example.test/api/v1'
+  }));
 });
 
 afterEach(() => {
@@ -34,7 +43,11 @@ describe('sitemap startup warmup', () => {
 
   it('skips all font shards when the font experiment is disabled', async () => {
     vi.useFakeTimers();
-    vi.stubGlobal('useRuntimeConfig', () => ({ loadShed: LOAD_SHED_DEFAULTS, sitemapFonts: false }));
+    vi.stubGlobal('useRuntimeConfig', () => ({
+      loadShed: LOAD_SHED_DEFAULTS,
+      sitemapFonts: false,
+      apiBaseInternal: 'http://api.example.test/api/v1'
+    }));
     const localFetch = vi.fn(async (_path: string) => ({ status: 200 }));
     vi.stubGlobal('defineNitroPlugin', (plugin: (app: unknown) => void) =>
       plugin({ localFetch, hooks: { hook: vi.fn() } })
@@ -57,6 +70,7 @@ describe('sitemap startup warmup', () => {
     await vi.runAllTimersAsync();
     expect(localFetch).not.toHaveBeenCalled();
     expect(hook).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   it('defaults to enabled in production when the environment override is absent', async () => {
@@ -154,14 +168,70 @@ describe('sitemap startup warmup', () => {
   });
 
   it('continues past rejected requests and non-200 responses without logging error details', async () => {
+    vi.useFakeTimers();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const fetch = vi.fn(async () => ({ status: 200 }));
-    fetch.mockRejectedValueOnce(new Error('private connection details')).mockResolvedValueOnce({ status: 503 });
-    await expect(warmSitemaps(fetch)).resolves.toBeUndefined();
-    expect(fetch).toHaveBeenCalledTimes(25);
-    expect(warn).toHaveBeenCalledTimes(2);
+    fetch
+      .mockRejectedValueOnce(new Error('private connection details'))
+      .mockResolvedValueOnce({ status: 503 })
+      .mockResolvedValueOnce({ status: 503 });
+    const pending = warmSitemaps(fetch);
+    await vi.runAllTimersAsync();
+    await pending;
+    expect(fetch).toHaveBeenCalledTimes(27);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('success=24 failed=1'));
     expect(JSON.stringify(warn.mock.calls)).not.toContain('private connection details');
   });
+
+  it('waits for API recovery before rendering any XML and retries a transient shard', async () => {
+    vi.useFakeTimers();
+    const ready = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('ECONNREFUSED private'))
+      .mockResolvedValueOnce(false)
+      .mockResolvedValue(true);
+    const fetch = vi.fn().mockResolvedValueOnce({ status: 503 }).mockResolvedValue({ status: 200 });
+    const pending = warmSitemaps(fetch, undefined, undefined, true, { ready });
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(fetch).not.toHaveBeenCalled();
+    await vi.runAllTimersAsync();
+    await pending;
+    expect(ready).toHaveBeenCalledTimes(3);
+    expect(fetch).toHaveBeenCalledTimes(26);
+    expect(fetch.mock.calls[0]![0]).toBe(fetch.mock.calls[1]![0]);
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('success=25 failed=0'));
+  });
+
+  it('abandons readiness after ten minutes, including a probe that never settles', async () => {
+    vi.useFakeTimers();
+    const ready = vi.fn(() => new Promise<boolean>(() => {}));
+    const fetch = vi.fn();
+    const pending = warmSitemaps(fetch, undefined, undefined, false, { ready });
+    await vi.advanceTimersByTimeAsync(600_000);
+    await pending;
+    expect(fetch).not.toHaveBeenCalled();
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('failed=17 durationMs=600000 outcome=readiness_timeout')
+    );
+  });
+
+  it.each(['probe', 'backoff', 'render'])(
+    'immediately cancels during %s without waiting for timers or transport',
+    async phase => {
+      vi.useFakeTimers();
+      const controller = new AbortController();
+      const ready = phase === 'probe' ? () => new Promise<boolean>(() => {}) : async () => phase === 'render';
+      const fetch = vi.fn(() => new Promise<{ status: number }>(() => {}));
+      const pending = warmSitemaps(fetch, undefined, undefined, true, { ready, signal: controller.signal });
+      await vi.advanceTimersByTimeAsync(1);
+      controller.abort();
+      await pending;
+      expect(vi.getTimerCount()).toBe(0);
+      expect(console.info).toHaveBeenCalledWith(expect.stringContaining('outcome=cancelled'));
+      expect(fetch).toHaveBeenCalledTimes(phase === 'render' ? 1 : 0);
+    }
+  );
 
   it('stops scheduling further children on shutdown', async () => {
     let stopped = false;

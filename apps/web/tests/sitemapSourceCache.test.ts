@@ -146,15 +146,18 @@ describe('sitemap source snapshot cache', () => {
   });
 
   it('does not cache empty buckets after a failed startup warmup and recovers on the next request', async () => {
+    vi.useFakeTimers();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { index, bucket, fetch, storage } = await setup(catalog(10));
     const original = fetch.getMockImplementation()!;
     fetch.mockRejectedValue(new Error('API unavailable'));
-    await warmSitemaps(async path => {
+    const pending = warmSitemaps(async path => {
       if (path === '/sitemap_index.xml') await index();
       else await bucket(path.split('/').at(-1)!.replace('.xml', ''));
       return { status: 200 };
     });
+    await vi.runAllTimersAsync();
+    await pending;
     expect(await storage.getKeys()).toEqual([]);
     fetch.mockImplementation(original);
     expect((await index()).length).toBeGreaterThan(0);
