@@ -14,7 +14,7 @@ async function stubDeepLink(page: Page, { appInstalled }: { appInstalled: boolea
 }
 
 async function openInApp(page: Page) {
-  await page.getByRole('button', { name: '获取 Visual Studio Code', exact: true }).click();
+  await page.getByRole('button', { name: '获取 VS Code 编辑器', exact: true }).click();
   await page.getByRole('menuitem', { name: '在 OpenNavo 中打开' }).click();
 }
 
