@@ -78,7 +78,8 @@ func TestProbePacingAndDurableCooldown(t *testing.T) {
 func TestProbeComparesIndexingIntentAndWaitsOutLoadShedding(t *testing.T) {
 	st := testutil.NewFactsStore(t)
 	ctx := context.Background()
-	now := time.Now().UTC()
+	// PostgreSQL persists timestamps at microsecond precision; compare the same clock precision.
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	var server *httptest.Server
 	shed := 0
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

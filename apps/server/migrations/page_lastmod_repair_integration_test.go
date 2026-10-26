@@ -102,7 +102,7 @@ func TestRepairPageDatesOfTheUpgradeHour(t *testing.T) {
 	require.True(t, read(801, "overview").ContentModifiedAt.Equal(day(5)))
 	require.NoError(t, goose.UpToContext(ctx, db, ".", 113))
 
-	// The hash-v3 refresh finds no change after the repaired dates.
+	// The current hash refresh finds no change after the repaired dates.
 	require.NoError(t, st.DB.Exec(`INSERT INTO package_page_dirty(package_id,changed_at) VALUES(801,now()),(802,now())`).Error)
 	for {
 		count, err := st.RefreshPackagePageStates(ctx, 100)
@@ -117,7 +117,7 @@ func TestRepairPageDatesOfTheUpgradeHour(t *testing.T) {
 	} {
 		for kind, want := range kinds {
 			row := read(id, kind)
-			require.Equal(t, 3, row.ContentHashVersion, "%d %s", id, kind)
+			require.Equal(t, 4, row.ContentHashVersion, "%d %s", id, kind)
 			require.True(t, row.ContentModifiedAt.Equal(want), "%d %s: %s", id, kind, row.ContentModifiedAt)
 		}
 	}
