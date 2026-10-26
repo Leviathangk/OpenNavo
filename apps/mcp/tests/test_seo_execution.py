@@ -92,8 +92,8 @@ async def test_routines_follow_openseo_and_business_tools(backend: Backend) -> N
         daily_content = await client.read_resource("opennavo://guide/daily-routine")
     seo = json.loads(seo_content[0].text)  # type: ignore[union-attr]
     daily = json.loads(daily_content[0].text)  # type: ignore[union-attr]
-    assert seo["version"] == "seo-routine-v2"
-    assert daily["version"] == "daily-routine-v2"
+    assert seo["version"] == "seo-routine-v3"
+    assert daily["version"] == "daily-routine-v3"
     for text in (
         "OpenSEO",
         "inspect_urls",
@@ -115,6 +115,23 @@ async def test_routines_follow_openseo_and_business_tools(backend: Backend) -> N
         assert not set(re.findall(r"\bseo_[a-z_]+", guide)) - {"seo_title", "seo_description"}
         assert not any(name in guide for name in LEGACY)
     assert all(op == "introspectAgentToken" for op, _ in backend.calls)
+
+
+@pytest.mark.parametrize(
+    ("slug", "version"),
+    [
+        ("content-style", "content-style-v2"),
+        ("release-notes", "release-notes-v2"),
+        ("article-writing", "article-writing-v2"),
+        ("app-intro", "app-intro-v1"),
+    ],
+)
+async def test_guide_resource_versions(backend: Backend, slug: str, version: str) -> None:
+    async with Client(backend.server) as client:
+        result = await client.read_resource(f"opennavo://guide/{slug}")
+    value = json.loads(result[0].text)  # type: ignore[union-attr]
+    assert value["version"] == version
+    assert value["guide"] == GUIDES[slug]
 
 
 def test_guides_name_only_existing_tools() -> None:
