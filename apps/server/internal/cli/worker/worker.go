@@ -119,40 +119,6 @@ func run(ctx context.Context) error {
 	// Independent delivery polling keeps the 30-second source-save debounce independent of catalog sync intervals.
 	dispatchCtx, cancelDispatch := context.WithCancel(ctx)
 	defer cancelDispatch()
-	// Content written before a site language existed never queued that language, and a new converter
-	// Version derives stored content again: paced, and resumed after a restart by the receipts.
-	go func() {
-		for {
-			var last store.TraditionalProgress
-			derived, err := st.RunTraditionalBackfill(dispatchCtx, store.TraditionalBackfill{
-				ObjectsPerSecond: cfg.TraditionalObjectsPerSecond,
-				WritesPerMinute:  cfg.TraditionalWritesPerMinute,
-				Progress: func(p store.TraditionalProgress) {
-					last = p
-					if !p.Done {
-						logger.Info("Traditional Chinese backfill progress", "processed", p.Processed, "stamped", p.Stamped, "written", p.Written, "failed", p.Failed,
-							"pending", p.Pending, "remaining", p.Remaining, "eta", p.ETA.Round(time.Second).String())
-					}
-				},
-			})
-			if err == nil {
-				logger.Info("Traditional Chinese backfill complete", "processed", last.Processed, "stamped", last.Stamped, "written", last.Written, "failed", last.Failed,
-					"elapsed", last.Elapsed.Round(time.Second).String(), "counts", derived)
-				break
-			}
-			if dispatchCtx.Err() != nil {
-				return
-			}
-			logger.Warn("Traditional Chinese backfill failed; retrying in one minute")
-			timer := time.NewTimer(time.Minute)
-			select {
-			case <-dispatchCtx.Done():
-				timer.Stop()
-				return
-			case <-timer.C:
-			}
-		}
-	}()
 	done := make(chan struct{})
 	go func() {
 		defer close(done)

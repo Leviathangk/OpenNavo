@@ -36,7 +36,7 @@ x-backend-env: &backend-env
   LLM_MONTHLY_BUDGET_USD: ${LLM_MONTHLY_BUDGET_USD:-0}
   HOMEBREW_API_BASE: ${HOMEBREW_API_BASE:-https://formulae.brew.sh/api}
   TZ_SCHEDULE: Asia/Shanghai
-  # Traditional Chinese backfill after a converter upgrade (worker start); see ops/GUIDE.md.
+  # Explicit Traditional Chinese backfill command after a converter upgrade; see ops/GUIDE.md.
   TRADITIONAL_BACKFILL_OBJECTS_PER_SECOND: ${TRADITIONAL_BACKFILL_OBJECTS_PER_SECOND:-20}
   TRADITIONAL_BACKFILL_WRITES_PER_MINUTE: ${TRADITIONAL_BACKFILL_WRITES_PER_MINUTE:-30}
   LOG_LEVEL: info

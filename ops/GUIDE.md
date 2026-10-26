@@ -201,7 +201,7 @@ derivation/withdrawal/rollback and collection translation triggers scope refresh
 languages. An oversized purge retry queue collapses only the sections/languages it contains. Source-language and English fallback changes, structural edits and full revision restores
 remain all-language changes. API cache invalidation remains by application. IndexNow still uses
 page eligibility for live apps; closed Traditional pages are refreshed and purged without announcement.
-Restarting a backfill worker preserves its converter receipts and resumes remaining objects; this
+Explicitly rerunning the backfill command preserves its converter receipts and processes remaining objects; this
 migration does not force another derivation. Already queued unscoped notifications remain unscoped.
 Rollback application images before dropping the scope columns. Concurrent index builds can be
 retried after interruption; migration 00115 drops and rebuilds its own indexes to recover invalid builds.
@@ -414,6 +414,9 @@ must use another locale. Valid `zh-CN` text is the only input to Traditional
 Chinese. English or other source content must acquire a fresh Simplified Chinese
 translation first. Saving or correcting Simplified Chinese regenerates the
 Traditional row in the same transaction, with normal cache/page invalidation.
+Unchanged input with an intact current-converter receipt skips conversion. Ordinary
+deployments and worker restarts never scan historical content for Traditional Chinese;
+completed historical backfills need no further action.
 Removing or invalidating Simplified Chinese withdraws its derived row.
 
 The repository generator uses the same embedded OpenCC 1.1.9 dictionaries and
@@ -433,12 +436,14 @@ the server creates the stored row. MCP has no such assertion exception.
 Migration 00102 retires unfinished independent Traditional translation tasks,
 fences outstanding leases, and creates `derived_traditional` receipts. It does
 not drop historical completed tasks or language rows. After the normal CI gates
-and a database backup, the new worker backfills in pages of 128 candidates, one
+and a database backup, explicitly run the backfill command only for a converter
+upgrade or historical data repair. It scans pages of 128 candidates, one
 object per transaction; retries are idempotent. Invalid derived content (including
 length expansion beyond field limits) is skipped and counted as `<entity>:failed`;
 later rows continue. Correct the source and rerun the backfill to retry these rows.
-Infrastructure failures retry after one minute. Ordinary translation backfill runs
-independently, so these retries cannot block it.
+Infrastructure failures exit with a nonzero status; inspect the failure and explicitly
+rerun the command. Receipts skip already-derived objects, but each invocation scans
+candidates again; there is no persisted scan cursor or automatic restart.
 The first prior row (including manual text), Simplified content hash, converter
 version and latest generated row are retained. Missing/stale Simplified text is
 not translated from English by the converter. Unpublished article revisions are
@@ -449,7 +454,7 @@ come only from the deployment environment):
 
 ```sh
 /traditional-backfill             # rolls back each preview transaction
-/traditional-backfill --apply     # resumable backfill
+/traditional-backfill --apply     # explicit, idempotent backfill
 ```
 
 For rollback, stop the new worker and quiesce content writes first. Preview with
@@ -457,12 +462,16 @@ For rollback, stop the new worker and quiesce content writes first. Preview with
 rows still matching their last generated snapshot; conflicts preserve later
 edits. Deleted parents are counted as conflicts, without stopping later restores.
 The rollback receipt is retained. Switch back to the prior verified image
-before restarting workers; running the new worker again intentionally regenerates
-Traditional Chinese. Do not automatically reopen retired translation tasks.
+before restarting workers. New content writes or an explicit backfill using the new
+converter can regenerate Traditional Chinese; worker startup alone does not.
+Do not automatically reopen retired translation tasks.
 
 Dictionary upgrades require reviewing `internal/traditional/data/upstream.json`,
 updating its checksums and the converter version, regenerating language packs,
 and running converter, migration/rollback, interface replay and write-guard tests.
+Deploy and verify the new converter, then explicitly preview and apply the historical
+backfill once old application instances have stopped. New writes use the new converter
+immediately; deployment itself does not start a backfill.
 The data license and distribution notices are included in the normal inventory.
 
 Proof-backed background-item descriptions and collection setup criteria also derive
@@ -578,27 +587,24 @@ needs attention.
 Converter `opencc-data-1.1.9-s2twp-v5` applies OpenNavo's Taiwan wording
 (`internal/traditional/data/opennavo-terms.json`: 權限, 登入項目, 選單列, 垃圾桶, 帳號 …)
 after OpenCC, to prose only, for server-side content as well as the repository's interface
-files. The new version makes the worker derive stored content again when it starts, with
-limits: objects whose receipt names another converter at
-`TRADITIONAL_BACKFILL_OBJECTS_PER_SECOND` (default 20), and rows actually rewritten at
-`TRADITIONAL_BACKFILL_WRITES_PER_MINUTE` (default 30). Text that comes out the same only has
-its `derived_traditional` receipt renewed: no row write, revision, page refresh, cache
-invalidation or URL notification. A rewritten row refreshes its pages and announces its URLs
-like an edit; rewritten background-item descriptions and collection criteria share one full
-cache clear per minute. The catalog lock is released between objects, and the receipts record
-progress, so a restarted worker continues where the run stopped.
+files. New writes use this converter immediately. Untouched historical rows are converted
+only when an operator explicitly runs `/traditional-backfill --apply`, with limits: objects whose
+receipt names another converter at `TRADITIONAL_BACKFILL_OBJECTS_PER_SECOND` (default 20),
+and rows actually rewritten at `TRADITIONAL_BACKFILL_WRITES_PER_MINUTE` (default 30).
+Text that comes out the same only has its `derived_traditional` receipt renewed: no row
+write, revision, page refresh, cache invalidation or URL notification. A rewritten row
+refreshes its pages and announces its URLs like an edit; rewritten background-item
+descriptions and collection criteria share one full cache clear per minute. The catalog
+lock is released between objects. Explicitly rerunning an interrupted command scans
+candidates again and uses receipts to skip completed derivations.
 
-The worker logs `Traditional Chinese backfill progress` at the start and after every 500
-objects derived again (`processed`, `stamped`, `written`, `failed`, `pending`, `remaining`,
-`eta`), then `Traditional Chinese backfill complete` with the totals, `elapsed` and the counts
-per entity (`<entity>` written, `<entity>:stamped`, `<entity>:failed`). Budget about N objects
-÷ 20 per second, plus W rewritten rows ÷ 30 per minute. N is the number of zh-CN rows in the
-content tables: on 2026-10-26 production had about 27,100 (release_i18n 13,880, package_i18n
-6,967, screenshot_i18n 6,122, all others under 100 each) and 26,331 receipts, all from v4, so
-one pass takes about 22 minutes and each rewritten row adds up to two seconds. The `eta` in
-the progress lines updates from the share of rows rewritten so far. To change the limits, set
-them in the deployment environment and restart the worker; `/traditional-backfill` and its
-`--apply` use the same limits.
+The command writes progress to stderr (`processed`, `stamped`, `written`, `failed`,
+`pending`, `remaining`, `eta`) and final per-entity counts as JSON to stdout. Inspect
+`<entity>:failed` counts even after a successful exit, correct invalid source content,
+and explicitly rerun if needed. Budget about N objects ÷ 20 per second, plus W rewritten
+rows ÷ 30 per minute, excluding scan overhead for already-current receipts. Set limits
+in the command's environment before starting it; preview and apply use the same limits.
+Restarting the ordinary worker does not start or resume a historical backfill.
 
 ### Backfill historical responsive images
 

@@ -55,7 +55,7 @@ type Config struct {
 	LogLevel                    string        `env:"LOG_LEVEL" envDefault:"info"`
 	OTELExporterOTLPEndpoint    string        `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	TZSchedule                  string        `env:"TZ_SCHEDULE" envDefault:"Asia/Shanghai"`
-	// The worker's Traditional Chinese backfill after a converter upgrade: objects derived again per
+	// Explicit Traditional Chinese backfill after a converter upgrade: objects derived again per
 	// second, and derived rows written per minute.
 	TraditionalObjectsPerSecond float64 `env:"TRADITIONAL_BACKFILL_OBJECTS_PER_SECOND" envDefault:"20"`
 	TraditionalWritesPerMinute  float64 `env:"TRADITIONAL_BACKFILL_WRITES_PER_MINUTE" envDefault:"30"`

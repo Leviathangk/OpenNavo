@@ -41,7 +41,7 @@ type TraditionalProgress struct {
 	Done      bool
 }
 
-// BackfillTraditional derives every object without limits; the worker uses RunTraditionalBackfill.
+// BackfillTraditional derives every object without limits; the offline CLI uses RunTraditionalBackfill.
 func (s *Store) BackfillTraditional(ctx context.Context, dryRun bool) (map[string]int, error) {
 	return s.RunTraditionalBackfill(ctx, TraditionalBackfill{DryRun: dryRun})
 }
