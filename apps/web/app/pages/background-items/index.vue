@@ -66,7 +66,7 @@ const groups = computed(() =>
           const apps = declaringApps(item);
           return {
             label: item.label,
-            path: localePath(labelPath(item.label)),
+            path: labelPath(item.label, localePath('/')),
             types: itemTypes(item),
             shared: item.shared,
             described: Boolean(usableContent(item)),

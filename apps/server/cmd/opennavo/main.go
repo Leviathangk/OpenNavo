@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/opennavo/opennavo/server/internal/cli/api"
+	"github.com/opennavo/opennavo/server/internal/cli/assetsbackfill"
 	"github.com/opennavo/opennavo/server/internal/cli/dbbootstrap"
 	"github.com/opennavo/opennavo/server/internal/cli/desktoppublish"
 	"github.com/opennavo/opennavo/server/internal/cli/migrate"
@@ -21,9 +22,10 @@ import (
 	"github.com/opennavo/opennavo/server/internal/cli/worker"
 )
 
-// The Dockerfile links each name to this binary.
+// The Dockerfile links service entrypoints; offline maintenance can use subcommands.
 var commands = map[string]func(){
 	"api":                  api.Main,
+	"assets-backfill":      assetsbackfill.Main,
 	"traditional-backfill": traditionalbackfill.Main,
 	"db-bootstrap":         dbbootstrap.Main,
 	"desktop-publish":      desktoppublish.Main,

@@ -1,17 +1,17 @@
 rule_files: [rules.yml]
 evaluation_interval: 1m
 tests:
-  - name: all five alerts fire
+  - name: backlog, latency and service alerts fire
     interval: 1m
     input_series:
+      - series: asynq_queue_latency_seconds{queue="default"}
+        values: '301+0x90'
+      - series: opennavo_queue_metrics_collection_success
+        values: '1+0x90'
       - series: catalog_last_success_timestamp_seconds
         values: '0+0x90'
-      - series: asynq_queue_size{queue="llm"}
+      - series: asynq_queue_size{queue="default",state="pending"}
         values: '10001+0x90'
-      - series: llm_month_tokens
-        values: '81+0x90'
-      - series: llm_month_token_budget
-        values: '100+0x90'
       - series: http_requests_total{status="500",route="/api/v1/home",method="GET"}
         values: '0+2x90'
       - series: http_requests_total{status="200",route="/api/v1/home",method="GET"}
@@ -19,6 +19,11 @@ tests:
       - series: github_ratelimit_remaining
         values: '499+0x90'
     alert_rule_test:
+      - eval_time: 70m
+        alertname: QueueLatency
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: {summary: 'Oldest pending task has waited over five minutes'}
       - eval_time: 70m
         alertname: CatalogSyncStale
         exp_alerts:
@@ -28,12 +33,7 @@ tests:
         alertname: QueueBacklog
         exp_alerts:
           - exp_labels: {severity: warning}
-            exp_annotations: {summary: 'Task queue backlog exceeds ten thousand'}
-      - eval_time: 70m
-        alertname: LLMTokenBudget
-        exp_alerts:
-          - exp_labels: {severity: warning}
-            exp_annotations: {summary: 'Monthly LLM tokens exceed 80 percent of budget'}
+            exp_annotations: {summary: 'Pending and retry task backlog exceeds ten thousand'}
       - eval_time: 70m
         alertname: APIErrorRate
         exp_alerts:
@@ -49,22 +49,26 @@ tests:
     input_series:
       - series: catalog_last_success_timestamp_seconds
         values: '0+60x90'
-      - series: asynq_queue_size{queue="llm"}
+      - series: asynq_queue_size{queue="default",state="pending"}
         values: '10000+0x90'
-      - series: llm_month_tokens
-        values: '80+0x90'
-      - series: llm_month_token_budget
-        values: '100+0x90'
       - series: http_requests_total{status="500"}
         values: '0+1x90'
       - series: http_requests_total{status="200"}
         values: '0+99x90'
+      - series: asynq_queue_size{queue="default",state="scheduled"}
+        values: '20000+0x90'
+      - series: asynq_queue_size{queue="default",state="archived"}
+        values: '20000+0x90'
+      - series: asynq_queue_size{queue="default",state="pending",instance="second-api"}
+        values: '10000+0x90'
+      - series: asynq_queue_latency_seconds{queue="default"}
+        values: '300+0x90'
       - series: github_ratelimit_remaining
         values: '-1+0x90'
     alert_rule_test:
       - {eval_time: 70m, alertname: CatalogSyncStale, exp_alerts: []}
       - {eval_time: 70m, alertname: QueueBacklog, exp_alerts: []}
-      - {eval_time: 70m, alertname: LLMTokenBudget, exp_alerts: []}
+      - {eval_time: 70m, alertname: QueueLatency, exp_alerts: []}
       - {eval_time: 70m, alertname: APIErrorRate, exp_alerts: []}
       - {eval_time: 70m, alertname: GitHubQuotaLow, exp_alerts: []}
   - name: business Redis pressure and OOM are actionable; cache eviction is not an outage
@@ -107,3 +111,15 @@ tests:
         exp_alerts:
           - exp_labels: {severity: critical, role: cache}
             exp_annotations: {summary: 'Redis metrics probes cannot reach the instance'}
+  - name: queue inspection failure remains observable
+    interval: 1m
+    input_series:
+      - series: opennavo_queue_metrics_collection_success
+        values: '0+0x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: QueueMetricsUnavailable
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: {summary: 'Asynq queue metrics could not be collected'}
+      - {eval_time: 5m, alertname: QueueBacklog, exp_alerts: []}

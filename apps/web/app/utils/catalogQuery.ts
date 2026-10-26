@@ -33,6 +33,7 @@ export function parsePage(value: QueryValue): number | undefined {
   return typeof text === 'string' && PAGE_NUMBER.test(text) ? Number(text) : undefined;
 }
 
+import { canonicalPath } from './canonicalPath';
 import { GRID_PAGE_SIZE } from '#shared/utils/gridPage';
 import { canonicalQuery } from '#shared/utils/routeQuery';
 
@@ -51,8 +52,9 @@ export function pageCount(total: number, size: number): number {
  */
 export function canonicalPageUrl(url: string): string {
   const at = url.indexOf('?');
-  if (at < 0) return url;
-  const base = url.slice(0, at);
+  // i18n reconstructs alternates from decoded route params, undoing labelPath's punctuation escapes.
+  const base = (at < 0 ? url : url.slice(0, at)).replace(/\/background-items\/[^/]+$/, path => canonicalPath(path));
+  if (at < 0) return base;
   const path = base.replace(/^[a-z][\w+.-]*:\/\/[^/]+/i, '') || '/';
   const rest = canonicalQuery(path, new URLSearchParams(url.slice(at + 1)));
   if (!rest) return base;

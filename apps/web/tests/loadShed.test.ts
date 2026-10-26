@@ -226,7 +226,13 @@ describe('priority load shedding', () => {
     vi.stubGlobal('edgeCacheHeader', edgeCacheHeader);
     vi.stubGlobal('getSiteSettings', async () => ({ edgeCache: { enabled: true } }));
     vi.stubGlobal('defineNitroPlugin', (plugin: (nitro: unknown) => void) =>
-      plugin({ hooks: { hook: (_name: string, handler: (event: H3Event) => void) => beforeHooks.push(handler) } })
+      plugin({
+        hooks: {
+          hook: (name: string, handler: (event: H3Event) => void) => {
+            if (name === 'beforeResponse') beforeHooks.push(handler);
+          }
+        }
+      })
     );
     // The existing error plugin must not shorten the overload Retry-After to five seconds, and the edge
     // rule must never make a refusal cacheable: Cloudflare serves its stale copy instead (stale-if-error).

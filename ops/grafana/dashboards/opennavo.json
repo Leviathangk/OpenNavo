@@ -114,8 +114,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "asynq_queue_size",
-          "legendFormat": "{{job}} {{kind}} {{task}} {{type}} {{status}}"
+          "expr": "max by(queue,state) (asynq_queue_size)",
+          "legendFormat": "{{queue}} · {{state}}"
         }
       ]
     },
@@ -203,28 +203,6 @@
         {
           "refId": "A",
           "expr": "max(llm_cost_usd_total)",
-          "legendFormat": "{{job}} {{kind}} {{task}} {{type}} {{status}}"
-        }
-      ]
-    },
-    {
-      "id": 10,
-      "type": "timeseries",
-      "title": "LLM budget",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "opennavo-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 24
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max(llm_month_tokens)/max(llm_month_token_budget)",
           "legendFormat": "{{job}} {{kind}} {{task}} {{type}} {{status}}"
         }
       ]

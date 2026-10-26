@@ -42,6 +42,7 @@ const icon = computed(() => (props.app?.token === RESULT.token ? props.app : nul
           :token="RESULT.token"
           :name="RESULT.name"
           :src="icon?.iconUrl"
+          :variants="icon?.iconVariants"
           :accent="icon?.accentColor"
           :size="26"
         />

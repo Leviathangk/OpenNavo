@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { redisFixture } from './fixtures/redis.mjs';
+import { packageSitemapName } from '../shared/utils/sitemapBuckets.ts';
+import { labelPath } from '../shared/utils/backgroundLabels.ts';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
@@ -194,6 +197,19 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   const entry = fileURLToPath(new URL('../.output/server/index.mjs', import.meta.url));
   await access(entry);
   const requestedTokens = new Set();
+  const backgroundLabels = [
+    'Google Drive',
+    'Vitamin-R 4',
+    'com.steinberg.dorico.*',
+    "Agent (helper)'!",
+    'homebrew@16',
+    'a+b:c',
+    '后台项目',
+    'literal%25',
+    'literal%2F'
+  ];
+  const requestedLabels = [];
+  let backgroundItemsReady = false;
   // Requests for the retired SEO experiment API; no page may ask for it any more.
   const seoApiRequests = [];
   // Synthetic "SEO App" overviews: no extra facts, a verified free price, full uninstall and alternatives
@@ -948,7 +964,54 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       else status = 404;
     } else if (path === '/api/v1/background-items') {
       // The footer's encyclopedia link participates in the three-hop crawl.
-      data = { current: Number(query.get('current') ?? 1), size: 24, total: 0, records: [] };
+      data = {
+        current: Number(query.get('current') ?? 1),
+        size: 24,
+        total: backgroundItemsReady ? backgroundLabels.length : 0,
+        records: backgroundItemsReady ? backgroundLabels.map(label => ({ label, indexable: true })) : []
+      };
+    } else if (path.startsWith('/api/v1/background-items/')) {
+      const label = path.slice('/api/v1/background-items/'.length);
+      requestedLabels.push(label);
+      if (!backgroundLabels.includes(label)) status = 404;
+      else
+        data = {
+          label,
+          apps: ['Google Drive', 'Vitamin-R 4'].includes(label)
+            ? [
+                {
+                  package: {
+                    ...appSummary('ordinary-app', 'Ordinary App'),
+                    iconUrl: 'https://example.test/icons/background.png',
+                    iconVariants:
+                      label === 'Google Drive'
+                        ? [
+                            { width: 64, url: 'https://example.test/icons/background-64.webp' },
+                            { width: 128, url: 'https://example.test/icons/background-128.webp' }
+                          ]
+                        : []
+                  },
+                  kind: 'launchctl',
+                  phase: 'uninstall',
+                  evidence: evidence('https://vendor.example/helper'),
+                  uninstallUrl: 'opennavo://uninstall/ordinary-app?preview=1'
+                }
+              ]
+            : [],
+          developers: ['Example Inc'],
+          shared: false,
+          ownership: 'declared_candidates',
+          identityChecks: ['signature', 'path', 'version'],
+          content: {
+            locale: query.get('locale') ?? 'en-US',
+            description: 'A fixture background helper.',
+            itemType: 'launch_agent',
+            commonPaths: [],
+            evidence: evidence('https://vendor.example/helper')
+          },
+          indexable: true,
+          startupUrl: `opennavo://startup?label=${encodeURIComponent(label)}`
+        };
     } else if (path === '/api/v1/site/settings') {
       data = siteSettings;
     } else if (path === '/api/v1/config/client') {
@@ -1021,6 +1084,16 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         for (const page of ['alternatives', 'uninstall', 'troubleshooting'])
           data.indexing.pages[page] = data.indexing.pages.overview;
       }
+    }
+    if (data?.token === 'facts-app' && data.facts) {
+      data.facts.uninstall.push(
+        ...backgroundLabels.map(value => ({
+          kind: 'launchctl',
+          phase: 'uninstall',
+          value,
+          evidence: evidence('https://vendor.example/helper')
+        }))
+      );
     }
     if (path === '/api/v1/sitemap/packages' && data)
       for (const record of data.records)
@@ -1267,6 +1340,53 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         assert.match(html, /<title>Example App @11 for Mac – Download &amp; Install · OpenNavo<\/title>/);
     });
   }
+  await t.test('background labels render once decoded, with canonical links and no redirect loops', async () => {
+    for (const prefix of ['', '/zh', '/zh-hant']) {
+      for (const label of backgroundLabels) {
+        const path = prefix + labelPath(label);
+        const response = await fetch(`${origin}${path}`, { redirect: 'manual' });
+        assert.equal(response.status, 200, `${path}\n${logs}`);
+        const html = await response.text();
+        assert.equal(/<link[^>]*rel="canonical"[^>]*href="([^"]+)"/.exec(html)?.[1], `https://example.test${path}`);
+        assert.ok(requestedLabels.includes(label), `API received literal label ${label}`);
+        if (['Google Drive', 'Vitamin-R 4'].includes(label)) {
+          const icon = /<img\b[^>]*src="https:\/\/example\.test\/icons\/background\.png"[^>]*>/.exec(html)?.[0] ?? '';
+          assert.ok(icon, 'the declaring app keeps its original icon as fallback');
+          assert.match(html, /style="width:40px;height:40px;?"/, 'the icon renders at 40px');
+          if (label === 'Google Drive') {
+            assert.ok(icon.includes('sizes="40px"'), 'sizes matches the actual 40px box');
+            assert.ok(
+              icon.includes(
+                'srcset="https://example.test/icons/background-64.webp 64w, https://example.test/icons/background-128.webp 128w"'
+              )
+            );
+          } else {
+            assert.ok(!icon.includes('srcset='), 'historical icons without variants keep working');
+          }
+        }
+        for (const link of html.match(/<link\b[^>]*hreflang="[^"]+"[^>]*>/g) ?? [])
+          assert.equal(/href="([^"]+)"/.exec(link)?.[1], `https://example.test${path}`, 'hreflang uses labelPath too');
+        // A second request exercises the SWR cache with the encoded key.
+        assert.equal((await fetch(`${origin}${path}`, { redirect: 'manual' })).status, 200, path);
+      }
+      const raw = `${prefix}/background-items/com.steinberg.dorico.*`;
+      const canonical = prefix + labelPath('com.steinberg.dorico.*');
+      const alias = await fetch(`${origin}${raw}`, { redirect: 'manual' });
+      assert.equal(alias.status, 301);
+      assert.equal(alias.headers.get('location'), canonical);
+      assert.equal((await fetch(`${origin}${raw}`)).status, 200);
+    }
+    const before = requestedLabels.length;
+    for (const segment of ['bad%ZZ', 'a%2Fb', 'a%5Cb', 'a%3Fb', 'a%23b', 'a%00b'])
+      assert.equal((await fetch(`${origin}/background-items/${segment}`, { redirect: 'manual' })).status, 404, segment);
+    assert.equal(requestedLabels.length, before, 'invalid labels never reach the API');
+    for (const prefix of ['', '/zh']) {
+      const html = await (await fetch(`${origin}${prefix}/apps/facts-app`)).text();
+      for (const label of backgroundLabels)
+        assert.ok(html.includes(`href="${prefix}${labelPath(label)}"`), `uninstall link for ${label}`);
+    }
+  });
+
   await t.test('a variant cask named like its main app says its variant on every page', async () => {
     // variant-app@beta's catalog name is "Variant App", like the main app's (aerial@beta is "Aerial").
     const html = async path => {
@@ -1862,7 +1982,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   await t.test('only public cached pages may be cached at the edge', async () => {
     // Purged pages keep two days and lists ten minutes; both answer from the edge while the origin sheds load.
     const LONG_EDGE = 'max-age=172800, stale-while-revalidate=604800, stale-if-error=604800';
-    const SHORT_EDGE = 'max-age=600, stale-while-revalidate=3600, stale-if-error=86400';
+    const SHORT_EDGE = 'max-age=600, stale-while-revalidate=86400, stale-if-error=86400';
     const edge = async path => {
       const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
       await response.text();
@@ -3077,7 +3197,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         last = await status('/ja/apps?page=3');
         if (last !== 404) await new Promise(resolve => setTimeout(resolve, 50));
       }
-      assert.equal(last, 404, 'the expired 200 must not outlive the page');
+      assert.equal(last, 404, `the expired 200 must not outlive the page\n${logs}`);
       assert.equal(await status('/ja/apps?page=3'), 404);
       assert.equal(await status('/ja/apps?page=2'), 200);
       // Expired sitemap data keeps answering through an API outage instead of failing or shrinking.
@@ -3090,6 +3210,93 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       sitemapState = 'ok';
     }
   });
+  await t.test(
+    'Redis snapshot timeouts return retryable uncached sitemaps and recover on the same URL',
+    async subtest => {
+      const redis = await redisFixture(subtest);
+      const redisReservation = createPortReservation().listen(0, '127.0.0.1');
+      await once(redisReservation, 'listening');
+      const redisPort = String(redisReservation.address().port);
+      await new Promise(resolve => redisReservation.close(resolve));
+      const instance = spawn(process.execPath, [entry], {
+        env: {
+          ...rendererEnv,
+          PORT: redisPort,
+          NITRO_PORT: redisPort,
+          NUXT_REDIS_URL: redis.url,
+          NUXT_METRICS_PORT: ''
+        },
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      const exit = once(instance, 'exit');
+      let output = '';
+      instance.stderr.on('data', chunk => {
+        output += chunk;
+      });
+      subtest.after(async () => {
+        instance.kill('SIGTERM');
+        const timeout = setTimeout(() => instance.kill('SIGKILL'), 5000);
+        try {
+          await exit;
+        } finally {
+          clearTimeout(timeout);
+        }
+      });
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error(output)), 15000);
+        instance.once('error', reject);
+        instance.once('exit', () => reject(new Error(output)));
+        instance.stdout.on('data', chunk => {
+          output += chunk;
+          if (output.includes('Listening on')) {
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+      });
+      const redisOrigin = `http://127.0.0.1:${redisPort}`;
+      const paths = [
+        `/__sitemap__/${packageSitemapName('apps', 'plus-app++')}.xml`,
+        `/__sitemap__/${packageSitemapName('versions', 'plus-app++')}.xml`
+      ];
+      for (const [index, path] of paths.entries()) {
+        if (index === 1) assert.equal((await fetch(`${redisOrigin}/__sitemap__/fonts-bucket-0.xml`)).status, 200);
+        redis.fail(index === 0 ? 'sitemap-package-manifest' : 'sitemap-package-snapshots');
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const response = await fetch(redisOrigin + path, {
+            headers: { accept: attempt === 0 ? 'application/json' : 'text/html' }
+          });
+          assert.equal(response.status, 503, output);
+          assert.equal(response.headers.get('retry-after'), '120');
+          for (const header of ['cache-control', 'cdn-cache-control', 'cloudflare-cdn-cache-control'])
+            assert.equal(response.headers.get(header), 'no-store', header);
+          assert.ok(!(await response.text()).includes('<urlset'), 'no successful sitemap body on failure');
+        }
+        assert.equal(redis.failures(), index === 0 ? 4 : 8, 'each request retries each failing group once');
+        assert.ok(output.includes('snapshot read failed after retry; returning 503'));
+        redis.fail('');
+        const recovered = await fetch(redisOrigin + path);
+        assert.equal(recovered.status, 200, output);
+        assert.ok(
+          (await recovered.text()).includes('https://example.test/apps/plus-app++'),
+          'failed XML was not cached'
+        );
+      }
+      backgroundItemsReady = true;
+      try {
+        const response = await fetch(`${redisOrigin}/__sitemap__/background-items.xml`);
+        assert.equal(response.status, 200, output);
+        const xml = await response.text();
+        for (const label of backgroundLabels) {
+          const path = labelPath(label);
+          assert.ok(xml.includes(`<loc>https://example.test${path}</loc>`), `sitemap loc for ${label}`);
+          assert.ok(xml.includes(`href="https://example.test/zh${path}"`), `sitemap alternate for ${label}`);
+        }
+      } finally {
+        backgroundItemsReady = false;
+      }
+    }
+  );
   assert.deepEqual(seoApiRequests, []);
   assert.deepEqual(
     [...requestedTokens].sort(),

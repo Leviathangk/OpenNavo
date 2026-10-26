@@ -30,12 +30,19 @@ type Objects interface {
 var imageSlots = make(chan struct{}, 2)
 
 func processImage(ctx context.Context, data []byte, kind string) ([]images.Variant, *string, error) {
+	return processImageSource(ctx, data, kind, false)
+}
+
+func processImageSource(ctx context.Context, data []byte, kind string, normalized bool) ([]images.Variant, *string, error) {
 	select {
 	case imageSlots <- struct{}{}:
 	case <-ctx.Done():
 		return nil, nil, ctx.Err()
 	}
 	defer func() { <-imageSlots }()
+	if normalized {
+		return images.ProcessNormalizedPNG(data, kind)
+	}
 	return images.Process(data, kind)
 }
 
@@ -76,12 +83,11 @@ func (s *Service) save(ctx context.Context, kind, prefix string, variants []imag
 		}
 	}
 	for _, v := range variants[0].Files {
-		extension := strings.TrimPrefix(v.MIME, "image/")
-		key := prefix + variants[0].SHA256[:12] + "-" + v.Role + "-" + v.SHA256[:12] + "-" + strconv.Itoa(v.Width) + "." + extension
-		if err := s.Objects.Put(ctx, key, v.Data, v.MIME); err != nil {
+		file := renditionFile(s.Objects, prefix, variants[0].SHA256, v)
+		if err := s.Objects.Put(ctx, file.StorageKey, v.Data, v.MIME); err != nil {
 			return primary, fmt.Errorf("upload image rendition: %w", err)
 		}
-		files = append(files, store.AssetFile{Width: v.Width, Height: v.Height, URL: s.Objects.URL(key), Type: v.MIME, Role: v.Role, StorageKey: key, SHA256: v.SHA256, Bytes: int64(len(v.Data))})
+		files = append(files, file)
 	}
 	raw, err := json.Marshal(files)
 	if err != nil {
@@ -130,12 +136,20 @@ func (s *Service) Preview(ctx context.Context, kind string, data []byte) (map[st
 	return map[string]any{"kind": kind, "width": v.Width, "height": v.Height, "bytes": len(v.PNG), "sha256": v.SHA256}, nil
 }
 func (s S3Objects) Read(ctx context.Context, key string) ([]byte, error) {
+	return s.ReadLimited(ctx, key, images.MaxUploadBytes)
+}
+
+func (s S3Objects) ReadLimited(ctx context.Context, key string, maxBytes int64) ([]byte, error) {
 	object, err := s.Client.S3.GetObject(ctx, s.Client.Bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = object.Close() }()
-	return io.ReadAll(io.LimitReader(object, 5*1024*1024+1))
+	data, err := io.ReadAll(io.LimitReader(object, maxBytes+1))
+	if err == nil && int64(len(data)) > maxBytes {
+		return nil, fmt.Errorf("image too large")
+	}
+	return data, err
 }
 func (s *Service) IconAccent(ctx context.Context, id int64) (*string, error) {
 	asset, err := s.Store.AssetByID(ctx, id)

@@ -29,7 +29,7 @@ function groups(items: UninstallFact[]) {
     const values = [...new Set(items.filter(item => item.kind === kind).map(item => item.value))].map(value => ({
       value,
       // Labels have their own page; files do not.
-      href: kind !== 'zap' && isValidLabel(value) ? localePath(labelPath(value)) : undefined
+      href: kind !== 'zap' && isValidLabel(value) ? labelPath(value, localePath('/')) : undefined
     }));
     return values.length ? [{ kind, label: t(`package.uninstall.kinds.${kind}`), values }] : [];
   });

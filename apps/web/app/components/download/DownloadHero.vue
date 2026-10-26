@@ -74,6 +74,7 @@ const orbit = computed(() =>
               :token="item.pkg.token"
               :name="item.pkg.displayName"
               :src="item.pkg.iconUrl"
+              :variants="item.pkg.iconVariants"
               :accent="item.pkg.accentColor"
               :size="item.size"
             />

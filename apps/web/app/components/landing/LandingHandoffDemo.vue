@@ -43,6 +43,7 @@ const address = computed(() => `${siteHost}/apps/${props.app.token}`);
           :token="app.token"
           :name="app.name"
           :src="app.iconUrl"
+          :variants="app.iconVariants"
           :accent="app.accentColor"
           :size="28"
         />

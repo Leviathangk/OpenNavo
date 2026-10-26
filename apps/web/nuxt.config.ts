@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { packageSitemaps } from './shared/utils/sitemapBuckets';
 import { THEME_STORAGE_KEY } from './shared/utils/theme';
 import { themeBootScript } from '@opennavo/ui/theme';
@@ -38,8 +39,31 @@ export default defineNuxtConfig({
   buildId: process.env.NUXT_BUILD_ID || undefined,
   compatibilityDate: '2026-10-01',
   devtools: { enabled: false },
-  // Combine site styles into one file (about 10 KB), leaving one render-blocking stylesheet request on first load (05 §8).
-  vite: { build: { cssCodeSplit: false } },
+  // One complete stylesheet is inlined by html-styles.ts, including client-only scenes.
+  vite: {
+    build: {
+      cssCodeSplit: false,
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                // Keep primitives used by the shell/hero together without pulling in catalog views.
+                name: 'ui-core',
+                priority: 2,
+                test: /packages[\\/]ui[\\/]src[\\/]components[\\/](OnAppCard|OnAppIcon|OnBadge|OnButton|OnGetButton|OnHighlightText|OnIcon|OnInstallCommand|OnLogo|OnMenu|OnNavItem|OnToast|OnToastRegion|OnTopNav)\.vue/
+              },
+              {
+                name: 'ui-catalog',
+                test: /packages[\\/]ui[\\/]src[\\/]components[\\/]/
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  features: { inlineStyles: false },
   modules: ['@unocss/nuxt', '@nuxtjs/i18n', '@nuxt/fonts', '@nuxtjs/seo'],
   // Register components by filename without directory prefixes; names are unique throughout components/.
   components: [{ path: '~/components', pathPrefix: false }],
@@ -273,6 +297,13 @@ export default defineNuxtConfig({
     // 307 during module setup, over anything in routeRules; crawlers that guess the address should
     // see a permanent move.
     'nitro:config'(nitroConfig) {
+      // Bundle only this build's CSS as server assets; no runtime reads of another release.
+      nitroConfig.serverAssets ||= [];
+      nitroConfig.serverAssets.push({
+        baseName: 'site-css',
+        dir: resolve(nitroConfig.buildDir!, 'dist/client/_nuxt'),
+        pattern: '*.css'
+      });
       nitroConfig.routeRules = {
         ...nitroConfig.routeRules,
         '/sitemap.xml': { redirect: { to: '/sitemap_index.xml', statusCode: 301 } }

@@ -99,6 +99,7 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 			return nil, err
 		}
 		result := any(nil)
+		var locales []string
 		switch op {
 		case "UpdatePackageMeta", "SetPackageIcon", "DeletePackageIcon":
 			if err := st.DB.WithContext(ctx).Exec("INSERT INTO package_meta(package_id) VALUES(?) ON CONFLICT DO NOTHING", in.ID).Error; err != nil {
@@ -144,6 +145,9 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 			source, err := st.TextSourceLocale(ctx, "package", in.ID, in.Locale, in.Body)
 			if err != nil {
 				return nil, err
+			}
+			if source != in.Locale && in.Locale != "en-US" {
+				locales = []string{in.Locale}
 			}
 			if err := st.DB.WithContext(ctx).Exec(`INSERT INTO package_i18n(package_id,locale,status,source) VALUES(?,?,'manual','human') ON CONFLICT DO NOTHING`, in.ID, in.Locale).Error; err != nil {
 				return nil, err
@@ -288,7 +292,7 @@ func (s *Service) packageWrite(ctx context.Context, op string, in Input) (any, e
 		if err := store.UpdateSearchIndex(ctx, st.DB, []int64{in.ID}); err != nil {
 			return nil, err
 		}
-		if err := st.AppendContentChange(ctx, in.ID); err != nil {
+		if err := st.AppendContentChange(ctx, in.ID, locales...); err != nil {
 			return nil, err
 		}
 		return result, nil

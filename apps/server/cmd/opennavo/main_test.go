@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestDockerfileLinksEveryCommand(t *testing.T) {
+func TestDockerfileLinksEntrypoints(t *testing.T) {
 	dockerfile, err := os.ReadFile("../../Dockerfile")
 	if err != nil {
 		t.Fatal(err)
@@ -20,7 +20,14 @@ func TestDockerfileLinksEveryCommand(t *testing.T) {
 	}
 	linked := strings.Fields(string(match[1]))
 	slices.Sort(linked)
-	if want := slices.Sorted(maps.Keys(commands)); !slices.Equal(linked, want) {
+	entrypoints := maps.Clone(commands)
+	// Offline maintenance is invoked as /opennavo assets-backfill through
+	// docker exec; it needs no additional Docker image entrypoint or symlink.
+	if entrypoints["assets-backfill"] == nil {
+		t.Fatal("assets-backfill must be registered as an opennavo subcommand")
+	}
+	delete(entrypoints, "assets-backfill")
+	if want := slices.Sorted(maps.Keys(entrypoints)); !slices.Equal(linked, want) {
 		t.Fatalf("the Dockerfile links %v; opennavo runs %v", linked, want)
 	}
 }

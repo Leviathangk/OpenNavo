@@ -78,8 +78,17 @@ func MapAdminError(err error) error {
 	}
 	return fmt.Errorf("admin data operation: %w", err)
 }
-func (s *Store) AppendContentChange(ctx context.Context, id int64) error {
-	return s.DB.WithContext(ctx).Exec("INSERT INTO catalog_changes(package_id,kind,token,op,reason) SELECT id,kind,token,'upsert','content' FROM packages WHERE id=?", id).Error
+
+// AppendContentChange preserves NULL as the legacy all-language scope.
+func (s *Store) AppendContentChange(ctx context.Context, id int64, locales ...string) error {
+	return s.DB.WithContext(ctx).Exec("INSERT INTO catalog_changes(package_id,kind,token,op,reason,locales) SELECT id,kind,token,'upsert','content',?::text[] FROM packages WHERE id=?", localeArray(locales), id).Error
+}
+
+func localeArray(locales []string) any {
+	if len(locales) == 0 {
+		return nil
+	}
+	return gorm.Expr("ARRAY(SELECT jsonb_array_elements_text(?::jsonb))", jsonText(locales))
 }
 func (s *Store) AssetByID(ctx context.Context, id int64) (Asset, error) {
 	var a Asset

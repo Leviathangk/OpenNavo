@@ -21,7 +21,7 @@ describe('imageSrcset', () => {
     expect(imageSrcset(undefined)).toBeUndefined();
   });
 
-  it('Lets the icon pick a rendition for its rendered size', () => {
+  it('Lets the icon pick a rendition for its rendered size', async () => {
     const wrapper = mount(OnAppIcon, {
       props: {
         kind: 'cask',
@@ -35,6 +35,8 @@ describe('imageSrcset', () => {
     const img = wrapper.find('img');
     expect(img.attributes('srcset')).toContain('app-128.webp 128w');
     expect(img.attributes('sizes')).toBe('44px');
+    await wrapper.setProps({ sizes: '(min-width: 1168px) 96px, calc(8.5714vw - 4.1143px)' });
+    expect(img.attributes('sizes')).toBe('(min-width: 1168px) 96px, calc(8.5714vw - 4.1143px)');
     const legacy = mount(OnAppIcon, {
       props: { kind: 'cask', token: 'app', name: 'App', src: 'https://cdn.opennavo.example/icons/app.png' }
     });

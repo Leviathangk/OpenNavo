@@ -110,6 +110,9 @@ def generate_files() -> dict[str, str]:
         disable_timestamp=True,
         field_constraints=True,
         strict_nullable=True,
+        # An omitted property is not JSON null. Preserve OpenAPI's distinction so
+        # tool schemas and Pydantic validation agree with the Go request validator.
+        use_missing_sentinel=True,
         use_annotated=True,
         use_standard_collections=True,
         use_union_operator=True,

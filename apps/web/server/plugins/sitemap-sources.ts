@@ -1,3 +1,5 @@
+import { createError } from 'h3';
+import { labelPath } from '../../shared/utils/backgroundLabels';
 import { randomUUID } from 'node:crypto';
 import type { PublicComponents } from '@opennavo/api';
 import { BRAND, LOCALES, VERSION_PAGE_MIN_NOTES } from '@opennavo/shared';
@@ -212,11 +214,29 @@ function cachedPackages(group: PackageGroup): Promise<SitemapRecord[]> {
 }
 
 async function readPackages(group: PackageGroup): Promise<SitemapRecord[]> {
-  const snapshot = await readSnapshot(group);
+  // A live rebuild reads every catalog page. Do not amplify a Redis outage with that work.
+  // Missing/evicted snapshots still use the existing live rebuild below.
+  const snapshot = await retrySnapshotRead(() => readSnapshot(group), group);
   // Without a complete snapshot the request waits for the catalog and fails if the API does.
   if (!snapshot) return rebuildPackages(group);
   if (snapshot.expires <= Date.now()) refreshPackages(group);
   return snapshot.records;
+}
+
+async function retrySnapshotRead<T>(read: () => Promise<T>, group: PackageGroup): Promise<T> {
+  try {
+    return await read();
+  } catch {
+    try {
+      const value = await read();
+      console.warn(`[opennavo] sitemap ${group} snapshot read recovered after retry`);
+      return value;
+    } catch {
+      // Do not log storage errors verbatim: driver errors can contain connection details.
+      console.warn(`[opennavo] sitemap ${group} snapshot read failed after retry; returning 503`);
+      throw createError({ statusCode: 503, statusMessage: 'Sitemap temporarily unavailable' });
+    }
+  }
 }
 
 async function readSnapshot(group: PackageGroup) {
@@ -442,9 +462,7 @@ const backgroundItemEntries = createStaleCache(
       }
     // No lastmod, like categories and browse: the content's checkedAt dates a verification, not a change,
     // so every re-check would move it.
-    return [...labels].flatMap(([label, locales]) =>
-      localizedEntries(`/background-items/${encodeURIComponent(label)}`, 'background-items', locales)
-    );
+    return [...labels].flatMap(([label, locales]) => localizedEntries(labelPath(label), 'background-items', locales));
   },
   {
     freshMs: SNAPSHOT_FRESH_MS,

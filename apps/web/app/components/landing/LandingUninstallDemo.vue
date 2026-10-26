@@ -45,6 +45,7 @@ const progress = computed(() => (step.value === 1 ? 38 : 84));
         :token="app.token"
         :name="app.name"
         :src="app.iconUrl"
+        :variants="app.iconVariants"
         :accent="app.accentColor"
         :size="28"
       />

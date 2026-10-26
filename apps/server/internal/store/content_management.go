@@ -199,9 +199,13 @@ func (s *Store) WriteContentText(ctx context.Context, ref content.Ref, locale st
 			return err
 		}
 	}
-	return s.ContentChanged(ctx, ref)
+	// Source edits also change fallback text and can withdraw stale derived rows.
+	if source || locale == "en-US" {
+		return s.ContentChanged(ctx, ref)
+	}
+	return s.ContentChanged(ctx, ref, locale)
 }
-func (s *Store) ContentChanged(ctx context.Context, ref content.Ref) error {
+func (s *Store) ContentChanged(ctx context.Context, ref content.Ref, locales ...string) error {
 	id := ref.ID
 	switch ref.Entity {
 	case "article", "article_author":
@@ -230,7 +234,7 @@ func (s *Store) ContentChanged(ctx context.Context, ref content.Ref) error {
 			}
 			paths = append(paths, bylines...)
 		}
-		if err := s.EnqueueArticlePages(ctx, paths); err != nil {
+		if err := s.EnqueueArticlePages(ctx, paths, locales...); err != nil {
 			return err
 		}
 		return QueueCacheInvalidation(ctx, s.DB, "translation:"+ref.Entity+":"+ref.Key(), ArticleCachePatterns(paths)...)
@@ -252,7 +256,7 @@ func (s *Store) ContentChanged(ctx context.Context, ref content.Ref) error {
 	if id == 0 {
 		return nil
 	}
-	return s.AppendContentChange(ctx, id)
+	return s.AppendContentChange(ctx, id, locales...)
 }
 func (s *Store) ContentView(ctx context.Context, ref content.Ref) (map[string]any, error) {
 	if !ref.Valid() {

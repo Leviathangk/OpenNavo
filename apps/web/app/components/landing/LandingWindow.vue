@@ -181,8 +181,10 @@ const RING = 2 * Math.PI * 7;
                       :token="featured.token"
                       :name="featured.displayName"
                       :src="featured.iconUrl"
+                      :variants="featured.iconVariants"
                       :accent="featured.accentColor"
                       :size="96"
+                      sizes="(min-width: 1168px) 96px, calc(8.5714vw - 4.1143px)"
                     />
                   </span>
                   <div class="relative box-border flex h-full max-w-480px flex-col justify-center pl-28px">

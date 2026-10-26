@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStorage } from 'unstorage';
 import memoryDriver from 'unstorage/drivers/memory';
-import { LOCALES } from '@opennavo/shared';
+import { labelPath } from '../shared/utils/backgroundLabels';
+import { LOCALES, LOCALE_METADATA } from '@opennavo/shared';
 import { boundedCache, MAX_CACHE_ENTRY_BYTES } from '../server/utils/boundedCache';
 import { packageSitemapName, packageSitemaps } from '../shared/utils/sitemapBuckets';
 
@@ -429,5 +430,61 @@ describe('sitemap source snapshot cache', () => {
     ]);
     // A re-check would move checkedAt without any change to the page, so the group carries no lastmod.
     expect(urls.some(url => 'lastmod' in url)).toBe(false);
+  });
+});
+
+describe('sitemap storage availability', () => {
+  it.each(['manifest', 'chunk'])('retries a %s timeout once and uses the existing snapshot', async kind => {
+    const { bucket, storage, packageCalls } = await setup(catalog(5));
+    const expected = await bucket('apps-bucket-0');
+    const calls = packageCalls();
+    const getItem = storage.getItem.bind(storage);
+    let failures = 0;
+    vi.spyOn(storage, 'getItem').mockImplementation(async (key, options) => {
+      const match = kind === 'manifest' ? key.includes('manifest') : key.includes('snapshots');
+      if (match && failures++ === 0) throw new Error('Command timed out');
+      return getItem(key, options);
+    });
+    const log = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await bucket('apps-bucket-0')).toEqual(expected);
+    expect(packageCalls()).toBe(calls);
+    expect(log).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['manifest', 'chunk'])(
+    'returns 503 after two %s failures, without live rebuilding or caching an empty result',
+    async kind => {
+      const { bucket, storage, packageCalls } = await setup(catalog(5));
+      const expected = await bucket('apps-bucket-0');
+      const calls = packageCalls();
+      const getItem = storage.getItem.bind(storage);
+      let failures = 0;
+      const read = vi.spyOn(storage, 'getItem').mockImplementation(async (key, options) => {
+        if (kind === 'manifest' ? key.includes('manifest') : key.includes('snapshots')) {
+          failures++;
+          throw new Error('Command timed out');
+        }
+        return getItem(key, options);
+      });
+      const log = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await expect(bucket('apps-bucket-0')).rejects.toMatchObject({ statusCode: 503 });
+      expect(failures).toBe(2);
+      expect(packageCalls()).toBe(calls);
+      expect(log).toHaveBeenCalledTimes(1);
+      read.mockRestore();
+      expect(await bucket('apps-bucket-0')).toEqual(expected);
+    }
+  );
+
+  it('builds the background group using labelPath for each language', async () => {
+    const { bucket, fetch } = await setup([]);
+    const labels = ['Google Drive', 'agent.*', 'agent(helper)', 'homebrew@16', 'a+b:c', 'literal%25'];
+    fetch.mockResolvedValue({
+      data: { total: labels.length, records: labels.map(label => ({ label, indexable: true })) }
+    });
+    const urls = await bucket('background-items');
+    expect(urls.map(entry => entry.loc)).toEqual(
+      labels.flatMap(label => LOCALES.map(locale => `${LOCALE_METADATA[locale].prefix}${labelPath(label)}`))
+    );
   });
 });

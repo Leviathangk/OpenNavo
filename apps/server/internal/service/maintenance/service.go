@@ -30,16 +30,24 @@ type Service struct {
 
 func VariantKeys(a store.Asset) []string {
 	out := []string{a.StorageKey}
+	seen := map[string]bool{a.StorageKey: true}
 	var files []store.AssetFile
 	if json.Unmarshal(a.Files, &files) == nil && len(files) > 0 {
-		seen := map[string]bool{a.StorageKey: true}
+		hasSource := false
 		for _, f := range files {
+			if f.StorageKey != "" && (f.Role == "normalized" || f.Role == "original") {
+				hasSource = true
+			}
 			if f.StorageKey != "" && !seen[f.StorageKey] {
 				out = append(out, f.StorageKey)
 				seen[f.StorageKey] = true
 			}
 		}
-		return out
+		// A backfilled legacy manifest may contain only new WebP renditions.
+		// Keep inferring its pre-manifest PNG siblings until source entries exist.
+		if hasSource {
+			return out
+		}
 	}
 	if a.MIME != "image/png" {
 		return out
@@ -54,8 +62,10 @@ func VariantKeys(a store.Asset) []string {
 		widths = []int{256, 512}
 	}
 	for _, width := range widths {
-		if width != a.Width {
-			out = append(out, base+"-"+strconv.Itoa(width)+".png")
+		key := base + "-" + strconv.Itoa(width) + ".png"
+		if !seen[key] {
+			out = append(out, key)
+			seen[key] = true
 		}
 	}
 	return out
@@ -68,6 +78,18 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 	changes, err := s.Store.PruneCatalogChanges(ctx, now.AddDate(0, 0, -14))
 	if err != nil {
 		return nil, err
+	}
+	// Bound each transaction and each daily run; a later run continues any backlog.
+	var notifications int64
+	for range 100 {
+		count, err := s.Store.PruneURLNotifications(ctx, now.Add(-store.URLNotificationRetention), store.URLNotificationPruneBatch)
+		if err != nil {
+			return nil, err
+		}
+		notifications += count
+		if count == 0 {
+			break
+		}
 	}
 	logs, err := s.Store.PruneLogs(ctx, now.AddDate(0, 0, -90))
 	if err != nil {
@@ -86,6 +108,6 @@ func (s *Service) Run(ctx context.Context) (map[string]any, error) {
 		}
 		return nil
 	})
-	return map[string]any{"catalogChanges": changes, "searchQueries": logs["search_queries"], "syncRuns": logs["sync_runs"], "agentWriteControls": logs["agent_write_controls"],
+	return map[string]any{"catalogChanges": changes, "urlNotifications": notifications, "searchQueries": logs["search_queries"], "syncRuns": logs["sync_runs"], "agentWriteControls": logs["agent_write_controls"],
 		"intentPageOrphans": orphans["package_intent_pages"], "seoOverrideOrphans": orphans["package_seo_overrides"], "assets": assets}, err
 }

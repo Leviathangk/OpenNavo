@@ -176,7 +176,7 @@ func (s *Store) deriveTraditional(ctx context.Context, ref content.Ref, hold boo
 	if err = s.DB.WithContext(ctx).Exec(`INSERT INTO derived_traditional(entity,object_key,simplified_hash,converter,before_data,after_data) VALUES(?,?,?,?,?::jsonb,?::jsonb) ON CONFLICT(entity,object_key) DO UPDATE SET before_data=CASE WHEN derived_traditional.restored_at IS NOT NULL THEN EXCLUDED.before_data ELSE derived_traditional.before_data END,simplified_hash=EXCLUDED.simplified_hash,converter=EXCLUDED.converter,after_data=EXCLUDED.after_data,updated_at=clock_timestamp(),restored_at=NULL`, ref.Entity, ref.Key(), hash, traditional.Version, backup, string(after)).Error; err != nil {
 		return traditionalUnchanged, err
 	}
-	if err = s.ContentChanged(ctx, ref); err != nil {
+	if err = s.ContentChanged(ctx, ref, traditional.Locale); err != nil {
 		return traditionalUnchanged, err
 	}
 	return traditionalWritten, s.QueueTranslationInvalidation(ctx, ref)
@@ -290,7 +290,7 @@ func (s *Store) RollbackTraditional(ctx context.Context, dryRun bool) (map[strin
 							return err
 						}
 					} else {
-						if err := st.ContentChanged(ctx, ref); err != nil {
+						if err := st.ContentChanged(ctx, ref, traditional.Locale); err != nil {
 							return err
 						}
 						if err := st.QueueTranslationInvalidation(ctx, ref); err != nil {
@@ -343,7 +343,7 @@ func (s *Store) removeTraditional(ctx context.Context, ref content.Ref, hold boo
 	if err := s.DB.WithContext(ctx).Exec("DELETE FROM "+spec.Table+" WHERE "+where+" AND locale='zh-Hant'", args...).Error; err != nil {
 		return traditionalUnchanged, err
 	}
-	if err := s.ContentChanged(ctx, ref); err != nil {
+	if err := s.ContentChanged(ctx, ref, traditional.Locale); err != nil {
 		return traditionalUnchanged, err
 	}
 	return traditionalWritten, s.QueueTranslationInvalidation(ctx, ref)

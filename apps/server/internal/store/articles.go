@@ -317,35 +317,35 @@ func (s *Store) LiveCaskIDs(ctx context.Context, tokens []string) (map[string]in
 }
 
 // EnqueueContentURLs records page changes for the URL change feed (paths without language prefix).
-func (s *Store) EnqueueContentURLs(ctx context.Context, paths []string, announce bool) error {
+func (s *Store) EnqueueContentURLs(ctx context.Context, paths []string, announce bool, locales ...string) error {
 	if len(paths) == 0 {
 		return nil
 	}
 	// Each row permits at most 100 paths. One INSERT keeps all batches atomic,
 	// both on its own and within the caller's business transaction.
 	values := make([]string, 0, (len(paths)+99)/100)
-	args := make([]any, 0, 2*cap(values))
+	args := make([]any, 0, 3*cap(values))
 	for batch := range slices.Chunk(paths, 100) {
 		data, err := json.Marshal(batch)
 		if err != nil {
 			return err
 		}
-		values = append(values, "(ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?)")
-		args = append(args, string(data), announce)
+		values = append(values, "(ARRAY(SELECT jsonb_array_elements_text(?::jsonb)),?,?::text[])")
+		args = append(args, string(data), announce, localeArray(locales))
 	}
-	return s.DB.WithContext(ctx).Exec("INSERT INTO content_url_changes(paths,announce) VALUES"+strings.Join(values, ","), args...).Error
+	return s.DB.WithContext(ctx).Exec("INSERT INTO content_url_changes(paths,announce,locales) VALUES"+strings.Join(values, ","), args...).Error
 }
 
 // EnqueueArticlePages queues changed article pages to be refreshed and announced; the feeds are
 // refreshed too but never announced.
-func (s *Store) EnqueueArticlePages(ctx context.Context, paths []string) error {
+func (s *Store) EnqueueArticlePages(ctx context.Context, paths []string, locales ...string) error {
 	if len(paths) == 0 {
 		return nil
 	}
-	if err := s.EnqueueContentURLs(ctx, paths, true); err != nil {
+	if err := s.EnqueueContentURLs(ctx, paths, true, locales...); err != nil {
 		return err
 	}
-	return s.EnqueueContentURLs(ctx, []string{articles.FeedPath}, false)
+	return s.EnqueueContentURLs(ctx, []string{articles.FeedPath}, false, locales...)
 }
 
 // ArticleCachePatterns lists the API caches behind changed article pages: every article read, and

@@ -20,25 +20,7 @@ export const BACKGROUND_QUERY_BYTES = 255;
 const encoder = new TextEncoder();
 const byteLength = (text: string) => encoder.encode(text).length;
 
-/**
- * A label the API can look up (facts.ValidBackgroundLabel): 1–255 bytes, no surrounding spaces, no
- * slash, backslash, ? or #, and no control characters. Anything else is a 404 before any request.
- */
-export function isValidLabel(label: string): boolean {
-  const bytes = byteLength(label);
-  return bytes > 0 && bytes <= 255 && label.trim() === label && !/[/\\?#]/.test(label) && !/\p{Cc}/u.test(label);
-}
-
-/**
- * The page path of a label. Characters a path segment may hold stay as they are (homebrew.mxcl.postgresql@16
- * keeps its @), everything else is percent-encoded, so a label has exactly one address.
- */
-export function labelPath(label: string): string {
-  const segment = encodeURIComponent(label).replace(/%(40|2B|3A)/gi, (_, hex: string) =>
-    String.fromCharCode(Number.parseInt(hex, 16))
-  );
-  return `/background-items/${segment}`;
-}
+export { isValidLabel, labelPath } from '#shared/utils/backgroundLabels';
 
 /**
  * Search text as the API takes it: trimmed, and cut to whole characters within 255 bytes. A repeated

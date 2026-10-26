@@ -1,4 +1,5 @@
 import { isValidToken, SITE_LOCALES, LOCALE_METADATA } from '@opennavo/shared';
+import { decodeLabelSegment, labelPath } from '../../shared/utils/backgroundLabels';
 import { GRID_PAGE_SIZE, isGridListPath } from '../../shared/utils/gridPage';
 
 /** Route codes of the prefixed languages (zh, ja, …). */
@@ -80,6 +81,30 @@ function tokenPath(path: string): string {
   return parts.join('/');
 }
 
+/** A label page or its Nuxt payload, after route names and locale prefixes are normalized. */
+export function backgroundItemRoute(url: string) {
+  const queryAt = url.indexOf('?');
+  const path = queryAt < 0 ? url : url.slice(0, queryAt);
+  const parts = path.split('/');
+  const at = LOCALE_SEGMENTS.has(parts[1] ?? '') ? 2 : 1;
+  if (parts[at] !== 'background-items' || !parts[at + 1]) return undefined;
+  if (parts.length !== at + 2 && !(parts.length === at + 3 && parts[at + 2] === '_payload.json')) return undefined;
+  return {
+    label: decodeLabelSegment(parts[at + 1]!),
+    prefix: parts.slice(0, at).join('/'),
+    suffix: parts[at + 2] ? '/_payload.json' : '',
+    query: queryAt < 0 ? '' : url.slice(queryAt)
+  };
+}
+
+/** Only the label is decoded before Nuxt re-encodes event.path; invalid segments stay untouched. */
+export function backgroundItemRenderUrl(url: string): string {
+  const route = backgroundItemRoute(url);
+  return route?.label === undefined
+    ? url
+    : `${route.prefix}/background-items/${route.label}${route.suffix}${route.query}`;
+}
+
 /**
  * Query parameters that only ever produced duplicate URLs: returnTo (S3; the return position now
  * travels in history.state) and a grid list's size (S2; the web has one page size). Both answer in the
@@ -109,15 +134,19 @@ function canonicalQuery(path: string, query: string): string {
  * pages canonicalize to: lowercase, no trailing slash (only the root keeps its slash), no /en prefix
  * for the default language, and package tokens spelled out. The query string is kept as it is,
  * apart from returnTo and grid list sizes (canonicalQuery).
- * Page paths never need escapes once tokens are spelled out, so a path that keeps one is not a page
- * and answers 404 where it is, rather than after a redirect.
+ * Background labels keep the escapes labelPath requires; malformed labels and escaped non-label
+ * paths stay where they are and are rejected by their handlers.
  */
 export function canonicalRequestUrl(url: string): string | undefined {
   const queryAt = url.indexOf('?');
   const path = queryAt < 0 ? url : url.slice(0, queryAt);
   if (!path.startsWith('/') || path.startsWith('//')) return undefined;
-  const target = tokenPath(pagePath(path) ?? path);
-  if (target.includes('%')) return undefined;
+  let target = tokenPath(pagePath(path) ?? path);
+  const background = backgroundItemRoute(target);
+  if (background) {
+    if (background.label === undefined) return undefined;
+    target = `${background.prefix}${labelPath(background.label)}${background.suffix}`;
+  } else if (target.includes('%')) return undefined;
   const query = queryAt < 0 ? undefined : url.slice(queryAt + 1);
   const clean = query === undefined || pagePath(path) === undefined ? query : canonicalQuery(target, query);
   if (target === path && clean === query) return undefined;

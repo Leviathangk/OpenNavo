@@ -118,6 +118,7 @@ const href = (item: AlternativeFact) =>
           :token="item.package.token"
           :name="item.package.displayName"
           :src="item.package.iconUrl"
+          :variants="item.package.iconVariants"
           :accent="item.package.accentColor"
           :size="40"
         />

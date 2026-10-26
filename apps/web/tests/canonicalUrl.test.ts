@@ -1,6 +1,7 @@
+import { decodeLabelSegment, labelPath } from '../shared/utils/backgroundLabels';
 import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { canonicalRequestUrl, PAGE_SECTIONS } from '../server/utils/canonicalUrl';
+import { backgroundItemRenderUrl, canonicalRequestUrl, PAGE_SECTIONS } from '../server/utils/canonicalUrl';
 
 describe('One-hop canonical page URLs', () => {
   it('redirects trailing slashes, uppercase and the /en prefix, keeping the query', () => {
@@ -119,4 +120,54 @@ it('preserves case-sensitive background item identifiers while normalizing route
   expect(canonicalRequestUrl('/background-items/com.Vendor.Agent')).toBeUndefined();
   expect(canonicalRequestUrl('/EN/Background-Items/com.Vendor.Agent/')).toBe('/background-items/com.Vendor.Agent');
   expect(canonicalRequestUrl('/ZH/Background-Items/com.Vendor.Agent/')).toBe('/zh/background-items/com.Vendor.Agent');
+});
+
+describe('background label URLs', () => {
+  it.each([
+    'Google Drive',
+    'Vitamin-R 4',
+    'com.steinberg.dorico.*',
+    "Agent (helper)'!",
+    'homebrew@16',
+    'a+b:c',
+    '后台项目',
+    'literal%25',
+    'literal%2F'
+  ])('round trips %s exactly once through SSR', label => {
+    const canonical = labelPath(label);
+    for (const prefix of ['', '/zh', '/zh-hant']) {
+      expect(canonicalRequestUrl(prefix + canonical)).toBeUndefined();
+      expect(backgroundItemRenderUrl(prefix + canonical + '?ref=a%2Bb')).toBe(
+        `${prefix}/background-items/${label}?ref=a%2Bb`
+      );
+      expect(decodeLabelSegment(canonical.split('/').at(-1)!)).toBe(label);
+    }
+  });
+
+  it('escapes punctuation but keeps @ + : and redirects aliases without loops', () => {
+    expect(labelPath("a*()'!@+:")).toBe('/background-items/a%2A%28%29%27%21@+:');
+    for (const [from, label] of [
+      ['com.steinberg.dorico.*', 'com.steinberg.dorico.*'],
+      ['Agent(helper)', 'Agent(helper)'],
+      ['helper%40v1%2B%3A', 'helper@v1+:'],
+      ['com.agent.%2a', 'com.agent.*']
+    ]) {
+      const target = `/zh${labelPath(label!)}`;
+      expect(canonicalRequestUrl(`/ZH/Background-Items/${from}/?ref=x`)).toBe(`${target}?ref=x`);
+      expect(canonicalRequestUrl(target)).toBeUndefined();
+    }
+    expect(backgroundItemRenderUrl('/fr/background-items/Google%20Drive/_payload.json?_b=1')).toBe(
+      '/fr/background-items/Google Drive/_payload.json?_b=1'
+    );
+  });
+
+  it.each(['bad%ZZ', 'bad%E0%A4%A', 'a%2Fb', 'a%5Cb', 'a%3Fb', 'a%23b', 'a%00b', '%20agent'])(
+    'does not decode or redirect invalid segment %s',
+    segment => {
+      const path = `/zh/background-items/${segment}`;
+      expect(decodeLabelSegment(segment)).toBeUndefined();
+      expect(backgroundItemRenderUrl(path)).toBe(path);
+      expect(canonicalRequestUrl(path)).toBeUndefined();
+    }
+  );
 });

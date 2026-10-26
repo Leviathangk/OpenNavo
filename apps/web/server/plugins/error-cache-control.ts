@@ -1,8 +1,26 @@
+import { getQuery, getResponseHeader, setHeader, type H3Event } from 'h3';
+
+function isSitemapError(event: H3Event) {
+  // Nuxt's HTML error render uses an internal URL; its headers are copied to the original response.
+  const path = event.path.startsWith('/__nuxt_error') ? String(getQuery(event).url ?? '') : event.path;
+  return /^\/(?:__sitemap__\/|sitemap[^/]*\.xml)/.test(path);
+}
+
+function errorCacheHeaders(event: H3Event, status: number) {
+  if (status < 400) return;
+  for (const name of ['Cache-Control', 'CDN-Cache-Control', 'Cloudflare-CDN-Cache-Control'])
+    setHeader(event, name, 'no-store');
+  if (status === 503 && !getResponseHeader(event, 'retry-after')) {
+    setHeader(event, 'retry-after', isSitemapError(event) ? 120 : 5);
+  }
+}
+
 export default defineNitroPlugin(nitro => {
-  nitro.hooks.hook('beforeResponse', event => {
-    if (event.node.res.statusCode >= 400) {
-      setHeader(event, 'cache-control', 'no-store');
-      if (event.node.res.statusCode === 503) setHeader(event, 'retry-after', 5);
-    }
+  // H3 can send thrown JSON errors directly, bypassing beforeResponse. Set the headers before
+  // its error handler sends them, and also cover responses whose status was set while rendering.
+  nitro.hooks.hook('error', (error, { event }) => {
+    if (event && (error as { statusCode?: number }).statusCode === 503 && isSitemapError(event))
+      errorCacheHeaders(event, 503);
   });
+  nitro.hooks.hook('beforeResponse', event => errorCacheHeaders(event, event.node.res.statusCode));
 });

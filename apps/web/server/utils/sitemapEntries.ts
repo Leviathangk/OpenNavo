@@ -4,12 +4,16 @@ import { hreflangValues } from '../../shared/utils/hreflang';
 /**
  * Sitemap URL for a page path, spelled the way pages link and canonicalize it. Tokens and slugs are
  * URL-safe as they are (a-z 0-9 - + @ . _), so encodeURI leaves them alone and only escapes
- * characters that should never occur. Entries are marked _encoded: @nuxtjs/sitemap would otherwise
+ * characters that should never occur, preserving labelPath’s already escaped segments. Entries are
+ * marked _encoded: @nuxtjs/sitemap would otherwise
  * run its own encodePath over each loc (not over alternates), which turns + into %2B, a URL that
  * server/middleware/package-canonical.ts answers with a 301.
  */
 function sitemapHref(path: string): string {
-  return encodeURI(path);
+  return path
+    .split(/(%[0-9a-f]{2})/gi)
+    .map(part => (/^%[0-9a-f]{2}$/i.test(part) ? part : encodeURI(part)))
+    .join('');
 }
 
 /**

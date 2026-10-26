@@ -7,15 +7,20 @@ groups:
         labels: {severity: critical}
         annotations: {summary: 'Catalog synchronization has not succeeded for over an hour'}
       - alert: QueueBacklog
-        expr: sum(asynq_queue_size) > 10000
+        expr: sum(max by(queue,state) (asynq_queue_size{state=~"pending|retry"})) > 10000
         for: 5m
         labels: {severity: warning}
-        annotations: {summary: 'Task queue backlog exceeds ten thousand'}
-      - alert: LLMTokenBudget
-        expr: max(llm_month_tokens) / max(llm_month_token_budget) > 0.8
+        annotations: {summary: 'Pending and retry task backlog exceeds ten thousand'}
+      - alert: QueueLatency
+        expr: max(asynq_queue_latency_seconds) > 300
         for: 5m
         labels: {severity: warning}
-        annotations: {summary: 'Monthly LLM tokens exceed 80 percent of budget'}
+        annotations: {summary: 'Oldest pending task has waited over five minutes'}
+      - alert: QueueMetricsUnavailable
+        expr: max(opennavo_queue_metrics_collection_success) == 0
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: 'Asynq queue metrics could not be collected'}
       - alert: APIErrorRate
         expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 0.001) > 0.01
         for: 5m

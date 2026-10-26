@@ -22,7 +22,7 @@ const delay = (key: (typeof cards)[number]) => ({ '--landing-delay': `${(cards.i
         data-reveal
         :style="delay('handoff')"
       >
-        <LandingHandoffDemo v-if="first" :app="first" />
+        <LazyLandingHandoffDemo v-if="first" :app="first" />
       </LandingMoreCard>
       <LandingMoreCard
         :title="t('landing.more.mirrors.title')"
@@ -30,7 +30,7 @@ const delay = (key: (typeof cards)[number]) => ({ '--landing-delay': `${(cards.i
         data-reveal
         :style="delay('mirrors')"
       >
-        <LandingMirrorDemo />
+        <LazyLandingMirrorDemo />
       </LandingMoreCard>
       <LandingMoreCard
         :title="t('landing.more.brewfile.title')"
@@ -38,7 +38,7 @@ const delay = (key: (typeof cards)[number]) => ({ '--landing-delay': `${(cards.i
         data-reveal
         :style="delay('brewfile')"
       >
-        <LandingBrewfileDemo :apps="apps" />
+        <LazyLandingBrewfileDemo :apps="apps" />
       </LandingMoreCard>
       <LandingMoreCard
         :title="t('landing.more.search.title')"
@@ -46,7 +46,7 @@ const delay = (key: (typeof cards)[number]) => ({ '--landing-delay': `${(cards.i
         data-reveal
         :style="delay('search')"
       >
-        <LandingSearchDemo :app="vscode" />
+        <LazyLandingSearchDemo :app="vscode" />
       </LandingMoreCard>
       <LandingMoreCard
         :title="t('landing.more.languages.title')"
@@ -54,7 +54,7 @@ const delay = (key: (typeof cards)[number]) => ({ '--landing-delay': `${(cards.i
         data-reveal
         :style="delay('languages')"
       >
-        <LandingLanguageDemo :count="count" />
+        <LazyLandingLanguageDemo :count="count" />
       </LandingMoreCard>
       <LandingMoreCard
         :title="t('landing.more.privacy.title')"
@@ -62,7 +62,7 @@ const delay = (key: (typeof cards)[number]) => ({ '--landing-delay': `${(cards.i
         data-reveal
         :style="delay('privacy')"
       >
-        <LandingPrivacyDemo />
+        <LazyLandingPrivacyDemo />
       </LandingMoreCard>
     </div>
   </section>

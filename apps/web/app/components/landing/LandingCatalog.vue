@@ -42,11 +42,16 @@ const stats = computed(() =>
   ].filter(stat => stat.value > 0)
 );
 
-// At least eight items per row, wider than a wide viewport; duplicate for seamless looping.
+// One copy in SSR; the deferred hydration adds the second copy before starting the loop.
+const looping = ref(false);
+onMounted(() => {
+  looping.value = true;
+});
+// At least eight items per row, wider than a wide viewport.
 const rows = computed(() =>
   marqueeRows(props.apps, 2, 8).map((items, index) => ({
     key: index,
-    items: [...items, ...items],
+    items: looping.value ? [...items, ...items] : items,
     reverse: index % 2 === 1,
     duration: `${items.length * 3.6}s`
   }))
@@ -84,7 +89,10 @@ const rows = computed(() =>
         class="landing-marquee-row overflow-hidden"
         :style="{ '--landing-marquee-duration': row.duration }"
       >
-        <div class="landing-marquee-track flex w-max" :class="row.reverse ? 'landing-marquee-reverse' : ''">
+        <div
+          class="landing-marquee-track flex w-max"
+          :class="{ 'landing-marquee-reverse': row.reverse, 'landing-marquee-looping': looping }"
+        >
           <NuxtLink
             v-for="(pkg, index) in row.items"
             :key="index"
@@ -97,6 +105,7 @@ const rows = computed(() =>
               :token="pkg.token"
               :name="pkg.displayName"
               :src="pkg.iconUrl"
+              :variants="pkg.iconVariants"
               :accent="pkg.accentColor"
               :size="32"
             />
@@ -145,7 +154,7 @@ const rows = computed(() =>
   mask: linear-gradient(90deg, transparent, var(--on-text-primary) 12%, var(--on-text-primary) 88%, transparent);
 }
 
-.landing-marquee-track {
+.landing-marquee-looping {
   animation: landing-marquee var(--landing-marquee-duration, 48s) linear infinite;
 }
 

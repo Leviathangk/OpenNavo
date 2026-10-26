@@ -183,3 +183,37 @@ func TestBrandPlanPurgesRedirectAndDownloadWithoutAnnouncingOverview(t *testing.
 		require.NotContains(t, plan.IndexNowURLs, "https://opennavo.example"+prefix+"/apps/opennavo")
 	}
 }
+
+func TestBuildPlanMergesLanguageScopes(t *testing.T) {
+	for _, scopes := range []struct {
+		name     string
+		values   [][]string
+		expected []string
+	}{
+		{"union", [][]string{{"zh-Hant"}, {"ja-JP", "zh-Hant"}}, []string{"ja-JP", "zh-Hant"}},
+		{"legacy first", [][]string{nil, {"zh-Hant"}}, seo.Locales},
+		{"legacy last", [][]string{{"zh-Hant"}, nil}, seo.Locales},
+		{"legacy only", [][]string{nil}, seo.Locales},
+	} {
+		t.Run(scopes.name, func(t *testing.T) {
+			changes := []store.URLChange{}
+			for _, scope := range scopes.values {
+				changes = append(changes, store.URLChange{PackageID: 1, Token: "editor", Reason: "content", Locales: scope})
+			}
+			row := indexRow(1, "editor")
+			row.PublishedLocales = seo.Locales
+			plan := BuildPlan(changes, map[int64]store.URLChange{1: {Token: "editor"}}, map[int64]store.IndexRow{1: row}, seo.Policy{Mode: "shadow", OpenLocales: []string{"en-US", "ja-JP"}}, "https://site.example")
+			require.Len(t, plan.Paths, len(scopes.expected))
+			for _, locale := range scopes.expected {
+				require.Contains(t, plan.Paths, localePrefix(locale)+"/apps/editor")
+			}
+			require.NotContains(t, plan.IndexNowURLs, "https://site.example/zh-hant/apps/editor")
+		})
+	}
+}
+
+func TestScopedContentDoesNotAnnounceClosedRemovedPage(t *testing.T) {
+	plan := BuildPlan([]store.URLChange{{PackageID: 1, Token: "removed", Reason: "content", Locales: []string{"zh-Hant"}}}, map[int64]store.URLChange{1: {Token: "removed", Op: "delete"}}, nil, seo.Policy{OpenLocales: []string{"en-US"}}, "https://site.example")
+	require.Equal(t, []string{"/zh-hant/apps/removed"}, plan.Paths)
+	require.Empty(t, plan.IndexNowURLs)
+}

@@ -4,6 +4,7 @@
 from __future__ import annotations
 from typing import Annotated, Any, Literal
 from pydantic import AnyUrl, AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, RootModel
+from pydantic.experimental.missing_sentinel import MISSING
 from typing_extensions import TypeAliasType
 from datetime import date as date_aliased
 
@@ -30,16 +31,16 @@ class TranslationViolation(BaseModel):
         extra='forbid',
     )
     rule: str
-    field: str | None = None
-    missing: Annotated[list[str] | None, Field(max_length=10)] = None
-    extra: Annotated[list[str] | None, Field(max_length=10)] = None
-    term: str | None = None
-    expected: str | None = None
-    expectedCount: int | None = None
-    actualCount: int | None = None
-    limit: int | None = None
-    length: int | None = None
-    sourceLength: int | None = None
+    field: str | MISSING = MISSING
+    missing: Annotated[list[str] | MISSING, Field(max_length=10)] = MISSING
+    extra: Annotated[list[str] | MISSING, Field(max_length=10)] = MISSING
+    term: str | MISSING = MISSING
+    expected: str | MISSING = MISSING
+    expectedCount: int | MISSING = MISSING
+    actualCount: int | MISSING = MISSING
+    limit: int | MISSING = MISSING
+    length: int | MISSING = MISSING
+    sourceLength: int | MISSING = MISSING
 
 
 class ArticleClaim(BaseModel):
@@ -48,12 +49,12 @@ class ArticleClaim(BaseModel):
     )
     text: Annotated[str, Field(examples=['Example App supports macOS.'], max_length=20000)]
     kind: Annotated[Literal['factual', 'test'], Field(examples=['factual'])]
-    evidenceId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    excerpt: Annotated[str | None, Field(examples=['Example App supports macOS.'], max_length=20000)] = None
-    packageId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    appVersion: Annotated[str | None, Field(examples=[''], max_length=100)] = None
-    region: Annotated[str | None, Field(examples=['ZZ'], max_length=2, pattern='^[A-Z]{2}$')] = None
-    testArtifactId: Annotated[int | None, Field(examples=[1], ge=1)] = None
+    evidenceId: Annotated[int | MISSING, Field(examples=[1], ge=1)] = MISSING
+    excerpt: Annotated[str | MISSING, Field(examples=['Example App supports macOS.'], max_length=20000)] = MISSING
+    packageId: Annotated[int | None | MISSING, Field(examples=[1], ge=1)] = MISSING
+    appVersion: Annotated[str | MISSING, Field(examples=[''], max_length=100)] = MISSING
+    region: Annotated[str | MISSING, Field(examples=['ZZ'], max_length=2, pattern='^[A-Z]{2}$')] = MISSING
+    testArtifactId: Annotated[int | None | MISSING, Field(examples=[1], ge=1)] = MISSING
 
 
 class ArticleSeoTarget(BaseModel):
@@ -83,7 +84,7 @@ class ArticleEvidenceCapture(BaseModel):
     )
     url: AnyUrl
     excerpt: Annotated[str, Field(max_length=20000, min_length=1)]
-    packageId: Annotated[int | None, Field(ge=1)] = None
+    packageId: Annotated[int | None | MISSING, Field(ge=1)] = MISSING
     idempotencyKey: Annotated[str, Field(max_length=200, min_length=8)]
 
 
@@ -190,7 +191,7 @@ class AppIntegration(BaseModel):
     )
     kind: Literal['mcp', 'skill']
     name: Annotated[str, Field(max_length=160, min_length=1)]
-    appVersion: Annotated[str | None, Field(max_length=100)] = None
+    appVersion: Annotated[str | MISSING, Field(max_length=100)] = MISSING
     repositoryUrl: AnyUrl
     version: Annotated[str, Field(max_length=100, min_length=1)]
     installation: Installation
@@ -236,28 +237,28 @@ class ComparisonAttribute(BaseModel):
         extra='forbid',
     )
     name: Literal['open_source', 'offline', 'apple_silicon', 'import_formats', 'export_formats']
-    appVersion: str | None = None
-    booleanValue: bool | None = None
-    formats: list[str] | None = None
+    appVersion: str | MISSING = MISSING
+    booleanValue: bool | MISSING = MISSING
+    formats: list[str] | MISSING = MISSING
 
 
 class SecurityObservation(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    appVersion: str | None = None
-    developer: Annotated[str | None, Field(max_length=160)] = None
-    teamId: Annotated[str | None, Field(pattern='^[A-Z0-9]{10}$')] = None
+    appVersion: str | MISSING = MISSING
+    developer: Annotated[str | MISSING, Field(max_length=160)] = MISSING
+    teamId: Annotated[str | MISSING, Field(pattern='^[A-Z0-9]{10}$')] = MISSING
     channels: list[Literal['homebrew', 'vendor', 'app_store']]
     openSource: Literal[True, False, 'unknown']
-    repositoryUrl: AnyUrl | None = None
-    productCpe: str | None = None
+    repositoryUrl: AnyUrl | MISSING = MISSING
+    productCpe: str | MISSING = MISSING
 
 
 class FactRecordEvidence(BaseModel):
     sourceUrl: str
     checkedAt: Annotated[AwareDatetime | None, Field(...)]
-    validUntil: Annotated[AwareDatetime | None, Field(description='Omit or send null to use checkedAt plus 30 days. An explicit value must be later than checkedAt.')] = None
+    validUntil: Annotated[AwareDatetime | None | MISSING, Field(description='Omit or send null to use checkedAt plus 30 days. An explicit value must be later than checkedAt.')] = MISSING
     status: Literal['verified', 'stale', 'needs_review', 'unknown']
 
 
@@ -270,8 +271,8 @@ class PriceObservation(BaseModel):
     period: Literal['free', 'one_time', 'monthly', 'yearly', 'unknown']
     usage: Literal['free', 'free_with_iap', 'paid', 'subscription', 'trial', 'unknown']
     downloadFree: bool
-    amount: Annotated[str | None, Field(pattern='^(0|[1-9][0-9]{0,9})(\\.[0-9]{1,6})?$')] = None
-    currency: Annotated[str | None, Field(pattern='^[A-Z]{3}$')] = None
+    amount: Annotated[str | MISSING, Field(pattern='^(0|[1-9][0-9]{0,9})(\\.[0-9]{1,6})?$')] = MISSING
+    currency: Annotated[str | MISSING, Field(pattern='^[A-Z]{3}$')] = MISSING
     purchaseUrl: AnyUrl
     channel: Literal['vendor', 'app_store']
 
@@ -298,9 +299,9 @@ class Notes(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    format: Literal['text', 'markdown', 'html'] | None = None
-    body: str | None = None
-    url: AnyUrl | None = None
+    format: Literal['text', 'markdown', 'html'] | MISSING = MISSING
+    body: str | MISSING = MISSING
+    url: AnyUrl | MISSING = MISSING
 
 
 class UpdateFile(BaseModel):
@@ -323,7 +324,7 @@ class Variant(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    match: Annotated[dict[str, MatchAdditionalProperty] | None, Field(max_length=8)] = None
+    match: Annotated[dict[str, MatchAdditionalProperty] | MISSING, Field(max_length=8)] = MISSING
     url: AnyUrl
     architecture: Literal['arm64', 'x86_64', 'universal']
 
@@ -332,22 +333,22 @@ class VendorResolver(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    scopePath: Annotated[str | None, Field(max_length=256)] = None
-    match: Annotated[dict[str, MatchAdditionalProperty] | None, Field(max_length=8)] = None
-    httpsUpgrade: bool | None = None
+    scopePath: Annotated[str | MISSING, Field(max_length=256)] = MISSING
+    match: Annotated[dict[str, MatchAdditionalProperty] | MISSING, Field(max_length=8)] = MISSING
+    httpsUpgrade: bool | MISSING = MISSING
     mode: Literal['json', 'text', 'redirect', 'sparkle', 'electron']
-    versionKey: Literal['CFBundleShortVersionString', 'CFBundleVersion', 'Wave Build Version Number'] | None = None
-    versionPath: Annotated[str | None, Field(max_length=256)] = None
-    versionPattern: Annotated[str | None, Field(max_length=2048)] = None
-    downloadPath: Annotated[str | None, Field(max_length=256)] = None
-    downloadPattern: Annotated[str | None, Field(max_length=2048)] = None
-    downloadUrl: Annotated[str | None, Field(max_length=4096)] = None
-    sha256Path: Annotated[str | None, Field(max_length=256)] = None
-    sha256Pattern: Annotated[str | None, Field(max_length=2048)] = None
-    checksumForUrl: bool | None = None
-    fileName: Annotated[str | None, Field(max_length=255)] = None
-    architecture: Literal['arm64', 'x86_64', 'universal'] | None = None
-    variants: Annotated[list[Variant] | None, Field(max_length=4)] = None
+    versionKey: Literal['CFBundleShortVersionString', 'CFBundleVersion', 'Wave Build Version Number'] | MISSING = MISSING
+    versionPath: Annotated[str | MISSING, Field(max_length=256)] = MISSING
+    versionPattern: Annotated[str | MISSING, Field(max_length=2048)] = MISSING
+    downloadPath: Annotated[str | MISSING, Field(max_length=256)] = MISSING
+    downloadPattern: Annotated[str | MISSING, Field(max_length=2048)] = MISSING
+    downloadUrl: Annotated[str | MISSING, Field(max_length=4096)] = MISSING
+    sha256Path: Annotated[str | MISSING, Field(max_length=256)] = MISSING
+    sha256Pattern: Annotated[str | MISSING, Field(max_length=2048)] = MISSING
+    checksumForUrl: bool | MISSING = MISSING
+    fileName: Annotated[str | MISSING, Field(max_length=255)] = MISSING
+    architecture: Literal['arm64', 'x86_64', 'universal'] | MISSING = MISSING
+    variants: Annotated[list[Variant] | MISSING, Field(max_length=4)] = MISSING
 
 
 class UpdateFeedKey(BaseModel):
@@ -362,15 +363,15 @@ class UpdateFeedInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    githubRepo: Annotated[str | None, Field(pattern='^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$')] = None
-    assetPattern: Annotated[str | None, Field(max_length=2048)] = None
-    resolver: VendorResolver | None = None
+    githubRepo: Annotated[str | None | MISSING, Field(pattern='^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$')] = MISSING
+    assetPattern: Annotated[str | None | MISSING, Field(max_length=2048)] = MISSING
+    resolver: VendorResolver | MISSING = MISSING
     bundleId: Annotated[str, Field(max_length=255, pattern='^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)+$')]
     source: Literal['sparkle', 'electron', 'github', 'vendor']
-    feedUrl: AnyUrl | None = None
-    teamId: Annotated[str | None, Field(pattern='^[A-Z0-9]{10}$')] = None
+    feedUrl: AnyUrl | MISSING = MISSING
+    teamId: Annotated[str | None | MISSING, Field(pattern='^[A-Z0-9]{10}$')] = MISSING
     channel: Literal['stable', 'beta'] = 'stable'
-    packageId: Annotated[int | None, Field(ge=1)] = None
+    packageId: Annotated[int | None | MISSING, Field(ge=1)] = MISSING
 
 
 class ReleaseAsset(BaseModel):
@@ -405,16 +406,16 @@ class Notes1(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[str | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[str | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[str | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[str | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[str | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[str | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[str | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[str | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[str | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[str | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[str | None | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[str | None | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[str | None | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[str | None | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[str | None | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[str | None | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[str | None | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[str | None | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[str | None | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[str | None | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class LinkInfo(BaseModel):
@@ -434,16 +435,16 @@ class AssetRules(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    arm64: str | None = None
-    x86_64: str | None = None
-    universal: str | None = None
+    arm64: str | MISSING = MISSING
+    x86_64: str | MISSING = MISSING
+    universal: str | MISSING = MISSING
 
 
 class GitHubSettingsUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    token: Annotated[str | None, Field(description='GitHub PAT; empty/omitted preserves the existing token. Whitespace and non-ASCII characters are rejected.', max_length=4096, pattern='^[!-~]*$')] = None
+    token: Annotated[str | MISSING, Field(description='GitHub PAT; empty/omitted preserves the existing token. Whitespace and non-ASCII characters are rejected.', max_length=4096, pattern='^[!-~]*$')] = MISSING
     clearToken: Annotated[bool, Field(description='Clear the admin-stored token and use unauthenticated requests afterward.')] = False
 
 
@@ -460,7 +461,7 @@ class PackageIndexOverride(BaseModel):
         extra='forbid',
     )
     override: Literal['auto', 'index', 'noindex']
-    reason: Annotated[str | None, Field(description='Required for index and noindex.', max_length=500)] = None
+    reason: Annotated[str | MISSING, Field(description='Required for index and noindex.', max_length=500)] = MISSING
 
 
 class IndexReportRow(BaseModel):
@@ -674,7 +675,7 @@ class JobType(RootModel[Literal['catalog_sync', 'analytics_sync', 'snapshot_buil
 class EmptyResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: dict[str, Any] | None = None
+    data: dict[str, Any] | None | MISSING = MISSING
 
 
 class Data2(BaseModel):
@@ -696,10 +697,10 @@ class AssetRef(BaseModel):
 
 
 class AuditFields(BaseModel):
-    createBy: Annotated[str | None, Field(examples=[None])] = None
-    createTime: Annotated[AwareDatetime | None, Field(examples=['2026-09-30T08:00:00+00:00'])] = None
-    updateBy: Annotated[str | None, Field(examples=[None])] = None
-    updateTime: Annotated[AwareDatetime | None, Field(examples=['2026-09-30T08:00:00+00:00'])] = None
+    createBy: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    createTime: Annotated[AwareDatetime | MISSING, Field(examples=['2026-09-30T08:00:00+00:00'])] = MISSING
+    updateBy: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    updateTime: Annotated[AwareDatetime | MISSING, Field(examples=['2026-09-30T08:00:00+00:00'])] = MISSING
 
 
 class LoginRequest(BaseModel):
@@ -724,9 +725,9 @@ class UserInfo(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
-    nickName: Annotated[str | None, Field(examples=['本地管理员'], max_length=64)] = None
-    email: Annotated[EmailStr | None, Field(examples=[None])] = None
-    avatarUrl: Annotated[str | None, Field(examples=[None])] = None
+    nickName: Annotated[str | MISSING, Field(examples=['本地管理员'], max_length=64)] = MISSING
+    email: Annotated[EmailStr | None | MISSING, Field(examples=[None])] = MISSING
+    avatarUrl: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class PasswordChange(BaseModel):
@@ -766,7 +767,7 @@ class UsageOverview(BaseModel):
     timeZone: Literal['Asia/Shanghai']
     asOf: AwareDatetime
     days: list[Day]
-    countries: Annotated[list[Country] | None, Field(description="Today's active installations/browsers by last observed request country. ZZ means unknown; no raw IP is retained in usage records.")] = None
+    countries: Annotated[list[Country] | MISSING, Field(description="Today's active installations/browsers by last observed request country. ZZ means unknown; no raw IP is retained in usage records.")] = MISSING
     versions: Annotated[list[Version1], Field(description="Today's active desktop installations, one most-recent version per installation.")]
 
 
@@ -790,15 +791,15 @@ class Coverage(BaseModel):
 
 class Jobs(BaseModel):
     failed24h: Annotated[int, Field(examples=[1])]
-    lastCatalogSyncAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    lastAnalyticsSyncAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    lastSnapshotAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    lastCatalogSyncAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    lastAnalyticsSyncAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    lastSnapshotAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class Snapshot(BaseModel):
     cursor: Annotated[int, Field(examples=[1])]
     itemCount: Annotated[int, Field(examples=[60])]
-    url: Annotated[str | None, Field(examples=[None])] = None
+    url: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class CategoryBrief(BaseModel):
@@ -809,20 +810,20 @@ class CategoryBrief(BaseModel):
 
 class PackageCategoryAssignment(BaseModel):
     categoryId: Annotated[int, Field(examples=[1])]
-    slug: Annotated[str | None, Field(examples=['new-mac'])] = None
-    name: Annotated[str | None, Field(examples=['Visual Studio Code'])] = None
+    slug: Annotated[str | MISSING, Field(examples=['new-mac'])] = MISSING
+    name: Annotated[str | MISSING, Field(examples=['Visual Studio Code'])] = MISSING
     isPrimary: Annotated[bool, Field(examples=[True])]
     source: Annotated[Literal['rule', 'llm', 'human'], Field(examples=['rule'])]
-    confidence: Annotated[float | None, Field(examples=[None])] = None
+    confidence: Annotated[float | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class Meta(BaseModel):
-    developer: Annotated[str | None, Field(examples=['Microsoft'])] = None
-    repoUrl: Annotated[str | None, Field(examples=['https://github.com/microsoft/vscode'])] = None
-    tags: list[str] | None = None
-    notes: Annotated[str | None, Field(examples=['本地演示数据'])] = None
-    accentColor: Annotated[str | None, Field(examples=[None])] = None
-    iconSource: Annotated[Literal['manual', 'harvester', 'homepage'] | None, Field(examples=['manual'])] = None
+    developer: Annotated[str | None | MISSING, Field(examples=['Microsoft'])] = MISSING
+    repoUrl: Annotated[str | None | MISSING, Field(examples=['https://github.com/microsoft/vscode'])] = MISSING
+    tags: list[str] | MISSING = MISSING
+    notes: Annotated[str | None | MISSING, Field(examples=['本地演示数据'])] = MISSING
+    accentColor: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    iconSource: Annotated[Literal['manual', 'harvester', 'homepage'] | None | MISSING, Field(examples=['manual'])] = MISSING
 
 
 class Tag(RootModel[str]):
@@ -830,21 +831,21 @@ class Tag(RootModel[str]):
 
 
 class PackageMetaUpdate(BaseModel):
-    downloadSize: Annotated[int | None, Field(description='Default Apple Silicon download size in bytes; null clears it, and version changes trigger a new probe.', examples=[317901801], ge=0)] = None
-    accentColor: Annotated[str | None, Field(description='Primary color; null clears it, and setting an icon recalculates it.', examples=['#336699'], pattern='^#[0-9A-Fa-f]{6}$')] = None
-    developer: Annotated[str | None, Field(examples=[None], max_length=120)] = None
-    repoUrl: Annotated[str | None, Field(examples=[None], max_length=300)] = None
-    hidden: Annotated[bool | None, Field(examples=[False])] = None
-    editorChoice: Annotated[bool | None, Field(examples=[False])] = None
-    tags: Annotated[list[Tag] | None, Field(max_length=10)] = None
-    notes: Annotated[str | None, Field(examples=[None], max_length=2000)] = None
+    downloadSize: Annotated[int | None | MISSING, Field(description='Default Apple Silicon download size in bytes; null clears it, and version changes trigger a new probe.', examples=[317901801], ge=0)] = MISSING
+    accentColor: Annotated[str | None | MISSING, Field(description='Primary color; null clears it, and setting an icon recalculates it.', examples=['#336699'], pattern='^#[0-9A-Fa-f]{6}$')] = MISSING
+    developer: Annotated[str | None | MISSING, Field(examples=[None], max_length=120)] = MISSING
+    repoUrl: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
+    hidden: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    editorChoice: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    tags: Annotated[list[Tag] | MISSING, Field(max_length=10)] = MISSING
+    notes: Annotated[str | None | MISSING, Field(examples=[None], max_length=2000)] = MISSING
 
 
 class PackageI18nUpdate(BaseModel):
-    displayName: Annotated[str | None, Field(examples=[None], max_length=60)] = None
-    summary: Annotated[str | None, Field(examples=[None], max_length=120)] = None
-    description: Annotated[str | None, Field(description='Introduction in Markdown, at most 20,000 characters; field name remains description.', examples=[None], max_length=20000)] = None
-    sourceLocale: Locale | None = None
+    displayName: Annotated[str | None | MISSING, Field(examples=[None], max_length=60)] = MISSING
+    summary: Annotated[str | None | MISSING, Field(examples=[None], max_length=120)] = MISSING
+    description: Annotated[str | None | MISSING, Field(description='Introduction in Markdown, at most 20,000 characters; field name remains description.', examples=[None], max_length=20000)] = MISSING
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class Item(BaseModel):
@@ -859,25 +860,25 @@ class PackageCategoriesUpdate(BaseModel):
 class PackageVersion(BaseModel):
     id: Annotated[int, Field(examples=[1])]
     version: Annotated[str, Field(examples=['1.140.0'])]
-    firstSeenAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    brewCommittedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    brewCommitSha: Annotated[str | None, Field(examples=[None])] = None
-    releaseId: Annotated[int | None, Field(examples=[None])] = None
-    hasEditorial: Annotated[bool | None, Field(examples=[False])] = None
-    editorialReleaseId: Annotated[int | None, Field(examples=[None], ge=0)] = None
-    editorialScope: Annotated[Literal['build', 'base', 'none'] | None, Field(description='Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes', examples=['base'])] = None
+    firstSeenAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    brewCommittedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    brewCommitSha: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    releaseId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
+    hasEditorial: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    editorialReleaseId: Annotated[int | None | MISSING, Field(examples=[None], ge=0)] = MISSING
+    editorialScope: Annotated[Literal['build', 'base', 'none'] | MISSING, Field(description='Which editorial note this build shows: build = notes it owns; base = the note shared by its base version; none = no editorial notes', examples=['base'])] = MISSING
 
 
 class CategoryI18n(BaseModel):
-    seoTitle: Annotated[str | None, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = None
-    seoDescription: Annotated[str | None, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = None
+    seoTitle: Annotated[str | None | MISSING, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = MISSING
+    seoDescription: Annotated[str | None | MISSING, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = MISSING
     name: Annotated[str, Field(examples=['Visual Studio Code'], max_length=30)]
-    description: Annotated[str | None, Field(examples=[None], max_length=200)] = None
+    description: Annotated[str | None | MISSING, Field(examples=[None], max_length=200)] = MISSING
 
 
 class Item1(BaseModel):
     id: Annotated[int, Field(examples=[1])]
-    parentId: Annotated[int | None, Field(examples=[None])] = None
+    parentId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
     sort: Annotated[int, Field(examples=[0])]
 
 
@@ -886,23 +887,23 @@ class CategoryOrder(BaseModel):
 
 
 class CollectionI18n(BaseModel):
-    seoTitle: Annotated[str | None, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = None
-    seoDescription: Annotated[str | None, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = None
+    seoTitle: Annotated[str | None | MISSING, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = MISSING
+    seoDescription: Annotated[str | None | MISSING, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = MISSING
     title: Annotated[str, Field(examples=['Visual Studio Code'], max_length=40)]
-    subtitle: Annotated[str | None, Field(examples=[None], max_length=80)] = None
-    body: Annotated[str | None, Field(examples=[None], max_length=10000)] = None
+    subtitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=80)] = MISSING
+    body: Annotated[str | None | MISSING, Field(examples=[None], max_length=10000)] = MISSING
 
 
 class PublishRequest(BaseModel):
-    publishAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    publishAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class FeatureI18n(BaseModel):
-    badge: Annotated[str | None, Field(examples=[None], max_length=12)] = None
+    badge: Annotated[str | None | MISSING, Field(examples=[None], max_length=12)] = MISSING
     title: Annotated[str, Field(examples=['Visual Studio Code'], max_length=30)]
-    subtitle: Annotated[str | None, Field(examples=[None], max_length=30)] = None
-    body: Annotated[str | None, Field(description='Only **bold** markup is allowed', examples=[None], max_length=120)] = None
-    ctaLabel: Annotated[str | None, Field(examples=[None], max_length=10)] = None
+    subtitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=30)] = MISSING
+    body: Annotated[str | None | MISSING, Field(description='Only **bold** markup is allowed', examples=[None], max_length=120)] = MISSING
+    ctaLabel: Annotated[str | None | MISSING, Field(examples=[None], max_length=10)] = MISSING
 
 
 class ChangelogSource(BaseModel):
@@ -912,9 +913,9 @@ class ChangelogSource(BaseModel):
     priority: Annotated[int, Field(examples=[1])]
     enabled: Annotated[bool, Field(examples=[True])]
     resolvedBy: Annotated[Literal['auto', 'manual'], Field(examples=['auto'])]
-    lastFetchedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    lastFetchedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
     lastStatus: Annotated[Literal['never', 'ok', 'not_modified', 'error', 'rate_limited', 'not_found'], Field(examples=['never'])]
-    lastError: Annotated[str | None, Field(examples=[None])] = None
+    lastError: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     failCount: Annotated[int, Field(examples=[1])]
     nextFetchAt: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
 
@@ -929,36 +930,36 @@ class ReleaseSection(BaseModel):
 
 
 class AdminRelease(BaseModel):
-    revision: Annotated[int | None, Field(description='Revision the release writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
+    revision: Annotated[int | MISSING, Field(description='Revision the release writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = MISSING
     id: Annotated[int, Field(examples=[1])]
     packageId: Annotated[int, Field(examples=[1])]
     kind: PackageKind
     token: Annotated[str, Field(examples=['visual-studio-code'])]
     packageName: Annotated[str, Field(examples=['Visual Studio Code'])]
     version: Annotated[str, Field(examples=['1.140.0'])]
-    buildVersion: Annotated[str | None, Field(description='Full build version (0.1,49) when these editorial notes belong to one build; null for notes shared by a base version', examples=[None])] = None
-    title: Annotated[str | None, Field(examples=[None])] = None
-    publishedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    buildVersion: Annotated[str | None | MISSING, Field(description='Full build version (0.1,49) when these editorial notes belong to one build; null for notes shared by a base version', examples=[None])] = MISSING
+    title: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    publishedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
     source: ReleaseSource
-    sourceUrl: Annotated[str | None, Field(examples=[None])] = None
+    sourceUrl: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     hidden: Annotated[bool, Field(examples=[False])]
     isPrerelease: Annotated[bool, Field(examples=[False])]
     translationStatus: ReleaseTranslationStatus
     fetchedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
-    sourceLocale: Locale | None = None
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class ReleaseUpdate(BaseModel):
-    hidden: Annotated[bool | None, Field(examples=[False])] = None
-    title: Annotated[str | None, Field(examples=[None])] = None
+    hidden: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    title: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class ReleaseI18nUpdate(BaseModel):
-    summary: Annotated[str | None, Field(examples=[None], max_length=160)] = None
+    summary: Annotated[str | None | MISSING, Field(examples=[None], max_length=160)] = MISSING
     sections: Annotated[list[ReleaseSection], Field(max_length=8)]
-    bodyMarkdown: Annotated[str | None, Field(examples=[None], max_length=200000)] = None
-    sourceLocale: Locale | None = None
-    title: Annotated[str | None, Field(examples=[None], max_length=300)] = None
+    bodyMarkdown: Annotated[str | None | MISSING, Field(examples=[None], max_length=200000)] = MISSING
+    sourceLocale: Locale | MISSING = MISSING
+    title: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
 
 
 class TranslationApproveRequest(BaseModel):
@@ -970,13 +971,13 @@ class JobRun(BaseModel):
     id: Annotated[int, Field(examples=[1])]
     jobType: Annotated[str, Field(examples=['本地演示样本'])]
     trigger: Annotated[Literal['schedule', 'manual', 'event'], Field(examples=['schedule'])]
-    triggeredBy: Annotated[str | None, Field(examples=[None])] = None
+    triggeredBy: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     status: Annotated[Literal['running', 'succeeded', 'failed', 'partial'], Field(examples=['running'])]
     stats: dict[str, Any]
-    error: Annotated[str | None, Field(examples=[None])] = None
+    error: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     startedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
-    finishedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    durationMs: Annotated[int | None, Field(examples=[None])] = None
+    finishedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    durationMs: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class TapPackage(BaseModel):
@@ -1015,7 +1016,7 @@ class TapPackageAdd(BaseModel):
 class TapPackageListResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: TapPackageList | None = None
+    data: TapPackageList | MISSING = MISSING
 
 
 class TapPackageListResponseResult(RootModel[TapPackageListResponse | BusinessErrorResponse]):
@@ -1025,7 +1026,7 @@ class TapPackageListResponseResult(RootModel[TapPackageListResponse | BusinessEr
 class TapPackageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: TapPackage | None = None
+    data: TapPackage | MISSING = MISSING
 
 
 class TapPackageResponseResult(RootModel[TapPackageResponse | BusinessErrorResponse]):
@@ -1049,7 +1050,7 @@ class QueryStat(BaseModel):
     count: Annotated[int, Field(examples=[1])]
     zeroResultCount: Annotated[int, Field(examples=[1])]
     clickCount: Annotated[int, Field(examples=[1])]
-    topClicked: Annotated[str | None, Field(description='Most-clicked token', examples=[None])] = None
+    topClicked: Annotated[str | None | MISSING, Field(description='Most-clicked token', examples=[None])] = MISSING
 
 
 class Synonym(AuditFields):
@@ -1074,32 +1075,32 @@ class Link(RootModel[AnyUrl]):
 class Feedback(BaseModel):
     id: Annotated[int, Field(examples=[1])]
     type: FeedbackType
-    packageId: Annotated[int | None, Field(examples=[None])] = None
-    packageKind: PackageKind | None = None
-    packageToken: Annotated[str | None, Field(examples=[None])] = None
-    packageName: Annotated[str | None, Field(examples=[None])] = None
+    packageId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
+    packageKind: PackageKind | None | MISSING = MISSING
+    packageToken: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    packageName: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     content: Annotated[str, Field(examples=['希望补充该应用的中文使用说明。'])]
-    contact: Annotated[str | None, Field(examples=[None])] = None
+    contact: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     platform: Annotated[Literal['web', 'desktop'], Field(examples=['web'])]
-    appVersion: Annotated[str | None, Field(examples=[None])] = None
-    osVersion: Annotated[str | None, Field(examples=[None])] = None
-    errorCode: Annotated[str | None, Field(examples=[None])] = None
+    appVersion: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    osVersion: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    errorCode: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     status: FeedbackStatus
-    handlerNote: Annotated[str | None, Field(examples=[None])] = None
-    handledBy: Annotated[str | None, Field(examples=[None])] = None
-    handledAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    handlerNote: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    handledBy: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    handledAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
     createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
-    packageVersion: Annotated[str | None, Field(max_length=100)] = None
-    macosVersion: Annotated[str | None, Field(max_length=100)] = None
-    symptom: Annotated[str | None, Field(max_length=500)] = None
-    diagnosticLog: Annotated[str | None, Field(description='Private diagnostic text, at most 16 KiB UTF-8; secrets and personal paths are redacted before storage.', max_length=16384)] = None
-    links: Annotated[list[Link] | None, Field(max_length=3)] = None
-    visibility: Literal['private'] | None = None
+    packageVersion: Annotated[str | None | MISSING, Field(max_length=100)] = MISSING
+    macosVersion: Annotated[str | None | MISSING, Field(max_length=100)] = MISSING
+    symptom: Annotated[str | None | MISSING, Field(max_length=500)] = MISSING
+    diagnosticLog: Annotated[str | None | MISSING, Field(description='Private diagnostic text, at most 16 KiB UTF-8; secrets and personal paths are redacted before storage.', max_length=16384)] = MISSING
+    links: Annotated[list[Link] | MISSING, Field(max_length=3)] = MISSING
+    visibility: Literal['private'] | MISSING = MISSING
 
 
 class FeedbackUpdate(BaseModel):
     status: FeedbackStatus
-    handlerNote: Annotated[str | None, Field(examples=[None], max_length=2000)] = None
+    handlerNote: Annotated[str | None | MISSING, Field(examples=[None], max_length=2000)] = MISSING
 
 
 class Asset(BaseModel):
@@ -1107,8 +1108,8 @@ class Asset(BaseModel):
     kind: AssetKind
     url: Annotated[str, Field(examples=['https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png'])]
     mime: Annotated[str, Field(examples=['image/png'])]
-    width: Annotated[int | None, Field(examples=[256])] = None
-    height: Annotated[int | None, Field(examples=[256])] = None
+    width: Annotated[int | None | MISSING, Field(examples=[256])] = MISSING
+    height: Annotated[int | None | MISSING, Field(examples=[256])] = MISSING
     bytes: Annotated[int, Field(examples=[12000])]
     sha256: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])]
     createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
@@ -1123,7 +1124,7 @@ class AssetUploadTicketCreate(BaseModel):
         extra='forbid',
     )
     kind: AssetUploadTicketKind
-    sourceUrl: Annotated[AnyUrl | None, Field(description='Optional provenance recorded on the uploaded asset; never downloaded.', examples=['https://code.visualstudio.com/'])] = None
+    sourceUrl: Annotated[AnyUrl | MISSING, Field(description='Optional provenance recorded on the uploaded asset; never downloaded.', examples=['https://code.visualstudio.com/'])] = MISSING
 
 
 class AssetUploadTicket(BaseModel):
@@ -1141,13 +1142,13 @@ class AssetUploadTicket(BaseModel):
 class AssetUploadTicketResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: AssetUploadTicket | None = None
+    data: AssetUploadTicket | None | MISSING = MISSING
 
 
 class DesktopArtifact(BaseModel):
     target: Annotated[Literal['darwin-aarch64', 'darwin-x86_64', 'dmg-universal'], Field(examples=['darwin-aarch64'])]
     url: Annotated[str, Field(examples=['https://cdn.opennavo.example/desktop/stable/0.3.0/OpenNavo_darwin-aarch64.app.tar.gz'])]
-    signature: Annotated[str | None, Field(description='Tauri updater signature (.sig file contents); null for DMG', examples=[None])] = None
+    signature: Annotated[str | None | MISSING, Field(description='Tauri updater signature (.sig file contents); null for DMG', examples=[None])] = MISSING
     bytes: Annotated[int, Field(examples=[24000000])]
     sha256: Annotated[str, Field(examples=['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'])]
 
@@ -1155,50 +1156,50 @@ class DesktopArtifact(BaseModel):
 class AppConfigItem(BaseModel):
     key: Annotated[str, Field(examples=['desktop.minSupportedVersion'])]
     value: Annotated[dict[str, Any] | str | float | bool | list[Any], Field(description='Any JSON value (string, number, boolean, object, array or null)', examples=[None])]
-    description: Annotated[str | None, Field(examples=['最低客户端版本'])] = None
-    updateBy: Annotated[str | None, Field(examples=['local-admin'])] = None
-    updateTime: Annotated[AwareDatetime | None, Field(examples=['2026-09-30T08:00:00+00:00'])] = None
+    description: Annotated[str | None | MISSING, Field(examples=['最低客户端版本'])] = MISSING
+    updateBy: Annotated[str | None | MISSING, Field(examples=['local-admin'])] = MISSING
+    updateTime: Annotated[AwareDatetime | MISSING, Field(examples=['2026-09-30T08:00:00+00:00'])] = MISSING
 
 
 class AppConfigUpdate(BaseModel):
     value: Annotated[dict[str, Any] | str | float | bool | list[Any], Field(description='Any JSON value (string, number, boolean, object, array or null)', examples=[None])]
-    description: Annotated[str | None, Field(examples=['最低客户端版本'])] = None
+    description: Annotated[str | None | MISSING, Field(examples=['最低客户端版本'])] = MISSING
 
 
 class AdminUser(AuditFields):
     id: Annotated[int, Field(examples=[1])]
     userName: Annotated[str, Field(examples=['local-admin'])]
     nickName: Annotated[str, Field(examples=['本地管理员'])]
-    email: Annotated[str | None, Field(examples=[None])] = None
-    avatarUrl: Annotated[str | None, Field(examples=[None])] = None
+    email: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    avatarUrl: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     status: EnableStatus
     roles: list[str]
-    lastLoginAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    lastLoginIp: Annotated[str | None, Field(examples=[None])] = None
-    locked: Annotated[bool | None, Field(examples=[False])] = None
+    lastLoginAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    lastLoginIp: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    locked: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
 
 
 class AdminUserCreate(BaseModel):
     userName: Annotated[str, Field(examples=['local-admin'], pattern='^[a-zA-Z0-9_.-]{3,32}$')]
     password: Annotated[str, Field(examples=['local-development-only'], max_length=128, min_length=10)]
     nickName: Annotated[str, Field(examples=['本地管理员'], max_length=64)]
-    email: Annotated[EmailStr | None, Field(examples=[None])] = None
+    email: Annotated[EmailStr | None | MISSING, Field(examples=[None])] = MISSING
     status: EnableStatus
     roles: Annotated[list[str], Field(min_length=1)]
 
 
 class AdminUserUpdate(BaseModel):
-    nickName: Annotated[str | None, Field(examples=['本地管理员'], max_length=64)] = None
-    email: Annotated[EmailStr | None, Field(examples=[None])] = None
-    status: EnableStatus | None = None
-    roles: list[str] | None = None
+    nickName: Annotated[str | MISSING, Field(examples=['本地管理员'], max_length=64)] = MISSING
+    email: Annotated[EmailStr | None | MISSING, Field(examples=[None])] = MISSING
+    status: EnableStatus | MISSING = MISSING
+    roles: list[str] | MISSING = MISSING
 
 
 class Role(BaseModel):
     id: Annotated[int, Field(examples=[1])]
     roleCode: Annotated[str, Field(examples=['R_EDITOR'])]
     roleName: Annotated[str, Field(examples=['编辑'])]
-    roleDesc: Annotated[str | None, Field(examples=[None])] = None
+    roleDesc: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     status: EnableStatus
     builtin: Annotated[bool, Field(examples=[True])]
     permissionCodes: list[str]
@@ -1208,7 +1209,7 @@ class Role(BaseModel):
 class RoleUpsert(BaseModel):
     roleCode: Annotated[str, Field(examples=['R_EDITOR'], pattern='^R_[A-Z0-9_]+$')]
     roleName: Annotated[str, Field(examples=['编辑'], max_length=32)]
-    roleDesc: Annotated[str | None, Field(examples=[None], max_length=200)] = None
+    roleDesc: Annotated[str | None | MISSING, Field(examples=[None], max_length=200)] = MISSING
     status: EnableStatus
 
 
@@ -1220,38 +1221,38 @@ class Permission(BaseModel):
     code: Annotated[str, Field(examples=['catalog:package:view'])]
     name: Annotated[str, Field(examples=['查看包'])]
     group: Annotated[str, Field(examples=['catalog'])]
-    agentGrantable: Annotated[bool | None, Field(examples=[False])] = None
+    agentGrantable: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
 
 
 class AuditLog(BaseModel):
     id: Annotated[int, Field(examples=[1])]
-    actorId: Annotated[int | None, Field(examples=[None])] = None
-    actorName: Annotated[str | None, Field(examples=[None])] = None
+    actorId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
+    actorName: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     action: Annotated[str, Field(examples=['catalog.package.update'])]
     entityType: Annotated[str, Field(examples=['package'])]
     entityId: Annotated[str, Field(examples=['1'])]
-    before: dict[str, Any] | None = None
-    after: dict[str, Any] | None = None
-    ip: Annotated[str | None, Field(examples=[None])] = None
+    before: dict[str, Any] | None | MISSING = MISSING
+    after: dict[str, Any] | None | MISSING = MISSING
+    ip: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
 
 
 class LoginTokenResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: LoginToken | None = None
+    data: LoginToken | None | MISSING = MISSING
 
 
 class UserInfoResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: UserInfo | None = None
+    data: UserInfo | None | MISSING = MISSING
 
 
 class AdminUserResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: AdminUser | None = None
+    data: AdminUser | None | MISSING = MISSING
 
 
 class Data4(BaseModel):
@@ -1264,13 +1265,13 @@ class Data4(BaseModel):
 class PackageVersionPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data4 | None = None
+    data: Data4 | None | MISSING = MISSING
 
 
 class ChangelogSourceListResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: list[ChangelogSource] | None = None
+    data: list[ChangelogSource] | None | MISSING = MISSING
 
 
 class Data7(BaseModel):
@@ -1283,7 +1284,7 @@ class Data7(BaseModel):
 class AdminReleasePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data7 | None = None
+    data: Data7 | None | MISSING = MISSING
 
 
 class Data9(BaseModel):
@@ -1296,19 +1297,19 @@ class Data9(BaseModel):
 class JobRunPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data9 | None = None
+    data: Data9 | None | MISSING = MISSING
 
 
 class JobRunResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: JobRun | None = None
+    data: JobRun | None | MISSING = MISSING
 
 
 class QueueStatListResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: list[QueueStat] | None = None
+    data: list[QueueStat] | None | MISSING = MISSING
 
 
 class Data10(BaseModel):
@@ -1321,7 +1322,7 @@ class Data10(BaseModel):
 class QueryStatPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data10 | None = None
+    data: Data10 | None | MISSING = MISSING
 
 
 class Data11(BaseModel):
@@ -1334,7 +1335,7 @@ class Data11(BaseModel):
 class SynonymPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data11 | None = None
+    data: Data11 | None | MISSING = MISSING
 
 
 class Data12(BaseModel):
@@ -1347,13 +1348,13 @@ class Data12(BaseModel):
 class FeedbackPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data12 | None = None
+    data: Data12 | None | MISSING = MISSING
 
 
 class FeedbackResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Feedback | None = None
+    data: Feedback | None | MISSING = MISSING
 
 
 class Data13(BaseModel):
@@ -1366,19 +1367,19 @@ class Data13(BaseModel):
 class AssetPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data13 | None = None
+    data: Data13 | None | MISSING = MISSING
 
 
 class AssetResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Asset | None = None
+    data: Asset | None | MISSING = MISSING
 
 
 class AppConfigListResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: list[AppConfigItem] | None = None
+    data: list[AppConfigItem] | None | MISSING = MISSING
 
 
 class Data15(BaseModel):
@@ -1391,19 +1392,19 @@ class Data15(BaseModel):
 class AdminUserPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data15 | None = None
+    data: Data15 | None | MISSING = MISSING
 
 
 class RoleListResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: list[Role] | None = None
+    data: list[Role] | None | MISSING = MISSING
 
 
 class PermissionListResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: list[Permission] | None = None
+    data: list[Permission] | None | MISSING = MISSING
 
 
 class Data16(BaseModel):
@@ -1416,7 +1417,7 @@ class Data16(BaseModel):
 class AuditLogPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data16 | None = None
+    data: Data16 | None | MISSING = MISSING
 
 
 class TranslationStatus(RootModel[Literal['source', 'machine', 'manual', 'pending', 'failed']]):
@@ -1427,150 +1428,150 @@ class LocalizedNullableString(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[str | None, Field(alias='en-US', examples=[None])] = None
-    zh_CN: Annotated[str | None, Field(alias='zh-CN', examples=[None])] = None
-    ja_JP: Annotated[str | None, Field(alias='ja-JP', examples=[None])] = None
-    es_ES: Annotated[str | None, Field(alias='es-ES', examples=[None])] = None
-    pt_BR: Annotated[str | None, Field(alias='pt-BR', examples=[None])] = None
-    ru_RU: Annotated[str | None, Field(alias='ru-RU', examples=[None])] = None
-    de_DE: Annotated[str | None, Field(alias='de-DE', examples=[None])] = None
-    fr_FR: Annotated[str | None, Field(alias='fr-FR', examples=[None])] = None
-    it_IT: Annotated[str | None, Field(alias='it-IT', examples=[None])] = None
-    zh_Hant: Annotated[str | None, Field(alias='zh-Hant', examples=[None])] = None
+    en_US: Annotated[str | None | MISSING, Field(alias='en-US', examples=[None])] = MISSING
+    zh_CN: Annotated[str | None | MISSING, Field(alias='zh-CN', examples=[None])] = MISSING
+    ja_JP: Annotated[str | None | MISSING, Field(alias='ja-JP', examples=[None])] = MISSING
+    es_ES: Annotated[str | None | MISSING, Field(alias='es-ES', examples=[None])] = MISSING
+    pt_BR: Annotated[str | None | MISSING, Field(alias='pt-BR', examples=[None])] = MISSING
+    ru_RU: Annotated[str | None | MISSING, Field(alias='ru-RU', examples=[None])] = MISSING
+    de_DE: Annotated[str | None | MISSING, Field(alias='de-DE', examples=[None])] = MISSING
+    fr_FR: Annotated[str | None | MISSING, Field(alias='fr-FR', examples=[None])] = MISSING
+    it_IT: Annotated[str | None | MISSING, Field(alias='it-IT', examples=[None])] = MISSING
+    zh_Hant: Annotated[str | None | MISSING, Field(alias='zh-Hant', examples=[None])] = MISSING
 
 
 class CategoryI18nView(BaseModel):
-    seoTitle: Annotated[str | None, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = None
-    seoDescription: Annotated[str | None, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = None
+    seoTitle: Annotated[str | None | MISSING, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = MISSING
+    seoDescription: Annotated[str | None | MISSING, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = MISSING
     name: Annotated[str, Field(examples=['Visual Studio Code'], max_length=30)]
-    description: Annotated[str | None, Field(examples=[None], max_length=200)] = None
+    description: Annotated[str | None | MISSING, Field(examples=[None], max_length=200)] = MISSING
     status: TranslationStatus
     sourceLocale: Locale
-    sourceHash: Annotated[str | None, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = None
-    model: Annotated[str | None, Field(examples=[None])] = None
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    sourceHash: Annotated[str | None | MISSING, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = MISSING
+    model: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    translatedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class CategoryI18nMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[CategoryI18n | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[CategoryI18n | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[CategoryI18n | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[CategoryI18n | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[CategoryI18n | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[CategoryI18n | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[CategoryI18n | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[CategoryI18n | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[CategoryI18n | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[CategoryI18n | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[CategoryI18n | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[CategoryI18n | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[CategoryI18n | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[CategoryI18n | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[CategoryI18n | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[CategoryI18n | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[CategoryI18n | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[CategoryI18n | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[CategoryI18n | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[CategoryI18n | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class CategoryI18nViewMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[CategoryI18nView | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[CategoryI18nView | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[CategoryI18nView | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[CategoryI18nView | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[CategoryI18nView | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[CategoryI18nView | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[CategoryI18nView | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[CategoryI18nView | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[CategoryI18nView | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[CategoryI18nView | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[CategoryI18nView | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[CategoryI18nView | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[CategoryI18nView | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[CategoryI18nView | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[CategoryI18nView | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[CategoryI18nView | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[CategoryI18nView | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[CategoryI18nView | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[CategoryI18nView | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[CategoryI18nView | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class CollectionI18nView(BaseModel):
-    seoTitle: Annotated[str | None, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = None
-    seoDescription: Annotated[str | None, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = None
+    seoTitle: Annotated[str | None | MISSING, Field(description='Localized search title; blank uses the default page title.', examples=[None], max_length=120)] = MISSING
+    seoDescription: Annotated[str | None | MISSING, Field(description='Localized search description; blank uses the default page description.', examples=[None], max_length=300)] = MISSING
     title: Annotated[str, Field(examples=['Visual Studio Code'], max_length=40)]
-    subtitle: Annotated[str | None, Field(examples=[None], max_length=80)] = None
-    body: Annotated[str | None, Field(examples=[None], max_length=10000)] = None
+    subtitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=80)] = MISSING
+    body: Annotated[str | None | MISSING, Field(examples=[None], max_length=10000)] = MISSING
     status: TranslationStatus
     sourceLocale: Locale
-    sourceHash: Annotated[str | None, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = None
-    model: Annotated[str | None, Field(examples=[None])] = None
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    sourceHash: Annotated[str | None | MISSING, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = MISSING
+    model: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    translatedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class CollectionI18nMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[CollectionI18n | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[CollectionI18n | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[CollectionI18n | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[CollectionI18n | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[CollectionI18n | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[CollectionI18n | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[CollectionI18n | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[CollectionI18n | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[CollectionI18n | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[CollectionI18n | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[CollectionI18n | None | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[CollectionI18n | None | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[CollectionI18n | None | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[CollectionI18n | None | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[CollectionI18n | None | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[CollectionI18n | None | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[CollectionI18n | None | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[CollectionI18n | None | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[CollectionI18n | None | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[CollectionI18n | None | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class CollectionI18nViewMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[CollectionI18nView | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[CollectionI18nView | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[CollectionI18nView | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[CollectionI18nView | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[CollectionI18nView | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[CollectionI18nView | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[CollectionI18nView | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[CollectionI18nView | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[CollectionI18nView | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[CollectionI18nView | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[CollectionI18nView | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[CollectionI18nView | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[CollectionI18nView | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[CollectionI18nView | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[CollectionI18nView | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[CollectionI18nView | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[CollectionI18nView | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[CollectionI18nView | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[CollectionI18nView | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[CollectionI18nView | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class FeatureI18nView(BaseModel):
-    badge: Annotated[str | None, Field(examples=[None], max_length=12)] = None
+    badge: Annotated[str | None | MISSING, Field(examples=[None], max_length=12)] = MISSING
     title: Annotated[str, Field(examples=['Visual Studio Code'], max_length=30)]
-    subtitle: Annotated[str | None, Field(examples=[None], max_length=30)] = None
-    body: Annotated[str | None, Field(description='Only **bold** markup is allowed', examples=[None], max_length=120)] = None
-    ctaLabel: Annotated[str | None, Field(examples=[None], max_length=10)] = None
+    subtitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=30)] = MISSING
+    body: Annotated[str | None | MISSING, Field(description='Only **bold** markup is allowed', examples=[None], max_length=120)] = MISSING
+    ctaLabel: Annotated[str | None | MISSING, Field(examples=[None], max_length=10)] = MISSING
     status: TranslationStatus
     sourceLocale: Locale
-    sourceHash: Annotated[str | None, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = None
-    model: Annotated[str | None, Field(examples=[None])] = None
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    sourceHash: Annotated[str | None | MISSING, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = MISSING
+    model: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    translatedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class FeatureI18nMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[FeatureI18n | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[FeatureI18n | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[FeatureI18n | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[FeatureI18n | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[FeatureI18n | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[FeatureI18n | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[FeatureI18n | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[FeatureI18n | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[FeatureI18n | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[FeatureI18n | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[FeatureI18n | None | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[FeatureI18n | None | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[FeatureI18n | None | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[FeatureI18n | None | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[FeatureI18n | None | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[FeatureI18n | None | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[FeatureI18n | None | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[FeatureI18n | None | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[FeatureI18n | None | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[FeatureI18n | None | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class FeatureI18nViewMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[FeatureI18nView | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[FeatureI18nView | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[FeatureI18nView | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[FeatureI18nView | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[FeatureI18nView | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[FeatureI18nView | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[FeatureI18nView | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[FeatureI18nView | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[FeatureI18nView | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[FeatureI18nView | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[FeatureI18nView | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[FeatureI18nView | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[FeatureI18nView | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[FeatureI18nView | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[FeatureI18nView | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[FeatureI18nView | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[FeatureI18nView | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[FeatureI18nView | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[FeatureI18nView | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[FeatureI18nView | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class ScreenshotI18n(BaseModel):
@@ -1581,41 +1582,41 @@ class ScreenshotI18nView(BaseModel):
     caption: Annotated[str | None, Field(examples=['The code editor workspace'], max_length=120)]
     status: TranslationStatus
     sourceLocale: Locale
-    sourceHash: Annotated[str | None, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = None
-    model: Annotated[str | None, Field(examples=[None])] = None
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    sourceHash: Annotated[str | None | MISSING, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = MISSING
+    model: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    translatedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class ScreenshotI18nMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[ScreenshotI18n | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[ScreenshotI18n | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[ScreenshotI18n | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[ScreenshotI18n | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[ScreenshotI18n | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[ScreenshotI18n | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[ScreenshotI18n | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[ScreenshotI18n | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[ScreenshotI18n | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[ScreenshotI18n | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[ScreenshotI18n | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[ScreenshotI18n | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[ScreenshotI18n | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[ScreenshotI18n | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[ScreenshotI18n | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[ScreenshotI18n | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[ScreenshotI18n | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[ScreenshotI18n | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[ScreenshotI18n | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[ScreenshotI18n | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class ScreenshotI18nViewMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[ScreenshotI18nView | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[ScreenshotI18nView | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[ScreenshotI18nView | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[ScreenshotI18nView | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[ScreenshotI18nView | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[ScreenshotI18nView | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[ScreenshotI18nView | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[ScreenshotI18nView | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[ScreenshotI18nView | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[ScreenshotI18nView | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[ScreenshotI18nView | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[ScreenshotI18nView | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[ScreenshotI18nView | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[ScreenshotI18nView | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[ScreenshotI18nView | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[ScreenshotI18nView | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[ScreenshotI18nView | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[ScreenshotI18nView | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[ScreenshotI18nView | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[ScreenshotI18nView | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class CollectionItemI18n(BaseModel):
@@ -1626,41 +1627,41 @@ class CollectionItemI18nView(BaseModel):
     note: Annotated[str | None, Field(examples=['Recommended for everyday work'], max_length=160)]
     status: TranslationStatus
     sourceLocale: Locale
-    sourceHash: Annotated[str | None, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = None
-    model: Annotated[str | None, Field(examples=[None])] = None
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    sourceHash: Annotated[str | None | MISSING, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = MISSING
+    model: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    translatedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class CollectionItemI18nMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[CollectionItemI18n | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[CollectionItemI18n | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[CollectionItemI18n | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[CollectionItemI18n | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[CollectionItemI18n | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[CollectionItemI18n | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[CollectionItemI18n | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[CollectionItemI18n | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[CollectionItemI18n | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[CollectionItemI18n | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[CollectionItemI18n | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[CollectionItemI18n | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[CollectionItemI18n | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[CollectionItemI18n | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[CollectionItemI18n | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[CollectionItemI18n | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[CollectionItemI18n | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[CollectionItemI18n | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[CollectionItemI18n | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[CollectionItemI18n | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class CollectionItemI18nViewMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[CollectionItemI18nView | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[CollectionItemI18nView | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[CollectionItemI18nView | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[CollectionItemI18nView | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[CollectionItemI18nView | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[CollectionItemI18nView | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[CollectionItemI18nView | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[CollectionItemI18nView | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[CollectionItemI18nView | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[CollectionItemI18nView | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[CollectionItemI18nView | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[CollectionItemI18nView | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[CollectionItemI18nView | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[CollectionItemI18nView | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[CollectionItemI18nView | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[CollectionItemI18nView | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[CollectionItemI18nView | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[CollectionItemI18nView | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[CollectionItemI18nView | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[CollectionItemI18nView | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class DesktopReleaseI18n(BaseModel):
@@ -1671,41 +1672,41 @@ class DesktopReleaseI18nView(BaseModel):
     notes: Annotated[str, Field(examples=['Improve usability and stability.'], max_length=200000)]
     status: TranslationStatus
     sourceLocale: AppLocale
-    sourceHash: Annotated[str | None, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = None
-    model: Annotated[str | None, Field(examples=[None])] = None
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    sourceHash: Annotated[str | None | MISSING, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = MISSING
+    model: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    translatedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class DesktopReleaseI18nMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[DesktopReleaseI18n | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[DesktopReleaseI18n | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[DesktopReleaseI18n | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[DesktopReleaseI18n | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[DesktopReleaseI18n | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[DesktopReleaseI18n | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[DesktopReleaseI18n | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[DesktopReleaseI18n | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[DesktopReleaseI18n | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[DesktopReleaseI18n | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[DesktopReleaseI18n | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[DesktopReleaseI18n | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[DesktopReleaseI18n | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[DesktopReleaseI18n | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[DesktopReleaseI18n | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[DesktopReleaseI18n | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[DesktopReleaseI18n | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[DesktopReleaseI18n | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[DesktopReleaseI18n | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[DesktopReleaseI18n | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class DesktopReleaseI18nViewMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[DesktopReleaseI18nView | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[DesktopReleaseI18nView | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[DesktopReleaseI18nView | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[DesktopReleaseI18nView | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[DesktopReleaseI18nView | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[DesktopReleaseI18nView | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[DesktopReleaseI18nView | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[DesktopReleaseI18nView | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[DesktopReleaseI18nView | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[DesktopReleaseI18nView | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[DesktopReleaseI18nView | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class MirrorI18n(BaseModel):
@@ -1716,41 +1717,41 @@ class MirrorI18nView(BaseModel):
     name: Annotated[str, Field(examples=['USTC'], max_length=40)]
     status: TranslationStatus
     sourceLocale: Locale
-    sourceHash: Annotated[str | None, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = None
-    model: Annotated[str | None, Field(examples=[None])] = None
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    sourceHash: Annotated[str | None | MISSING, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = MISSING
+    model: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    translatedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class MirrorI18nMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[MirrorI18n | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[MirrorI18n | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[MirrorI18n | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[MirrorI18n | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[MirrorI18n | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[MirrorI18n | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[MirrorI18n | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[MirrorI18n | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[MirrorI18n | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[MirrorI18n | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[MirrorI18n | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[MirrorI18n | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[MirrorI18n | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[MirrorI18n | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[MirrorI18n | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[MirrorI18n | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[MirrorI18n | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[MirrorI18n | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[MirrorI18n | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[MirrorI18n | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class MirrorI18nViewMap(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[MirrorI18nView | None, Field(alias='en-US')] = None
-    zh_CN: Annotated[MirrorI18nView | None, Field(alias='zh-CN')] = None
-    ja_JP: Annotated[MirrorI18nView | None, Field(alias='ja-JP')] = None
-    es_ES: Annotated[MirrorI18nView | None, Field(alias='es-ES')] = None
-    pt_BR: Annotated[MirrorI18nView | None, Field(alias='pt-BR')] = None
-    ru_RU: Annotated[MirrorI18nView | None, Field(alias='ru-RU')] = None
-    de_DE: Annotated[MirrorI18nView | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[MirrorI18nView | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[MirrorI18nView | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[MirrorI18nView | None, Field(alias='zh-Hant')] = None
+    en_US: Annotated[MirrorI18nView | MISSING, Field(alias='en-US')] = MISSING
+    zh_CN: Annotated[MirrorI18nView | MISSING, Field(alias='zh-CN')] = MISSING
+    ja_JP: Annotated[MirrorI18nView | MISSING, Field(alias='ja-JP')] = MISSING
+    es_ES: Annotated[MirrorI18nView | MISSING, Field(alias='es-ES')] = MISSING
+    pt_BR: Annotated[MirrorI18nView | MISSING, Field(alias='pt-BR')] = MISSING
+    ru_RU: Annotated[MirrorI18nView | MISSING, Field(alias='ru-RU')] = MISSING
+    de_DE: Annotated[MirrorI18nView | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[MirrorI18nView | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[MirrorI18nView | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[MirrorI18nView | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class ContentEntity(RootModel[Literal['package', 'release', 'category', 'collection', 'feature', 'screenshot', 'collection_item', 'desktop_release', 'mirror', 'announcement', 'article', 'article_author']]):
@@ -1766,8 +1767,8 @@ class ContentRef(BaseModel):
         extra='forbid',
     )
     entity: ContentEntity
-    id: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    secondaryId: Annotated[int | None, Field(examples=[2], ge=1)] = None
+    id: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    secondaryId: Annotated[int | MISSING, Field(examples=[2], ge=1)] = MISSING
 
 
 class HistoryRef(BaseModel):
@@ -1782,26 +1783,26 @@ class ContentFields(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    displayName: Annotated[str | None, Field(examples=[None], max_length=128)] = None
-    summary: Annotated[str | None, Field(examples=[None], max_length=400)] = None
-    description: Annotated[str | None, Field(examples=[None], max_length=20000)] = None
-    title: Annotated[str | None, Field(examples=[None], max_length=256)] = None
-    subtitle: Annotated[str | None, Field(examples=[None], max_length=500)] = None
-    body: Annotated[str | None, Field(examples=[None], max_length=20000)] = None
-    badge: Annotated[str | None, Field(examples=[None], max_length=80)] = None
-    ctaLabel: Annotated[str | None, Field(examples=[None], max_length=80)] = None
-    name: Annotated[str | None, Field(examples=[None], max_length=128)] = None
-    caption: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
-    note: Annotated[str | None, Field(examples=[None], max_length=2000)] = None
-    notes: Annotated[str | None, Field(examples=[None], max_length=20000)] = None
-    bodyMarkdown: Annotated[str | None, Field(examples=[None], max_length=200000)] = None
-    testNote: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
-    seoTitle: Annotated[str | None, Field(examples=[None], max_length=120)] = None
-    seoDescription: Annotated[str | None, Field(examples=[None], max_length=300)] = None
-    role: Annotated[str | None, Field(examples=[None], max_length=80)] = None
-    bio: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
-    sections: Annotated[list[ReleaseSection] | None, Field(examples=[[]], max_length=8)] = None
-    coverAlt: Annotated[str | None, Field(description='Article revision cover alt in this translation locale. Empty falls back to English then source.', examples=[None], max_length=300)] = None
+    displayName: Annotated[str | None | MISSING, Field(examples=[None], max_length=128)] = MISSING
+    summary: Annotated[str | None | MISSING, Field(examples=[None], max_length=400)] = MISSING
+    description: Annotated[str | None | MISSING, Field(examples=[None], max_length=20000)] = MISSING
+    title: Annotated[str | None | MISSING, Field(examples=[None], max_length=256)] = MISSING
+    subtitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=500)] = MISSING
+    body: Annotated[str | None | MISSING, Field(examples=[None], max_length=20000)] = MISSING
+    badge: Annotated[str | None | MISSING, Field(examples=[None], max_length=80)] = MISSING
+    ctaLabel: Annotated[str | None | MISSING, Field(examples=[None], max_length=80)] = MISSING
+    name: Annotated[str | None | MISSING, Field(examples=[None], max_length=128)] = MISSING
+    caption: Annotated[str | None | MISSING, Field(examples=[None], max_length=1000)] = MISSING
+    note: Annotated[str | None | MISSING, Field(examples=[None], max_length=2000)] = MISSING
+    notes: Annotated[str | None | MISSING, Field(examples=[None], max_length=20000)] = MISSING
+    bodyMarkdown: Annotated[str | None | MISSING, Field(examples=[None], max_length=200000)] = MISSING
+    testNote: Annotated[str | None | MISSING, Field(examples=[None], max_length=1000)] = MISSING
+    seoTitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=120)] = MISSING
+    seoDescription: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
+    role: Annotated[str | None | MISSING, Field(examples=[None], max_length=80)] = MISSING
+    bio: Annotated[str | None | MISSING, Field(examples=[None], max_length=1000)] = MISSING
+    sections: Annotated[list[ReleaseSection] | MISSING, Field(examples=[[]], max_length=8)] = MISSING
+    coverAlt: Annotated[str | None | MISSING, Field(description='Article revision cover alt in this translation locale. Empty falls back to English then source.', examples=[None], max_length=300)] = MISSING
 
 
 class TranslationDispatch(BaseModel):
@@ -1859,9 +1860,9 @@ class PackageTextUpdate(BaseModel):
         extra='forbid',
     )
     sourceLocale: Locale
-    displayName: Annotated[str | None, Field(examples=[None], max_length=128)] = None
-    summary: Annotated[str | None, Field(examples=[None], max_length=200)] = None
-    description: Annotated[str | None, Field(examples=[None], max_length=20000)] = None
+    displayName: Annotated[str | None | MISSING, Field(examples=[None], max_length=128)] = MISSING
+    summary: Annotated[str | None | MISSING, Field(examples=[None], max_length=200)] = MISSING
+    description: Annotated[str | None | MISSING, Field(examples=[None], max_length=20000)] = MISSING
 
 
 class EditorialNotesWrite(BaseModel):
@@ -1871,10 +1872,10 @@ class EditorialNotesWrite(BaseModel):
     clear: Literal[False] = False
     sourceLocale: Locale
     summary: Annotated[str, Field(examples=['改善窗口管理体验'], max_length=400)]
-    sections: Annotated[list[ReleaseSection], Field(description='Omit to preserve existing sections; new records use an empty array. Send an explicit empty array to clear sections.', examples=[[{'area': '改进', 'items': ['改善窗口管理体验。']}]], max_length=8)] = None
-    title: Annotated[str | None, Field(examples=[None], max_length=256)] = None
-    bodyMarkdown: Annotated[str | None, Field(examples=[None], max_length=200000)] = None
-    publishedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    sections: Annotated[list[ReleaseSection] | MISSING, Field(description='Omit to preserve existing sections; new records use an empty array. Send an explicit empty array to clear sections.', examples=[[{'area': '改进', 'items': ['改善窗口管理体验。']}]], max_length=8)] = MISSING
+    title: Annotated[str | None | MISSING, Field(examples=[None], max_length=256)] = MISSING
+    bodyMarkdown: Annotated[str | None | MISSING, Field(examples=[None], max_length=200000)] = MISSING
+    publishedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class EditorialNotesClear(BaseModel):
@@ -1893,7 +1894,7 @@ class ContentRetranslate(BaseModel):
         extra='forbid',
     )
     ref: ContentRef
-    locales: Annotated[list[Locale] | None, Field(examples=[['en-US', 'ja-JP']], max_length=5, min_length=1)] = None
+    locales: Annotated[list[Locale] | MISSING, Field(examples=[['en-US', 'ja-JP']], max_length=5, min_length=1)] = MISSING
 
 
 class TranslationFix(BaseModel):
@@ -1902,7 +1903,7 @@ class TranslationFix(BaseModel):
     )
     ref: ContentRef
     locale: WritableLocale
-    model: Annotated[str | None, Field(description='Optional model provenance; omitted models are recorded as agent:unspecified.', examples=['example-model'], max_length=160, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = None
+    model: Annotated[str | MISSING, Field(description='Optional model provenance; omitted models are recorded as agent:unspecified.', examples=['example-model'], max_length=160, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = MISSING
     fields: ContentFields
 
 
@@ -1910,16 +1911,16 @@ class GlossaryTranslations(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    en_US: Annotated[str | None, Field(alias='en-US', examples=[None], max_length=200)] = None
-    zh_CN: Annotated[str | None, Field(alias='zh-CN', examples=[None], max_length=200)] = None
-    ja_JP: Annotated[str | None, Field(alias='ja-JP', examples=[None], max_length=200)] = None
-    es_ES: Annotated[str | None, Field(alias='es-ES', examples=[None], max_length=200)] = None
-    pt_BR: Annotated[str | None, Field(alias='pt-BR', examples=[None], max_length=200)] = None
-    ru_RU: Annotated[str | None, Field(alias='ru-RU', examples=[None], max_length=200)] = None
-    de_DE: Annotated[str | None, Field(alias='de-DE', examples=[None], max_length=200)] = None
-    fr_FR: Annotated[str | None, Field(alias='fr-FR', examples=[None], max_length=200)] = None
-    it_IT: Annotated[str | None, Field(alias='it-IT', examples=[None], max_length=200)] = None
-    zh_Hant: Annotated[str | None, Field(alias='zh-Hant', examples=[None], max_length=200)] = None
+    en_US: Annotated[str | None | MISSING, Field(alias='en-US', examples=[None], max_length=200)] = MISSING
+    zh_CN: Annotated[str | None | MISSING, Field(alias='zh-CN', examples=[None], max_length=200)] = MISSING
+    ja_JP: Annotated[str | None | MISSING, Field(alias='ja-JP', examples=[None], max_length=200)] = MISSING
+    es_ES: Annotated[str | None | MISSING, Field(alias='es-ES', examples=[None], max_length=200)] = MISSING
+    pt_BR: Annotated[str | None | MISSING, Field(alias='pt-BR', examples=[None], max_length=200)] = MISSING
+    ru_RU: Annotated[str | None | MISSING, Field(alias='ru-RU', examples=[None], max_length=200)] = MISSING
+    de_DE: Annotated[str | None | MISSING, Field(alias='de-DE', examples=[None], max_length=200)] = MISSING
+    fr_FR: Annotated[str | None | MISSING, Field(alias='fr-FR', examples=[None], max_length=200)] = MISSING
+    it_IT: Annotated[str | None | MISSING, Field(alias='it-IT', examples=[None], max_length=200)] = MISSING
+    zh_Hant: Annotated[str | None | MISSING, Field(alias='zh-Hant', examples=[None], max_length=200)] = MISSING
 
 
 class GlossaryTermUpdate(BaseModel):
@@ -2027,8 +2028,8 @@ class MacosRange(BaseModel):
     )
     arch: Annotated[Literal['arm64', 'x86_64'], Field(examples=['arm64'])]
     support: Annotated[Literal['native', 'rosetta', 'unsupported'], Field(description='rosetta applies to arm64 only; unsupported takes no versions.', examples=['native'])]
-    minimum: Annotated[str | None, Field(description='macOS release such as 13 or 10.15', examples=['13'], pattern='^(?:10\\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\\.[0-9]{1,2}){0,2}$')] = None
-    maximum: Annotated[str | None, Field(examples=[None], pattern='^(?:10\\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\\.[0-9]{1,2}){0,2}$')] = None
+    minimum: Annotated[str | None | MISSING, Field(description='macOS release such as 13 or 10.15', examples=['13'], pattern='^(?:10\\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\\.[0-9]{1,2}){0,2}$')] = MISSING
+    maximum: Annotated[str | None | MISSING, Field(examples=[None], pattern='^(?:10\\.(?:[4-9]|1[0-9])|1[1-9]|[2-9][0-9])(?:\\.[0-9]{1,2}){0,2}$')] = MISSING
 
 
 class AlternativeReason(RootModel[Literal['free', 'open_source', 'lighter', 'more_features', 'simpler', 'native_ui', 'apple_silicon', 'privacy', 'offline', 'collaboration', 'cross_platform', 'one_time_purchase', 'active_development', 'customizable']]):
@@ -2044,17 +2045,17 @@ class PackagePriceUpdate(BaseModel):
         extra='forbid',
     )
     type: PriceType
-    amount: Annotated[float | None, Field(description='At most two decimals', examples=[9.99], ge=0.01, le=10000000.0)] = None
-    currency: Annotated[str | None, Field(examples=['USD'], pattern='^[A-Z]{3}$')] = None
-    region: Annotated[str | None, Field(description='ISO 3166-1 country the price was checked for', examples=['US'], pattern='^[A-Z]{2}$')] = None
-    plan: Annotated[str | None, Field(description='Vendor plan name as the vendor writes it; not translated', examples=['Pro'], max_length=80)] = None
-    period: Annotated[Literal['one_time', 'month', 'year'] | None, Field(examples=['month'])] = None
-    appVersion: Annotated[str | None, Field(examples=['5.2'], max_length=64)] = None
-    sourceUrl: Annotated[AnyUrl | None, Field(examples=['https://vendor.example/pricing'])] = None
-    method: Annotated[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other'] | None, Field(examples=['vendor_site'])] = None
-    verifiedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13T08:00:00+00:00'])] = None
-    status: Annotated[Literal['verified', 'needs_review'] | None, Field(examples=['verified'])] = None
-    note: Annotated[str | None, Field(examples=['Checked the US pricing page.'], max_length=1000)] = None
+    amount: Annotated[float | None | MISSING, Field(description='At most two decimals', examples=[9.99], ge=0.01, le=10000000.0)] = MISSING
+    currency: Annotated[str | None | MISSING, Field(examples=['USD'], pattern='^[A-Z]{3}$')] = MISSING
+    region: Annotated[str | None | MISSING, Field(description='ISO 3166-1 country the price was checked for', examples=['US'], pattern='^[A-Z]{2}$')] = MISSING
+    plan: Annotated[str | None | MISSING, Field(description='Vendor plan name as the vendor writes it; not translated', examples=['Pro'], max_length=80)] = MISSING
+    period: Annotated[Literal['one_time', 'month', 'year'] | None | MISSING, Field(examples=['month'])] = MISSING
+    appVersion: Annotated[str | None | MISSING, Field(examples=['5.2'], max_length=64)] = MISSING
+    sourceUrl: Annotated[AnyUrl | None | MISSING, Field(examples=['https://vendor.example/pricing'])] = MISSING
+    method: Annotated[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other'] | None | MISSING, Field(examples=['vendor_site'])] = MISSING
+    verifiedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=['2026-10-13T08:00:00+00:00'])] = MISSING
+    status: Annotated[Literal['verified', 'needs_review'] | None | MISSING, Field(examples=['verified'])] = MISSING
+    note: Annotated[str | None | MISSING, Field(examples=['Checked the US pricing page.'], max_length=1000)] = MISSING
 
 
 class PackageMacosUpdate(BaseModel):
@@ -2062,12 +2063,12 @@ class PackageMacosUpdate(BaseModel):
         extra='forbid',
     )
     ranges: Annotated[list[MacosRange], Field(max_length=2)]
-    appVersion: Annotated[str | None, Field(examples=['5.2'], max_length=64)] = None
-    sourceUrl: Annotated[AnyUrl | None, Field(examples=['https://vendor.example/docs/system-requirements'])] = None
-    method: Annotated[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other'] | None, Field(examples=['vendor_site'])] = None
-    verifiedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-13T08:00:00+00:00'])] = None
-    status: Annotated[Literal['verified', 'needs_review'] | None, Field(examples=['verified'])] = None
-    note: Annotated[str | None, Field(examples=["From the vendor's requirements page."], max_length=1000)] = None
+    appVersion: Annotated[str | None | MISSING, Field(examples=['5.2'], max_length=64)] = MISSING
+    sourceUrl: Annotated[AnyUrl | None | MISSING, Field(examples=['https://vendor.example/docs/system-requirements'])] = MISSING
+    method: Annotated[Literal['vendor_site', 'app_store', 'vendor_docs', 'in_app', 'other'] | None | MISSING, Field(examples=['vendor_site'])] = MISSING
+    verifiedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=['2026-10-13T08:00:00+00:00'])] = MISSING
+    status: Annotated[Literal['verified', 'needs_review'] | None | MISSING, Field(examples=['verified'])] = MISSING
+    note: Annotated[str | None | MISSING, Field(examples=["From the vendor's requirements page."], max_length=1000)] = MISSING
 
 
 class PackageAlternativeInput(BaseModel):
@@ -2076,9 +2077,9 @@ class PackageAlternativeInput(BaseModel):
     )
     packageId: Annotated[int, Field(examples=[2], ge=1)]
     reasons: Annotated[list[AlternativeReason], Field(max_length=4, min_length=1)]
-    limits: Annotated[list[AlternativeLimit] | None, Field(max_length=3)] = None
-    bestFor: Annotated[Literal['everyday', 'professionals', 'developers', 'teams', 'beginners', 'power_users'] | None, Field(examples=['developers'])] = None
-    note: Annotated[str | None, Field(description='Internal; never shown on pages', examples=['Both edit code; this one starts faster.'], max_length=500)] = None
+    limits: Annotated[list[AlternativeLimit] | MISSING, Field(max_length=3)] = MISSING
+    bestFor: Annotated[Literal['everyday', 'professionals', 'developers', 'teams', 'beginners', 'power_users'] | None | MISSING, Field(examples=['developers'])] = MISSING
+    note: Annotated[str | None | MISSING, Field(description='Internal; never shown on pages', examples=['Both edit code; this one starts faster.'], max_length=500)] = MISSING
 
 
 class PackageAlternativesUpdate(BaseModel):
@@ -2188,52 +2189,52 @@ class ArticleCreate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    claims: Annotated[list[ArticleClaim] | None, Field(max_length=200)] = None
-    target: ArticleSeoTarget | None = None
+    claims: Annotated[list[ArticleClaim] | MISSING, Field(max_length=200)] = MISSING
+    target: ArticleSeoTarget | None | MISSING = MISSING
     slug: Annotated[str, Field(examples=['choose-a-screenshot-app'], max_length=100, pattern='^[a-z0-9]+(-[a-z0-9]+)*$')]
     sourceLocale: Locale
     type: ArticleType
     title: Annotated[str, Field(examples=['How to choose a screenshot app for Mac'], max_length=200, min_length=1)]
-    summary: Annotated[str | None, Field(description='Lead and default meta description', examples=['What to compare when picking a screenshot tool.'], max_length=400)] = None
-    bodyMarkdown: Annotated[str | None, Field(description="Markdown without raw HTML. Images must be OpenNavo assets with alt text; ::app[token] on its own line embeds an app's current catalog card. Keep tested versions and prices as plain tables: they are a snapshot, the card is live.", examples=['## What to compare\n\n::app[shottr]'], max_length=100000)] = None
-    testNote: Annotated[str | None, Field(description='Test environment and method; required for reviews, and only when the test really happened', examples=['MacBook Pro (M4), macOS 26, the same capture tasks in every app'], max_length=1000)] = None
-    seoTitle: Annotated[str | None, Field(examples=[None], max_length=120)] = None
-    seoDescription: Annotated[str | None, Field(examples=[None], max_length=300)] = None
-    authorId: Annotated[int | None, Field(description='null signs the article as the editorial team (the site organization)', examples=[None], ge=1)] = None
-    coverAssetId: Annotated[int | None, Field(examples=[None], ge=1)] = None
-    coverAlt: Annotated[str | None, Field(examples=[None], max_length=300)] = None
-    sources: Annotated[list[ArticleSource] | None, Field(max_length=20)] = None
-    packageIds: Annotated[list[PackageId] | None, Field(max_length=50)] = None
-    idempotencyKey: Annotated[str | None, Field(description='Retrying with the same key returns the article created the first time', examples=['draft-2026-10-13-screenshots'], max_length=128, min_length=1)] = None
+    summary: Annotated[str | None | MISSING, Field(description='Lead and default meta description', examples=['What to compare when picking a screenshot tool.'], max_length=400)] = MISSING
+    bodyMarkdown: Annotated[str | None | MISSING, Field(description="Markdown without raw HTML. Images must be OpenNavo assets with alt text; ::app[token] on its own line embeds an app's current catalog card. Keep tested versions and prices as plain tables: they are a snapshot, the card is live.", examples=['## What to compare\n\n::app[shottr]'], max_length=100000)] = MISSING
+    testNote: Annotated[str | None | MISSING, Field(description='Test environment and method; required for reviews, and only when the test really happened', examples=['MacBook Pro (M4), macOS 26, the same capture tasks in every app'], max_length=1000)] = MISSING
+    seoTitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=120)] = MISSING
+    seoDescription: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
+    authorId: Annotated[int | None | MISSING, Field(description='null signs the article as the editorial team (the site organization)', examples=[None], ge=1)] = MISSING
+    coverAssetId: Annotated[int | None | MISSING, Field(examples=[None], ge=1)] = MISSING
+    coverAlt: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
+    sources: Annotated[list[ArticleSource] | MISSING, Field(max_length=20)] = MISSING
+    packageIds: Annotated[list[PackageId] | MISSING, Field(max_length=50)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(description='Retrying with the same key returns the article created the first time', examples=['draft-2026-10-13-screenshots'], max_length=128, min_length=1)] = MISSING
 
 
 class ArticleUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    packageIds: Annotated[list[PackageId] | None, Field(description='Replace related apps atomically with the other draft fields.', max_length=50)] = None
-    claims: Annotated[list[ArticleClaim] | None, Field(max_length=200)] = None
-    target: ArticleSeoTarget | None = None
-    expectedRevision: Annotated[int | None, Field(description='The article revision from the last read; a mismatch means someone else changed it', examples=[4], ge=1)] = None
-    sourceLocale: Locale | None = None
-    type: ArticleType | None = None
-    title: Annotated[str | None, Field(examples=['How to choose a screenshot app for Mac'], max_length=200, min_length=1)] = None
-    summary: Annotated[str | None, Field(examples=['What to compare when picking a screenshot tool.'], max_length=400)] = None
-    bodyMarkdown: Annotated[str | None, Field(examples=['## What to compare'], max_length=100000)] = None
-    testNote: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
-    seoTitle: Annotated[str | None, Field(examples=[None], max_length=120)] = None
-    seoDescription: Annotated[str | None, Field(examples=[None], max_length=300)] = None
-    authorId: Annotated[int | None, Field(examples=[None], ge=1)] = None
-    coverAssetId: Annotated[int | None, Field(examples=[None], ge=1)] = None
-    coverAlt: Annotated[str | None, Field(examples=[None], max_length=300)] = None
-    sources: Annotated[list[ArticleSource] | None, Field(max_length=20)] = None
+    packageIds: Annotated[list[PackageId] | MISSING, Field(description='Replace related apps atomically with the other draft fields.', max_length=50)] = MISSING
+    claims: Annotated[list[ArticleClaim] | MISSING, Field(max_length=200)] = MISSING
+    target: ArticleSeoTarget | None | MISSING = MISSING
+    expectedRevision: Annotated[int | MISSING, Field(description='The article revision from the last read; a mismatch means someone else changed it', examples=[4], ge=1)] = MISSING
+    sourceLocale: Locale | MISSING = MISSING
+    type: ArticleType | MISSING = MISSING
+    title: Annotated[str | MISSING, Field(examples=['How to choose a screenshot app for Mac'], max_length=200, min_length=1)] = MISSING
+    summary: Annotated[str | None | MISSING, Field(examples=['What to compare when picking a screenshot tool.'], max_length=400)] = MISSING
+    bodyMarkdown: Annotated[str | None | MISSING, Field(examples=['## What to compare'], max_length=100000)] = MISSING
+    testNote: Annotated[str | None | MISSING, Field(examples=[None], max_length=1000)] = MISSING
+    seoTitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=120)] = MISSING
+    seoDescription: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
+    authorId: Annotated[int | None | MISSING, Field(examples=[None], ge=1)] = MISSING
+    coverAssetId: Annotated[int | None | MISSING, Field(examples=[None], ge=1)] = MISSING
+    coverAlt: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
+    sources: Annotated[list[ArticleSource] | MISSING, Field(max_length=20)] = MISSING
 
 
 class ArticlePackagesUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[4], ge=1)] = MISSING
     packageIds: Annotated[list[PackageId], Field(max_length=50)]
 
 
@@ -2241,22 +2242,22 @@ class ArticleRevisionCheck(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[4], ge=1)] = MISSING
 
 
 class ArticleWithdraw(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
-    reason: Annotated[str | None, Field(examples=['Prices changed; rewriting.'], max_length=500)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[4], ge=1)] = MISSING
+    reason: Annotated[str | None | MISSING, Field(examples=['Prices changed; rewriting.'], max_length=500)] = MISSING
 
 
 class ArticleRevert(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[4], ge=1)] = MISSING
     revisionNumber: Annotated[int, Field(examples=[2], ge=1)]
 
 
@@ -2264,7 +2265,7 @@ class ArticleSlugUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[4], ge=1)] = MISSING
     slug: Annotated[str, Field(examples=['screenshot-apps-for-mac'], max_length=100, pattern='^[a-z0-9]+(-[a-z0-9]+)*$')]
 
 
@@ -2272,7 +2273,7 @@ class ArticleLocaleUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[4], ge=1)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[4], ge=1)] = MISSING
     withheld: Annotated[bool, Field(examples=[True])]
 
 
@@ -2283,10 +2284,10 @@ class ArticleAuthorWrite(BaseModel):
     slug: Annotated[str, Field(examples=['lin-wei'], max_length=80, pattern='^[a-z0-9]+(-[a-z0-9]+)*$')]
     name: Annotated[str, Field(examples=['Lin Wei'], max_length=80, min_length=1)]
     sourceLocale: Locale
-    role: Annotated[str | None, Field(examples=['Editor'], max_length=80)] = None
-    bio: Annotated[str | None, Field(examples=['Tests Mac productivity apps.'], max_length=1000)] = None
-    links: Annotated[list[ArticleSource] | None, Field(max_length=8)] = None
-    avatarAssetId: Annotated[int | None, Field(examples=[None], ge=1)] = None
+    role: Annotated[str | None | MISSING, Field(examples=['Editor'], max_length=80)] = MISSING
+    bio: Annotated[str | None | MISSING, Field(examples=['Tests Mac productivity apps.'], max_length=1000)] = MISSING
+    links: Annotated[list[ArticleSource] | MISSING, Field(max_length=8)] = MISSING
+    avatarAssetId: Annotated[int | None | MISSING, Field(examples=[None], ge=1)] = MISSING
 
 
 class ArticleAuthorRef(BaseModel):
@@ -2304,10 +2305,10 @@ class ArticlePackageRef(BaseModel):
 
 
 class AdminArticleRevision(BaseModel):
-    id: Annotated[int | None, Field(description='Database revision ID; use the published revision ID for article translations.', examples=[101])] = None
-    claims: Annotated[list[ArticleClaim] | None, Field(max_length=200)] = None
-    target: ArticleSeoTarget | None = None
-    claimEvidence: list[ArticleClaimEvidence] | None = None
+    id: Annotated[int | MISSING, Field(description='Database revision ID; use the published revision ID for article translations.', examples=[101])] = MISSING
+    claims: Annotated[list[ArticleClaim] | MISSING, Field(max_length=200)] = MISSING
+    target: ArticleSeoTarget | None | MISSING = MISSING
+    claimEvidence: list[ArticleClaimEvidence] | MISSING = MISSING
     number: Annotated[int, Field(examples=[3])]
     sourceLocale: Locale
     type: ArticleType
@@ -2342,7 +2343,7 @@ class ArticleLocaleState(BaseModel):
 
 
 class ArticleRevisionEntry(BaseModel):
-    id: Annotated[int | None, Field(description='Database revision ID; use the published revision ID for article translations.', examples=[101])] = None
+    id: Annotated[int | MISSING, Field(description='Database revision ID; use the published revision ID for article translations.', examples=[101])] = MISSING
     number: Annotated[int, Field(examples=[2])]
     title: Annotated[str, Field(examples=['How to choose a screenshot app for Mac'])]
     createdAt: Annotated[AwareDatetime, Field(examples=['2026-10-12T08:00:00+00:00'])]
@@ -2367,7 +2368,7 @@ class ArticleImage(BaseModel):
 
 
 class Published(BaseModel):
-    id: Annotated[int | None, Field(description='Database revision ID to pass as ref.id with entity article to translations_write.', examples=[101])] = None
+    id: Annotated[int | MISSING, Field(description='Database revision ID to pass as ref.id with entity article to translations_write.', examples=[101])] = MISSING
     number: Annotated[int, Field(examples=[2])]
     publishedAt: Annotated[AwareDatetime | None, Field(examples=['2026-10-12T10:00:00Z'])]
 
@@ -2565,16 +2566,16 @@ class AgentClientCreate(BaseModel):
         extra='forbid',
     )
     name: Annotated[str, Field(examples=['Hermes · 家里电脑'], max_length=128, min_length=1)]
-    notes: Annotated[str | None, Field(examples=['负责人日常运营代理'], max_length=2000)] = None
+    notes: Annotated[str | MISSING, Field(examples=['负责人日常运营代理'], max_length=2000)] = MISSING
 
 
 class AgentClientUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    name: Annotated[str | None, Field(examples=['Hermes · 家里电脑'], max_length=128, min_length=1)] = None
-    notes: Annotated[str | None, Field(examples=['负责人日常运营代理'], max_length=2000)] = None
-    enabled: Annotated[bool | None, Field(examples=[True])] = None
+    name: Annotated[str | MISSING, Field(examples=['Hermes · 家里电脑'], max_length=128, min_length=1)] = MISSING
+    notes: Annotated[str | MISSING, Field(examples=['负责人日常运营代理'], max_length=2000)] = MISSING
+    enabled: Annotated[bool | MISSING, Field(examples=[True])] = MISSING
 
 
 class AgentClient(BaseModel):
@@ -2638,21 +2639,21 @@ class AgentTokenCreate(BaseModel):
         extra='forbid',
     )
     name: Annotated[str, Field(examples=['日常运营'], max_length=128, min_length=1)]
-    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['site:index:view', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=27)] = None
+    permissions: Annotated[list[AgentPermission] | MISSING, Field(examples=[['site:index:view', 'dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=27)] = MISSING
     allowDelete: Annotated[bool, Field(examples=[True])] = True
-    expiresAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    ipAllowlist: Annotated[list[IpAllowlistItem] | None, Field(examples=[[]], max_length=100)] = None
+    expiresAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    ipAllowlist: Annotated[list[IpAllowlistItem] | MISSING, Field(examples=[[]], max_length=100)] = MISSING
 
 
 class AgentTokenUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    name: Annotated[str | None, Field(examples=['日常运营'], max_length=128, min_length=1)] = None
-    permissions: Annotated[list[AgentPermission] | None, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=27)] = None
+    name: Annotated[str | MISSING, Field(examples=['日常运营'], max_length=128, min_length=1)] = MISSING
+    permissions: Annotated[list[AgentPermission] | MISSING, Field(examples=[['dashboard:view', 'catalog:package:view', 'catalog:package:edit', 'catalog:package:resync', 'catalog:asset:upload', 'catalog:category:edit', 'content:collection:edit', 'content:collection:publish', 'content:article:edit', 'content:article:publish', 'content:feature:edit', 'content:glossary:edit', 'changelog:release:edit', 'translation:review', 'ops:job:view', 'ops:job:trigger', 'ops:search:view', 'ops:search:edit', 'ops:feedback:handle', 'agent:log:view', 'content:revision:restore', 'content:announcement:edit', 'release:desktop:notes']], max_length=27)] = MISSING
     allowDelete: Annotated[bool, Field(examples=[True])] = True
-    expiresAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    ipAllowlist: Annotated[list[IpAllowlistItem] | None, Field(examples=[[]], max_length=100)] = None
+    expiresAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    ipAllowlist: Annotated[list[IpAllowlistItem] | MISSING, Field(examples=[[]], max_length=100)] = MISSING
 
 
 class AgentToken(BaseModel):
@@ -2889,7 +2890,7 @@ class RestoreOptions(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedVersion: Annotated[int | None, Field(examples=[2], ge=1)] = None
+    expectedVersion: Annotated[int | MISSING, Field(examples=[2], ge=1)] = MISSING
 
 
 class TrashItem(BaseModel):
@@ -3134,7 +3135,7 @@ class SeoPageSettings(BaseModel):
     titleTemplate: Annotated[Literal['new', 'legacy'], Field(description='Temporary rollout switch; removed together with the legacy templates.')]
     indexPolicy: IndexPolicy
     translationMode: Annotated[Literal['shadow', 'enforce'], Field(description='Published translation quality rollout; new site-only languages are always enforced.')] = 'shadow'
-    translationLocales: Annotated[list[Locale] | None, Field(description='Locales to enforce; empty means all locales.')] = None
+    translationLocales: Annotated[list[Locale] | MISSING, Field(description='Locales to enforce; empty means all locales.')] = MISSING
     versionsMinNotesChars: Annotated[int, Field(ge=1, le=100000)] = 300
     openLocales: Annotated[list[Locale], Field(description='Languages open for indexing, on every page type: pages in a language not listed still render but are noindex and stay out of hreflang, sitemaps and IndexNow. New translation work for website content targets only listed languages; published translations stay, and content only the Mac app shows is not affected. An empty list closes every language; omitted, it defaults to the six application languages.', validate_default=True)] = ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU']
     intentPagesEnabled: Annotated[bool, Field(description='Enable qualified intent pages backed by confirmed search demand and unique targets.')] = False
@@ -3157,7 +3158,7 @@ class PageEntity(BaseModel):
     type: Literal['package', 'article', 'author', 'category', 'collection', 'background_item', 'security_topic', 'static']
     id: Annotated[int | None, Field(...)]
     key: Annotated[str, Field(description='App token, slug, background item label or static page name.', max_length=2048)]
-    packageKind: Annotated[Literal['cask', 'link'] | None, Field(description='Apps only.')] = None
+    packageKind: Annotated[Literal['cask', 'link'] | MISSING, Field(description='Apps only.')] = MISSING
 
 
 class PageDecisionLookup(BaseModel):
@@ -3351,8 +3352,8 @@ class PackageSeoUpdate(BaseModel):
         extra='forbid',
     )
     locale: Locale
-    title: Annotated[str | None, Field(description='Search title without the brand suffix, up to 70 characters after trimming.')] = None
-    description: Annotated[str | None, Field(description='Meta description, up to 200 characters after trimming.')] = None
+    title: Annotated[str | None | MISSING, Field(description='Search title without the brand suffix, up to 70 characters after trimming.')] = MISSING
+    description: Annotated[str | None | MISSING, Field(description='Meta description, up to 200 characters after trimming.')] = MISSING
 
 
 class DueFactRecord(BaseModel):
@@ -3398,7 +3399,7 @@ class GetTranslationsSourceInput(BaseModel):
     )
     entity: ContentEntity
     id: Annotated[int, Field(ge=0, le=1000000000)]
-    secondaryId: Annotated[int | None, Field(ge=0, le=1000000000)] = None
+    secondaryId: Annotated[int | MISSING, Field(ge=0, le=1000000000)] = MISSING
 
 
 class GetPackageFactRecordsInput(BaseModel):
@@ -3420,20 +3421,20 @@ class ListAdminPackagesInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    kind: PackageKind | None = None
-    q: Annotated[str | None, Field(examples=['本地演示样本'], max_length=64)] = None
-    categoryId: Annotated[int | None, Field(examples=[1])] = None
-    translationStatus: PackageTranslationStatus | None = None
-    hasIcon: Annotated[bool | None, Field(examples=[False])] = None
-    hidden: Annotated[bool | None, Field(examples=[False])] = None
-    editorChoice: Annotated[bool | None, Field(examples=[False])] = None
-    deprecated: Annotated[bool | None, Field(examples=[False])] = None
-    disabled: Annotated[bool | None, Field(examples=[False])] = None
-    isFont: Annotated[bool | None, Field(examples=[False])] = None
-    isLibrary: Annotated[bool | None, Field(examples=[False])] = None
+    kind: PackageKind | MISSING = MISSING
+    q: Annotated[str | MISSING, Field(examples=['本地演示样本'], max_length=64)] = MISSING
+    categoryId: Annotated[int | MISSING, Field(examples=[1])] = MISSING
+    translationStatus: PackageTranslationStatus | MISSING = MISSING
+    hasIcon: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    hidden: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    editorChoice: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    deprecated: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    disabled: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    isFont: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    isLibrary: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
     sort: Annotated[Literal['popular', 'updated', 'name', 'created'], Field(examples=['popular'])] = 'popular'
-    locale: Locale | None = None
-    gaps: Annotated[list[ListingGap] | None, Field(examples=[['zhSummary', 'icon']], max_length=8, min_length=1)] = None
+    locale: Locale | MISSING = MISSING
+    gaps: Annotated[list[ListingGap] | MISSING, Field(examples=[['zhSummary', 'icon']], max_length=8, min_length=1)] = MISSING
     gapMode: Annotated[Literal['any', 'all'], Field(examples=['any'])] = 'any'
 
 
@@ -3442,15 +3443,15 @@ class GetAdminPackageInput(BaseModel):
         extra='forbid',
     )
     id: Annotated[int, Field(examples=[1], ge=1)]
-    locale: Locale | None = None
+    locale: Locale | MISSING = MISSING
 
 
 class UpdatePackageMetaInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageMetaUpdate
@@ -3467,8 +3468,8 @@ class SetPackagePriceInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackagePriceUpdate
@@ -3478,8 +3479,8 @@ class SetPackageMacosSupportInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageMacosUpdate
@@ -3489,8 +3490,8 @@ class SetPackageAlternativesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageAlternativesUpdate
@@ -3500,8 +3501,8 @@ class SetPackageCategoriesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageCategoriesUpdate
@@ -3511,8 +3512,8 @@ class SetPackageIconInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: AssetRef
@@ -3522,8 +3523,8 @@ class DeletePackageIconInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -3539,8 +3540,8 @@ class ReorderPackageScreenshotsInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: IdList
@@ -3550,8 +3551,8 @@ class DeletePackageScreenshotInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     screenshotId: Annotated[int, Field(examples=[1])]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -3570,8 +3571,8 @@ class ResyncPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -3580,7 +3581,7 @@ class ListLinkPackagesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    q: Annotated[str | None, Field(max_length=200)] = None
+    q: Annotated[str | MISSING, Field(max_length=200)] = MISSING
     current: Annotated[int, Field(ge=1)] = 1
     size: Annotated[int, Field(ge=1, le=100)] = 20
 
@@ -3589,8 +3590,8 @@ class RemoveLinkPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -3605,8 +3606,8 @@ class AddTapPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: TapPackageAdd
 
@@ -3615,8 +3616,8 @@ class RemoveTapPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -3631,8 +3632,8 @@ class ReorderCategoriesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CategoryOrder
 
@@ -3641,8 +3642,8 @@ class DeleteCategoryInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -3653,17 +3654,17 @@ class ListAdminArticlesInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    status: ArticleStatus | None = None
-    type: ArticleType | None = None
-    q: Annotated[str | None, Field(max_length=100)] = None
+    status: ArticleStatus | MISSING = MISSING
+    type: ArticleType | MISSING = MISSING
+    q: Annotated[str | MISSING, Field(max_length=100)] = MISSING
 
 
 class CreateArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleCreate
 
@@ -3679,8 +3680,8 @@ class UpdateArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleUpdate
@@ -3690,8 +3691,8 @@ class SetArticlePackagesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticlePackagesUpdate
@@ -3701,8 +3702,8 @@ class SubmitArticleReviewInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleRevisionCheck
@@ -3712,8 +3713,8 @@ class PublishArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleRevisionCheck
@@ -3723,8 +3724,8 @@ class WithdrawArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleWithdraw
@@ -3734,8 +3735,8 @@ class RestoreArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleRevisionCheck
@@ -3745,8 +3746,8 @@ class RevertArticleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleRevert
@@ -3756,8 +3757,8 @@ class SetArticleSlugInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleSlugUpdate
@@ -3767,8 +3768,8 @@ class SetArticleLocaleInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     locale: Locale
@@ -3785,8 +3786,8 @@ class CreateArticleAuthorInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ArticleAuthorWrite
 
@@ -3795,8 +3796,8 @@ class UpdateArticleAuthorInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     id: Annotated[int, Field(examples=[1], ge=1)]
     body: ArticleAuthorWrite
@@ -3808,9 +3809,9 @@ class ListAdminCollectionsInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    status: PublishStatus | None = None
-    q: Annotated[str | None, Field(examples=['本地演示样本'])] = None
-    locale: Locale | None = None
+    status: PublishStatus | MISSING = MISSING
+    q: Annotated[str | MISSING, Field(examples=['本地演示样本'])] = MISSING
+    locale: Locale | MISSING = MISSING
 
 
 class GetAdminCollectionInput(BaseModel):
@@ -3818,15 +3819,15 @@ class GetAdminCollectionInput(BaseModel):
         extra='forbid',
     )
     id: Annotated[int, Field(examples=[1], ge=1)]
-    locale: Locale | None = None
+    locale: Locale | MISSING = MISSING
 
 
 class DeleteCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -3835,19 +3836,19 @@ class PublishCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
-    body: PublishRequest | None = None
+    body: PublishRequest | MISSING = MISSING
 
 
 class UnpublishCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -3858,9 +3859,9 @@ class ListFeaturesInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    placement: FeaturePlacement | None = None
-    status: PublishStatus | None = None
-    locale: Locale | None = None
+    placement: FeaturePlacement | MISSING = MISSING
+    status: PublishStatus | MISSING = MISSING
+    locale: Locale | MISSING = MISSING
 
 
 class GetFeatureInput(BaseModel):
@@ -3868,15 +3869,15 @@ class GetFeatureInput(BaseModel):
         extra='forbid',
     )
     id: Annotated[int, Field(examples=[1], ge=1)]
-    locale: Locale | None = None
+    locale: Locale | MISSING = MISSING
 
 
 class DeleteFeatureInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -3887,13 +3888,13 @@ class ListAdminReleasesInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    packageId: Annotated[int | None, Field(examples=[1])] = None
-    q: Annotated[str | None, Field(examples=['本地演示样本'])] = None
-    source: ReleaseSource | None = None
-    translationStatus: ReleaseTranslationStatus | None = None
-    hidden: Annotated[bool | None, Field(examples=[False])] = None
-    locale: Locale | None = None
-    hasEditorial: Annotated[bool | None, Field(examples=[False])] = None
+    packageId: Annotated[int | MISSING, Field(examples=[1])] = MISSING
+    q: Annotated[str | MISSING, Field(examples=['本地演示样本'])] = MISSING
+    source: ReleaseSource | MISSING = MISSING
+    translationStatus: ReleaseTranslationStatus | MISSING = MISSING
+    hidden: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    locale: Locale | MISSING = MISSING
+    hasEditorial: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
 
 
 class GetAdminReleaseInput(BaseModel):
@@ -3901,15 +3902,15 @@ class GetAdminReleaseInput(BaseModel):
         extra='forbid',
     )
     id: Annotated[int, Field(examples=[1], ge=1)]
-    locale: Locale | None = None
+    locale: Locale | MISSING = MISSING
 
 
 class UpdateReleaseInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ReleaseUpdate
@@ -3921,8 +3922,8 @@ class ListJobRunsInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    jobType: JobType | None = None
-    status: Annotated[Literal['running', 'succeeded', 'failed', 'partial'] | None, Field(examples=['running'])] = None
+    jobType: JobType | MISSING = MISSING
+    status: Annotated[Literal['running', 'succeeded', 'failed', 'partial'] | MISSING, Field(examples=['running'])] = MISSING
 
 
 class GetJobRunInput(BaseModel):
@@ -3942,8 +3943,8 @@ class TriggerJobInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     jobType: TriggerJobType
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -3972,15 +3973,15 @@ class ListSynonymsInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    q: Annotated[str | None, Field(examples=['本地演示样本'])] = None
+    q: Annotated[str | MISSING, Field(examples=['本地演示样本'])] = MISSING
 
 
 class CreateSynonymInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: SynonymUpsert
 
@@ -3989,8 +3990,8 @@ class UpdateSynonymInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: SynonymUpsert
@@ -4000,8 +4001,8 @@ class DeleteSynonymInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4012,8 +4013,8 @@ class ListFeedbackInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    status: FeedbackStatus | None = None
-    type: FeedbackType | None = None
+    status: FeedbackStatus | MISSING = MISSING
+    type: FeedbackType | MISSING = MISSING
 
 
 class GetFeedbackInput(BaseModel):
@@ -4027,8 +4028,8 @@ class UpdateFeedbackInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: FeedbackUpdate
@@ -4040,29 +4041,29 @@ class ListAssetsInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    kind: AssetKind | None = None
+    kind: AssetKind | MISSING = MISSING
 
 
 class Body(BaseModel):
     file: bytes
     kind: AssetKind
-    downloadUrl: Annotated[AnyUrl | None, Field(description='Downloaded safely by the Go backend; mutually exclusive with file.')] = None
-    sourceUrl: str | None = None
+    downloadUrl: Annotated[AnyUrl | MISSING, Field(description='Downloaded safely by the Go backend; mutually exclusive with file.')] = MISSING
+    sourceUrl: str | MISSING = MISSING
 
 
 class Body1(BaseModel):
-    file: bytes | None = None
+    file: bytes | MISSING = MISSING
     kind: AssetKind
     downloadUrl: Annotated[AnyUrl, Field(description='Downloaded safely by the Go backend; mutually exclusive with file.')]
-    sourceUrl: str | None = None
+    sourceUrl: str | MISSING = MISSING
 
 
 class UploadAssetInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: Body | Body1
 
@@ -4071,8 +4072,8 @@ class CreateAssetUploadTicketInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: AssetUploadTicketCreate
 
@@ -4083,7 +4084,7 @@ class ListDesktopReleasesInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    channel: ReleaseChannel | None = None
+    channel: ReleaseChannel | MISSING = MISSING
 
 
 class GetDesktopReleaseInput(BaseModel):
@@ -4097,8 +4098,8 @@ class UpdatePackageTextInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageTextUpdate
@@ -4108,8 +4109,8 @@ class UpsertReleaseNotesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     version: Annotated[str, Field(examples=['1.140.0'], max_length=256, min_length=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -4122,11 +4123,11 @@ class ListTranslationsInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    entity: ContentEntity | None = None
-    locale: Locale | None = None
-    status: Annotated[Literal['source', 'machine', 'manual', 'pending', 'failed', 'missing', 'skipped'] | None, Field(examples=['source'])] = None
-    stale: Annotated[bool | None, Field(examples=[False])] = None
-    q: Annotated[str | None, Field(examples=['Code'], max_length=200)] = None
+    entity: ContentEntity | MISSING = MISSING
+    locale: Locale | MISSING = MISSING
+    status: Annotated[Literal['source', 'machine', 'manual', 'pending', 'failed', 'missing', 'skipped'] | MISSING, Field(examples=['source'])] = MISSING
+    stale: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
+    q: Annotated[str | MISSING, Field(examples=['Code'], max_length=200)] = MISSING
 
 
 class GetTranslationStatusInput(BaseModel):
@@ -4134,16 +4135,16 @@ class GetTranslationStatusInput(BaseModel):
         extra='forbid',
     )
     entity: ContentEntity
-    id: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    secondaryId: Annotated[int | None, Field(examples=[2], ge=1)] = None
+    id: Annotated[int | MISSING, Field(examples=[1], ge=1)] = MISSING
+    secondaryId: Annotated[int | MISSING, Field(examples=[2], ge=1)] = MISSING
 
 
 class FixTranslationInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: TranslationFix
 
@@ -4154,16 +4155,16 @@ class ListGlossaryInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    q: Annotated[str | None, Field(examples=['workspace'], max_length=200)] = None
-    doNotTranslate: Annotated[bool | None, Field(examples=[False])] = None
+    q: Annotated[str | MISSING, Field(examples=['workspace'], max_length=200)] = MISSING
+    doNotTranslate: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
 
 
 class UpsertGlossaryTermInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: GlossaryTermUpdate
 
@@ -4172,8 +4173,8 @@ class DeleteGlossaryTermInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4188,8 +4189,8 @@ class UpdateAnnouncementInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: AnnouncementUpdate
 
@@ -4198,8 +4199,8 @@ class UpdateDesktopReleaseNotesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: DesktopNotesUpdate
@@ -4211,11 +4212,11 @@ class ListAdminCatalogChangesInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-06T08:00:00Z'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
-    type: Annotated[Literal['created', 'updated', 'removed', 'renamed'] | None, Field(examples=['updated'])] = None
-    afterSeq: Annotated[int | None, Field(examples=[0], ge=0)] = None
-    hasEditorial: Annotated[bool | None, Field(examples=[False])] = None
+    from_: Annotated[AwareDatetime | MISSING, Field(alias='from', examples=['2026-10-06T08:00:00Z'])] = MISSING
+    to: Annotated[AwareDatetime | MISSING, Field(examples=['2026-10-07T08:00:00Z'])] = MISSING
+    type: Annotated[Literal['created', 'updated', 'removed', 'renamed'] | MISSING, Field(examples=['updated'])] = MISSING
+    afterSeq: Annotated[int | MISSING, Field(examples=[0], ge=0)] = MISSING
+    hasEditorial: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
     sort: Annotated[Literal['changed', 'popular'], Field(examples=['changed'])] = 'changed'
 
 
@@ -4231,13 +4232,13 @@ class ListContentRevisionsInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    entity: HistoryEntity | None = None
-    objectKey: Annotated[str | None, Field(examples=['1'], max_length=200)] = None
-    requestId: Annotated[str | None, Field(examples=['demo-request-001'], max_length=128)] = None
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
-    locale: Locale | None = None
-    actorId: Annotated[int | None, Field(examples=[6], ge=1)] = None
+    entity: HistoryEntity | MISSING = MISSING
+    objectKey: Annotated[str | MISSING, Field(examples=['1'], max_length=200)] = MISSING
+    requestId: Annotated[str | MISSING, Field(examples=['demo-request-001'], max_length=128)] = MISSING
+    from_: Annotated[AwareDatetime | MISSING, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = MISSING
+    to: Annotated[AwareDatetime | MISSING, Field(examples=['2026-10-07T08:00:00Z'])] = MISSING
+    locale: Locale | MISSING = MISSING
+    actorId: Annotated[int | MISSING, Field(examples=[6], ge=1)] = MISSING
 
 
 class GetContentRevisionInput(BaseModel):
@@ -4251,8 +4252,8 @@ class RestoreRevisionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: RestoreOptions
@@ -4264,12 +4265,12 @@ class ListTrashInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    entity: HistoryEntity | None = None
-    objectKey: Annotated[str | None, Field(examples=['1'], max_length=200)] = None
-    requestId: Annotated[str | None, Field(examples=['demo-request-001'], max_length=128)] = None
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
-    restored: Annotated[bool | None, Field(examples=[False])] = None
+    entity: HistoryEntity | MISSING = MISSING
+    objectKey: Annotated[str | MISSING, Field(examples=['1'], max_length=200)] = MISSING
+    requestId: Annotated[str | MISSING, Field(examples=['demo-request-001'], max_length=128)] = MISSING
+    from_: Annotated[AwareDatetime | MISSING, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = MISSING
+    to: Annotated[AwareDatetime | MISSING, Field(examples=['2026-10-07T08:00:00Z'])] = MISSING
+    restored: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
 
 
 class GetTrashItemInput(BaseModel):
@@ -4283,8 +4284,8 @@ class RestoreTrashInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4293,8 +4294,8 @@ class RevertRequestInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     requestId: Annotated[str, Field(examples=['demo-request-001'], max_length=128, min_length=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
 
@@ -4305,16 +4306,16 @@ class ListAgentCallsInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    entity: HistoryEntity | None = None
-    objectKey: Annotated[str | None, Field(examples=['1'], max_length=200)] = None
-    requestId: Annotated[str | None, Field(examples=['demo-request-001'], max_length=128)] = None
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
-    clientId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    tokenId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    tool: Annotated[str | None, Field(examples=['package_set_text'], max_length=128)] = None
-    code: Code | None = None
-    dryRun: Annotated[bool | None, Field(examples=[False])] = None
+    entity: HistoryEntity | MISSING = MISSING
+    objectKey: Annotated[str | MISSING, Field(examples=['1'], max_length=200)] = MISSING
+    requestId: Annotated[str | MISSING, Field(examples=['demo-request-001'], max_length=128)] = MISSING
+    from_: Annotated[AwareDatetime | MISSING, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = MISSING
+    to: Annotated[AwareDatetime | MISSING, Field(examples=['2026-10-07T08:00:00Z'])] = MISSING
+    clientId: Annotated[int | MISSING, Field(examples=[1], ge=1)] = MISSING
+    tokenId: Annotated[int | MISSING, Field(examples=[1], ge=1)] = MISSING
+    tool: Annotated[str | MISSING, Field(examples=['package_set_text'], max_length=128)] = MISSING
+    code: Code | MISSING = MISSING
+    dryRun: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
 
 
 class GetAgentCallInput(BaseModel):
@@ -4330,13 +4331,13 @@ class ListTranslationLogsInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    entity: HistoryEntity | None = None
-    objectKey: Annotated[str | None, Field(examples=['1'], max_length=200)] = None
-    requestId: Annotated[str | None, Field(examples=['demo-request-001'], max_length=128)] = None
-    from_: Annotated[AwareDatetime | None, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = None
-    to: Annotated[AwareDatetime | None, Field(examples=['2026-10-07T08:00:00Z'])] = None
-    locale: Locale | None = None
-    status: Annotated[Literal['succeeded', 'failed', 'stale'] | None, Field(examples=['succeeded'])] = None
+    entity: HistoryEntity | MISSING = MISSING
+    objectKey: Annotated[str | MISSING, Field(examples=['1'], max_length=200)] = MISSING
+    requestId: Annotated[str | MISSING, Field(examples=['demo-request-001'], max_length=128)] = MISSING
+    from_: Annotated[AwareDatetime | MISSING, Field(alias='from', examples=['2026-10-07T08:00:00Z'])] = MISSING
+    to: Annotated[AwareDatetime | MISSING, Field(examples=['2026-10-07T08:00:00Z'])] = MISSING
+    locale: Locale | MISSING = MISSING
+    status: Annotated[Literal['succeeded', 'failed', 'stale'] | MISSING, Field(examples=['succeeded'])] = MISSING
 
 
 class GetTranslationLogInput(BaseModel):
@@ -4352,9 +4353,9 @@ class ListAdminVersionsInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    packageId: Annotated[int | None, Field(examples=[1], ge=1)] = None
-    q: Annotated[str | None, Field(examples=['Code'], max_length=200)] = None
-    hasEditorial: Annotated[bool | None, Field(examples=[False])] = None
+    packageId: Annotated[int | MISSING, Field(examples=[1], ge=1)] = MISSING
+    q: Annotated[str | MISSING, Field(examples=['Code'], max_length=200)] = MISSING
+    hasEditorial: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
     sort: Annotated[Literal['updated', 'popular'], Field(examples=['updated'])] = 'updated'
 
 
@@ -4362,8 +4363,8 @@ class UpsertUpdateFeedInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: UpdateFeedInput
 
@@ -4372,8 +4373,8 @@ class DisableUpdateFeedInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: UpdateFeedKey
 
@@ -4409,8 +4410,8 @@ class SetPackageIntentPagesInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageIntentPagesUpdate
@@ -4422,8 +4423,8 @@ class ListIntentPagesInput(BaseModel):
     )
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
-    pageKind: IntentPageKind | None = None
-    locale: Locale | None = None
+    pageKind: IntentPageKind | MISSING = MISSING
+    locale: Locale | MISSING = MISSING
 
 
 class GetPackageSeoInput(BaseModel):
@@ -4437,8 +4438,8 @@ class SetPackageSeoInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: PackageSeoUpdate
@@ -4451,33 +4452,33 @@ class ListDueFactRecordsInput(BaseModel):
     current: Annotated[int, Field(examples=[1], ge=1)] = 1
     size: Annotated[int, Field(examples=[24], ge=1, le=100)] = 10
     withinDays: Annotated[int, Field(examples=[14], ge=0, le=90)] = 14
-    kind: Annotated[Literal['integration', 'issue', 'compatibility', 'attribute', 'migration', 'security', 'price'] | None, Field(examples=['attribute'])] = None
+    kind: Annotated[Literal['integration', 'issue', 'compatibility', 'attribute', 'migration', 'security', 'price'] | MISSING, Field(examples=['attribute'])] = MISSING
 
 
 class TranslationReadFields(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    displayName: Annotated[str | None, Field(examples=[None], max_length=128)] = None
-    summary: Annotated[str | None, Field(examples=[None], max_length=400)] = None
-    description: Annotated[str | None, Field(examples=[None], max_length=20000)] = None
-    title: Annotated[str | None, Field(examples=[None], max_length=256)] = None
-    subtitle: Annotated[str | None, Field(examples=[None], max_length=500)] = None
-    body: Annotated[str | None, Field(examples=[None], max_length=20000)] = None
-    badge: Annotated[str | None, Field(examples=[None], max_length=80)] = None
-    ctaLabel: Annotated[str | None, Field(examples=[None], max_length=80)] = None
-    name: Annotated[str | None, Field(examples=[None], max_length=128)] = None
-    caption: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
-    note: Annotated[str | None, Field(examples=[None], max_length=2000)] = None
-    notes: Annotated[str | None, Field(examples=[None], max_length=20000)] = None
-    bodyMarkdown: Annotated[str | None, Field(examples=[None], max_length=200000)] = None
-    testNote: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
-    seoTitle: Annotated[str | None, Field(examples=[None], max_length=120)] = None
-    seoDescription: Annotated[str | None, Field(examples=[None], max_length=300)] = None
-    role: Annotated[str | None, Field(examples=[None], max_length=80)] = None
-    bio: Annotated[str | None, Field(examples=[None], max_length=1000)] = None
-    sections: Annotated[list[ReleaseSection] | None, Field(examples=[[]], max_length=8)] = None
-    coverAlt: Annotated[str | None, Field(description='Article revision cover alt in this translation locale. Empty falls back to English then source.', examples=[None], max_length=300)] = None
+    displayName: Annotated[str | None | MISSING, Field(examples=[None], max_length=128)] = MISSING
+    summary: Annotated[str | None | MISSING, Field(examples=[None], max_length=400)] = MISSING
+    description: Annotated[str | None | MISSING, Field(examples=[None], max_length=20000)] = MISSING
+    title: Annotated[str | None | MISSING, Field(examples=[None], max_length=256)] = MISSING
+    subtitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=500)] = MISSING
+    body: Annotated[str | None | MISSING, Field(examples=[None], max_length=20000)] = MISSING
+    badge: Annotated[str | None | MISSING, Field(examples=[None], max_length=80)] = MISSING
+    ctaLabel: Annotated[str | None | MISSING, Field(examples=[None], max_length=80)] = MISSING
+    name: Annotated[str | None | MISSING, Field(examples=[None], max_length=128)] = MISSING
+    caption: Annotated[str | None | MISSING, Field(examples=[None], max_length=1000)] = MISSING
+    note: Annotated[str | None | MISSING, Field(examples=[None], max_length=2000)] = MISSING
+    notes: Annotated[str | None | MISSING, Field(examples=[None], max_length=20000)] = MISSING
+    bodyMarkdown: Annotated[str | None | MISSING, Field(examples=[None], max_length=200000)] = MISSING
+    testNote: Annotated[str | None | MISSING, Field(examples=[None], max_length=1000)] = MISSING
+    seoTitle: Annotated[str | None | MISSING, Field(examples=[None], max_length=120)] = MISSING
+    seoDescription: Annotated[str | None | MISSING, Field(examples=[None], max_length=300)] = MISSING
+    role: Annotated[str | None | MISSING, Field(examples=[None], max_length=80)] = MISSING
+    bio: Annotated[str | None | MISSING, Field(examples=[None], max_length=1000)] = MISSING
+    sections: Annotated[list[ReleaseSection] | MISSING, Field(examples=[[]], max_length=8)] = MISSING
+    coverAlt: Annotated[str | None | MISSING, Field(description='Article revision cover alt in this translation locale. Empty falls back to English then source.', examples=[None], max_length=300)] = MISSING
 
 
 class SeoEvidenceResponse(BaseModel):
@@ -4518,9 +4519,9 @@ class BatchTranslationInput(BaseModel):
         extra='forbid',
     )
     locale: Locale
-    sourceHash: Annotated[str | None, Field(pattern='^[0-9a-f]{64}$')] = None
-    expectedRevision: Annotated[str | None, Field(pattern='^[0-9a-f]{64}$')] = None
-    idempotencyKey: Annotated[str | None, Field(max_length=200, min_length=8)] = None
+    sourceHash: Annotated[str | MISSING, Field(pattern='^[0-9a-f]{64}$')] = MISSING
+    expectedRevision: Annotated[str | MISSING, Field(pattern='^[0-9a-f]{64}$')] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(max_length=200, min_length=8)] = MISSING
     fields: ContentFields
 
 
@@ -4529,9 +4530,9 @@ class TranslationsBatchWrite(BaseModel):
         extra='forbid',
     )
     ref: ContentRef
-    model: Annotated[str | None, Field(max_length=160, min_length=1, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = None
-    taskId: Annotated[int | None, Field(deprecated=True, description='Ignored. Accepted for one release while clients stop sending it.', ge=1, le=1000000000)] = None
-    fencing: Annotated[int | None, Field(deprecated=True, description='Ignored. Accepted for one release while clients stop sending it.', ge=1, le=1000000000)] = None
+    model: Annotated[str | MISSING, Field(max_length=160, min_length=1, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$')] = MISSING
+    taskId: Annotated[int | MISSING, Field(deprecated=True, description='Ignored. Accepted for one release while clients stop sending it.', ge=1, le=1000000000)] = MISSING
+    fencing: Annotated[int | MISSING, Field(deprecated=True, description='Ignored. Accepted for one release while clients stop sending it.', ge=1, le=1000000000)] = MISSING
     translations: Annotated[list[BatchTranslationInput], Field(max_length=10, min_length=1)]
 
 
@@ -4543,7 +4544,7 @@ class BatchTranslationResult(BaseModel):
     status: Literal['written', 'preview', 'proposal', 'preserved_manual', 'failed']
     reason: str
     value: Annotated[BatchTranslationValue | None, Field(...)]
-    violations: Annotated[list[TranslationViolation] | None, Field(description='Every failed content check for a validation_failed result; reason names the first.', max_length=20)] = None
+    violations: Annotated[list[TranslationViolation] | MISSING, Field(description='Every failed content check for a validation_failed result; reason names the first.', max_length=20)] = MISSING
 
 
 class TranslationsBatchResult(BaseModel):
@@ -4638,7 +4639,7 @@ class UpdateFeedPreview(BaseModel):
     requestId: Annotated[str, Field(examples=['demo-preview-001'], max_length=128)]
     changes: Annotated[list[Change], Field(examples=[[{'object': {'entity': 'update_feed', 'objectKey': 'sparkle:com.example.App'}, 'action': 'create', 'before': None, 'after': {'bundleId': 'com.example.App', 'source': 'sparkle', 'feedUrl': 'https://example.com/appcast.xml', 'teamId': None, 'channel': 'stable', 'packageId': None}}]])]
     affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
-    sourceGaps: Annotated[list[FactGap] | None, Field(description='App fact writes only: the evidence still missing or outdated after this write')] = None
+    sourceGaps: Annotated[list[FactGap] | MISSING, Field(description='App fact writes only: the evidence still missing or outdated after this write')] = MISSING
 
 
 class UpdateFeedPreviewResponse(BaseModel):
@@ -4665,12 +4666,12 @@ class UpdateFeed(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    githubRepo: Annotated[str | None, Field(pattern='^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$')] = None
-    assetPattern: Annotated[str | None, Field(max_length=2048)] = None
-    resolver: VendorResolver | None = None
-    release: UpdateRelease | None = None
-    revision: int | None = None
-    lastModified: str | None = None
+    githubRepo: Annotated[str | None | MISSING, Field(pattern='^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$')] = MISSING
+    assetPattern: Annotated[str | None | MISSING, Field(max_length=2048)] = MISSING
+    resolver: VendorResolver | MISSING = MISSING
+    release: UpdateRelease | MISSING = MISSING
+    revision: int | MISSING = MISSING
+    lastModified: str | None | MISSING = MISSING
     bundleId: Annotated[str, Field(max_length=255, pattern='^[A-Za-z0-9][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)+$')]
     source: Literal['sparkle', 'electron', 'github', 'vendor']
     feedUrl: AnyUrl
@@ -4706,41 +4707,41 @@ class LinkPackageAdd(BaseModel):
     )
     token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
     name: Annotated[str, Field(max_length=256, min_length=1)]
-    sourceLocale: Locale | None = None
-    homepage: str | None = None
-    downloadUrl: str | None = None
-    githubRepo: Annotated[str | None, Field(description='GitHub owner/name, without a URL or .git suffix.')] = None
-    bundleIds: Annotated[list[str] | None, Field(max_length=32)] = None
-    teamId: Annotated[str | None, Field(pattern='^[A-Z0-9]{10}$')] = None
+    sourceLocale: Locale | MISSING = MISSING
+    homepage: str | None | MISSING = MISSING
+    downloadUrl: str | None | MISSING = MISSING
+    githubRepo: Annotated[str | None | MISSING, Field(description='GitHub owner/name, without a URL or .git suffix.')] = MISSING
+    bundleIds: Annotated[list[str] | MISSING, Field(max_length=32)] = MISSING
+    teamId: Annotated[str | None | MISSING, Field(pattern='^[A-Z0-9]{10}$')] = MISSING
     pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source', 'unknown']
-    sparkleFeed: str | None = None
-    assetRules: AssetRules | None = None
-    notes: Notes1 | None = None
+    sparkleFeed: str | None | MISSING = MISSING
+    assetRules: AssetRules | None | MISSING = MISSING
+    notes: Notes1 | None | MISSING = MISSING
 
 
 class LinkPackageUpdate(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    token: Annotated[str | None, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')] = None
-    name: Annotated[str | None, Field(max_length=256, min_length=1)] = None
-    sourceLocale: Locale | None = None
-    homepage: str | None = None
-    downloadUrl: str | None = None
-    githubRepo: Annotated[str | None, Field(description='GitHub owner/name, without a URL or .git suffix.')] = None
-    bundleIds: Annotated[list[str] | None, Field(max_length=32)] = None
-    teamId: Annotated[str | None, Field(pattern='^[A-Z0-9]{10}$')] = None
-    pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source', 'unknown'] | None = None
-    sparkleFeed: str | None = None
-    assetRules: AssetRules | None = None
-    notes: Notes1 | None = None
+    token: Annotated[str | MISSING, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')] = MISSING
+    name: Annotated[str | MISSING, Field(max_length=256, min_length=1)] = MISSING
+    sourceLocale: Locale | MISSING = MISSING
+    homepage: str | None | MISSING = MISSING
+    downloadUrl: str | None | MISSING = MISSING
+    githubRepo: Annotated[str | None | MISSING, Field(description='GitHub owner/name, without a URL or .git suffix.')] = MISSING
+    bundleIds: Annotated[list[str] | MISSING, Field(max_length=32)] = MISSING
+    teamId: Annotated[str | None | MISSING, Field(pattern='^[A-Z0-9]{10}$')] = MISSING
+    pricing: Literal['free', 'paid', 'freemium', 'subscription', 'open_source', 'unknown'] | MISSING = MISSING
+    sparkleFeed: str | None | MISSING = MISSING
+    assetRules: AssetRules | None | MISSING = MISSING
+    notes: Notes1 | None | MISSING = MISSING
 
 
 class LinkPackage(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    revision: Annotated[int | None, Field(description='Link edit counter. Use this value for the optional expected revision when updating or removing this Link app; package content revisions are separate.', examples=[0], ge=0)] = None
+    revision: Annotated[int | MISSING, Field(description='Link edit counter. Use this value for the optional expected revision when updating or removing this Link app; package content revisions are separate.', examples=[0], ge=0)] = MISSING
     token: Annotated[str, Field(pattern='^[a-z0-9][a-z0-9+@._-]{0,127}$')]
     name: Annotated[str, Field(max_length=256, min_length=1)]
     sourceLocale: Locale
@@ -4795,7 +4796,7 @@ class PackageIndexStatusResponseResult(RootModel[PackageIndexStatusResponse | Bu
 
 
 class Data1(BaseModel):
-    translationImpact: TranslationImpact | None = None
+    translationImpact: TranslationImpact | MISSING = MISSING
     records: list[IndexReportRow]
     current: int
     size: int
@@ -4832,9 +4833,9 @@ class SeoSettingsUpdate(BaseModel):
         extra='forbid',
     )
     settings: SeoSettings
-    indexNowKey: Annotated[str | None, Field(description='IndexNow key; empty/omitted preserves the existing key.', max_length=128, pattern='^([A-Za-z0-9-]{8,128})?$')] = None
+    indexNowKey: Annotated[str | MISSING, Field(description='IndexNow key; empty/omitted preserves the existing key.', max_length=128, pattern='^([A-Za-z0-9-]{8,128})?$')] = MISSING
     clearIndexNowKey: bool = False
-    cloudflareToken: Annotated[str | None, Field(description='Cloudflare API token limited to cache purge; empty/omitted preserves the existing token.', max_length=200, pattern='^[!-~]*$')] = None
+    cloudflareToken: Annotated[str | MISSING, Field(description='Cloudflare API token limited to cache purge; empty/omitted preserves the existing token.', max_length=200, pattern='^[!-~]*$')] = MISSING
     clearCloudflareToken: bool = False
 
 
@@ -4946,13 +4947,13 @@ class UserInfoResponseResult(RootModel[UserInfoResponse | BusinessErrorResponse]
 
 
 class DashboardOverview(BaseModel):
-    usage: UsageOverview | None = None
+    usage: UsageOverview | MISSING = MISSING
     packages: Packages
     coverage: Annotated[Coverage, Field(description='All coverage metrics use all valid apps (Homebrew Casks and link apps), including fonts, as denominator, excluding disabled, hidden and removed packages.')]
     feedbackOpen: Annotated[int, Field(examples=[1])]
     jobs: Jobs
     snapshot: Snapshot
-    hermes: HermesDaily | None = None
+    hermes: HermesDaily | MISSING = MISSING
 
 
 class AdminPackage(BaseModel):
@@ -4962,9 +4963,9 @@ class AdminPackage(BaseModel):
     name: Annotated[str, Field(examples=['Microsoft Visual Studio Code'])]
     version: Annotated[str, Field(examples=['1.140.0'])]
     installs30d: Annotated[int, Field(examples=[17392])]
-    rank30d: Annotated[int | None, Field(examples=[9])] = None
-    primaryCategory: CategoryBrief | None = None
-    iconUrl: Annotated[str | None, Field(examples=[None])] = None
+    rank30d: Annotated[int | None | MISSING, Field(examples=[9])] = MISSING
+    primaryCategory: CategoryBrief | None | MISSING = MISSING
+    iconUrl: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     hasIcon: Annotated[bool, Field(examples=[False])]
     screenshotCount: Annotated[int, Field(examples=[0])]
     hidden: Annotated[bool, Field(examples=[False])]
@@ -4973,78 +4974,78 @@ class AdminPackage(BaseModel):
     disabled: Annotated[bool, Field(examples=[False])]
     isFont: Annotated[bool, Field(examples=[False])]
     isLibrary: Annotated[bool, Field(examples=[False])]
-    removed: Annotated[bool | None, Field(examples=[False])] = None
+    removed: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
     translationStatus: PackageTranslationStatus
     changelogStatus: Annotated[Literal['none', 'ok', 'error'], Field(examples=['ok'])]
     versionChangedAt: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
     updateTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
-    sourceLocale: Locale | None = None
-    displayName: LocalizedNullableString | None = None
-    summary: LocalizedNullableString | None = None
+    sourceLocale: Locale | MISSING = MISSING
+    displayName: LocalizedNullableString | MISSING = MISSING
+    summary: LocalizedNullableString | MISSING = MISSING
 
 
 class PackageI18nView(BaseModel):
     locale: Locale
-    displayName: Annotated[str | None, Field(examples=[None])] = None
-    summary: Annotated[str | None, Field(examples=[None])] = None
-    description: Annotated[str | None, Field(description='Introduction in Markdown, using description without adding a new field.', examples=[None])] = None
+    displayName: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    summary: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    description: Annotated[str | None | MISSING, Field(description='Introduction in Markdown, using description without adding a new field.', examples=[None])] = MISSING
     status: TranslationStatus
     source: Annotated[Literal['homebrew', 'rule', 'llm', 'human'], Field(examples=['homebrew'])]
-    stale: Annotated[bool | None, Field(description='Source text has changed; the current translation may be stale.', examples=[False])] = None
-    model: Annotated[str | None, Field(examples=[None])] = None
-    reviewedBy: Annotated[str | None, Field(deprecated=True, examples=[None])] = None
-    reviewedAt: Annotated[AwareDatetime | None, Field(deprecated=True, examples=[None])] = None
-    sourceLocale: Locale | None = None
-    sourceHash: Annotated[str | None, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = None
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    stale: Annotated[bool | MISSING, Field(description='Source text has changed; the current translation may be stale.', examples=[False])] = MISSING
+    model: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    reviewedBy: Annotated[str | None | MISSING, Field(deprecated=True, examples=[None])] = MISSING
+    reviewedAt: Annotated[AwareDatetime | None | MISSING, Field(deprecated=True, examples=[None])] = MISSING
+    sourceLocale: Locale | MISSING = MISSING
+    sourceHash: Annotated[str | None | MISSING, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = MISSING
+    translatedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class AdminScreenshot(BaseModel):
     id: Annotated[int, Field(examples=[1])]
     assetId: Annotated[int, Field(examples=[1])]
     url: Annotated[str, Field(examples=['https://cdn.opennavo.example/icons/cask/visual-studio-code/local-256.png'])]
-    width: Annotated[int | None, Field(examples=[None])] = None
-    height: Annotated[int | None, Field(examples=[None])] = None
+    width: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
+    height: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
     sort: Annotated[int, Field(examples=[0])]
     theme: Annotated[Literal['dark', 'light'], Field(examples=['dark'])]
-    i18n: ScreenshotI18nViewMap | None = None
-    sourceLocale: Locale | None = None
+    i18n: ScreenshotI18nViewMap | MISSING = MISSING
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class AdminPackageDetail(AdminPackage):
-    revision: Annotated[int | None, Field(description='Revision the UpdatePackageMeta and the other package writes (text, i18n, categories, facts, icon); link app definitions use their own revision check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
-    webUrl: Annotated[AnyUrl | None, Field(description='/apps/{token} under WEB_BASE_URL; null when hidden or removed. Casks only.', examples=['https://opennavo.example/apps/visual-studio-code'])] = None
+    revision: Annotated[int | MISSING, Field(description='Revision the UpdatePackageMeta and the other package writes (text, i18n, categories, facts, icon); link app definitions use their own revision check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = MISSING
+    webUrl: Annotated[AnyUrl | None | MISSING, Field(description='/apps/{token} under WEB_BASE_URL; null when hidden or removed. Casks only.', examples=['https://opennavo.example/apps/visual-studio-code'])] = MISSING
     names: list[str]
-    descEn: Annotated[str | None, Field(examples=['Open-source code editor with debugging and extensions'])] = None
-    homepage: Annotated[str | None, Field(examples=['https://code.visualstudio.com/'])] = None
-    downloadUrl: Annotated[str | None, Field(examples=['https://update.code.visualstudio.com/1.140.0/darwin-universal/stable'])] = None
-    downloadSize: Annotated[int | None, Field(examples=[317901801])] = None
-    tap: Annotated[str | None, Field(examples=['homebrew/cask'])] = None
+    descEn: Annotated[str | None | MISSING, Field(examples=['Open-source code editor with debugging and extensions'])] = MISSING
+    homepage: Annotated[str | None | MISSING, Field(examples=['https://code.visualstudio.com/'])] = MISSING
+    downloadUrl: Annotated[str | None | MISSING, Field(examples=['https://update.code.visualstudio.com/1.140.0/darwin-universal/stable'])] = MISSING
+    downloadSize: Annotated[int | None | MISSING, Field(examples=[317901801])] = MISSING
+    tap: Annotated[str | MISSING, Field(examples=['homebrew/cask'])] = MISSING
     meta: Meta
     i18n: list[PackageI18nView]
     categories: list[PackageCategoryAssignment]
     screenshots: list[AdminScreenshot]
     raw: Annotated[dict[str, Any], Field(description='Raw Homebrew JSON, read-only')]
-    rubySourcePath: Annotated[str | None, Field(description='Homebrew definition path for Agents to inspect; homepage, downloadUrl and meta.repoUrl are already available.', examples=[None], max_length=2048)] = None
+    rubySourcePath: Annotated[str | None | MISSING, Field(description='Homebrew definition path for Agents to inspect; homepage, downloadUrl and meta.repoUrl are already available.', examples=[None], max_length=2048)] = MISSING
 
 
 class ScreenshotCreate(BaseModel):
     assetId: Annotated[int, Field(examples=[1])]
     theme: Annotated[Literal['dark', 'light'], Field(examples=['dark'])] = 'dark'
-    i18n: ScreenshotI18nMap | None = None
-    sourceLocale: Locale | None = None
+    i18n: ScreenshotI18nMap | MISSING = MISSING
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class ScreenshotUpdate(BaseModel):
-    theme: Annotated[Literal['dark', 'light'] | None, Field(examples=['dark'])] = None
-    i18n: ScreenshotI18nMap | None = None
-    sourceLocale: Locale | None = None
+    theme: Annotated[Literal['dark', 'light'] | MISSING, Field(examples=['dark'])] = MISSING
+    i18n: ScreenshotI18nMap | MISSING = MISSING
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class AdminCategoryNode(BaseModel):
-    revision: Annotated[int | None, Field(description='Revision the category writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
+    revision: Annotated[int | MISSING, Field(description='Revision the category writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = MISSING
     id: Annotated[int, Field(examples=[1])]
-    parentId: Annotated[int | None, Field(examples=[None])] = None
+    parentId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
     slug: Annotated[str, Field(examples=['new-mac'])]
     icon: Annotated[str, Field(examples=['lucide:code-xml'])]
     appliesTo: Annotated[Literal['cask', 'formula', 'both'], Field(examples=['cask'])]
@@ -5054,11 +5055,11 @@ class AdminCategoryNode(BaseModel):
     i18n: CategoryI18nViewMap
     packageCount: Annotated[int, Field(examples=[1])]
     children: list[AdminCategoryNode]
-    sourceLocale: Locale | None = None
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class CategoryUpsert(BaseModel):
-    parentId: Annotated[int | None, Field(examples=[None])] = None
+    parentId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
     slug: Annotated[str, Field(examples=['new-mac'], max_length=40, pattern='^[a-z0-9][a-z0-9-]*$')]
     icon: Annotated[str, Field(examples=['lucide:code-xml'], pattern='^lucide:[a-z0-9-]+$')]
     appliesTo: Annotated[Literal['cask', 'formula', 'both'], Field(examples=['cask'])]
@@ -5073,43 +5074,43 @@ class AdminCollectionItem(BaseModel):
     kind: PackageKind
     token: Annotated[str, Field(examples=['visual-studio-code'])]
     name: Annotated[str, Field(examples=['Visual Studio Code'])]
-    iconUrl: Annotated[str | None, Field(examples=[None])] = None
-    disabled: Annotated[bool | None, Field(examples=[False])] = None
+    iconUrl: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    disabled: Annotated[bool | MISSING, Field(examples=[False])] = MISSING
     sort: Annotated[int, Field(examples=[0])]
-    i18n: CollectionItemI18nViewMap | None = None
-    sourceLocale: Locale | None = None
+    i18n: CollectionItemI18nViewMap | MISSING = MISSING
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class AdminCollection(AuditFields):
-    revision: Annotated[int | None, Field(description='Revision the collection writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
-    webUrl: Annotated[AnyUrl | None, Field(description='/collections/{slug} under WEB_BASE_URL; available when published or scheduled, null when draft or archived', examples=['https://opennavo.example/collections/new-mac'])] = None
+    revision: Annotated[int | MISSING, Field(description='Revision the collection writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = MISSING
+    webUrl: Annotated[AnyUrl | None | MISSING, Field(description='/collections/{slug} under WEB_BASE_URL; available when published or scheduled, null when draft or archived', examples=['https://opennavo.example/collections/new-mac'])] = MISSING
     id: Annotated[int, Field(examples=[1])]
     slug: Annotated[str, Field(examples=['new-mac'])]
     status: PublishStatus
-    publishAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    unpublishAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    publishAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    unpublishAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
     sort: Annotated[int, Field(examples=[0])]
-    coverAssetId: Annotated[int | None, Field(examples=[None])] = None
-    coverUrl: Annotated[str | None, Field(examples=[None])] = None
+    coverAssetId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
+    coverUrl: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     i18n: CollectionI18nViewMap
     itemCount: Annotated[int, Field(examples=[60])]
-    items: list[AdminCollectionItem] | None = None
-    sourceLocale: Locale | None = None
+    items: list[AdminCollectionItem] | MISSING = MISSING
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class CollectionUpsert(BaseModel):
     slug: Annotated[str, Field(examples=['new-mac'], max_length=64, pattern='^[a-z0-9][a-z0-9-]*$')]
     sort: Annotated[int, Field(examples=[0])]
-    unpublishAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    coverAssetId: Annotated[int | None, Field(examples=[None])] = None
+    unpublishAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    coverAssetId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
     i18n: CollectionI18nMap
     sourceLocale: Locale
 
 
 class Item2(BaseModel):
     packageId: Annotated[int, Field(examples=[1])]
-    i18n: CollectionItemI18nMap | None = None
-    sourceLocale: Locale | None = None
+    i18n: CollectionItemI18nMap | MISSING = MISSING
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class CollectionItemsUpdate(BaseModel):
@@ -5117,36 +5118,36 @@ class CollectionItemsUpdate(BaseModel):
 
 
 class AdminFeature(AuditFields):
-    revision: Annotated[int | None, Field(description='Revision the feature writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = None
+    revision: Annotated[int | MISSING, Field(description='Revision the feature writes check: pass it as X-Expected-Revision. Returned by the single-object reads.', examples=[1], ge=0)] = MISSING
     id: Annotated[int, Field(examples=[1])]
     placement: FeaturePlacement
-    categoryId: Annotated[int | None, Field(examples=[None])] = None
+    categoryId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
     targetType: Annotated[Literal['package', 'collection', 'url'], Field(examples=['package'])]
-    packageId: Annotated[int | None, Field(examples=[None])] = None
-    packageName: Annotated[str | None, Field(examples=[None])] = None
-    collectionId: Annotated[int | None, Field(examples=[None])] = None
-    collectionTitle: Annotated[str | None, Field(examples=[None])] = None
-    url: Annotated[str | None, Field(examples=[None])] = None
-    glowColor: Annotated[str | None, Field(examples=[None])] = None
+    packageId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
+    packageName: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    collectionId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
+    collectionTitle: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    url: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    glowColor: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     status: PublishStatus
-    startsAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    endsAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    startsAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    endsAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
     sort: Annotated[int, Field(examples=[0])]
     i18n: FeatureI18nViewMap
-    sourceLocale: Locale | None = None
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class FeatureUpsert(BaseModel):
     placement: FeaturePlacement
-    categoryId: Annotated[int | None, Field(examples=[None])] = None
+    categoryId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
     targetType: Annotated[Literal['package', 'collection', 'url'], Field(examples=['package'])]
-    packageId: Annotated[int | None, Field(examples=[None])] = None
-    collectionId: Annotated[int | None, Field(examples=[None])] = None
-    url: Annotated[str | None, Field(examples=[None])] = None
-    glowColor: Annotated[str | None, Field(examples=[None], pattern='^#[0-9A-Fa-f]{6}$')] = None
+    packageId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
+    collectionId: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
+    url: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    glowColor: Annotated[str | None | MISSING, Field(examples=[None], pattern='^#[0-9A-Fa-f]{6}$')] = MISSING
     status: PublishStatus
-    startsAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    endsAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
+    startsAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    endsAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
     sort: Annotated[int, Field(examples=[0])]
     i18n: FeatureI18nMap
     sourceLocale: Locale
@@ -5155,22 +5156,22 @@ class FeatureUpsert(BaseModel):
 class ReleaseI18nView(BaseModel):
     locale: Locale
     status: TranslationStatus
-    summary: Annotated[str | None, Field(examples=[None])] = None
+    summary: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     sections: list[ReleaseSection]
-    bodyMarkdown: Annotated[str | None, Field(examples=[None])] = None
-    failReason: Annotated[str | None, Field(examples=[None])] = None
-    stale: Annotated[bool | None, Field(description='Source text has changed; the current translation may be stale.', examples=[False])] = None
-    model: Annotated[str | None, Field(examples=[None])] = None
-    reviewedBy: Annotated[str | None, Field(deprecated=True, examples=[None])] = None
-    reviewedAt: Annotated[AwareDatetime | None, Field(deprecated=True, examples=[None])] = None
-    sourceLocale: Locale | None = None
-    sourceHash: Annotated[str | None, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = None
-    translatedAt: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    title: Annotated[str | None, Field(examples=[None])] = None
+    bodyMarkdown: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    failReason: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    stale: Annotated[bool | MISSING, Field(description='Source text has changed; the current translation may be stale.', examples=[False])] = MISSING
+    model: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    reviewedBy: Annotated[str | None | MISSING, Field(deprecated=True, examples=[None])] = MISSING
+    reviewedAt: Annotated[AwareDatetime | None | MISSING, Field(deprecated=True, examples=[None])] = MISSING
+    sourceLocale: Locale | MISSING = MISSING
+    sourceHash: Annotated[str | None | MISSING, Field(description='Source hash; a mismatch with the current source indicates an old translation.', examples=[None])] = MISSING
+    translatedAt: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    title: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
 
 
 class AdminReleaseDetail(AdminRelease):
-    bodyMarkdown: Annotated[str | None, Field(examples=[None])] = None
+    bodyMarkdown: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     i18n: list[ReleaseI18nView]
 
 
@@ -5180,15 +5181,15 @@ class TranslationQueueItem(BaseModel):
     kind: PackageKind
     token: Annotated[str, Field(examples=['visual-studio-code'])]
     packageName: Annotated[str, Field(examples=['Visual Studio Code'])]
-    version: Annotated[str | None, Field(examples=[None])] = None
-    rank30d: Annotated[int | None, Field(examples=[None])] = None
+    version: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    rank30d: Annotated[int | None | MISSING, Field(examples=[None])] = MISSING
     status: TranslationStatus
-    original: Annotated[str | None, Field(description="Text in the object's source language, not necessarily English.", examples=[None])] = None
-    translated: Annotated[str | None, Field(examples=[None])] = None
-    confidence: Annotated[float | None, Field(examples=[None])] = None
-    updatedAt: Annotated[AwareDatetime | None, Field(examples=['2026-09-30T08:00:00+00:00'])] = None
-    locale: Locale | None = None
-    sourceLocale: Locale | None = None
+    original: Annotated[str | None | MISSING, Field(description="Text in the object's source language, not necessarily English.", examples=[None])] = MISSING
+    translated: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    confidence: Annotated[float | None | MISSING, Field(examples=[None])] = MISSING
+    updatedAt: Annotated[AwareDatetime | MISSING, Field(examples=['2026-09-30T08:00:00+00:00'])] = MISSING
+    locale: Locale | MISSING = MISSING
+    sourceLocale: Locale | MISSING = MISSING
 
 
 class DesktopRelease(BaseModel):
@@ -5198,8 +5199,8 @@ class DesktopRelease(BaseModel):
     status: Annotated[Literal['draft', 'published', 'rolled_back'], Field(examples=['published'])]
     minMacos: Annotated[str, Field(examples=['13.0'])]
     artifacts: list[DesktopArtifact]
-    pubDate: Annotated[AwareDatetime | None, Field(examples=[None])] = None
-    publishedBy: Annotated[str | None, Field(examples=[None])] = None
+    pubDate: Annotated[AwareDatetime | None | MISSING, Field(examples=[None])] = MISSING
+    publishedBy: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     createTime: Annotated[AwareDatetime, Field(examples=['2026-09-30T08:00:00+00:00'])]
     i18n: DesktopReleaseI18nViewMap
     sourceLocale: AppLocale
@@ -5210,23 +5211,23 @@ class DesktopReleaseCreate(BaseModel):
     channel: ReleaseChannel
     minMacos: Annotated[str, Field(examples=['13.0'])] = '13.0'
     artifacts: Annotated[list[DesktopArtifact], Field(min_length=1)]
-    i18n: DesktopReleaseI18nMap | None = None
-    sourceLocale: AppLocale | None = None
+    i18n: DesktopReleaseI18nMap | MISSING = MISSING
+    sourceLocale: AppLocale | MISSING = MISSING
 
 
 class DesktopReleaseUpdate(BaseModel):
-    minMacos: Annotated[str | None, Field(examples=['13.0'])] = None
-    i18n: DesktopReleaseI18nMap | None = None
-    sourceLocale: AppLocale | None = None
+    minMacos: Annotated[str | MISSING, Field(examples=['13.0'])] = MISSING
+    i18n: DesktopReleaseI18nMap | MISSING = MISSING
+    sourceLocale: AppLocale | MISSING = MISSING
 
 
 class Mirror(AuditFields):
     id: Annotated[int, Field(examples=[1])]
     key: Annotated[str, Field(examples=['desktop.announcement'])]
-    apiDomain: Annotated[str | None, Field(examples=[None])] = None
-    bottleDomain: Annotated[str | None, Field(examples=[None])] = None
-    brewGitRemote: Annotated[str | None, Field(examples=[None])] = None
-    coreGitRemote: Annotated[str | None, Field(examples=[None])] = None
+    apiDomain: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    bottleDomain: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    brewGitRemote: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    coreGitRemote: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     probeUrl: Annotated[str, Field(examples=['https://mirrors.ustc.edu.cn/homebrew-bottles/api/formula.jws.json'])]
     recommended: Annotated[bool, Field(examples=[False])]
     enabled: Annotated[bool, Field(examples=[True])]
@@ -5237,10 +5238,10 @@ class Mirror(AuditFields):
 
 class MirrorUpsert(BaseModel):
     key: Annotated[str, Field(examples=['developer-tools'], max_length=20, pattern='^[a-z0-9-]+$')]
-    apiDomain: Annotated[str | None, Field(examples=[None])] = None
-    bottleDomain: Annotated[str | None, Field(examples=[None])] = None
-    brewGitRemote: Annotated[str | None, Field(examples=[None])] = None
-    coreGitRemote: Annotated[str | None, Field(examples=[None])] = None
+    apiDomain: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    bottleDomain: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    brewGitRemote: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
+    coreGitRemote: Annotated[str | None | MISSING, Field(examples=[None])] = MISSING
     probeUrl: Annotated[str, Field(examples=['https://mirrors.ustc.edu.cn/homebrew-bottles/api/formula.jws.json'])]
     recommended: Annotated[bool, Field(examples=[False])]
     enabled: Annotated[bool, Field(examples=[True])]
@@ -5252,7 +5253,7 @@ class MirrorUpsert(BaseModel):
 class DashboardOverviewResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: DashboardOverview | None = None
+    data: DashboardOverview | None | MISSING = MISSING
 
 
 class Data3(BaseModel):
@@ -5265,25 +5266,25 @@ class Data3(BaseModel):
 class AdminPackagePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data3 | None = None
+    data: Data3 | None | MISSING = MISSING
 
 
 class AdminPackageDetailResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: AdminPackageDetail | None = None
+    data: AdminPackageDetail | None | MISSING = MISSING
 
 
 class ScreenshotListResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: list[AdminScreenshot] | None = None
+    data: list[AdminScreenshot] | None | MISSING = MISSING
 
 
 class CategoryTreeResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: list[AdminCategoryNode] | None = None
+    data: list[AdminCategoryNode] | None | MISSING = MISSING
 
 
 class Data5(BaseModel):
@@ -5296,13 +5297,13 @@ class Data5(BaseModel):
 class AdminCollectionPageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data5 | None = None
+    data: Data5 | None | MISSING = MISSING
 
 
 class AdminCollectionResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: AdminCollection | None = None
+    data: AdminCollection | None | MISSING = MISSING
 
 
 class Data6(BaseModel):
@@ -5315,19 +5316,19 @@ class Data6(BaseModel):
 class AdminFeaturePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data6 | None = None
+    data: Data6 | None | MISSING = MISSING
 
 
 class AdminFeatureResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: AdminFeature | None = None
+    data: AdminFeature | None | MISSING = MISSING
 
 
 class AdminReleaseResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: AdminReleaseDetail | None = None
+    data: AdminReleaseDetail | None | MISSING = MISSING
 
 
 class Data8(BaseModel):
@@ -5340,7 +5341,7 @@ class Data8(BaseModel):
 class TranslationQueuePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data8 | None = None
+    data: Data8 | None | MISSING = MISSING
 
 
 class Data14(BaseModel):
@@ -5353,33 +5354,33 @@ class Data14(BaseModel):
 class DesktopReleasePageResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: Data14 | None = None
+    data: Data14 | None | MISSING = MISSING
 
 
 class DesktopReleaseResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: DesktopRelease | None = None
+    data: DesktopRelease | None | MISSING = MISSING
 
 
 class MirrorListResponse(BaseModel):
     code: Code
     msg: Annotated[str, Field(examples=['ok'])]
-    data: list[Mirror] | None = None
+    data: list[Mirror] | None | MISSING = MISSING
 
 
 class AgentDryRun(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    validation: Annotated[Literal['passed'] | None, Field(description='Input validation passed against the previewed state; live execution revalidates.', examples=['passed'])] = None
-    mode: Annotated[Literal['preview', 'proposal'] | None, Field(description='Proposal records the validated change without applying it.', examples=['preview'])] = None
+    validation: Annotated[Literal['passed'] | MISSING, Field(description='Input validation passed against the previewed state; live execution revalidates.', examples=['passed'])] = MISSING
+    mode: Annotated[Literal['preview', 'proposal'] | MISSING, Field(description='Proposal records the validated change without applying it.', examples=['preview'])] = MISSING
     dryRun: Annotated[Literal[True], Field(examples=[True])]
     requestId: Annotated[str, Field(examples=['demo-preview-001'], max_length=128)]
     changes: Annotated[list[Change1], Field(examples=[[{'object': {'entity': 'package', 'objectKey': '1'}, 'action': 'update', 'before': {'summary': '旧简介'}, 'after': {'summary': '新简介'}}]])]
     affectedUrls: Annotated[list[AnyUrl], Field(examples=[['https://opennavo.example/zh/apps/visual-studio-code']])]
-    sourceGaps: Annotated[list[FactGap] | None, Field(description='App fact writes only: the evidence still missing or outdated after this write')] = None
-    expectedRevision: Annotated[int | None, Field(description='The current revision of the edited objects. Commit with it as X-Expected-Revision; a newer revision rejects the commit with a conflict.', ge=0)] = None
+    sourceGaps: Annotated[list[FactGap] | MISSING, Field(description='App fact writes only: the evidence still missing or outdated after this write')] = MISSING
+    expectedRevision: Annotated[int | MISSING, Field(description='The current revision of the edited objects. Commit with it as X-Expected-Revision; a newer revision rejects the commit with a conflict.', ge=0)] = MISSING
 
 
 class ContentLocaleState(BaseModel):
@@ -5407,10 +5408,10 @@ class ContentLocaleStates(BaseModel):
     es_ES: Annotated[ContentLocaleState, Field(alias='es-ES')]
     pt_BR: Annotated[ContentLocaleState, Field(alias='pt-BR')]
     ru_RU: Annotated[ContentLocaleState, Field(alias='ru-RU')]
-    de_DE: Annotated[ContentLocaleState | None, Field(alias='de-DE')] = None
-    fr_FR: Annotated[ContentLocaleState | None, Field(alias='fr-FR')] = None
-    it_IT: Annotated[ContentLocaleState | None, Field(alias='it-IT')] = None
-    zh_Hant: Annotated[ContentLocaleState | None, Field(alias='zh-Hant')] = None
+    de_DE: Annotated[ContentLocaleState | MISSING, Field(alias='de-DE')] = MISSING
+    fr_FR: Annotated[ContentLocaleState | MISSING, Field(alias='fr-FR')] = MISSING
+    it_IT: Annotated[ContentLocaleState | MISSING, Field(alias='it-IT')] = MISSING
+    zh_Hant: Annotated[ContentLocaleState | MISSING, Field(alias='zh-Hant')] = MISSING
 
 
 class TranslationObject(BaseModel):
@@ -5538,8 +5539,8 @@ class SetCollectionSetupCriteriaInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CollectionCriteria
@@ -5549,8 +5550,8 @@ class SetBackgroundItemInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     label: Annotated[str, Field(max_length=255, min_length=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: BackgroundContent
@@ -5560,8 +5561,8 @@ class AddPackageScreenshotInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: ScreenshotCreate
@@ -5571,8 +5572,8 @@ class UpdatePackageScreenshotInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     screenshotId: Annotated[int, Field(examples=[1])]
     dryRun: Annotated[bool, Field(examples=[False])] = False
@@ -5583,8 +5584,8 @@ class AddLinkPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: LinkPackageAdd
 
@@ -5593,8 +5594,8 @@ class UpdateLinkPackageInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: LinkPackageUpdate
@@ -5604,8 +5605,8 @@ class CreateCategoryInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CategoryUpsert
 
@@ -5614,8 +5615,8 @@ class UpdateCategoryInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CategoryUpsert
@@ -5625,8 +5626,8 @@ class CreateCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CollectionUpsert
 
@@ -5635,8 +5636,8 @@ class UpdateCollectionInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CollectionUpsert
@@ -5646,8 +5647,8 @@ class SetCollectionItemsInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: CollectionItemsUpdate
@@ -5657,8 +5658,8 @@ class CreateFeatureInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: FeatureUpsert
 
@@ -5667,8 +5668,8 @@ class UpdateFeatureInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: FeatureUpsert
@@ -5692,13 +5693,13 @@ class MigrationGuide(BaseModel):
     )
     targetPackageId: Annotated[int, Field(ge=1)]
     locale: Literal['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'pt-BR', 'ru-RU', 'de-DE', 'fr-FR', 'it-IT', 'zh-Hant']
-    sourceVersion: str | None = None
-    targetVersion: str | None = None
+    sourceVersion: str | MISSING = MISSING
+    targetVersion: str | MISSING = MISSING
     steps: list[MigrationStep]
 
 
 class FactRecord(BaseModel):
-    id: int | None = None
+    id: int | MISSING = MISSING
     kind: Literal['price', 'security', 'attribute', 'migration', 'compatibility', 'issue', 'integration']
     key: Annotated[str, Field(max_length=160, min_length=1)]
     value: Annotated[PriceObservation | SecurityObservation | ComparisonAttribute | MigrationGuide | CompatibilityObservation | KnownIssue | AppIntegration, Field(description='Typed by kind; the shared validator enforces the corresponding schema.')]
@@ -5798,8 +5799,8 @@ class SetPackageFactRecordsInput(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    expectedRevision: Annotated[int | None, Field(examples=[1], ge=0)] = None
-    idempotencyKey: Annotated[str | None, Field(examples=['example-001'], max_length=200)] = None
+    expectedRevision: Annotated[int | MISSING, Field(examples=[1], ge=0)] = MISSING
+    idempotencyKey: Annotated[str | MISSING, Field(examples=['example-001'], max_length=200)] = MISSING
     id: Annotated[int, Field(examples=[1], ge=1)]
     dryRun: Annotated[bool, Field(examples=[False])] = False
     body: FactRecordsUpdate

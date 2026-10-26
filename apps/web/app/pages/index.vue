@@ -43,11 +43,11 @@ const visibleCategories = computed(() =>
 const showcase = computed(() =>
   pickShowcaseApps([home.value?.popularApps, ranking.value?.records.map(record => record.package)], 8)
 );
-// Icon wall: top 24 in 30-day rankings plus homepage popular/recent apps.
+// Icon wall: sixteen distinct apps fill two rows; repeat only once the wall is visible.
 const wall = computed(() =>
   pickShowcaseApps(
     [ranking.value?.records.map(record => record.package), home.value?.popularApps, home.value?.recentlyUpdated],
-    24
+    16
   )
 );
 const demoApps = computed(() => withSampleApps(showcase.value.map(toLandingApp), 4));
@@ -87,7 +87,13 @@ defineOgImage('OgDefaultSatori', {
       :count="count"
       :categories="visibleCategories.map(({ slug, name }) => ({ slug, name }))"
     />
-    <LandingCatalog v-if="count && wall.length" :apps="wall" :count="count" :updated="updatedToday" />
+    <LazyLandingCatalog
+      v-if="count && wall.length"
+      hydrate-on-visible
+      :apps="wall"
+      :count="count"
+      :updated="updatedToday"
+    />
     <!-- C5: real entry points into the catalog's directories. -->
     <DirectoryLinks />
     <!-- G4: what OpenNavo is and how it differs from the Homebrew command line and the Mac App Store. -->
@@ -104,7 +110,9 @@ defineOgImage('OgDefaultSatori', {
         t('landing.details.points.languages')
       ]"
     >
-      <LandingTimelineDemo :apps="recentApps" />
+      <LandingDemoViewport class="min-h-402px">
+        <LazyLandingTimelineDemo :apps="recentApps" />
+      </LandingDemoViewport>
     </LandingFeature>
     <LandingFeature
       reverse
@@ -117,7 +125,7 @@ defineOgImage('OgDefaultSatori', {
         t('landing.install.points.history')
       ]"
     >
-      <LandingInstallDemo v-if="demoApps[0]" :app="demoApps[0]" />
+      <LazyLandingInstallDemo v-if="demoApps[0]" hydrate-on-visible :app="demoApps[0]" />
     </LandingFeature>
     <LandingFeature
       :kicker="t('landing.updates.kicker')"
@@ -130,10 +138,12 @@ defineOgImage('OgDefaultSatori', {
         t('landing.updates.points.pin')
       ]"
     >
-      <LandingTrayDemo :apps="recentApps" />
+      <LandingDemoViewport class="min-h-341px">
+        <LazyLandingTrayDemo :apps="recentApps" />
+      </LandingDemoViewport>
     </LandingFeature>
     <LazyLandingToolkit hydrate-on-visible :apps="demoApps" />
-    <LandingMore :apps="demoApps" :count="count" />
+    <LazyLandingMore hydrate-on-visible :apps="demoApps" :count="count" />
     <LandingCta />
   </div>
 </template>

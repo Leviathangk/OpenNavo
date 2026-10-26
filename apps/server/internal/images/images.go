@@ -30,15 +30,31 @@ type Variant struct {
 	Files         []Rendition
 }
 
+const MaxUploadBytes = 5 * 1024 * 1024
+
+// Normalization emits at most 1280x8192 RGBA pixels. Allow the uncompressed
+// pixels plus PNG overhead; a small JPEG upload can produce a much larger PNG.
+const MaxNormalizedBytes = 48 * 1024 * 1024
+
 func Process(data []byte, kind string) ([]Variant, *string, error) {
-	if len(data) > 5*1024*1024 {
+	return process(data, kind, MaxUploadBytes, false)
+}
+
+// ProcessNormalizedPNG is only for stored, previously normalized PNG objects.
+// Uploads must continue to use Process. All dimension/decode limits still apply.
+func ProcessNormalizedPNG(data []byte, kind string) ([]Variant, *string, error) {
+	return process(data, kind, MaxNormalizedBytes, true)
+}
+
+func process(data []byte, kind string, maxBytes int, normalized bool) ([]Variant, *string, error) {
+	if len(data) > maxBytes {
 		return nil, nil, errors.New("image too large")
 	}
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		return nil, nil, errors.New("unsupported image")
 	}
-	if format != "png" && format != "jpeg" && format != "webp" {
+	if (normalized && format != "png") || (format != "png" && format != "jpeg" && format != "webp") {
 		return nil, nil, errors.New("unsupported image")
 	}
 	if cfg.Width < 1 || cfg.Height < 1 || cfg.Width > 8192 || cfg.Height > 8192 || int64(cfg.Width)*int64(cfg.Height) > 32000000 {

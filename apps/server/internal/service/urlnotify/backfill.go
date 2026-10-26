@@ -89,7 +89,7 @@ func (n *Notifier) backfill(ctx context.Context, state *store.URLNotifyState) er
 		pending := Plan{PurgePrefixes: state.PendingPurgePrefixes}.Merge(Plan{PurgePrefixes: plan.PurgePrefixes})
 		state.PendingPurgePrefixes = pending.PurgePrefixes
 		if len(state.PendingPurgePrefixes) > maxPurgePrefixes {
-			state.PendingPurgePrefixes = sectionPrefixes(n.Config.WebBaseURL)
+			state.PendingPurgePrefixes = store.CollapseURLPurges(state.PendingPurgePrefixes, sectionPrefixes(n.Config.WebBaseURL))
 		}
 		// Persist the phase with the queue so retries never re-add completed prefixes.
 		state.IndexBackfill = indexBackfill + ":purging"

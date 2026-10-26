@@ -4,6 +4,9 @@
   "private": true,
   "description": "OpenNavo shared web and desktop presentation components, without requests, IPC, or route access",
   "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./markdown": "./src/markdown.ts",

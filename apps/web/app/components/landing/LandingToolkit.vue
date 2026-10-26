@@ -27,7 +27,7 @@ const delay = (key: (typeof cards)[number]) => ({ '--landing-delay': `${cards.in
         data-reveal
         :style="delay('uninstall')"
       >
-        <LandingUninstallDemo v-if="first" :app="first" />
+        <LazyLandingUninstallDemo v-if="first" :app="first" />
       </LandingMoreCard>
       <LandingMoreCard
         tall
@@ -36,7 +36,7 @@ const delay = (key: (typeof cards)[number]) => ({ '--landing-delay': `${cards.in
         data-reveal
         :style="delay('cleanup')"
       >
-        <LandingCleanupDemo />
+        <LazyLandingCleanupDemo />
       </LandingMoreCard>
       <LandingMoreCard
         tall
@@ -45,7 +45,7 @@ const delay = (key: (typeof cards)[number]) => ({ '--landing-delay': `${cards.in
         data-reveal
         :style="delay('monitor')"
       >
-        <LandingMonitorDemo />
+        <LazyLandingMonitorDemo />
       </LandingMoreCard>
     </div>
   </section>

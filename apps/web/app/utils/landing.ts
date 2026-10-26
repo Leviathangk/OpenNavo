@@ -7,6 +7,7 @@ export interface LandingApp {
   name: string;
   summary: string | null;
   iconUrl: string | null;
+  iconVariants?: PackageSummary['iconVariants'];
   accentColor: string | null;
   version: string | null;
   versionChangedAt: string | null;
@@ -18,6 +19,7 @@ export function toLandingApp(pkg: PackageSummary): LandingApp {
     name: pkg.displayName,
     summary: pkg.summary ?? null,
     iconUrl: pkg.iconUrl ?? null,
+    iconVariants: pkg.iconVariants,
     accentColor: pkg.accentColor ?? null,
     version: pkg.version || null,
     versionChangedAt: pkg.versionChangedAt || null

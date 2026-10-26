@@ -12,7 +12,7 @@ defineSlots<{ default?: () => unknown }>();
       class="landing-more-stage relative flex items-center justify-center overflow-hidden border-b border-b-solid border-line-subtle px-20px"
       :class="tall ? 'h-280px' : 'h-228px'"
     >
-      <div class="relative w-full"><slot /></div>
+      <LandingDemoViewport class="relative w-full"><slot /></LandingDemoViewport>
     </div>
     <div class="flex flex-col gap-8px px-22px pb-24px pt-20px">
       <h3 class="m-0 text-headline text-ink-primary">{{ title }}</h3>

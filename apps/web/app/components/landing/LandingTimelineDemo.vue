@@ -48,6 +48,7 @@ const latest = computed(() => entries.value[0]);
             :token="app.token"
             :name="app.name"
             :src="app.iconUrl"
+            :variants="app.iconVariants"
             :accent="app.accentColor"
             :size="32"
           />
@@ -122,23 +123,30 @@ const latest = computed(() => entries.value[0]);
 
 /* Release-note placeholders with a slow sweeping highlight. */
 .landing-skeleton {
-  background:
-    linear-gradient(90deg, transparent, color-mix(in srgb, var(--on-text-primary) 8%, transparent), transparent) 0 0 /
-      200% 100% no-repeat,
-    var(--on-surface-raised);
+  position: relative;
+  overflow: hidden;
+  background: var(--on-surface-raised);
+}
+
+.landing-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--on-text-primary) 8%, transparent),
+    transparent
+  );
   animation: landing-shimmer 2.4s ease-in-out infinite;
 }
 
 @keyframes landing-shimmer {
   from {
-    background-position:
-      150% 0,
-      0 0;
+    transform: translateX(-100%);
   }
   to {
-    background-position:
-      -50% 0,
-      0 0;
+    transform: translateX(100%);
   }
 }
 </style>

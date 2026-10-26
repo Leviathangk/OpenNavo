@@ -129,8 +129,18 @@ def field_detail(loc: Sequence[str | int], kind: str, schema: dict[str, Any]) ->
 
 def validation_detail(error: ValidationError, schema: dict[str, Any]) -> str:
     details: list[str] = []
-    for item in error.errors(include_url=False, include_context=False, include_input=False):
-        loc = list(item["loc"])
+    errors = error.errors(include_url=False, include_context=False, include_input=False)
+    # MISSING is an internal omission marker, never a value callers can send.
+    # Its union adds branch labels (e.g. list[ReleaseSection]) to real error paths.
+    missing_unions = [
+        item["loc"][:-1] for item in errors if item["type"] == "missing_sentinel_error"
+    ]
+    for item in errors:
+        if item["type"] == "missing_sentinel_error":
+            continue
+        original = item["loc"]
+        branches = {len(prefix) for prefix in missing_unions if original[: len(prefix)] == prefix}
+        loc = [part for index, part in enumerate(original) if index not in branches]
         if loc and loc[0] == "body":
             loc.pop(0)
         detail = field_detail(loc, item["type"], schema)

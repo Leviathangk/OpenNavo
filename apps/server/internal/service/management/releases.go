@@ -91,6 +91,7 @@ func (s *Service) releaseWrite(ctx context.Context, op string, in Input) (any, e
 		if row.PackageID == 0 {
 			return nil, fail(domain.CodeNotFound)
 		}
+		var locales []string
 		switch op {
 		case "UpdateRelease":
 			fields := mapped(in.Body, map[string]string{"hidden": "hidden", "title": "title"})
@@ -102,6 +103,9 @@ func (s *Service) releaseWrite(ctx context.Context, op string, in Input) (any, e
 			source, err := st.TextSourceLocale(ctx, "release", in.ID, in.Locale, in.Body)
 			if err != nil {
 				return nil, err
+			}
+			if source != in.Locale && in.Locale != "en-US" {
+				locales = []string{in.Locale}
 			}
 			status := "manual"
 			if source == in.Locale {
@@ -131,7 +135,7 @@ func (s *Service) releaseWrite(ctx context.Context, op string, in Input) (any, e
 				}
 			}
 		}
-		return nil, st.AppendContentChange(ctx, row.PackageID)
+		return nil, st.AppendContentChange(ctx, row.PackageID, locales...)
 	})
 	if err != nil {
 		return nil, err

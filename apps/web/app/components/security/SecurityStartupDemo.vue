@@ -79,6 +79,7 @@ const rows = computed(() =>
         :token="row.app.token"
         :name="row.app.name"
         :src="row.app.iconUrl"
+        :variants="row.app.iconVariants"
         :accent="row.app.accentColor"
         :size="32"
       />

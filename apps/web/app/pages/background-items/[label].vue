@@ -73,7 +73,7 @@ const appNames = computed(() =>
   new Intl.ListFormat(appLocale.value, { type: 'conjunction' }).format(apps.value.map(app => app.package.displayName))
 );
 
-const path = computed(() => localePath(labelPath(label.value)));
+const path = computed(() => labelPath(label.value, localePath('/')));
 // One address per label (the API's decision applied as robots, canonical and hreflang).
 usePageDecision(() => (item.value ? backgroundItemDecision(item.value, appLocale.value, path.value) : undefined));
 const breadcrumb = computed(() => [
@@ -163,6 +163,7 @@ defineOgImage('OgListSatori', {
             :token="app.package.token"
             :name="app.package.displayName"
             :src="app.package.iconUrl"
+            :variants="app.package.iconVariants"
             :accent="app.package.accentColor"
             :size="40"
           />

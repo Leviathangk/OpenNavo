@@ -22,7 +22,9 @@ const NuxtLink = resolveComponent('NuxtLink');
       </div>
       <!-- The scan is staged with made-up files; the caption says so where everyone can read it. -->
       <figure class="m-0 mt-48px" data-reveal style="--landing-delay: 80ms">
-        <LandingSecurityDemo />
+        <LandingDemoViewport style="aspect-ratio: 1120 / 580">
+          <LazyLandingSecurityDemo />
+        </LandingDemoViewport>
         <figcaption class="mt-12px text-center text-12.5px leading-[1.6] text-ink-tertiary">
           {{ t('landing.security.demo.caption') }}
         </figcaption>

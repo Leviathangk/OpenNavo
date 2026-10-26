@@ -19,6 +19,8 @@ export interface OnAppIconProps {
   /** Stored WebP renditions of `src` (64/128/256 px, X3); the browser picks one for the size and pixel density. */
   variants?: readonly OnImageVariant[] | null;
   size?: OnAppIconSize;
+  /** Rendered CSS width when the icon lives in a scaled scene; pixel density is handled by srcset. */
+  sizes?: string;
   /** Package accent for letter-tile background. */
   accent?: string | null;
   /** Provide for standalone icons without adjacent names; read as an image, otherwise decorative. */
@@ -76,7 +78,7 @@ const barColor = computed(() => iconColor(props.token));
       ref="image"
       :src="src ?? undefined"
       :srcset="srcset"
-      :sizes="srcset ? `${size}px` : undefined"
+      :sizes="srcset ? (sizes ?? `${size}px`) : undefined"
       alt=""
       :loading="priority ? 'eager' : 'lazy'"
       :fetchpriority="priority ? 'high' : undefined"

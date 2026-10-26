@@ -35,8 +35,11 @@ export function useRevealOnScroll(root: Target) {
     );
     observer = reveal;
     const fold = window.innerHeight;
-    for (const target of element.querySelectorAll<HTMLElement>('[data-reveal]')) {
-      if (target.getBoundingClientRect().top < fold) continue;
+    // Read every position before changing styles: interleaving them forces a layout per element.
+    const pending = [...element.querySelectorAll<HTMLElement>('[data-reveal]')].filter(
+      target => target.getBoundingClientRect().top >= fold
+    );
+    for (const target of pending) {
       target.dataset.reveal = 'pending';
       reveal.observe(target);
     }

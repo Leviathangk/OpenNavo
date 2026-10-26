@@ -93,11 +93,19 @@ func announcementPackages(changes []store.URLChange) map[int64]bool {
 func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, index map[int64]store.IndexRow, policy seo.Policy, siteURL string) Plan {
 	siteURL, host := strings.TrimRight(siteURL, "/"), purgeHost(siteURL)
 	tokens := map[int64][]string{}
+	locales := map[int64][]string{}
 	announce := announcementPackages(changes)
 	order := []int64{}
 	for _, change := range changes {
 		if _, ok := tokens[change.PackageID]; !ok {
 			order = append(order, change.PackageID)
+		}
+		if previous, seen := locales[change.PackageID]; !seen {
+			locales[change.PackageID] = change.Locales
+		} else if previous == nil || change.Locales == nil {
+			locales[change.PackageID] = nil
+		} else {
+			locales[change.PackageID] = append(append([]string{}, previous...), change.Locales...)
 		}
 		for _, token := range []string{change.Token, ptr(change.PreviousToken)} {
 			if token != "" && !slices.Contains(tokens[change.PackageID], token) {
@@ -114,7 +122,7 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 			list = append([]string{now.Token}, list...)
 		}
 		for _, token := range list {
-			for _, locale := range seo.Locales {
+			for _, locale := range scopedLocales(locales[id]) {
 				path := localePrefix(locale) + "/apps/" + token
 				plan.Paths = appendUnique(plan.Paths, seenPath, path)
 				plan.PurgePrefixes = appendUnique(plan.PurgePrefixes, seenPurge, host+path)
@@ -130,7 +138,7 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 		}
 		row, live := index[id]
 		for _, token := range list {
-			for _, locale := range seo.Locales {
+			for _, locale := range scopedLocales(locales[id]) {
 				if live && known && token == now.Token {
 					for _, kind := range []seo.PageKind{seo.PageOverview, seo.PageVersions, seo.PageDependencies, seo.PageDetails, seo.PageAlternatives, seo.PageUninstall, seo.PageTroubleshooting} {
 						d := seo.DecidePage(row.Facts(), seo.PageRef{Kind: kind, Locale: locale, Page: 1}, policy)
@@ -144,7 +152,7 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 						plan.IndexNowURLs = appendUnique(plan.IndexNowURLs, seenAnnounce, siteURL+path)
 						plan.Decisions[siteURL+path] = d
 					}
-				} else if token != "opennavo" {
+				} else if token != "opennavo" && (locales[id] == nil || seo.LocaleOpen(policy.OpenLocales, locale)) {
 					// The permanent brand redirect is not a catalog URL, even after removal.
 					// Redirects and removals must still be announced, so engines can retire old URLs.
 					plan.IndexNowURLs = appendUnique(plan.IndexNowURLs, seenAnnounce, siteURL+localePrefix(locale)+"/apps/"+token)
@@ -169,7 +177,7 @@ func ContentPlan(changes []store.ContentURLChange, siteURL string) Plan {
 	seenPath, seenPurge, seenAnnounce := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, change := range changes {
 		for _, path := range change.Paths {
-			for _, locale := range seo.Locales {
+			for _, locale := range scopedLocales(change.Locales) {
 				full := localePrefix(locale) + path
 				plan.Paths = appendUnique(plan.Paths, seenPath, full)
 				// A home path would purge a whole language, or the whole host with its share images and
@@ -207,4 +215,18 @@ func (p Plan) Merge(other Plan) Plan {
 		decisions[url] = d
 	}
 	return Plan{Paths: merge(p.Paths, other.Paths), PurgePrefixes: merge(p.PurgePrefixes, other.PurgePrefixes), IndexNowURLs: merge(p.IndexNowURLs, other.IndexNowURLs), Decisions: decisions}
+}
+
+// Canonical order and deduplication keep plan output stable regardless of write order.
+func scopedLocales(scope []string) []string {
+	if scope == nil {
+		return seo.Locales
+	}
+	out := []string{}
+	for _, locale := range seo.Locales {
+		if slices.Contains(scope, locale) {
+			out = append(out, locale)
+		}
+	}
+	return out
 }

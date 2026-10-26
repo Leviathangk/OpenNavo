@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -17,6 +18,8 @@ type URLChange struct {
 	EventType     *string
 	PreviousToken *string
 	CreatedAt     time.Time
+	// nil means all languages, including rows written before scoped notifications.
+	Locales []string `gorm:"serializer:json"`
 }
 
 type URLNotifyState struct {
@@ -44,15 +47,15 @@ type URLNotifyQueue struct {
 
 func (s *Store) URLNotifyQueue(ctx context.Context, now time.Time) (URLNotifyQueue, error) {
 	var q URLNotifyQueue
-	// Dead receipts count until a newer receipt for the URL exists, for at most 30 days.
+	// Dead receipts count until a newer receipt for the URL exists, for the receipt retention window.
 	err := s.DB.WithContext(ctx).Raw(`SELECT live.pending_announcements,live.oldest_pending_at,
- (SELECT count(*) FROM url_notify_outbox d WHERE d.state='dead' AND d.announce AND d.updated_at>=?::timestamptz-interval '30 days'
+ (SELECT count(*) FROM url_notify_outbox d WHERE d.state='dead' AND d.announce AND (d.updated_at>=? OR d.path='/')
   AND NOT EXISTS (SELECT 1 FROM url_notify_outbox newer WHERE newer.url=d.url AND newer.id>d.id)) AS dead_announcements,
  CASE WHEN st.probe_ready_at>? THEN st.probe_ready_at END AS probe_cooldown_until,
  coalesce(st.probe_failures,0) AS overloaded_probes
  FROM (SELECT count(*) AS pending_announcements,min(created_at) AS oldest_pending_at FROM url_notify_outbox
   WHERE announce AND state IN ('pending','invalidated','probed')) live
- LEFT JOIN url_notify_state st ON st.id=true`, now, now).Scan(&q).Error
+ LEFT JOIN url_notify_state st ON st.id=true`, now.Add(-URLNotificationRetention), now).Scan(&q).Error
 	return q, err
 }
 
@@ -72,7 +75,7 @@ func (s *Store) URLNotifyState(ctx context.Context) (URLNotifyState, error) {
 // before a commit have finished by then, so refreshing their pages cannot leave stale copies behind.
 func (s *Store) PendingURLChanges(ctx context.Context, cursor int64, before time.Time, limit int) ([]URLChange, error) {
 	var rows []URLChange
-	err := s.DB.WithContext(ctx).Raw("SELECT seq,package_id,kind,token,op,reason,event_type,previous_token,created_at FROM catalog_changes WHERE seq>? AND created_at<=? AND kind IN ('cask','link') ORDER BY seq LIMIT ?", cursor, before, limit).Scan(&rows).Error
+	err := s.DB.WithContext(ctx).Raw("SELECT seq,package_id,kind,token,op,reason,event_type,previous_token,created_at,to_json(locales) AS locales FROM catalog_changes WHERE seq>? AND created_at<=? AND kind IN ('cask','link') ORDER BY seq LIMIT ?", cursor, before, limit).Scan(&rows).Error
 	return rows, err
 }
 
@@ -146,7 +149,7 @@ func (s *Store) QueueURLPurges(ctx context.Context, prefixes []string, limit int
 			}
 		}
 		if len(queue) > limit {
-			queue = fallback
+			queue = CollapseURLPurges(queue, fallback)
 		}
 		next, err := json.Marshal(queue)
 		if err != nil {
@@ -167,6 +170,7 @@ func (s *Store) SaveURLNotifyState(ctx context.Context, state URLNotifyState) er
 
 // ContentURLChange is a batch of changed pages outside the catalog (articles, authors).
 type ContentURLChange struct {
+	Locales       []string
 	Seq           int64
 	Paths         []string
 	Announce      bool
@@ -180,13 +184,14 @@ func (s *Store) PendingContentURLChanges(ctx context.Context, cursor int64, befo
 		Paths         string
 		Announce      bool
 		PurgeSections bool
+		Locales       []string `gorm:"serializer:json"`
 	}
-	if err := s.DB.WithContext(ctx).Raw("SELECT seq,to_json(paths)::text AS paths,announce,purge_sections FROM content_url_changes WHERE seq>? AND created_at<=? ORDER BY seq LIMIT ?", cursor, before, limit).Scan(&rows).Error; err != nil {
+	if err := s.DB.WithContext(ctx).Raw("SELECT seq,to_json(paths)::text AS paths,announce,purge_sections,to_json(locales) AS locales FROM content_url_changes WHERE seq>? AND created_at<=? ORDER BY seq LIMIT ?", cursor, before, limit).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make([]ContentURLChange, 0, len(rows))
 	for _, row := range rows {
-		change := ContentURLChange{Seq: row.Seq, Announce: row.Announce, PurgeSections: row.PurgeSections}
+		change := ContentURLChange{Seq: row.Seq, Announce: row.Announce, PurgeSections: row.PurgeSections, Locales: row.Locales}
 		if err := json.Unmarshal([]byte(row.Paths), &change.Paths); err != nil {
 			return nil, err
 		}
@@ -228,4 +233,25 @@ func (s *Store) RecordURLProbe(ctx context.Context, now, retryAt time.Time, over
 	return s.DB.WithContext(ctx).Exec(`UPDATE url_notify_state SET
  probe_ready_at=greatest(probe_ready_at, ?, ?::timestamptz + make_interval(secs => 30 * power(2, least(probe_failures, 6))::int)),
  probe_failures=least(probe_failures+1, 7) WHERE id=true`, retryAt, now).Error
+}
+
+// CollapseURLPurges coalesces only sections represented in the queue. In particular,
+// a Traditional-only backlog must not evict pages in every other language.
+// Prefixes outside the known sections remain exact, so no purge obligation is lost.
+func CollapseURLPurges(prefixes, sections []string) []string {
+	result := []string{}
+	seen := map[string]bool{}
+	for _, prefix := range prefixes {
+		for _, section := range sections {
+			if prefix == section || strings.HasPrefix(prefix, section+"/") {
+				prefix = section
+				break
+			}
+		}
+		if !seen[prefix] {
+			seen[prefix] = true
+			result = append(result, prefix)
+		}
+	}
+	return result
 }

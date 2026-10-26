@@ -55,10 +55,18 @@ describe('Landing demo apps', () => {
       name: 'Ghostty',
       summary: null,
       iconUrl: null,
+      iconVariants: undefined,
       accentColor: null,
       version: null,
       versionChangedAt: '2026-10-01T00:00:00Z'
     });
+  });
+
+  it('Preserves responsive icon renditions for every demo', () => {
+    const iconVariants: PackageSummary['iconVariants'] = [
+      { url: 'https://example.com/icon-64.webp', width: 64, height: 64, type: 'image/webp' }
+    ];
+    expect(toLandingApp(pkg('ghostty', { iconVariants })).iconVariants).toEqual(iconVariants);
   });
 
   it('Fallback sample apps fill unavailable data without duplicate tokens or invented versions', () => {

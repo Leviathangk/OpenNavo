@@ -71,11 +71,18 @@ func (s *Store) SearchSynonyms(ctx context.Context, query string) ([]string, err
 	return terms, nil
 }
 
-const searchCTE = `WITH RECURSIVE selected_categories AS (SELECT id FROM categories WHERE slug=? UNION ALL SELECT c.id FROM categories c JOIN selected_categories parent ON c.parent_id=parent.id), queries AS (SELECT value AS q FROM jsonb_array_elements_text(?::jsonb)), matches AS (
- SELECT p.id,p.popularity,MAX((CASE WHEN p.token=queries.q OR EXISTS(SELECT 1 FROM unnest(p.names) n WHERE lower(n)=queries.q) THEN 3 ELSE 0 END+2.0*word_similarity(queries.q,p.search_text)+ts_rank_cd(p.search_vector,websearch_to_tsquery('english',queries.q))+p.popularity/12.0)*CASE WHEN p.is_font AND position('font' in queries.q)=0 THEN ? ELSE 1 END*CASE WHEN p.is_library THEN ? ELSE 1 END) AS score
- FROM packages p CROSS JOIN queries LEFT JOIN package_meta m ON m.package_id=p.id
- WHERE p.kind='cask' AND p.removed_at IS NULL AND coalesce(m.hidden,false)=false AND (? OR NOT (p.disabled OR p.stale_disabled)) AND (?='' OR p.kind=?) AND (?='' OR EXISTS(SELECT 1 FROM package_categories pc JOIN selected_categories sc ON sc.id=pc.category_id WHERE pc.package_id=p.id))
- AND (queries.q <% p.search_text OR p.search_text LIKE '%'||replace(replace(replace(queries.q,E'\\',E'\\\\'),'%',E'\\%'),'_',E'\\_')||'%' OR p.search_content LIKE '%'||replace(replace(replace(queries.q,E'\\',E'\\\\'),'%',E'\\%'),'_',E'\\_')||'%' OR p.search_vector @@ websearch_to_tsquery('english',queries.q)) GROUP BY p.id)`
+// Keep each predicate in its own branch so PostgreSQL can use its GIN index.
+// Deduplicate (package, term) before scoring: a package may match several branches.
+const searchCTE = `WITH RECURSIVE selected_categories AS (SELECT id FROM categories WHERE slug=? UNION ALL SELECT c.id FROM categories c JOIN selected_categories parent ON c.parent_id=parent.id), queries AS (SELECT value AS q FROM jsonb_array_elements_text(?::jsonb)), candidates AS (
+ SELECT DISTINCT c.id,queries.q FROM queries CROSS JOIN LATERAL (
+SELECT p.id FROM packages p WHERE queries.q <% p.search_text
+ UNION ALL SELECT p.id FROM packages p WHERE p.search_text LIKE '%'||replace(replace(replace(queries.q,E'\\',E'\\\\'),'%',E'\\%'),'_',E'\\_')||'%'
+ UNION ALL SELECT p.id FROM packages p WHERE p.search_content LIKE '%'||replace(replace(replace(queries.q,E'\\',E'\\\\'),'%',E'\\%'),'_',E'\\_')||'%'
+ UNION ALL SELECT p.id FROM packages p WHERE p.search_vector @@ websearch_to_tsquery('english',queries.q)
+ ) c), matches AS (
+ SELECT p.id,p.popularity,MAX((CASE WHEN p.token=candidates.q OR EXISTS(SELECT 1 FROM unnest(p.names) n WHERE lower(n)=candidates.q) THEN 3 ELSE 0 END+2.0*word_similarity(candidates.q,p.search_text)+ts_rank_cd(p.search_vector,websearch_to_tsquery('english',candidates.q))+p.popularity/12.0)*CASE WHEN p.is_font AND position('font' in candidates.q)=0 THEN ? ELSE 1 END*CASE WHEN p.is_library THEN ? ELSE 1 END) AS score
+ FROM candidates JOIN packages p ON p.id=candidates.id LEFT JOIN package_meta m ON m.package_id=p.id
+ WHERE p.kind='cask' AND p.removed_at IS NULL AND coalesce(m.hidden,false)=false AND (? OR NOT (p.disabled OR p.stale_disabled)) AND (?='' OR p.kind=?) AND (?='' OR EXISTS(SELECT 1 FROM package_categories pc JOIN selected_categories sc ON sc.id=pc.category_id WHERE pc.package_id=p.id)) GROUP BY p.id)`
 
 func (s *Store) Search(ctx context.Context, input domain.SearchInput, terms []string, fontPenalty, libraryPenalty float64) ([]domain.SearchMatch, int64, error) {
 	encoded, err := json.Marshal(terms)

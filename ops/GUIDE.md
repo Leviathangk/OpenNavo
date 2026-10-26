@@ -168,6 +168,45 @@ docker compose -f ops/docker-compose.prod.yml --profile monitoring up -d prometh
 
 Monitoring binds to loopback; use an SSH tunnel or another authenticated private access path. Database backups do not replace backups of S3 objects, environment secrets, Caddy volumes, or release artifacts.
 
+The API metrics endpoint exports `asynq_queue_size{queue,state}` for pending, active, scheduled,
+retry, archived and aggregating tasks, plus `asynq_queue_latency_seconds` (oldest pending task).
+Inspection uses a dedicated Redis pool with 250 ms I/O timeouts, a one-second collection deadline,
+and a 15-second cache. `opennavo_queue_metrics_collection_success=0` reports inspection failure;
+queue observations are omitted on failure rather than reported as zero. Prometheus does not need
+worker scraping for these metrics. QueueBacklog counts pending and retry tasks only, deduplicated
+across API replicas, and warns above 10,000 for five minutes. Scheduled and archived tasks remain
+visible without inflating actionable backlog. QueueLatency warns if the oldest pending task waits
+more than five minutes for five minutes, catching a stalled small queue before the volume limit.
+QueueMetricsUnavailable warns after one minute without a successful inspection. The retired server
+LLM integration no longer records monthly usage or budgets; the LLMTokenBudget alert and budget
+panel have been removed. Historical translation counters do not represent a monthly budget.
+
+Daily cleanup retains terminal `url_notify_outbox` receipts (`announced`, `dead`) for 14 days from
+`updated_at`. Superseded dead receipts may be removed immediately: they neither retry nor count as
+current failures once a newer receipt for that URL exists. Pending, invalidated and probed rows are
+never aged out. Each transaction deletes at most 1,000 rows, skips locked rows and has a two-second
+statement timeout; each daily run performs at most 100 batches (100,000 rows). Remaining eligible
+rows wait for the next run. The cleanup result reports `urlNotifications`. The latest `/` settings
+receipt is retained even past 14 days: a dead settings receipt blocks delivery until a later settings
+refresh supersedes it, and a successful one proves that earlier failures no longer block delivery.
+Newer receipts witnessing an older dead receipt survive until that dead receipt has been removed.
+Probe and purge cooldowns live in `url_notify_state` and are unaffected. The displayed ordinary
+dead-announcement count uses the same 14-day window; a current dead settings barrier stays visible.
+
+Before rolling out this change, apply migration 00114 (nullable language scopes on catalog and
+content URL changes) and 00115 (concurrent indexes for notification history/cleanup). Old binaries
+ignore the new columns; old rows and old writers keep NULL, meaning all languages. New readers
+union scopes per app, with any NULL overriding the union. Pure translations, Traditional Chinese
+derivation/withdrawal/rollback and collection translation triggers scope refreshes to changed
+languages. An oversized purge retry queue collapses only the sections/languages it contains. Source-language and English fallback changes, structural edits and full revision restores
+remain all-language changes. API cache invalidation remains by application. IndexNow still uses
+page eligibility for live apps; closed Traditional pages are refreshed and purged without announcement.
+Restarting a backfill worker preserves its converter receipts and resumes remaining objects; this
+migration does not force another derivation. Already queued unscoped notifications remain unscoped.
+Rollback application images before dropping the scope columns. Concurrent index builds can be
+retried after interruption; migration 00115 drops and rebuilds its own indexes to recover invalid builds.
+
+
 Test restore against a separate empty database first. Use a separate external environment file whose `MIGRATION_DATABASE_URL` points to that disposable target and whose S3 credentials can read the saved backup. The restore operation replaces database contents; never point a drill at the live database.
 
 ```sh
@@ -560,3 +599,93 @@ one pass takes about 22 minutes and each rewritten row adds up to two seconds. T
 the progress lines updates from the share of rows rewritten so far. To change the limits, set
 them in the deployment environment and restart the worker; `/traditional-backfill` and its
 `--apply` use the same limits.
+
+### Backfill historical responsive images
+
+The offline `assets-backfill` command fills missing WebP renditions for existing
+`icon` and `screenshot` assets. It uses the same image processor, crop geometry and
+content-hash naming as uploads: responsive widths 64/128/256, plus screenshot
+thumbnails 318×200 and 636×400. It reads the stored `original` object, falling back
+to the primary normalized object when the manifest has no original. Assets from
+before manifests were introduced are supported. Covers are excluded.
+
+Use a worker image containing this command after the normal release checks have
+passed. The existing `/opennavo` binary supports it directly; no extra executable,
+shell, worker restart, schema migration or credential arguments are needed. Replace
+`<worker-container>` below with the existing worker container name.
+
+```sh
+# Default: read-only manifest preview. Reports total pending, attempts at most 50.
+docker exec -it <worker-container> /opennavo assets-backfill --dry-run --limit 50
+
+# Small first batch while other backfills are active.
+docker exec -it <worker-container> /opennavo assets-backfill --apply --kind icon --limit 50 --rate 0.5 --concurrency 1
+
+# Continue icons, then screenshots; monitor the existing worker and host load.
+docker exec -it <worker-container> /opennavo assets-backfill --apply --kind icon --rate 0.5 --concurrency 1
+docker exec -it <worker-container> /opennavo assets-backfill --apply --kind screenshot --rate 0.5 --concurrency 1
+```
+
+Omit `--kind` to process both kinds in ID order. `--limit 0` (default) attempts all
+pending candidates in the initial snapshot. `--rate` is the global start rate in
+assets per second, including failures, across all workers; default 2, concurrency
+default 1. The process also limits Go CPU parallelism to the requested concurrency.
+Keep concurrency at 1 on the two-vCPU host, especially while Traditional Chinese
+backfill or page hashing is running. Increase the rate only after observing a small
+batch and adequate CPU/memory headroom. The rate is an upper bound: image conversion
+and object-storage latency can make processing slower.
+
+For approximately 12,700 assets, the rate-only lower bounds are 1h46m at 2/s,
+3h32m at 1/s, or 7h04m at 0.5/s. Allow extra time for conversion, storage, database
+contention and retries; use the measured `eta` after the first batch. Dry-run only
+checks manifests; it does not download or validate image contents, and does not
+predict conversion speed or discover corrupt/missing source objects.
+
+Use the interactive `docker exec -it` form and press Ctrl-C to stop this command,
+leaving the worker running. The command handles SIGINT/SIGTERM, cancels queued work
+and rolls back an incomplete asset transaction; an image conversion already running
+must return before cleanup finishes. It exits 130 when canceled. Avoid detached
+`docker exec -d` or stopping the worker container to pause this task. Resume with the
+same command: completed manifests are excluded, incomplete/failed assets are retried,
+and already-uploaded content-hash objects are reused. There is no separate checkpoint
+file. A failed original read is reported for repair; fallback is used when there is
+no original entry, not to hide a broken original object.
+
+Progress includes `processed`, `written` (assets), `files` appended, `skipped`
+(no additions), `deferred` (changed source or unmatched prepared renditions),
+`failed`, `remaining` (attempts left in this invocation),
+`pending` (missing manifests including failures and assets beyond `--limit`) and
+`eta` for this invocation. Dry-run leaves `pending` unchanged. Failed assets log an
+ID and sanitized stage/reason; one failure does not stop later IDs. Exit 1 means a
+fatal error or at least one failed asset. Deferred assets log `skipped_reason`
+and `retry=next_run` without counting as failures; rerun after concurrent edits settle.
+After fixing failures or retrying deferred assets, verify `pending=0`. Repeated small
+limits retry failures first, so increase the limit when those IDs otherwise consume
+the entire batch. Logs never include credentials or
+signed URLs.
+
+Reading the source, converting images and uploading objects happen outside any
+database transaction. Only the final source/manifest recheck and JSONB append take a
+short row lock (the two-minute asset deadline and five-second row-lock wait remain).
+The append merges only renditions still missing, skipping files another process has
+already added. If the original or primary source identity changed, the prepared files
+are not published. Missing variants with no matching prepared file are left for the
+next run and logged. Existing manifest entries, unknown metadata, asset IDs and
+primary URLs are preserved. A failed upload does not publish its prepared files.
+Objects uploaded before cancellation/database failure may remain unreferenced until
+the next run; retry reuses them without overwriting existing keys. Files prepared
+against a source that has since changed can remain unreferenced; this command does
+not delete them.
+No `catalog_changes`, outbox notifications, IndexNow requests, or Cloudflare purges
+are created. A second completed run performs no image reads, uploads or asset writes.
+
+API caches expire naturally: home 5 minutes; package details, related packages,
+dependencies and suggestions 10 minutes; rankings and category trees 30 minutes;
+browse pages fresh for 30 minutes and retained for at most one hour. The API Redis
+backend also caps every entry at one hour. Application/list HTTP responses default
+to `max-age=60, s-maxage=300, stale-while-revalidate=600` (search/suggestions: 30
+seconds), with ETags derived from the response body. Normal API invalidation uses
+`cache:invalidate` pub/sub and `c:*` scopes; this backfill does not publish it because
+these TTLs are bounded. Web Redis (up to 24 hours) and edge HTML (up to two days)
+will pick up the new manifests naturally. Cache layers can refill from an older
+upstream response, so these per-layer bounds are not a strict end-to-end deadline.

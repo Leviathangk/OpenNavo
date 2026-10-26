@@ -53,7 +53,7 @@ export const LONG_EDGE_CACHE_ROUTES = new Set([
 // no-store (loadShed.ts), so it never replaces the cached page.
 export const LONG_EDGE_CACHE_VALUE = 'max-age=172800, stale-while-revalidate=604800, stale-if-error=604800';
 /** Home and lists change with every catalog sync and are never purged, so they expire quickly. */
-export const SHORT_EDGE_CACHE_VALUE = 'max-age=600, stale-while-revalidate=3600, stale-if-error=86400';
+export const SHORT_EDGE_CACHE_VALUE = 'max-age=600, stale-while-revalidate=86400, stale-if-error=86400';
 
 /** An app's release feed sits under /apps/{token}, which the change feed purges with the app. */
 const APP_FEED_PATH = /^(?:\/[a-z-]+)?\/apps\/[^/]+\/feed\.xml$/;

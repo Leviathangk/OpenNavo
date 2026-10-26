@@ -1,3 +1,4 @@
+import { labelPath } from '../shared/utils/backgroundLabels';
 import { describe, expect, it } from 'vitest';
 import { localizedEntries } from '../server/utils/sitemapEntries';
 
@@ -23,4 +24,13 @@ describe('Sitemap entries', () => {
     expect(entry!.loc).toBe('/apps/odd%20token');
     expect(entry!.alternatives[0]!.href).toBe('/apps/odd%20token');
   });
+});
+
+it('preserves encoded label paths in loc and every alternate without encoding them again', () => {
+  for (const label of ['Google Drive', 'agent.*', "a(b)'!", 'a@b+c:d', '后台', 'literal%25']) {
+    const path = labelPath(label);
+    const entries = localizedEntries(path, 'background-items', ['en-US', 'zh-CN']);
+    expect(entries.map(entry => entry.loc)).toEqual([path, `/zh${path}`]);
+    expect(entries[0]!.alternatives.map(entry => entry.href)).toEqual([path, `/zh${path}`, `/zh${path}`, path]);
+  }
 });

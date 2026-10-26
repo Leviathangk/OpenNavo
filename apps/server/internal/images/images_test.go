@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
 	"testing"
 
@@ -53,4 +54,17 @@ func TestRejectInvalidOrUnsafeImages(t *testing.T) {
 	}
 	_, _, err := Process(picture(t, 1, 8192, color.NRGBA{}), "screenshot")
 	require.Error(t, err)
+}
+
+func TestNormalizedPNGStillEnforcesLimits(t *testing.T) {
+	_, _, err := ProcessNormalizedPNG(make([]byte, MaxNormalizedBytes+1), "screenshot")
+	require.EqualError(t, err, "image too large")
+	_, _, err = ProcessNormalizedPNG(picture(t, 1, 8193, color.NRGBA{}), "screenshot")
+	require.EqualError(t, err, "image dimensions exceed limits")
+	_, _, err = ProcessNormalizedPNG(picture(t, 1, 8192, color.NRGBA{}), "screenshot")
+	require.EqualError(t, err, "normalized image dimensions exceed limits")
+	var jpegData bytes.Buffer
+	require.NoError(t, jpeg.Encode(&jpegData, image.NewNRGBA(image.Rect(0, 0, 128, 128)), nil))
+	_, _, err = ProcessNormalizedPNG(jpegData.Bytes(), "screenshot")
+	require.EqualError(t, err, "unsupported image")
 }

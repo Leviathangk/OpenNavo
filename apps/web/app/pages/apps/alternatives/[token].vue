@@ -146,6 +146,7 @@ if (pkg.value)
           :token="pkg.token"
           :name="pkg.displayName"
           :src="pkg.iconUrl"
+          :variants="pkg.iconVariants"
           :accent="pkg.accentColor"
           :size="40"
         />
@@ -201,6 +202,7 @@ if (pkg.value)
               :token="card.pkg.token"
               :name="card.pkg.displayName"
               :src="card.pkg.iconUrl"
+              :variants="card.pkg.iconVariants"
               :accent="card.pkg.accentColor"
               :size="44"
             />

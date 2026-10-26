@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, watch } from 'vue';
 import { easeOutCubic } from '../app/utils/landing';
-import { useCountUp, useDemoLoop, useLandingParallax } from '../app/composables/useLandingMotion';
+import { useCountUp, useDemoLoop, useLandingParallax, useRevealOnScroll } from '../app/composables/useLandingMotion';
 
 function setup(reduced = false, initial = 0) {
   let mount = () => {};
@@ -229,5 +229,73 @@ describe('Hero parallax and catalog counts react to reduced motion', () => {
     expect(env.frames.size).toBe(1);
     env.unmount();
     expect(env.frames.size).toBe(0);
+  });
+});
+
+describe('Reveal layout and first paint', () => {
+  it.each([false, true])('Leaves first-screen content visible and batches offscreen reads; reduced=%s', reduced => {
+    let mount = () => {};
+    let unmount = () => {};
+    let notify = (_entries: { isIntersecting: boolean; target: HTMLElement }[]) => {};
+    const operations: string[] = [];
+    const targets = [100, 800, 1200].map((top, index) => {
+      let reveal = '';
+      return {
+        getBoundingClientRect: () => {
+          operations.push(`read:${index}`);
+          return { top };
+        },
+        dataset: {
+          get reveal() {
+            return reveal;
+          },
+          set reveal(value: string) {
+            operations.push(`write:${index}`);
+            reveal = value;
+          }
+        }
+      } as unknown as HTMLElement;
+    });
+    const observe = vi.fn();
+    const unobserve = vi.fn();
+    const disconnect = vi.fn();
+    vi.stubGlobal('window', { innerHeight: 800, IntersectionObserver: true, matchMedia: () => ({ matches: reduced }) });
+    vi.stubGlobal('onMounted', (callback: () => void) => {
+      mount = callback;
+    });
+    vi.stubGlobal('onBeforeUnmount', (callback: () => void) => {
+      unmount = callback;
+    });
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(callback: typeof notify) {
+          notify = callback;
+        }
+        observe = observe;
+        unobserve = unobserve;
+        disconnect = disconnect;
+      }
+    );
+    useRevealOnScroll(ref({ querySelectorAll: () => targets } as unknown as HTMLElement));
+    // SSR/setup never hides content or measures layout.
+    expect(operations).toEqual([]);
+    mount();
+    expect(targets[0]?.dataset.reveal).toBe('');
+    if (reduced) {
+      expect(operations).toEqual([]);
+      expect(observe).not.toHaveBeenCalled();
+    } else {
+      expect(operations).toEqual(['read:0', 'read:1', 'read:2', 'write:1', 'write:2']);
+      expect(observe).toHaveBeenCalledTimes(2);
+      const target = targets[1]!;
+      notify([{ isIntersecting: false, target }]);
+      expect(target.dataset.reveal).toBe('pending');
+      notify([{ isIntersecting: true, target }]);
+      expect(target.dataset.reveal).toBe('shown');
+      expect(unobserve).toHaveBeenCalledWith(target);
+    }
+    unmount();
+    if (!reduced) expect(disconnect).toHaveBeenCalledOnce();
   });
 });

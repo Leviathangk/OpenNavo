@@ -60,6 +60,10 @@ PARTIAL = {"category_update", "collection_update", "feature_upsert"}
 LEGACY = ("task_id", "fencing", "evidence_ids")
 # Image bytes never pass through MCP or model output; clients send local files straight to Go.
 USAGE = {
+    "translations_write": (
+        " For writes, omit ref.secondaryId except for collection_item, where it is the"
+        " positive package ID (ref.id is the collection ID). Never send null or zero."
+    ),
     "catalog_changes": (
         " Omit from/to to query the last 24 hours. When supplied, use RFC 3339 timestamps"
         " with a timezone; from must precede to and be within the last 14 days, and to"
@@ -157,6 +161,20 @@ def fields(operation: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, An
     schema = request_schema(operation)
     definitions = schema.get("$defs", {})
     body = expand(schema.get("properties", {}).get("body", {}), definitions)
+    # AgentClient treats null optional query/header values as omitted. Advertise
+    # that adapter behavior explicitly, without weakening any request-body fields.
+    parameters = OPERATIONS[operation]["parameters"]
+    for key in [*parameters["query"], *parameters.get("header", [])]:
+        if key not in schema.get("required", []):
+            value = schema["properties"][key]
+            schema["properties"][key] = {
+                **{
+                    k: value[k]
+                    for k in ("title", "description", "examples", "default")
+                    if k in value
+                },
+                "anyOf": [value, {"type": "null"}],
+            }
     return schema, body, definitions
 
 
@@ -237,6 +255,18 @@ def tool_schema(spec: ToolSpec) -> dict[str, Any]:
         for key in LEGACY:
             properties.pop(key, None)
         required = list(dict.fromkeys(required))
+    if "ContentRef" in definitions:
+        # Mirror the existing Go content.Ref.Valid business rule in tool discovery
+        # and local validation; optional does not mean optional for every entity.
+        definitions["ContentRef"]["allOf"] = [
+            {
+                "if": {
+                    "properties": {"entity": {"const": "collection_item"}},
+                    "required": ["entity"],
+                },
+                "then": {"required": ["secondaryId"]},
+            }
+        ]
     result = {
         "type": "object",
         "properties": properties,

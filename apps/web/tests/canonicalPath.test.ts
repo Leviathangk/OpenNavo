@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { canonicalPageUrl } from '../app/utils/catalogQuery';
+import { labelPath } from '../shared/utils/backgroundLabels';
 import { canonicalPath } from '../app/utils/canonicalPath';
 
 describe('canonical paths', () => {
@@ -15,4 +17,15 @@ describe('canonical paths', () => {
     // Malformed escapes are left as they are.
     expect(canonicalPath('/apps/bad%E0%A4%A')).toBe('/apps/bad%E0%A4%A');
   });
+});
+
+it('keeps labels encoded after i18n resolves route params for canonical and hreflang', () => {
+  for (const label of ['agent.*', "Agent (helper)'!", 'Google Drive', 'a@b+c:d', 'literal%25']) {
+    const canonical = labelPath(label, '/zh');
+    const route = `/zh/background-items/${encodeURIComponent(label)}`;
+    expect(canonicalPath(route)).toBe(canonical);
+    expect(canonicalPageUrl(`https://example.test${route}?ref=x`)).toBe(`https://example.test${canonical}`);
+    expect(canonicalPageUrl(`https://example.test${route}`)).toBe(`https://example.test${canonical}`);
+    expect(labelPath(label, '/')).toBe(labelPath(label));
+  }
 });
