@@ -34,7 +34,6 @@ vi.mock('@opennavo/ui', async () => {
     OnIcon: slot,
     OnAppIcon: slot,
     OnCodeText: { props: ['text'], setup: (props: { text: string }) => () => vnode('span', props.text) },
-    OnInstallCommand: { props: ['command'], setup: (props: { command: string }) => () => vnode('code', props.command) },
     OnCaskArtifacts: {
       props: ['entries'],
       setup: (props: { entries: unknown }) => () => vnode('pre', JSON.stringify(props.entries))
@@ -86,6 +85,11 @@ export async function renderGeo(detail: PackageDetail, locale: SiteLocale) {
         continue;
       }
       const app = createSSRApp({ render: () => h(component, { pkg, homebrew: can.homebrew }) });
+      app.component('PackageCommand', {
+        props: ['command', 'copyLabel'],
+        setup: props => () =>
+          h('div', [h('code', props.command), h('button', { 'aria-label': props.copyLabel }, 'Copy')])
+      });
       app.component('NuxtLink', {
         props: ['to'],
         setup:

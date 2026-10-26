@@ -1,3 +1,4 @@
+import { robotsAllowsIndexing } from './indexing';
 // "How to uninstall {app} on Mac" intent page (X2), pure for testing. Like the alternatives page it exists
 // only where the server's decision opens it (seo pages.uninstall: indexable with its own canonical, after
 // intentPagesEnabled, a confirmed search target and a concrete upstream uninstall declaration), so each
@@ -15,7 +16,7 @@ export function uninstallPageOpen(pkg: Pick<PackageDetail, 'kind' | 'facts' | 'i
   return Boolean(
     pkg.kind === 'cask' &&
     decision &&
-    decision.robots === 'index, follow' &&
+    robotsAllowsIndexing(decision.robots) &&
     !decision.canonicalPath &&
     pkg.facts?.uninstall?.length
   );

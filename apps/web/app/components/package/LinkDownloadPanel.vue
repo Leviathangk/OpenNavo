@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { formatRelativeTime, selectAssets } from '@opennavo/shared';
+import { formatDate } from '~/utils/packageDate';
+import { selectAssets } from '@opennavo/shared';
 import { OnButton } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
 import { githubReleaseUrl, httpsUrl, linkNotes } from '~/utils/linkApp';
@@ -53,12 +54,8 @@ const note = computed(() => {
     </OnButton>
     <template v-if="release">
       <p class="m-0 text-12px text-ink-tertiary">
-        {{
-          t('package.link.release', {
-            version: release.version,
-            time: formatRelativeTime(release.publishedAt, { locale: appLocale })
-          })
-        }}
+        {{ release.version }} ·
+        <time :datetime="release.publishedAt">{{ formatDate(release.publishedAt, { locale: appLocale }) }}</time>
       </p>
       <p v-if="note" class="m-0 text-11.5px text-ink-tertiary">{{ note }}</p>
       <ul v-if="choice.main.length" class="m-0 flex list-none flex-col p-0">

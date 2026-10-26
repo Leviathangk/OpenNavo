@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -60,6 +61,9 @@ func (n *Notifier) notifications(ctx context.Context, plan Plan) ([]store.URLNot
 			note.URL, note.Path = raw, parsed.Path
 		}
 		note.Announce = true
+		if plan.BackfillURLs[raw] {
+			note.Reason = "index"
+		}
 		if d, ok := plan.Decisions[raw]; ok {
 			note.Robots, note.CanonicalPath = d.Robots, d.CanonicalPath
 		}
@@ -270,6 +274,10 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 				}
 			}
 			ready, urls = active, activeURLs
+			sort.SliceStable(ready, func(i, j int) bool { return ready[i].Reason != "index" && ready[j].Reason == "index" })
+			for i, row := range ready {
+				urls[i] = row.URL
+			}
 			if len(ready) == 0 {
 				continue
 			}
@@ -285,7 +293,61 @@ func (n *Notifier) drainOutbox(ctx context.Context, owner string) (purged, annou
 				}
 				continue
 			}
+			// Ready-only ordering is insufficient: newer work may still be invalidating,
+			// probing, retrying, or leased by another worker. Keep backfill out of
+			// the budget until that work has had its turn.
+			freshIDs := []int64{}
+			for _, row := range ready {
+				if row.Reason != "index" {
+					freshIDs = append(freshIDs, row.ID)
+				}
+			}
+			waiting, err := n.Store.HasUnreadyFreshNotifications(ctx, freshIDs)
+			if err != nil {
+				return purged, announced, err
+			}
+			if waiting {
+				kept := ready[:0]
+				for _, row := range ready {
+					if row.Reason == "index" {
+						if err := n.Store.DeferURLNotification(ctx, row, n.Now(), n.Now().Add(time.Minute)); err != nil {
+							return purged, announced, err
+						}
+					} else {
+						kept = append(kept, row)
+					}
+				}
+				ready, urls = kept, urls[:len(kept)]
+				if len(ready) == 0 {
+					continue
+				}
+			}
+			budgetDay := n.Now().UTC()
+			limit := n.Config.IndexNowDailyLimit
+			if limit <= 0 {
+				limit = 5000
+			}
+			allowed, err := n.Store.ReserveIndexNowBudget(ctx, budgetDay, limit, len(urls))
+			if err != nil {
+				return purged, announced, err
+			}
+			tomorrow := time.Date(budgetDay.Year(), budgetDay.Month(), budgetDay.Day()+1, 0, 0, 0, 0, time.UTC)
+			for _, row := range ready[allowed:] {
+				if err := n.Store.DeferURLNotification(ctx, row, n.Now(), tomorrow); err != nil {
+					return purged, announced, err
+				}
+			}
+			ready, urls = ready[:allowed], urls[:allowed]
+			if allowed == 0 {
+				continue
+			}
 			status, count := n.announce(ctx, settings, urls)
+			total, recordErr := n.Store.RecordIndexNowAccepted(ctx, budgetDay, count)
+			if recordErr != nil {
+				return purged, announced, recordErr
+			}
+			n.Logger.Info("IndexNow daily submissions", "utc_day", budgetDay.Format("2006-01-02"), "accepted", total, "daily_limit", limit)
+
 			announced += count
 			for i, row := range ready {
 				var problem error

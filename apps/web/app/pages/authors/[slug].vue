@@ -2,7 +2,7 @@
 import { ApiError, unwrap } from '@opennavo/api';
 import { OnBreadcrumb, OnEmpty, OnErrorState, OnPagination } from '@opennavo/ui';
 import { pageCount as countPages } from '~/utils/catalogQuery';
-import { ARTICLE_PAGE_SIZE, ARTICLE_SLUG, authorEntityId } from '~/utils/article';
+import { ARTICLE_PAGE_SIZE, ARTICLE_SLUG, authorEntityId, isEditorialAuthor } from '~/utils/article';
 
 // Author page (WP17): the profile bylines link to, with the author's published articles. Article
 // structured data points its author at the Person defined here. Authors without published articles
@@ -53,7 +53,7 @@ type PersonInput = NonNullable<Parameters<typeof definePerson>[0]>;
 useSchemaOrg(
   computed(() => {
     const value = author.value;
-    if (!value) return [];
+    if (!value || isEditorialAuthor(value)) return [];
     const person: Record<string, unknown> = {
       '@id': personId,
       name: value.name,
@@ -66,7 +66,10 @@ useSchemaOrg(
     return [definePerson(person as PersonInput)];
   })
 );
-usePageSchema(() => ({ type: 'ProfilePage', mainEntity: author.value ? personId : undefined }));
+usePageSchema(() => ({
+  type: 'ProfilePage',
+  mainEntity: author.value ? (isEditorialAuthor(author.value) ? `${siteUrl}/#identity` : personId) : undefined
+}));
 useItemListSchema(
   () =>
     (data.value?.articles.records ?? []).map(card => ({

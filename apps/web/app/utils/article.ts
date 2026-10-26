@@ -2,6 +2,7 @@
 // API decides which languages are ready; pages in other languages show the source text, stay out
 // of the index and are left out of hreflang. So do languages the site has closed for indexing (L1).
 import type { PublicComponents } from '@opennavo/api';
+import { LOCALE_METADATA } from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { TITLE_SUFFIX } from './seoTitles';
 import { appEntityId, listItems } from './structuredData';
@@ -60,6 +61,11 @@ export function showUpdated(article: Pick<Article, 'publishedAt' | 'updatedAt'>)
   return article.updatedAt.slice(0, 10) !== article.publishedAt.slice(0, 10);
 }
 
+/** Navo is the site's disclosed editorial byline, not an individual person. */
+export function isEditorialAuthor(author: Pick<ArticleAuthor, 'slug'>): boolean {
+  return author.slug === 'navo';
+}
+
 export function authorEntityId(siteUrl: string, slug: string): string {
   return `${siteUrl}/authors/${slug}#person`;
 }
@@ -69,6 +75,8 @@ export interface ArticleSchemaContext {
   siteUrl: string;
   /** Absolute image: the cover, else the share image. */
   image?: string;
+  /** Language of the page, including source-text fallback pages. */
+  pageLocale?: Locale;
   /** Path of the author page in the page language. */
   authorPath?: string;
   /** Path of an app page in the page language. */
@@ -87,21 +95,23 @@ export function blogPostingNode(article: Article, context: ArticleSchemaContext)
     headline: article.title,
     datePublished: article.publishedAt,
     dateModified: article.updatedAt,
-    inLanguage: article.locale,
+    inLanguage: LOCALE_METADATA[context.pageLocale ?? article.locale].hreflang,
     publisher: { '@id': `${siteUrl}/#identity` },
-    author: article.author
-      ? {
-          '@type': 'Person',
-          '@id': authorEntityId(siteUrl, article.author.slug),
-          name: article.author.name,
-          ...(context.authorPath ? { url: `${siteUrl}${context.authorPath}` } : {})
-        }
-      : { '@id': `${siteUrl}/#identity` }
+    author:
+      article.author && !isEditorialAuthor(article.author)
+        ? {
+            '@type': 'Person',
+            '@id': authorEntityId(siteUrl, article.author.slug),
+            name: article.author.name,
+            ...(context.authorPath ? { url: `${siteUrl}${context.authorPath}` } : {})
+          }
+        : { '@id': `${siteUrl}/#identity` }
   };
   const description = articleDescription(article);
   if (description) node.description = description;
   if (context.image) node.image = context.image;
   const apps = article.packages.map(pkg => ({
+    '@type': 'SoftwareApplication',
     '@id': appEntityId(siteUrl, pkg.token),
     name: pkg.displayName,
     url: `${siteUrl}${context.appPath(pkg.token)}`

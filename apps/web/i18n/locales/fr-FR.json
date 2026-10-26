@@ -27,7 +27,8 @@
     "themeLabel": "Apparence",
     "themeSystem": "Comme le système",
     "themeLight": "Clair",
-    "themeDark": "Sombre"
+    "themeDark": "Sombre",
+    "skipToContent": "Aller au contenu"
   },
   "sidebar": {
     "appLabel": "App Mac",
@@ -808,6 +809,16 @@
         "issue": "Problèmes connus",
         "integration": "MCP et Skill"
       }
+    },
+    "copy": {
+      "install": "Copier la commande d’installation",
+      "uninstall": "Copier la commande de désinstallation",
+      "cleanup": "Copier la commande de désinstallation et de nettoyage"
+    },
+    "officialDownload": {
+      "label": "Téléchargement officiel · {host}",
+      "checksum": "SHA-256 enregistré par Homebrew",
+      "active": "Non désactivé par Homebrew"
     }
   },
   "collections": {

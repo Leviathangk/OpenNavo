@@ -14864,6 +14864,7 @@ components:
           type: string
           enum:
             - index, follow
+            - index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1
             - noindex, follow
         canonicalPath:
           type: string

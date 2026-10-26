@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStorage } from 'unstorage';
 import memoryDriver from 'unstorage/drivers/memory';
+import { warmSitemaps } from '../server/utils/sitemapWarmup';
 import { labelPath } from '../shared/utils/backgroundLabels';
 import { LOCALES, LOCALE_METADATA } from '@opennavo/shared';
 import { boundedCache, MAX_CACHE_ENTRY_BYTES } from '../server/utils/boundedCache';
@@ -19,7 +20,11 @@ type HookContext = {
   urls: { loc: string }[];
 };
 type Hook = (ctx: HookContext) => Promise<void>;
-async function setup(records: Record<string, unknown>[]) {
+async function setup(
+  records: Record<string, unknown>[],
+  sitemapFonts: unknown = true,
+  fonts: Record<string, unknown>[] = []
+) {
   const sizes: number[] = [];
   const inner = memoryDriver();
   const write = inner.setItem!;
@@ -33,7 +38,7 @@ async function setup(records: Record<string, unknown>[]) {
   const fetch = vi.fn(async (url: string, options?: { query: { group: string; current: number; size: number } }) => {
     if (url.endsWith('/sitemap/articles')) return { data: { articles: [], authors: [] } };
     const { group, current, size } = options!.query;
-    const source = group === 'apps' ? records : [];
+    const source = group === 'apps' ? records : fonts;
     return {
       data: { total: source.length, records: source.slice((current - 1) * size, current * size) }
     };
@@ -51,15 +56,15 @@ async function setup(records: Record<string, unknown>[]) {
   );
   vi.stubGlobal('useRuntimeConfig', () => ({
     apiBaseInternal: 'https://example.test',
+    sitemapFonts,
     public: {}
   }));
   vi.stubGlobal('getSiteSettings', async () => ({ pages: { versionsSitemap: true } }));
   vi.stubGlobal('$fetch', fetch);
   const plugin = await import('../server/plugins/sitemap-sources');
-  const index = async () => {
-    const ctx = {
-      sitemaps: Object.keys(packageSitemaps).map(_sitemapName => ({ _sitemapName }))
-    };
+  const index = async (sitemaps = Object.keys(packageSitemaps).map(_sitemapName => ({ _sitemapName }))) => {
+    const ctx = { sitemaps };
+
     await hooks['sitemap:index-resolved']!(ctx);
     return ctx.sitemaps;
   };
@@ -88,6 +93,74 @@ const catalog = (count: number) =>
   Array.from({ length: count }, (_, i) => ({ kind: 'cask', token: `app-${i}`, locales: [{ locale: 'en-US' }] }));
 
 describe('sitemap source snapshot cache', () => {
+  it.each([false, true, 'true'])('controls font buckets and font versions with sitemapFonts=%s', async enabled => {
+    const font = { kind: 'cask', token: 'font-sample', notesCount: 5, locales: [{ locale: 'en-US' }] };
+    const { index, bucket, fetch } = await setup(catalog(1), enabled, [font]);
+    const entries = await index();
+    const fontName = packageSitemapName('fonts', font.token);
+    const versionsName = packageSitemapName('versions', font.token);
+    expect(entries.some(entry => entry['_sitemapName'] === fontName)).toBe(Boolean(enabled));
+    const versions = await bucket(versionsName);
+    expect(versions.some(entry => entry.loc === '/apps/font-sample/versions')).toBe(Boolean(enabled));
+    if (enabled) expect(await bucket(fontName)).toContainEqual(expect.objectContaining({ loc: '/apps/font-sample' }));
+    else {
+      await expect(bucket(fontName)).rejects.toMatchObject({ statusCode: 404 });
+      expect(fetch.mock.calls.some(([, options]) => options?.query?.group === 'fonts')).toBe(false);
+    }
+  });
+
+  it('serves the first external index and every bucket from startup-warmed snapshots', async () => {
+    const { index, bucket, packageCalls, fetch } = await setup(catalog(1000));
+    await warmSitemaps(async path => {
+      if (path === '/sitemap_index.xml') await index();
+      else await bucket(path.split('/').at(-1)!.replace('.xml', ''));
+      return { status: 200 };
+    });
+    expect(packageCalls()).toBe(3);
+    const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (url, options) => {
+      if (url.endsWith('/sitemap/packages')) throw new Error('external request must use the warmed snapshot');
+      return original(url, options);
+    });
+    expect((await index()).length).toBeGreaterThan(0);
+    const urls = (await Promise.all(Object.keys(packageSitemaps).map(bucket))).flat();
+    expect(urls).toHaveLength(1000);
+    expect(packageCalls()).toBe(3);
+  });
+
+  it('removes inherited index dates without mutating the module cache across snapshot refreshes', async () => {
+    vi.useFakeTimers();
+    const records = [{ kind: 'cask', token: 'example', locales: [{ locale: 'en-US', lastmod: '2026-01-01' }] }];
+    const { index, bucket, stale, idle } = await setup(records);
+    const name = packageSitemapName('apps', 'example');
+    const moduleEntries = [{ _sitemapName: name, lastmod: '2026-01-01T00:00:00.123456Z' }];
+    expect(await index(moduleEntries)).toEqual([{ _sitemapName: name }]);
+    stale();
+    records[0]!.locales[0]!.lastmod = '2026-10-26';
+    await bucket(name);
+    await idle();
+    expect((await bucket(name))[0]).toHaveProperty('lastmod', '2026-10-26T00:00:00Z');
+    expect(await index(moduleEntries)).toEqual([{ _sitemapName: name }]);
+    expect(moduleEntries[0]).toHaveProperty('lastmod', '2026-01-01T00:00:00.123456Z');
+    await idle();
+  });
+
+  it('does not cache empty buckets after a failed startup warmup and recovers on the next request', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { index, bucket, fetch, storage } = await setup(catalog(10));
+    const original = fetch.getMockImplementation()!;
+    fetch.mockRejectedValue(new Error('API unavailable'));
+    await warmSitemaps(async path => {
+      if (path === '/sitemap_index.xml') await index();
+      else await bucket(path.split('/').at(-1)!.replace('.xml', ''));
+      return { status: 200 };
+    });
+    expect(await storage.getKeys()).toEqual([]);
+    fetch.mockImplementation(original);
+    expect((await index()).length).toBeGreaterThan(0);
+    expect((await Promise.all(appBuckets.map(name => bucket(name)))).flat()).toHaveLength(10);
+  });
+
   it('reuses a 6000-app catalog for repeated indexes and all buckets within the storage limit', async () => {
     const records = Array.from({ length: 6000 }, (_, i) => ({
       kind: 'cask',
@@ -168,8 +241,10 @@ describe('sitemap source snapshot cache', () => {
     expect(locs.has('/apps/app-0/alternatives')).toBe(false);
     expect([...locs].some(loc => loc.endsWith('/uninstall') || loc.endsWith('/troubleshooting'))).toBe(false);
     expect(urls).toHaveLength(1200 * (LOCALES.length - 1) + 600);
-    expect(urls.find(url => url.loc === '/apps/app-0')).toMatchObject({ lastmod: '2026-10-02' });
-    expect(urls.find(url => url.loc === '/ja/apps/app-0/alternatives')).toMatchObject({ lastmod: '2026-10-05' });
+    expect(urls.find(url => url.loc === '/apps/app-0')).toMatchObject({ lastmod: '2026-10-02T00:00:00Z' });
+    expect(urls.find(url => url.loc === '/ja/apps/app-0/alternatives')).toMatchObject({
+      lastmod: '2026-10-05T00:00:00Z'
+    });
     const versions = (
       await Promise.all(
         listed
@@ -179,7 +254,7 @@ describe('sitemap source snapshot cache', () => {
     ).flat();
     expect(versions).toHaveLength(1200);
     expect(versions.every(url => /^\/apps\/app-\d+\/versions$/.test(url.loc))).toBe(true);
-    expect(versions[0]).toMatchObject({ lastmod: '2026-10-03' });
+    expect(versions[0]).toMatchObject({ lastmod: '2026-10-03T00:00:00Z' });
   });
 
   it('restarts the whole catalog after a later page fails and an earlier app is hidden', async () => {
@@ -378,7 +453,7 @@ describe('sitemap source snapshot cache', () => {
     expect(locs).not.toContain('/apps/wget');
   });
 
-  it('lists a bucket only when a decision puts one of its pages in a sitemap, dated by its newest page', async () => {
+  it('lists a bucket only when a decision puts one of its pages in a sitemap, without an index date', async () => {
     const decision = (inSitemap: boolean) => ({ overview: { inSitemap }, versions: { inSitemap } });
     const { index, bucket } = await setup([
       {
@@ -401,12 +476,12 @@ describe('sitemap source snapshot cache', () => {
       .flat()
       .map(entry => entry.loc);
     expect(urls).toEqual(['/apps/dated-app']);
-    // The date of the page the bucket lists, not the unlisted Japanese page or the hidden app.
-    expect(listed).toEqual([{ _sitemapName: packageSitemapName('apps', 'dated-app'), lastmod: '2026-03-02' }]);
+    expect(listed).toEqual([{ _sitemapName: packageSitemapName('apps', 'dated-app') }]);
     // A versions bucket follows its own decisions instead of the release-note count.
     const versions = entries.filter(({ _sitemapName: name }) => name.startsWith('versions-'));
     const versionUrls = (await Promise.all(versions.map(({ _sitemapName: name }) => bucket(name)))).flat();
     expect(versionUrls.map(entry => entry.loc)).toEqual(['/apps/dated-app/versions']);
+    expect(versionUrls[0]).not.toHaveProperty('lastmod');
   });
 
   it('lists indexable background item labels without the date their description was last checked', async () => {

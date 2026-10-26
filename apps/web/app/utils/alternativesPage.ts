@@ -1,3 +1,4 @@
+import { robotsAllowsIndexing } from './indexing';
 // "Alternatives to {app}" intent page (X2, F3), pure for testing. The page exists only where the server's
 // decision opens it (seo pages.alternatives: indexable, its own canonical), so each app × intent × language
 // has one target page; everywhere else it is a 404 and the app page keeps its Alternatives section.
@@ -19,7 +20,7 @@ export function alternativesOf(pkg: Pick<PackageDetail, 'facts' | 'alternatives'
 export function alternativesPageOpen(pkg: Pick<PackageDetail, 'facts' | 'alternatives' | 'indexing'>): boolean {
   const decision = pkg.indexing?.pages?.alternatives;
   return Boolean(
-    decision && decision.robots === 'index, follow' && !decision.canonicalPath && alternativesOf(pkg).length
+    decision && robotsAllowsIndexing(decision.robots) && !decision.canonicalPath && alternativesOf(pkg).length
   );
 }
 

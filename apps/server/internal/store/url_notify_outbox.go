@@ -76,7 +76,7 @@ func (s *Store) ClaimURLNotifications(ctx context.Context, token string, now tim
 WHERE id IN (SELECT id FROM url_notify_outbox WHERE state IN ('pending','invalidated','probed')
 AND (path='/' OR NOT EXISTS (SELECT 1 FROM url_notify_outbox settings WHERE settings.path='/' AND settings.state IN ('pending','dead')
  AND NOT EXISTS (SELECT 1 FROM url_notify_outbox newer WHERE newer.path='/' AND newer.id>settings.id)))
-AND next_attempt_at<=? AND (lease_until IS NULL OR lease_until<=?) ORDER BY next_attempt_at,id
+AND next_attempt_at<=? AND (lease_until IS NULL OR lease_until<=?) ORDER BY (reason='index'),next_attempt_at,id
 LIMIT ? FOR UPDATE SKIP LOCKED) RETURNING *`, token, now.Add(2*time.Minute), now, now, now, limit).Scan(&rows).Error
 	return rows, err
 }
@@ -122,4 +122,16 @@ func (s *Store) RenewURLNotification(ctx context.Context, row URLNotificationRow
 	result := s.DB.WithContext(ctx).Exec(`UPDATE url_notify_outbox SET lease_until=?
  WHERE id=? AND revision=? AND lease_token=? AND lease_until>?`, now.Add(2*time.Minute), row.ID, row.Revision, row.LeaseToken, now)
 	return result.RowsAffected == 1, result.Error
+}
+
+// HasUnreadyFreshNotifications includes all active processing phases and leases.
+// readyIDs are fresh rows this worker is about to submit ahead of backfill.
+func (s *Store) HasUnreadyFreshNotifications(ctx context.Context, readyIDs []int64) (bool, error) {
+	query := s.DB.WithContext(ctx).Table("url_notify_outbox").Where("announce AND reason <> 'index' AND state IN ('pending','invalidated','probed')")
+	if len(readyIDs) > 0 {
+		query = query.Where("id NOT IN ?", readyIDs)
+	}
+	var count int64
+	err := query.Count(&count).Error
+	return count > 0, err
 }

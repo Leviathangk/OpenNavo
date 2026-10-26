@@ -1,9 +1,9 @@
+import { formatDate } from './packageDate';
 // App-page sentences (WP9, T2), pure for testing. Every sentence comes from a recorded fact in the
 // detail's facts model or the catalog record: what the app is, who makes it, where a link app's files
 // come from, and what a Homebrew install puts on the Mac. A missing fact drops its sentence instead of
 // being guessed. Prices, chips and system requirements stay out of the lead: they live in the facts
 // table beside it (T2), which states each one with its source.
-import { formatDate } from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { linkSource } from './linkApp';
 import { isDated } from './packageFacts';
@@ -36,7 +36,7 @@ export function leadSentences(pkg: LeadFacts, t: Translate): string[] {
       ? t('package.answer.font', { name })
       : t(`package.answer.${app ? 'app' : 'software'}${category ? 'Category' : ''}`, { name, category })
   ];
-  if (pkg.developer) out.push(t('package.lead.developer', { developer: pkg.developer }));
+  if (pkg.developer) out.push(t('package.lead.developer', { developer: pkg.developer.trim().replace(/[.。]+$/, '') }));
   const source = pkg.kind === 'link' && pkg.link ? linkSource(pkg.link) : undefined;
   if (source) out.push(t('package.lead.source', { source }));
   return out;

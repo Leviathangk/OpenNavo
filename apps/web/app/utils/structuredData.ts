@@ -75,7 +75,7 @@ export function softwareAppNode(
     ),
     url
   };
-  const alternateNames = pkg.names.filter(name => name !== pkg.displayName);
+  const alternateNames = pkg.names.filter(name => name !== pkg.displayName && name !== pkg.token);
   if (alternateNames.length) node.alternateName = alternateNames;
   const version = reliableVersion(currentVersion(pkg));
   if (version) node.softwareVersion = version;

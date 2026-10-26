@@ -41,7 +41,7 @@ func TestPageDecisionMatrix(t *testing.T) {
 						require.Equal(t, PageDecision{Robots: "noindex, follow", Hreflang: []string{}, Reason: ReasonSupportingPage}, d)
 						return
 					}
-					require.Equal(t, "index, follow", d.Robots)
+					require.Equal(t, IndexableRobots, d.Robots)
 					require.Empty(t, d.CanonicalPath)
 					require.Equal(t, Locales, d.Hreflang)
 					require.Equal(t, page == 1, d.InSitemap)

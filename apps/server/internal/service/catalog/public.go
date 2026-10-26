@@ -898,8 +898,8 @@ func (s *PublicService) indexing(ctx context.Context, token, locale string) (*pu
 		return nil, nil, err
 	}
 	merged := row.Kind == "cask"
-	redirect := merged && settings.Settings.Pages.DetailsRedirect && pages.Overview.Robots == "index, follow"
-	return &publicapi.PackageIndexing{DetailsMerged: &merged, DetailsRedirect: &redirect, Indexable: pages.Overview.Robots == "index, follow", Reason: reason, Locales: pages.Overview.Hreflang, Enforced: decision.Enforced, NotesCount: row.NotesCount, Pages: pages}, row.CommittedAt, nil
+	redirect := merged && settings.Settings.Pages.DetailsRedirect && seo.DecisionRobots(string(pages.Overview.Robots)).Index
+	return &publicapi.PackageIndexing{DetailsMerged: &merged, DetailsRedirect: &redirect, Indexable: seo.DecisionRobots(string(pages.Overview.Robots)).Index, Reason: reason, Locales: pages.Overview.Hreflang, Enforced: decision.Enforced, NotesCount: row.NotesCount, Pages: pages}, row.CommittedAt, nil
 }
 func (s *PublicService) Config(ctx context.Context, platform, version, locale string) (publicapi.ClientConfig, error) {
 	if platform == "desktop" && version == "" {

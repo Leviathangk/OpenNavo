@@ -46,6 +46,7 @@ func TestRobotsIntent(t *testing.T) {
 }
 
 func TestDecisionRobots(t *testing.T) {
+	require.Equal(t, RobotsIntent{Index: true, Follow: true}, DecisionRobots(IndexableRobots))
 	require.Equal(t, RobotsIntent{Index: true, Follow: true}, DecisionRobots("index, follow"))
 	require.Equal(t, RobotsIntent{Follow: true}, DecisionRobots("noindex, follow"))
 	require.Equal(t, "noindex, follow", DecisionRobots("noindex,follow").String())

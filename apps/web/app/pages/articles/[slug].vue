@@ -127,6 +127,7 @@ useSchemaOrg(
     if (!value) return [];
     const context = {
       siteUrl,
+      pageLocale: toAppLocale(locale.value),
       image: value.cover?.url ?? (shareImage.value ? `${siteUrl}${shareImage.value}` : undefined),
       authorPath: authorPath.value,
       appPath: (token: string) => localePath(packagePath(token))

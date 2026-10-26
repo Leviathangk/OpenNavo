@@ -16,6 +16,7 @@ import (
 )
 
 type Config struct {
+	IndexNowDailyLimit          int           `env:"INDEXNOW_DAILY_LIMIT" envDefault:"5000"`
 	UsageCountryTrustedProxies  []string      `env:"USAGE_COUNTRY_TRUSTED_PROXIES" envSeparator:","`
 	AgentGatewaySecret          string        `env:"AGENT_GATEWAY_SECRET"`
 	AppEnv                      string        `env:"APP_ENV,required"`

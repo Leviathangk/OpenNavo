@@ -80,7 +80,15 @@ function onSelect(key: string) {
         :aria-label="t('get.label', { name })"
         @click="trackEvent('get_app')"
       />
-      <OnButton v-else variant="primary" shape="round" icon="download" v-bind="attrs" @click="trackEvent('get_app')">
+      <OnButton
+        v-else
+        :aria-label="t('get.label', { name })"
+        variant="primary"
+        shape="round"
+        icon="download"
+        v-bind="attrs"
+        @click="trackEvent('get_app')"
+      >
         {{ messages.getButton.get }}
       </OnButton>
     </template>

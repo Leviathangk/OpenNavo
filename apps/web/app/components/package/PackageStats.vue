@@ -1,14 +1,8 @@
 <script setup lang="ts">
+import { formatDate } from '~/utils/packageDate';
 import type { PublicComponents } from '@opennavo/api';
-import {
-  formatBytes,
-  formatCount,
-  formatCountCompact,
-  formatDate,
-  formatRelativeTime,
-  formatVersion
-} from '@opennavo/shared';
-import { architectures, OnPackageStats, useUiMessages } from '@opennavo/ui';
+import { formatBytes, formatCount, formatCountCompact, formatVersion } from '@opennavo/shared';
+import { architectures, useUiMessages } from '@opennavo/ui';
 import type { OnPackageStatsCell } from '@opennavo/ui';
 import { latestVersionDate } from '~/utils/indexing';
 import type { PackagePage } from '~/utils/packageFacts';
@@ -58,9 +52,7 @@ const cells = computed<OnPackageStatsCell[]>(() => {
       key: 'version',
       label: t('package.stats.latest'),
       value: formatVersion(props.pkg.version),
-      hint: latestAt
-        ? `${formatRelativeTime(latestAt, { locale: appLocale.value })} · ${formatDate(latestAt, { locale: appLocale.value })}`
-        : undefined
+      hint: latestAt ? formatDate(latestAt, { locale: appLocale.value }) : undefined
     },
     {
       key: 'size',
@@ -80,5 +72,27 @@ const cells = computed<OnPackageStatsCell[]>(() => {
 </script>
 
 <template>
-  <OnPackageStats :cells="cells" :label="t('package.stats.label')" />
+  <section
+    class="overflow-hidden rounded-big border border-solid border-line-subtle bg-surface-card"
+    :aria-label="t('package.stats.label')"
+  >
+    <dl class="m-0 grid grid-cols-2 md:grid-cols-5">
+      <div
+        v-for="(cell, index) in cells"
+        :key="cell.key"
+        class="box-border flex min-w-0 flex-col gap-2px border-line-subtle px-18px py-14px md:border-l md:border-l-solid"
+        :class="{ 'md:border-l-0': index === 0 }"
+      >
+        <dt class="break-words text-11.5px text-ink-tertiary">{{ cell.label }}</dt>
+        <dd class="m-0 flex min-w-0 flex-wrap items-baseline gap-2px">
+          <span class="break-words text-stat text-ink-primary">{{ cell.value }}</span
+          ><span v-if="cell.unit" class="text-12px text-ink-tertiary">{{ cell.unit }}</span>
+        </dd>
+        <dd v-if="cell.hint" class="m-0 break-words text-11px text-ink-tertiary">
+          <time v-if="cell.key === 'version'" :datetime="latestVersionDate(pkg) ?? undefined">{{ cell.hint }}</time
+          ><template v-else>{{ cell.hint }}</template>
+        </dd>
+      </div>
+    </dl>
+  </section>
 </template>

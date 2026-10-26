@@ -288,7 +288,45 @@ func (s *Store) PublicStats(ctx context.Context) (map[string]int, error) {
 	return map[string]int{"casks": v.Casks, "formulae": v.Formulae, "updatedLast24h": v.Updated}, err
 }
 func (s *Store) PublicRelated(ctx context.Context, p PublicPackage, locale string, limit int) ([]PublicPackage, error) {
-	return s.publicPage(ctx, locale, publicVisible+` AND NOT (p.disabled OR p.stale_disabled) AND p.is_font=? AND NOT p.is_library AND ((? IN ('cask','link') AND p.kind IN ('cask','link')) OR p.kind=?) AND p.id<>? AND EXISTS(SELECT 1 FROM package_categories pc JOIN package_categories target ON target.category_id=pc.category_id WHERE pc.package_id=p.id AND target.package_id=? AND target.is_primary)`, "ORDER BY abs(p.popularity-?),p.popularity DESC,p.id LIMIT ?", p.IsFont, p.Kind, p.Kind, p.ID, p.ID, p.Popularity, limit)
+	if limit <= 0 {
+		return []PublicPackage{}, nil
+	}
+	alternatives, err := s.Alternatives(ctx, p.ID, true)
+	if err != nil {
+		return nil, err
+	}
+	ids := []int64{}
+	for _, alternative := range alternatives {
+		if alternative.PackageID != p.ID {
+			ids = append(ids, alternative.PackageID)
+		}
+		if len(ids) == limit {
+			break
+		}
+	}
+	if len(ids) < limit {
+		var candidates []int64
+		excluded := append([]int64{p.ID}, ids...)
+		err = s.DB.WithContext(ctx).Raw(linkSQL(ctx, `WITH RECURSIVE depths AS (
+   SELECT id,0 depth FROM categories WHERE parent_id IS NULL
+   UNION ALL SELECT c.id,d.depth+1 FROM categories c JOIN depths d ON c.parent_id=d.id
+  ), matches AS (
+   SELECT pc.package_id,count(*) shared_count,
+    max(d.depth) deepest,max(CASE WHEN target.is_primary THEN d.depth+1 ELSE 0 END) primary_depth
+   FROM package_categories pc JOIN package_categories target ON target.category_id=pc.category_id
+   JOIN depths d ON d.id=pc.category_id WHERE target.package_id=? GROUP BY pc.package_id
+  ) SELECT p.id FROM packages p LEFT JOIN package_meta m ON m.package_id=p.id JOIN matches ON matches.package_id=p.id
+  WHERE `+publicVisible+` AND NOT (p.disabled OR p.stale_disabled) AND p.is_font=? AND NOT p.is_library
+   AND ((? IN ('cask','link') AND p.kind IN ('cask','link')) OR p.kind=?) AND p.id NOT IN ?
+  ORDER BY (matches.deepest>0) DESC,matches.shared_count DESC,matches.primary_depth DESC,matches.deepest DESC,
+   abs(p.popularity-?),p.popularity DESC,p.id LIMIT ?`),
+			p.ID, p.IsFont, p.Kind, p.Kind, excluded, p.Popularity, limit-len(ids)).Scan(&candidates).Error
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, candidates...)
+	}
+	return s.PublicPackagesByID(ctx, ids, locale)
 }
 func (s *Store) PublicDependents(ctx context.Context, p PublicPackage, locale string) ([]PublicPackage, int, error) {
 	tokens, err := json.Marshal([]string{p.Token})

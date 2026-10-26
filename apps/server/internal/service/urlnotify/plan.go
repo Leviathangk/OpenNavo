@@ -27,7 +27,8 @@ var longCachedSections = []string{"/apps", "/articles", "/authors", "/collection
 
 // Plan lists what one run refreshes and announces.
 type Plan struct {
-	Decisions map[string]seo.PageDecision
+	Decisions    map[string]seo.PageDecision
+	BackfillURLs map[string]bool
 	// Paths are page-cache prefixes, one per language and token; each covers that app's tabs and payloads.
 	Paths []string
 	// PurgePrefixes are the same pages as Cloudflare purge prefixes (host and path, no scheme), each
@@ -81,6 +82,9 @@ func announcementPackages(changes []store.URLChange) map[int64]bool {
 	}
 	announce := map[int64]bool{}
 	for _, change := range changes {
+		if change.Reason == "refresh" || change.Reason == "cache" {
+			continue
+		}
 		if change.Reason != "content" || contentGroups[change.CreatedAt] <= bulkContentRows {
 			announce[change.PackageID] = true
 		}
@@ -113,7 +117,13 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 			}
 		}
 	}
-	plan := Plan{Decisions: map[string]seo.PageDecision{}}
+	plan := Plan{Decisions: map[string]seo.PageDecision{}, BackfillURLs: map[string]bool{}}
+	content := map[int64]bool{}
+	for _, change := range changes {
+		if change.Reason != "index" {
+			content[change.PackageID] = true
+		}
+	}
 	seenPath, seenPurge, seenAnnounce := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, id := range order {
 		now, known := current[id]
@@ -151,6 +161,7 @@ func BuildPlan(changes []store.URLChange, current map[int64]store.URLChange, ind
 						}
 						plan.IndexNowURLs = appendUnique(plan.IndexNowURLs, seenAnnounce, siteURL+path)
 						plan.Decisions[siteURL+path] = d
+						plan.BackfillURLs[siteURL+path] = !content[id]
 					}
 				} else if token != "opennavo" && (locales[id] == nil || seo.LocaleOpen(policy.OpenLocales, locale)) {
 					// The permanent brand redirect is not a catalog URL, even after removal.
@@ -214,7 +225,14 @@ func (p Plan) Merge(other Plan) Plan {
 	for url, d := range other.Decisions {
 		decisions[url] = d
 	}
-	return Plan{Paths: merge(p.Paths, other.Paths), PurgePrefixes: merge(p.PurgePrefixes, other.PurgePrefixes), IndexNowURLs: merge(p.IndexNowURLs, other.IndexNowURLs), Decisions: decisions}
+	backfill := map[string]bool{}
+	for _, plan := range []Plan{p, other} {
+		for _, u := range plan.IndexNowURLs {
+			old, exists := backfill[u]
+			backfill[u] = plan.BackfillURLs[u] && (!exists || old)
+		}
+	}
+	return Plan{BackfillURLs: backfill, Paths: merge(p.Paths, other.Paths), PurgePrefixes: merge(p.PurgePrefixes, other.PurgePrefixes), IndexNowURLs: merge(p.IndexNowURLs, other.IndexNowURLs), Decisions: decisions}
 }
 
 // Canonical order and deduplication keep plan output stable regardless of write order.

@@ -1,0 +1,114 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, ref } from 'vue';
+import { OnIcon } from '@opennavo/ui';
+import { useUiMessages } from '@opennavo/ui';
+
+export interface OnInstallCommandProps {
+  command: string;
+  copyLabel: string;
+  /** Title defaults to Install command; desktop clarifies this is the command OpenNavo executes. */
+  title?: string;
+  /** Beyond this length, wrap after --cask/--formula when the command does not fit its row. */
+  wrapAt?: number;
+  /** Copy implementation, browser clipboard by default; desktop may supply a plugin. */
+  copy?: (text: string) => Promise<void>;
+}
+
+const props = withDefaults(defineProps<OnInstallCommandProps>(), { wrapAt: 30 });
+
+const emit = defineEmits<{ copied: [command: string]; copyFailed: [error: unknown] }>();
+
+const messages = useUiMessages();
+const copied = ref(false);
+let timer: ReturnType<typeof setTimeout> | undefined;
+
+const split = computed(() => {
+  const match = /^(.*? --(?:cask|formula)) (.+)$/.exec(props.command);
+  return props.command.length > props.wrapAt && match ? { head: match[1]!, tail: match[2]! } : null;
+});
+// Column counts for the clamps below: the head with its "$ " prompt, and the whole command on one line.
+const columns = computed(() => {
+  const value = split.value;
+  if (!value) return undefined;
+  return {
+    '--on-command-head': `${value.head.length + 2}ch`,
+    '--on-command-line': `${value.head.length + value.tail.length + 3}ch`
+  };
+});
+
+async function copyCommand() {
+  const write = props.copy ?? ((text: string) => navigator.clipboard.writeText(text));
+  try {
+    await write(props.command);
+    copied.value = true;
+    emit('copied', props.command);
+    clearTimeout(timer);
+    // After copying, show Copied for 1.5 seconds (08 §8.19).
+    timer = setTimeout(() => {
+      copied.value = false;
+    }, 1500);
+  } catch (error) {
+    emit('copyFailed', error);
+  }
+}
+
+onBeforeUnmount(() => clearTimeout(timer));
+</script>
+
+<template>
+  <div class="flex flex-col gap-10px">
+    <div class="flex items-center justify-between gap-12px">
+      <span class="text-11.5px text-ink-tertiary">{{ title ?? messages.installCommand.title }}</span>
+      <button
+        type="button"
+        :aria-label="copyLabel"
+        class="m-0 inline-flex items-center gap-4px rounded-tiny border-none bg-transparent p-0 font-sans text-12px text-ink-secondary outline-none transition-colors duration-fast hover:text-ink-primary focus-visible:shadow-focus-ring"
+        @click="copyCommand"
+      >
+        <OnIcon :name="copied ? 'lucide:check' : 'lucide:copy'" :size="13" />
+        <span aria-live="polite">{{ copied ? messages.action.copied : messages.action.copy }}</span>
+      </button>
+    </div>
+    <!--
+      The command is one text node (C7): the "$ " prompt and a wrap's " \" are drawn by CSS, so copying,
+      crawlers and text extraction read exactly the command that runs.
+    -->
+    <pre
+      class="m-0 overflow-x-auto rounded-default border border-solid border-line-subtle bg-surface-inset px-14px py-12px font-mono text-11.5px leading-[1.6] text-ink-primary"
+    ><code class="on-command block" :class="split ? 'on-command-split' : 'whitespace-pre'" :style="columns"><span v-if="split" class="on-command-break" aria-hidden="true"></span>{{ command.trim() }}</code></pre>
+  </div>
+</template>
+
+<style scoped>
+.on-command::before {
+  content: '$ ';
+  color: var(--on-brand-salmon);
+  user-select: none;
+}
+
+/*
+ * A long command stays on one line while it fits its row and otherwise wraps after --cask/--formula, still as
+ * one text node. Continuation lines hang six columns in, under the command after its "$ " prompt. A right
+ * float as tall as the first line leaves that line room for the prompt, the head and one spare column, so the
+ * line breaks right after --cask, and draws the continuation backslash where " \" would sit. Its width is a
+ * switch: (one-line width - first-line room) * 999 lands far below zero when the command fits, so the float
+ * takes no room, and far above the maximum when it does not.
+ */
+.on-command-split {
+  white-space: pre-wrap;
+  padding-left: 6ch;
+  text-indent: -6ch;
+}
+
+.on-command-break {
+  float: right;
+  overflow: hidden;
+  white-space: pre;
+  text-indent: 0;
+  width: clamp(0px, (var(--on-command-line) - 100% - 6ch) * 999, 100% + 5ch - var(--on-command-head));
+}
+
+.on-command-break::before {
+  content: '\\';
+}
+</style>

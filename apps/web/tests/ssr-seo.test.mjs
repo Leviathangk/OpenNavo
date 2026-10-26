@@ -165,10 +165,11 @@ const localePrefixes = {
   'fr-FR': '/fr',
   'it-IT': '/it'
 };
+const INDEX_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 function pageDecisions(token, locale, locales, notesCount = 0, hasDependencyContent = false) {
   const indexable = locales.includes(locale);
   const decision = (allowed, hreflang = [], canonicalPath = '', reason = '') => ({
-    robots: allowed ? 'index, follow' : 'noindex, follow',
+    robots: allowed ? INDEX_ROBOTS : 'noindex, follow',
     canonicalPath,
     hreflang,
     inSitemap: allowed && !canonicalPath,
@@ -266,7 +267,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   // WP9/WP10: an app with verified price, a disputed macOS supplement, an alternative and --zap files.
   const factsApp = {
     displayName: 'Facts App',
-    names: ['Facts App'],
+    names: ['Facts App', 'facts-app', 'Facts Alternate'],
     autoUpdates: true,
     homepage: 'https://vendor.example/',
     downloadUrl: 'https://vendor.example/FactsApp.dmg',
@@ -434,6 +435,24 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     related: [tutorialCard],
     revision: 2
   });
+  const repairReleases = Array.from({ length: 24 }, (_, index) => ({
+    id: null,
+    version: index === 1 ? '5.0,501' : `${5 - Math.floor(index / 10)}.${index}.0`,
+    title: null,
+    publishedAt: '2026-10-01T00:00:00Z',
+    brewCommittedAt: null,
+    source: 'github_release',
+    sourceUrl: 'https://vendor.example/releases',
+    isLatest: index === 0,
+    isPrerelease: false,
+    hasNotes: index === 0 || index >= 20,
+    summary: null,
+    sections: [],
+    bodyMarkdown: index === 0 || index >= 20 ? 'Verified release notes.' : null,
+    compatibility: { minimumMacOS: null, maximumMacOS: null, appleSilicon: 'unknown', requirements: [] },
+    translation: { status: 'original', locale: 'en-US' }
+  }));
+  repairReleases[0].version = '5.0';
   let sitemapState = 'ok';
   let articleSitemapState = 'ok';
   // Changes what ordinary-app's description says, to see whether a page came from the cache.
@@ -602,11 +621,28 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     } else if (path === '/api/v1/home') {
       data = {
         features: [],
-        categories: [],
+        categories: Array.from({ length: 8 }, (_, i) => ({
+          slug: `category-${i}`,
+          name: `Category ${i}`,
+          icon: 'lucide:wrench',
+          appliesTo: 'both',
+          hiddenByDefault: false,
+          packageCount: i + 1,
+          children: []
+        })),
         popularApps: [appSummary('ordinary-app', 'Ordinary App')],
         popularCli: [],
         recentlyUpdated: [appSummary('facts-app', 'Facts App')],
-        collections: [],
+        collections: Array.from({ length: 6 }, (_, i) => ({
+          slug: `collection-${i}`,
+          title: `Collection ${i}`,
+          subtitle: '',
+          itemCount: 1,
+          iconUrls: [],
+          previewItems: [],
+          sourceLocale: 'en-US',
+          updatedAt: '2026-01-01T00:00:00Z'
+        })),
         stats: { casks: 50, formulae: 0, updatedLast24h: 3 }
       };
     } else if (
@@ -624,6 +660,18 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           ? { count: 1, top: [appSummary('ordinary-app', 'Ordinary App')] }
           : { count: 0, top: [] },
         dependsOn: { macos: null, arch: [], formulae: [], casks: [] }
+      };
+    } else if (path === '/api/v1/packages/cask/cleanmymac/releases') {
+      const records =
+        query.get('onlyWithNotes') === 'true' ? repairReleases.filter(release => release.hasNotes) : repairReleases;
+      const size = Number(query.get('size') ?? 24);
+      data = {
+        indexing: pageDecisions('cleanmymac', 'en-US', ['en-US'], 5).versions,
+        current: 1,
+        size,
+        total: records.length,
+        records: records.slice(0, size),
+        stats: { count30d: 0, cadence: 'irregular', brewLag: { medianMinutes: null, earlierCount: 0, compared: 0 } }
       };
     } else if (
       [
@@ -726,6 +774,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         'font-sample',
         'facts-app',
         'wechat',
+        'notion',
+        'cleanmymac',
+        'repair-empty',
+        'repair-disabled',
         'guard-app',
         'variant-app@beta',
         'opennavo'
@@ -789,6 +841,24 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
                   }
                 }
               : {}),
+            ...(['notion', 'cleanmymac', 'repair-empty', 'repair-disabled'].includes(token)
+              ? {
+                  ...factsApp,
+                  displayName: 'SEO Repair Fixture',
+                  names: ['SEO Repair Fixture'],
+                  developer: 'Notion Labs, Inc.',
+                  releaseCount: 24,
+                  latestRelease: token === 'repair-empty' ? repairReleases[2] : repairReleases[0],
+                  versionCommittedAt: '2026-10-01T00:00:00Z',
+                  ...(token === 'repair-empty' ? { price: { ...factsApp.price, amount: null } } : {}),
+                  ...(token === 'repair-disabled'
+                    ? {
+                        disabled: true,
+                        homebrewStatus: { state: 'disabled', reason: 'discontinued', date: '2026-10-01' }
+                      }
+                    : {})
+                }
+              : {}),
             ...(token === 'ordinary-app' ? { articles: [roundupCard(false)] } : {}),
             ...(token === 'facts-app' || token === 'seo-uninstall' ? factsApp : {}),
             ...(token.startsWith('seo-') ? { displayName: 'SEO App', names: ['SEO App'] } : {}),
@@ -836,7 +906,15 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       status = sitemapState === 'error' ? 503 : 200;
       const records =
         query.get('group') === 'fonts'
-          ? []
+          ? [
+              {
+                kind: 'cask',
+                token: 'font-sample',
+                isFont: true,
+                notesCount: 5,
+                locales: [{ locale: 'en-US', lastmod: '2026-10-01T10:00:00Z' }]
+              }
+            ]
           : [
               {
                 kind: 'cask',
@@ -845,7 +923,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
                 isFont: false,
                 notesCount: 5,
                 locales: [
-                  { locale: 'en-US', lastmod: '2025-03-18T10:00:00Z' },
+                  { locale: 'en-US', lastmod: '2025-03-18T12:00:00.123456+02:00' },
                   { locale: 'zh-CN', lastmod: null }
                 ]
               },
@@ -891,7 +969,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     } else if (path === '/api/v1/articles') {
       const current = Number(query.get('current') ?? 1);
       const zh = (query.get('locale') ?? req.headers['accept-language']) === 'zh-CN';
-      const all = query.get('type') === 'tutorial' ? [tutorialCard] : [roundupCard(zh), tutorialCard];
+      const all =
+        query.get('type') === 'tutorial'
+          ? [tutorialCard]
+          : [roundupCard(zh), tutorialCard, { ...tutorialCard, slug: 'third-article', title: 'Third article' }];
       const total = query.get('type') ? all.length : 13;
       data = {
         current,
@@ -909,6 +990,22 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       data = { state: 'moved', slug: 'choose-a-screenshot-app' };
     } else if (path === '/api/v1/articles/pulled-article') {
       data = { state: 'withdrawn', slug: 'pulled-article' };
+    } else if (path === '/api/v1/articles/editorial-note') {
+      data = {
+        state: 'published',
+        slug: 'editorial-note',
+        article: {
+          ...roundup(false),
+          slug: 'editorial-note',
+          author: { ...author, slug: 'navo', name: 'Navo', bio: 'An AI-assisted editorial byline.' },
+          packages: [appSummary('facts-app', 'Facts App')]
+        }
+      };
+    } else if (path === '/api/v1/authors/navo') {
+      data = {
+        author: { ...author, slug: 'navo', name: 'Navo', bio: 'An AI-assisted editorial byline.' },
+        articles: { current: 1, size: 12, total: 1, records: [tutorialCard] }
+      };
     } else if (path === '/api/v1/authors/lin-wei') {
       data = {
         author,
@@ -1104,7 +1201,10 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             record.locales.map(item => item.locale),
             record.notesCount
           );
-          localized.pageLastmod = { overview: localized.lastmod, versions: localized.lastmod };
+          localized.pageLastmod = {
+            overview: localized.lastmod,
+            ...(record.token === 'ordinary-app' ? {} : { versions: localized.lastmod })
+          };
         }
     res.writeHead(status, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ code: status === 200 ? '0000' : '4040', msg: 'fixture', data }));
@@ -1159,7 +1259,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     NUXT_PUBLIC_I18N_BASE_URL: 'https://example.test',
     NUXT_PUBLIC_CDN_BASE: 'https://example.test/assets',
     NUXT_METRICS_PORT: internalPort,
-    NUXT_INTERNAL_SECRET: internalSecret
+    NUXT_INTERNAL_SECRET: internalSecret,
+    NUXT_SITEMAP_FONTS: 'false',
+    OPENNAVO_SITEMAP_WARMUP: 'false'
   };
   const child = spawn(process.execPath, ['--import', clock, entry], {
     env: rendererEnv,
@@ -1213,7 +1315,14 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       const compareMetricsPort = String(metricsReserved.address().port);
       await new Promise(resolve => metricsReserved.close(resolve));
       const compare = spawn(process.execPath, ['--import', clock, process.env.ONV_COMPARE_ENTRY], {
-        env: { ...rendererEnv, PORT: comparePort, NITRO_PORT: comparePort, NUXT_METRICS_PORT: compareMetricsPort },
+        env: {
+          ...rendererEnv,
+          PORT: comparePort,
+          NITRO_PORT: comparePort,
+          NUXT_METRICS_PORT: compareMetricsPort,
+          NUXT_SITEMAP_FONTS: 'false',
+          OPENNAVO_SITEMAP_WARMUP: 'false'
+        },
         stdio: ['ignore', 'pipe', 'pipe']
       });
       let compareLogs = '';
@@ -1541,6 +1650,87 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       }
     );
   }
+  await t.test('home directories and disabled desktop cask render in SSR', async () => {
+    for (const prefix of ['', '/zh']) {
+      const html = await (await fetch(`${origin}${prefix || '/'}`, { headers: { accept: 'text/html' } })).text();
+      assert.ok(!html.includes('brew install --cask opennavo'));
+      for (const [kind, minimum] of [
+        ['categories', 6],
+        ['collections', 4],
+        ['articles', 3]
+      ]) {
+        const links = [...html.matchAll(new RegExp(`href="(${prefix}/${kind}/[a-z0-9-]+)"`, 'g'))].map(
+          match => match[1]
+        );
+        assert.ok(new Set(links).size >= minimum, `${prefix}/${kind}: ${links}`);
+      }
+
+      const download = await (await fetch(`${origin}${prefix}/download`, { headers: { accept: 'text/html' } })).text();
+      assert.ok(!download.includes('brew install --cask opennavo'));
+    }
+    const app = await (await fetch(`${origin}/apps/facts-app`, { headers: { accept: 'text/html' } })).text();
+    assert.match(app, /<button[^>]*aria-label="Get Facts App"/);
+  });
+  await t.test('both layouts start with a skip link to a focusable main', async () => {
+    for (const path of ['/', '/zh', '/download', '/zh/download']) {
+      const html = await (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+      assert.equal(/<a\b[^>]*href="([^"]+)"/.exec(html)?.[1], '#main-content', path);
+      const main = /<main[^>]*>/.exec(html)?.[0] ?? '';
+      assert.match(main, /id="main-content"/, path);
+      assert.match(main, /tabindex="-1"/, path);
+    }
+  });
+  await t.test('schema describes the editorial organization, app references and open languages', async () => {
+    const graphOf = async path => {
+      const html = await (await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } })).text();
+      return JSON.parse(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '{}')[
+        '@graph'
+      ];
+    };
+    const nodeOf = (graph, type) => graph.find(node => [node['@type']].flat().includes(type));
+    const about = await graphOf('/about');
+    const org = nodeOf(about, 'Organization');
+    assert.ok(org.description.startsWith('OpenNavo is a free, open-source Homebrew GUI for Mac:'));
+    const contact = [org.contactPoint].flat()[0];
+    assert.equal(
+      (about.find(node => node['@id'] === contact?.['@id']) ?? contact).url,
+      'https://example.test/feedback'
+    );
+    assert.equal(nodeOf(about, 'AboutPage').mainEntity['@id'], org['@id']);
+    for (const path of ['/authors/navo', '/articles/editorial-note']) {
+      const graph = await graphOf(path);
+      assert.ok(!nodeOf(graph, 'Person'));
+      if (path.startsWith('/authors')) assert.equal(nodeOf(graph, 'ProfilePage').mainEntity['@id'], org['@id']);
+      else {
+        const post = nodeOf(graph, 'BlogPosting');
+        assert.equal([post.author].flat()[0]['@id'], org['@id']);
+        assert.equal(post.inLanguage, nodeOf(graph, 'WebPage').inLanguage);
+        for (const ref of [post.about, ...post.mentions]) {
+          const app = graph.find(node => node['@id'] === ref['@id']) ?? ref;
+          assert.equal(app['@type'], 'SoftwareApplication');
+        }
+      }
+    }
+    const app = nodeOf(await graphOf('/apps/facts-app'), 'SoftwareApplication');
+    assert.deepEqual([app.alternateName].flat(), ['Facts Alternate']);
+    try {
+      siteSettings.pages.openLocales = ['en-US', 'zh-CN', 'ja-JP', 'es-ES', 'ru-RU'];
+      await invalidatePaths(['/download'], true);
+      const graph = await graphOf('/download');
+      const client = nodeOf(graph, 'SoftwareApplication');
+      assert.equal(client.softwareRequirements, 'macOS 13.0 or later');
+      assert.equal([client.image].flat()[0]['@id'], 'https://example.test/#logo');
+      assert.equal(
+        graph.filter(node => node['@type'] === 'ImageObject' && node.url?.endsWith('/icon-512.png')).length,
+        1
+      );
+      for (const node of [client, nodeOf(graph, 'WebSite')])
+        assert.deepEqual(node.inLanguage, ['en', 'zh-Hans', 'ja', 'es', 'ru']);
+    } finally {
+      delete siteSettings.pages.openLocales;
+      await invalidatePaths(['/download'], true);
+    }
+  });
   await t.test('structured data has one identity and breadcrumbs that match the page', async () => {
     const html = await (await fetch(`${origin}/apps/ordinary-app`, { headers: { accept: 'text/html' } })).text();
     const graph = JSON.parse(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '{}')[
@@ -1714,7 +1904,21 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const robots = page => [...page.matchAll(/<meta name="robots" content="([^"]*)"/g)].map(m => m[1]);
     assert.deepEqual(robots(await html('/apps/thin-app')), ['noindex, follow']);
     const overview = await html('/apps/ordinary-app');
-    assert.ok(!robots(overview).some(value => value.includes('noindex')), robots(overview).join());
+    assert.deepEqual(robots(overview), [INDEX_ROBOTS]);
+    for (const path of ['/apps/ordinary-app', '/apps/ordinary-app/versions']) {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      const values = robots(await response.text());
+      assert.deepEqual(values, [INDEX_ROBOTS], path);
+      assert.equal(response.headers.get('x-robots-tag'), INDEX_ROBOTS, path);
+      for (const directive of ['max-image-preview:large', 'max-snippet:-1', 'max-video-preview:-1'])
+        assert.ok(
+          values[0]
+            .split(',')
+            .map(value => value.trim())
+            .includes(directive),
+          `${path}: ${directive}`
+        );
+    }
     const hreflangs = [...overview.matchAll(/<link[^>]+hreflang="([^"]+)"/g)].map(m => m[1]).sort();
     assert.deepEqual(hreflangs, ['en', 'x-default', 'zh', 'zh-Hans']);
     assert.deepEqual(robots(await html('/ja/apps/ordinary-app')), ['noindex, follow']);
@@ -1818,10 +2022,25 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
   });
   await t.test('sitemaps fail loudly and list grouped URLs with per-language lastmod', async () => {
     sitemapState = 'error';
-    const failed = await fetch(`${origin}/__sitemap__/fonts-bucket-0.xml`);
+    const failed = await fetch(`${origin}/__sitemap__/apps-bucket-0.xml`);
     assert.ok(failed.status >= 500, `a failed API must not render an empty sitemap (${failed.status})`);
+    assert.equal(failed.status, 503);
+    assert.equal(failed.headers.get('retry-after'), '120');
+    assert.match(failed.headers.get('cache-control') ?? '', /no-store/);
     sitemapState = 'ok';
     const index = await (await fetch(`${origin}/sitemap_index.xml`)).text();
+    assert.ok(!index.includes('/__sitemap__/fonts-bucket-'), 'font buckets are excluded');
+    for (let bucket = 0; bucket < 8; bucket++) {
+      const fontMap = await fetch(`${origin}/__sitemap__/fonts-bucket-${bucket}.xml`);
+      assert.equal(fontMap.status, 404);
+      assert.ok(!(await fontMap.text()).includes('<urlset'));
+    }
+    const fontPage = await fetch(`${origin}/apps/font-sample`);
+    assert.equal(fontPage.status, 200);
+    const fontHtml = await fontPage.text();
+    assert.match(fontHtml, /name="robots" content="index, follow/);
+    assert.match(fontHtml, /rel="canonical" href="https:\/\/example.test\/apps\/font-sample"/);
+    assert.ok(!index.includes('<lastmod>'), 'index cannot claim dates across independent snapshots');
     // static is split per language by the i18n integration; the large groups shard.
     for (const name of ['en-static', 'zh-Hans-static', 'categories', 'collections'])
       assert.ok(index.includes(`/__sitemap__/${name}.xml`), name);
@@ -1833,7 +2052,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       await Promise.all(appsUrls.map(async url => (await fetch(url.replace('https://example.test', origin))).text()))
     ).join('');
     const urlEntry = loc => new RegExp(`<url>\\s*<loc>${loc}</loc>([\\s\\S]*?)</url>`).exec(apps)?.[1];
-    assert.match(urlEntry('https://example.test/apps/ordinary-app') ?? '', /<lastmod>2025-03-18/);
+    assert.match(urlEntry('https://example.test/apps/ordinary-app') ?? '', /<lastmod>2025-03-18T10:00:00Z<\/lastmod>/);
     assert.ok(!/<lastmod>/.test(urlEntry('https://example.test/zh/apps/ordinary-app') ?? 'missing <lastmod>'));
     assert.ok(!apps.includes('/ja/apps/ordinary-app'), 'unpublished languages stay out');
     assert.ok(!apps.includes('2026-10-07'), 'sync times never become lastmod');
@@ -1845,7 +2064,16 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         versionsUrls.map(async url => (await fetch(url.replace('https://example.test', origin))).text())
       )
     ).join('');
+    assert.ok(!versions.includes('/apps/font-sample'), 'font versions are excluded');
     assert.ok(versions.includes('https://example.test/apps/ordinary-app/versions'));
+    const undatedVersion =
+      /<url>\s*<loc>https:\/\/example.test\/apps\/ordinary-app\/versions<\/loc>([\s\S]*?)<\/url>/.exec(versions)?.[1];
+    assert.ok(undatedVersion !== undefined);
+    assert.ok(!undatedVersion.includes('<lastmod>'), 'versions must not inherit overview lastmod');
+    const dates = [...(apps + versions).matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map(match => match[1]);
+    assert.ok(dates.length > 0);
+    for (const date of dates) assert.match(date, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+
     // OpenNavo's own entry answers a 301 to /download, so no app or versions sitemap lists any of its pages.
     assert.ok(!/\/apps\/opennavo[<"/]/.test(apps + versions), 'no sitemap lists /apps/opennavo');
     // Tokens keep their + in every loc, as page canonicals and hreflang spell them, so no loc redirects.
@@ -2742,7 +2970,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     );
     const facts = section('package-price');
     const requirements = section('package-requirements');
-    assert.ok(requirements.includes('Pending verification'), requirements);
+    assert.ok(!requirements.includes('Pending verification'), requirements);
     assert.ok(requirements.includes('macOS 13 or later'), requirements);
     assert.ok(facts.includes('vendor.example/pricing'));
     assert.ok(facts.includes('$9.99 per month'));
@@ -2796,6 +3024,91 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const [client] = graphOf(await html('/download')).filter(node => node['@type'] === 'SoftwareApplication');
     assert.equal(client['@id'], 'https://example.test/#desktop-app');
     assert.equal(client.publisher['@id'], 'https://example.test/#identity');
+  });
+  await t.test('package SEO repairs render facts, dates, downloads and compact releases in SSR', async () => {
+    const page = async path => {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      assert.equal(response.status, 200, `${path}\n${logs}`);
+      return response.text();
+    };
+    const visible = html =>
+      html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '').replace(/<style\b[^>]*>[\s\S]*?<\/style>/g, '');
+    const notion = visible(await page('/apps/notion'));
+    assert.ok(notion.includes('It is made by Notion Labs, Inc.'));
+    assert.ok(!notion.includes('Inc..'));
+    const empty = visible(await page('/apps/repair-empty'));
+    assert.ok(!empty.includes('id="whats-new"'));
+    assert.ok(!empty.includes('Pending verification'));
+    assert.ok(!empty.includes('id="price"'));
+    const facts = visible(await page('/apps/facts-app'));
+    const header =
+      /<section\b[^>]*class="[^"]*bg-component-detail-header-bg[^"]*"[\s\S]*?<\/section>/.exec(facts)?.[0] ?? '';
+    assert.match(
+      header,
+      /<a\b[^>]*href="https:\/\/vendor\.example\/FactsApp\.dmg"[^>]*>\s*Official download · vendor\.example\s*<\/a>/
+    );
+    assert.match(header, /aria-label="Get Facts App"/);
+    assert.ok(header.includes('SHA-256 recorded by Homebrew'));
+    assert.match(header, /<time[^>]*datetime="2025-12-01T08:00:00Z"[^>]*>[^<]*2025[^<]*<\/time>/);
+    for (const path of ['/apps/ordinary-app', '/apps/repair-disabled', '/apps/lumen-notes'])
+      assert.ok(!visible(await page(path)).includes('Official download ·'), path);
+    const details = visible(await page('/apps/facts-app/details'));
+    const labels = new Set(
+      [...(facts + details).matchAll(/<button\b[^>]*aria-label="([^"]+)"/g)].map(match => match[1])
+    );
+    for (const label of [
+      'Copy install command',
+      'Copy uninstall command',
+      'Copy uninstall and cleanup command',
+      'Copy SHA-256 checksum'
+    ])
+      assert.ok(labels.has(label), label);
+    const versions = visible(await page('/apps/cleanmymac/versions'));
+    assert.ok(!versions.includes('No separate release notes'));
+    assert.ok(!versions.includes('Compatibility Unknown'));
+    assert.ok(!versions.includes('5.0,501'));
+    const timeline = /<ol\b[^>]*class="[^"]*on-version-timeline[^"]*"[\s\S]*?<\/ol>/.exec(versions)?.[0] ?? '';
+    assert.equal([...timeline.matchAll(/<li\b/g)].length, 23, '24 API rows coalesce one build/base pair');
+    assert.equal([...timeline.matchAll(/>\s*5\.0\s*</g)].length, 1, 'one visible base version');
+    assert.ok(versions.includes('All 24'), 'filter count retains API total');
+    assert.ok(versions.includes('With notes 5'), 'filter count retains notes total');
+    for (const [name, html] of [
+      ['overview', notion],
+      ['facts', facts],
+      ['versions', versions]
+    ]) {
+      const times = [...html.matchAll(/<time\b[^>]*datetime="([^"]+)"[^>]*>([\s\S]*?)<\/time>/g)];
+      assert.ok(times.length > 0, name);
+      for (const [, datetime, label] of times) assert.ok(label.includes(datetime.slice(0, 4)), `${name}: ${label}`);
+      assert.ok(!/\b(?:\d+\s+)?(?:days?|hours?|minutes?|weeks?|months?) ago\b/i.test(html), name);
+    }
+    assert.ok(!/\b(?:\d+\s+)?(?:days?|hours?|minutes?|weeks?|months?) ago\b/i.test(details), 'details');
+    assert.ok(notion.includes('id="whats-new"'), 'positive notes still render');
+  });
+  await t.test('package subpages resolve their about node without offers or ratings', async () => {
+    for (const path of [
+      '/apps/ordinary-app/versions',
+      '/apps/facts-app/details',
+      '/apps/dependency-content-app/dependencies',
+      '/apps/variant-app@beta/troubleshooting'
+    ]) {
+      const response = await fetch(`${origin}${path}`, { headers: { accept: 'text/html' } });
+      assert.equal(response.status, 200, path);
+      const html = await response.text();
+      const graph = JSON.parse(
+        /<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1] ?? '{}'
+      )['@graph'];
+      const webPage = graph.find(node => [node['@type']].flat().includes('WebPage') && node.about);
+      assert.ok(webPage?.about?.['@id'], path);
+      const app = graph.find(node => node['@id'] === webPage.about['@id']);
+      assert.equal(app?.['@type'], 'SoftwareApplication', path);
+      assert.deepEqual(
+        Object.keys(app).sort(),
+        ['@id', '@type', 'name', 'operatingSystem', 'softwareVersion', 'url'].sort(),
+        path
+      );
+      assert.ok(!('offers' in app) && !('aggregateRating' in app), path);
+    }
   });
   await t.test('share images do not vary with the page query', async () => {
     // patches/nuxt-og-image: a page's query string never reaches its share image URL, so return
@@ -2875,7 +3188,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         NUXT_LOAD_SHED_EXTREME_IN_FLIGHT: '1',
         NUXT_LOAD_SHED_LOW_LAG_MS: '60000',
         NUXT_LOAD_SHED_MEDIUM_LAG_MS: '60000',
-        NUXT_LOAD_SHED_EXTREME_LAG_MS: '60000'
+        NUXT_LOAD_SHED_EXTREME_LAG_MS: '60000',
+        NUXT_SITEMAP_FONTS: 'false',
+        OPENNAVO_SITEMAP_WARMUP: 'false'
       },
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -2986,7 +3301,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
     const nodes = type => graph.filter(node => [node['@type']].flat().includes(type));
     const [post] = nodes('BlogPosting');
     assert.equal(post.headline, '如何选择截图工具');
-    assert.equal(post.inLanguage, 'zh-CN');
+    assert.equal(post.inLanguage, 'zh-Hans');
     assert.equal(post.datePublished, '2026-10-12T10:00:00Z');
     assert.equal(post.dateModified, '2026-10-14T10:00:00Z');
     assert.equal(post.publisher['@id'], 'https://example.test/#identity');
@@ -3224,7 +3539,9 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
           PORT: redisPort,
           NITRO_PORT: redisPort,
           NUXT_REDIS_URL: redis.url,
-          NUXT_METRICS_PORT: ''
+          NUXT_METRICS_PORT: '',
+          NUXT_SITEMAP_FONTS: 'false',
+          OPENNAVO_SITEMAP_WARMUP: 'false'
         },
         stdio: ['ignore', 'pipe', 'pipe']
       });
@@ -3260,9 +3577,7 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
         `/__sitemap__/${packageSitemapName('versions', 'plus-app++')}.xml`
       ];
       for (const [index, path] of paths.entries()) {
-        if (index === 1) assert.equal((await fetch(`${redisOrigin}/__sitemap__/fonts-bucket-0.xml`)).status, 200);
-        // Fail only apps: versions reads apps and fonts concurrently, and Promise.all
-        // rejects before the other group's retries necessarily settle. Count one group.
+        // Both overview and versions now read only apps while the font experiment is off.
         redis.fail(index === 0 ? 'sitemap-package-manifest' : 'sitemap-package-snapshots-v2:apps:');
         for (let attempt = 0; attempt < 2; attempt++) {
           const response = await fetch(redisOrigin + path, {
@@ -3274,8 +3589,8 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
             assert.equal(response.headers.get(header), 'no-store', header);
           assert.ok(!(await response.text()).includes('<urlset'), 'no successful sitemap body on failure');
         }
-        // The sitemap module may coalesce consecutive requests while fonts is still
-        // settling. One or two apps reads each fail twice (initial read + retry).
+        // The sitemap module may coalesce consecutive requests still settling.
+        // One or two apps reads each fail twice (initial read + retry).
         assert.ok([2, 4].includes(redis.failures()), `apps snapshot attempts: ${redis.failures()}`);
         assert.ok(output.includes('snapshot read failed after retry; returning 503'));
         redis.fail('');
@@ -3317,7 +3632,11 @@ test('SSR preserves literal @ in package routes and page-authored metadata', { t
       'thin-app',
       'variant-app@beta',
       'versioned-app@11',
-      'wechat'
+      'wechat',
+      'notion',
+      'cleanmymac',
+      'repair-empty',
+      'repair-disabled'
     ].sort()
   );
 });

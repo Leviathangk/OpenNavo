@@ -1,3 +1,4 @@
+import { formatDate } from './packageDate';
 // App-page questions, pure for testing. Questions follow what people search for about a Mac app
 // (is it safe, is it free, how to remove it completely, does it run on Apple silicon, where it
 // keeps its data); answers are fixed sentences filled from the same facts model the page's blocks
@@ -7,7 +8,7 @@
 // a stale or disputed fact stays in its block with its date and gets no answer here. A question
 // without a page-specific fact is left out, so no two apps share a boilerplate answer. Link apps
 // (T3) never get a Homebrew command.
-import { formatDate, formatVersion } from '@opennavo/shared';
+import { formatVersion } from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { evidenceLine, joinSentences } from './appAnswer';
 import {

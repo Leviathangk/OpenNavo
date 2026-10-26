@@ -83,6 +83,7 @@ export default defineNuxtConfig({
     '@opennavo/ui/system-fonts.css'
   ],
   runtimeConfig: {
+    sitemapFonts: false,
     // SSR uses the internal URL (NUXT_API_BASE_INTERNAL), falling back to the public URL when unset.
     apiBaseInternal: '',
     // The public CDN's object store inside the Docker network (NUXT_CDN_BASE_INTERNAL): share images
@@ -119,6 +120,7 @@ export default defineNuxtConfig({
       crawlerBurst: 12
     },
     public: {
+      desktopBrewCaskAvailable: false,
       apiBase: 'http://localhost:8080/api/v1',
       siteUrl: 'http://localhost:3000',
       cdnBase: 'http://localhost:9000/opennavo',

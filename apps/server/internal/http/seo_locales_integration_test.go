@@ -125,7 +125,7 @@ func TestClosedLocalesAndDependencyTabsStayOutOfTheIndex(t *testing.T) {
 	adminCall("PUT", "/system/seo-settings", map[string]any{"settings": settings})
 
 	english := pages("en-US")
-	require.Equal(t, publicapi.PageDecisionRobots("index, follow"), english.Overview.Robots)
+	require.Equal(t, publicapi.PageDecisionRobots(seo.IndexableRobots), english.Overview.Robots)
 	require.Equal(t, open, english.Overview.Hreflang)
 	// Dependency content keeps the tab's own canonical, but it is noindex, unlisted and unannounced.
 	require.Equal(t, publicapi.PageDecision{Robots: "noindex, follow", Hreflang: []publicapi.Locale{}, Reason: seo.ReasonSupportingPage}, english.Dependencies)

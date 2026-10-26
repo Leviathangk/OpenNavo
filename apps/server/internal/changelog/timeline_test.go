@@ -33,3 +33,27 @@ func TestTimelineVersionOrderingAndStatistics(t *testing.T) {
 	a, b, c := stamp(-10*time.Hour), stamp(-20*time.Hour), stamp(-30*time.Hour)
 	require.Equal(t, -5, *Stats([]*time.Time{a, b, c}, []*time.Time{stamp(-10*time.Hour - 5*time.Minute), stamp(-20*time.Hour - 7*time.Minute), stamp(-30 * time.Hour)}, now).MedianMinutes)
 }
+
+func TestCadenceUsesRecentReleasesAndDetectsStaleHistory(t *testing.T) {
+	now := time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name string
+		days []int
+		want string
+	}{
+		{"stale weekly", []int{40, 47, 54, 61}, "irregular"},
+		{"old weekly excluded", []int{0, 40, 400, 407, 414, 421, 428}, "monthly"},
+		{"monthly still current", []int{35, 70, 105}, "monthly"},
+		{"monthly stale", []int{80, 115, 150}, "irregular"},
+		{"no recent history", []int{400, 407}, "irregular"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dates := []*time.Time{}
+			for _, days := range tc.days {
+				d := now.AddDate(0, 0, -days)
+				dates = append(dates, &d)
+			}
+			require.Equal(t, tc.want, Stats(dates, nil, now).Cadence)
+		})
+	}
+}

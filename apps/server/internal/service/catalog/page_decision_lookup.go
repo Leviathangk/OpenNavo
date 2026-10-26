@@ -185,7 +185,7 @@ func localePath(locale, rest string) string {
 
 // decided fills the decision fields; canonical and hreflang come from the caller.
 func decided(out *PageLookup, by string, d seo.PageDecision) {
-	indexable := d.Robots == "index, follow"
+	indexable := seo.DecisionRobots(string(d.Robots)).Index
 	robots, inSitemap, announce := d.Robots, d.InSitemap, d.Announce
 	out.DecidedBy, out.Indexable, out.Robots, out.InSitemap, out.Announce = by, &indexable, &robots, &inSitemap, &announce
 	if d.Reason != "" {

@@ -4573,7 +4573,7 @@ class TranslationsBatchResultResponse(BaseModel):
 
 
 class SeoPageDecision(BaseModel):
-    robots: Literal['index, follow', 'noindex, follow']
+    robots: Literal['index, follow', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1', 'noindex, follow']
     canonicalPath: Annotated[str, Field(description='Empty means self; otherwise a locale-prefixed canonical path.')]
     hreflang: list[Locale]
     inSitemap: bool

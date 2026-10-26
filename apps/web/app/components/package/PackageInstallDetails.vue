@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { isThirdPartyTap } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
-import {
-  displayUrl,
-  OnButton,
-  OnCaskArtifacts,
-  OnCodeText,
-  OnInstallCommand,
-  OnKeyValueList,
-  useUiMessages
-} from '@opennavo/ui';
+import { displayUrl, OnButton, OnCaskArtifacts, OnCodeText, OnKeyValueList, useUiMessages } from '@opennavo/ui';
 import type { OnKeyValueItem } from '@opennavo/ui';
 import { detailsDescription } from '~/utils/seoTitles';
 
@@ -109,7 +101,9 @@ usePageSeo({
       <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-4px">
         <OnKeyValueList :items="items" />
         <div v-if="downloadSha" class="flex justify-end pb-10px">
-          <OnButton size="xs" icon="copy" @click="copySha">{{ t('download.copySha') }}</OnButton>
+          <OnButton size="xs" icon="copy" :aria-label="t('download.copySha')" @click="copySha">{{
+            t('download.copySha')
+          }}</OnButton>
         </div>
       </section>
       <OnCaskArtifacts v-if="overview?.artifacts.entries?.length" :entries="overview.artifacts.entries" />
@@ -125,7 +119,7 @@ usePageSeo({
     </div>
     <aside class="min-w-0">
       <section class="rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-14px">
-        <OnInstallCommand :command="pkg.installCommand" @copied="onCopied" />
+        <PackageCommand :command="pkg.installCommand" :copy-label="t('package.copy.install')" @copied="onCopied" />
       </section>
     </aside>
   </div>

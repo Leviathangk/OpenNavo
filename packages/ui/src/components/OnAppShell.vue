@@ -79,7 +79,12 @@ defineExpose({ scrollToTop });
         <slot name="toolbar" />
       </div>
       <div class="relative flex flex-1 flex-col xl:flex-row xl:items-start">
-        <main ref="main" class="box-border min-w-0 flex-1 px-16px pb-40px pt-6px md:px-28px">
+        <main
+          id="main-content"
+          ref="main"
+          tabindex="-1"
+          class="box-border min-w-0 flex-1 px-16px pb-40px pt-6px md:px-28px"
+        >
           <slot />
         </main>
         <!-- Render once: sticky under toolbar with independent scrolling at xl+, otherwise normal flow below main. -->

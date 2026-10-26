@@ -710,7 +710,7 @@ describe('C2 factual overview descriptions', () => {
     expect(textWidth(closing), closing).toBeGreaterThan(DESCRIPTION_WIDTH);
   };
 
-  it.each(LOCALES)('%s lists only visible sections, retaining dated and pending requirements', code => {
+  it.each(LOCALES)('%s lists only visible sections, retaining dated requirements and omitting pending claims', code => {
     const t = translator(code);
     const basic = overviewDescription({ ...app, summary: null }, t);
     for (const part of ['price', 'requirements', 'alternatives', 'versions'])
@@ -730,7 +730,7 @@ describe('C2 factual overview descriptions', () => {
       expect(overviewDescription(changeFacts({ prices }), t)).not.toContain(t('package.seo.overviewParts.price'));
       const requirements = complete.facts.requirements.map(row => ({ ...row, evidence: { ...row.evidence, status } }));
       const description = overviewDescription(changeFacts({ requirements }), t);
-      expect(description.includes(t('package.seo.overviewParts.requirements'))).toBe(status !== 'unknown');
+      expect(description.includes(t('package.seo.overviewParts.requirements'))).toBe(status === 'stale');
     }
     expect(overviewDescription({ ...complete, latestRelease: null }, t)).not.toContain(
       t('package.seo.overviewParts.versions')

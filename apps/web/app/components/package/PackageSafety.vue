@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatDate } from '@opennavo/shared';
+import { formatDate } from '~/utils/packageDate';
 import { displayUrl, OnIcon } from '@opennavo/ui';
 import { aroundDate, isoDate, isVerified, verifiedIdentities, verifiedPrices } from '~/utils/packageFacts';
 import type { FactEvidence, PackagePage } from '~/utils/packageFacts';

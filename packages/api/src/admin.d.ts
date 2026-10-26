@@ -3518,7 +3518,7 @@ export interface components {
          */
         SeoPageDecision: {
             /** @enum {string} */
-            robots: "index, follow" | "noindex, follow";
+            robots: "index, follow" | "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" | "noindex, follow";
             /** @description Empty means self; otherwise a locale-prefixed canonical path. */
             canonicalPath: string;
             hreflang: components["schemas"]["Locale"][];

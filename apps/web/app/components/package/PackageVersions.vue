@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import { formatDate } from '~/utils/packageDate';
 import { LOCALE_METADATA } from '@opennavo/shared';
 import { unwrap } from '@opennavo/api';
 import type { ReleaseEntry } from '@opennavo/api';
-import { formatDate } from '@opennavo/shared';
 import type { PackageKind } from '@opennavo/shared';
-import { OnEmpty, OnErrorState, OnIcon, OnPagination, OnSegmented, OnStatTile, OnVersionTimeline } from '@opennavo/ui';
+import { OnEmpty, OnErrorState, OnIcon, OnPagination, OnSegmented, OnStatTile } from '@opennavo/ui';
 import { pageCount as countPages } from '~/utils/catalogQuery';
 import { decorative } from '~/utils/decorative';
 import { versionsDescription, versionsTitle } from '~/utils/seoTitles';
@@ -166,7 +166,7 @@ usePageSeo({
         />
       </div>
       <OnEmpty v-if="!data.records.length" icon="lucide:rotate-ccw-clock" :title="t('package.release.emptyTitle')" />
-      <OnVersionTimeline
+      <PackageVersionTimeline
         v-else
         class="web-timeline"
         :entries="data.records"
@@ -178,7 +178,7 @@ usePageSeo({
         <template #markdown="{ source }">
           <MarkdownContent :source="source" :heading-level="3" />
         </template>
-      </OnVersionTimeline>
+      </PackageVersionTimeline>
       <OnPagination
         v-if="pageCount > 1"
         class="self-center"

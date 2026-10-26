@@ -52,6 +52,18 @@ describe('Alternatives intent page (X2)', () => {
   it('Opens only where the server decides the page is indexable with its own canonical', () => {
     const list = [alternative('zed'), alternative('sublime-text'), alternative('nova')];
     expect(alternativesPageOpen({ alternatives: list, indexing: pages(decision({})) })).toBe(true);
+    for (const [robots, expected] of [
+      ['index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1', true],
+      ['index, noindex, follow', false],
+      ['follow, max-snippet:-1', false]
+    ] as const) {
+      expect(
+        alternativesPageOpen({
+          alternatives: list,
+          indexing: pages(decision({ robots: robots as PageDecision['robots'] }))
+        })
+      ).toBe(expected);
+    }
     // Not qualified: noindex with the overview as canonical (intent_disabled, intent_not_eligible, …).
     expect(
       alternativesPageOpen({

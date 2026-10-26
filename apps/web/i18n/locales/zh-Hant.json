@@ -27,7 +27,8 @@
     "themeLabel": "外觀",
     "themeSystem": "跟隨系統",
     "themeLight": "淺色",
-    "themeDark": "深色"
+    "themeDark": "深色",
+    "skipToContent": "跳到正文"
   },
   "sidebar": {
     "appLabel": "Mac 客戶端",
@@ -808,6 +809,16 @@
         "issue": "已知問題",
         "integration": "MCP 與 Skill"
       }
+    },
+    "copy": {
+      "install": "複製安裝指令",
+      "uninstall": "複製解除安裝指令",
+      "cleanup": "複製解除安裝及清理指令"
+    },
+    "officialDownload": {
+      "label": "官方下載 · {host}",
+      "checksum": "Homebrew 已記錄 SHA-256",
+      "active": "未被 Homebrew 停用"
     }
   },
   "collections": {

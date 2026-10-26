@@ -89,6 +89,8 @@ useSchemaOrg(
         '@id': `${siteUrl}/#identity`,
         name: siteName.value,
         url: `${siteUrl}/`,
+        description: t(BRAND_FACTS.definitionKey),
+        contactPoint: { '@type': 'ContactPoint', url: `${siteUrl}/feedback` },
         logo: {
           '@type': 'ImageObject',
           '@id': `${siteUrl}/#logo`,
@@ -101,7 +103,7 @@ useSchemaOrg(
         url: `${siteUrl}/`,
         name: siteName.value,
         description: t(BRAND_FACTS.definitionKey),
-        inLanguage: SITE_LOCALES.map(code => LOCALE_METADATA[code].hreflang),
+        inLanguage: openLocales.value.map(code => LOCALE_METADATA[code].hreflang),
         publisher: { '@id': `${siteUrl}/#identity` },
         ...(identity?.alternateNames.length ? { alternateName: identity.alternateNames } : {})
       })

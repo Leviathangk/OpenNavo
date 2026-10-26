@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { formatDate } from '~/utils/packageDate';
 import type { PublicComponents } from '@opennavo/api';
-import { formatDate, formatReleaseVersion, releaseTitleDetail } from '@opennavo/shared';
+import { formatReleaseVersion, releaseTitleDetail } from '@opennavo/shared';
 import { displayUrl, OnChip, OnCodeText, OnIcon, parseInline } from '@opennavo/ui';
 
 type ReleaseEntry = PublicComponents['schemas']['ReleaseEntry'];
@@ -19,7 +20,9 @@ const titleDetail = computed(() => releaseTitleDetail(props.release.title, props
 // Take the first highlight per group, up to three lines (mockup).
 const rows = computed(() =>
   props.release.sections
-    .flatMap(section => (section.items[0] ? [{ area: section.area, parts: parseInline(section.items[0]) }] : []))
+    .flatMap(section =>
+      section.items[0]?.trim() ? [{ area: section.area, parts: parseInline(section.items[0]) }] : []
+    )
     .slice(0, 3)
 );
 
@@ -37,6 +40,7 @@ const meta = computed(() =>
 
 <template>
   <section
+    v-if="rows.length || release.summary?.trim() || release.bodyMarkdown?.trim()"
     id="whats-new"
     class="rounded-big border border-solid border-line-subtle bg-surface-card px-18px py-16px"
     aria-labelledby="whats-new-title"
@@ -76,7 +80,6 @@ const meta = computed(() =>
       {{ release.summary }}
     </p>
     <MarkdownContent v-else-if="release.bodyMarkdown" class="mt-10px" :source="release.bodyMarkdown" />
-    <p v-else class="m-0 mt-10px text-13px text-ink-tertiary">{{ t('package.release.noNotes') }}</p>
     <div class="mt-12px flex flex-wrap items-center justify-between gap-8px text-12.5px">
       <NuxtLink
         :to="versionsHref"

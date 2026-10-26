@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { ApiError, unwrap } from '@opennavo/api';
-import { DESKTOP_LOCALES, LOCALE_METADATA, formatBytes, formatDate, formatVersion } from '@opennavo/shared';
+import { LOCALES, LOCALE_METADATA, formatBytes, formatDate, formatVersion } from '@opennavo/shared';
 import { OnButton, OnChip, OnIcon, OnInstallCommand, OnKeyValueList, useUiMessages } from '@opennavo/ui';
 import { trackEvent } from '~/utils/analytics';
 import { decorative } from '~/utils/decorative';
-import { DESKTOP_BREW_COMMAND } from '~/utils/download';
+import { DESKTOP_BREW_COMMAND, desktopBrewCaskAvailable } from '~/utils/download';
 import { withVariantNames } from '~/utils/seoTitles';
 import { desktopAppId } from '~/utils/structuredData';
 import { BRAND_FACTS } from '~~/shared/utils/brandFacts';
 
 // Download (05 §7.4, 08 §10.14): client icon on glow/orbits, Universal DMG, six feature cards,
 // install steps beside release details, latest notes.
+const brewAvailable = desktopBrewCaskAvailable(useRuntimeConfig().public);
 const { t, locale } = useI18n();
 const api = useApi();
 const toasts = useToasts();
@@ -178,14 +179,14 @@ useSchemaOrg(
         operatingSystem: 'macOS',
         applicationCategory: 'UtilitiesApplication',
         softwareVersion: value.version,
-        ...(value.minMacos ? { softwareRequirements: `macOS >= ${value.minMacos}` } : {}),
+        ...(value.minMacos ? { softwareRequirements: `macOS ${value.minMacos} or later` } : {}),
         description: t(BRAND_FACTS.definitionKey),
         license: `https://spdx.org/licenses/${BRAND_FACTS.license}.html`,
         isAccessibleForFree: true,
-        inLanguage: DESKTOP_LOCALES.map(code => LOCALE_METADATA[code].hreflang),
+        inLanguage: (settings.value?.pages.openLocales ?? LOCALES).map(code => LOCALE_METADATA[code].hreflang),
         downloadUrl: dmg.value.url,
         url: `${siteUrl}${localePath('/download')}`,
-        image: `${siteUrl}/icon-512.png`,
+        image: { '@id': `${siteUrl}/#logo` },
         publisher: { '@id': `${siteUrl}/#identity` }
       } as SoftwareAppInput)
     ];
@@ -283,7 +284,7 @@ useSchemaOrg(
               </div>
             </li>
           </ol>
-          <div class="mt-22px border-t border-t-solid border-line-subtle pt-18px">
+          <div v-if="brewAvailable" class="mt-22px border-t border-t-solid border-line-subtle pt-18px">
             <OnInstallCommand
               :title="t('download.brewTitle')"
               :command="DESKTOP_BREW_COMMAND"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { formatDate } from '@opennavo/shared';
-import { OnInstallCommand, OnCodeText, parseInline } from '@opennavo/ui';
+import { formatDate } from '~/utils/packageDate';
+import { OnCodeText, parseInline } from '@opennavo/ui';
 import { isValidLabel, labelPath } from '~/utils/backgroundItems';
 import type { UninstallFact } from '~/utils/packageFacts';
 import { aroundDate, isoDate, uninstallFacts } from '~/utils/packageFacts';
@@ -73,8 +73,9 @@ function onCopied(command: string) {
       {{ t('package.uninstall.title', { name: pkg.displayName }) }}
     </h2>
     <div v-if="homebrew" class="mt-10px flex flex-col gap-8px">
-      <OnInstallCommand
+      <PackageCommand
         :command="`brew uninstall --cask ${pkg.token}`"
+        :copy-label="t('package.copy.uninstall')"
         :title="t('package.guide.uninstallTitle')"
         @copied="onCopied"
       />
@@ -96,9 +97,10 @@ function onCopied(command: string) {
     </div>
     <div v-if="cleanup.length" class="mt-12px flex flex-col gap-8px" data-testid="package-zap">
       <h3 class="m-0 text-12.5px font-600 text-ink-primary">{{ t('package.guide.zapTitle') }}</h3>
-      <OnInstallCommand
+      <PackageCommand
         v-if="homebrew"
         :command="`brew uninstall --zap --cask ${pkg.token}`"
+        :copy-label="t('package.copy.cleanup')"
         :title="t('package.guide.uninstallTitle')"
         @copied="onCopied"
       />

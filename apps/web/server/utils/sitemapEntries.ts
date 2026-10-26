@@ -35,7 +35,9 @@ export function localizedEntries(
     ...(locales.includes('en-US') ? [{ hreflang: 'x-default', href: sitemapHref(path) }] : [])
   ];
   return locales.map(code => {
-    const modified = lastmod(code);
+    const value = lastmod(code);
+    const date = value ? new Date(value) : undefined;
+    const modified = date && Number.isFinite(date.getTime()) ? date.toISOString().replace(/\.\d{3}Z$/, 'Z') : undefined;
     return {
       loc: sitemapHref(`${LOCALE_METADATA[code].prefix}${path}`),
       ...(modified ? { lastmod: modified } : {}),

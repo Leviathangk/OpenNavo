@@ -11,7 +11,7 @@ import type { PackagePage } from '~/utils/packageFacts';
 // Link apps (store/security plan §4) swap the Get menu for Download, which opens the developer's own address.
 // T1: the categories are real links, and an app OpenNavo paused (no new version for 90 days, still offered by
 // Homebrew) reads "paused", never "disabled", which only Homebrew's own disable earns.
-const props = defineProps<{ pkg: PackagePage; headingSuffix?: string }>();
+const props = defineProps<{ pkg: PackagePage; headingSuffix?: string; showOfficialDownload?: boolean }>();
 
 const { t } = useI18n();
 const messages = useUiMessages();
@@ -112,6 +112,7 @@ const chips = computed<OnPackageHeaderChip[]>(() => {
         :name="pkg.displayName"
         :command="pkg.installCommand"
       />
+      <PackageOfficialDownload v-if="showOfficialDownload" :pkg="pkg" />
       <OnButton v-if="homepage" shape="round" :href="homepage" target="_blank" rel="noopener noreferrer">
         {{ t('package.homepage') }}
         <OnIcon name="arrow-up-right" :size="15" />

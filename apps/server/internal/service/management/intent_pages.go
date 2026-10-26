@@ -225,7 +225,7 @@ func (s *Service) intentPagesView(ctx context.Context, in Input) (map[string]any
 			item, enabled := open[string(kind)+":"+source]
 			decision := seo.DecidePage(rows[0].Facts(), seo.PageRef{Kind: kind, Locale: locale, Page: 1}, policy)
 			view := map[string]any{"pageKind": string(kind), "locale": locale, "enabled": enabled, "derived": derived,
-				"contentEligible": content[kind], "indexable": decision.Robots == "index, follow", "reason": nullableText(decision.Reason),
+				"contentEligible": content[kind], "indexable": seo.DecisionRobots(string(decision.Robots)).Index, "reason": nullableText(decision.Reason),
 				"url": base + store.IntentPagePath(row, kind, locale), "enabledAt": nil, "enabledBy": nil}
 			if enabled {
 				view["enabledAt"], view["enabledBy"] = item.CreatedAt.UTC().Format(time.RFC3339), item.CreatedBy
@@ -301,7 +301,7 @@ func (s *Service) listIntentPages(ctx context.Context, in Input) (any, error) {
 		decision := seo.DecidePage(row.Facts(), seo.PageRef{Kind: seo.PageKind(item.PageKind), Locale: pageLocale, Page: 1}, policy)
 		records = append(records, map[string]any{"packageId": row.ID, "token": row.Token, "name": row.DisplayName, "kind": row.Kind,
 			"pageKind": item.PageKind, "locale": pageLocale, "contentEligible": content[row.ID][seo.PageKind(item.PageKind)],
-			"indexable": decision.Robots == "index, follow", "reason": nullableText(decision.Reason),
+			"indexable": seo.DecisionRobots(string(decision.Robots)).Index, "reason": nullableText(decision.Reason),
 			"url": base + store.IntentPagePath(row, seo.PageKind(item.PageKind), pageLocale), "enabledAt": item.CreatedAt.UTC().Format(time.RFC3339),
 			"enabledBy": item.CreatedBy, "derived": pageLocale != item.Locale})
 	}

@@ -35,7 +35,7 @@ func Stats(published, recorded []*time.Time, now time.Time) TimelineStats {
 		if effective != nil && !effective.Before(now.Add(-30*24*time.Hour)) && !effective.After(now) {
 			out.Count30d++
 		}
-		if effective != nil {
+		if effective != nil && !effective.Before(now.AddDate(-1, 0, 0)) && !effective.After(now) {
 			dates = append(dates, *effective)
 		}
 		if date != nil && i < len(recorded) && recorded[i] != nil {
@@ -61,6 +61,9 @@ func Stats(published, recorded []*time.Time, now time.Time) TimelineStats {
 	}
 	if len(gaps) > 0 {
 		value := median(gaps)
+		if out.Count30d == 0 && now.Sub(dates[len(dates)-1]).Hours()/24 > 2*value {
+			return out
+		}
 		switch {
 		case value <= 2:
 			out.Cadence = "daily"

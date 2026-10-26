@@ -27,7 +27,8 @@
     "themeLabel": "外观",
     "themeSystem": "跟随系统",
     "themeLight": "浅色",
-    "themeDark": "深色"
+    "themeDark": "深色",
+    "skipToContent": "跳到正文"
   },
   "sidebar": {
     "appLabel": "Mac 客户端",
@@ -808,6 +809,16 @@
         "issue": "已知问题",
         "integration": "MCP 与 Skill"
       }
+    },
+    "copy": {
+      "install": "复制安装命令",
+      "uninstall": "复制卸载命令",
+      "cleanup": "复制卸载及清理命令"
+    },
+    "officialDownload": {
+      "label": "官方下载 · {host}",
+      "checksum": "Homebrew 已记录 SHA-256",
+      "active": "未被 Homebrew 禁用"
     }
   },
   "collections": {

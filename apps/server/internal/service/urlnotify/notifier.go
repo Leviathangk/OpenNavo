@@ -543,10 +543,10 @@ func (n *Notifier) announceURLs(ctx context.Context, key string, urls []string) 
 	verificationPending := false
 	for start := 0; start < len(urls); start += indexNowChunk {
 		batch := urls[start:min(start+indexNowChunk, len(urls))]
-		status, _, err := n.withRetry(func() (int, string, error) {
-			return n.post(ctx, n.IndexNowEndpoint, "", map[string]any{
-				"host": site.Host, "key": key, "keyLocation": strings.TrimRight(n.Config.WebBaseURL, "/") + "/" + key + ".txt", "urlList": batch,
-			})
+		// The durable outbox retries failures with a fresh daily reservation. Retrying inside
+		// this request would submit the same URLs multiple times against one reservation.
+		status, _, err := n.post(ctx, n.IndexNowEndpoint, "", map[string]any{
+			"host": site.Host, "key": key, "keyLocation": strings.TrimRight(n.Config.WebBaseURL, "/") + "/" + key + ".txt", "urlList": batch,
 		})
 		switch {
 		case err != nil:

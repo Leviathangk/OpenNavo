@@ -15,6 +15,7 @@ import (
 	"github.com/opennavo/opennavo/server/internal/cli/assetsbackfill"
 	"github.com/opennavo/opennavo/server/internal/cli/dbbootstrap"
 	"github.com/opennavo/opennavo/server/internal/cli/desktoppublish"
+	"github.com/opennavo/opennavo/server/internal/cli/indexreport"
 	"github.com/opennavo/opennavo/server/internal/cli/migrate"
 	"github.com/opennavo/opennavo/server/internal/cli/seedcmd"
 	"github.com/opennavo/opennavo/server/internal/cli/seede2e"
@@ -25,6 +26,7 @@ import (
 // The Dockerfile links service entrypoints; offline maintenance can use subcommands.
 var commands = map[string]func(){
 	"api":                  api.Main,
+	"index-report":         indexreport.Main,
 	"assets-backfill":      assetsbackfill.Main,
 	"traditional-backfill": traditionalbackfill.Main,
 	"db-bootstrap":         dbbootstrap.Main,

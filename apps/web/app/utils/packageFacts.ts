@@ -1,11 +1,11 @@
+import { formatDate } from './packageDate';
 // App-page facts (T2, T3, T6), pure for testing. Every block of the overview, its questions and its
 // JSON-LD read the API's unified facts model (PackageDetail.facts) through these helpers, so no part
 // of the page can state what another contradicts. Evidence decides the wording: a verified fact is
 // stated with its check date, a stale one only "as of" its date and never as current, and anything
-// pending review or without a dated source is left out. The one exception is the requirements table,
-// which keeps a vendor statement under review beside Homebrew's record and marks it pending.
+// pending review or without a dated source is left out.
 import type { PackageDetail, PublicComponents } from '@opennavo/api';
-import { disabledByHomebrew, formatDate, formatVersion, isThirdPartyTap } from '@opennavo/shared';
+import { disabledByHomebrew, formatVersion, isThirdPartyTap } from '@opennavo/shared';
 import type { SiteLocale as Locale } from '@opennavo/shared';
 import { httpsUrl, linkSource } from './linkApp';
 import type { Translate } from './seoTitles';
@@ -45,7 +45,9 @@ const DROPPED = [
 ] as const;
 
 /** The detail as app pages keep it: slimmed, and always with a facts model. */
-export type PackagePage = Omit<PackageDetail, (typeof DROPPED)[number] | 'facts'> & { facts: AppFacts };
+export type PackagePage = Omit<PackageDetail, (typeof DROPPED)[number] | 'facts'> & {
+  facts: AppFacts;
+};
 
 /** useAsyncData transform for the detail payload (T6). */
 export function slimPackage(detail: PackageDetail): PackagePage {
@@ -149,9 +151,9 @@ export function currentRows(pkg: Pick<PackagePage, 'facts' | 'version'>): Requir
   return pkg.facts.requirements.filter(row => isVerified(row.evidence) && row.versions.includes(version));
 }
 
-/** Rows actually rendered in the requirements table, including dated or pending vendor statements. */
+/** Dated, verified or stale requirement rows; pending claims stay hidden. */
 export function shownRequirements(pkg: Pick<PackagePage, 'facts'>): RequirementFact[] {
-  return pkg.facts.requirements.filter(row => isDated(row.evidence) || row.evidence.status === 'needs_review');
+  return pkg.facts.requirements.filter(row => isDated(row.evidence));
 }
 
 function common(values: (string | null)[]): string | null {
@@ -165,7 +167,10 @@ export function macosRange(pkg: Pick<PackagePage, 'facts' | 'version'>): {
   maximum: string | null;
 } {
   const rows = currentRows(pkg);
-  return { minimum: common(rows.map(row => row.minimumMacOS)), maximum: common(rows.map(row => row.maximumMacOS)) };
+  return {
+    minimum: common(rows.map(row => row.minimumMacOS)),
+    maximum: common(rows.map(row => row.maximumMacOS))
+  };
 }
 
 /** Chips the verified rows for the current version name, Apple silicon first. */
@@ -225,7 +230,9 @@ export function uninstallFacts(pkg: Pick<PackagePage, 'facts'>, phase: 'uninstal
 
 /** Prices the page shows: verified ones as current, stale ones with their date. */
 export function shownPrices(pkg: Pick<PackagePage, 'facts'>): PriceFact[] {
-  return (pkg.facts.prices ?? []).filter(price => isDated(price.evidence));
+  return (pkg.facts.prices ?? []).filter(
+    price => isDated(price.evidence) && price.amount != null && Boolean(price.currency)
+  );
 }
 
 /** Prices the page may state as current: verified. */
@@ -362,7 +369,12 @@ export function quickFacts(pkg: PackagePage, t: Translate, locale: Locale): { ro
         value: [String(files.count), files.formats.join(', ')].filter(Boolean).join(' · ')
       });
     if (pkg.kind === 'cask')
-      add({ key: 'location', label: t('package.details.location'), value: '~/Library/Fonts', code: true });
+      add({
+        key: 'location',
+        label: t('package.details.location'),
+        value: '~/Library/Fonts',
+        code: true
+      });
   } else {
     const rowsNow = currentRows(pkg);
     const chips = chipsOf(pkg);
@@ -389,13 +401,17 @@ export function quickFacts(pkg: PackagePage, t: Translate, locale: Locale): { ro
       key: 'price',
       label: t('package.facts.price'),
       value: [usages.join(' / '), amount].filter(Boolean).join(' · '),
-      anchor: 'price',
-      anchorLabel: t('package.quick.priceDetails')
+      anchor: shownPrices(pkg).length ? 'price' : undefined,
+      anchorLabel: shownPrices(pkg).length ? t('package.quick.priceDetails') : undefined
     });
     evidence.push(...prices.map(price => price.evidence));
   } else if (pkg.link && pkg.link.pricing !== 'unknown') {
     // A link app's listed pricing has no evidence of its own, so it is stated without a check date.
-    add({ key: 'price', label: t('package.facts.price'), value: t(`package.link.pricing.${pkg.link.pricing}`) });
+    add({
+      key: 'price',
+      label: t('package.facts.price'),
+      value: t(`package.link.pricing.${pkg.link.pricing}`)
+    });
   }
 
   const identity = verifiedIdentities(pkg).find(item => item.developer || item.teamId);
@@ -412,7 +428,12 @@ export function quickFacts(pkg: PackagePage, t: Translate, locale: Locale): { ro
   if (pkg.license) add({ key: 'license', label: t('package.info.license'), value: pkg.license });
 
   if (pkg.kind === 'cask') {
-    add({ key: 'install', label: t('package.quick.install'), value: pkg.installCommand, code: true });
+    add({
+      key: 'install',
+      label: t('package.quick.install'),
+      value: pkg.installCommand,
+      code: true
+    });
     const status = disabledByHomebrew(pkg)
       ? t('package.quick.homebrewDisabled')
       : pausedByOpenNavo(pkg)
@@ -502,4 +523,129 @@ export function aroundDate(
 /** Calendar date of an ISO timestamp, for datetime attributes. */
 export function isoDate(value: string): string {
   return value.slice(0, 10);
+}
+
+/** A release has content only when it contains nonblank notes. */
+export function releaseHasNotes(entry: import('@opennavo/api').ReleaseEntry): boolean {
+  return Boolean(
+    entry.summary?.trim() ||
+    entry.bodyMarkdown?.trim() ||
+    entry.sections.some(section => section.items.some(item => item.trim()))
+  );
+}
+
+/** An allocated compatibility object can still contain no known requirements. */
+function hasCompatibilityEvidence(value: import('@opennavo/api').ReleaseEntry['compatibility']): boolean {
+  return Boolean(
+    value &&
+    (value.minimumMacOS?.trim() ||
+      value.maximumMacOS?.trim() ||
+      value.appleSilicon === 'yes' ||
+      value.appleSilicon === 'no' ||
+      value.requirements.some(row => row.minimumMacOS?.trim() || row.maximumMacOS?.trim()))
+  );
+}
+
+/** Coalesce Homebrew's build record with the upstream base release on this page. */
+export function mergeReleaseEntries(
+  entries: readonly import('@opennavo/api').ReleaseEntry[]
+): import('@opennavo/api').ReleaseEntry[] {
+  const merged = new Map<string, import('@opennavo/api').ReleaseEntry>();
+  for (const entry of entries) {
+    const key = entry.version.split(',')[0]!.trim();
+    const previous = merged.get(key);
+    if (!previous) {
+      merged.set(key, { ...entry, hasNotes: releaseHasNotes(entry) });
+      continue;
+    }
+    const preferred = releaseHasNotes(previous) ? previous : entry;
+    const other = preferred === previous ? entry : previous;
+    merged.set(key, {
+      ...preferred,
+      version: key,
+      hasNotes: releaseHasNotes(previous) || releaseHasNotes(entry),
+      build: undefined,
+      isLatest: previous.isLatest || entry.isLatest,
+      publishedAt: preferred.publishedAt || other.publishedAt,
+      brewCommittedAt: preferred.brewCommittedAt || other.brewCommittedAt,
+      // Keep one evidence snapshot intact; do not let an unknown placeholder
+      // override the other release's known bounds or architecture support.
+      compatibility: hasCompatibilityEvidence(preferred.compatibility)
+        ? preferred.compatibility
+        : (other.compatibility ?? preferred.compatibility),
+      summary: [...new Set([preferred.summary, other.summary].filter(Boolean))].join('\n\n') || null,
+      bodyMarkdown: [...new Set([preferred.bodyMarkdown, other.bodyMarkdown].filter(Boolean))].join('\n\n') || null,
+      sections: [
+        ...preferred.sections,
+        ...other.sections.filter(
+          section => !preferred.sections.some(existing => JSON.stringify(existing) === JSON.stringify(section))
+        )
+      ]
+    });
+  }
+  return [...merged.values()];
+}
+
+export function releaseCompatibilityText(
+  value: import('@opennavo/api').ReleaseEntry['compatibility'],
+  labels: { minimum: string; maximum: string; appleSilicon: { yes: string; no: string } }
+): string {
+  if (!value) return '';
+  const bounds = (minimum?: string | null, maximum?: string | null) =>
+    [
+      minimum ? labels.minimum.replace('{version}', minimum) : '',
+      maximum ? labels.maximum.replace('{version}', maximum) : ''
+    ].filter(Boolean);
+  const parts = bounds(value.minimumMacOS, value.maximumMacOS);
+  if (!parts.length)
+    parts.push(
+      ...new Set(
+        value.requirements.flatMap(row => {
+          const range = bounds(row.minimumMacOS, row.maximumMacOS).join(', ');
+          return range ? [`${row.architectures.length ? `${row.architectures.join(', ')}: ` : ''}${range}`] : [];
+        })
+      )
+    );
+  if (value.appleSilicon === 'yes' || value.appleSilicon === 'no') parts.push(labels.appleSilicon[value.appleSilicon]);
+  return parts.join(' · ');
+}
+
+/** A direct Homebrew URL, with only checks backed by current, dated evidence. */
+export function officialDownload(pkg: PackagePage) {
+  if (pkg.kind !== 'cask' || disabledByHomebrew(pkg) || pkg.homebrewStatus?.state === 'disabled') return null;
+  const choice = downloadChoice(pkg);
+  if (choice?.kind !== 'direct') return null;
+  const url = httpsUrl(choice.url);
+  if (!url) return null;
+  const rows = homebrewRows(pkg).filter(
+    row => isVerified(row.evidence) && row.versions.includes(currentVersion(pkg)) && row.downloadUrl === url
+  );
+  const checksums = rows
+    .map(row => row.sha256)
+    .filter((sha): sha is string => Boolean(sha && /^[a-f0-9]{64}$/i.test(sha)));
+  const checksum = checksums.length === rows.length && new Set(checksums.map(sha => sha.toLowerCase())).size === 1;
+  return {
+    url,
+    host: new URL(url).hostname,
+    checksum,
+    checkedAt: oldestCheck(rows.map(row => row.evidence)),
+    active: pkg.homebrewStatus?.state === 'active' || pkg.homebrewStatus?.state === 'deprecated'
+  };
+}
+
+/** Subpages reference a complete, minimal application node without offers or ratings. */
+export function subpageAppNode(pkg: PackagePage, id: string, url: string) {
+  return {
+    '@type': 'SoftwareApplication' as const,
+    '@id': id,
+    name: pkg.displayName,
+    url,
+    operatingSystem: 'macOS',
+    softwareVersion: currentVersion(pkg)
+  };
+}
+
+/** Matches the stable fragments used by release feeds and version cards. */
+export function releaseAnchorId(entry: import('@opennavo/api').ReleaseEntry): string {
+  return entry.id ? `r-${entry.id}` : `v-${entry.version.replace(/[^0-9A-Za-z._-]+/g, '-')}`;
 }

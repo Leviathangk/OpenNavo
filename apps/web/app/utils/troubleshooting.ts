@@ -1,3 +1,4 @@
+import { robotsAllowsIndexing } from './indexing';
 // Troubleshooting knowledge base (F7), pure for testing. Known issues are facts Hermes collected from
 // official documents, GitHub issues and release notes, each with the app and macOS versions it applies to,
 // its source and the day it was checked. Nothing here is a discussion: the page never invents a forum and
@@ -64,7 +65,7 @@ export function troubleshootingDecision(
   const overview = pkg?.indexing?.pages.overview;
   const enough = issues.length >= TROUBLESHOOTING_MIN_ISSUES;
   const localized = enough && issues.every(issue => issue.locale === locale);
-  const indexable = localized && overview?.robots === 'index, follow';
+  const indexable = localized && robotsAllowsIndexing(overview?.robots);
   return {
     robots: indexable ? 'index, follow' : 'noindex, follow',
     canonicalPath: '',

@@ -128,8 +128,8 @@ describe('Markdown alternates (X4)', () => {
     expect(md).toContain('- macOS 13 or later · Version: 11.0 · Apple silicon · Runs natively');
     expect(md).toContain('Checked 2026-10-01');
     expect(md).toContain('- Subscription · $9.99 per month (United States, Pro)');
-    expect(md).toContain('(United States, Team)');
-    expect(md).toContain('As of 2026-10-01 · May have changed');
+    expect(md).not.toContain('(United States, Team)');
+    expect(md).not.toContain('As of 2026-10-01 · May have changed');
     expect(md).toContain('- [Zed](https://opennavo.example/apps/zed) — Open source');
     const cleanup = md.slice(md.indexOf('- `brew uninstall --zap'));
     expect(cleanup).toContain(siteMessage('en-US', 'package.guide.zap'));
@@ -162,7 +162,7 @@ describe('Markdown alternates (X4)', () => {
     expect(md).not.toContain('Subscription');
   });
 
-  it('Omits unknown and undated claims; labels pending and older-version requirements', () => {
+  it('Omits unknown, pending and undated claims; retains dated older-version requirements', () => {
     const detail = structuredClone(pkg);
     for (const price of detail.facts!.prices) price.evidence.status = 'unknown';
     for (const entry of detail.facts!.uninstall) entry.evidence.checkedAt = null;
@@ -173,8 +173,12 @@ describe('Markdown alternates (X4)', () => {
     row.evidence.status = 'needs_review';
     row.versions = ['9.0'];
     md = renderPackageMarkdown(detail, { siteUrl: 'https://opennavo.example', locale: 'en-US' });
+    expect(md).not.toContain('Version: 9.0');
+    expect(md).not.toContain(siteMessage('en-US', 'package.facts.pending'));
+    row.evidence = { ...row.evidence, status: 'stale', checkedAt: '2026-10-01T00:00:00Z' };
+    md = renderPackageMarkdown(detail, { siteUrl: 'https://opennavo.example', locale: 'en-US' });
     expect(md).toContain('Version: 9.0');
-    expect(md).toContain(siteMessage('en-US', 'package.facts.pending'));
+    expect(md).toContain(siteMessage('en-US', 'package.facts.stale'));
     row.minimumMacOS = null;
     row.platformMacOS = ['14'];
     md = renderPackageMarkdown(detail, { siteUrl: 'https://opennavo.example', locale: 'en-US' });

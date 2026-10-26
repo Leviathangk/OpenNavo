@@ -57,3 +57,14 @@ func TestAnnounceAllBatchesAfterAccepted(t *testing.T) {
 		})
 	}
 }
+
+func TestAnnounceFailureDoesNotRetryAgainstTheSameReservation(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { calls++; w.WriteHeader(http.StatusServiceUnavailable) }))
+	defer server.Close()
+	n := &Notifier{Config: config.Config{WebBaseURL: "https://site.example"}, HTTP: server.Client(), IndexNowEndpoint: server.URL, Sleep: func(time.Duration) { t.Fatal("IndexNow retries must use the durable outbox") }}
+	status, count := n.announceURLs(context.Background(), "fixture-key", []string{"https://site.example/apps/fixture"})
+	require.Equal(t, 1, calls)
+	require.Zero(t, count)
+	require.Equal(t, "error: IndexNow returned 503", status)
+}

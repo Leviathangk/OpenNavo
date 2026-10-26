@@ -25,6 +25,11 @@ const items = computed(() =>
 </script>
 
 <template>
+  <a
+    href="#main-content"
+    class="sr-only focus:not-sr-only focus:fixed focus:left-16px focus:top-16px focus:z-100 focus:rounded-default focus:bg-surface-card focus:p-12px focus:text-ink-primary focus:shadow-focus-ring"
+    >{{ t('nav.skipToContent') }}</a
+  >
   <div class="min-h-screen bg-surface-page font-sans text-ink-primary">
     <OnTopNav
       :items="items"
@@ -45,7 +50,7 @@ const items = computed(() =>
         </div>
       </template>
     </OnTopNav>
-    <main>
+    <main id="main-content" tabindex="-1">
       <slot />
     </main>
     <LandingFooter />

@@ -217,3 +217,19 @@ func TestScopedContentDoesNotAnnounceClosedRemovedPage(t *testing.T) {
 	require.Equal(t, []string{"/zh-hant/apps/removed"}, plan.Paths)
 	require.Empty(t, plan.IndexNowURLs)
 }
+
+func TestRefreshOnlyPlansNeverAnnounceAndContentOutranksBackfill(t *testing.T) {
+	at := time.Now()
+	for _, reason := range []string{"refresh", "cache"} {
+		p := BuildPlan([]store.URLChange{{PackageID: 1, Token: "fixture", Reason: reason, CreatedAt: at}}, nil, nil, seo.Policy{}, "https://site.example")
+		require.NotEmpty(t, p.Paths)
+		require.NotEmpty(t, p.PurgePrefixes)
+		require.Empty(t, p.IndexNowURLs)
+	}
+	url := "https://site.example/apps/fixture"
+	backfill := Plan{IndexNowURLs: []string{url}, BackfillURLs: map[string]bool{url: true}}
+	content := Plan{IndexNowURLs: []string{url}}
+	require.False(t, backfill.Merge(content).BackfillURLs[url])
+	require.False(t, content.Merge(backfill).BackfillURLs[url])
+	require.True(t, backfill.Merge(backfill).BackfillURLs[url])
+}

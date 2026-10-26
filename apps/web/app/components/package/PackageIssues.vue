@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { formatDate, LOCALE_METADATA } from '@opennavo/shared';
+import { formatDate } from '~/utils/packageDate';
+import { LOCALE_METADATA } from '@opennavo/shared';
 import { displayUrl } from '@opennavo/ui';
 import { isoDate } from '~/utils/packageFacts';
 import type { PackagePage } from '~/utils/packageFacts';

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { formatDate, LOCALE_METADATA } from '@opennavo/shared';
+import { formatDate } from '~/utils/packageDate';
+import { LOCALE_METADATA } from '@opennavo/shared';
 import type { SiteLocale } from '@opennavo/shared';
 import { displayUrl, OnAppIcon, OnChip } from '@opennavo/ui';
 import { verifiedAlternatives, isoDate, isVerified, priceAmount, priceUsage } from '~/utils/packageFacts';

@@ -9,6 +9,9 @@ const { data: config } = await useAsyncData(
   () => unwrap(api.GET('/config/client', { params: { query: { platform: 'web' } } }))
 );
 
+const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
+usePageSchema({ type: 'AboutPage', mainEntity: `${siteUrl}/#identity` });
+
 usePageSeo({ title: () => t('about.metaTitle'), description: () => t('about.description') });
 // Share image (WP13): the site's default card, as on the home page.
 defineOgImage('OgDefaultSatori', {

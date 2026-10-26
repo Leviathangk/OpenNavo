@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatDate } from '@opennavo/shared';
+import { formatDate } from '~/utils/packageDate';
 import { displayUrl } from '@opennavo/ui';
 import { aroundDate, factSources, isoDate } from '~/utils/packageFacts';
 import type { PackagePage } from '~/utils/packageFacts';

@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { formatDate } from '~/utils/packageDate';
 import type { PackageKind } from '@opennavo/shared';
-import { formatDate } from '@opennavo/shared';
 import { displayUrl, OnButton, OnChip } from '@opennavo/ui';
 import { packagePath } from '~/utils/packageView';
 import { hasTroubleshootingPage, issueAnchor, troubleshootingDecision, verifiedIssues } from '~/utils/troubleshooting';

@@ -1,3 +1,4 @@
+import { robotsAllowsIndexing } from '../app/utils/indexing';
 import { describe, expect, it } from 'vitest';
 import { uninstallPageOpen, uninstallPreviewLink } from '../app/utils/uninstallPage';
 
@@ -5,7 +6,7 @@ const decision = (robots: string, canonicalPath = '') => ({
   robots,
   canonicalPath,
   hreflang: ['en-US'],
-  inSitemap: robots === 'index, follow',
+  inSitemap: robotsAllowsIndexing(robots),
   announce: false,
   reason: 'fixture'
 });
@@ -26,6 +27,12 @@ const pkg = (overrides: Record<string, unknown> = {}) =>
 describe('Uninstall intent page (X2)', () => {
   it('opens only where the decision indexes it with its own canonical and there is something to uninstall', () => {
     expect(uninstallPageOpen(pkg())).toBe(true);
+    for (const [robots, expected] of [
+      ['index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1', true],
+      ['index, noindex, follow', false],
+      ['follow, max-snippet:-1', false]
+    ] as const)
+      expect(uninstallPageOpen(pkg({ indexing: { pages: { uninstall: decision(robots) } } }))).toBe(expected);
     expect(uninstallPageOpen(pkg({ indexing: { pages: { uninstall: decision('noindex, follow') } } }))).toBe(false);
     expect(
       uninstallPageOpen(pkg({ indexing: { pages: { uninstall: decision('index, follow', '/apps/example') } } }))

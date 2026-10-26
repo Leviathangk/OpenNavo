@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { unwrap } from '@opennavo/api';
+import { unwrap, type CategoryNode } from '@opennavo/api';
 import { formatCount } from '@opennavo/shared';
 import { withVariantNames } from '~/utils/seoTitles';
 
@@ -12,10 +12,11 @@ definePageMeta({ layout: 'landing' });
 
 const { t, locale } = useI18n();
 const api = useApi();
+const localePath = useLocalePath();
 const formattingLocale = computed(() => toAppLocale(locale.value));
 
 // Homepage data shares Discover's cache key; rankings only feed the icon wall and become null on failure.
-const [{ data: home }, { data: ranking }] = await Promise.all([
+const [{ data: home }, { data: ranking }, { data: articles }] = await Promise.all([
   useHome(),
   useAsyncData(
     () => `landing:ranking:${locale.value}`,
@@ -26,6 +27,10 @@ const [{ data: home }, { data: ranking }] = await Promise.all([
         })
       ).catch(() => null),
     { transform: withVariantNames }
+  ),
+  useAsyncData(
+    () => `landing:articles:${locale.value}`,
+    () => unwrap(api.GET('/articles', { params: { query: { current: 1, size: 3 } } })).catch(() => null)
   )
 ]);
 
@@ -38,6 +43,25 @@ const updatedToday = computed(() => {
 const visibleCategories = computed(() =>
   (home.value?.categories ?? []).filter(category => !category.hiddenByDefault && category.packageCount > 0)
 );
+
+// Keep directory links in SSR HTML, including descendants of the category tree.
+function flattenCategories(categories: CategoryNode[]): CategoryNode[] {
+  return categories
+    .filter(category => !category.hiddenByDefault)
+    .flatMap(category => [category, ...flattenCategories(category.children)]);
+}
+const directoryGroups = computed(() => [
+  {
+    key: 'categories',
+    links: flattenCategories(home.value?.categories ?? [])
+      .filter(category => category.packageCount > 0)
+      .sort((a, b) => b.packageCount - a.packageCount || a.slug.localeCompare(b.slug))
+      .slice(0, 8)
+      .map(category => ({ slug: category.slug, title: category.name }))
+  },
+  { key: 'collections', links: (home.value?.collections ?? []).slice(0, 6) },
+  { key: 'articles', links: (articles.value?.records ?? []).slice(0, 3) }
+]);
 
 // Hero window/floating icons prefer popular apps.
 const showcase = computed(() =>
@@ -95,7 +119,27 @@ defineOgImage('OgDefaultSatori', {
       :updated="updatedToday"
     />
     <!-- C5: real entry points into the catalog's directories. -->
-    <DirectoryLinks />
+    <div class="mx-auto box-border w-full max-w-1240px px-24px">
+      <DirectoryLinks />
+      <div class="mt-32px grid gap-24px md:grid-cols-3">
+        <section
+          v-for="group in directoryGroups.filter(group => group.links.length)"
+          :key="group.key"
+          :aria-labelledby="`directory-${group.key}`"
+        >
+          <h2 :id="`directory-${group.key}`" class="m-0 text-headline text-ink-primary">{{ t(`nav.${group.key}`) }}</h2>
+          <ul class="m-0 mt-16px flex list-none flex-col gap-12px p-0">
+            <li v-for="link in group.links" :key="link.slug">
+              <NuxtLink
+                :to="localePath(`/${group.key}/${link.slug}`)"
+                class="text-ink-secondary underline underline-offset-4 hover:text-ink-primary focus-visible:shadow-focus-ring"
+                >{{ link.title }}</NuxtLink
+              >
+            </li>
+          </ul>
+        </section>
+      </div>
+    </div>
     <!-- G4: what OpenNavo is and how it differs from the Homebrew command line and the Mac App Store. -->
     <LandingAbout />
     <!-- Below the fold: server-rendered in full, hydrated only when scrolled into view. -->

@@ -7,6 +7,7 @@ import { packageSitemapName, packageSitemaps, type PackageSitemapGroup } from '.
 import { MAX_CACHE_ENTRY_BYTES, PAGE_CACHE_TTL_SECONDS } from '../utils/boundedCache';
 import { BACKGROUND_PAGE_SIZE, indexPageNoindex } from '../../app/utils/backgroundItems';
 import { localizedEntries, openLocaleEntries, pageLocaleEntries, staticSitemapLocale } from '../utils/sitemapEntries';
+import { sitemapFontsEnabled } from '../utils/sitemapFonts';
 import { createStaleCache } from '../utils/staleCache';
 
 type SitemapEntry = PublicComponents['schemas']['SitemapEntry'];
@@ -58,17 +59,6 @@ export default defineNitroPlugin(nitroApp => {
     // The label list takes hundreds of API pages to load after a restart, so the index reads it without waiting
     // and leaves the group out until it is known.
     const backgroundItems = backgroundItemEntries.peek();
-    // T5: each package bucket and the article groups carry the date their newest page last changed in
-    // content; groups without such a date (static pages, categories, collections) carry none.
-    const newest = (dates: (string | null | undefined)[]) =>
-      dates
-        .filter((date): date is string => Boolean(date))
-        .sort()
-        .at(-1);
-    const lastmods: Record<string, string | undefined> = {
-      articles: newest(articles.flatMap(item => item.locales.map(entry => entry.lastmod))),
-      authors: newest(authors.map(author => author.lastmod))
-    };
     ctx.sitemaps = ctx.sitemaps
       .filter(({ _sitemapName: sitemapName }) => {
         if (sitemapName && Object.hasOwn(packageSitemaps, sitemapName)) return populated.has(sitemapName);
@@ -82,10 +72,11 @@ export default defineNitroPlugin(nitroApp => {
         return true;
       })
       .map(entry => {
-        const { _sitemapName: sitemapName } = entry;
-        const name = sitemapName ?? '';
-        const lastmod = Object.hasOwn(packageSitemaps, name) ? populated.get(name) : lastmods[name];
-        return lastmod ? { ...entry, lastmod } : entry;
+        // Index and children have independent response/snapshot caches. There is no shared generation
+        // identifier, so even a content-derived date here could describe a different child response.
+        const undated = { ...entry };
+        delete undated.lastmod;
+        return undated;
       });
   });
   // L1: the module builds the static group from the app's pages in every site language and splits it into one
@@ -99,10 +90,12 @@ export default defineNitroPlugin(nitroApp => {
   nitroApp.hooks.hook('sitemap:input', async ctx => {
     if (Object.hasOwn(packageSitemaps, ctx.sitemapName)) {
       const group = ctx.sitemapName.split('-')[0] as PackageSitemapGroup;
+      if (group === 'fonts' && !sitemapFontsEnabled(useRuntimeConfig().sitemapFonts))
+        throw createError({ statusCode: 404, statusMessage: 'Sitemap not found' });
       if (group === 'versions' && !(await getSiteSettings()).pages.versionsSitemap) return;
       const records =
         group === 'versions'
-          ? (await Promise.all([cachedPackages('apps'), cachedPackages('fonts')])).flat()
+          ? (await Promise.all([cachedPackages('apps'), fontPackages()])).flat()
           : await cachedPackages(group);
       const page = group === 'versions' ? 'versions' : 'overview';
       const urls = records
@@ -127,6 +120,10 @@ export default defineNitroPlugin(nitroApp => {
     if (load) ctx.urls.push(...(await load()));
   });
 });
+
+function fontPackages(): Promise<SitemapRecord[]> {
+  return sitemapFontsEnabled(useRuntimeConfig().sitemapFonts) ? cachedPackages('fonts') : Promise.resolve([]);
+}
 
 function apiBase() {
   const config = useRuntimeConfig();
@@ -155,27 +152,16 @@ interface PackageSnapshot {
   expires: number;
 }
 
-/**
- * Package buckets that have URLs, for the index, with the newest content date of the pages each one
- * lists (undefined when none is known). Working this out reads the whole catalog snapshot (megabytes
- * from Redis on every index request), so each process keeps the answer (createStaleCache): after the
- * first request the index answers at once, even when cold. It uses the same rule as the buckets
- * themselves (listedLocales), so the index never lists an empty one.
- */
+/** Populated buckets are cached to avoid reading the entire catalog on every index request. */
 const populatedPackageSitemaps = createStaleCache(
   async () => {
-    const [apps, fonts, settings] = await Promise.all([
-      cachedPackages('apps'),
-      cachedPackages('fonts'),
-      getSiteSettings()
-    ]);
-    const buckets = new Map<string, string | undefined>();
+    const [apps, fonts, settings] = await Promise.all([cachedPackages('apps'), fontPackages(), getSiteSettings()]);
+    const buckets = new Set<string>();
     const add = (group: PackageSitemapGroup, record: SitemapRecord, page: SitemapPage) => {
       const entries = listedLocales(record, page);
       if (entries?.length === 0) return;
       const name = packageSitemapName(group, record.token);
-      const dates = (entries ?? []).map(entry => entry.pageLastmod?.[page] ?? entry.lastmod);
-      buckets.set(name, [buckets.get(name), ...dates].filter(Boolean).sort().at(-1) as string | undefined);
+      buckets.add(name);
     };
     for (const record of apps) add('apps', record, 'overview');
     for (const record of fonts) add('fonts', record, 'overview');
@@ -423,7 +409,12 @@ function packageEntries(
 ) {
   const entries = listedLocales(record, page);
   const locales = entries?.map(entry => entry.locale) ?? LOCALES;
-  const lastmods = new Map(entries?.map(entry => [entry.locale, entry.pageLastmod?.[page] ?? entry.lastmod]));
+  const lastmods = new Map(
+    entries?.map(entry => [
+      entry.locale,
+      entry.pageLastmod?.[page] ?? (page === 'versions' ? undefined : entry.lastmod)
+    ])
+  );
   return localizedEntries(path, sitemap, locales, locale => lastmods.get(locale));
 }
 

@@ -89,14 +89,24 @@ describe('Article pages', () => {
       headline: 'How to choose a screenshot app',
       datePublished: '2026-10-12T10:00:00Z',
       dateModified: '2026-10-12T18:00:00Z',
-      inLanguage: 'en-US',
+      inLanguage: 'en',
       author: { '@id': `${site}/#identity` },
       publisher: { '@id': `${site}/#identity` }
     });
     expect(editorial.about).toBeUndefined();
     expect(editorial.mentions).toEqual([
-      { '@id': `${site}/apps/shottr#app`, name: 'Shottr', url: `${site}/zh/apps/shottr` },
-      { '@id': `${site}/apps/cleanshot#app`, name: 'CleanShot X', url: `${site}/zh/apps/cleanshot` }
+      {
+        '@type': 'SoftwareApplication',
+        '@id': `${site}/apps/shottr#app`,
+        name: 'Shottr',
+        url: `${site}/zh/apps/shottr`
+      },
+      {
+        '@type': 'SoftwareApplication',
+        '@id': `${site}/apps/cleanshot#app`,
+        name: 'CleanShot X',
+        url: `${site}/zh/apps/cleanshot`
+      }
     ]);
     const signed = blogPostingNode(
       article({
@@ -111,7 +121,7 @@ describe('Article pages', () => {
       name: 'Lin Wei',
       url: `${site}/zh/authors/lin-wei`
     });
-    expect(signed.about).toMatchObject({ '@id': `${site}/apps/shottr#app` });
+    expect(signed.about).toMatchObject({ '@type': 'SoftwareApplication', '@id': `${site}/apps/shottr#app` });
     expect(signed.image).toBe(`${site}/_og/s/a.png`);
   });
 

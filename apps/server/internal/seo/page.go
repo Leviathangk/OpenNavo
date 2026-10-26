@@ -9,6 +9,8 @@ import (
 	"github.com/opennavo/opennavo/server/internal/i18n"
 )
 
+const IndexableRobots = "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+
 type PageKind string
 
 const (
@@ -153,7 +155,7 @@ func DecidePage(f Facts, ref PageRef, p Policy) PageDecision {
 		}
 		return d
 	}
-	d.Robots, d.Hreflang, d.Announce = "index, follow", locales, true
+	d.Robots, d.Hreflang, d.Announce = IndexableRobots, locales, true
 	d.InSitemap = page == 1 && (ref.Kind != PageVersions || p.VersionsSitemap)
 	return d
 }
@@ -177,7 +179,7 @@ func decideTroubleshootingPage(f Facts, ref PageRef, p Policy) PageDecision {
 			d.Hreflang = append(d.Hreflang, locale)
 		}
 	}
-	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = "index, follow", "", true, true, ""
+	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = IndexableRobots, "", true, true, ""
 	return d
 }
 
@@ -224,6 +226,6 @@ func decideIntentPage(f Facts, ref PageRef, p Policy) PageDecision {
 		d.Hreflang = []string{}
 		return d
 	}
-	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = "index, follow", "", true, true, ""
+	d.Robots, d.CanonicalPath, d.InSitemap, d.Announce, d.Reason = IndexableRobots, "", true, true, ""
 	return d
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { formatDate } from '~/utils/packageDate';
 import type { PublicComponents } from '@opennavo/api';
-import { formatDate, formatVersion } from '@opennavo/shared';
+import { formatVersion } from '@opennavo/shared';
 import { OnAppIcon, OnAppRow } from '@opennavo/ui';
 import { packagePath } from '~/utils/packageView';
 

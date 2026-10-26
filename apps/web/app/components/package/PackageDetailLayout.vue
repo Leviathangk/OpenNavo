@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { subpageAppNode } from '~/utils/packageFacts';
 import { disabledByHomebrew, recentReturnPath } from '@opennavo/shared';
 import { unwrap } from '@opennavo/api';
 import type { PackageKind } from '@opennavo/shared';
@@ -141,6 +142,21 @@ useBreadcrumbSchema(breadcrumb);
 // Subpages are about the app; its full SoftwareApplication lives on the overview only (T4).
 const siteUrl = useRuntimeConfig().public.siteUrl.replace(/\/$/, '');
 usePageSchema(() => (tab.value === 'overview' || !pkg.value ? {} : { about: appEntityId(siteUrl, pkg.value.token) }));
+useSchemaOrg(
+  computed(() =>
+    tab.value === 'overview' || !pkg.value
+      ? []
+      : [
+          defineSoftwareApp(
+            subpageAppNode(
+              pkg.value,
+              appEntityId(siteUrl, pkg.value.token),
+              `${siteUrl}${localePath(packagePath(pkg.value.token))}`
+            )
+          )
+        ]
+  )
+);
 // The versions and troubleshooting pages' h1 names the page (S1, F7); the other subpages keep the app name.
 const headingSuffix = computed(() =>
   tab.value === 'versions' || tab.value === 'troubleshooting' ? tabLabel(tab.value) : undefined
@@ -222,7 +238,7 @@ const notice = computed(() => {
         "
         :link-as="NuxtLink"
       />
-      <PackageHeader :pkg="pkg" :heading-suffix="headingSuffix" />
+      <PackageHeader :pkg="pkg" :heading-suffix="headingSuffix" :show-official-download="tab === 'overview'" />
       <PackageStats v-if="!isLink" :pkg="pkg" :release-stats="releaseStats" />
       <OnTabs
         class="mt-2px"

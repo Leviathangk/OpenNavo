@@ -11,3 +11,12 @@ export function latestVersionDate(
 ): string | undefined {
   return currentReleaseDate(pkg) ?? pkg.versionCommittedAt ?? undefined;
 }
+
+/** Preview directives do not change indexability; an explicit noindex always wins. */
+export function robotsAllowsIndexing(robots: string | null | undefined): boolean {
+  const directives = (robots ?? '')
+    .toLowerCase()
+    .split(',')
+    .map(value => value.trim());
+  return directives.includes('index') && !directives.includes('noindex');
+}

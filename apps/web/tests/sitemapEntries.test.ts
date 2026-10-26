@@ -34,3 +34,11 @@ it('preserves encoded label paths in loc and every alternate without encoding th
     expect(entries[0]!.alternatives.map(entry => entry.href)).toEqual([path, `/zh${path}`, `/zh${path}`, path]);
   }
 });
+
+it('normalizes content dates to second precision in UTC and omits unknown or invalid dates', () => {
+  const entry = (date?: string) => localizedEntries('/apps/example', 'apps-bucket-0', ['en-US'], () => date)[0];
+  expect(entry('2026-10-26T11:22:33.987654+08:00')).toHaveProperty('lastmod', '2026-10-26T03:22:33Z');
+  expect(entry('2026-10-26')).toHaveProperty('lastmod', '2026-10-26T00:00:00Z');
+  expect(entry()).not.toHaveProperty('lastmod');
+  expect(entry('not-a-date')).not.toHaveProperty('lastmod');
+});

@@ -49,7 +49,7 @@ func TestSitemapUsesStoredNotesFactsAndWaitsForMissingOnes(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
 	stored := versions()
-	require.Equal(t, "index, follow", string(stored.Robots), "English notes pass the thin-page rule")
+	require.Equal(t, seo.IndexableRobots, string(stored.Robots), "English notes pass the thin-page rule")
 	// With facts stored, the sitemap does not recount: blanking the notes changes nothing until the job runs.
 	require.NoError(t, st.DB.Exec("UPDATE releases SET body_markdown='' WHERE package_id=902").Error)
 	require.Equal(t, stored, versions())

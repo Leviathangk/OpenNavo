@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { formatDate } from '@opennavo/shared';
+import { formatDate } from '~/utils/packageDate';
 import { displayUrl, OnChip } from '@opennavo/ui';
 import { aroundDate, shownRequirements, isoDate, macosText } from '~/utils/packageFacts';
 import type { PackagePage, RequirementFact } from '~/utils/packageFacts';
 
 // System requirements (T2): facts.requirements as a table, one row per distinct declaration (Homebrew's per
 // chip and macOS release, the developer's statements, per-version compatibility). Every row names its source
-// and check date; a stale row reads "as of" its date, and a developer statement under review stays beside
-// Homebrew's record marked pending. A minimum is never read as support for future releases, and the macOS
+// and check date; a stale row reads "as of" its date. Statements pending verification are omitted. A minimum is never read as support for future releases, and the macOS
 // label of a Homebrew build is not a minimum. Downloads and their full SHA-256 come from the same rows.
 const props = defineProps<{ pkg: PackagePage }>();
 
@@ -46,7 +45,6 @@ const rows = computed(() =>
       sha256: row.sha256,
       source: homebrew ? 'Homebrew' : displayUrl(evidence.sourceUrl),
       sourceUrl: evidence.sourceUrl,
-      pending: evidence.status === 'needs_review',
       stale: evidence.status === 'stale',
       checked: checkedAt
         ? {
@@ -118,8 +116,7 @@ const conflicts = computed(() => props.pkg.facts.macosSupplement?.conflicts ?? [
                 >{{ row.checked.before }}<time :datetime="row.checked.iso">{{ row.checked.date }}</time
                 >{{ row.checked.after }}</span
               >
-              <OnChip v-if="row.pending" class="mt-4px" tone="warning">{{ t('package.facts.pending') }}</OnChip>
-              <OnChip v-else-if="row.stale" class="mt-4px" tone="warning">{{ t('package.facts.stale') }}</OnChip>
+              <OnChip v-if="row.stale" class="mt-4px" tone="warning">{{ t('package.facts.stale') }}</OnChip>
             </td>
           </tr>
         </tbody>

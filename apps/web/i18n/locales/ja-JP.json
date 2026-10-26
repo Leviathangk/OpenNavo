@@ -27,7 +27,8 @@
     "themeLabel": "外観",
     "themeSystem": "システムに合わせる",
     "themeLight": "ライト",
-    "themeDark": "ダーク"
+    "themeDark": "ダーク",
+    "skipToContent": "本文へ移動"
   },
   "sidebar": {
     "appLabel": "Macクライアント",
@@ -808,6 +809,16 @@
         "issue": "既知の問題",
         "integration": "MCP と Skill"
       }
+    },
+    "copy": {
+      "install": "インストールコマンドをコピー",
+      "uninstall": "アンインストールコマンドをコピー",
+      "cleanup": "アンインストールとクリーンアップのコマンドをコピー"
+    },
+    "officialDownload": {
+      "label": "公式ダウンロード · {host}",
+      "checksum": "Homebrew に SHA-256 を記録済み",
+      "active": "Homebrew で無効化されていません"
     }
   },
   "collections": {

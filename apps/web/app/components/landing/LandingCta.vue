@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { OnButton, OnIcon, OnInstallCommand } from '@opennavo/ui';
-import { DESKTOP_BREW_COMMAND } from '~/utils/download';
+import { DESKTOP_BREW_COMMAND, desktopBrewCaskAvailable } from '~/utils/download';
 
 // Landing conclusion (08 §10.14): glowing client icon, heading/copy, download/browse. Pages such as /security pass
 // their own heading and copy.
 const props = defineProps<{ title?: string; body?: string }>();
 
+const brewAvailable = desktopBrewCaskAvailable(useRuntimeConfig().public);
 const { t } = useI18n();
 const localePath = useLocalePath();
 const NuxtLink = resolveComponent('NuxtLink');
@@ -58,6 +59,7 @@ function onCopied(command: string) {
         </OnButton>
       </div>
       <div
+        v-if="brewAvailable"
         class="mt-40px box-border w-full rounded-big border border-solid border-line-subtle bg-surface-card px-16px py-14px text-left"
         data-reveal
         style="--landing-delay: 260ms"

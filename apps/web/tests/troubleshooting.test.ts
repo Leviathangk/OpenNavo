@@ -1,3 +1,4 @@
+import { robotsAllowsIndexing } from '../app/utils/indexing';
 import { describe, expect, it } from 'vitest';
 import type { PackageDetail } from '@opennavo/api';
 import {
@@ -32,18 +33,18 @@ function issue(title: string, extra: Partial<KnownIssueFact> = {}): KnownIssueFa
   };
 }
 
-const decision = (robots: 'index, follow' | 'noindex, follow') => ({
+const decision = (robots: string) => ({
   robots,
   canonicalPath: '',
   hreflang: [],
-  inSitemap: robots === 'index, follow',
+  inSitemap: robotsAllowsIndexing(robots),
   announce: false,
   reason: ''
 });
 
-function app(issues: KnownIssueFact[], overview: 'index, follow' | 'noindex, follow' = 'index, follow') {
+function app(issues: KnownIssueFact[], overview: string = 'index, follow') {
   const indexing = {
-    indexable: overview === 'index, follow',
+    indexable: robotsAllowsIndexing(overview),
     reason: null,
     locales: [],
     enforced: true,
@@ -131,4 +132,13 @@ describe('Troubleshooting page decision', () => {
     };
     expect(troubleshootingDecision(withServer as never, 'en-US')).toEqual(server);
   });
+});
+
+it('legacy troubleshooting accepts preview directives but respects noindex', () => {
+  for (const [robots, expected] of [
+    ['index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1', 'index, follow'],
+    ['index, noindex, follow', 'noindex, follow'],
+    ['follow, max-snippet:-1', 'noindex, follow']
+  ] as const)
+    expect(troubleshootingDecision(app(three(), robots), 'en-US').robots).toBe(expected);
 });

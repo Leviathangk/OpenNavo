@@ -27,7 +27,8 @@
     "themeLabel": "Aspetto",
     "themeSystem": "Come il sistema",
     "themeLight": "Chiaro",
-    "themeDark": "Scuro"
+    "themeDark": "Scuro",
+    "skipToContent": "Vai al contenuto"
   },
   "sidebar": {
     "appLabel": "App per Mac",
@@ -808,6 +809,16 @@
         "issue": "Problemi noti",
         "integration": "MCP e Skill"
       }
+    },
+    "copy": {
+      "install": "Copia comando di installazione",
+      "uninstall": "Copia comando di disinstallazione",
+      "cleanup": "Copia comando di disinstallazione e pulizia"
+    },
+    "officialDownload": {
+      "label": "Download ufficiale · {host}",
+      "checksum": "SHA-256 registrato da Homebrew",
+      "active": "Non disabilitato da Homebrew"
     }
   },
   "collections": {

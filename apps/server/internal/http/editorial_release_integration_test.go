@@ -184,7 +184,7 @@ func TestEditorialReleaseLocaleIsolationAndPageDecision(t *testing.T) {
 					require.Equal(t, translated, *entry.BodyMarkdown)
 				}
 			}
-			require.Equal(t, tc.localized, page.Data.Indexing.Robots == "index, follow")
+			require.Equal(t, tc.localized, seo.DecisionRobots(string(page.Data.Indexing.Robots)).Index)
 			var detail publicapi.PackageDetailResponse
 			require.NoError(t, json.Unmarshal(call("GET", "/packages/cask/"+token+"?locale="+tc.locale, ""), &detail))
 			require.NotNil(t, detail.Data.LatestRelease)
@@ -208,7 +208,7 @@ func TestEditorialReleaseLocaleIsolationAndPageDecision(t *testing.T) {
 			for _, mode := range []string{"shadow", "enforce"} {
 				policy := seo.Policy{Mode: "shadow", TranslationMode: mode, TranslationLocales: []string{"en-US"}, VersionsMinNotesChars: 300}
 				decision := seo.DecidePage(rows[0].Facts(), seo.PageRef{Kind: seo.PageVersions, Locale: tc.locale, Page: 1}, policy)
-				require.Equal(t, tc.localized, decision.Robots == "index, follow", mode)
+				require.Equal(t, tc.localized, seo.DecisionRobots(string(decision.Robots)).Index, mode)
 			}
 		})
 	}

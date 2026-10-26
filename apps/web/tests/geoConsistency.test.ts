@@ -45,6 +45,10 @@ function sharedAssertions(out: Output, locale: SiteLocale) {
     expect(faqText).toContain(item.answer.replace(/`|\*\*/g, '').replace(/\s+/g, ' '));
   }
   expect(md).toContain(`${origin}${LOCALE_METADATA[locale].prefix}/apps/${page.token}`);
+  if (!shownPrices(page).length) {
+    expect(html.price).not.toContain('<table');
+    expect(html.price).not.toContain('id="price"');
+  }
   for (const price of shownPrices(page)) {
     const amount = priceAmount(price, t, locale);
     for (const value of [amount, priceEdition(price), priceRegionName(price.region, locale)].filter(Boolean)) {
@@ -180,7 +184,9 @@ describe('G5 cross-export normalized facts', () => {
         break;
       case 'G5-12':
         expect(schema).not.toHaveProperty('offers');
-        expect(md).toContain(t('package.facts.types.free_with_iap'));
+        expect(md).not.toContain(t('package.facts.types.free_with_iap'));
+        expect(html.price).not.toContain('<table');
+        expect(answers.price).toContain(t('package.faq.priceA.free_with_iap', { name: page.displayName }));
         break;
       case 'G5-15':
         expect(schema).toHaveProperty('offers');
@@ -212,7 +218,8 @@ describe('G5 cross-export normalized facts', () => {
         break;
       case 'G5-21':
         expect(schema?.softwareRequirements).toBe(t('package.facts.minimum', { version: '13' }));
-        expect(md).toContain(t('package.facts.pending'));
+        expect(md).not.toContain(t('package.facts.pending'));
+        expect(html.requirements).not.toContain(t('package.facts.pending'));
         break;
       case 'G5-22':
         expect(schema?.softwareRequirements).toContain('13');

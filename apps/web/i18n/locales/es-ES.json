@@ -27,7 +27,8 @@
     "themeLabel": "Apariencia",
     "themeSystem": "Igual que el sistema",
     "themeLight": "Claro",
-    "themeDark": "Oscuro"
+    "themeDark": "Oscuro",
+    "skipToContent": "Saltar al contenido"
   },
   "sidebar": {
     "appLabel": "Cliente para Mac",
@@ -808,6 +809,16 @@
         "issue": "Problemas conocidos",
         "integration": "MCP y Skills"
       }
+    },
+    "copy": {
+      "install": "Copiar comando de instalación",
+      "uninstall": "Copiar comando de desinstalación",
+      "cleanup": "Copiar comando de desinstalación y limpieza"
+    },
+    "officialDownload": {
+      "label": "Descarga oficial · {host}",
+      "checksum": "SHA-256 registrado en Homebrew",
+      "active": "No deshabilitada por Homebrew"
     }
   },
   "collections": {
